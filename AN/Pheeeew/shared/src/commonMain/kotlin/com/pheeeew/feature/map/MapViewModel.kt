@@ -98,39 +98,45 @@ class MapViewModel(
                     delay(SIGH_BOUNDS_DEBOUNCE_MILLIS)
                     mapPerformanceLogger("request_started id=$requestId")
 
-                    sighOperationMutex.withLock {
+                    val serverSighs =
                         try {
-                            val serverSighs = sighRepository.getSighs(bounds).distinctBy(SighPin::id)
-                            if (requestId != latestSighRequestId || !mapIsForeground) {
-                                mapPerformanceLogger("stale_response_dropped id=$requestId")
-                                return@withLock
-                            }
-
-                            val serverIds = serverSighs.mapTo(mutableSetOf(), SighPin::id)
-                            serverIds.forEach(locallyRegisteredSighs::remove)
-                            val mergedSighs = (serverSighs + locallyRegisteredSighs.values).distinctBy(SighPin::id)
-                            _uiState.update { state ->
-                                (state as? MapUiState.Success)?.copy(
-                                    sighs = mergedSighs,
-                                    refreshErrorMessage = null,
-                                ) ?: state
-                            }
-                            mapPerformanceLogger("response_applied id=$requestId")
+                            sighRepository.getSighs(bounds).distinctBy(SighPin::id)
                         } catch (e: ApiException) {
-                            if (requestId != latestSighRequestId || !mapIsForeground) {
-                                mapPerformanceLogger("stale_error_dropped id=$requestId")
-                                return@withLock
-                            }
+                            sighOperationMutex.withLock {
+                                if (requestId != latestSighRequestId || !mapIsForeground) {
+                                    mapPerformanceLogger("stale_error_dropped id=$requestId")
+                                    return@withLock
+                                }
 
-                            mapPerformanceLogger("request_failed id=$requestId")
-                            _uiState.update { state ->
-                                if (state is MapUiState.Success) {
-                                    state.copy(refreshErrorMessage = e.toUserMessage())
-                                } else {
-                                    state
+                                lastRequestedSighBounds = null
+                                mapPerformanceLogger("request_failed id=$requestId")
+                                _uiState.update { state ->
+                                    if (state is MapUiState.Success) {
+                                        state.copy(refreshErrorMessage = e.toUserMessage())
+                                    } else {
+                                        state
+                                    }
                                 }
                             }
+                            return@launch
                         }
+
+                    sighOperationMutex.withLock {
+                        if (requestId != latestSighRequestId || !mapIsForeground) {
+                            mapPerformanceLogger("stale_response_dropped id=$requestId")
+                            return@withLock
+                        }
+
+                        val serverIds = serverSighs.mapTo(mutableSetOf(), SighPin::id)
+                        serverIds.forEach(locallyRegisteredSighs::remove)
+                        val mergedSighs = (serverSighs + locallyRegisteredSighs.values).distinctBy(SighPin::id)
+                        _uiState.update { state ->
+                            (state as? MapUiState.Success)?.copy(
+                                sighs = mergedSighs,
+                                refreshErrorMessage = null,
+                            ) ?: state
+                        }
+                        mapPerformanceLogger("response_applied id=$requestId")
                     }
                 } catch (e: CancellationException) {
                     mapPerformanceLogger("request_cancelled id=$requestId")
@@ -172,11 +178,12 @@ class MapViewModel(
             ) ?: it
         }
         viewModelScope.launch {
-            sighOperationMutex.withLock {
-                try {
-                    val sighPin = sighRepository.registerSigh(request.requestId, request.coordinate)
+            try {
+                val sighPin = sighRepository.registerSigh(request.requestId, request.coordinate)
+                waitForMinimumSubmittingDuration(submittingStartedAt)
+
+                sighOperationMutex.withLock {
                     locallyRegisteredSighs[sighPin.id] = sighPin
-                    waitForMinimumSubmittingDuration(submittingStartedAt)
                     pendingRegistration = null
                     _uiState.update { state ->
                         (state as? MapUiState.Success)?.copy(
@@ -191,13 +198,13 @@ class MapViewModel(
                         )
                             ?: state
                     }
-                } catch (e: ApiException) {
-                    waitForMinimumSubmittingDuration(submittingStartedAt)
-                    _uiState.update {
-                        (it as? MapUiState.Success)?.copy(
-                            sighReleaseState = SighReleaseState.Error(message = e.toUserMessage(), canRetry = true),
-                        ) ?: it
-                    }
+                }
+            } catch (e: ApiException) {
+                waitForMinimumSubmittingDuration(submittingStartedAt)
+                _uiState.update {
+                    (it as? MapUiState.Success)?.copy(
+                        sighReleaseState = SighReleaseState.Error(message = e.toUserMessage(), canRetry = true),
+                    ) ?: it
                 }
             }
         }

@@ -3,6 +3,7 @@
 
 package com.pheeeew.feature.map
 
+import com.pheeeew.domain.exception.ApiException
 import com.pheeeew.domain.model.geo.Coordinate
 import com.pheeeew.domain.model.sigh.SighBounds
 import com.pheeeew.domain.model.sigh.SighPin
@@ -50,6 +51,30 @@ class MapViewModelTest {
                 runCurrent()
 
                 assertEquals(listOf(firstBounds), repository.requestedBounds)
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `조회에 실패한 bounds는 같은 bounds로 재시도할 수 있다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository = RecordingSighRepository(failNextRequest = true)
+                val viewModel = MapViewModel(repository, locationDependencies = null)
+                viewModel.onMapForeground()
+
+                viewModel.loadSighs(firstBounds)
+                advanceTimeBy(250)
+                runCurrent()
+                viewModel.loadSighs(firstBounds)
+                advanceTimeBy(250)
+                runCurrent()
+
+                assertEquals(listOf(firstBounds, firstBounds), repository.requestedBounds)
                 viewModel.onMapBackground()
             } finally {
                 Dispatchers.resetMain()
@@ -138,11 +163,16 @@ class MapViewModelTest {
 
     private class RecordingSighRepository(
         private val delayFirstResponse: Boolean = false,
+        private var failNextRequest: Boolean = false,
     ) : SighRepository {
         val requestedBounds = mutableListOf<SighBounds>()
 
         override suspend fun getSighs(bounds: SighBounds): List<SighPin> {
             requestedBounds += bounds
+            if (failNextRequest) {
+                failNextRequest = false
+                throw ApiException.Network(code = "TEST-001", message = "조회 실패")
+            }
             val requestNumber = requestedBounds.size
             if (delayFirstResponse && requestNumber == 1) {
                 withContext(NonCancellable) { delay(1_000) }
