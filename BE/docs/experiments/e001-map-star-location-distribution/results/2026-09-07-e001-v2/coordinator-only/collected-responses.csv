@@ -1,0 +1,5 @@
+reviewer_id,pair_id,shape_choice,natural_choice,hotspot_choice,status,invalidation_reason
+r01,047f13aad87b1321,left,left,neither,valid,
+r01,0c695574696c5768,right,right,neither,valid,
+r01,656ab089a201b687,left,left,right,valid,
+r01,71d7e3db3e9dee55,right,right,left,valid,

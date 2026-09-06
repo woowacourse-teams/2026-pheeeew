@@ -1,0 +1,5 @@
+pair_id,scenario_id,image_path
+047f13aad87b1321,grid-equal-n500-per-center,renders/blind-pairs/047f13aad87b1321.png
+0c695574696c5768,single-n500,renders/blind-pairs/0c695574696c5768.png
+656ab089a201b687,grid-equal-n5000-per-center,renders/blind-pairs/656ab089a201b687.png
+71d7e3db3e9dee55,single-n5000,renders/blind-pairs/71d7e3db3e9dee55.png
