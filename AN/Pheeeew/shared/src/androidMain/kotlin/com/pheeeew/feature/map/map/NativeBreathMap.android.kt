@@ -133,6 +133,7 @@ private class AndroidBreathMapHost(
     private var lastPublishedPoints: Map<String, MapScreenPoint>? = null
     private var lastPublishedCameraIdle: Boolean? = null
     private var statusBarInset = 0
+    private var isInBackground = false
 
     private val mapLoadFailureListener =
         MapView.OnDidFailLoadingMapListener {
@@ -268,10 +269,12 @@ private class AndroidBreathMapHost(
     }
 
     fun pauseAnimations() {
+        isInBackground = true
         sighPulseAnimator?.takeIf { it.isStarted }?.pause()
     }
 
     fun resumeAnimations() {
+        isInBackground = false
         sighPulseAnimator?.takeIf { it.isPaused }?.resume()
     }
 
@@ -307,6 +310,7 @@ private class AndroidBreathMapHost(
                     }
                 }
                 start()
+                if (isInBackground) pause()
             }
     }
 
