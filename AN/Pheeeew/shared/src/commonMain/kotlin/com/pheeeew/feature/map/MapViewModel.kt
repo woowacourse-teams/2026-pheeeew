@@ -31,10 +31,14 @@ import kotlin.time.TimeSource
 import kotlin.uuid.Uuid
 
 private const val MIN_SIGH_SUBMITTING_DURATION_MILLIS = 2_000L
+private const val SIGH_BOUNDS_DEBOUNCE_MILLIS = 250L
+
+typealias MapPerformanceLogger = (String) -> Unit
 
 class MapViewModel(
     private val sighRepository: SighRepository,
     private val locationDependencies: LocationDependencies?,
+    private val mapPerformanceLogger: MapPerformanceLogger = {},
 ) : ViewModel() {
     private var nextCameraCommandId = 0L
     private var pendingRegistration: PendingSighRequest? = null
@@ -43,6 +47,8 @@ class MapViewModel(
     private var mapIsForeground = false
     private var loadSighsJob: Job? = null
     private var lastSighBounds: SighBounds? = null
+    private var lastRequestedSighBounds: SighBounds? = null
+    private var latestSighRequestId = 0L
     private var myLocationJob: Job? = null
 
     private val _uiState =
@@ -73,16 +79,54 @@ class MapViewModel(
 
     fun loadSighs(bounds: SighBounds) {
         lastSighBounds = bounds
+        mapPerformanceLogger("bounds_received")
 
         if (!mapIsForeground) return
+        if (bounds == lastRequestedSighBounds) {
+            mapPerformanceLogger("duplicate_bounds_skipped")
+            return
+        }
+
+        lastRequestedSighBounds = bounds
+        val requestId = ++latestSighRequestId
 
         loadSighsJob?.cancel()
 
         loadSighsJob =
             viewModelScope.launch {
-                sighOperationMutex.withLock {
-                    try {
-                        val serverSighs = sighRepository.getSighs(bounds).distinctBy(SighPin::id)
+                try {
+                    delay(SIGH_BOUNDS_DEBOUNCE_MILLIS)
+                    mapPerformanceLogger("request_started id=$requestId")
+
+                    val serverSighs =
+                        try {
+                            sighRepository.getSighs(bounds).distinctBy(SighPin::id)
+                        } catch (e: ApiException) {
+                            sighOperationMutex.withLock {
+                                if (requestId != latestSighRequestId || !mapIsForeground) {
+                                    mapPerformanceLogger("stale_error_dropped id=$requestId")
+                                    return@withLock
+                                }
+
+                                lastRequestedSighBounds = null
+                                mapPerformanceLogger("request_failed id=$requestId")
+                                _uiState.update { state ->
+                                    if (state is MapUiState.Success) {
+                                        state.copy(refreshErrorMessage = e.toUserMessage())
+                                    } else {
+                                        state
+                                    }
+                                }
+                            }
+                            return@launch
+                        }
+
+                    sighOperationMutex.withLock {
+                        if (requestId != latestSighRequestId || !mapIsForeground) {
+                            mapPerformanceLogger("stale_response_dropped id=$requestId")
+                            return@withLock
+                        }
+
                         val serverIds = serverSighs.mapTo(mutableSetOf(), SighPin::id)
                         serverIds.forEach(locallyRegisteredSighs::remove)
                         val mergedSighs = (serverSighs + locallyRegisteredSighs.values).distinctBy(SighPin::id)
@@ -92,15 +136,11 @@ class MapViewModel(
                                 refreshErrorMessage = null,
                             ) ?: state
                         }
-                    } catch (e: ApiException) {
-                        _uiState.update { state ->
-                            if (state is MapUiState.Success) {
-                                state.copy(refreshErrorMessage = e.toUserMessage())
-                            } else {
-                                state
-                            }
-                        }
+                        mapPerformanceLogger("response_applied id=$requestId")
                     }
+                } catch (e: CancellationException) {
+                    mapPerformanceLogger("request_cancelled id=$requestId")
+                    throw e
                 }
             }
     }
@@ -138,11 +178,12 @@ class MapViewModel(
             ) ?: it
         }
         viewModelScope.launch {
-            sighOperationMutex.withLock {
-                try {
-                    val sighPin = sighRepository.registerSigh(request.requestId, request.coordinate)
+            try {
+                val sighPin = sighRepository.registerSigh(request.requestId, request.coordinate)
+                waitForMinimumSubmittingDuration(submittingStartedAt)
+
+                sighOperationMutex.withLock {
                     locallyRegisteredSighs[sighPin.id] = sighPin
-                    waitForMinimumSubmittingDuration(submittingStartedAt)
                     pendingRegistration = null
                     _uiState.update { state ->
                         (state as? MapUiState.Success)?.copy(
@@ -157,13 +198,13 @@ class MapViewModel(
                         )
                             ?: state
                     }
-                } catch (e: ApiException) {
-                    waitForMinimumSubmittingDuration(submittingStartedAt)
-                    _uiState.update {
-                        (it as? MapUiState.Success)?.copy(
-                            sighReleaseState = SighReleaseState.Error(message = e.toUserMessage(), canRetry = true),
-                        ) ?: it
-                    }
+                }
+            } catch (e: ApiException) {
+                waitForMinimumSubmittingDuration(submittingStartedAt)
+                _uiState.update {
+                    (it as? MapUiState.Success)?.copy(
+                        sighReleaseState = SighReleaseState.Error(message = e.toUserMessage(), canRetry = true),
+                    ) ?: it
                 }
             }
         }
@@ -319,6 +360,7 @@ class MapViewModel(
 
         loadSighsJob?.cancel()
         loadSighsJob = null
+        lastRequestedSighBounds = null
 
         myLocationJob?.cancel()
         myLocationJob = null

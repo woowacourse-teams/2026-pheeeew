@@ -2,6 +2,7 @@ package com.pheeeew
 
 import android.graphics.Color
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -35,6 +36,9 @@ class MainActivity : ComponentActivity() {
                 appVersion = BuildConfig.VERSION_NAME,
                 locationDependencies = locationDependencies,
                 sighRepository = sighRepository,
+                mapPerformanceLogger = { event ->
+                    if (BuildConfig.DEBUG) Log.d("Pheeeew.MapPerf", event)
+                },
             )
         }
     }
