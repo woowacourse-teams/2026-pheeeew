@@ -179,23 +179,28 @@ final class E001Artifacts {
     }
 
     private static List<String> panels(Path root, E001Distribution.Result result, List<E001Trial> trials) throws IOException {
-        if (result.decision().status() != E001Selection.Status.E_REVIEW_READY) {
+        if (result.decision().status() == E001Selection.Status.INCONCLUSIVE) {
             return List.of();
         }
         List<String> selected = E001Conformance.selected(result).stream().map(E001Parameters::parameterSetId).toList();
+        boolean includeE = result.decision().status() == E001Selection.Status.E_REVIEW_READY;
         Path directory = root.resolve("coordinator-only/model-panels");
         Files.createDirectories(directory);
         List<String> names = new ArrayList<>();
         for (E001Trial trial : trials) {
             E001Scenario scenario = trial.batch().plan().scenario();
-            if (scenario.phase().equals("confirmation") && selected.contains(trial.batch().parameters().parameterSetId())) {
+            String parameterId = trial.batch().parameters().parameterSetId();
+            boolean reviewPanel = scenario.phase().equals("review")
+                    && (trial.batch().parameters().modelId().equals("A") || parameterId.equals(result.decision().d().parameterSetId()));
+            boolean confirmationPanel = includeE && scenario.phase().equals("confirmation") && selected.contains(parameterId);
+            if (reviewPanel || confirmationPanel) {
                 String name = trial.batch().parameters().parameterSetId() + "--" + scenario.id() + ".png";
                 E001Panel.write(directory.resolve(name), trial.batch().samples(), scenario.originX(), scenario.originY());
                 names.add("coordinator-only/model-panels/" + name);
             }
         }
-        if (names.size() != 8) {
-            throw new IOException("블라인드 원본 panel은 D와 E의 확인 화면 각 네 장이어야 해요.");
+        if (names.size() != (includeE ? 16 : 8)) {
+            throw new IOException("블라인드 원본 panel은 A/D 여덟 장과 조건부 D/E 여덟 장이어야 해요.");
         }
         return names.stream().sorted().toList();
     }

@@ -14,6 +14,9 @@ final class E001Selection {
             "confirmation-grid-equal-n500-per-center", "confirmation-grid-equal-n5000-per-center");
     static final List<String> SPECTRAL = List.of(
             "spectral-grid-equal-n500-per-center", "spectral-grid-imbalanced-n60500");
+    static final List<String> REVIEW_SINGLE = List.of("review-ad-single-n500", "review-ad-single-n5000");
+    static final List<String> REVIEW_GRID = List.of(
+            "review-ad-grid-equal-n500-per-center", "review-ad-grid-equal-n5000-per-center");
     private static final List<String> SAMPLERS = List.of("sir16", "sir32", "rejection128");
 
     private E001Selection() {
@@ -38,8 +41,7 @@ final class E001Selection {
                 .filter(candidate -> SAMPLERS.contains(candidate.sampler()))
                 .filter(candidate -> Double.isFinite(candidate.logIntensityStd()) && candidate.logIntensityStd() >= 0.0)
                 .filter(candidate -> integrity(candidate, List.of(TUNING_SINGLE, TUNING_GRID)))
-                .filter(candidate -> passesESingle(a.scenario(TUNING_SINGLE), d.scenario(TUNING_SINGLE),
-                        candidate.scenario(TUNING_SINGLE)))
+                .filter(candidate -> passesESingle(a.scenario(TUNING_SINGLE), candidate.scenario(TUNING_SINGLE)))
                 .filter(candidate -> passesDensity(d.scenario(TUNING_GRID), candidate.scenario(TUNING_GRID)))
                 .filter(candidate -> passesSeam(d.scenario(TUNING_GRID), candidate.scenario(TUNING_GRID)))
                 .min(Comparator.comparingDouble(E001Candidate::logIntensityStd)
@@ -64,12 +66,12 @@ final class E001Selection {
             return Decision.of(Status.INCONCLUSIVE, "no-d", d, e);
         }
         if (e == null) {
-            return Decision.of(Status.SELECTED_D, "no-e", d, null);
+            return Decision.of(Status.SPECTRAL_REQUIRED, "no-e", d, null);
         }
         if (!integrity(e, scenarios)
-                || CONFIRMATION_SINGLE.stream().anyMatch(id -> !passesESingle(a.scenario(id), d.scenario(id), e.scenario(id)))
+                || CONFIRMATION_SINGLE.stream().anyMatch(id -> !passesESingle(a.scenario(id), e.scenario(id)))
                 || CONFIRMATION_GRID.stream().anyMatch(id -> !passesDensity(d.scenario(id), e.scenario(id)))) {
-            return Decision.of(Status.SELECTED_D, "e-confirmation-failed", d, e);
+            return Decision.of(Status.SPECTRAL_REQUIRED, "e-confirmation-failed", d, e);
         }
         return Decision.of(Status.SPECTRAL_REQUIRED, "", d, e);
     }
@@ -82,25 +84,38 @@ final class E001Selection {
         if (SPECTRAL.stream().anyMatch(id -> !Double.isFinite(d.scenario(id).pooledValue("grid300")))) {
             return Decision.of(Status.INCONCLUSIVE, "no-d", d, e);
         }
+        if (!confirmation.reason().isEmpty()) {
+            return Decision.of(Status.REVIEW_REQUIRED, confirmation.reason(), d, e);
+        }
         if (!integrity(e, SPECTRAL) || SPECTRAL.stream().anyMatch(id ->
                 !atMost(e.scenario(id).pooledValue("grid300"), 0.8 * d.scenario(id).pooledValue("grid300")))) {
-            return Decision.of(Status.SELECTED_D, "e-spectral-failed", d, e);
+            return Decision.of(Status.REVIEW_REQUIRED, "e-spectral-failed", d, e);
         }
-        return Decision.of(Status.E_REVIEW_READY, "e-review-pending", d, e);
+        return Decision.of(Status.REVIEW_REQUIRED, "", d, e);
+    }
+
+    static Decision review(Decision spectral, E001Candidate a, E001Candidate d, E001Candidate e) {
+        requireStage(spectral, Status.REVIEW_REQUIRED, d, e);
+        List<String> scenarios = Stream.concat(REVIEW_SINGLE.stream(), REVIEW_GRID.stream()).toList();
+        if (!integrity(a, scenarios) || !integrity(d, scenarios)) {
+            return Decision.of(Status.INCONCLUSIVE, "integrity-failure", d, e);
+        }
+        if (REVIEW_SINGLE.stream().anyMatch(id -> !passesD(d.scenario(id)))) {
+            return Decision.of(Status.INCONCLUSIVE, "no-d", d, e);
+        }
+        return spectral.reason().isEmpty()
+                ? Decision.of(Status.E_REVIEW_READY, "e-review-pending", d, e)
+                : Decision.of(Status.D_REVIEW_READY, spectral.reason(), d, e);
     }
 
     static boolean passesD(E001Evaluation d) {
         return atMost(d.median("radius.p95"), 210.0)
                 && atMost(d.median("radius.p99"), 250.0)
-                && atMost(d.maximum("radius.p99"), 270.0)
-                && atMost(d.median("edgeRatio30"), 0.35)
-                && atMost(d.maximum("edgeRatio30"), 0.50);
+                && atMost(d.maximum("radius.p99"), 270.0);
     }
 
-    static boolean passesESingle(E001Evaluation a, E001Evaluation d, E001Evaluation e) {
-        double edgeLimit = StrictMath.max(1.10 * d.median("edgeRatio30"), d.median("edgeRatio30") + 0.02);
+    static boolean passesESingle(E001Evaluation a, E001Evaluation e) {
         return atMost(e.median("radialKs"), 0.05)
-                && atMost(e.median("edgeRatio30"), edgeLimit)
                 && atMost(e.median("a4"), 0.5 * a.median("a4"));
     }
 
@@ -138,7 +153,7 @@ final class E001Selection {
     }
 
     enum Status {
-        CONFIRMATION_REQUIRED, SPECTRAL_REQUIRED, INCONCLUSIVE, SELECTED_D, E_REVIEW_READY
+        CONFIRMATION_REQUIRED, SPECTRAL_REQUIRED, REVIEW_REQUIRED, INCONCLUSIVE, D_REVIEW_READY, E_REVIEW_READY
     }
 
     record Decision(Status status, String reason, E001Candidate d, E001Candidate e) {
@@ -150,7 +165,7 @@ final class E001Selection {
         String distributionOutcome() {
             return switch (status) {
                 case INCONCLUSIVE -> "inconclusive";
-                case SELECTED_D -> "selected-d";
+                case D_REVIEW_READY -> "d-review-ready";
                 case E_REVIEW_READY -> "e-review-ready";
                 default -> throw new IllegalStateException("분포 판정이 아직 끝나지 않았어요.");
             };

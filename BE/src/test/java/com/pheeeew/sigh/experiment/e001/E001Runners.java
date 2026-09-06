@@ -10,6 +10,7 @@ final class E001Runners {
     }
 
     static void distribution() throws IOException {
+        requireV2Ready();
         Path project = Path.of(required("e001.projectDir"));
         Path reports = Path.of(required("e001.reportsDir"));
         String gradle = required("e001.gradleVersion");
@@ -23,6 +24,7 @@ final class E001Runners {
     }
 
     static void performance() throws IOException {
+        requireV2Ready();
         Path project = Path.of(required("e001.projectDir"));
         String gradle = required("e001.gradleVersion");
         var metadata = E001RunContext.capture(project, gradle);
@@ -38,6 +40,7 @@ final class E001Runners {
     }
 
     static void blind() throws IOException {
+        requireV2Ready();
         Path project = Path.of(required("e001.projectDir"));
         String gradle = required("e001.gradleVersion");
         var metadata = E001RunContext.capture(project, gradle);
@@ -49,6 +52,11 @@ final class E001Runners {
                             "reviewer-package/blind-pairs.csv", 4, "reviewer-package/blind-ballot-template.csv", 4),
                             "reviewStatus", "awaiting-five-reviewers");
                 });
+    }
+
+    private static void requireV2Ready() throws IOException {
+        // R3에서 v2 source·산출물·sidecar 계약을 연결하기 전에는 기존 결과도 변경하지 않아요.
+        throw new IOException("E001-v2 실행기 전환이 끝나지 않았어요. 실제 분포·성능·블라인드 실행은 차단해요.");
     }
 
     private static String required(String key) throws IOException {

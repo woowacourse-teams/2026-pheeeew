@@ -13,6 +13,8 @@ final class E001Distribution {
     private static final List<E001Scenario> CONFIRMATION = List.of(E001Scenario.CONFIRMATION_SINGLE_500,
             E001Scenario.CONFIRMATION_SINGLE_5000, E001Scenario.CONFIRMATION_GRID_500, E001Scenario.CONFIRMATION_GRID_5000);
     private static final List<E001Scenario> SPECTRAL = List.of(E001Scenario.SPECTRAL_EQUAL, E001Scenario.SPECTRAL_IMBALANCED);
+    private static final List<E001Scenario> REVIEW = List.of(E001Scenario.REVIEW_SINGLE_500,
+            E001Scenario.REVIEW_SINGLE_5000, E001Scenario.REVIEW_GRID_500, E001Scenario.REVIEW_GRID_5000);
 
     private final Evaluator evaluator;
     private final ToDoubleFunction<E001Parameters> calibration;
@@ -74,11 +76,20 @@ final class E001Distribution {
                 return finish(E001Selection.spectral(confirmation, candidate(a), candidate(d), candidate(e)));
             }
         }
-        if (SPECTRAL.stream().allMatch(scenario ->
+        if (confirmation.reason().isEmpty() && SPECTRAL.stream().allMatch(scenario ->
                 Double.isFinite(candidate(d).scenario(scenario.id()).pooledValue("grid300")))) {
             evaluate(e, SPECTRAL, d, true);
         }
-        return finish(E001Selection.spectral(confirmation, candidate(a), candidate(d), candidate(e)));
+        E001Selection.Decision spectral = E001Selection.spectral(confirmation, candidate(a), candidate(d), candidate(e));
+        if (spectral.status() != E001Selection.Status.REVIEW_REQUIRED) {
+            return finish(spectral);
+        }
+        for (E001Parameters control : List.of(a, d)) {
+            if (!evaluate(control, REVIEW, null, true)) {
+                return finish(E001Selection.review(spectral, candidate(a), candidate(d), candidate(e)));
+            }
+        }
+        return finish(E001Selection.review(spectral, candidate(a), candidate(d), candidate(e)));
     }
 
     private boolean evaluate(E001Parameters parameters, List<E001Scenario> scenarios,

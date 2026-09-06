@@ -49,7 +49,8 @@ class E001ScenarioTest {
     @CsvSource({"TUNING_SINGLE, 1, 500, 300", "CONFIRMATION_SINGLE_500, 1, 500, 300",
             "CONFIRMATION_SINGLE_5000, 1, 5000, 300", "CONFIRMATION_GRID_500, 9, 4500, 600",
             "CONFIRMATION_GRID_5000, 9, 45000, 600", "SPECTRAL_EQUAL, 121, 60500, 1350",
-            "SPECTRAL_IMBALANCED, 121, 60500, 1350"})
+            "SPECTRAL_IMBALANCED, 121, 60500, 1350", "REVIEW_SINGLE_500, 1, 500, 300",
+            "REVIEW_SINGLE_5000, 1, 5000, 300", "REVIEW_GRID_500, 9, 4500, 600", "REVIEW_GRID_5000, 9, 45000, 600"})
     void 시나리오는_중심_수와_전체_요청_수와_평가_창을_고정한다(
             E001Scenario scenario, int centers, long requested, int halfWidth
     ) {
@@ -114,9 +115,29 @@ class E001ScenarioTest {
         List<String> ids = List.of(E001Selection.TUNING_SINGLE, E001Selection.TUNING_GRID,
                 E001Selection.CONFIRMATION_SINGLE.getFirst(), E001Selection.CONFIRMATION_SINGLE.getLast(),
                 E001Selection.CONFIRMATION_GRID.getFirst(), E001Selection.CONFIRMATION_GRID.getLast(),
-                E001Selection.SPECTRAL.getFirst(), E001Selection.SPECTRAL.getLast());
+                E001Selection.SPECTRAL.getFirst(), E001Selection.SPECTRAL.getLast(),
+                E001Selection.REVIEW_SINGLE.getFirst(), E001Selection.REVIEW_SINGLE.getLast(),
+                E001Selection.REVIEW_GRID.getFirst(), E001Selection.REVIEW_GRID.getLast());
 
         // when & then
         assertThat(ids).contains(scenario.id());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"REVIEW_SINGLE_500, CONFIRMATION_SINGLE_500", "REVIEW_SINGLE_5000, CONFIRMATION_SINGLE_5000",
+            "REVIEW_GRID_500, CONFIRMATION_GRID_500", "REVIEW_GRID_5000, CONFIRMATION_GRID_5000"})
+    void AD_전용_표본은_DE와_개수는_같고_중심과_point_seed_domain은_다르다(E001Scenario review, E001Scenario confirmation) {
+        // given
+        long seed = E001Evaluation.SAMPLE_SEEDS.stream().min(Long::compareTo).orElseThrow();
+
+        // when & then
+        assertThat(review.plan().centers()).isEqualTo(confirmation.plan().centers());
+        assertThat(review.plan().requestedCount()).isEqualTo(confirmation.plan().requestedCount());
+        assertThat(review.phase()).isEqualTo("review");
+        assertThat(review.originId()).isEqualTo("REVIEW_AD");
+        assertThat(review.originX()).isEqualTo(989_850.0).isNotEqualTo(confirmation.originX());
+        assertThat(review.originY()).isEqualTo(1_969_950.0);
+        assertThat(E001PointSeed.derive(review.id(), review.originId(), 0, 0, seed, 0))
+                .isNotEqualTo(E001PointSeed.derive(confirmation.id(), confirmation.originId(), 0, 0, seed, 0));
     }
 }

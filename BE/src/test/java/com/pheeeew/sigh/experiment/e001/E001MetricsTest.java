@@ -61,7 +61,7 @@ class E001MetricsTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void edge_ratio는_정확한_띠_경계와_면적과_반개_pseudocount를_사용한다(boolean square) {
+    void 경계_관측은_정확한_띠_경계와_면적을_쓰되_보정값은_더하지_않는다(boolean square) {
         // given
         double boundary = square ? 150.0 : 300.0;
         List<E001Sample> samples = List.of(offset(0, boundary - 1.0, 0.0),
@@ -70,10 +70,13 @@ class E001MetricsTest {
         double innerArea = square ? 25_200.0 : StrictMath.PI * 15_300.0;
 
         // when
-        double ratio = E001ShapeMetrics.measure(samples, square, 0.0, 0.0).value("edgeRatio30");
+        E001BoundaryObservation observation = E001BoundaryObservation.of(samples, square);
 
         // then
-        assertThat(ratio).isEqualTo((1.5 / outerArea) / (1.5 / innerArea));
+        assertThat(observation.outerCount()).isEqualTo(1L);
+        assertThat(observation.innerCount()).isEqualTo(1L);
+        assertThat(observation.rawDensityRatio()).isEqualTo((1.0 / outerArea) / (1.0 / innerArea));
+        assertThat(E001ShapeMetrics.measure(samples, square, 0.0, 0.0).values()).doesNotContainKey("edgeRatio30");
     }
 
     @Test

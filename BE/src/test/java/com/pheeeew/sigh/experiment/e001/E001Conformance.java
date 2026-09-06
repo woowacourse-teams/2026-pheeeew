@@ -42,7 +42,7 @@ final class E001Conformance {
     static List<E001Parameters> selected(E001Distribution.Result result) {
         List<String> ids = switch (result.decision().status()) {
             case INCONCLUSIVE -> List.of();
-            case SELECTED_D -> List.of(result.decision().d().parameterSetId());
+            case D_REVIEW_READY -> List.of(result.decision().d().parameterSetId());
             case E_REVIEW_READY -> List.of(result.decision().d().parameterSetId(), result.decision().e().parameterSetId());
             default -> throw new IllegalArgumentException("완료된 분포 판정이 필요해요.");
         };

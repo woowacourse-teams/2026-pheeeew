@@ -34,7 +34,7 @@ class E001SelectionTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"radius.p95, 210", "radius.p99, 250", "edgeRatio30, 0.35"})
+    @CsvSource({"radius.p95, 210", "radius.p99, 250"})
     void D_median_합격선은_경계까지_포함하고_다음_double은_탈락한다(String key, double limit) {
         // given
         E001Evaluation equal = metric(D, E001Selection.TUNING_SINGLE, key, limit).scenario(E001Selection.TUNING_SINGLE);
@@ -46,7 +46,7 @@ class E001SelectionTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"radius.p99, 270", "edgeRatio30, 0.50"})
+    @CsvSource({"radius.p99, 270"})
     void D는_한_seed만_상한을_초과해도_탈락한다(String key, double limit) {
         // given
         E001Evaluation baseline = D.scenario(E001Selection.TUNING_SINGLE);
@@ -88,18 +88,18 @@ class E001SelectionTest {
     }
 
     @Test
-    void E_edge_합격선은_비율과_절대_여유_중_큰_값이다() {
+    void 경계_진단의_누락이나_값으로_D와_E_합격을_바꾸지_않는다() {
         // given
-        for (double dEdge : new double[]{0.10, 0.30}) {
-            E001Candidate d = metric(D, E001Selection.TUNING_SINGLE, "edgeRatio30", dEdge);
-            double limit = StrictMath.max(1.10 * dEdge, dEdge + 0.02);
-            E001Candidate equal = metric(E, E001Selection.TUNING_SINGLE, "edgeRatio30", limit);
-            E001Candidate above = metric(E, E001Selection.TUNING_SINGLE, "edgeRatio30", Math.nextUp(limit));
+        assertThat(D.scenario(E001Selection.TUNING_SINGLE).median("edgeRatio30")).isNaN();
+        for (double ignored : new double[]{0.0, 0.8947368421052633, 71.578947, Double.NaN}) {
+            E001Candidate d = metric(D, E001Selection.TUNING_SINGLE, "edgeRatio30", ignored);
+            E001Candidate e = metric(E, E001Selection.TUNING_SINGLE, "edgeRatio30", ignored);
 
             // when & then
-            assertThat(E001Selection.tune(A, List.of(d), List.of(equal)).e()).isEqualTo(equal);
-            assertThat(E001Selection.tune(A, List.of(d), List.of(above)).e()).isNull();
+            assertThat(E001Selection.tune(A, List.of(d), List.of(e)).d()).isEqualTo(d);
+            assertThat(E001Selection.tune(A, List.of(d), List.of(e)).e()).isEqualTo(e);
         }
+        assertThat(E001Selection.tune(A, List.of(D), List.of(E)).e()).isEqualTo(E);
     }
 
     @Test
@@ -159,14 +159,20 @@ class E001SelectionTest {
     }
 
     @Test
-    void E가_없어도_D_확인을_통과해야_selected_d가_된다() {
+    void E가_없어도_D_확인_뒤_spectral과_추가_확인을_거쳐야_평가_후보가_된다() {
         // given
         E001Selection.Decision tuning = E001Selection.tune(A, List.of(D), List.of());
         E001Candidate failed = metric(D, E001Selection.CONFIRMATION_SINGLE.getLast(), "radius.p95", 211.0);
 
         // when & then
-        assertThat(E001Selection.confirm(tuning, A, B, C, D, null).distributionOutcome()).isEqualTo("selected-d");
-        assertThat(E001Selection.confirm(tuning, A, B, C, D, null).reason()).isEqualTo("no-e");
+        E001Selection.Decision confirmation = E001Selection.confirm(tuning, A, B, C, D, null);
+        E001Selection.Decision spectral = E001Selection.spectral(confirmation, A, D, null);
+        assertThat(confirmation.status()).isEqualTo(E001Selection.Status.SPECTRAL_REQUIRED);
+        assertThat(confirmation.reason()).isEqualTo("no-e");
+        assertThatThrownBy(confirmation::distributionOutcome).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(spectral::distributionOutcome).isInstanceOf(IllegalStateException.class);
+        assertThat(E001Selection.review(spectral, A, D, null).distributionOutcome()).isEqualTo("d-review-ready");
+        assertThat(E001Selection.review(spectral, A, D, null).reason()).isEqualTo("no-e");
         assertThat(E001Selection.confirm(tuning, A, B, C, failed, null).reason()).isEqualTo("no-d");
         assertThatThrownBy(tuning::distributionOutcome).isInstanceOf(IllegalStateException.class);
     }
@@ -210,7 +216,7 @@ class E001SelectionTest {
         E001Selection.Decision confirmation = E001Selection.confirm(tuning, A, B, C, D, E);
 
         // when & then
-        assertThat(E001Selection.spectral(confirmation, A, D, E).distributionOutcome()).isEqualTo("e-review-ready");
+        assertThat(E001Selection.spectral(confirmation, A, D, E).status()).isEqualTo(E001Selection.Status.REVIEW_REQUIRED);
         assertThat(E001Selection.spectral(confirmation, missing(A, scenario), D, E).reason()).isEqualTo("integrity-failure");
         assertThat(E001Selection.spectral(confirmation, A, missing(D, scenario), E).reason()).isEqualTo("integrity-failure");
         assertThat(E001Selection.spectral(confirmation, A, D, missing(E, scenario)).reason()).isEqualTo("e-spectral-failed");
@@ -222,6 +228,8 @@ class E001SelectionTest {
                 .isEqualTo(E001Selection.Status.INCONCLUSIVE);
         assertThat(E001Selection.spectral(confirmation, A, metric(D, scenario, "grid300", Double.NaN), E).reason())
                 .isEqualTo("no-d");
+        assertThat(E001Selection.spectral(confirmation, metric(A, scenario, "grid300", Double.NaN), D, E).status())
+                .isEqualTo(E001Selection.Status.REVIEW_REQUIRED);
     }
 
     @Test
@@ -235,11 +243,49 @@ class E001SelectionTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> E001Selection.spectral(tuning, A, D, E))
                 .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> E001Selection.review(tuning, A, D, E))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"review-ad-single-n500", "review-ad-single-n5000",
+            "review-ad-grid-equal-n500-per-center", "review-ad-grid-equal-n5000-per-center"})
+    void 추가_AD_확인의_무결성과_거리_검사_이전에는_평가_준비가_아니다(String scenario) {
+        // given
+        E001Selection.Decision confirmation = E001Selection.confirm(E001Selection.tune(A, List.of(D), List.of(E)), A, B, C, D, E);
+        E001Selection.Decision spectral = E001Selection.spectral(confirmation, A, D, E);
+
+        // when & then
+        assertThat(E001Selection.review(spectral, A, D, E).distributionOutcome()).isEqualTo("e-review-ready");
+        assertThat(E001Selection.review(spectral, missing(A, scenario), D, E).reason()).isEqualTo("integrity-failure");
+        assertThat(E001Selection.review(spectral, A, missing(D, scenario), E).reason()).isEqualTo("integrity-failure");
+        if (scenario.contains("single")) {
+            assertThat(E001Selection.review(spectral, A, metric(D, scenario, "radius.p95", 211.0), E).reason()).isEqualTo("no-d");
+        }
+        assertThatThrownBy(() -> E001Selection.review(spectral, A,
+                candidate("d-s100-r300", 100, "", 0.0, false), E)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void E_확인_탈락_이유는_D의_spectral과_추가_확인_뒤에도_유지한다() {
+        // given
+        E001Candidate failed = missing(E, E001Selection.CONFIRMATION_SINGLE.getFirst());
+        E001Selection.Decision confirmation = E001Selection.confirm(
+                E001Selection.tune(A, List.of(D), List.of(E)), A, B, C, D, failed);
+
+        // when
+        E001Selection.Decision spectral = E001Selection.spectral(confirmation, A, D, failed);
+        E001Selection.Decision result = E001Selection.review(spectral, A, D, failed);
+
+        // then
+        assertThat(result.distributionOutcome()).isEqualTo("d-review-ready");
+        assertThat(result.reason()).isEqualTo("e-confirmation-failed");
+        assertThat(result.e()).isEqualTo(failed);
     }
 
     private static E001Candidate candidate(String id, int sigma, String sampler, double intensity, boolean e) {
         Map<String, Double> values = Map.of("radius.p95", 200.0, "radius.p99", 240.0,
-                "edgeRatio30", 0.2, "a4", e ? 0.1 : 0.4, "radialKs", 0.04, "seam300", e ? 0.7 : 1.0);
+                "a4", e ? 0.1 : 0.4, "radialKs", 0.04, "seam300", e ? 0.7 : 1.0);
         Map<Long, E001MetricSet> seeds = new HashMap<>();
         E001Evaluation.SAMPLE_SEEDS.forEach(seed -> seeds.put(seed, E001MetricSet.from(values)));
         E001MetricSet pooled = E001MetricSet.from(Map.of("proximity16", 0.2, "neighbors10", 4.0,
@@ -250,6 +296,8 @@ class E001SelectionTest {
         ids.addAll(E001Selection.CONFIRMATION_SINGLE);
         ids.addAll(E001Selection.CONFIRMATION_GRID);
         ids.addAll(E001Selection.SPECTRAL);
+        ids.addAll(E001Selection.REVIEW_SINGLE);
+        ids.addAll(E001Selection.REVIEW_GRID);
         ids.forEach(scenario -> scenarios.put(scenario, evaluation));
         return E001Candidate.of(id, sigma, sampler, intensity, scenarios);
     }

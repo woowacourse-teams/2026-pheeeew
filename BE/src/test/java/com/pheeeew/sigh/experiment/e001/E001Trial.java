@@ -10,6 +10,10 @@ record E001Trial(E001Batch batch, E001Evaluation evaluation) {
         return new E001Trial(batch, evaluation);
     }
 
+    List<E001BoundaryObservation.Row> boundaryObservations() {
+        return E001BoundaryObservation.from(batch);
+    }
+
     static E001Trial run(E001Parameters parameters, E001Scenario.Plan plan, E001Trial baseline) {
         return measure(E001Batch.generate(parameters, plan), baseline);
     }

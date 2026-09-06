@@ -19,7 +19,11 @@ enum E001Scenario {
     CONFIRMATION_GRID_500("confirmation-grid-equal-n500-per-center", "confirmation", "HOLDOUT", 962_850.0, 1_951_950.0, 1, 4_500, false),
     CONFIRMATION_GRID_5000("confirmation-grid-equal-n5000-per-center", "confirmation", "HOLDOUT", 962_850.0, 1_951_950.0, 1, 45_000, false),
     SPECTRAL_EQUAL("spectral-grid-equal-n500-per-center", "spectral", "SPECTRAL", 953_850.0, 1_960_950.0, 5, 60_500, false),
-    SPECTRAL_IMBALANCED("spectral-grid-imbalanced-n60500", "spectral", "SPECTRAL", 953_850.0, 1_960_950.0, 5, 60_500, true);
+    SPECTRAL_IMBALANCED("spectral-grid-imbalanced-n60500", "spectral", "SPECTRAL", 953_850.0, 1_960_950.0, 5, 60_500, true),
+    REVIEW_SINGLE_500("review-ad-single-n500", "review", "REVIEW_AD", 989_850.0, 1_969_950.0, 0, 500, false),
+    REVIEW_SINGLE_5000("review-ad-single-n5000", "review", "REVIEW_AD", 989_850.0, 1_969_950.0, 0, 5_000, false),
+    REVIEW_GRID_500("review-ad-grid-equal-n500-per-center", "review", "REVIEW_AD", 989_850.0, 1_969_950.0, 1, 4_500, false),
+    REVIEW_GRID_5000("review-ad-grid-equal-n5000-per-center", "review", "REVIEW_AD", 989_850.0, 1_969_950.0, 1, 45_000, false);
 
     private final String id;
     private final String phase;

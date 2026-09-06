@@ -14,7 +14,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 class E001DistributionTest {
 
     @Test
-    void 정상_흐름의_요청_계약은_833000개이며_E는_D_선택_뒤에만_평가한다() {
+    void 정상_흐름의_요청_계약은_943000개이며_E는_D_선택_뒤에만_평가한다() {
         // given
         List<E001Parameters> calibrated = new ArrayList<>();
         List<String> calls = new ArrayList<>();
@@ -35,8 +35,8 @@ class E001DistributionTest {
 
         // then
         assertThat(result.decision().distributionOutcome()).isEqualTo("e-review-ready");
-        assertThat(result.requestedCount()).isEqualTo(833_000L);
-        assertThat(result.trials()).hasSize(104);
+        assertThat(result.requestedCount()).isEqualTo(943_000L);
+        assertThat(result.trials()).hasSize(112);
         assertThat(calibrated).hasSize(36).doesNotHaveDuplicates();
         assertThat(result.decision().d().sigma()).isEqualTo(120);
         assertThat(result.decision().e().parameterSetId()).isEqualTo("e-s120-gradient-p1-b040-sir16");
@@ -78,24 +78,27 @@ class E001DistributionTest {
     }
 
     @Test
-    void E가_없으면_D를_확인한_뒤_끝내고_spectral을_만들지_않는다() {
+    void E가_없어도_AD_spectral과_추가_확인을_마쳐야_D_평가_후보가_된다() {
         // when
         E001Distribution.Result result = E001Distribution.run((parameters, plan, baseline) ->
                 parameters.modelId().equals("E") ? metric(fixture(parameters, plan), "radialKs", 0.06)
                         : fixture(parameters, plan), ignored -> 0.2);
 
         // then
-        assertThat(result.decision().distributionOutcome()).isEqualTo("selected-d");
+        assertThat(result.decision().distributionOutcome()).isEqualTo("d-review-ready");
         assertThat(result.decision().reason()).isEqualTo("no-e");
-        assertThat(result.requestedCount()).isEqualTo(415_000L);
-        assertThat(result.trials()).noneSatisfy(trial -> assertThat(trial.batch().plan().scenario().phase()).isEqualTo("spectral"));
+        assertThat(result.requestedCount()).isEqualTo(767_000L);
+        assertThat(result.trials()).filteredOn(trial -> trial.batch().plan().scenario().phase().equals("spectral"))
+                .hasSize(4).allSatisfy(trial -> assertThat(trial.batch().parameters().modelId()).isIn("A", "D"));
+        assertThat(result.trials()).filteredOn(trial -> trial.batch().plan().scenario().phase().equals("review"))
+                .hasSize(8).allSatisfy(trial -> assertThat(trial.batch().parameters().modelId()).isIn("A", "D"));
     }
 
     @ParameterizedTest
     @CsvSource({"A, TUNING_SINGLE, integrity-failure", "B, CONFIRMATION_SINGLE_500, integrity-failure",
-            "D, CONFIRMATION_SINGLE_500, integrity-failure", "E, CONFIRMATION_SINGLE_500, e-confirmation-failed",
+            "D, CONFIRMATION_SINGLE_500, integrity-failure",
             "A, SPECTRAL_EQUAL, integrity-failure", "D, SPECTRAL_EQUAL, integrity-failure",
-            "E, SPECTRAL_EQUAL, e-spectral-failed"})
+            "A, REVIEW_SINGLE_500, integrity-failure", "D, REVIEW_SINGLE_500, integrity-failure"})
     void 기준_또는_선택_모델의_무결성_실패_뒤_추가_생성을_중단한다(String model, E001Scenario failedScenario, String reason) {
         // given
         List<String> calls = new ArrayList<>();
@@ -146,9 +149,56 @@ class E001DistributionTest {
 
         // then
         assertThat(result.decision().reason()).isEqualTo("e-confirmation-failed");
+        assertThat(result.decision().distributionOutcome()).isEqualTo("d-review-ready");
+        assertThat(result.trials()).filteredOn(trial -> trial.batch().plan().scenario().phase().equals("spectral"))
+                .hasSize(4).allSatisfy(trial -> assertThat(trial.batch().parameters().modelId()).isIn("A", "D"));
         assertThat(result.trials().stream().filter(trial -> trial.batch().parameters().modelId().equals("E")
                 && trial.batch().plan().scenario().phase().equals("confirmation"))
                 .map(trial -> trial.batch().parameters().parameterSetId()).distinct().toList()).hasSize(1);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"CONFIRMATION_SINGLE_500, e-confirmation-failed", "SPECTRAL_EQUAL, e-spectral-failed"})
+    void E_무결성_실패는_해당_E_생성만_중단하고_D_평가_자격을_끝까지_검사한다(E001Scenario failed, String reason) {
+        // given
+        List<E001Scenario> eCalls = new ArrayList<>();
+
+        // when
+        E001Distribution.Result result = E001Distribution.run((parameters, plan, baseline) -> {
+            E001Trial trial = fixture(parameters, plan);
+            if (parameters.modelId().equals("E")) {
+                eCalls.add(plan.scenario());
+                if (plan.scenario() == failed) {
+                    return E001Trial.of(trial.batch(), E001Evaluation.of(false,
+                            trial.evaluation().bySeed(), trial.evaluation().pooled()));
+                }
+            }
+            return trial;
+        }, ignored -> 0.2);
+
+        // then
+        assertThat(eCalls.getLast()).isEqualTo(failed);
+        assertThat(result.decision().distributionOutcome()).isEqualTo("d-review-ready");
+        assertThat(result.decision().reason()).isEqualTo(reason);
+        assertThat(result.trials()).filteredOn(trial -> trial.batch().plan().scenario().phase().equals("review")).hasSize(8);
+    }
+
+    @Test
+    void 추가_AD_확인의_D_거리_실패는_다른_sigma로_교체하지_않고_미결정으로_끝낸다() {
+        // when
+        E001Distribution.Result result = E001Distribution.run((parameters, plan, baseline) -> {
+            E001Trial trial = fixture(parameters, plan);
+            return parameters.modelId().equals("D") && plan.scenario() == E001Scenario.REVIEW_SINGLE_5000
+                    ? metric(trial, "radius.p95", 211.0) : trial;
+        }, ignored -> 0.2);
+
+        // then
+        assertThat(result.decision().distributionOutcome()).isEqualTo("inconclusive");
+        assertThat(result.decision().reason()).isEqualTo("no-d");
+        assertThat(result.decision().d().sigma()).isEqualTo(120);
+        assertThat(result.trials()).filteredOn(trial -> trial.batch().plan().scenario().phase().equals("review")
+                && trial.batch().parameters().modelId().equals("D"))
+                .allSatisfy(trial -> assertThat(trial.batch().parameters().sigma()).isEqualTo(120));
     }
 
     @Test
@@ -161,7 +211,7 @@ class E001DistributionTest {
     private static E001Trial fixture(E001Parameters parameters, E001Scenario.Plan plan) {
         boolean e = parameters.modelId().equals("E");
         E001MetricSet shape = E001MetricSet.from(Map.of("radius.p95", 200.0, "radius.p99", 240.0,
-                "edgeRatio30", 0.2, "a4", e ? 0.1 : 0.4, "radialKs", 0.04, "seam300", e ? 0.7 : 1.0));
+                "a4", e ? 0.1 : 0.4, "radialKs", 0.04, "seam300", e ? 0.7 : 1.0));
         Map<Long, E001MetricSet> seeds = new HashMap<>();
         E001Evaluation.SAMPLE_SEEDS.forEach(seed -> seeds.put(seed, shape));
         E001MetricSet pooled = E001MetricSet.from(Map.of("proximity16", 0.2, "neighbors10", 4.0,

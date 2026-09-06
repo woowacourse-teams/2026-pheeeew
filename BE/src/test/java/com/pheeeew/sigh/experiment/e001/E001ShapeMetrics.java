@@ -20,7 +20,6 @@ final class E001ShapeMetrics {
                 "radius.p99", E001Statistics.quantile(radii, 0.99),
                 "radius.max", E001Statistics.quantile(radii, 1.0),
                 "radius.violations", (double) violations,
-                "edgeRatio30", violations == 0 ? edgeRatio(ordered, square) : Double.NaN,
                 "a4", violations == 0 ? a4(ordered) : Double.NaN,
                 "seam300", violations == 0 ? seam(ordered, originX, originY) : Double.NaN
         ));
@@ -90,27 +89,6 @@ final class E001ShapeMetrics {
         if (!samples.isEmpty() && samples.stream().anyMatch(p -> p.sampleSeed() != samples.getFirst().sampleSeed())) {
             throw new IllegalArgumentException("분포 형태 지표에는 한 seed의 표본만 전달해야 해요.");
         }
-    }
-
-    private static double edgeRatio(List<E001Sample> samples, boolean square) {
-        long outer = 0;
-        long inner = 0;
-        for (E001Sample sample : samples) {
-            double distance = square
-                    ? 150.0 - StrictMath.max(StrictMath.abs(sample.offset().eastingMeters()),
-                    StrictMath.abs(sample.offset().northingMeters()))
-                    : 300.0 - sample.radius();
-            if (distance >= 0.0 && distance < 30.0) {
-                outer++;
-            } else if (distance >= 30.0 && distance < 60.0) {
-                inner++;
-            }
-        }
-        double outerArea = square ? 32_400.0 : StrictMath.PI * 17_100.0;
-        double innerArea = square ? 25_200.0 : StrictMath.PI * 15_300.0;
-        double outerDensity = (outer + 0.5) / outerArea;
-        double innerDensity = (inner + 0.5) / innerArea;
-        return outerDensity / innerDensity;
     }
 
     private static double a4(List<E001Sample> samples) {

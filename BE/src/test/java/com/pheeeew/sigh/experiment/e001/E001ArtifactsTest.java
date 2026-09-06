@@ -31,7 +31,7 @@ class E001ArtifactsTest {
     @Test
     void 산출물은_입력_순서와_환경_정보에_관계없이_같은_checksum을_만든다() throws IOException {
         // given
-        E001Distribution.Result result = fixture(E001Selection.Status.SELECTED_D);
+        E001Distribution.Result result = fixture(E001Selection.Status.D_REVIEW_READY);
         List<E001Conformance.Vector> vectors = vectors(result);
         List<E001Conformance.Vector> reversed = new ArrayList<>(vectors);
         Collections.reverse(reversed);
@@ -46,14 +46,14 @@ class E001ArtifactsTest {
         assertThat(first.resolve("checksums.sha256")).hasSameTextualContentAs(second.resolve("checksums.sha256"));
         E001Checksums.verify(first);
         assertThat(Files.readString(first.resolve("manifest.json")))
-                .contains("\"generatedCount\":5", "\"conformance.csv\":320", "\"distributionOutcome\":\"selected-d\"")
+                .contains("\"generatedCount\":40", "\"conformance.csv\":320", "\"distributionOutcome\":\"d-review-ready\"")
                 .doesNotContain(temporary.toString(), "jdkVersion");
         assertThat(Files.readString(first.resolve("checksums.sha256"))).doesNotContain("environment.json", "verification-run1");
         byte[] gzip = Files.readAllBytes(first.resolve("coordinates.csv.gz"));
         assertThat(java.util.Arrays.copyOfRange(gzip, 4, 8)).containsOnly((byte) 0);
         try (var input = new GZIPInputStream(Files.newInputStream(first.resolve("coordinates.csv.gz")))) {
             List<String> rows = new String(input.readAllBytes(), UTF_8).lines().toList();
-            assertThat(rows).hasSize(6);
+            assertThat(rows).hasSize(41);
             assertThat(rows.getFirst().split(",")).hasSize(15);
             assertThat(rows.get(1)).contains(",5,5,2026090301,single,0,").doesNotContain("-0.0");
         }
@@ -104,7 +104,7 @@ class E001ArtifactsTest {
     @Test
     void 잘못된_conformance와_환경_필드와_기존_파일은_거부한다() throws IOException {
         // given
-        E001Distribution.Result result = fixture(E001Selection.Status.SELECTED_D);
+        E001Distribution.Result result = fixture(E001Selection.Status.D_REVIEW_READY);
         Path root = Files.createDirectory(temporary.resolve("invalid"));
 
         // when & then
@@ -161,7 +161,7 @@ class E001ArtifactsTest {
     }
 
     @Test
-    void E_review_ready는_확인_원본_여덟_장만_checksum에_포함한다() throws IOException {
+    void E_review_ready는_서로_다른_AD와_DE_원본_열여섯_장을_checksum에_포함한다() throws IOException {
         // given
         E001Distribution.Result result = fixture(E001Selection.Status.E_REVIEW_READY);
         Path root = Files.createDirectory(temporary.resolve("panels"));
@@ -171,14 +171,36 @@ class E001ArtifactsTest {
 
         // then
         try (var files = Files.list(root.resolve("coordinator-only/model-panels"))) {
-            assertThat(files.toList()).hasSize(8);
+            assertThat(files.toList()).hasSize(16);
         }
-        assertThat(Files.readAllLines(root.resolve("checksums.sha256"))).hasSize(13);
+        assertThat(Files.readAllLines(root.resolve("checksums.sha256"))).hasSize(21);
         E001Checksums.verify(root);
         Files.writeString(root.resolve("environment.json"), "changed");
         E001Checksums.verify(root);
         Files.writeString(root.resolve("metrics.csv"), "tampered");
         assertThatThrownBy(() -> E001Checksums.verify(root)).isInstanceOf(IOException.class);
+    }
+
+    @Test
+    void 탈락한_E가_기록에_남아도_D_평가에는_AD_패널과_D_vector만_포함한다() throws IOException {
+        // given
+        E001Distribution.Result source = fixture(E001Selection.Status.E_REVIEW_READY);
+        E001Distribution.Result result = E001Distribution.Result.of(E001Selection.Decision.of(
+                E001Selection.Status.D_REVIEW_READY, "e-spectral-failed", source.decision().d(), source.decision().e()),
+                source.trials(), source.intensities());
+        Path root = Files.createDirectory(temporary.resolve("d-review"));
+
+        // when
+        List<E001Conformance.Vector> conformance = vectors(result);
+        E001Artifacts.write(root, result, METADATA, conformance);
+
+        // then
+        assertThat(conformance).hasSize(320).allSatisfy(vector -> assertThat(vector.modelId()).isEqualTo("D"));
+        try (var files = Files.list(root.resolve("coordinator-only/model-panels"))) {
+            assertThat(files.map(path -> path.getFileName().toString()).toList()).hasSize(8)
+                    .allSatisfy(name -> assertThat(name).contains("--review-ad-").doesNotStartWith("e-"));
+        }
+        E001Checksums.verify(root);
     }
 
     @Test
@@ -198,11 +220,23 @@ class E001ArtifactsTest {
 
     private static E001Distribution.Result fixture(E001Selection.Status status) {
         List<E001Trial> trials = new ArrayList<>();
-        List<E001Parameters> parameters = status == E001Selection.Status.E_REVIEW_READY ? List.of(D, E) : List.of(D);
-        List<E001Scenario> scenarios = status == E001Selection.Status.E_REVIEW_READY ? List.of(
-                E001Scenario.CONFIRMATION_SINGLE_500, E001Scenario.CONFIRMATION_SINGLE_5000,
-                E001Scenario.CONFIRMATION_GRID_500, E001Scenario.CONFIRMATION_GRID_5000) : List.of(E001Scenario.TUNING_SINGLE);
+        E001Parameters a = E001Parameters.distance("A", 0);
+        List<E001Parameters> parameters = status == E001Selection.Status.E_REVIEW_READY ? List.of(a, D, E)
+                : status == E001Selection.Status.D_REVIEW_READY ? List.of(a, D) : List.of(D);
         for (E001Parameters parameter : parameters) {
+            List<E001Scenario> scenarios = new ArrayList<>();
+            if (status == E001Selection.Status.INCONCLUSIVE) {
+                scenarios.add(E001Scenario.TUNING_SINGLE);
+            } else {
+                if (!parameter.modelId().equals("E")) {
+                    scenarios.addAll(List.of(E001Scenario.REVIEW_SINGLE_500, E001Scenario.REVIEW_SINGLE_5000,
+                            E001Scenario.REVIEW_GRID_500, E001Scenario.REVIEW_GRID_5000));
+                }
+                if (status == E001Selection.Status.E_REVIEW_READY && !parameter.modelId().equals("A")) {
+                    scenarios.addAll(List.of(E001Scenario.CONFIRMATION_SINGLE_500, E001Scenario.CONFIRMATION_SINGLE_5000,
+                            E001Scenario.CONFIRMATION_GRID_500, E001Scenario.CONFIRMATION_GRID_5000));
+                }
+            }
             for (E001Scenario scenario : scenarios) {
                 E001Scenario.Plan plan = E001Scenario.Plan.of(scenario, List.of(E001Scenario.Center.of("single", 0, 0, 1)));
                 List<E001Sample> samples = E001Evaluation.SAMPLE_SEEDS.stream().sorted().map(seed ->
@@ -217,7 +251,7 @@ class E001ArtifactsTest {
         E001Candidate e = status == E001Selection.Status.E_REVIEW_READY
                 ? E001Candidate.of(E.parameterSetId(), 120, "sir16", 0.2, Map.of()) : null;
         String reason = status == E001Selection.Status.E_REVIEW_READY ? "e-review-pending"
-                : status == E001Selection.Status.SELECTED_D ? "no-e" : "no-d";
+                : status == E001Selection.Status.D_REVIEW_READY ? "no-e" : "no-d";
         Map<E001Parameters, Double> intensities = new java.util.HashMap<>();
         parameters.forEach(parameter -> intensities.put(parameter, parameter.modelId().equals("E") ? 0.2 : 0.0));
         return E001Distribution.Result.of(E001Selection.Decision.of(status, reason, status == E001Selection.Status.INCONCLUSIVE ? null : d, e),
