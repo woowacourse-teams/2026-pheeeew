@@ -20,6 +20,7 @@ import com.pheeeew.core.navigation.Screen
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.domain.repository.SighRepository
 import com.pheeeew.feature.map.MapRoute
+import com.pheeeew.feature.map.MapPerformanceLogger
 import com.pheeeew.feature.map.MapViewModel
 import com.pheeeew.feature.setting.SettingsScreen
 import com.pheeeew.feature.setting.legal.LegalDocument
@@ -32,11 +33,14 @@ fun App(
     appVersion: String,
     locationDependencies: LocationDependencies?,
     sighRepository: SighRepository,
+    mapPerformanceLogger: MapPerformanceLogger = {},
 ) {
     AppTheme {
         val coroutineScope = rememberCoroutineScope()
         var screen by remember { mutableStateOf(Screen.Splash) }
-        val mapViewModel: MapViewModel = viewModel { MapViewModel(sighRepository, locationDependencies) }
+        val mapViewModel: MapViewModel = viewModel {
+            MapViewModel(sighRepository, locationDependencies, mapPerformanceLogger)
+        }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
 
         // 오버레이 화면들이 뒤에 깔린 지도로 터치가 새어나가지 않도록 막습니다.
