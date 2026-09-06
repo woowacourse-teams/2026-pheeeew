@@ -51,5 +51,31 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'e001'
+    }
+}
+
+[
+        e001LocationDistribution: 'e001-distribution',
+        e001LocationPerformance : 'e001-performance',
+        e001BlindReview         : 'e001-blind'
+].each { taskName, experimentTag ->
+    tasks.register(taskName, Test) {
+        group = 'verification'
+        description = "Opt-in E001 ${experimentTag} runner"
+        testClassesDirs = sourceSets.test.output.classesDirs
+        classpath = sourceSets.test.runtimeClasspath
+        useJUnitPlatform {
+            includeTags experimentTag
+        }
+        maxParallelForks = 1
+        maxHeapSize = '1g'
+        systemProperty 'java.awt.headless', 'true'
+        systemProperty 'junit.jupiter.execution.parallel.enabled', 'false'
+        systemProperty 'e001.projectDir', projectDir.absolutePath
+        systemProperty 'e001.reportsDir', layout.buildDirectory.dir('reports/experiments').get().asFile.absolutePath
+        systemProperty 'e001.gradleVersion', gradle.gradleVersion
+        systemProperty 'e001.invalidationReason', providers.gradleProperty('e001InvalidationReason').getOrElse('')
+    }
 }

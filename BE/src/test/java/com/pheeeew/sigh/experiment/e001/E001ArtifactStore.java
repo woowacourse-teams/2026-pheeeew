@@ -1,13 +1,10 @@
 package com.pheeeew.sigh.experiment.e001;
 
 import java.io.IOException;
-import java.nio.channels.FileChannel;
-import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Map;
 
@@ -24,20 +21,7 @@ final class E001ArtifactStore {
         if (!runId.matches("[0-9a-f]{32}")) {
             throw new IllegalArgumentException("runId는 16 byte 소문자 hexadecimal이어야 해요.");
         }
-        directory(parent);
-        Path lockPath = parent.resolve(".e001-distribution.lock");
-        if (Files.exists(lockPath, LinkOption.NOFOLLOW_LINKS) && !Files.isRegularFile(lockPath, LinkOption.NOFOLLOW_LINKS)) {
-            throw new IOException("실행 lock 경로가 일반 파일이 아니에요.");
-        }
-        try (FileChannel channel = FileChannel.open(lockPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-             var lock = channel.tryLock()) {
-            if (lock == null) {
-                throw new IOException("다른 분포 실행이 진행 중이에요.");
-            }
-            return lockedPublish(parent, runId, producer, mover);
-        } catch (OverlappingFileLockException exception) {
-            throw new IOException("다른 분포 실행이 진행 중이에요.", exception);
-        }
+        return E001RunLock.execute(parent, () -> lockedPublish(parent, runId, producer, mover));
     }
 
     private static Path lockedPublish(Path parent, String runId, Producer producer, Mover mover) throws IOException {
