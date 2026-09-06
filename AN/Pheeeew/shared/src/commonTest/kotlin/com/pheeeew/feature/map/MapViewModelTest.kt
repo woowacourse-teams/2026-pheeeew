@@ -10,13 +10,13 @@ import com.pheeeew.domain.repository.SighRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -158,7 +158,6 @@ class MapViewModelTest {
         override suspend fun registerSigh(
             requestId: String,
             coordinate: Coordinate,
-        ): SighPin =
-            SighPin(id = 1L, coordinate = coordinate)
+        ): SighPin = SighPin(id = 1L, coordinate = coordinate)
     }
 }
