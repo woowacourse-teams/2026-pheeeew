@@ -15,6 +15,7 @@ import com.pheeeew.feature.map.map.MapCameraCommand
 import com.pheeeew.feature.map.map.MapDarkStyle
 import com.pheeeew.feature.map.map.MapError
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,6 +40,10 @@ class MapViewModel(
     private var pendingRegistration: PendingSighRequest? = null
     private val sighOperationMutex = Mutex()
     private val locallyRegisteredSighs = mutableMapOf<Long, SighPin>()
+    private var mapIsForeground = false
+    private var loadSighsJob: Job? = null
+    private var lastSighBounds: SighBounds? = null
+    private var myLocationJob: Job? = null
 
     private val _uiState =
         MutableStateFlow<MapUiState>(
@@ -67,27 +72,37 @@ class MapViewModel(
     }
 
     fun loadSighs(bounds: SighBounds) {
-        viewModelScope.launch {
-            sighOperationMutex.withLock {
-                try {
-                    val serverSighs = sighRepository.getSighs(bounds).distinctBy(SighPin::id)
-                    val serverIds = serverSighs.mapTo(mutableSetOf(), SighPin::id)
-                    serverIds.forEach(locallyRegisteredSighs::remove)
-                    val mergedSighs = (serverSighs + locallyRegisteredSighs.values).distinctBy(SighPin::id)
-                    _uiState.update { state ->
-                        (state as? MapUiState.Success)?.copy(sighs = mergedSighs, refreshErrorMessage = null) ?: state
-                    }
-                } catch (e: ApiException) {
-                    _uiState.update { state ->
-                        if (state is MapUiState.Success) {
-                            state.copy(refreshErrorMessage = e.toUserMessage())
-                        } else {
-                            state
+        lastSighBounds = bounds
+
+        if (!mapIsForeground) return
+
+        loadSighsJob?.cancel()
+
+        loadSighsJob =
+            viewModelScope.launch {
+                sighOperationMutex.withLock {
+                    try {
+                        val serverSighs = sighRepository.getSighs(bounds).distinctBy(SighPin::id)
+                        val serverIds = serverSighs.mapTo(mutableSetOf(), SighPin::id)
+                        serverIds.forEach(locallyRegisteredSighs::remove)
+                        val mergedSighs = (serverSighs + locallyRegisteredSighs.values).distinctBy(SighPin::id)
+                        _uiState.update { state ->
+                            (state as? MapUiState.Success)?.copy(
+                                sighs = mergedSighs,
+                                refreshErrorMessage = null,
+                            ) ?: state
+                        }
+                    } catch (e: ApiException) {
+                        _uiState.update { state ->
+                            if (state is MapUiState.Success) {
+                                state.copy(refreshErrorMessage = e.toUserMessage())
+                            } else {
+                                state
+                            }
                         }
                     }
                 }
             }
-        }
     }
 
     fun registerSighAfterExplosion() {
@@ -181,29 +196,32 @@ class MapViewModel(
         val current = _uiState.value as? MapUiState.Success ?: return
         if (current.isRequestingLocation) return
 
-        viewModelScope.launch {
-            _uiState.update { (it as? MapUiState.Success)?.copy(isRequestingLocation = true) ?: it }
-            try {
-                val status = ensureLocationPermission()
-                if (status != LocationPermissionStatus.Granted) {
-                    return@launch
-                }
-                if (dependencies.repository.locationState.value is LocationState.Available) {
-                    sendCameraCommand { id ->
-                        MapCameraCommand.MoveToCurrentLocation(
-                            id = id,
-                            zoom = MapDarkStyle.FOCUS_ZOOM,
-                        )
+        myLocationJob?.cancel()
+
+        myLocationJob =
+            viewModelScope.launch {
+                _uiState.update { (it as? MapUiState.Success)?.copy(isRequestingLocation = true) ?: it }
+                try {
+                    val status = ensureLocationPermission()
+                    if (status != LocationPermissionStatus.Granted) {
+                        return@launch
                     }
+                    if (dependencies.repository.locationState.value is LocationState.Available) {
+                        sendCameraCommand { id ->
+                            MapCameraCommand.MoveToCurrentLocation(
+                                id = id,
+                                zoom = MapDarkStyle.FOCUS_ZOOM,
+                            )
+                        }
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    // 위치나 권한 값은 로그에 남기지 않습니다. 지도는 현재 카메라를 유지합니다.
+                } finally {
+                    _uiState.update { (it as? MapUiState.Success)?.copy(isRequestingLocation = false) ?: it }
                 }
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (_: Exception) {
-                // 위치나 권한 값은 로그에 남기지 않습니다. 지도는 현재 카메라를 유지합니다.
-            } finally {
-                _uiState.update { (it as? MapUiState.Success)?.copy(isRequestingLocation = false) ?: it }
             }
-        }
     }
 
     suspend fun ensureLocationPermission(refreshLocation: Boolean = true): LocationPermissionStatus {
@@ -288,6 +306,22 @@ class MapViewModel(
                 mapErrorMessage = error.toUserMessage(),
             ) ?: state
         }
+    }
+
+    fun onMapForeground() {
+        mapIsForeground = true
+
+        lastSighBounds?.let(::loadSighs)
+    }
+
+    fun onMapBackground() {
+        mapIsForeground = false
+
+        loadSighsJob?.cancel()
+        loadSighsJob = null
+
+        myLocationJob?.cancel()
+        myLocationJob = null
     }
 
     private fun sendCameraCommand(create: (Long) -> MapCameraCommand) {

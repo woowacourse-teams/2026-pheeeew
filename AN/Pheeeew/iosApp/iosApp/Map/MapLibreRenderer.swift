@@ -23,6 +23,8 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     private var pendingCameraCommands: [IosMapCameraCommand] = []
     private var cameraIsIdle = true
     private var lastPublishedProjectionSignature: String?
+    private var isInBackground = false
+    private var lifecycleObservers: [NSObjectProtocol] = []
 
     private static let userCameraReasonMask: UInt =
         (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) |
@@ -32,6 +34,8 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         self.eventSink = eventSink
         mapView = MLNMapView(frame: .zero, styleURL: MapLibreDarkStyle.styleURL)
         super.init()
+
+        registerApplicationLifecycleObservers()
 
         mapView.backgroundColor = MapLibreDarkStyle.mapBackground
         mapView.delegate = self
@@ -68,8 +72,14 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         pendingState = nil
         sighSource = nil
         sighLayers.removeAll()
+
         sighPulseDisplayLink?.invalidate()
         sighPulseDisplayLink = nil
+
+        let center = NotificationCenter.default
+        lifecycleObservers.forEach(center.removeObserver)
+        lifecycleObservers.removeAll()
+
         currentLocationSource = nil
         pendingCameraCommands.removeAll()
     }
@@ -254,9 +264,16 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     private func startSighPulse() {
         sighPulseDisplayLink?.invalidate()
         sighPulseStartedAt = CACurrentMediaTime()
-        let displayLink = CADisplayLink(target: self, selector: #selector(updateSighPulse))
+
+        let displayLink = CADisplayLink(
+            target: self,
+            selector: #selector(updateSighPulse)
+        )
+
         displayLink.preferredFramesPerSecond = 30
         displayLink.add(to: .main, forMode: .common)
+        displayLink.isPaused = isInBackground
+
         sighPulseDisplayLink = displayLink
     }
 
@@ -271,6 +288,16 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
             sighLayer.iconScale = NSExpression(forConstantValue: 0.24 + (pulse * 0.12))
             sighLayer.iconOpacity = NSExpression(forConstantValue: 0.72 + (pulse * 0.28))
         }
+    }
+
+    private func pauseAnimations() {
+        isInBackground = true
+        sighPulseDisplayLink?.isPaused = true
+    }
+
+    private func resumeAnimations() {
+        isInBackground = false
+        sighPulseDisplayLink?.isPaused = false
     }
 
     private static let sighPulseGroupCount = 12
@@ -373,5 +400,27 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
                 longitude: targetLongitude * 180 / .pi
             )
         }
+    }
+
+    private func registerApplicationLifecycleObservers() {
+        let center = NotificationCenter.default
+
+        lifecycleObservers = [
+            center.addObserver(
+                forName: UIApplication.didEnterBackgroundNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.pauseAnimations()
+            },
+
+            center.addObserver(
+                forName: UIApplication.willEnterForegroundNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.resumeAnimations()
+            },
+        ]
     }
 }

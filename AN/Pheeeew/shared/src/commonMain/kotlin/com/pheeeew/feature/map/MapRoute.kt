@@ -26,16 +26,26 @@ fun MapRoute(
     val lifeCycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(lifeCycleOwner, isActive) {
+        if (!isActive) {
+            viewModel.onMapBackground()
+            return@LaunchedEffect
+        }
+
         lifeCycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            if (!isActive) return@repeatOnLifecycle
-            if (!startupPermissionsChecked) {
-                viewModel.ensureLocationPermission(refreshLocation = false)
-                startupPermissionsChecked = true
-                launch { viewModel.refreshLocationPermission() }
-            } else {
-                viewModel.refreshLocationPermission()
+            viewModel.onMapForeground()
+
+            try {
+                if (!startupPermissionsChecked) {
+                    viewModel.ensureLocationPermission(refreshLocation = false)
+                    startupPermissionsChecked = true
+                    launch { viewModel.refreshLocationPermission() }
+                } else {
+                    viewModel.refreshLocationPermission()
+                }
+                awaitCancellation()
+            } finally {
+                viewModel.onMapBackground()
             }
-            awaitCancellation()
         }
     }
 
