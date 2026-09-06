@@ -287,7 +287,7 @@ class E001DistanceSamplerTest {
                     "CAL",
                     0,
                     0,
-                    2_026_090_301L,
+                    2_026_090_601L,
                     pointIndex
             );
             assertInsideRadius(E001DistanceSampler.sampleDisk(E001SplitMix64.from(pointSeed)));

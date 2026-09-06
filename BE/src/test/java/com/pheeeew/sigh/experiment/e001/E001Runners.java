@@ -10,7 +10,6 @@ final class E001Runners {
     }
 
     static void distribution() throws IOException {
-        requireV2Ready();
         Path project = Path.of(required("e001.projectDir"));
         Path reports = Path.of(required("e001.reportsDir"));
         String gradle = required("e001.gradleVersion");
@@ -24,7 +23,6 @@ final class E001Runners {
     }
 
     static void performance() throws IOException {
-        requireV2Ready();
         Path project = Path.of(required("e001.projectDir"));
         String gradle = required("e001.gradleVersion");
         var metadata = E001RunContext.capture(project, gradle);
@@ -32,31 +30,38 @@ final class E001Runners {
                 System.getProperty("e001.invalidationReason", ""), metadata, (staging, root, source) -> {
                     E001ArtifactFormat.write(staging.resolve("environment.json"), E001ArtifactFormat.json(metadata.environment()));
                     var batches = E001Performance.measureTo(staging.resolve("performance.csv"), source.d(), source.e());
-                    var gate = E001Performance.evaluate(batches);
+                    var dGate = E001Performance.evaluate(batches, "D");
+                    Map<String, Object> result = new java.util.TreeMap<>();
+                    result.put("machineRows", Map.of("performance.csv", batches.size()));
+                    result.put("dMedianNs", dGate.medianNs());
+                    result.put("dMaxNs", dGate.maxNs());
+                    result.put("dPerformanceGatePassed", dGate.passed());
+                    if (source.e() != null) {
+                        var eGate = E001Performance.evaluate(batches, "E");
+                        result.put("eMedianNs", eGate.medianNs());
+                        result.put("eMaxNs", eGate.maxNs());
+                        result.put("ePerformanceGatePassed", eGate.passed());
+                    }
                     E001RunContext.verifyUnchanged(project, gradle, metadata);
-                    return Map.of("machineRows", Map.of("performance.csv", batches.size()),
-                            "medianNs", gate.medianNs(), "maxNs", gate.maxNs(), "performanceGatePassed", gate.passed());
+                    return result;
                 });
     }
 
     static void blind() throws IOException {
-        requireV2Ready();
         Path project = Path.of(required("e001.projectDir"));
         String gradle = required("e001.gradleVersion");
         var metadata = E001RunContext.capture(project, gradle);
         E001SidecarStore.publish(Path.of(required("e001.reportsDir")), "blind", E001RunContext.runId(),
                 System.getProperty("e001.invalidationReason", ""), metadata, (staging, root, source) -> {
-                    E001Blind.write(staging, root, source, E001Blind.assign());
+                    boolean includeE = E001SidecarStore.verifyPerformance(root, source);
+                    var assignment = E001Blind.assign(includeE);
+                    E001Blind.write(staging, root, source, assignment);
                     E001RunContext.verifyUnchanged(project, gradle, metadata);
-                    return Map.of("machineRows", Map.of("coordinator-only/blind-key.csv", 4,
-                            "reviewer-package/blind-pairs.csv", 4, "reviewer-package/blind-ballot-template.csv", 4),
+                    int pairs = includeE ? 8 : 4;
+                    return Map.of("machineRows", Map.of("coordinator-only/blind-key.csv", pairs,
+                            "reviewer-package/blind-pairs.csv", pairs, "reviewer-package/blind-ballot-template.csv", pairs),
                             "reviewStatus", "awaiting-five-reviewers");
                 });
-    }
-
-    private static void requireV2Ready() throws IOException {
-        // R3에서 v2 source·산출물·sidecar 계약을 연결하기 전에는 기존 결과도 변경하지 않아요.
-        throw new IOException("E001-v2 실행기 전환이 끝나지 않았어요. 실제 분포·성능·블라인드 실행은 차단해요.");
     }
 
     private static String required(String key) throws IOException {

@@ -18,10 +18,12 @@ import tools.jackson.databind.json.JsonMapper;
 
 final class E001RunContext {
 
+    static final String BASE_PROTOCOL_BLOB_ID = "bc679aa3afc90de3f282ca7be449d18978156ad1";
+    private static final String BASE_PROTOCOL = "docs/experiments/e001-map-star-location-distribution/README.md";
     private static final JsonMapper JSON = JsonMapper.builder().build();
     private static final List<String> SOURCES = List.of("build.gradle", "settings.gradle", "gradle", "gradlew",
             "src/test/java/com/pheeeew/sigh/experiment/e001", "src/test/resources/experiments/e001",
-            "docs/experiments/e001-map-star-location-distribution/README.md");
+            BASE_PROTOCOL, "docs/experiments/e001-map-star-location-distribution/PROTOCOL-V2.md");
 
     private E001RunContext() {
     }
@@ -31,6 +33,9 @@ final class E001RunContext {
         status.addAll(SOURCES);
         if (!git(project, status).isBlank()) {
             throw new IOException("실험 관련 코드와 프로토콜을 먼저 커밋해야 해요.");
+        }
+        if (!BASE_PROTOCOL_BLOB_ID.equals(git(project, List.of("hash-object", BASE_PROTOCOL)))) {
+            throw new IOException("동결된 v1 기준 프로토콜이 변경됐어요.");
         }
         String protocol = git(project, List.of("log", "-1", "--format=%H", "--", SOURCES.getLast()));
         List<String> history = new ArrayList<>(List.of("log", "-1", "--format=%H", "--"));
@@ -76,16 +81,24 @@ final class E001RunContext {
             throw new IOException("분포의 두 실행 checksum이 같지 않아요.");
         }
         JsonNode manifest = read(root.resolve("manifest.json"));
-        if (!"E001-v1".equals(manifest.path("protocolVersion").asString())
-                || manifest.path("schemaVersion").asInt() != 1
-                || !"e-review-ready".equals(manifest.path("distributionOutcome").asString())
+        String outcome = manifest.path("distributionOutcome").asString();
+        if (!"E001-v2".equals(manifest.path("protocolVersion").asString())
+                || manifest.path("schemaVersion").asInt() != 2
+                || !BASE_PROTOCOL_BLOB_ID.equals(manifest.path("baseProtocolBlobId").asString())
+                || !List.of("d-review-ready", "e-review-ready").contains(outcome)
                 || !metadata.protocolSha().equals(manifest.path("protocolSha").asString())
                 || !metadata.runnerSha().equals(manifest.path("runnerSha").asString())) {
-            throw new IOException("같은 protocol·runner의 e-review-ready 분포가 필요해요.");
+            throw new IOException("같은 v2 protocol·runner의 d-review-ready 또는 e-review-ready 분포가 필요해요.");
+        }
+        String reason = manifest.path("outcomeReason").asString();
+        if (outcome.equals("e-review-ready") ? !reason.equals("e-review-pending")
+                : !List.of("no-e", "e-confirmation-failed", "e-spectral-failed").contains(reason)) {
+            throw new IOException("분포 종료 상태와 이유가 맞지 않아요.");
         }
         E001Parameters d = selected(manifest, "D");
-        E001Parameters e = selected(manifest, "E");
-        if (d.sigma() != e.sigma()) {
+        // 탈락한 E의 이력은 manifest에 남아도 다음 단계의 후보로 복원하지 않아요.
+        E001Parameters e = outcome.equals("e-review-ready") ? selected(manifest, "E") : null;
+        if (e != null && d.sigma() != e.sigma()) {
             throw new IOException("선택한 D와 E의 sigma가 달라요.");
         }
         return Source.of(E001ArtifactFormat.sha256(root.resolve("checksums.sha256")), d, e);

@@ -10,6 +10,8 @@ import java.util.Map;
 
 final class E001ArtifactStore {
 
+    private static final String PREVIOUS_PREFIX = "e001-v2-previous-";
+
     private E001ArtifactStore() {
     }
 
@@ -25,14 +27,14 @@ final class E001ArtifactStore {
     }
 
     private static Path lockedPublish(Path parent, String runId, Producer producer, Mover mover) throws IOException {
-        Path official = parent.resolve("e001");
-        Path archive = parent.resolve("e001-invalidated");
-        Path first = parent.resolve("e001-run1-staging");
-        Path second = parent.resolve("e001-run2-staging");
-        Path previous = parent.resolve("e001-previous-" + runId);
+        Path official = parent.resolve("e001-v2");
+        Path archive = parent.resolve("e001-v2-invalidated");
+        Path first = parent.resolve("e001-v2-run1-staging");
+        Path second = parent.resolve("e001-v2-run2-staging");
+        Path previous = parent.resolve(PREVIOUS_PREFIX + runId);
         List<Path> recoverable;
         try (var paths = Files.list(parent)) {
-            recoverable = paths.filter(path -> path.getFileName().toString().startsWith("e001-previous-")).sorted().toList();
+            recoverable = paths.filter(path -> path.getFileName().toString().startsWith(PREVIOUS_PREFIX)).sorted().toList();
         }
         if (recoverable.size() > 1) {
             throw new IOException("복구할 previous가 둘 이상이라 자동 이동하지 않아요.");
@@ -42,7 +44,7 @@ final class E001ArtifactStore {
         }
         for (Path path : recoverable) {
             checkDirectoryIfPresent(path);
-            if (!path.getFileName().toString().matches("e001-previous-[0-9a-f]{32}")) {
+            if (!path.getFileName().toString().matches(PREVIOUS_PREFIX + "[0-9a-f]{32}")) {
                 throw new IOException("previous 경로의 runId가 유효하지 않아요.");
             }
         }
@@ -52,7 +54,7 @@ final class E001ArtifactStore {
             if (!exists(official)) {
                 move(interrupted, official, mover);
             } else {
-                move(interrupted, archive.resolve("distribution-" + interrupted.getFileName().toString().substring(14)), mover);
+                move(interrupted, archive.resolve("distribution-" + interrupted.getFileName().toString().substring(PREVIOUS_PREFIX.length())), mover);
             }
         }
         for (int index = 0; index < 2; index++) {
@@ -75,7 +77,7 @@ final class E001ArtifactStore {
                 throw new IOException("두 실행의 결정적 산출물이 달라요.");
             }
             Files.copy(first.resolve("checksums.sha256"), second.resolve("verification-run1-checksums.sha256"));
-            Path probe = Files.createTempDirectory(parent, "e001-atomic-probe-");
+            Path probe = Files.createTempDirectory(parent, "e001-v2-atomic-probe-");
             Path probeMoved = probe.resolveSibling(probe.getFileName() + "-moved");
             move(probe, probeMoved, mover);
             Files.delete(probeMoved);

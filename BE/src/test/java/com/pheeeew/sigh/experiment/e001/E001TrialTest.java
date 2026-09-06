@@ -30,9 +30,9 @@ class E001TrialTest {
         assertThat(batch.integrityPassed()).isTrue();
         assertThat(E001Batch.generate(parameters, plan)).isEqualTo(batch);
         E001Sample first = batch.samples().getFirst();
-        assertThat(first.centerEasting()).isEqualTo(953_550.0);
-        assertThat(first.centerNorthing()).isEqualTo(1_952_250.0);
-        long seed = E001PointSeed.derive("tuning-grid-imbalanced-n4500", "CAL", -1, 1, 2_026_090_301L, 0);
+        assertThat(first.centerEasting()).isEqualTo(971_550.0);
+        assertThat(first.centerNorthing()).isEqualTo(1_970_250.0);
+        long seed = E001PointSeed.derive("tuning-grid-imbalanced-n4500", "CAL", -1, 1, 2_026_090_601L, 0);
         E001SamplingResult.Success expected = (E001SamplingResult.Success) parameters.pointSampler()
                 .sample(E001SplitMix64.from(seed), first.centerEasting(), first.centerNorthing());
         assertThat(first.offset()).isEqualTo(expected.offset());
@@ -64,7 +64,7 @@ class E001TrialTest {
         });
         assertThat(trial.evaluation().integrityPassed()).isFalse();
         assertThat(trial.evaluation().pooledValue("samplerFailureCount")).isEqualTo(5.0);
-        long seed = E001PointSeed.derive("tuning-single-n500", "CAL", 0, 0, 2_026_090_301L, 2);
+        long seed = E001PointSeed.derive("tuning-single-n500", "CAL", 0, 0, 2_026_090_601L, 2);
         assertThat(batch.samples().get(1).offset().eastingMeters()).isEqualTo(E001SplitMix64.from(seed).nextDouble());
     }
 

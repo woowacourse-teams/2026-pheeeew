@@ -9,7 +9,7 @@ import java.util.List;
 
 final class E001Checksums {
 
-    static final List<String> REQUIRED = List.of("manifest.json", "coordinates.csv.gz", "metrics.csv", "sampler-failures.csv", "conformance.csv");
+    static final List<String> REQUIRED = List.of("manifest.json", "coordinates.csv.gz", "metrics.csv", "sampler-failures.csv", "conformance.csv", "boundary-observations.csv");
 
     private E001Checksums() {
     }

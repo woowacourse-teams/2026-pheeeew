@@ -50,8 +50,8 @@ class E001SelectionTest {
     void D는_한_seed만_상한을_초과해도_탈락한다(String key, double limit) {
         // given
         E001Evaluation baseline = D.scenario(E001Selection.TUNING_SINGLE);
-        E001Evaluation equal = seedMetric(baseline, 2_026_090_301L, key, limit);
-        E001Evaluation above = seedMetric(baseline, 2_026_090_301L, key, Math.nextUp(limit));
+        E001Evaluation equal = seedMetric(baseline, 2_026_090_601L, key, limit);
+        E001Evaluation above = seedMetric(baseline, 2_026_090_601L, key, Math.nextUp(limit));
 
         // when & then
         assertThat(E001Selection.passesD(equal)).isTrue();
@@ -63,12 +63,12 @@ class E001SelectionTest {
         // given
         E001Evaluation baseline = D.scenario(E001Selection.TUNING_SINGLE);
         Map<Long, E001MetricSet> missing = new HashMap<>(baseline.bySeed());
-        missing.remove(2_026_090_301L);
+        missing.remove(2_026_090_601L);
 
         // when & then
         assertThat(E001Selection.passesD(E001Evaluation.of(true, missing, baseline.pooled()))).isFalse();
         for (double invalid : new double[]{Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY, -1.0}) {
-            assertThat(E001Selection.passesD(seedMetric(baseline, 2_026_090_301L, "radius.p95", invalid))).isFalse();
+            assertThat(E001Selection.passesD(seedMetric(baseline, 2_026_090_601L, "radius.p95", invalid))).isFalse();
         }
         assertThat(E001Selection.passesD(E001Evaluation.of(true, Map.of(), E001MetricSet.from(Map.of())))).isFalse();
     }
@@ -106,8 +106,8 @@ class E001SelectionTest {
     void seam은_median_개선뿐_아니라_동일_seed_네_개의_엄격한_개선이_필요하다() {
         // given
         E001Evaluation d = D.scenario(E001Selection.TUNING_GRID);
-        E001Evaluation four = seedMetric(E.scenario(E001Selection.TUNING_GRID), 2_026_090_301L, "seam300", 1.0);
-        E001Evaluation three = seedMetric(four, 2_026_090_302L, "seam300", 1.0);
+        E001Evaluation four = seedMetric(E.scenario(E001Selection.TUNING_GRID), 2_026_090_601L, "seam300", 1.0);
+        E001Evaluation three = seedMetric(four, 2_026_090_602L, "seam300", 1.0);
 
         // when & then
         assertThat(E001Selection.passesSeam(d, four)).isTrue();

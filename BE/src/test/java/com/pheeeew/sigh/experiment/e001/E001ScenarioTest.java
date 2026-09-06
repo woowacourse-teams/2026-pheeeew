@@ -70,7 +70,7 @@ class E001ScenarioTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"-5, 5, 3fe9b03c28995730", "0, 0, 3ffe4876632f1a43", "5, -5, 3fffe4bdbc0d4cf4"})
+    @CsvSource({"-5, 5, 3feb544800c42e6f", "0, 0, 3feb9e6e7d946372", "5, -5, 3ffb6eb40659bbb7"})
     void spectral_가중치는_부호와_고정_profile_seed를_포함한_SHA256을_사용한다(int i, int j, String expectedBits) {
         // when
         double weight = E001Scenario.spectralWeight(i, j);
@@ -79,8 +79,19 @@ class E001ScenarioTest {
         assertThat(HexFormat.of().toHexDigits(Double.doubleToRawLongBits(weight))).isEqualTo(expectedBits);
     }
 
+    @ParameterizedTest
+    @CsvSource({"TUNING_SINGLE, CAL, 971850, 1969950", "CONFIRMATION_SINGLE_500, HOLDOUT, 980850, 1969950",
+            "SPECTRAL_EQUAL, SPECTRAL, 971850, 1978950", "REVIEW_SINGLE_500, REVIEW_AD, 989850, 1969950"})
+    void v2_합성_중심은_사전등록된_네_domain으로_분리한다(E001Scenario scenario, String origin, double x, double y) {
+        assertThat(scenario.originId()).isEqualTo(origin);
+        assertThat(scenario.originX()).isEqualTo(x);
+        assertThat(scenario.originY()).isEqualTo(y);
+        assertThat(E001Evaluation.SAMPLE_SEEDS).containsExactlyInAnyOrder(
+                2_026_090_601L, 2_026_090_602L, 2_026_090_603L, 2_026_090_604L, 2_026_090_605L);
+    }
+
     @Test
-    void spectral_121개_중심의_배분은_독립_Python_계산값과_일치한다() throws Exception {
+    void spectral_121개_중심의_배분은_독립_Ruby_계산값과_일치한다() throws Exception {
         // given
         E001Scenario.Plan plan = E001Scenario.SPECTRAL_IMBALANCED.plan();
         StringBuilder allocation = new StringBuilder();
@@ -90,7 +101,7 @@ class E001ScenarioTest {
         String hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(allocation.toString().getBytes(UTF_8)));
 
         // then
-        assertThat(hash).isEqualTo("ec420001df73682e684e29f6dec66b9c609db20be3a593a6784774719065e3cf");
+        assertThat(hash).isEqualTo("c1b87a9239f50e6552295a351c3427637b6cf294231d1268d1836155693b65d0");
         assertThat(plan.centers().stream().mapToLong(E001Scenario.Center::perSeedCount).sum()).isEqualTo(12_100L);
     }
 

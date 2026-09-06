@@ -18,7 +18,7 @@ import java.util.zip.GZIPOutputStream;
 
 final class E001Artifacts {
 
-    private static final String VERSION = "E001-v1";
+    private static final String VERSION = "E001-v2";
     private static final Comparator<E001Trial> TRIAL_ORDER = Comparator.comparing((E001Trial trial) -> trial.batch().plan().scenario().phase())
             .thenComparing(trial -> trial.batch().parameters().modelId())
             .thenComparing(trial -> trial.batch().parameters().parameterSetId())
@@ -41,12 +41,14 @@ final class E001Artifacts {
         Map<String, Long> rows = new TreeMap<>();
         rows.put("coordinates.csv.gz", coordinates(root, trials));
         rows.put("metrics.csv", metrics(root, trials, result.intensities()));
+        rows.put("boundary-observations.csv", boundaries(root, trials));
         rows.put("sampler-failures.csv", failures(root, trials));
         rows.put("conformance.csv", conformance(root, result, vectors));
         List<String> panels = panels(root, result, trials);
         Map<String, Object> manifest = new TreeMap<>();
         manifest.put("protocolVersion", VERSION);
-        manifest.put("schemaVersion", 1);
+        manifest.put("schemaVersion", 2);
+        manifest.put("baseProtocolBlobId", E001RunContext.BASE_PROTOCOL_BLOB_ID);
         manifest.put("numberFormat", "Double.toString;negative-zero-normalized;raw-bits-preserved");
         manifest.put("protocolSha", metadata.protocolSha());
         manifest.put("runnerSha", metadata.runnerSha());
@@ -115,6 +117,32 @@ final class E001Artifacts {
         rows.sort(Comparator.comparing(row -> String.join("\u0000", row.subList(0, 8))));
         writeRows(root.resolve("metrics.csv"), "protocol_version,phase,model_id,parameter_set_id,scenario_id,sample_seed,metric_id,statistic,value,unit,status\n", rows);
         return rows.size();
+    }
+
+    private static long boundaries(Path root, List<E001Trial> trials) throws IOException {
+        List<List<String>> rows = new ArrayList<>();
+        for (E001Trial trial : trials) {
+            for (E001BoundaryObservation.Row observation : trial.boundaryObservations()) {
+                E001BoundaryObservation value = observation.observation();
+                List<String> row = new ArrayList<>(identity(trial.batch()));
+                row.addAll(List.of(integer(observation.sampleSeed()), Long.toString(observation.requestedCount()),
+                        Long.toString(value.generatedCount()), integer(value.outerCount()), integer(value.innerCount()),
+                        E001ArtifactFormat.decimal(value.outerArea()), E001ArtifactFormat.decimal(value.innerArea()),
+                        optionalDecimal(value.outerShare()), optionalDecimal(value.innerShare()), optionalDecimal(value.rawDensityRatio()),
+                        value.status().id(), value.interpretation()));
+                rows.add(row);
+            }
+        }
+        writeRows(root.resolve("boundary-observations.csv"), "protocol_version,phase,model_id,parameter_set_id,scenario_id,sample_seed,requested_count,generated_count,outer_count,inner_count,outer_area_m2,inner_area_m2,outer_share,inner_share,raw_density_ratio,observation_status,interpretation\n", rows);
+        return rows.size();
+    }
+
+    private static String integer(Long value) {
+        return value == null ? "" : Long.toString(value);
+    }
+
+    private static String optionalDecimal(Double value) {
+        return value == null ? "" : E001ArtifactFormat.decimal(value);
     }
 
     private static List<String> metric(List<String> prefix, String seed, String key, String aggregate, double value) {

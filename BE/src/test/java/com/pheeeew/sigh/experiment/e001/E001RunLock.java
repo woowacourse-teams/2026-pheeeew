@@ -18,7 +18,7 @@ final class E001RunLock {
             throw new IOException("실행 경로가 일반 디렉터리가 아니에요.");
         }
         Files.createDirectories(parent);
-        Path path = parent.resolve(".e001-distribution.lock");
+        Path path = parent.resolve(".e001-v2-distribution.lock");
         if (Files.exists(path, LinkOption.NOFOLLOW_LINKS) && !Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
             throw new IOException("실행 lock 경로가 일반 파일이 아니에요.");
         }

@@ -19,13 +19,20 @@ final class E001RunnerFixture {
     }
 
     static Path distribution(Path parent) throws IOException {
-        Path root = Files.createDirectory(parent.resolve("e001"));
-        Map<String, Object> manifest = Map.of("protocolVersion", "E001-v1", "schemaVersion", 1,
+        return distribution(parent, true);
+    }
+
+    static Path distribution(Path parent, boolean includeE) throws IOException {
+        Path root = Files.createDirectory(parent.resolve("e001-v2"));
+        Map<String, Object> manifest = new java.util.HashMap<>(Map.of("protocolVersion", "E001-v2", "schemaVersion", 2,
                 "protocolSha", METADATA.protocolSha(), "runnerSha", METADATA.runnerSha(), "distributionOutcome", "e-review-ready",
                 "selectedD", D.parameterSetId(), "selectedE", E.parameterSetId(), "parameters", List.of(
                         Map.of("modelId", "D", "parameterSetId", D.parameterSetId(), "sigmaMeters", 120),
                         Map.of("modelId", "E", "parameterSetId", E.parameterSetId(), "sigmaMeters", 120,
-                                "noise", "GRADIENT", "profile", "P1", "beta", 0.4, "sampler", "sir16")));
+                                "noise", "GRADIENT", "profile", "P1", "beta", 0.4, "sampler", "sir16"))));
+        manifest.put("baseProtocolBlobId", E001RunContext.BASE_PROTOCOL_BLOB_ID);
+        manifest.put("distributionOutcome", includeE ? "e-review-ready" : "d-review-ready");
+        manifest.put("outcomeReason", includeE ? "e-review-pending" : "e-spectral-failed");
         E001ArtifactFormat.write(root.resolve("manifest.json"), E001ArtifactFormat.json(manifest));
         for (String file : E001Checksums.REQUIRED) {
             if (!file.equals("manifest.json")) {
@@ -44,8 +51,18 @@ final class E001RunnerFixture {
     }
 
     static Map<String, Object> performance(Path staging, Path root, E001RunContext.Source source) throws IOException {
-        E001ArtifactFormat.write(staging.resolve("performance.csv"), "tiny fake timing fixture\n");
+        List<E001Performance.Batch> batches = new java.util.ArrayList<>();
+        for (String phase : List.of("warmup", "measurement")) {
+            for (int index = 0; index < (phase.equals("warmup") ? 5 : 10); index++) {
+                List<E001Parameters> parameters = source.e() == null ? List.of(source.d())
+                        : index % 2 == 0 ? List.of(source.d(), source.e()) : List.of(source.e(), source.d());
+                for (E001Parameters parameter : parameters) {
+                    batches.add(E001Performance.Batch.of(parameter.modelId(), parameter.parameterSetId(), phase, index, 100_000, 100_000));
+                }
+            }
+        }
+        E001Performance.write(staging.resolve("performance.csv"), batches);
         E001ArtifactFormat.write(staging.resolve("environment.json"), "{}\n");
-        return Map.of("machineRows", Map.of("performance.csv", 30), "performanceGatePassed", true);
+        return Map.of("machineRows", Map.of("performance.csv", batches.size()), "dPerformanceGatePassed", true);
     }
 }

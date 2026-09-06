@@ -54,7 +54,8 @@ class E001RunContextTest {
         git("init", "--quiet");
         Path protocol = directory.resolve("docs/experiments/e001-map-star-location-distribution/README.md");
         Files.createDirectories(protocol.getParent());
-        Files.writeString(protocol, "fixture");
+        Files.copy(Path.of("docs/experiments/e001-map-star-location-distribution/README.md"), protocol);
+        Files.writeString(protocol.resolveSibling("PROTOCOL-V2.md"), "v2 fixture");
         Files.writeString(directory.resolve("build.gradle"), "fixture");
         git("add", "--", "build.gradle", "docs");
         git("-c", "user.name=E001", "-c", "user.email=e001@example.invalid", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "fixture");
@@ -72,6 +73,40 @@ class E001RunContextTest {
         assertThat(E001RunContext.capture(directory, "test-gradle").environment()).containsEntry("gitDirty", true);
         Files.writeString(directory.resolve("build.gradle"), "changed");
         assertThatThrownBy(() -> E001RunContext.capture(directory, "test-gradle")).isInstanceOf(IOException.class).hasMessageContaining("먼저 커밋");
+        Files.writeString(protocol, "changed baseline");
+        git("add", "--", "build.gradle", "docs");
+        git("-c", "user.name=E001", "-c", "user.email=e001@example.invalid", "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "changed fixture");
+        assertThatThrownBy(() -> E001RunContext.capture(directory, "test-gradle")).isInstanceOf(IOException.class).hasMessageContaining("동결된 v1");
+    }
+
+    @Test
+    void D_only는_탈락한_E_이력을_후보로_복원하지_않는다() throws IOException {
+        Path root = E001RunnerFixture.distribution(directory, false);
+        var source = E001RunContext.source(root, E001RunnerFixture.METADATA);
+        assertThat(source.d()).isEqualTo(E001RunnerFixture.D);
+        assertThat(source.e()).isNull();
+    }
+
+    @Test
+    void checksum을_다시_만들어도_v1이나_다른_기준_문서를_v2로_읽지_않는다() throws IOException {
+        Path root = E001RunnerFixture.distribution(directory);
+        var manifest = E001RunContext.readMap(root.resolve("manifest.json"));
+        for (var entry : Map.<String, Object>of("protocolVersion", "E001-v1", "schemaVersion", 1,
+                "baseProtocolBlobId", "c".repeat(40)).entrySet()) {
+            var changed = new java.util.HashMap<>(manifest);
+            changed.put(entry.getKey(), entry.getValue());
+            Files.writeString(root.resolve("manifest.json"), E001ArtifactFormat.json(changed));
+            E001RunnerFixture.seal(root);
+            assertThatThrownBy(() -> E001RunContext.source(root, E001RunnerFixture.METADATA))
+                    .isInstanceOf(IOException.class).hasMessageContaining("같은 v2");
+        }
+    }
+
+    @Test
+    void 새_경계_CSV가_없으면_두_실행의_checksum이_같아도_거부한다() throws IOException {
+        Path root = E001RunnerFixture.distribution(directory);
+        Files.delete(root.resolve("boundary-observations.csv"));
+        assertThatThrownBy(() -> E001RunContext.source(root, E001RunnerFixture.METADATA)).isInstanceOf(IOException.class);
     }
 
     private void git(String... arguments) throws Exception {

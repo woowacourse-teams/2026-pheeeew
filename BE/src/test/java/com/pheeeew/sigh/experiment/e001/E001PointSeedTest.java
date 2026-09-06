@@ -13,10 +13,10 @@ class E001PointSeedTest {
         String originId = "HOLDOUT";
 
         // when
-        long pointSeed = E001PointSeed.derive(scenarioId, originId, 0, 0, 2_026_090_301L, 0L);
+        long pointSeed = E001PointSeed.derive(scenarioId, originId, 0, 0, 2_026_090_601L, 0L);
 
         // then
-        assertThat(pointSeed).isEqualTo(0x527F94951B87EA3FL);
+        assertThat(pointSeed).isEqualTo(0x5B180D498DC0BE0BL);
     }
 
     @Test
@@ -26,9 +26,9 @@ class E001PointSeedTest {
         String originId = "SPECTRAL";
 
         // when
-        long pointSeed = E001PointSeed.derive(scenarioId, originId, -5, -5, 2_026_090_305L, 0L);
+        long pointSeed = E001PointSeed.derive(scenarioId, originId, -5, -5, 2_026_090_605L, 0L);
 
         // then
-        assertThat(pointSeed).isEqualTo(0xE52B2F53DC3D7196L);
+        assertThat(pointSeed).isEqualTo(0xBE10760A0C594C37L);
     }
 }

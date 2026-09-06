@@ -8,7 +8,7 @@ import java.util.Objects;
 
 final class E001PointSeed {
 
-    private static final String PROTOCOL_VERSION = "E001-v1";
+    private static final String PROTOCOL_VERSION = "E001-v2";
 
     private E001PointSeed() {
     }

@@ -15,6 +15,11 @@ import java.util.function.LongSupplier;
 
 final class E001Performance {
 
+    private static final int OFFICIAL_POINTS_PER_BATCH = 100_000;
+    private static final int WARMUP_BATCH_COUNT = 5;
+    private static final int MEASUREMENT_BATCH_COUNT = 10;
+    private static final double CAL_EASTING_METERS = 971_850.0;
+    private static final double CAL_NORTHING_METERS = 1_969_950.0;
     private static volatile long sink;
     private static final String HEADER = "model_id,parameter_set_id,phase,batch_index,points,elapsed_ns,ns_per_point\n";
 
@@ -22,7 +27,7 @@ final class E001Performance {
     }
 
     static List<Batch> measureTo(Path path, E001Parameters d, E001Parameters e) throws IOException {
-        return measureTo(path, d, e, 100_000, E001Parameters::pointSampler, System::nanoTime);
+        return measureTo(path, d, e, OFFICIAL_POINTS_PER_BATCH, E001Parameters::pointSampler, System::nanoTime);
     }
 
     static List<Batch> measureTo(Path path, E001Parameters d, E001Parameters e, int points,
@@ -44,16 +49,20 @@ final class E001Performance {
     }
 
     static long pointSeed(String phase, int batch, int point) {
-        String input = "E001-v1|performance|CAL|0|0|" + phase + "|" + batch + "|" + point;
+        String input = "E001-v2|performance|CAL|0|0|" + phase + "|" + batch + "|" + point;
         return ByteBuffer.wrap(HexFormat.of().parseHex(E001ArtifactFormat.sha256(input.getBytes(UTF_8)))).getLong();
     }
 
-    static Gate evaluate(List<Batch> batches) {
-        List<Double> times = batches.stream().filter(row -> row.modelId().equals("E") && row.phase().equals("measurement"))
-                .map(Batch::nsPerPoint).sorted().toList();
-        if (times.size() != 10 || times.stream().anyMatch(time -> !Double.isFinite(time) || time < 0)) {
-            throw new IllegalArgumentException("E 측정 batch 열 개가 필요해요.");
+    static Gate evaluate(List<Batch> batches, String modelId) {
+        if (!List.of("D", "E").contains(modelId)) {
+            throw new IllegalArgumentException("D 또는 E의 성능만 판정할 수 있어요.");
         }
+        List<Batch> measurements = batches.stream()
+                .filter(row -> modelId.equals(row.modelId()) && row.phase().equals("measurement"))
+                .toList();
+        validateMeasurements(measurements, modelId);
+
+        List<Double> times = measurements.stream().map(Batch::nsPerPoint).sorted().toList();
         double median = (times.get(4) + times.get(5)) / 2.0;
         return Gate.of(median, times.getLast(), median <= 100_000.0 && times.getLast() <= 250_000.0);
     }
@@ -68,25 +77,29 @@ final class E001Performance {
 
     private static List<Batch> measure(E001Parameters d, E001Parameters e, int points,
             Function<E001Parameters, E001Parameters.PointSampler> samplers, LongSupplier clock, BatchWriter writer) throws IOException {
-        if (!d.modelId().equals("D") || !e.modelId().equals("E") || d.sigma() != e.sigma() || points <= 0) {
-            throw new IllegalArgumentException("같은 sigma의 D와 E를 양의 개수로 측정해야 해요.");
+        if (!d.modelId().equals("D") || points <= 0
+                || e != null && (!e.modelId().equals("E") || d.sigma() != e.sigma())) {
+            throw new IllegalArgumentException("D와 선택적인 같은 sigma의 E를 양의 개수로 측정해야 해요.");
         }
         var dSampler = samplers.apply(d);
-        var eSampler = samplers.apply(e);
+        var eSampler = e == null ? null : samplers.apply(e);
         List<Batch> rows = new ArrayList<>();
         for (String phase : List.of("warmup", "measurement")) {
-            for (int index = 0; index < (phase.equals("warmup") ? 5 : 10); index++) {
+            int batchCount = phase.equals("warmup") ? WARMUP_BATCH_COUNT : MEASUREMENT_BATCH_COUNT;
+            for (int index = 0; index < batchCount; index++) {
                 // SHA-256 입력 준비는 pure sampler 측정 구간에서 제외해요. RNG 초기화는 두 모델에 동일하게 포함해요.
                 long[] seeds = new long[points];
                 for (int point = 0; point < points; point++) {
                     seeds[point] = pointSeed(phase, index, point);
                 }
-                for (E001Parameters parameter : index % 2 == 0 ? List.of(d, e) : List.of(e, d)) {
+                List<E001Parameters> parameters = e == null ? List.of(d)
+                        : index % 2 == 0 ? List.of(d, e) : List.of(e, d);
+                for (E001Parameters parameter : parameters) {
                     var sampler = parameter.equals(d) ? dSampler : eSampler;
                     long acc = 0L;
                     long start = clock.getAsLong();
                     for (long seed : seeds) {
-                        var result = sampler.sample(E001SplitMix64.from(seed), 953_850.0, 1_951_950.0);
+                        var result = sampler.sample(E001SplitMix64.from(seed), CAL_EASTING_METERS, CAL_NORTHING_METERS);
                         if (!(result instanceof E001SamplingResult.Success success)) {
                             throw new IOException("성능 측정에서 sampler가 실패했어요.");
                         }
@@ -105,6 +118,31 @@ final class E001Performance {
             }
         }
         return List.copyOf(rows);
+    }
+
+    private static void validateMeasurements(List<Batch> measurements, String modelId) {
+        if (measurements.size() != MEASUREMENT_BATCH_COUNT) {
+            throw invalidMeasurements(modelId);
+        }
+
+        String parameterSetId = measurements.getFirst().parameterSetId();
+        int points = measurements.getFirst().points();
+        boolean[] observedIndices = new boolean[MEASUREMENT_BATCH_COUNT];
+        for (Batch row : measurements) {
+            double nsPerPoint = row.nsPerPoint();
+            if (parameterSetId == null || parameterSetId.isBlank() || !parameterSetId.equals(row.parameterSetId())
+                    || points <= 0 || row.points() != points || row.elapsed() < 0
+                    || !Double.isFinite(nsPerPoint) || nsPerPoint < 0.0
+                    || row.index() < 0 || row.index() >= MEASUREMENT_BATCH_COUNT || observedIndices[row.index()]) {
+                throw invalidMeasurements(modelId);
+            }
+            observedIndices[row.index()] = true;
+        }
+    }
+
+    private static IllegalArgumentException invalidMeasurements(String modelId) {
+        return new IllegalArgumentException(modelId
+                + " 측정에는 동일한 parameter set과 points의 유효한 batch index 0~9가 하나씩 필요해요.");
     }
 
     private static String csv(Batch row) {

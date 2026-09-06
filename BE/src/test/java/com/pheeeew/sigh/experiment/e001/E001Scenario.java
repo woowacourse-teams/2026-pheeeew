@@ -12,14 +12,14 @@ import java.util.Locale;
 import java.util.Map;
 
 enum E001Scenario {
-    TUNING_SINGLE("tuning-single-n500", "tuning", "CAL", 953_850.0, 1_951_950.0, 0, 500, false),
-    TUNING_GRID("tuning-grid-imbalanced-n4500", "tuning", "CAL", 953_850.0, 1_951_950.0, 1, 4_500, true),
-    CONFIRMATION_SINGLE_500("confirmation-single-n500", "confirmation", "HOLDOUT", 962_850.0, 1_951_950.0, 0, 500, false),
-    CONFIRMATION_SINGLE_5000("confirmation-single-n5000", "confirmation", "HOLDOUT", 962_850.0, 1_951_950.0, 0, 5_000, false),
-    CONFIRMATION_GRID_500("confirmation-grid-equal-n500-per-center", "confirmation", "HOLDOUT", 962_850.0, 1_951_950.0, 1, 4_500, false),
-    CONFIRMATION_GRID_5000("confirmation-grid-equal-n5000-per-center", "confirmation", "HOLDOUT", 962_850.0, 1_951_950.0, 1, 45_000, false),
-    SPECTRAL_EQUAL("spectral-grid-equal-n500-per-center", "spectral", "SPECTRAL", 953_850.0, 1_960_950.0, 5, 60_500, false),
-    SPECTRAL_IMBALANCED("spectral-grid-imbalanced-n60500", "spectral", "SPECTRAL", 953_850.0, 1_960_950.0, 5, 60_500, true),
+    TUNING_SINGLE("tuning-single-n500", "tuning", "CAL", 971_850.0, 1_969_950.0, 0, 500, false),
+    TUNING_GRID("tuning-grid-imbalanced-n4500", "tuning", "CAL", 971_850.0, 1_969_950.0, 1, 4_500, true),
+    CONFIRMATION_SINGLE_500("confirmation-single-n500", "confirmation", "HOLDOUT", 980_850.0, 1_969_950.0, 0, 500, false),
+    CONFIRMATION_SINGLE_5000("confirmation-single-n5000", "confirmation", "HOLDOUT", 980_850.0, 1_969_950.0, 0, 5_000, false),
+    CONFIRMATION_GRID_500("confirmation-grid-equal-n500-per-center", "confirmation", "HOLDOUT", 980_850.0, 1_969_950.0, 1, 4_500, false),
+    CONFIRMATION_GRID_5000("confirmation-grid-equal-n5000-per-center", "confirmation", "HOLDOUT", 980_850.0, 1_969_950.0, 1, 45_000, false),
+    SPECTRAL_EQUAL("spectral-grid-equal-n500-per-center", "spectral", "SPECTRAL", 971_850.0, 1_978_950.0, 5, 60_500, false),
+    SPECTRAL_IMBALANCED("spectral-grid-imbalanced-n60500", "spectral", "SPECTRAL", 971_850.0, 1_978_950.0, 5, 60_500, true),
     REVIEW_SINGLE_500("review-ad-single-n500", "review", "REVIEW_AD", 989_850.0, 1_969_950.0, 0, 500, false),
     REVIEW_SINGLE_5000("review-ad-single-n5000", "review", "REVIEW_AD", 989_850.0, 1_969_950.0, 0, 5_000, false),
     REVIEW_GRID_500("review-ad-grid-equal-n500-per-center", "review", "REVIEW_AD", 989_850.0, 1_969_950.0, 1, 4_500, false),
@@ -96,7 +96,7 @@ enum E001Scenario {
     }
 
     static double spectralWeight(int i, int j) {
-        String input = "E001-v1|spectral-profile|" + i + "|" + j + "|E001300000000001";
+        String input = "E001-v2|spectral-profile|" + i + "|" + j + "|E001300000000001";
         try {
             long bits = ByteBuffer.wrap(MessageDigest.getInstance("SHA-256").digest(input.getBytes(UTF_8))).getLong();
             double u = (bits >>> 11) * 0x1.0p-53;

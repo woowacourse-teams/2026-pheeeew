@@ -10,7 +10,7 @@ class E001RunnerTransitionTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"distribution", "performance", "blind"})
-    void v2_전환_중에는_경로와_환경을_읽기_전에_세_실행기를_차단한다(String runner) {
+    void 전용_task의_실행_설정이_없으면_파일을_만들기_전에_세_실행기를_차단한다(String runner) {
         // when & then
         assertThatThrownBy(() -> {
             switch (runner) {
@@ -19,6 +19,6 @@ class E001RunnerTransitionTest {
                 case "blind" -> E001Runners.blind();
                 default -> throw new AssertionError(runner);
             }
-        }).isInstanceOf(IOException.class).hasMessageContaining("E001-v2 실행기 전환이 끝나지 않았어요");
+        }).isInstanceOf(IOException.class).hasMessageContaining("전용 Gradle 실험 task");
     }
 }

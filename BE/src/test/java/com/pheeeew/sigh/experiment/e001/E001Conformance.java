@@ -22,11 +22,11 @@ final class E001Conformance {
             for (long seed : E001Evaluation.SAMPLE_SEEDS.stream().sorted().toList()) {
                 for (long index = 0; index < 64; index++) {
                     long pointSeed = E001PointSeed.derive("conformance-cal-n320-per-model", "CAL", 0, 0, seed, index);
-                    E001SamplingResult sampled = sampler.sample(E001SplitMix64.from(pointSeed), 953_850.0, 1_951_950.0);
+                    E001SamplingResult sampled = sampler.sample(E001SplitMix64.from(pointSeed), 971_850.0, 1_969_950.0);
                     if (!(sampled instanceof E001SamplingResult.Success success)) {
                         throw new IllegalStateException("conformance 표본 생성에 실패했어요.");
                     }
-                    E001Sample point = E001Sample.of(seed, "single", index, 953_850.0, 1_951_950.0, success.offset());
+                    E001Sample point = E001Sample.of(seed, "single", index, 971_850.0, 1_969_950.0, success.offset());
                     if (!E001ShapeMetrics.valid(point, false)) {
                         throw new IllegalStateException("conformance 표본이 반경 제약을 위반했어요.");
                     }

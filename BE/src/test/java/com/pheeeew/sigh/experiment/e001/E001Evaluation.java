@@ -6,7 +6,7 @@ import java.util.Set;
 record E001Evaluation(boolean integrityPassed, Map<Long, E001MetricSet> bySeed, E001MetricSet pooled) {
 
     static final Set<Long> SAMPLE_SEEDS = Set.of(
-            2_026_090_301L, 2_026_090_302L, 2_026_090_303L, 2_026_090_304L, 2_026_090_305L);
+            2_026_090_601L, 2_026_090_602L, 2_026_090_603L, 2_026_090_604L, 2_026_090_605L);
 
     E001Evaluation {
         bySeed = Map.copyOf(bySeed);

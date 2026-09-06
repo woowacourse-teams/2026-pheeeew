@@ -47,6 +47,8 @@ class E001ArtifactsTest {
         E001Checksums.verify(first);
         assertThat(Files.readString(first.resolve("manifest.json")))
                 .contains("\"generatedCount\":40", "\"conformance.csv\":320", "\"distributionOutcome\":\"d-review-ready\"")
+                .contains("\"protocolVersion\":\"E001-v2\"", "\"schemaVersion\":2", E001RunContext.BASE_PROTOCOL_BLOB_ID,
+                        "\"boundary-observations.csv\":48")
                 .doesNotContain(temporary.toString(), "jdkVersion");
         assertThat(Files.readString(first.resolve("checksums.sha256"))).doesNotContain("environment.json", "verification-run1");
         byte[] gzip = Files.readAllBytes(first.resolve("coordinates.csv.gz"));
@@ -55,7 +57,7 @@ class E001ArtifactsTest {
             List<String> rows = new String(input.readAllBytes(), UTF_8).lines().toList();
             assertThat(rows).hasSize(41);
             assertThat(rows.getFirst().split(",")).hasSize(15);
-            assertThat(rows.get(1)).contains(",5,5,2026090301,single,0,").doesNotContain("-0.0");
+            assertThat(rows.get(1)).contains(",5,5,2026090601,single,0,").doesNotContain("-0.0");
         }
     }
 
@@ -84,8 +86,8 @@ class E001ArtifactsTest {
         // when
         List<E001Conformance.Vector> vectors = E001Conformance.generate(result, ignored -> (random, x, y) -> {
             calls.incrementAndGet();
-            assertThat(x).isEqualTo(953_850.0);
-            assertThat(y).isEqualTo(1_951_950.0);
+            assertThat(x).isEqualTo(971_850.0);
+            assertThat(y).isEqualTo(1_969_950.0);
             return E001SamplingResult.Success.of(E001Offset.of(-0.0, 0.0, 0.0), 1);
         });
 
@@ -96,7 +98,7 @@ class E001ArtifactsTest {
         assertThat(vectors.getFirst().pointIndex()).isZero();
         assertThat(vectors.getLast().pointIndex()).isEqualTo(63L);
         assertThat(vectors.getFirst().pointSeed()).isEqualTo(E001PointSeed.derive(
-                "conformance-cal-n320-per-model", "CAL", 0, 0, 2_026_090_301L, 0L));
+                "conformance-cal-n320-per-model", "CAL", 0, 0, 2_026_090_601L, 0L));
         assertThatThrownBy(() -> E001Conformance.generate(result, ignored -> (random, x, y) -> E001SamplingResult.Failure.from(128)))
                 .isInstanceOf(IllegalStateException.class);
     }
@@ -173,7 +175,7 @@ class E001ArtifactsTest {
         try (var files = Files.list(root.resolve("coordinator-only/model-panels"))) {
             assertThat(files.toList()).hasSize(16);
         }
-        assertThat(Files.readAllLines(root.resolve("checksums.sha256"))).hasSize(21);
+        assertThat(Files.readAllLines(root.resolve("checksums.sha256"))).hasSize(22);
         E001Checksums.verify(root);
         Files.writeString(root.resolve("environment.json"), "changed");
         E001Checksums.verify(root);
@@ -201,6 +203,27 @@ class E001ArtifactsTest {
                     .allSatisfy(name -> assertThat(name).contains("--review-ad-").doesNotStartWith("e-"));
         }
         E001Checksums.verify(root);
+    }
+
+    @Test
+    void 경계_CSV는_seed별_다섯_행과_pooled_행을_빈_비율로_보존한다() throws IOException {
+        var result = fixture(E001Selection.Status.INCONCLUSIVE);
+        Path root = Files.createDirectory(temporary.resolve("boundary"));
+        E001Artifacts.write(root, result, METADATA, List.of());
+
+        var rows = E001Csv.read(Files.readString(root.resolve("boundary-observations.csv")));
+        assertThat(rows).hasSize(7);
+        assertThat(rows.getFirst()).hasSize(17);
+        assertThat(rows.get(1)).containsExactly("E001-v2", "tuning", "D", D.parameterSetId(), "tuning-single-n500", "",
+                "5", "5", "0", "0", Double.toString(StrictMath.PI * 17_100.0), Double.toString(StrictMath.PI * 15_300.0),
+                "0.0", "0.0", "", "empty-bands", "descriptive-only");
+        assertThat(rows.subList(2, 7)).allSatisfy(row -> {
+            assertThat(row.get(5)).isIn("2026090601", "2026090602", "2026090603", "2026090604", "2026090605");
+            assertThat(row.subList(6, 10)).containsExactly("1", "1", "0", "0");
+        });
+        assertThat(Files.readString(root.resolve("metrics.csv"))).doesNotContain("edgeRatio30");
+        Files.writeString(root.resolve("boundary-observations.csv"), "tampered");
+        assertThatThrownBy(() -> E001Checksums.verify(root)).isInstanceOf(IOException.class);
     }
 
     @Test
