@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted (2026-08-31)
+Superseded by [ADR-0006](0006-use-independent-uniform-disks-for-sigh-location.md) (2026-09-07)
+
+아래는 2026-08-31에 채택한 이전 계약과 판단 근거를 보존한 내용이에요. 새 계약의 구현과 구형 앱 전환 조건은 ADR-0006을 따라요.
 
 ## Context
 

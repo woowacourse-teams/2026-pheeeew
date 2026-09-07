@@ -86,10 +86,11 @@ Accepted (YYYY-MM-DD)
 | 번호 | 결정 | 한 줄 요약 |
 | --- | --- | --- |
 | [0001](0001-use-postgresql-with-postgis.md) | PostgreSQL과 PostGIS 사용 | 지도 영역 조회를 공간 타입·함수와 GiST 인덱스로 처리해요 |
-| [0002](0002-use-grid-center-for-sigh-location.md) | 격자 중심과 최종 표시 위치 분리 | 클라이언트는 격자 중심만 보내고 서버가 최종 표시 위치를 한 번 정해요 |
+| [0002](0002-use-grid-center-for-sigh-location.md) | 격자 중심과 최종 표시 위치 분리 | ADR-0006으로 대체됐어요. 이전 격자 계약의 근거를 보존해요 |
 | [0003](0003-share-postgis-testcontainer-per-jvm.md) | PostGIS 테스트 자원 공유 | 컨테이너와 같은 Data JPA Context를 테스트 JVM 단위로 공유해요 |
 | [0004](0004-skip-transaction-on-idempotent-save.md) | 멱등 저장 경로의 트랜잭션 | 선조회, 삽입, 재조회를 독립된 트랜잭션으로 두어 제약 위반 뒤에도 복구해요 |
 | [0005](0005-soft-delete-sigh.md) | 한숨 소프트 삭제 | 한숨을 지우지 않고 표시만 해서 신고 이력과 외래 키를 함께 지켜요 |
+| [0006](0006-use-independent-uniform-disks-for-sigh-location.md) | 클라이언트·서버 독립 균등 원 이동 | 두 단계에서 각각 반경 300m를 적용해요. 구형 앱 전환·실제 앱 검증 전에는 배포하지 않아요 |
 
 ## AI 사용
 

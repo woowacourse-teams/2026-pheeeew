@@ -1,10 +1,16 @@
 package com.pheeeew.sigh.infra;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.pheeeew.sigh.application.SighLocationGenerator;
+import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
-import org.junit.jupiter.api.Test;
+import java.util.random.RandomGenerator;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.locationtech.jts.geom.Point;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -13,7 +19,8 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 class PostgisSighLocationGeneratorIntegrationTest {
 
     private static final int WGS84_SRID = 4326;
-    private static final double GRID_HALF_SIZE_METERS = 150.0;
+    private static final double RADIUS_METERS = 300.0;
+    private static final double TRANSFORM_TOLERANCE_METERS = 0.0001;
     private static final double SEOUL_CITY_HALL_LONGITUDE = 126.9780;
     private static final double SEOUL_CITY_HALL_LATITUDE = 37.5664;
 
@@ -23,22 +30,44 @@ class PostgisSighLocationGeneratorIntegrationTest {
     @Autowired
     private JdbcClient jdbcClient;
 
-    @Test
-    void 격자_중심에서_동서와_남북_각각_150미터_안의_위치를_생성한다() {
-        // given
-        double centerLongitude = SEOUL_CITY_HALL_LONGITUDE;
-        double centerLatitude = SEOUL_CITY_HALL_LATITUDE;
+    @Autowired
+    private SighRepository sighRepository;
 
-        // when
+    @ParameterizedTest
+    @CsvSource({"126.9780, 37.5664", "129.0756, 35.1796", "126.5312, 33.4996"})
+    void 근사_좌표에서_투영_거리_300미터_이내의_WGS84_위치를_생성한다(
+            double centerLongitude, double centerLatitude
+    ) {
+        // given / when
         Point location = sighLocationGenerator.generate(centerLongitude, centerLatitude);
 
         // then
         ProjectedOffset offset = findProjectedOffset(location, centerLongitude, centerLatitude);
         assertThat(location.getSRID()).isEqualTo(WGS84_SRID);
-        assertThat(offset.easting()).isGreaterThanOrEqualTo(-GRID_HALF_SIZE_METERS)
-                .isLessThan(GRID_HALF_SIZE_METERS);
-        assertThat(offset.northing()).isGreaterThanOrEqualTo(-GRID_HALF_SIZE_METERS)
-                .isLessThan(GRID_HALF_SIZE_METERS);
+        assertThat(location.getX()).isBetween(-180.0, 180.0);
+        assertThat(location.getY()).isBetween(-90.0, 90.0);
+        assertThat(Math.hypot(offset.easting(), offset.northing()))
+                .isLessThanOrEqualTo(RADIUS_METERS + TRANSFORM_TOLERANCE_METERS);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0, 0, 0, 0", "0.25, 0.25, 0, 150", "0.81, 0, 270, 0", "0.81, 0.5, -270, 0"})
+    void 생성기가_원_오프셋을_격자_재정렬_없이_PostGIS에_적용한다(
+            double radialUniform, double angularUniform, double expectedEasting, double expectedNorthing
+    ) {
+        // given
+        RandomGenerator random = mock(RandomGenerator.class);
+        when(random.nextDouble()).thenReturn(radialUniform, angularUniform);
+        SighLocationGenerator generator = new PostgisSighLocationGenerator(sighRepository, random);
+
+        // when
+        Point location = generator.generate(SEOUL_CITY_HALL_LONGITUDE, SEOUL_CITY_HALL_LATITUDE);
+
+        // then
+        ProjectedOffset offset = findProjectedOffset(location, SEOUL_CITY_HALL_LONGITUDE, SEOUL_CITY_HALL_LATITUDE);
+        assertThat(location.getSRID()).isEqualTo(WGS84_SRID);
+        assertThat(offset.easting()).isCloseTo(expectedEasting, within(TRANSFORM_TOLERANCE_METERS));
+        assertThat(offset.northing()).isCloseTo(expectedNorthing, within(TRANSFORM_TOLERANCE_METERS));
     }
 
     private ProjectedOffset findProjectedOffset(Point location, double centerLongitude, double centerLatitude) {
