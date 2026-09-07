@@ -1,0 +1,12 @@
+E008 verified 2026-09-07
+./gradlew test --tests 'com.pheeeew.sigh.experiment.e001.E008AgeStyleExperimentTest' --no-daemon
+BUILD SUCCESSFUL; tests=4, failures=0, errors=0, skipped=0
+JUnit timestamp=2026-09-07T00:41:16.630Z
+source-before.sha256: all 6 passed before and after experiment
+two generation runs: all 45 file hashes equal
+ruby docs/experiments/e008-age-style/verify-results.rb docs/experiments/e007-client-location/results/2026-09-07/raw/coordinates.csv.gz build/reports/experiments/e008-age-style
+PASS: both 45-file hashes; 189000 E007 coordinates preserved; 94500 D/G births shared; 120 metric rows recomputed; D/G/A/B opacity and counts equal; 37 PNG dimensions; 6 GIF files
+JShell / Java ImageIO decoded all 6 GIFs: 5 frames each, 1600x1860, delayTime=120 (1.2 seconds)
+visual inspection: all 6 timeline PNGs; hotspots-4500-steady-h00; hotspots-45000-steady-h00; age-legend
+independent code review: no blocker
+No product code, DB expiry query, client, performance or full-suite validation performed.

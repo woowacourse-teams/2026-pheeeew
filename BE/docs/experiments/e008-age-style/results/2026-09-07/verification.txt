@@ -1,0 +1,13 @@
+two_runs_identical=true
+input_unchanged=true
+star_rows=189000
+unique_event_ids=94500
+metrics_rows=120
+static_frames=30
+timelines=6
+gifs=6
+legends=1
+clipped_points=0
+cohort_at_24h_empty=true
+cohort_at_12h_ab_pixels_equal=true
+files_per_run=45

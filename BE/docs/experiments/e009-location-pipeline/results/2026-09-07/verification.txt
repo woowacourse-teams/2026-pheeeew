@@ -1,0 +1,10 @@
+two_runs_identical=true
+input_unchanged=true
+events=99500
+coordinate_rows=298500
+metrics_rows=12
+pngs=4
+files_per_run=6
+mode1_mode2_server_offsets_equal=true
+mode2_client_and_server_radius300=true
+clipped_points=0

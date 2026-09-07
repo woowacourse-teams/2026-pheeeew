@@ -1,0 +1,10 @@
+15e5cb1af4d9f00ffd5ed18f2c457b5716eadd54eefc1bb8e0528d9508e04a70  docs/experiments/e006-virtual-center/README.md
+ff1e080e196555514f044c4972561b7388d91e24c6d544d1b9ded1f09e0a3c78  src/test/java/com/pheeeew/sigh/experiment/e001/E006VirtualCenterExperiment.java
+9b7cf46d22102c1a12438f9b673837e1625d813cb905f1d13154b2e043018aa8  src/test/java/com/pheeeew/sigh/experiment/e001/E006VirtualCenterExperimentTest.java
+ebff268ac86d6595b908465ae90200e773f7f8b2e7adb96948cd52d6b5404f46  src/test/java/com/pheeeew/sigh/experiment/e001/E001DistanceSampler.java
+ef78dfd8206190b3c65ba29334a2c0789b3fe5e8f2aa56a276ab118e9ead6442  src/test/java/com/pheeeew/sigh/experiment/e001/E001Offset.java
+2dba5e7849f7fa28bef1f7908b5c6d20f1e56819dcb19e70e0067464de17fe09  src/test/java/com/pheeeew/sigh/experiment/e001/E001SamplingResult.java
+8cb862c21a9ef4568b5781430fbae44e8224427e40f85a761a981eb3e4239df8  src/test/java/com/pheeeew/sigh/experiment/e001/E001UniformRandom.java
+40f39b7b55ee5a81d721b95706142e999b48f2c9a5980ad9a0532e9e3ffc8886  src/test/java/com/pheeeew/sigh/experiment/e001/E001Statistics.java
+83708b5dd1704f8d175e604272a91c83913c9b7d7f3a4a148a97d1e1cf872a8c  src/test/java/com/pheeeew/sigh/experiment/e001/E001Panel.java
+f8b51d8ff016012d9dff4afe398d50e7de7e210f3639694e9304a0405f8ef4d2  src/test/resources/experiments/e001/star-8x8.rgba.hex

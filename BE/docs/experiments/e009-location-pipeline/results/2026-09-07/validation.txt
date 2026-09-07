@@ -1,0 +1,13 @@
+E009 verified 2026-09-07
+Final model 2: client uniform disk R300 + server uniform disk R300.
+Client R300 is an explicit experiment assumption, not a product decision.
+./gradlew test --tests 'com.pheeeew.sigh.experiment.e001.E009LocationPipelineExperimentTest' --no-daemon
+BUILD SUCCESSFUL in 6s; tests=5, skipped=0, failures=0, errors=0
+JUnit timestamp=2026-09-07T01:52:10.823Z
+source-before.sha256: six hashes passed before and after execution
+two runs: six files each, all SHA-256 equal
+ruby docs/experiments/e009-location-pipeline/verify-results.rb docs/experiments/e007-client-location/results/2026-09-07/raw/coordinates.csv.gz build/reports/experiments/e009-location-pipeline
+PASS: two runs / six hashes; 99500 source events; 298500 route rows; mode 2 has two bounded stages and same server offset as mode 1; D preserved; 12 metrics recomputed; four PNG dimensions
+Visual inspection: stationary-5000.png, hotspots-4500.png, hotspots-45000.png, uniform-45000.png.
+Self-review performed; no additional independent agent review.
+No product, client, DB, privacy guarantee, legal compliance, or device-performance validation.

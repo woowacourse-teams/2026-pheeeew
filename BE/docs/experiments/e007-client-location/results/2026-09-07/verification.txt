@@ -1,0 +1,7 @@
+two_runs_identical=true
+visual_points_per_run=298500
+attack_releases_per_run=3000000
+attack_prefix_rows_per_run=21000
+sampler_failures=0
+clipped_points=0
+checksum_files_per_run=10

@@ -1,0 +1,6 @@
+357821ddb5ca22b65197cb761abc43cac00871f50ec3229bdffb7c9c899bc644  docs/experiments/e009-location-pipeline/README.md
+dd49459e41ddf10226b29c33f4f6350989a45822dc6d4bd9c51fb676eded82bb  src/test/java/com/pheeeew/sigh/experiment/e001/E009LocationPipelineExperiment.java
+3628e54804f1c1b84792aa1b8db155cc1d95a00a45ad1f5add97cf3091d67bd2  src/test/java/com/pheeeew/sigh/experiment/e001/E009LocationPipelineExperimentTest.java
+83708b5dd1704f8d175e604272a91c83913c9b7d7f3a4a148a97d1e1cf872a8c  src/test/java/com/pheeeew/sigh/experiment/e001/E001Panel.java
+f8b51d8ff016012d9dff4afe398d50e7de7e210f3639694e9304a0405f8ef4d2  src/test/resources/experiments/e001/star-8x8.rgba.hex
+18115226ef870c2f9df2456f7a48f0269eba35f3e7c3e5388a3e0cea2840f7a6  docs/experiments/e007-client-location/results/2026-09-07/raw/coordinates.csv.gz

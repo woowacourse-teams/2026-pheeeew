@@ -1,0 +1,8 @@
+d_kernel_m2=12806.70791812758
+target_m2=27806.70791812758
+target_rms_m=166.75343450174447
+gaussian_sigma_m=117.9124843223303
+laplace_b_m=68.07680456431493
+ideal_laplace_epsilon_per_m=0.014689291108769056
+common_plot_bound_m=1200.0
+max_abs_shown_coordinate_m=1160.3822105327058
