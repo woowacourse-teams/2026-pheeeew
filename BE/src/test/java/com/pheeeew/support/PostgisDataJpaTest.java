@@ -5,6 +5,7 @@ import com.pheeeew.report.application.SighReportService;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.infra.KoreanSighNicknameGenerator;
 import com.pheeeew.sigh.infra.PostgisSighLocationGenerator;
+import com.pheeeew.sigh.infra.SighLocationConfig;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
@@ -27,7 +28,8 @@ import org.springframework.test.context.ActiveProfiles;
         SighReportService.class,
         SighService.class,
         KoreanSighNicknameGenerator.class,
-        PostgisSighLocationGenerator.class
+        PostgisSighLocationGenerator.class,
+        SighLocationConfig.class
 })
 public @interface PostgisDataJpaTest {
 }
