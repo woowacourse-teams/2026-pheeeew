@@ -52,8 +52,24 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform {
-        excludeTags 'e001'
+        excludeTags 'e001', 'e010'
     }
+}
+
+tasks.register('e010ProductionCoordinates', Test) {
+    group = 'verification'
+    description = 'Opt-in production PostGIS coordinate comparison with synthetic inputs'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform {
+        includeTags 'e010'
+    }
+    maxParallelForks = 1
+    maxHeapSize = '1g'
+    systemProperty 'java.awt.headless', 'true'
+    systemProperty 'e010.projectDir', projectDir.absolutePath
+    systemProperty 'e010.output', providers.gradleProperty('e010Output')
+            .getOrElse(layout.buildDirectory.dir('reports/experiments/e010-production-coordinates').get().asFile.absolutePath)
 }
 
 [

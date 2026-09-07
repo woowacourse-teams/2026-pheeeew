@@ -1,0 +1,8 @@
+two_runs_identical=true
+source_input_unchanged=true
+events_per_run=14000
+rows_per_run=42000
+pngs_per_run=3
+reference_tolerance_m=0.0001
+clipped_points=0
+production_generator_calls_per_run=28000

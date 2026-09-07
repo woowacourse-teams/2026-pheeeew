@@ -1,0 +1,10 @@
+e7dc54f126e12a01ad1dd7d6951932211cff91d3f8315917ee805e9b47d68aa9  build.gradle
+18115226ef870c2f9df2456f7a48f0269eba35f3e7c3e5388a3e0cea2840f7a6  docs/experiments/e007-client-location/results/2026-09-07/raw/coordinates.csv.gz
+b82c719c3bc9fef3c85bad6a4439830c446c7883b7b60b5d52db27ce83437a21  docs/experiments/e009-location-pipeline/results/2026-09-07/raw/coordinates.csv.gz
+88dd7d352fc6e0da404928b17e22e067f2eed15fbeb3d1466cfb1641395239fb  docs/experiments/e010-production-coordinates/README.md
+8616b43d2b2489403ca8a1bd59ea1d687dae4ee7412e8ad4bdc4b3bf693ca01d  docs/experiments/e010-production-coordinates/verify-results.rb
+984ebf6990133d656a56d8a3cb377efd7cee855daa1b25fe7b184d20bf8eeb4f  src/main/java/com/pheeeew/sigh/domain/repository/SighRepository.java
+2a910a3ecbf808196ec3f7e6ef037d99cc49c6fd43bb949708e5cc2b0eadae1a  src/main/java/com/pheeeew/sigh/infra/PostgisSighLocationGenerator.java
+ed208d45edb853a60754000354587022e9fd08ea20d31741633ba38e53fda258  src/main/java/com/pheeeew/sigh/infra/UniformDiskSampler.java
+7ccb8335f14ba3cffe8eb17c40da17dfb061c6adf57cada762d8120a1ff24571  src/test/java/com/pheeeew/sigh/infra/E010ProductionCoordinatesTest.java
+f8b51d8ff016012d9dff4afe398d50e7de7e210f3639694e9304a0405f8ef4d2  src/test/resources/experiments/e001/star-8x8.rgba.hex
