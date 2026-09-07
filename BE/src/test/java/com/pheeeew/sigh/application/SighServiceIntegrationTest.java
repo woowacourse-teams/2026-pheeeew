@@ -234,6 +234,12 @@ class SighServiceIntegrationTest {
         assertThat(results)
                 .extracting(result -> result.sigh().id())
                 .containsOnly(results.getFirst().sigh().id());
+        assertThat(results)
+                .extracting(result -> result.sigh().longitude())
+                .containsOnly(results.getFirst().sigh().longitude());
+        assertThat(results)
+                .extracting(result -> result.sigh().latitude())
+                .containsOnly(results.getFirst().sigh().latitude());
         assertThat(results).filteredOn(SighSaveResult::created).hasSize(1);
         assertThat(sighRepository.count()).isOne();
     }
