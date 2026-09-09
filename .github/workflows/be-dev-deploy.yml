@@ -3,7 +3,6 @@ name: BE DEV CD
 on:
   push:
     branches:
-      - be/dev
       - develop
     paths:
       - 'BE/**'
