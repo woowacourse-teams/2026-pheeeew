@@ -91,6 +91,9 @@ Accepted (YYYY-MM-DD)
 | [0004](0004-skip-transaction-on-idempotent-save.md) | 멱등 저장 경로의 트랜잭션 | 선조회, 삽입, 재조회를 독립된 트랜잭션으로 두어 제약 위반 뒤에도 복구해요 |
 | [0005](0005-soft-delete-sigh.md) | 한숨 소프트 삭제 | 한숨을 지우지 않고 표시만 해서 신고 이력과 외래 키를 함께 지켜요 |
 | [0006](0006-use-independent-uniform-disks-for-sigh-location.md) | 클라이언트·서버 독립 균등 원 이동 | 두 단계에서 각각 반경 300m를 적용해요. 구형 앱 전환·실제 앱 검증 전에는 배포하지 않아요 |
+| [0007](0007-split-signed-access-token-and-stored-refresh-token.md) | 기기 인증 토큰 구조 | 서명만 검증하는 30분 access token과 해시로만 저장하는 refresh token을 나눠 써요 |
+| [0008](0008-limit-device-registration-retry-window.md) | 기기 등록 재시도 창 | 등록 후 5분 이내의 재시도에만 토큰을 다시 발급해 요청 식별자의 유효 기간을 잘라요 |
+| [0009](0009-keep-previous-refresh-token-on-registration-retry.md) | 등록 재시도의 이전 토큰 처리 | 재시도에서 기존 토큰을 폐기하지 않아요. 경합에서 정상 응답을 받은 앱이 잠기기 때문이에요 |
 
 ## AI 사용
 

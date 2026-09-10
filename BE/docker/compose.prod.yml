@@ -35,6 +35,8 @@ services:
       DB_URL: ${DB_URL:?}
       DB_USERNAME: ${DB_USERNAME:?}
       DB_PASSWORD: ${DB_PASSWORD:?}
+      JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64:?}
+      JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?}
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60"
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]

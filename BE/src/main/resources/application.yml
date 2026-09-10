@@ -13,6 +13,14 @@ spring:
     init:
       mode: never
 
+pheeeew:
+  jwt:
+    private-key-base64: ${JWT_PRIVATE_KEY_BASE64}
+    public-key-base64: ${JWT_PUBLIC_KEY_BASE64}
+  token:
+    access-ttl: PT30M
+    registration-retry-window: PT5M
+
 logging:
   level:
     # 멱등 저장 경로에서 유니크 제약 위반은 설계된 흐름이다(ADR-0004).
