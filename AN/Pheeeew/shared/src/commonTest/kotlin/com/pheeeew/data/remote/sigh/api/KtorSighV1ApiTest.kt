@@ -1,11 +1,10 @@
 @file:Suppress("NonAsciiCharacters")
 
-package com.pheeeew.data.remote
+package com.pheeeew.data.remote.sigh.api
 
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createHttpClient
-import com.pheeeew.data.remote.sigh.DefaultSighApi
-import com.pheeeew.data.remote.sigh.dto.SighCreateRequestDto
+import com.pheeeew.data.remote.sigh.dto.SighCreateV1RequestDto
 import com.pheeeew.domain.exception.ApiException
 import com.pheeeew.domain.model.sigh.SighBounds
 import io.ktor.client.engine.mock.MockEngine
@@ -24,7 +23,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
-class DefaultSighApiTest {
+class KtorSighV1ApiTest {
     @Test
     fun `한숨 조회 요청의 method path query를 검증한다`() =
         runTest {
@@ -73,7 +72,7 @@ class DefaultSighApiTest {
                     config = ApiConfig("https://api-dev.pheeeew.com"),
                 )
 
-            val api = DefaultSighApi(client)
+            val api = KtorSighV1Api(client)
 
             val result =
                 api.getSighs(
@@ -97,7 +96,7 @@ class DefaultSighApiTest {
         runTest {
             val requestId = "request-123"
             val request =
-                SighCreateRequestDto(
+                SighCreateV1RequestDto(
                     requestId = requestId,
                     latitude = 37.5665,
                     longitude = 126.9780,
@@ -145,7 +144,7 @@ class DefaultSighApiTest {
                     config = ApiConfig("https://api-dev.pheeeew.com"),
                 )
 
-            val api = DefaultSighApi(client)
+            val api = KtorSighV1Api(client)
             val result = api.registerSigh(request)
 
             assertEquals(100L, result.id)
@@ -161,7 +160,7 @@ class DefaultSighApiTest {
     fun `같은 requestId로 재시도하면 201과 200 응답을 모두 처리한다`() =
         runTest {
             val request =
-                SighCreateRequestDto(
+                SighCreateV1RequestDto(
                     requestId = "same-request-id",
                     latitude = 37.5665,
                     longitude = 126.978,
@@ -220,7 +219,7 @@ class DefaultSighApiTest {
                     engine = engine,
                     config = ApiConfig("https://api-dev.pheeeew.com"),
                 )
-            val api = DefaultSighApi(client)
+            val api = KtorSighV1Api(client)
 
             val first = api.registerSigh(request)
             val second = api.registerSigh(request)
@@ -255,7 +254,7 @@ class DefaultSighApiTest {
                     engine = engine,
                     config = ApiConfig("https://api-dev.pheeeew.com"),
                 )
-            val api = DefaultSighApi(client)
+            val api = KtorSighV1Api(client)
 
             val exception =
                 assertFailsWith<ApiException.InvalidRequest> {
@@ -294,12 +293,12 @@ class DefaultSighApiTest {
                     engine = engine,
                     config = ApiConfig("https://api-dev.pheeeew.com"),
                 )
-            val api = DefaultSighApi(client)
+            val api = KtorSighV1Api(client)
 
             val exception =
                 assertFailsWith<ApiException.Unknown> {
                     api.registerSigh(
-                        SighCreateRequestDto(
+                        SighCreateV1RequestDto(
                             requestId = "request-500",
                             latitude = 37.5665,
                             longitude = 126.978,
@@ -325,7 +324,7 @@ class DefaultSighApiTest {
                     engine = engine,
                     config = ApiConfig("https://api-dev.pheeeew.com"),
                 )
-            val api = DefaultSighApi(client)
+            val api = KtorSighV1Api(client)
 
             val exception =
                 assertFailsWith<ApiException.Network> {
