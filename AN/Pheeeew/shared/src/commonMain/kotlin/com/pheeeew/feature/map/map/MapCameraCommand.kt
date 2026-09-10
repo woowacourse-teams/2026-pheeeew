@@ -10,6 +10,6 @@ sealed interface MapCameraCommand {
 
     data class MoveToCurrentLocation(
         override val id: Long,
-        val zoom: Double? = null,
+        val zoom: Double?,
     ) : MapCameraCommand
 }

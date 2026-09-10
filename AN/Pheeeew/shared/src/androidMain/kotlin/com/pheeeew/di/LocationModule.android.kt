@@ -10,7 +10,7 @@ import com.pheeeew.core.permission.AndroidLocationPermissionSettingsLauncher
  */
 fun createAndroidLocationDependencies(
     activity: ComponentActivity,
-    retainedDependencies: LocationDependencies? = null,
+    retainedDependencies: LocationDependencies?,
 ): LocationDependencies {
     retainedDependencies?.let { dependencies ->
         val permissionController =

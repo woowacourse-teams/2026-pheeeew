@@ -51,7 +51,7 @@ private class IosPermissionDelegate(
     suspend fun requestPermission(): LocationPermissionStatus {
         val nativeStatus = locationManager.authorizationStatus
         if (nativeStatus != kCLAuthorizationStatusNotDetermined) {
-            return nativeStatus.toCommonStatus()
+            return nativeStatus.toCommonStatus(locationServicesEnabled = true)
         }
 
         return suspendCancellableCoroutine { requestContinuation ->
@@ -100,7 +100,7 @@ private class IosPermissionDelegate(
     }
 }
 
-internal fun CLAuthorizationStatus.toCommonStatus(locationServicesEnabled: Boolean = true): LocationPermissionStatus {
+internal fun CLAuthorizationStatus.toCommonStatus(locationServicesEnabled: Boolean): LocationPermissionStatus {
     if (!locationServicesEnabled) {
         return LocationPermissionStatus.ServicesDisabled
     }

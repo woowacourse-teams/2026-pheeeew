@@ -27,8 +27,8 @@ import pheeeew.shared.generated.resources.ic_zoom_out
 fun ZoomControl(
     onZoomInClick: () -> Unit,
     onZoomOutClick: () -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
 ) {
     Surface(
         modifier = modifier.width(44.dp),
@@ -61,7 +61,7 @@ fun ZoomControl(
 private fun ZoomControlPreview() {
     AppTheme {
         Box(modifier = Modifier.background(AppTheme.colors.background).padding(24.dp)) {
-            ZoomControl(onZoomInClick = {}, onZoomOutClick = {})
+            ZoomControl(onZoomInClick = {}, onZoomOutClick = {}, enabled = true)
         }
     }
 }

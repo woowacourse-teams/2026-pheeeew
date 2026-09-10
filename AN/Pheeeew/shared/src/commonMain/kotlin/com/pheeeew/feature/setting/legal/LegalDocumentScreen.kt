@@ -36,8 +36,8 @@ internal fun LegalDocumentScreen(
     document: LegalDocument,
     uiState: LegalDocumentUiState,
     onAction: (LegalDocumentAction) -> Unit,
-    modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(
         modifier =

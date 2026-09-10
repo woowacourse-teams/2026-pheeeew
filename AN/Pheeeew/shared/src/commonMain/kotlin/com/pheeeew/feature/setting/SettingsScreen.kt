@@ -45,18 +45,24 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        SettingsSection(title = "앱 설정") {
-            SettingsMenuItem(title = "접근 권한 설정", onClick = onPermissionClick)
-        }
+        SettingsSection(
+            title = "앱 설정",
+            content = {
+                SettingsMenuItem(title = "접근 권한 설정", onClick = onPermissionClick)
+            },
+        )
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        SettingsSection(title = "이용안내") {
-            SettingsMenuItem(title = "개인정보 처리방침", onClick = onPrivacyPolicyClick)
-            SettingsMenuItem(title = "오픈소스 라이선스", onClick = onOpenSourceLicenseClick)
-            SettingsMenuItem(title = "앱 버전", trailingText = appVersion)
-            SettingsMenuItem(title = "문의하기", trailingText = contactMail)
-        }
+        SettingsSection(
+            title = "이용안내",
+            content = {
+                SettingsMenuItem(title = "개인정보 처리방침", onClick = onPrivacyPolicyClick)
+                SettingsMenuItem(title = "오픈소스 라이선스", onClick = onOpenSourceLicenseClick)
+                SettingsMenuItem(title = "앱 버전", trailingText = appVersion)
+                SettingsMenuItem(title = "문의하기", trailingText = contactMail)
+            },
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
     }

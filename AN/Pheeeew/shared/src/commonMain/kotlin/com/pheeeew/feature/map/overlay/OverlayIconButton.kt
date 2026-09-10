@@ -24,8 +24,8 @@ fun OverlayIconButton(
     icon: DrawableResource,
     contentDescription: String,
     onClick: () -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
 ) {
     Surface(
         onClick = onClick,
@@ -48,7 +48,12 @@ fun OverlayIconButton(
 private fun OverlayIconButtonPreview() {
     AppTheme {
         Box(modifier = Modifier.background(AppTheme.colors.background).padding(24.dp)) {
-            OverlayIconButton(icon = Res.drawable.ic_settings, contentDescription = "설정", onClick = {})
+            OverlayIconButton(
+                icon = Res.drawable.ic_settings,
+                contentDescription = "설정",
+                onClick = {},
+                enabled = true,
+            )
         }
     }
 }

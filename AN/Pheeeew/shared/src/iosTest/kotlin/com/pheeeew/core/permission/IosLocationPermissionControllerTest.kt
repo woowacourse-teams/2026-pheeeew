@@ -15,7 +15,7 @@ class IosLocationPermissionControllerTest {
     fun authorizedWhenInUseMapsToGranted() {
         assertEquals(
             LocationPermissionStatus.Granted,
-            kCLAuthorizationStatusAuthorizedWhenInUse.toCommonStatus(),
+            kCLAuthorizationStatusAuthorizedWhenInUse.toCommonStatus(locationServicesEnabled = true),
         )
     }
 
@@ -39,7 +39,7 @@ class IosLocationPermissionControllerTest {
     fun notDeterminedMapsToDenied() {
         assertEquals(
             LocationPermissionStatus.Denied,
-            kCLAuthorizationStatusNotDetermined.toCommonStatus(),
+            kCLAuthorizationStatusNotDetermined.toCommonStatus(locationServicesEnabled = true),
         )
     }
 

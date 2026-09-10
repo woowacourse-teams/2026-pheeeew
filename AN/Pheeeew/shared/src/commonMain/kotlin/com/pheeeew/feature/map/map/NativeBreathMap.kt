@@ -14,5 +14,5 @@ internal expect fun NativeBreathMap(
     onMapError: (MapError) -> Unit,
     onMapRecovered: () -> Unit,
     onProjectionChanged: (MapProjectionSnapshot) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier,
 )

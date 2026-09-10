@@ -23,8 +23,8 @@ private const val SNACKBAR_DURATION_MILLIS = 3_000L
 fun ErrorSnackbar(
     message: String?,
     onDismiss: () -> Unit,
-    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
 ) {
     var lastMessage by remember { mutableStateOf(message) }
     LaunchedEffect(message) {

@@ -84,8 +84,8 @@ fun BreathControl(
     ensureLocationPermission: suspend () -> Boolean,
     onPhaseChanged: (SighPhase) -> Unit,
     cancelSignal: Int,
+    requestPermissionOnLaunch: Boolean,
     modifier: Modifier = Modifier,
-    requestPermissionOnLaunch: Boolean = true,
 ) {
     var listening by remember { mutableStateOf(false) }
     var strength by remember { mutableStateOf(0f) }
@@ -439,5 +439,6 @@ private fun BreathControlPreview() {
         ensureLocationPermission = { true },
         onPhaseChanged = {},
         cancelSignal = 0,
+        requestPermissionOnLaunch = true,
     )
 }

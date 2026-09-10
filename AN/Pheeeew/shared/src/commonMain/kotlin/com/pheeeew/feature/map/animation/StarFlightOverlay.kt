@@ -22,7 +22,7 @@ import kotlin.math.PI
 fun StarFlightOverlay(
     flight: SighFlight,
     onLanded: (String) -> Unit,
-    onCancelled: (String) -> Unit = {},
+    onCancelled: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var progress by remember(flight.id) { mutableStateOf(0f) }
