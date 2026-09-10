@@ -105,6 +105,8 @@ jobs:
           DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          JWT_PRIVATE_KEY_BASE64: ${{ secrets.JWT_PRIVATE_KEY_BASE64 }}
+          JWT_PUBLIC_KEY_BASE64: ${{ secrets.JWT_PUBLIC_KEY_BASE64 }}
         run: |
           set -eu
           umask 077
@@ -113,6 +115,8 @@ jobs:
             echo "DB_URL=$DB_URL"
             echo "DB_USERNAME=$DB_USERNAME"
             echo "DB_PASSWORD=$DB_PASSWORD"
+            echo "JWT_PRIVATE_KEY_BASE64=$JWT_PRIVATE_KEY_BASE64"
+            echo "JWT_PUBLIC_KEY_BASE64=$JWT_PUBLIC_KEY_BASE64"
           } > env.tmp
           scp -F ~/.ssh/config env.tmp target:/opt/pheeeew/.env.new
           ssh -F ~/.ssh/config target 'set -eu; umask 077; cd /opt/pheeeew; [ -f .env ] && cp .env .env.prev && chmod 600 .env.prev || true; chmod 600 .env.new; mv .env.new .env'
