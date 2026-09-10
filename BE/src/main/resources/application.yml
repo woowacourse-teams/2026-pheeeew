@@ -28,6 +28,10 @@ logging:
     org.hibernate.orm.jdbc.error: ERROR
 
 management:
+  prometheus:
+    metrics:
+      export:
+        enabled: false
   endpoints:
     web:
       discovery:
