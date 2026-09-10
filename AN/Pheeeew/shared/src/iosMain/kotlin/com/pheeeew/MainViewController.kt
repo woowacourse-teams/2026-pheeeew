@@ -17,5 +17,6 @@ fun MainViewController() =
             appVersion = appVersion,
             locationDependencies = locationDependencies,
             sighRepository = sighRepository,
+            mapPerformanceLogger = {},
         )
     }

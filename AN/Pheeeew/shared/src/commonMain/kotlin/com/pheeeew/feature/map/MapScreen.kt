@@ -55,10 +55,10 @@ fun MapScreen(
     onOpenLocationSettings: () -> Unit,
     onOpenAppSettings: () -> Unit,
     onMapError: (MapError) -> Unit,
+    onMapReady: () -> Unit,
+    isActive: Boolean,
     modifier: Modifier = Modifier,
-    isActive: Boolean = true,
 ) {
-    val successState = uiState as? MapUiState.Success
     var pendingFlightOrigin by remember { mutableStateOf<Offset?>(null) }
     var projectionSnapshot by remember { mutableStateOf(MapProjectionSnapshot.Empty) }
     var activeFlightId by remember { mutableStateOf<String?>(null) }
@@ -71,16 +71,16 @@ fun MapScreen(
     var showMicrophonePermissionDialog by remember { mutableStateOf(false) }
     var sighPhase by remember { mutableStateOf(SighPhase.Idle) }
     var cancelSignal by remember { mutableStateOf(0) }
-    val isSighSubmitting = successState?.sighReleaseState is SighReleaseState.Submitting
+    val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
     val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting
 
     val hiddenMarkerId =
-        successState?.focusRequest?.id?.takeIf {
+        uiState.viewport.focusRequest?.id?.takeIf {
             pendingFlightOrigin != null && landedFlightId != it
         }
 
-    LaunchedEffect(successState?.focusRequest?.id, projectionSnapshot.revision) {
-        val focus = successState?.focusRequest ?: return@LaunchedEffect
+    LaunchedEffect(uiState.viewport.focusRequest?.id, projectionSnapshot.revision) {
+        val focus = uiState.viewport.focusRequest ?: return@LaunchedEffect
         pendingFlightOrigin ?: return@LaunchedEffect
         val destination = projectionSnapshot.points[focus.id] ?: return@LaunchedEffect
         if (!projectionSnapshot.cameraIdle || activeFlightId == focus.id) return@LaunchedEffect
@@ -88,8 +88,8 @@ fun MapScreen(
         isFlightInProgress = true
     }
 
-    LaunchedEffect(successState?.sighReleaseState) {
-        val error = successState?.sighReleaseState as? SighReleaseState.Error ?: return@LaunchedEffect
+    LaunchedEffect(uiState.sighRelease) {
+        val error = uiState.sighRelease as? SighReleaseState.Error ?: return@LaunchedEffect
         if (!error.canRetry) {
             pendingFlightOrigin = null
             onCancelFailedSighRegistration()
@@ -97,17 +97,16 @@ fun MapScreen(
     }
 
     Box(modifier = modifier.fillMaxSize().background(AppTheme.colors.background)) {
-        if (successState != null) {
-            BreathMap(
-                state = successState.toMapRenderState(hiddenMarkerId),
-                cameraCommand = successState.cameraCommand,
-                onSighClick = {},
-                onBoundsChanged = onBoundsChanged,
-                onMapError = onMapError,
-                onProjectionChanged = { projectionSnapshot = it },
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
+        BreathMap(
+            state = uiState.toMapRenderState(hiddenMarkerId),
+            cameraCommand = uiState.viewport.cameraCommand,
+            onSighClick = {},
+            onBoundsChanged = onBoundsChanged,
+            onMapError = onMapError,
+            onMapRecovered = onMapReady,
+            onProjectionChanged = { projectionSnapshot = it },
+            modifier = Modifier.fillMaxSize(),
+        )
 
         MapOverlay(
             onSettingsClick = onSettingsClick,
@@ -157,8 +156,7 @@ fun MapScreen(
                 if (!isSighSubmitting) {
                     BreathControl(
                         enabled =
-                            successState != null &&
-                                successState.sighReleaseState is SighReleaseState.Idle &&
+                            uiState.sighRelease is SighReleaseState.Idle &&
                                 !isFlightInProgress,
                         onExplosionFinished = { origin ->
                             pendingFlightOrigin = origin
@@ -194,6 +192,7 @@ fun MapScreen(
                         },
                         onPhaseChanged = { sighPhase = it },
                         cancelSignal = cancelSignal,
+                        requestPermissionOnLaunch = true,
                     )
                 }
                 ErrorSnackbar(
@@ -207,7 +206,12 @@ fun MapScreen(
         val activeId = activeFlightId
         val origin = pendingFlightOrigin
         val destination = activeId?.let { projectionSnapshot.points[it] }
-        if (activeId != null && origin != null && destination != null && successState?.focusRequest?.id == activeId) {
+        if (
+            activeId != null &&
+            origin != null &&
+            destination != null &&
+            uiState.viewport.focusRequest?.id == activeId
+        ) {
             StarFlightOverlay(
                 flight = animationCoordinator.start(activeId, origin, Offset(destination.xPx, destination.yPx)),
                 onLanded = { id ->
@@ -275,35 +279,10 @@ fun MapScreen(
     }
 }
 
-private fun MapUiState.toBannerMessage(): String? =
-    when (this) {
-        is MapUiState.Error -> {
-            message
-        }
-
-        is MapUiState.Success -> {
-            when (val release = sighReleaseState) {
-                is SighReleaseState.Error -> {
-                    release.message
-                }
-
-                else -> {
-                    mapErrorMessage
-                        ?: refreshErrorMessage
-                        ?: (locationState as? LocationState.Unavailable)?.reason?.toKoreanMessage()
-                }
-            }
-        }
-
-        MapUiState.Loading -> {
-            null
-        }
-    }
-
-private fun MapUiState.Success.toMapRenderState(hiddenMarkerId: String?): MapRenderState =
+private fun MapUiState.toMapRenderState(hiddenMarkerId: String?): MapRenderState =
     MapRenderState(
-        currentLocation = (locationState as? LocationState.Available)?.location,
-        locationState = locationState,
+        currentLocation = (location.state as? LocationState.Available)?.location,
+        locationState = location.state,
         fallbackCenter = DEFAULT_MAP_POINT,
         sighMarkers =
             sighs.filterNot { it.id.toString() == hiddenMarkerId }.map { sighPin ->
@@ -313,7 +292,7 @@ private fun MapUiState.Success.toMapRenderState(hiddenMarkerId: String?): MapRen
                     longitude = sighPin.coordinate.longitude,
                 )
             },
-        focusRequest = focusRequest,
+        focusRequest = viewport.focusRequest,
     )
 
 private val DEFAULT_MAP_POINT = MapPoint("default-location", 37.5505, 127.0373)
@@ -323,13 +302,7 @@ private val DEFAULT_MAP_POINT = MapPoint("default-location", 37.5505, 127.0373)
 private fun MapScreenPreview() {
     AppTheme {
         MapScreen(
-            uiState =
-                MapUiState.Success(
-                    sighs = emptyList(),
-                    locationState = LocationState.Loading,
-                    cameraCommand = null,
-                    isRequestingLocation = false,
-                ),
+            uiState = MapUiState(),
             onSettingsClick = {},
             onZoomInClick = {},
             onZoomOutClick = {},
@@ -342,6 +315,8 @@ private fun MapScreenPreview() {
             onOpenLocationSettings = {},
             onOpenAppSettings = {},
             onMapError = {},
+            onMapReady = {},
+            isActive = true,
         )
     }
 }

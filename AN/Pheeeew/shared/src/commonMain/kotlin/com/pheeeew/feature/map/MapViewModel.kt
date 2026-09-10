@@ -17,11 +17,9 @@ import com.pheeeew.feature.map.map.MapError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -38,7 +36,7 @@ typealias MapPerformanceLogger = (String) -> Unit
 class MapViewModel(
     private val sighRepository: SighRepository,
     private val locationDependencies: LocationDependencies?,
-    private val mapPerformanceLogger: MapPerformanceLogger = {},
+    private val mapPerformanceLogger: MapPerformanceLogger,
 ) : ViewModel() {
     private var nextCameraCommandId = 0L
     private var pendingRegistration: PendingSighRequest? = null
@@ -53,24 +51,23 @@ class MapViewModel(
 
     private val _uiState =
         MutableStateFlow<MapUiState>(
-            MapUiState.Success(
-                sighs = emptyList(),
-                locationState = locationDependencies?.repository?.locationState?.value ?: LocationState.Loading,
-                cameraCommand = null,
-                isRequestingLocation = false,
+            MapUiState(
+                location =
+                    MapLocationUiState(
+                        state = locationDependencies?.repository?.locationState?.value ?: LocationState.Loading,
+                    ),
             ),
         )
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
-
-    // 스플래시 화면 노출 시간 설정을 위한 플로우
-    val isReady: Flow<Boolean> = uiState.map { it !is MapUiState.Loading }
 
     init {
         locationDependencies?.let { dependencies ->
             viewModelScope.launch {
                 dependencies.repository.locationState.collect { locationState ->
                     _uiState.update { state ->
-                        (state as? MapUiState.Success)?.copy(locationState = locationState) ?: state
+                        state.copy(
+                            location = state.location.copy(state = locationState),
+                        )
                     }
                 }
             }
@@ -111,11 +108,9 @@ class MapViewModel(
                                 lastRequestedSighBounds = null
                                 mapPerformanceLogger("request_failed id=$requestId")
                                 _uiState.update { state ->
-                                    if (state is MapUiState.Success) {
-                                        state.copy(refreshErrorMessage = e.toUserMessage())
-                                    } else {
-                                        state
-                                    }
+                                    state.copy(
+                                        errors = state.errors.copy(refreshMessage = e.toUserMessage()),
+                                    )
                                 }
                             }
                             return@launch
@@ -131,10 +126,10 @@ class MapViewModel(
                         serverIds.forEach(locallyRegisteredSighs::remove)
                         val mergedSighs = (serverSighs + locallyRegisteredSighs.values).distinctBy(SighPin::id)
                         _uiState.update { state ->
-                            (state as? MapUiState.Success)?.copy(
+                            state.copy(
                                 sighs = mergedSighs,
-                                refreshErrorMessage = null,
-                            ) ?: state
+                                errors = state.errors.copy(refreshMessage = null),
+                            )
                         }
                         mapPerformanceLogger("response_applied id=$requestId")
                     }
@@ -146,17 +141,17 @@ class MapViewModel(
     }
 
     fun registerSighAfterExplosion() {
-        val current = _uiState.value as? MapUiState.Success ?: return
-        if (current.sighReleaseState is SighReleaseState.Submitting) return
-        val location = (current.locationState as? LocationState.Available)?.location
+        val current = _uiState.value
+        if (current.sighRelease is SighReleaseState.Submitting) return
+        val location = (current.location.state as? LocationState.Available)?.location
 
         if (location == null) {
             val message =
-                (current.locationState as? LocationState.Unavailable)?.reason?.toKoreanMessage()
+                (current.location.state as? LocationState.Unavailable)?.reason?.toKoreanMessage()
                     ?: "GPS 수신이 원활하지 않습니다."
             _uiState.value =
                 current.copy(
-                    sighReleaseState = SighReleaseState.Error(message = message, canRetry = false),
+                    sighRelease = SighReleaseState.Error(message = message, canRetry = false),
                 )
             return
         }
@@ -172,10 +167,10 @@ class MapViewModel(
 
     private fun submit(request: PendingSighRequest) {
         val submittingStartedAt = TimeSource.Monotonic.markNow()
-        _uiState.update {
-            (it as? MapUiState.Success)?.copy(
-                sighReleaseState = SighReleaseState.Submitting,
-            ) ?: it
+        _uiState.update { state ->
+            state.copy(
+                sighRelease = SighReleaseState.Submitting,
+            )
         }
         viewModelScope.launch {
             try {
@@ -186,25 +181,27 @@ class MapViewModel(
                     locallyRegisteredSighs[sighPin.id] = sighPin
                     pendingRegistration = null
                     _uiState.update { state ->
-                        (state as? MapUiState.Success)?.copy(
+                        state.copy(
                             sighs = (state.sighs + sighPin).distinctBy(SighPin::id),
-                            sighReleaseState = SighReleaseState.Idle,
-                            focusRequest =
-                                MapFocusRequest(
-                                    id = sighPin.id.toString(),
-                                    latitude = sighPin.coordinate.latitude,
-                                    longitude = sighPin.coordinate.longitude,
+                            sighRelease = SighReleaseState.Idle,
+                            viewport =
+                                state.viewport.copy(
+                                    focusRequest =
+                                        MapFocusRequest(
+                                            id = sighPin.id.toString(),
+                                            latitude = sighPin.coordinate.latitude,
+                                            longitude = sighPin.coordinate.longitude,
+                                        ),
                                 ),
                         )
-                            ?: state
                     }
                 }
             } catch (e: ApiException) {
                 waitForMinimumSubmittingDuration(submittingStartedAt)
-                _uiState.update {
-                    (it as? MapUiState.Success)?.copy(
-                        sighReleaseState = SighReleaseState.Error(message = e.toUserMessage(), canRetry = true),
-                    ) ?: it
+                _uiState.update { state ->
+                    state.copy(
+                        sighRelease = SighReleaseState.Error(message = e.toUserMessage(), canRetry = true),
+                    )
                 }
             }
         }
@@ -218,13 +215,16 @@ class MapViewModel(
 
     fun cancelFailedSighRegistration() {
         pendingRegistration = null
-        val current = _uiState.value as? MapUiState.Success ?: return
-        _uiState.value = current.copy(sighReleaseState = SighReleaseState.Idle)
+        _uiState.update { state -> state.copy(sighRelease = SighReleaseState.Idle) }
     }
 
     fun consumeFocusRequest(id: String) {
         _uiState.update { state ->
-            if (state is MapUiState.Success && state.focusRequest?.id == id) state.copy(focusRequest = null) else state
+            if (state.viewport.focusRequest?.id == id) {
+                state.copy(viewport = state.viewport.copy(focusRequest = null))
+            } else {
+                state
+            }
         }
     }
 
@@ -234,16 +234,18 @@ class MapViewModel(
 
     fun onMyLocationClick() {
         val dependencies = locationDependencies ?: return
-        val current = _uiState.value as? MapUiState.Success ?: return
-        if (current.isRequestingLocation) return
+        val current = _uiState.value
+        if (current.location.isRequesting) return
 
         myLocationJob?.cancel()
 
         myLocationJob =
             viewModelScope.launch {
-                _uiState.update { (it as? MapUiState.Success)?.copy(isRequestingLocation = true) ?: it }
+                _uiState.update { state ->
+                    state.copy(location = state.location.copy(isRequesting = true))
+                }
                 try {
-                    val status = ensureLocationPermission()
+                    val status = ensureLocationPermission(refreshLocation = true)
                     if (status != LocationPermissionStatus.Granted) {
                         return@launch
                     }
@@ -260,12 +262,14 @@ class MapViewModel(
                 } catch (_: Exception) {
                     // 위치나 권한 값은 로그에 남기지 않습니다. 지도는 현재 카메라를 유지합니다.
                 } finally {
-                    _uiState.update { (it as? MapUiState.Success)?.copy(isRequestingLocation = false) ?: it }
+                    _uiState.update { state ->
+                        state.copy(location = state.location.copy(isRequesting = false))
+                    }
                 }
             }
     }
 
-    suspend fun ensureLocationPermission(refreshLocation: Boolean = true): LocationPermissionStatus {
+    suspend fun ensureLocationPermission(refreshLocation: Boolean): LocationPermissionStatus {
         val dependencies =
             locationDependencies
                 ?: return LocationPermissionStatus.Denied
@@ -343,9 +347,9 @@ class MapViewModel(
 
     fun onMapError(error: MapError) {
         _uiState.update { state ->
-            (state as? MapUiState.Success)?.copy(
-                mapErrorMessage = error.toUserMessage(),
-            ) ?: state
+            state.copy(
+                errors = state.errors.copy(renderMessage = error.toUserMessage()),
+            )
         }
     }
 
@@ -369,7 +373,9 @@ class MapViewModel(
     private fun sendCameraCommand(create: (Long) -> MapCameraCommand) {
         nextCameraCommandId += 1L
         _uiState.update { state ->
-            (state as? MapUiState.Success)?.copy(cameraCommand = create(nextCameraCommandId)) ?: state
+            state.copy(
+                viewport = state.viewport.copy(cameraCommand = create(nextCameraCommandId)),
+            )
         }
     }
 

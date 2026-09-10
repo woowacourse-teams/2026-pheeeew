@@ -17,9 +17,10 @@ import kotlinx.coroutines.launch
 @Composable
 fun MapRoute(
     onSettingsClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isActive: Boolean = true,
+    onMapReady: () -> Unit,
     viewModel: MapViewModel,
+    isActive: Boolean,
+    modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var startupPermissionsChecked by remember { mutableStateOf(false) }
@@ -59,10 +60,11 @@ fun MapRoute(
         onRegisterSighAfterExplosion = viewModel::registerSighAfterExplosion,
         onCancelFailedSighRegistration = viewModel::cancelFailedSighRegistration,
         onConsumeFocusRequest = viewModel::consumeFocusRequest,
-        onEnsureLocationPermission = { viewModel.ensureLocationPermission() },
+        onEnsureLocationPermission = { viewModel.ensureLocationPermission(refreshLocation = true) },
         onOpenLocationSettings = viewModel::openLocationSettings,
         onOpenAppSettings = viewModel::openAppSettings,
         onMapError = viewModel::onMapError,
+        onMapReady = onMapReady,
         isActive = isActive,
         modifier = modifier,
     )

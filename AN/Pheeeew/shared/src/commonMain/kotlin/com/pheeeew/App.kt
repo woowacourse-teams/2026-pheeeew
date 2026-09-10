@@ -26,6 +26,7 @@ import com.pheeeew.feature.setting.SettingsScreen
 import com.pheeeew.feature.setting.legal.LegalDocument
 import com.pheeeew.feature.setting.legal.LegalDocumentRoute
 import com.pheeeew.feature.splash.SplashScreen
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 
 @Composable
@@ -33,7 +34,7 @@ fun App(
     appVersion: String,
     locationDependencies: LocationDependencies?,
     sighRepository: SighRepository,
-    mapPerformanceLogger: MapPerformanceLogger = {},
+    mapPerformanceLogger: MapPerformanceLogger,
 ) {
     AppTheme {
         val coroutineScope = rememberCoroutineScope()
@@ -42,6 +43,7 @@ fun App(
             viewModel {
                 MapViewModel(sighRepository, locationDependencies, mapPerformanceLogger)
             }
+        val mapReadiness = remember { MutableStateFlow(false) }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
 
         // 오버레이 화면들이 뒤에 깔린 지도로 터치가 새어나가지 않도록 막습니다.
@@ -53,6 +55,7 @@ fun App(
             // 생기는 깜박임을 막습니다. Splash/Settings/LegalDocument는 그 위에 오버레이로 뜹니다.
             MapRoute(
                 onSettingsClick = { screen = Screen.Settings },
+                onMapReady = { mapReadiness.value = true },
                 isActive = screen == Screen.Map,
                 viewModel = mapViewModel,
             )
@@ -64,44 +67,52 @@ fun App(
             // Settings는 LegalDocument 아래에도 계속 조립된 상태로 유지해,
             // LegalDocument에서 뒤로가기 제스처로 슬라이드할 때 그 아래로 Settings가 드러나도록 합니다.
             if (screen == Screen.Settings || screen == Screen.LegalDocument) {
-                PredictiveBackContent(onBack = { screen = Screen.Map }, modifier = overlayModifier) {
-                    SettingsScreen(
-                        onBackClick = { screen = Screen.Map },
-                        onPermissionClick = {
-                            locationDependencies?.let { dependencies ->
-                                coroutineScope.launch {
-                                    dependencies.permissionSettingsLauncher.openAppSettings()
+                PredictiveBackContent(
+                    onBack = { screen = Screen.Map },
+                    content = {
+                        SettingsScreen(
+                            onBackClick = { screen = Screen.Map },
+                            onPermissionClick = {
+                                locationDependencies?.let { dependencies ->
+                                    coroutineScope.launch {
+                                        dependencies.permissionSettingsLauncher.openAppSettings()
+                                    }
                                 }
-                            }
-                        },
-                        onOpenSourceLicenseClick = {
-                            selectedLegalDocument = LegalDocument.OpenSourceLicenses
-                            screen = Screen.LegalDocument
-                        },
-                        onPrivacyPolicyClick = {
-                            selectedLegalDocument = LegalDocument.PrivacyPolicy
-                            screen = Screen.LegalDocument
-                        },
-                        appVersion = appVersion,
-                        contactMail = "contact@pheeeew.com",
-                    )
-                }
+                            },
+                            onOpenSourceLicenseClick = {
+                                selectedLegalDocument = LegalDocument.OpenSourceLicenses
+                                screen = Screen.LegalDocument
+                            },
+                            onPrivacyPolicyClick = {
+                                selectedLegalDocument = LegalDocument.PrivacyPolicy
+                                screen = Screen.LegalDocument
+                            },
+                            appVersion = appVersion,
+                            contactMail = "contact@pheeeew.com",
+                        )
+                    },
+                    modifier = overlayModifier,
+                )
             }
 
             if (screen == Screen.LegalDocument) {
                 selectedLegalDocument?.let { document ->
-                    PredictiveBackContent(onBack = { screen = Screen.Settings }, modifier = overlayModifier) {
-                        LegalDocumentRoute(
-                            document = document,
-                            onBack = { screen = Screen.Settings },
-                        )
-                    }
+                    PredictiveBackContent(
+                        onBack = { screen = Screen.Settings },
+                        content = {
+                            LegalDocumentRoute(
+                                document = document,
+                                onBack = { screen = Screen.Settings },
+                            )
+                        },
+                        modifier = overlayModifier,
+                    )
                 }
             }
 
             if (screen == Screen.Splash) {
                 SplashScreen(
-                    isReady = mapViewModel.isReady,
+                    isReady = mapReadiness,
                     onFinished = { screen = Screen.Map },
                     modifier = overlayModifier,
                 )

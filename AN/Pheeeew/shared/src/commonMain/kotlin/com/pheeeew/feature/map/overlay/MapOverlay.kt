@@ -26,9 +26,9 @@ fun MapOverlay(
     onZoomInClick: () -> Unit,
     onZoomOutClick: () -> Unit,
     onMyLocationClick: () -> Unit,
+    errorMessage: String?,
+    controlsEnabled: Boolean,
     modifier: Modifier = Modifier,
-    errorMessage: String? = null,
-    controlsEnabled: Boolean = true,
 ) {
     Column(
         modifier = modifier.fillMaxSize(),
@@ -85,6 +85,8 @@ private fun MapOverlayPreview() {
                 onZoomInClick = {},
                 onZoomOutClick = {},
                 onMyLocationClick = {},
+                errorMessage = null,
+                controlsEnabled = true,
             )
         }
     }
@@ -101,6 +103,7 @@ private fun MapOverlayNetworkErrorPreview() {
                 onZoomOutClick = {},
                 onMyLocationClick = {},
                 errorMessage = "인터넷 연결 상태를 확인해주세요!",
+                controlsEnabled = true,
             )
         }
     }
@@ -117,6 +120,7 @@ private fun MapOverlayPermissionErrorPreview() {
                 onZoomOutClick = {},
                 onMyLocationClick = {},
                 errorMessage = "설정에서 위치 권한을 '허용'으로 변경해주세요.",
+                controlsEnabled = true,
             )
         }
     }
@@ -133,6 +137,7 @@ private fun MapOverlayGpsErrorPreview() {
                 onZoomOutClick = {},
                 onMyLocationClick = {},
                 errorMessage = "GPS 수신이 원활하지 않습니다.",
+                controlsEnabled = true,
             )
         }
     }

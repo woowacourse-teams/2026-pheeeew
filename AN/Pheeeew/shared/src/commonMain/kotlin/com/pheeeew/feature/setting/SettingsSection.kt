@@ -19,8 +19,8 @@ import com.pheeeew.core.designsystem.theme.AppTheme
 @Composable
 fun SettingsSection(
     title: String,
-    modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -40,10 +40,13 @@ fun SettingsSection(
 private fun SettingsSectionPreview() {
     AppTheme {
         Column(modifier = Modifier.background(AppTheme.colors.background)) {
-            SettingsSection(title = "앱 설정") {
-                SettingsMenuItem(title = "테마 설정", onClick = {})
-                SettingsMenuItem(title = "위치 권한 설정", onClick = {})
-            }
+            SettingsSection(
+                title = "앱 설정",
+                content = {
+                    SettingsMenuItem(title = "테마 설정", onClick = {})
+                    SettingsMenuItem(title = "위치 권한 설정", onClick = {})
+                },
+            )
         }
     }
 }
