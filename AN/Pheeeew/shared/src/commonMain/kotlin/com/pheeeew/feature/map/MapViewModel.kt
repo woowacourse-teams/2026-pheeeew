@@ -2,15 +2,16 @@ package com.pheeeew.feature.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pheeeew.core.geo.toGridCenter
 import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.domain.exception.ApiException
 import com.pheeeew.domain.model.geo.Coordinate
 import com.pheeeew.domain.model.location.LocationState
+import com.pheeeew.domain.model.sigh.CreateSighCommand
 import com.pheeeew.domain.model.sigh.SighBounds
 import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.domain.repository.SighRepository
+import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.feature.map.map.MapCameraCommand
 import com.pheeeew.feature.map.map.MapDarkStyle
 import com.pheeeew.feature.map.map.MapError
@@ -35,11 +36,12 @@ typealias MapPerformanceLogger = (String) -> Unit
 
 class MapViewModel(
     private val sighRepository: SighRepository,
+    private val createSigh: CreateSighUseCase,
     private val locationDependencies: LocationDependencies?,
     private val mapPerformanceLogger: MapPerformanceLogger,
 ) : ViewModel() {
     private var nextCameraCommandId = 0L
-    private var pendingRegistration: PendingSighRequest? = null
+    private var pendingRegistration: CreateSighCommand? = null
     private val sighOperationMutex = Mutex()
     private val locallyRegisteredSighs = mutableMapOf<Long, SighPin>()
     private var mapIsForeground = false
@@ -97,7 +99,7 @@ class MapViewModel(
 
                     val serverSighs =
                         try {
-                            sighRepository.getSighs(bounds).distinctBy(SighPin::id)
+                            sighRepository.getMapSighs(bounds).distinctBy(SighPin::id)
                         } catch (e: ApiException) {
                             sighOperationMutex.withLock {
                                 if (requestId != latestSighRequestId || !mapIsForeground) {
@@ -158,14 +160,15 @@ class MapViewModel(
 
         val request =
             pendingRegistration
-                ?: PendingSighRequest(
-                    requestId = Uuid.random().toString(),
-                    coordinate = location.coordinate.toGridCenter(),
-                ).also { pendingRegistration = it }
+                ?: createSigh
+                    .prepare(
+                        requestId = Uuid.random().toString(),
+                        coordinate = location.coordinate,
+                    ).also { command -> pendingRegistration = command }
         submit(request)
     }
 
-    private fun submit(request: PendingSighRequest) {
+    private fun submit(command: CreateSighCommand) {
         val submittingStartedAt = TimeSource.Monotonic.markNow()
         _uiState.update { state ->
             state.copy(
@@ -174,7 +177,7 @@ class MapViewModel(
         }
         viewModelScope.launch {
             try {
-                val sighPin = sighRepository.registerSigh(request.requestId, request.coordinate)
+                val sighPin = createSigh(command).toPin()
                 waitForMinimumSubmittingDuration(submittingStartedAt)
 
                 sighOperationMutex.withLock {
@@ -378,9 +381,4 @@ class MapViewModel(
             )
         }
     }
-
-    private data class PendingSighRequest(
-        val requestId: String,
-        val coordinate: Coordinate,
-    )
 }

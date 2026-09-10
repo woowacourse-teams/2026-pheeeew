@@ -12,11 +12,12 @@ fun MainViewController() =
         val appVersion = NSBundle.mainBundle.infoDictionary?.get("CFBundleShortVersionString") as? String ?: "-"
         val apiBaseUrl = NSBundle.mainBundle.infoDictionary?.get("API_BASE_URL") as? String ?: ""
         val locationDependencies = createIosLocationDependencies()
-        val sighRepository = SighModule.create(ApiConfig(baseUrl = apiBaseUrl))
+        val sighDependencies = SighModule.create(ApiConfig(baseUrl = apiBaseUrl))
         App(
             appVersion = appVersion,
             locationDependencies = locationDependencies,
-            sighRepository = sighRepository,
+            sighRepository = sighDependencies.repository,
+            createSigh = sighDependencies.createSigh,
             mapPerformanceLogger = {},
         )
     }

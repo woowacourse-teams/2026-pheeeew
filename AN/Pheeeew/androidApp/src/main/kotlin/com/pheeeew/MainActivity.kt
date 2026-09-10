@@ -29,13 +29,14 @@ class MainActivity : ComponentActivity() {
                 activity = this,
                 retainedDependencies = holder.dependencies,
             ).also { holder.dependencies = it }
-        val sighRepository = SighModule.create(ApiConfig(baseUrl = BuildConfig.API_BASE_URL))
+        val sighDependencies = SighModule.create(ApiConfig(baseUrl = BuildConfig.API_BASE_URL))
 
         setContent {
             App(
                 appVersion = BuildConfig.VERSION_NAME,
                 locationDependencies = locationDependencies,
-                sighRepository = sighRepository,
+                sighRepository = sighDependencies.repository,
+                createSigh = sighDependencies.createSigh,
                 mapPerformanceLogger = { event ->
                     if (BuildConfig.DEBUG) Log.d("Pheeeew.MapPerf", event)
                 },

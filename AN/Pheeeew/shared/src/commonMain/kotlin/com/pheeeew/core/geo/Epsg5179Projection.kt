@@ -3,34 +3,10 @@ package com.pheeeew.core.geo
 import com.pheeeew.domain.model.geo.Coordinate
 import kotlin.math.PI
 import kotlin.math.cos
-import kotlin.math.floor
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.math.tan
-
-/**
- * Converts a WGS84 coordinate to the center of its 300 m EPSG:5179 grid cell.
- *
- * The returned coordinate is WGS84 again so it can be sent through the existing
- * latitude/longitude API contract. No random offset is applied on the client.
- */
-fun Coordinate.toGridCenter(): Coordinate {
-    require(latitude.isFinite() && longitude.isFinite()) {
-        "좌표는 유한한 숫자여야 합니다."
-    }
-    require(latitude in -90.0..90.0 && longitude in -180.0..180.0) {
-        "좌표 범위가 올바르지 않습니다."
-    }
-
-    val projected = Epsg5179Projection.forward(this)
-    val center =
-        ProjectedCoordinate(
-            easting = floor(projected.easting / GRID_SIZE_METERS) * GRID_SIZE_METERS + GRID_SIZE_METERS / 2.0,
-            northing = floor(projected.northing / GRID_SIZE_METERS) * GRID_SIZE_METERS + GRID_SIZE_METERS / 2.0,
-        )
-    return Epsg5179Projection.inverse(center)
-}
 
 internal data class ProjectedCoordinate(
     val easting: Double,
@@ -168,5 +144,3 @@ internal object Epsg5179Projection {
             (1097.0 * e1.pow(4) / 512.0) * sin(8.0 * mu)
     }
 }
-
-private const val GRID_SIZE_METERS = 300.0

@@ -11,10 +11,15 @@ import com.pheeeew.domain.exception.ApiException
 import com.pheeeew.domain.model.geo.Coordinate
 import com.pheeeew.domain.model.location.CurrentLocation
 import com.pheeeew.domain.model.location.LocationState
+import com.pheeeew.domain.model.sigh.CreateSighCommand
+import com.pheeeew.domain.model.sigh.Sigh
 import com.pheeeew.domain.model.sigh.SighBounds
+import com.pheeeew.domain.model.sigh.SighPage
 import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.domain.repository.LocationRepository
 import com.pheeeew.domain.repository.SighRepository
+import com.pheeeew.domain.service.SighLocationObfuscator
+import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.feature.map.map.MapCameraCommand
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -33,6 +38,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.time.Instant
 
 class MapViewModelTest {
     private val noOpPerformanceLogger: MapPerformanceLogger = {}
@@ -52,12 +58,7 @@ class MapViewModelTest {
     @Test
     fun `초기 상태는 부분 상태의 기본값을 가진다`() =
         runTest {
-            val viewModel =
-                MapViewModel(
-                    sighRepository = RecordingSighRepository(),
-                    locationDependencies = null,
-                    mapPerformanceLogger = noOpPerformanceLogger,
-                )
+            val viewModel = createViewModel()
 
             assertEquals(MapUiState(), viewModel.uiState.value)
         }
@@ -69,7 +70,7 @@ class MapViewModelTest {
             Dispatchers.setMain(dispatcher)
             try {
                 val repository = RecordingSighRepository()
-                val viewModel = MapViewModel(repository, null, noOpPerformanceLogger)
+                val viewModel = createViewModel(repository)
                 viewModel.onMapForeground()
 
                 viewModel.loadSighs(firstBounds)
@@ -91,7 +92,7 @@ class MapViewModelTest {
             Dispatchers.setMain(dispatcher)
             try {
                 val repository = RecordingSighRepository(failNextRequest = true)
-                val viewModel = MapViewModel(repository, null, noOpPerformanceLogger)
+                val viewModel = createViewModel(repository)
                 viewModel.onMapForeground()
 
                 viewModel.loadSighs(firstBounds)
@@ -118,7 +119,7 @@ class MapViewModelTest {
             Dispatchers.setMain(dispatcher)
             try {
                 val repository = RecordingSighRepository()
-                val viewModel = MapViewModel(repository, null, noOpPerformanceLogger)
+                val viewModel = createViewModel(repository)
                 viewModel.onMapForeground()
 
                 viewModel.loadSighs(firstBounds)
@@ -141,7 +142,7 @@ class MapViewModelTest {
             Dispatchers.setMain(dispatcher)
             try {
                 val repository = RecordingSighRepository(delayFirstResponse = true)
-                val viewModel = MapViewModel(repository, null, noOpPerformanceLogger)
+                val viewModel = createViewModel(repository)
                 viewModel.onMapForeground()
 
                 viewModel.loadSighs(firstBounds)
@@ -168,7 +169,7 @@ class MapViewModelTest {
             Dispatchers.setMain(dispatcher)
             try {
                 val repository = RecordingSighRepository()
-                val viewModel = MapViewModel(repository, null, noOpPerformanceLogger)
+                val viewModel = createViewModel(repository)
                 viewModel.onMapForeground()
                 viewModel.loadSighs(firstBounds)
                 advanceTimeBy(250)
@@ -193,7 +194,7 @@ class MapViewModelTest {
 
     @Test
     fun `확대와 축소는 순차 ID를 가진 카메라 명령을 만든다`() {
-        val viewModel = MapViewModel(RecordingSighRepository(), null, noOpPerformanceLogger)
+        val viewModel = createViewModel()
 
         viewModel.onZoomInClick()
         val zoomIn = assertIs<MapCameraCommand.ZoomBy>(viewModel.uiState.value.viewport.cameraCommand)
@@ -221,10 +222,9 @@ class MapViewModelTest {
                         capturedAtMillis = 1L,
                     )
                 val viewModel =
-                    MapViewModel(
-                        sighRepository = repository,
+                    createViewModel(
+                        repository = repository,
                         locationDependencies = locationDependencies(LocationState.Available(location)),
-                        mapPerformanceLogger = noOpPerformanceLogger,
                     )
 
                 viewModel.registerSighAfterExplosion()
@@ -251,8 +251,47 @@ class MapViewModelTest {
         }
 
     @Test
+    fun `한숨 등록 재시도는 같은 요청 식별자와 난독화 좌표를 사용한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository = RecordingSighRepository(failNextCreate = true)
+                val location =
+                    CurrentLocation(
+                        latitude = 37.55,
+                        longitude = 126.95,
+                        accuracyMeters = 5f,
+                        capturedAtMillis = 1L,
+                    )
+                val viewModel =
+                    createViewModel(
+                        repository = repository,
+                        locationDependencies = locationDependencies(LocationState.Available(location)),
+                    )
+
+                viewModel.registerSighAfterExplosion()
+                runCurrent()
+                advanceTimeBy(2_000)
+                runCurrent()
+                assertIs<SighReleaseState.Error>(viewModel.uiState.value.sighRelease)
+
+                viewModel.registerSighAfterExplosion()
+                runCurrent()
+                advanceTimeBy(2_000)
+                runCurrent()
+
+                assertEquals(2, repository.createdCommands.size)
+                assertEquals(repository.createdCommands.first(), repository.createdCommands.last())
+                assertIs<SighReleaseState.Idle>(viewModel.uiState.value.sighRelease)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `위치가 없으면 한숨 등록을 시작하지 않고 재시도 불가 오류를 표시한다`() {
-        val viewModel = MapViewModel(RecordingSighRepository(), null, noOpPerformanceLogger)
+        val viewModel = createViewModel()
 
         viewModel.registerSighAfterExplosion()
 
@@ -283,6 +322,21 @@ class MapViewModelTest {
         )
     }
 
+    private fun createViewModel(
+        repository: RecordingSighRepository = RecordingSighRepository(),
+        locationDependencies: LocationDependencies? = null,
+    ): MapViewModel =
+        MapViewModel(
+            sighRepository = repository,
+            createSigh =
+                CreateSighUseCase(
+                    repository = repository,
+                    locationObfuscator = SighLocationObfuscator { coordinate, _ -> coordinate },
+                ),
+            locationDependencies = locationDependencies,
+            mapPerformanceLogger = noOpPerformanceLogger,
+        )
+
     private class FakeLocationRepository(
         initialState: LocationState,
     ) : LocationRepository {
@@ -294,10 +348,32 @@ class MapViewModelTest {
     private class RecordingSighRepository(
         private val delayFirstResponse: Boolean = false,
         private var failNextRequest: Boolean = false,
+        private var failNextCreate: Boolean = false,
     ) : SighRepository {
         val requestedBounds = mutableListOf<SighBounds>()
+        val createdCommands = mutableListOf<CreateSighCommand>()
 
-        override suspend fun getSighs(bounds: SighBounds): List<SighPin> {
+        override suspend fun getFirstPage(bounds: SighBounds): SighPage = error("지원하지 않는 테스트 API입니다.")
+
+        override suspend fun getNextPage(cursor: String): SighPage = error("지원하지 않는 테스트 API입니다.")
+
+        override suspend fun getById(id: Long): Sigh = error("지원하지 않는 테스트 API입니다.")
+
+        override suspend fun create(command: CreateSighCommand): Sigh {
+            createdCommands += command
+            if (failNextCreate) {
+                failNextCreate = false
+                throw ApiException.Network(code = "TEST-002", message = "등록 실패")
+            }
+            return Sigh(
+                id = 1L,
+                coordinate = command.coordinate,
+                memo = command.memo,
+                createdAt = Instant.parse("2026-09-01T12:00:00Z"),
+            )
+        }
+
+        override suspend fun getMapSighs(bounds: SighBounds): List<SighPin> {
             requestedBounds += bounds
             if (failNextRequest) {
                 failNextRequest = false
@@ -314,10 +390,5 @@ class MapViewModelTest {
                 ),
             )
         }
-
-        override suspend fun registerSigh(
-            requestId: String,
-            coordinate: Coordinate,
-        ): SighPin = SighPin(id = 1L, coordinate = coordinate)
     }
 }
