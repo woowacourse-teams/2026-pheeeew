@@ -54,6 +54,63 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Alloy Secrets 확인 및 환경 파일 생성
+        env:
+          GRAFANA_METRICS_URL: ${{ secrets.GRAFANA_METRICS_URL }}
+          GRAFANA_METRICS_USER: ${{ secrets.GRAFANA_METRICS_USER }}
+          GRAFANA_LOGS_URL: ${{ secrets.GRAFANA_LOGS_URL }}
+          GRAFANA_LOGS_USER: ${{ secrets.GRAFANA_LOGS_USER }}
+          GRAFANA_CLOUD_TOKEN: ${{ secrets.GRAFANA_CLOUD_TOKEN }}
+        run: |
+          set -eu
+          keys=(GRAFANA_METRICS_URL GRAFANA_METRICS_USER GRAFANA_LOGS_URL GRAFANA_LOGS_USER GRAFANA_CLOUD_TOKEN)
+          for key in "${keys[@]}"; do
+            value="${!key:-}"
+            if [[ -z "$value" ]]; then
+              echo "::error::production Secrets에 $key 값이 필요합니다."
+              exit 1
+            fi
+            if [[ "$value" =~ [[:space:]] || "$value" == *"'"* || "$value" == *'\'* ]]; then
+              echo "::error::$key 값에 공백, 따옴표 또는 역슬래시가 포함되어 있습니다. 연결 값을 확인하세요."
+              exit 1
+            fi
+          done
+
+          python3 - <<'PYTHON'
+          import os
+          from urllib.parse import urlsplit
+
+          approved_endpoints = {
+              "GRAFANA_METRICS_URL": (
+                  "prometheus-prod-49-prod-ap-northeast-0.grafana.net", "/api/prom/push"
+              ),
+              "GRAFANA_LOGS_URL": (
+                  "logs-prod-030.grafana.net", "/loki/api/v1/push"
+              ),
+          }
+          for key, (host, path) in approved_endpoints.items():
+              value = os.environ[key]
+              try:
+                  url = urlsplit(value)
+                  valid = (
+                      url.scheme == "https"
+                      and url.netloc == host
+                      and url.path == path
+                      and not url.query
+                      and not url.fragment
+                      and url.geturl() == value
+                  )
+              except ValueError:
+                  valid = False
+              if not valid:
+                  raise SystemExit(f"::error::{key}는 승인된 Grafana Cloud HTTPS 전송 주소여야 합니다.")
+          PYTHON
+
+          umask 077
+          for key in "${keys[@]}"; do
+            printf "%s='%s'\n" "$key" "${!key}"
+          done > "$RUNNER_TEMP/pheeeew-alloy.env"
+
       - name: cloudflared 설치
         env:
           CLOUDFLARED_VERSION: '2026.8.2'
@@ -92,12 +149,20 @@ jobs:
           chmod 600 ~/.ssh/config
           ssh -o ConnectTimeout=30 target 'echo 터널 연결 확인'
 
-      - name: compose 와 nginx 설정 전송
+      - name: compose, nginx, Alloy 설정 전송
         run: |
           set -eu
-          ssh -F ~/.ssh/config target 'mkdir -p /opt/pheeeew/nginx'
+          ssh -F ~/.ssh/config target 'mkdir -p /opt/pheeeew/nginx /opt/pheeeew/alloy'
           scp -F ~/.ssh/config BE/docker/compose.prod.yml target:/opt/pheeeew/compose.yml
           scp -F ~/.ssh/config BE/docker/nginx/api.conf target:/opt/pheeeew/nginx/api.conf
+          scp -F ~/.ssh/config BE/docker/compose.monitoring.yml target:/opt/pheeeew/compose.monitoring.yml
+          scp -F ~/.ssh/config BE/docker/alloy/config.alloy target:/opt/pheeeew/alloy/
+
+      - name: .env.alloy 갱신
+        run: |
+          set -eu
+          scp -F ~/.ssh/config "$RUNNER_TEMP/pheeeew-alloy.env" target:/opt/pheeeew/.env.alloy.new
+          ssh -F ~/.ssh/config target 'set -eu; cd /opt/pheeeew; chmod 600 .env.alloy.new; mv .env.alloy.new .env.alloy'
 
       - name: .env 갱신
         env:
@@ -189,3 +254,20 @@ jobs:
           fi
           exit 1
           REMOTE
+
+      - name: Alloy 배포
+        run: |
+          set -eu
+          ssh -F ~/.ssh/config target 'bash -s' <<'REMOTE'
+          set -eu
+          cd /opt/pheeeew
+          chmod 600 .env.alloy
+          docker compose --env-file .env.alloy -f compose.monitoring.yml config --quiet
+          docker compose --env-file .env.alloy -f compose.monitoring.yml pull alloy
+          docker compose --env-file .env.alloy -f compose.monitoring.yml run --rm --no-deps alloy validate /etc/alloy/config.alloy
+          docker compose --env-file .env.alloy -f compose.monitoring.yml up -d --force-recreate --wait --wait-timeout 60
+          REMOTE
+
+      - name: Alloy 임시 환경 파일 삭제
+        if: always()
+        run: rm -f "$RUNNER_TEMP/pheeeew-alloy.env"

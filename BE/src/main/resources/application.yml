@@ -3,6 +3,8 @@ spring:
     name: pheeeew
   profiles:
     default: local
+  config:
+    import: classpath:application-log.yml
   jpa:
     open-in-view: false
     hibernate:
@@ -21,13 +23,11 @@ pheeeew:
     access-ttl: PT30M
     registration-retry-window: PT5M
 
-logging:
-  level:
-    # 멱등 저장 경로에서 유니크 제약 위반은 설계된 흐름이다(ADR-0004).
-    # 기본 WARN 은 위반한 키 값을 그대로 출력해 기기 식별자가 로그에 남는다.
-    org.hibernate.orm.jdbc.error: ERROR
-
 management:
+  prometheus:
+    metrics:
+      export:
+        enabled: false
   endpoints:
     web:
       discovery:

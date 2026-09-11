@@ -6,8 +6,3 @@ spring:
 
 server:
   forward-headers-strategy: native
-
-logging:
-  level:
-    com.pheeeew: DEBUG
-    org.hibernate.SQL: DEBUG

@@ -94,6 +94,9 @@ Accepted (YYYY-MM-DD)
 | [0007](0007-split-signed-access-token-and-stored-refresh-token.md) | 기기 인증 토큰 구조 | 서명만 검증하는 30분 access token과 해시로만 저장하는 refresh token을 나눠 써요 |
 | [0008](0008-limit-device-registration-retry-window.md) | 기기 등록 재시도 창 | 등록 후 5분 이내의 재시도에만 토큰을 다시 발급해 요청 식별자의 유효 기간을 잘라요 |
 | [0009](0009-keep-previous-refresh-token-on-registration-retry.md) | 등록 재시도의 이전 토큰 처리 | 재시도에서 기존 토큰을 폐기하지 않아요. 경합에서 정상 응답을 받은 앱이 잠기기 때문이에요 |
+| [0010](0010-use-alloy-and-grafana-cloud-for-production-monitoring.md) | 운영 모니터링에 Alloy와 Grafana Cloud 사용 | Proposed: 운영 EC2에서 수집하고 지표·로그 저장과 조회는 Cloud에 맡겨요 |
+| [0011](0011-use-servlet-filter-for-http-request-logging.md) | HTTP 요청 로그와 추적 문맥을 필터에서 처리 | Proposed: 동기 MVC 처리 전후에 추적 문맥을 관리하고 오류·느린 요청을 기록해요 |
+| [0012](0012-limit-exported-http-logs-and-use-aggregate-metrics.md) | 요청 통계 집계와 외부 전송 로그 제한 | Proposed: 지표로 요청 통계를 관찰하고 검토된 서버 오류·느린 요청 로그만 전송해요 |
 
 ## AI 사용
 

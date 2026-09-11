@@ -6,3 +6,22 @@ spring:
 
 server:
   forward-headers-strategy: native
+
+management:
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: prod
+    distribution:
+      # 시계열 수를 제한하기 위한 버킷 경계이며, 확정된 서비스 SLO는 아니다.
+      slo:
+        "[http.server.requests]": 50ms,100ms,200ms,300ms,500ms,750ms,1s,2s,3s,5s,10s
+        "[pheeeew.sigh.map.query]": 10ms,25ms,50ms,100ms,200ms,300ms,500ms,1s,2s,5s
