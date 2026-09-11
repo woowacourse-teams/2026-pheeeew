@@ -39,6 +39,7 @@ import com.pheeeew.feature.map.map.MapProjectionSnapshot
 import com.pheeeew.feature.map.overlay.BreathControl
 import com.pheeeew.feature.map.overlay.ErrorSnackbar
 import com.pheeeew.feature.map.overlay.MapOverlay
+import com.pheeeew.feature.map.overlay.MemoEditor
 import com.pheeeew.feature.map.overlay.SighPhase
 import com.pheeeew.feature.map.star.StarAgePolicy
 import com.pheeeew.feature.map.star.StarVisualPolicy
@@ -54,7 +55,11 @@ fun MapScreen(
     onZoomOutClick: () -> Unit,
     onMyLocationClick: () -> Unit,
     onBoundsChanged: (SighBounds) -> Unit,
-    onRegisterSighAfterExplosion: () -> Unit,
+    onBeginMemoAfterExplosion: () -> Unit,
+    onSubmitMemo: (String) -> Unit,
+    onSkipMemo: () -> Unit,
+    onDismissMemo: () -> Unit,
+    onRetrySighCreation: () -> Unit,
     onCancelFailedSighRegistration: () -> Unit,
     onConsumeFocusRequest: (String) -> Unit,
     onEnsureLocationPermission: suspend () -> LocationPermissionStatus,
@@ -79,7 +84,11 @@ fun MapScreen(
     var cancelSignal by remember { mutableStateOf(0) }
     var starAgeRevision by remember { mutableIntStateOf(0) }
     val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
-    val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting
+    val memoDraft = (uiState.sighRelease as? SighReleaseState.EditingMemo)?.draft
+    val isMemoEditing = memoDraft != null
+    val retryableSighError =
+        (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
+    val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing
 
     val hiddenMarkerId =
         uiState.viewport.focusRequest?.id?.takeIf {
@@ -154,7 +163,7 @@ fun MapScreen(
             onZoomOutClick = onZoomOutClick,
             onMyLocationClick = onMyLocationClick,
             errorMessage = uiState.toBannerMessage(),
-            controlsEnabled = sighPhase == SighPhase.Idle && !isSighSubmitting,
+            controlsEnabled = sighPhase == SighPhase.Idle && uiState.sighRelease is SighReleaseState.Idle,
         )
 
         if (isSighInteractionVisible) {
@@ -174,6 +183,8 @@ fun MapScreen(
                     text =
                         if (isSighSubmitting) {
                             "별을 만드는 중이에요"
+                        } else if (isMemoEditing) {
+                            ""
                         } else {
                             when (sighPhase) {
                                 SighPhase.Listening -> "후– 하고\n한숨을 내쉬어보세요"
@@ -194,53 +205,67 @@ fun MapScreen(
         if (isActive) {
             Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding().align(Alignment.BottomCenter)) {
                 if (!isSighSubmitting) {
-                    BreathControl(
-                        enabled =
-                            uiState.sighRelease is SighReleaseState.Idle &&
-                                !isFlightInProgress,
-                        onExplosionFinished = { origin ->
-                            pendingFlightOrigin = origin
-                            onRegisterSighAfterExplosion()
-                        },
-                        onMicrophoneError = { error ->
-                            if (error == BreathInputError.PermissionDenied) {
-                                showMicrophonePermissionDialog = true
-                            } else {
-                                microphoneError = error
-                            }
-                        },
-                        ensureLocationPermission = {
-                            when (onEnsureLocationPermission()) {
-                                LocationPermissionStatus.Granted -> {
-                                    true
+                    if (uiState.sighRelease is SighReleaseState.Idle) {
+                        BreathControl(
+                            enabled = !isFlightInProgress,
+                            onExplosionFinished = { origin ->
+                                pendingFlightOrigin = origin
+                                onBeginMemoAfterExplosion()
+                            },
+                            onMicrophoneError = { error ->
+                                if (error == BreathInputError.PermissionDenied) {
+                                    showMicrophonePermissionDialog = true
+                                } else {
+                                    microphoneError = error
                                 }
+                            },
+                            ensureLocationPermission = {
+                                when (onEnsureLocationPermission()) {
+                                    LocationPermissionStatus.Granted -> {
+                                        true
+                                    }
 
-                                LocationPermissionStatus.ServicesDisabled -> {
-                                    showLocationServicesDialog = true
-                                    false
-                                }
+                                    LocationPermissionStatus.ServicesDisabled -> {
+                                        showLocationServicesDialog = true
+                                        false
+                                    }
 
-                                LocationPermissionStatus.PermanentlyDenied -> {
-                                    showLocationPermissionDialog = true
-                                    false
-                                }
+                                    LocationPermissionStatus.PermanentlyDenied -> {
+                                        showLocationPermissionDialog = true
+                                        false
+                                    }
 
-                                LocationPermissionStatus.Denied -> {
-                                    false
+                                    LocationPermissionStatus.Denied -> {
+                                        false
+                                    }
                                 }
-                            }
-                        },
-                        onPhaseChanged = { sighPhase = it },
-                        cancelSignal = cancelSignal,
-                        requestPermissionOnLaunch = false,
-                    )
+                            },
+                            onPhaseChanged = { sighPhase = it },
+                            cancelSignal = cancelSignal,
+                            requestPermissionOnLaunch = false,
+                        )
+                    }
                 }
                 ErrorSnackbar(
-                    message = microphoneError?.toKoreanMessage(),
+                    message = microphoneError?.toKoreanMessage() ?: retryableSighError?.message,
                     onDismiss = { microphoneError = null },
+                    onClick = retryableSighError?.let { { onRetrySighCreation() } },
                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 8.dp, end = 16.dp),
                 )
             }
+        }
+
+        memoDraft?.let { draft ->
+            MemoEditor(
+                draft = draft,
+                submitting = false,
+                onSubmit = onSubmitMemo,
+                onSkip = onSkipMemo,
+                onDismiss = {
+                    pendingFlightOrigin = null
+                    onDismissMemo()
+                },
+            )
         }
 
         val activeId = activeFlightId
@@ -349,7 +374,11 @@ private fun MapScreenPreview() {
             onZoomOutClick = {},
             onMyLocationClick = {},
             onBoundsChanged = {},
-            onRegisterSighAfterExplosion = {},
+            onBeginMemoAfterExplosion = {},
+            onSubmitMemo = {},
+            onSkipMemo = {},
+            onDismissMemo = {},
+            onRetrySighCreation = {},
             onCancelFailedSighRegistration = {},
             onConsumeFocusRequest = {},
             onEnsureLocationPermission = { LocationPermissionStatus.Granted },

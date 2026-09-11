@@ -178,9 +178,6 @@ class MapViewModel(
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.EditingMemo(draft)) }
     }
 
-    @Deprecated("메모 입력을 시작하려면 beginMemoAfterExplosion을 사용합니다.")
-    fun registerSighAfterExplosion() = beginMemoAfterExplosion()
-
     fun submitMemo(rawMemo: String) {
         val state = _uiState.value.sighRelease as? SighReleaseState.EditingMemo ?: return
         val memo =
