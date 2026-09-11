@@ -38,6 +38,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class MapViewModelTest {
@@ -335,6 +336,77 @@ class MapViewModelTest {
                 assertEquals(2, repository.createdCommands.size)
                 assertEquals(repository.createdCommands.first(), repository.createdCommands.last())
                 assertIs<SighReleaseState.Idle>(viewModel.uiState.value.sighRelease)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `메모 건너뛰기는 null payload를 한 번만 제출한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository = RecordingSighRepository()
+                val viewModel =
+                    createViewModel(
+                        repository = repository,
+                        locationDependencies =
+                            locationDependencies(
+                                LocationState.Available(
+                                    CurrentLocation(
+                                        latitude = 37.55,
+                                        longitude = 126.95,
+                                        accuracyMeters = 5f,
+                                        capturedAtMillis = 1L,
+                                    ),
+                                ),
+                            ),
+                    )
+
+                viewModel.beginMemoAfterExplosion()
+                viewModel.skipMemo()
+                viewModel.skipMemo()
+                runCurrent()
+
+                assertEquals(1, repository.createdCommands.size)
+                assertEquals(null, repository.createdCommands.single().memo)
+                advanceTimeBy(2_000)
+                runCurrent()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `메모 작성 중 닫기는 서버 요청 없이 draft를 정리한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository = RecordingSighRepository()
+                val viewModel =
+                    createViewModel(
+                        repository = repository,
+                        locationDependencies =
+                            locationDependencies(
+                                LocationState.Available(
+                                    CurrentLocation(
+                                        latitude = 37.55,
+                                        longitude = 126.95,
+                                        accuracyMeters = 5f,
+                                        capturedAtMillis = 1L,
+                                    ),
+                                ),
+                            ),
+                    )
+
+                viewModel.beginMemoAfterExplosion()
+                assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease)
+                viewModel.dismissMemo()
+
+                assertIs<SighReleaseState.Idle>(viewModel.uiState.value.sighRelease)
+                assertTrue(repository.createdCommands.isEmpty())
             } finally {
                 Dispatchers.resetMain()
             }
