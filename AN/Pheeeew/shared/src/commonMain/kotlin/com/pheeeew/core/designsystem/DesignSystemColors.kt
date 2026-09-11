@@ -21,9 +21,4 @@ object DesignSystemColors {
     const val STAR_ORANGE_HEX = "#F2A05C"
     const val STAR_CORE_HEX = "#FFF4CC"
     const val STAR_UNKNOWN_HEX = "#F4F2EC"
-
-    // Native renderer migration aliases. Remove after platform renderers consume the palette names.
-    const val STAR_FRESH_HEX = STAR_BLUE_HEX
-    const val STAR_WARM_HEX = STAR_EXISTING_HEX
-    const val STAR_DEEP_HEX = STAR_ORANGE_HEX
 }

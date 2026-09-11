@@ -170,9 +170,9 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
 
     private func addRuntimeSourcesAndLayers(to style: MLNStyle) {
         let starImages: [(String, UIColor)] = [
-            (MapLibreDarkStyle.starFreshImageID, MapLibreDarkStyle.starFreshColor),
-            (MapLibreDarkStyle.starWarmImageID, MapLibreDarkStyle.starWarmColor),
-            (MapLibreDarkStyle.starDeepImageID, MapLibreDarkStyle.starDeepColor),
+            (MapLibreDarkStyle.starBlueImageID, MapLibreDarkStyle.starBlueColor),
+            (MapLibreDarkStyle.starExistingImageID, MapLibreDarkStyle.starExistingColor),
+            (MapLibreDarkStyle.starOrangeImageID, MapLibreDarkStyle.starOrangeColor),
             (MapLibreDarkStyle.starUnknownImageID, MapLibreDarkStyle.starUnknownColor),
         ]
         for (imageID, color) in starImages {

@@ -26,8 +26,5 @@ internal object MapDarkStyle {
     const val CURRENT_LOCATION_BORDER_LAYER_ID = "current-location-border-layer"
     const val CURRENT_LOCATION_LAYER_ID = "current-location-layer"
 
-    const val WARM_YELLOW = "#FFD166"
-    const val WARM_GLOW = "#FFB84D"
-    const val IVORY = "#FFF4CC"
     const val LOCATION_BLUE = "#2F80ED"
 }
