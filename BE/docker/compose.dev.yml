@@ -35,6 +35,8 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/pheeeew
       DB_USERNAME: ${DB_USERNAME:?}
       DB_PASSWORD: ${DB_PASSWORD:?}
+      JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64:?}
+      JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?}
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60"
     depends_on:
       postgres:

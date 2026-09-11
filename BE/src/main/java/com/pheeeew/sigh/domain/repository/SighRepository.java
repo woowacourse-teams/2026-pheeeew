@@ -2,7 +2,9 @@ package com.pheeeew.sigh.domain.repository;
 
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.projection.GeneratedLocation;
+import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,6 +22,8 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
      * 비어 멱등 복구가 실패한다(ADR-0004, ADR-0005).
      */
     Optional<Sigh> findByRequestId(UUID requestId);
+
+    Optional<Sigh> findByIdAndDeletedAtIsNull(Long id);
 
     @Query(
             value = """
@@ -64,6 +68,70 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             @Param("minLatitude") double minLatitude,
             @Param("maxLongitude") double maxLongitude,
             @Param("maxLatitude") double maxLatitude,
+            @Param("limit") int limit
+    );
+
+    @Query(
+            value = """
+                    WITH bounds AS (
+                        SELECT ST_MakeEnvelope(
+                            :minLongitude,
+                            :minLatitude,
+                            CASE
+                                WHEN :minLongitude < :maxLongitude THEN :maxLongitude
+                                ELSE 180.0
+                            END,
+                            :maxLatitude,
+                            4326
+                        ) AS area
+                        UNION ALL
+                        SELECT ST_MakeEnvelope(
+                            -180.0,
+                            :minLatitude,
+                            :maxLongitude,
+                            :maxLatitude,
+                            4326
+                        ) AS area
+                        WHERE :minLongitude > :maxLongitude
+                    ), latest_sighs AS (
+                        SELECT
+                            sigh.id,
+                            sigh.location,
+                            sigh.created_at,
+                            sigh.nickname,
+                            sigh.memo
+                        FROM sighs sigh
+                        CROSS JOIN bounds
+                        WHERE sigh.deleted_at IS NULL
+                          AND sigh.created_at < :snapshotAt
+                          AND sigh.location && bounds.area
+                          AND ST_Intersects(sigh.location, bounds.area)
+                        ORDER BY sigh.created_at DESC, sigh.id DESC
+                        LIMIT :maxCount
+                    )
+                    SELECT
+                        latest_sighs.id AS id,
+                        ST_X(latest_sighs.location) AS longitude,
+                        ST_Y(latest_sighs.location) AS latitude,
+                        latest_sighs.created_at AS "createdAt",
+                        latest_sighs.nickname AS nickname,
+                        latest_sighs.memo AS memo
+                    FROM latest_sighs
+                    WHERE (latest_sighs.created_at, latest_sighs.id) < (:lastItemCreatedAt, :lastId)
+                    ORDER BY latest_sighs.created_at DESC, latest_sighs.id DESC
+                    LIMIT :limit
+                    """,
+            nativeQuery = true
+    )
+    List<SighListProjection> findListWithinBounds(
+            @Param("minLongitude") double minLongitude,
+            @Param("minLatitude") double minLatitude,
+            @Param("maxLongitude") double maxLongitude,
+            @Param("maxLatitude") double maxLatitude,
+            @Param("snapshotAt") Instant snapshotAt,
+            @Param("lastItemCreatedAt") Instant lastItemCreatedAt,
+            @Param("lastId") long lastId,
+            @Param("maxCount") int maxCount,
             @Param("limit") int limit
     );
 

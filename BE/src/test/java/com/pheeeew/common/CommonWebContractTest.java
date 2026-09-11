@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -34,6 +35,17 @@ class CommonWebContractTest {
         // given / when
         RestTestClient.ResponseSpec result = client.post()
                 .uri("/test/required-body")
+                .exchange();
+
+        // then
+        오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
+    }
+
+    @Test
+    void 경로_변수_형식이_올바르지_않으면_COMMON_001을_반환한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri("/test/path-variable/not-a-number")
                 .exchange();
 
         // then
@@ -93,6 +105,12 @@ class CommonWebContractTest {
         @PostMapping("/required-body")
         void requiredBody(
                 @RequestBody TestRequest request
+        ) {
+        }
+
+        @GetMapping("/path-variable/{id}")
+        void pathVariable(
+                @PathVariable Long id
         ) {
         }
 

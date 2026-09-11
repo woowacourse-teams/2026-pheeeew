@@ -1,0 +1,59 @@
+name: pheeeew-monitoring
+
+services:
+  alloy:
+    image: grafana/alloy:v1.19.2
+    user: "473:473"
+    container_name: pheeeew-prod-alloy
+    restart: unless-stopped
+    command:
+      - run
+      - /etc/alloy/config.alloy
+      - --storage.path=/var/lib/alloy/data
+      - --server.http.listen-addr=127.0.0.1:12345
+      - --disable-reporting
+    environment:
+      GRAFANA_METRICS_URL: ${GRAFANA_METRICS_URL:?Set GRAFANA_METRICS_URL in .env.alloy}
+      GRAFANA_METRICS_USER: ${GRAFANA_METRICS_USER:?Set GRAFANA_METRICS_USER in .env.alloy}
+      GRAFANA_LOGS_URL: ${GRAFANA_LOGS_URL:?Set GRAFANA_LOGS_URL in .env.alloy}
+      GRAFANA_LOGS_USER: ${GRAFANA_LOGS_USER:?Set GRAFANA_LOGS_USER in .env.alloy}
+      GRAFANA_CLOUD_TOKEN: ${GRAFANA_CLOUD_TOKEN:?Set GRAFANA_CLOUD_TOKEN in .env.alloy}
+      GOMEMLIMIT: 192MiB
+    volumes:
+      - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - app-logs:/var/log/pheeeew:ro
+      - alloy-data:/var/lib/alloy/data
+    networks:
+      - app
+    healthcheck:
+      test: ["CMD", "bash", "-ec", 'exec 3<>/dev/tcp/127.0.0.1/12345; printf "GET /-/ready HTTP/1.0\r\n\r\n" >&3; read -r response <&3; [[ "$$response" == *" 200 "* ]]']
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    mem_limit: 256m
+    cpus: 0.25
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    init: true
+
+networks:
+  app:
+    external: true
+    name: pheeeew-prod_default
+
+volumes:
+  app-logs:
+    external: true
+    name: pheeeew-prod_app-logs
+  alloy-data:

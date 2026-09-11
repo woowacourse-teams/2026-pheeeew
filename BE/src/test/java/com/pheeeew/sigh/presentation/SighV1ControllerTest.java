@@ -5,10 +5,12 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.pheeeew.common.exception.GlobalExceptionHandler;
-import com.pheeeew.sigh.application.SighMapItem;
-import com.pheeeew.sigh.application.SighMapResult;
-import com.pheeeew.sigh.application.SighSaveResult;
 import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.dto.SighMapItem;
+import com.pheeeew.sigh.application.dto.SighMapResult;
+import com.pheeeew.sigh.application.dto.SighResult;
+import com.pheeeew.sigh.application.dto.SighSaveResult;
+import com.pheeeew.sigh.application.dto.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import com.pheeeew.sigh.presentation.dto.SighCreateV1Request;
@@ -39,6 +41,8 @@ class SighV1ControllerTest {
     private static final UUID REQUEST_ID = UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b");
     private static final Instant CREATED_AT = Instant.parse("2026-08-31T10:30:00Z");
     private static final Instant NEXT_CREATED_AT = Instant.parse("2026-08-31T10:31:00Z");
+    private static final SighSearchBounds BOUNDS = SighSearchBounds.of(127.10, 37.30, 127.20, 37.40);
+    private static final SighSearchBounds DATE_LINE_BOUNDS = SighSearchBounds.of(170.0, -10.0, -170.0, 10.0);
 
     private final RestTestClient client;
 
@@ -53,7 +57,7 @@ class SighV1ControllerTest {
     @Test
     void 지도_영역의_한숨을_GeoJSON_FeatureCollection으로_반환한다() {
         // given
-        when(sighService.findAllWithinBounds(127.10, 37.30, 127.20, 37.40))
+        when(sighService.findAllWithinBounds(BOUNDS))
                 .thenReturn(SighMapResult.of(
                         List.of(
                                 SighMapItem.of(2L, 127.1109, 37.3826, NEXT_CREATED_AT),
@@ -102,13 +106,13 @@ class SighV1ControllerTest {
                           ]
                         }
                         """, JsonCompareMode.STRICT);
-        verify(sighService).findAllWithinBounds(127.10, 37.30, 127.20, 37.40);
+        verify(sighService).findAllWithinBounds(BOUNDS);
     }
 
     @Test
     void 지도_영역에_한숨이_없으면_빈_FeatureCollection을_반환한다() {
         // given
-        when(sighService.findAllWithinBounds(127.10, 37.30, 127.20, 37.40))
+        when(sighService.findAllWithinBounds(BOUNDS))
                 .thenReturn(SighMapResult.of(List.of(), false));
 
         // when
@@ -133,7 +137,7 @@ class SighV1ControllerTest {
     @Test
     void 날짜변경선을_가로지르는_지도_영역을_조회한다() {
         // given
-        when(sighService.findAllWithinBounds(170.0, -10.0, -170.0, 10.0))
+        when(sighService.findAllWithinBounds(DATE_LINE_BOUNDS))
                 .thenReturn(SighMapResult.of(List.of(), false));
 
         // when
@@ -144,7 +148,7 @@ class SighV1ControllerTest {
 
         // then
         result.expectStatus().isOk();
-        verify(sighService).findAllWithinBounds(170.0, -10.0, -170.0, 10.0);
+        verify(sighService).findAllWithinBounds(DATE_LINE_BOUNDS);
     }
 
     @ParameterizedTest
@@ -305,13 +309,15 @@ class SighV1ControllerTest {
     }
 
     private SighSaveResult 기본_저장_결과(boolean created) {
-        return new SighSaveResult(
-                42L,
-                126.9774,
-                37.5669,
-                CREATED_AT,
-                null,
-                "외로운 회사원",
+        return SighSaveResult.of(
+                SighResult.of(
+                        42L,
+                        126.9774,
+                        37.5669,
+                        CREATED_AT,
+                        null,
+                        "외로운 회사원"
+                ),
                 created
         );
     }

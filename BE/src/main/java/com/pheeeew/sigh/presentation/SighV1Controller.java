@@ -1,8 +1,9 @@
 package com.pheeeew.sigh.presentation;
 
-import com.pheeeew.sigh.application.SighMapResult;
-import com.pheeeew.sigh.application.SighSaveResult;
 import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.dto.SighMapResult;
+import com.pheeeew.sigh.application.dto.SighResult;
+import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.presentation.dto.SighCreateV1Request;
 import com.pheeeew.sigh.presentation.dto.SighFeature;
 import com.pheeeew.sigh.presentation.dto.SighMapRequest;
@@ -34,12 +35,7 @@ public class SighV1Controller implements SighV1ControllerApi {
     public ResponseEntity<SighMapResponse> findAllWithinBounds(
             @Valid @ModelAttribute SighMapRequest request
     ) {
-        SighMapResult result = sighService.findAllWithinBounds(
-                request.minLongitude(),
-                request.minLatitude(),
-                request.maxLongitude(),
-                request.maxLatitude()
-        );
+        SighMapResult result = sighService.findAllWithinBounds(request.toBounds());
 
         return ResponseEntity.ok()
                 .contentType(GEO_JSON)
@@ -52,6 +48,7 @@ public class SighV1Controller implements SighV1ControllerApi {
             @Valid @RequestBody SighCreateV1Request request
     ) {
         SighSaveResult result = sighService.save(request.requestId(), request.longitude(), request.latitude());
+        SighResult sigh = result.sigh();
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {
@@ -61,10 +58,8 @@ public class SighV1Controller implements SighV1ControllerApi {
         return ResponseEntity.status(status)
                 .contentType(GEO_JSON)
                 .body(SighFeature.of(
-                        result.id(),
-                        result.longitude(),
-                        result.latitude(),
-                        SighV1Properties.from(result.createdAt())
+                        sigh,
+                        SighV1Properties.from(sigh.createdAt())
                 ));
     }
 }
