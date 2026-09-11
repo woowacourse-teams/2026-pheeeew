@@ -12,6 +12,7 @@ object IosBreathBridge {
     private var permissionHandler: (((Boolean) -> Unit) -> Unit)? = null
     private var strengthHandler: ((Float) -> Unit)? = null
     private var errorHandler: ((BreathInputError) -> Unit)? = null
+    private val strengthProcessor = BreathStrengthProcessor()
 
     fun attach(
         onStart: () -> Unit,
@@ -27,6 +28,7 @@ object IosBreathBridge {
         onStrengthChanged: (Float) -> Unit,
         onError: (BreathInputError) -> Unit,
     ) {
+        strengthProcessor.reset()
         strengthHandler = onStrengthChanged
         errorHandler = onError
         startHandler?.invoke() ?: errorHandler?.invoke(BreathInputError.MicrophoneUnavailable)
@@ -41,14 +43,26 @@ object IosBreathBridge {
 
     internal fun stop() {
         stopHandler?.invoke()
-        strengthHandler?.invoke(0f)
+        strengthProcessor.reset()
         strengthHandler = null
         errorHandler =
             null
     }
 
-    fun updateStrength(value: Double) {
-        strengthHandler?.invoke(value.toFloat().coerceIn(0f, 1f))
+    fun updateMetrics(
+        amplitude: Double,
+        lowFrequencyPresence: Double,
+        noisyTexture: Double,
+    ) {
+        val strength =
+            strengthProcessor.process(
+                BreathSignalMetrics(
+                    amplitude = amplitude.toFloat(),
+                    lowFrequencyPresence = lowFrequencyPresence.toFloat(),
+                    noisyTexture = noisyTexture.toFloat(),
+                ),
+            )
+        strengthHandler?.invoke(strength)
     }
 
     fun updateError(errorName: String) {
