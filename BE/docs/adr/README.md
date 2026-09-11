@@ -86,10 +86,17 @@ Accepted (YYYY-MM-DD)
 | 번호 | 결정 | 한 줄 요약 |
 | --- | --- | --- |
 | [0001](0001-use-postgresql-with-postgis.md) | PostgreSQL과 PostGIS 사용 | 지도 영역 조회를 공간 타입·함수와 GiST 인덱스로 처리해요 |
-| [0002](0002-use-grid-center-for-sigh-location.md) | 격자 중심과 최종 표시 위치 분리 | 클라이언트는 격자 중심만 보내고 서버가 최종 표시 위치를 한 번 정해요 |
+| [0002](0002-use-grid-center-for-sigh-location.md) | 격자 중심과 최종 표시 위치 분리 | ADR-0006으로 대체됐어요. 이전 격자 계약의 근거를 보존해요 |
 | [0003](0003-share-postgis-testcontainer-per-jvm.md) | PostGIS 테스트 자원 공유 | 컨테이너와 같은 Data JPA Context를 테스트 JVM 단위로 공유해요 |
 | [0004](0004-skip-transaction-on-idempotent-save.md) | 멱등 저장 경로의 트랜잭션 | 선조회, 삽입, 재조회를 독립된 트랜잭션으로 두어 제약 위반 뒤에도 복구해요 |
 | [0005](0005-soft-delete-sigh.md) | 한숨 소프트 삭제 | 한숨을 지우지 않고 표시만 해서 신고 이력과 외래 키를 함께 지켜요 |
+| [0006](0006-use-independent-uniform-disks-for-sigh-location.md) | 클라이언트·서버 독립 균등 원 이동 | 두 단계에서 각각 반경 300m를 적용해요. 구형 앱 전환·실제 앱 검증 전에는 배포하지 않아요 |
+| [0007](0007-split-signed-access-token-and-stored-refresh-token.md) | 기기 인증 토큰 구조 | 서명만 검증하는 30분 access token과 해시로만 저장하는 refresh token을 나눠 써요 |
+| [0008](0008-limit-device-registration-retry-window.md) | 기기 등록 재시도 창 | 등록 후 5분 이내의 재시도에만 토큰을 다시 발급해 요청 식별자의 유효 기간을 잘라요 |
+| [0009](0009-keep-previous-refresh-token-on-registration-retry.md) | 등록 재시도의 이전 토큰 처리 | 재시도에서 기존 토큰을 폐기하지 않아요. 경합에서 정상 응답을 받은 앱이 잠기기 때문이에요 |
+| [0010](0010-use-alloy-and-grafana-cloud-for-production-monitoring.md) | 운영 모니터링에 Alloy와 Grafana Cloud 사용 | Proposed: 운영 EC2에서 수집하고 지표·로그 저장과 조회는 Cloud에 맡겨요 |
+| [0011](0011-use-servlet-filter-for-http-request-logging.md) | HTTP 요청 로그와 추적 문맥을 필터에서 처리 | Proposed: 동기 MVC 처리 전후에 추적 문맥을 관리하고 오류·느린 요청을 기록해요 |
+| [0012](0012-limit-exported-http-logs-and-use-aggregate-metrics.md) | 요청 통계 집계와 외부 전송 로그 제한 | Proposed: 지표로 요청 통계를 관찰하고 검토된 서버 오류·느린 요청 로그만 전송해요 |
 
 ## AI 사용
 

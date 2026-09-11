@@ -18,13 +18,13 @@ public record SighCreateV2Request(
         @NotNull(message = "위도는 필수입니다.")
         @DecimalMin(value = "-90.0", message = "위도는 -90 이상이어야 합니다.")
         @DecimalMax(value = "90.0", message = "위도는 90 이하여야 합니다.")
-        @Schema(description = "클라이언트가 EPSG:5179에서 계산한 300m 격자 중심 위도", minimum = "-90", maximum = "90", example = "37.5657576255")
+        @Schema(description = "실제 위치 주변 EPSG:5179 반경 300m 원에서 클라이언트가 면적 균등 추첨한 근사 좌표의 WGS84 위도. 실제 위도와 격자 중심은 전송하지 않습니다.", minimum = "-90", maximum = "90", example = "37.5657576255")
         Double latitude,
 
         @NotNull(message = "경도는 필수입니다.")
         @DecimalMin(value = "-180.0", message = "경도는 -180 이상이어야 합니다.")
         @DecimalMax(value = "180.0", message = "경도는 180 이하여야 합니다.")
-        @Schema(description = "클라이언트가 EPSG:5179에서 계산한 300m 격자 중심 경도", minimum = "-180", maximum = "180", example = "126.9774258201")
+        @Schema(description = "실제 위치 주변 EPSG:5179 반경 300m 원에서 클라이언트가 면적 균등 추첨한 근사 좌표의 WGS84 경도. 실제 경도와 격자 중심은 전송하지 않습니다.", minimum = "-180", maximum = "180", example = "126.9774258201")
         Double longitude,
 
         @Schema(

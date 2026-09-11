@@ -1,5 +1,6 @@
 package com.pheeeew.sigh.presentation.dto;
 
+import com.pheeeew.sigh.application.dto.SighSearchBounds;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
@@ -45,5 +46,9 @@ public record SighMapRequest(
     @Schema(hidden = true)
     public boolean isLatitudeRangeValid() {
         return minLatitude == null || maxLatitude == null || minLatitude < maxLatitude;
+    }
+
+    public SighSearchBounds toBounds() {
+        return SighSearchBounds.of(minLongitude, minLatitude, maxLongitude, maxLatitude);
     }
 }
