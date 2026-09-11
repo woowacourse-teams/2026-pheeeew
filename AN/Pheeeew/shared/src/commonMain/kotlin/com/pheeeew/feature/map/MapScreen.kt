@@ -90,15 +90,6 @@ fun MapScreen(
         (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
     val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing
     val currentLocation = (uiState.location.state as? LocationState.Available)?.location
-    val markerCenter =
-        currentLocation?.let { location ->
-            MapPoint(
-                id = "current-location",
-                latitude = location.latitude,
-                longitude = location.longitude,
-            )
-        } ?: DEFAULT_MAP_POINT
-
     val hiddenMarkerId =
         uiState.viewport.focusRequest?.id?.takeIf {
             pendingFlightOrigin != null && landedFlightId != it
@@ -123,14 +114,9 @@ fun MapScreen(
     }
 
     val sighMarkers =
-        remember(uiState.sighs, hiddenMarkerId, starAgeRevision, markerCenter) {
+        remember(uiState.sighs, hiddenMarkerId, starAgeRevision) {
             val now = Clock.System.now()
-            uiState.toSighMarkers(hiddenMarkerId = hiddenMarkerId, now = now) +
-                if (MapDebugStarFixtures.ENABLED) {
-                    MapDebugStarFixtures.markers(center = markerCenter, now = now)
-                } else {
-                    emptyList()
-                }
+            uiState.toSighMarkers(hiddenMarkerId = hiddenMarkerId, now = now)
         }
 
     LaunchedEffect(uiState.viewport.focusRequest?.id, projectionSnapshot.revision) {
