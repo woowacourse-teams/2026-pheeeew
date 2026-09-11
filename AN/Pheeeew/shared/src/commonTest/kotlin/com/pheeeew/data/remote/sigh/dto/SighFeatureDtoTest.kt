@@ -44,6 +44,41 @@ class SighFeatureDtoTest {
         assertEquals("날아가는 고라니", result.nickname)
         assertEquals(result.id, result.toPin().id)
         assertEquals(result.coordinate, result.toPin().coordinate)
+        assertEquals(result.createdAt, result.toPin().createdAt)
+    }
+
+    @Test
+    fun `v1 Feature의 createdAt을 지도 핀으로 전달한다`() {
+        val feature =
+            SighFeatureDto(
+                type = "Feature",
+                id = 42L,
+                geometry =
+                    PointGeometryDto(
+                        type = "Point",
+                        coordinates = listOf(126.9780, 37.5665),
+                    ),
+                properties = SighV1PropertiesDto(createdAt = "2026-09-01T12:00:00Z"),
+            )
+
+        assertEquals(Instant.parse("2026-09-01T12:00:00Z"), feature.toSighPin().createdAt)
+    }
+
+    @Test
+    fun `v1 Feature의 잘못된 createdAt은 null로 변환한다`() {
+        val feature =
+            SighFeatureDto(
+                type = "Feature",
+                id = 42L,
+                geometry =
+                    PointGeometryDto(
+                        type = "Point",
+                        coordinates = listOf(126.9780, 37.5665),
+                    ),
+                properties = SighV1PropertiesDto(createdAt = "not-an-instant"),
+            )
+
+        assertNull(feature.toSighPin().createdAt)
     }
 
     @Test
