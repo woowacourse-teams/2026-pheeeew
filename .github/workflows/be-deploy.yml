@@ -268,7 +268,7 @@ jobs:
           chmod 600 .env.alloy
           docker compose --env-file .env.alloy -f compose.monitoring.yml config --quiet
           docker compose --env-file .env.alloy -f compose.monitoring.yml pull alloy
-          docker compose --env-file .env.alloy -f compose.monitoring.yml run --rm --no-deps alloy validate /etc/alloy/config.alloy
+          docker compose --env-file .env.alloy -f compose.monitoring.yml run --rm --no-deps --interactive=false -T alloy validate /etc/alloy/config.alloy
           docker compose --env-file .env.alloy -f compose.monitoring.yml up -d --force-recreate --wait --wait-timeout 60
           REMOTE
 
