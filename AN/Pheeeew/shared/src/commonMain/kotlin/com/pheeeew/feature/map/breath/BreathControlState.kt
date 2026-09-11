@@ -15,8 +15,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
+import kotlin.time.Duration
 import kotlin.time.Duration.Companion.ZERO
-import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
 /**
@@ -34,7 +34,7 @@ class BreathControlState(
     private data class MeasuredStrength(
         val sessionId: Long,
         val strength: Float,
-        val at: TimeMark,
+        val at: Duration,
     )
 
     private val controlEvents = Channel<BreathSessionEvent>(Channel.UNLIMITED)
@@ -47,7 +47,8 @@ class BreathControlState(
     private var permissionWarmup: Deferred<Boolean>? = null
     private var permissionJob: Job? = null
     private var locationPermissionJob: Job? = null
-    private var lastSampleMark: TimeMark? = null
+    private var lastSampleAt: Duration? = null
+    private val sampleTimeOrigin = TimeSource.Monotonic.markNow()
 
     private val eventJob =
         scope.launch {
@@ -107,7 +108,7 @@ class BreathControlState(
         permissionWarmup?.cancel()
         permissionJob?.cancel()
         locationPermissionJob?.cancel()
-        lastSampleMark = null
+        lastSampleAt = null
         breathInput.stop()
         eventJob.cancel()
     }
@@ -120,13 +121,13 @@ class BreathControlState(
         val currentState = _session.value
         if (sample.sessionId != currentState.sessionId || !currentState.isInputActive()) return
 
-        val previousMark = lastSampleMark ?: sample.at
-        lastSampleMark = sample.at
+        val previousSampleAt = lastSampleAt ?: sample.at
+        lastSampleAt = sample.at
         handle(
             BreathSessionEvent.StrengthSample(
                 sessionId = sample.sessionId,
                 strength = sample.strength,
-                elapsed = previousMark.elapsedNow().coerceAtLeast(ZERO),
+                elapsed = (sample.at - previousSampleAt).coerceAtLeast(ZERO),
             ),
         )
     }
@@ -173,7 +174,7 @@ class BreathControlState(
         while (strengthSamples.tryReceive().isSuccess) {
             // Drop samples that were queued before this session started.
         }
-        lastSampleMark = TimeSource.Monotonic.markNow()
+        lastSampleAt = sampleTimeOrigin.elapsedNow()
         runCatching {
             breathInput.start(
                 onStrengthChanged = { strength ->
@@ -181,7 +182,7 @@ class BreathControlState(
                         MeasuredStrength(
                             sessionId = sessionId,
                             strength = strength,
-                            at = TimeSource.Monotonic.markNow(),
+                            at = sampleTimeOrigin.elapsedNow(),
                         ),
                     )
                 },
@@ -197,7 +198,7 @@ class BreathControlState(
     private fun stopInput() {
         permissionJob?.cancel()
         locationPermissionJob?.cancel()
-        lastSampleMark = null
+        lastSampleAt = null
         while (strengthSamples.tryReceive().isSuccess) {
             // Drop samples from the stopped session.
         }

@@ -185,6 +185,7 @@ private class AndroidBreathInput(
         var previousBand = 0.0
         while (recording) {
             val count = source.read(samples, 0, samples.size, AudioRecord.READ_BLOCKING)
+            if (generation != inputGeneration) return
             if (count <= 0) continue
             var energy = 0.0
             var lowEnergy = 0.0

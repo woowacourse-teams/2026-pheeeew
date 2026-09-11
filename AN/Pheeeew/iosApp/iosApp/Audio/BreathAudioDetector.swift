@@ -66,6 +66,7 @@ final class BreathAudioDetector {
 
     private func process(_ buffer: AVAudioPCMBuffer) {
         guard wantsRecording, let channel = buffer.floatChannelData?.pointee, buffer.frameLength > 0 else { return }
+        let generation = sessionGeneration
         let rate = buffer.format.sampleRate
         let dt = 1.0 / rate
         let hpRC = 1.0 / (2.0 * Double.pi * 80.0)
@@ -90,7 +91,7 @@ final class BreathAudioDetector {
         let lowPresence = min(max((lowEnergy / Double(count) / relevant - 0.12) / 0.58, 0), 1)
         let texture = min(max((Double(crossings) / Double(count) - 0.035) / 0.16, 0), 1)
         DispatchQueue.main.async { [weak self] in
-            guard self?.wantsRecording == true else { return }
+            guard let self, self.wantsRecording, self.sessionGeneration == generation else { return }
             IosBreathBridge.shared.updateMetrics(
                 amplitude: amplitude,
                 lowFrequencyPresence: lowPresence,

@@ -106,7 +106,7 @@ fun BreathControl(
     val latestPhaseChanged = rememberUpdatedState(onPhaseChanged)
     val latestEnsureLocationPermission = rememberUpdatedState(ensureLocationPermission)
     val breathControlState =
-        remember(breathInput) {
+        remember(breathInput, lifecycleOwner) {
             BreathControlState(
                 breathInput = breathInput,
                 scope = coroutineScope,
@@ -121,6 +121,14 @@ fun BreathControl(
     val growth = sessionState.growth
     val quietForMillis = sessionState.quietFor.inWholeMilliseconds
     val burst = sessionState is BreathSessionState.Bursting
+    val sessionPhase =
+        when (sessionState) {
+            is BreathSessionState.Bursting -> SighPhase.Bursting
+            is BreathSessionState.Quiet -> SighPhase.Quiet
+            is BreathSessionState.Listening -> SighPhase.Listening
+            is BreathSessionState.NeedsMore -> SighPhase.NeedsMore
+            else -> SighPhase.Idle
+        }
 
     LaunchedEffect(breathControlState, requestPermissionOnLaunch) {
         if (requestPermissionOnLaunch) {
@@ -147,8 +155,8 @@ fun BreathControl(
         }
     }
 
-    LaunchedEffect(burstRevision) {
-        if (burstRevision == 0L) return@LaunchedEffect
+    LaunchedEffect(burstRevision, sessionState.sessionId, sessionPhase) {
+        if (burstRevision == 0L || sessionPhase != SighPhase.Bursting) return@LaunchedEffect
         val sessionId = (sessionState as? BreathSessionState.Bursting)?.sessionId ?: return@LaunchedEffect
         burstProgress = 0f
         val start =
@@ -170,6 +178,9 @@ fun BreathControl(
             burstProgress = (start.elapsedNow().inWholeMilliseconds.toFloat() / BURST_DURATION_MILLIS).coerceIn(0f, 1f)
         }
         dragAnimation.join()
+        if (breathControlState.session.value != BreathSessionState.Bursting(sessionId)) {
+            return@LaunchedEffect
+        }
         breathControlState.burstFinished(sessionId)
         breathControlState.session
             .filter { it == BreathSessionState.Idle(sessionId) }
@@ -179,12 +190,18 @@ fun BreathControl(
         dragOffsetY.snapTo(0f)
     }
 
-    LaunchedEffect(needsMoreRevision) {
-        if (needsMoreRevision == 0L) return@LaunchedEffect
+    LaunchedEffect(needsMoreRevision, sessionState.sessionId, sessionPhase) {
+        if (needsMoreRevision == 0L || sessionPhase != SighPhase.NeedsMore) return@LaunchedEffect
+        val sessionId = sessionState.sessionId
+        if (sessionState !is BreathSessionState.NeedsMore) return@LaunchedEffect
         needsMoreActive = true
         dragOffsetY.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = 300f))
         delay(NEEDS_MORE_HINT_MILLIS)
-        needsMoreActive = false
+        if (breathControlState.session.value.sessionId == sessionId &&
+            breathControlState.session.value is BreathSessionState.NeedsMore
+        ) {
+            needsMoreActive = false
+        }
     }
 
     LaunchedEffect(cancelSignal) {
@@ -198,7 +215,7 @@ fun BreathControl(
         when {
             burst -> SighPhase.Bursting
             !listening -> SighPhase.Idle
-            needsMoreActive -> SighPhase.NeedsMore
+            needsMoreActive && sessionState is BreathSessionState.NeedsMore -> SighPhase.NeedsMore
             growth >= 1f -> SighPhase.Quiet
             growth > 0f && quietForMillis >= DEFAULT_BREATH_CONFIG.quietDelay.inWholeMilliseconds -> SighPhase.Quiet
             else -> SighPhase.Listening
