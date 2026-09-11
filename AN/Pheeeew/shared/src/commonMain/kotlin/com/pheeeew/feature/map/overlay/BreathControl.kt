@@ -25,10 +25,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,19 +55,20 @@ import com.pheeeew.core.audio.BreathInputError
 import com.pheeeew.core.audio.rememberBreathInput
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.feature.map.breath.BreathControlState
+import com.pheeeew.feature.map.breath.BreathInteractionConfig
+import com.pheeeew.feature.map.breath.BreathSessionState
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 
-private const val EFFECTIVE_STRENGTH_THRESHOLD = 0.22f
-private const val GROWTH_DURATION_MILLIS = 2_200L
 private const val BURST_DURATION_MILLIS = 720L
 private const val IDLE_SCALE = 2f / 3f
-private const val QUIET_DELAY_MILLIS = 500L
-private const val MIN_RELEASE_GROWTH = 0.3f
 private const val NEEDS_MORE_HINT_MILLIS = 1_400L
 private const val RELEASE_DRAG_MAX_DP = 1200f
 private const val FLING_VELOCITY_THRESHOLD_DP = 250f
@@ -73,6 +76,8 @@ private const val SHAKE_AMPLITUDE_DP = 3f
 private const val FLY_AWAY_DISTANCE_DP = 1600f
 private const val IDLE_TEXT_GAP_BOX_HEIGHT_DP = 100f
 private const val BUTTON_BOTTOM_MARGIN_DP = 32f
+
+private val DEFAULT_BREATH_CONFIG = BreathInteractionConfig()
 
 enum class SighPhase { Idle, Listening, Quiet, NeedsMore, Bursting }
 
@@ -87,15 +92,8 @@ fun BreathControl(
     requestPermissionOnLaunch: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    var listening by remember { mutableStateOf(false) }
-    var strength by remember { mutableStateOf(0f) }
-    var growth by remember { mutableStateOf(0f) }
-    var lastActiveElapsedMillis by remember { mutableStateOf(0L) }
-    var burst by remember { mutableStateOf(false) }
-    var burstSequence by remember { mutableStateOf(0) }
     var burstProgress by remember { mutableStateOf(0f) }
     var needsMoreActive by remember { mutableStateOf(false) }
-    var needsMoreSequence by remember { mutableStateOf(0) }
     var origin by remember { mutableStateOf(Offset.Zero) }
     var burstOrigin by remember { mutableStateOf(Offset.Zero) }
     val dragOffsetY = remember { Animatable(0f) }
@@ -103,77 +101,95 @@ fun BreathControl(
     val lifecycleOwner = LocalLifecycleOwner.current
     val coroutineScope = rememberCoroutineScope()
     val density = LocalDensity.current
+    val latestExplosionFinished = rememberUpdatedState(onExplosionFinished)
+    val latestMicrophoneError = rememberUpdatedState(onMicrophoneError)
+    val latestPhaseChanged = rememberUpdatedState(onPhaseChanged)
+    val latestEnsureLocationPermission = rememberUpdatedState(ensureLocationPermission)
+    val breathControlState =
+        remember(breathInput) {
+            BreathControlState(
+                breathInput = breathInput,
+                scope = coroutineScope,
+                ensureLocationPermission = { latestEnsureLocationPermission.value() },
+            )
+        }
+    val sessionState by breathControlState.session.collectAsState()
+    val needsMoreRevision by breathControlState.needsMoreRevision.collectAsState()
+    val burstRevision by breathControlState.burstRevision.collectAsState()
+    val listening = sessionState.isInputActive()
+    val strength = sessionState.strength
+    val growth = sessionState.growth
+    val quietForMillis = sessionState.quietFor.inWholeMilliseconds
+    val burst = sessionState is BreathSessionState.Bursting
 
-    LaunchedEffect(breathInput, requestPermissionOnLaunch) {
+    LaunchedEffect(breathControlState, requestPermissionOnLaunch) {
         if (requestPermissionOnLaunch) {
-            breathInput.requestPermission()
+            breathControlState.warmUpMicrophonePermission()
         }
     }
 
-    DisposableEffect(breathInput, lifecycleOwner) {
+    LaunchedEffect(breathControlState) {
+        breathControlState.errors.collect { error -> latestMicrophoneError.value(error) }
+    }
+
+    DisposableEffect(breathControlState, lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
                 if (event == Lifecycle.Event.ON_STOP) {
-                    breathInput.stop()
-                    listening = false
-                    strength = 0f
-                    growth = 0f
-                    lastActiveElapsedMillis = 0L
+                    breathControlState.lifecycleStopped()
                     coroutineScope.launch { dragOffsetY.snapTo(0f) }
                 }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            breathInput.stop()
+            breathControlState.dispose()
         }
     }
 
-    LaunchedEffect(listening) {
-        while (listening) {
-            delay(16)
-            if (strength >= EFFECTIVE_STRENGTH_THRESHOLD) {
-                growth = (growth + 16f / GROWTH_DURATION_MILLIS).coerceAtMost(1f)
-                lastActiveElapsedMillis = 0L
-            } else {
-                lastActiveElapsedMillis += 16L
-            }
-        }
-    }
-
-    LaunchedEffect(burstSequence) {
-        if (burstSequence == 0) return@LaunchedEffect
+    LaunchedEffect(burstRevision) {
+        if (burstRevision == 0L) return@LaunchedEffect
+        val sessionId = (sessionState as? BreathSessionState.Bursting)?.sessionId ?: return@LaunchedEffect
         burstProgress = 0f
         val start =
             kotlin.time.TimeSource.Monotonic
                 .markNow()
+        val dragAnimation =
+            launch {
+                dragOffsetY.animateTo(
+                    targetValue = -with(density) { FLY_AWAY_DISTANCE_DP.dp.toPx() },
+                    animationSpec =
+                        tween(
+                            durationMillis = BURST_DURATION_MILLIS.toInt(),
+                            easing = FastOutLinearInEasing,
+                        ),
+                )
+            }
         while (burstProgress < 1f) {
             delay(16)
             burstProgress = (start.elapsedNow().inWholeMilliseconds.toFloat() / BURST_DURATION_MILLIS).coerceIn(0f, 1f)
         }
-        onExplosionFinished(burstOrigin)
-        burst = false
+        dragAnimation.join()
+        breathControlState.burstFinished(sessionId)
+        breathControlState.session
+            .filter { it == BreathSessionState.Idle(sessionId) }
+            .first()
+        latestExplosionFinished.value(burstOrigin)
         burstProgress = 0f
-        growth = 0f
-        strength = 0f
-        lastActiveElapsedMillis = 0L
         dragOffsetY.snapTo(0f)
     }
 
-    LaunchedEffect(needsMoreSequence) {
-        if (needsMoreSequence == 0) return@LaunchedEffect
+    LaunchedEffect(needsMoreRevision) {
+        if (needsMoreRevision == 0L) return@LaunchedEffect
         needsMoreActive = true
+        dragOffsetY.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = 300f))
         delay(NEEDS_MORE_HINT_MILLIS)
         needsMoreActive = false
     }
 
     LaunchedEffect(cancelSignal) {
-        if (cancelSignal > 0 && listening) {
-            breathInput.stop()
-            listening = false
-            growth = 0f
-            strength = 0f
-            lastActiveElapsedMillis = 0L
+        if (cancelSignal > 0) {
+            breathControlState.cancel()
             dragOffsetY.snapTo(0f)
         }
     }
@@ -184,10 +200,10 @@ fun BreathControl(
             !listening -> SighPhase.Idle
             needsMoreActive -> SighPhase.NeedsMore
             growth >= 1f -> SighPhase.Quiet
-            growth > 0f && lastActiveElapsedMillis >= QUIET_DELAY_MILLIS -> SighPhase.Quiet
+            growth > 0f && quietForMillis >= DEFAULT_BREATH_CONFIG.quietDelay.inWholeMilliseconds -> SighPhase.Quiet
             else -> SighPhase.Listening
         }
-    LaunchedEffect(phase) { onPhaseChanged(phase) }
+    LaunchedEffect(phase) { latestPhaseChanged.value(phase) }
 
     // TODO
     val controlDescription =
@@ -236,7 +252,10 @@ fun BreathControl(
             )
             val particleDiameter = (maxWidth.value * 1.6f).coerceAtMost(680f)
 
-            val isMaxedAndBlowing = listening && growth >= 1f && strength >= EFFECTIVE_STRENGTH_THRESHOLD
+            val isMaxedAndBlowing =
+                listening &&
+                    growth >= 1f &&
+                    strength >= DEFAULT_BREATH_CONFIG.effectiveStrengthThreshold
             val shakePhase by rememberInfiniteTransition(label = "maxShake").animateFloat(
                 initialValue = -1f,
                 targetValue = 1f,
@@ -274,27 +293,7 @@ fun BreathControl(
                             if (!listening) {
                                 detectTapGestures(onTap = {
                                     if (!enabled || burst) return@detectTapGestures
-                                    coroutineScope.launch {
-                                        if (!breathInput.requestPermission()) {
-                                            onMicrophoneError(BreathInputError.PermissionDenied)
-                                            return@launch
-                                        }
-                                        if (!ensureLocationPermission()) return@launch
-                                        growth = 0f
-                                        strength = 0f
-                                        lastActiveElapsedMillis = 0L
-                                        listening = true
-                                        breathInput.start(
-                                            onStrengthChanged = { strength = it },
-                                            onError = { error ->
-                                                onMicrophoneError(error)
-                                                breathInput.stop()
-                                                listening = false
-                                                growth = 0f
-                                                strength = 0f
-                                            },
-                                        )
-                                    }
+                                    breathControlState.start()
                                 })
                             } else {
                                 val maxDragPx = with(density) { RELEASE_DRAG_MAX_DP.dp.toPx() }
@@ -343,32 +342,20 @@ fun BreathControl(
                                                 }
                                             }
 
-                                            growth < MIN_RELEASE_GROWTH -> {
-                                                needsMoreSequence += 1
-                                                coroutineScope.launch {
-                                                    dragOffsetY.animateTo(
-                                                        0f,
-                                                        spring(dampingRatio = 0.7f, stiffness = 300f),
-                                                    )
-                                                }
-                                            }
-
                                             else -> {
-                                                breathInput.stop()
-                                                listening = false
                                                 burstOrigin = origin
-                                                burst = true
-                                                burstSequence += 1
-                                                coroutineScope.launch {
-                                                    dragOffsetY.animateTo(
-                                                        targetValue = -with(density) { FLY_AWAY_DISTANCE_DP.dp.toPx() },
-                                                        animationSpec =
-                                                            tween(
-                                                                durationMillis = BURST_DURATION_MILLIS.toInt(),
-                                                                easing = FastOutLinearInEasing,
-                                                            ),
-                                                    )
-                                                }
+                                                val upwardDistanceDp =
+                                                    with(density) {
+                                                        (-rawTraveledY).coerceAtLeast(0f).toDp().value
+                                                    }
+                                                val upwardVelocityDpPerSecond =
+                                                    with(density) {
+                                                        flingVelocityY.toDp().value
+                                                    }
+                                                breathControlState.release(
+                                                    upwardDistanceDp = upwardDistanceDp,
+                                                    upwardVelocityDpPerSecond = upwardVelocityDpPerSecond,
+                                                )
                                             }
                                         }
                                     },
@@ -442,3 +429,8 @@ private fun BreathControlPreview() {
         requestPermissionOnLaunch = true,
     )
 }
+
+private fun BreathSessionState.isInputActive(): Boolean =
+    this is BreathSessionState.Listening ||
+        this is BreathSessionState.NeedsMore ||
+        this is BreathSessionState.Quiet

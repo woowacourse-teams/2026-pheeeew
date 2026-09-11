@@ -20,10 +20,12 @@ class BreathSessionReducer(
         when (event) {
             BreathSessionEvent.StartRequested -> start(state)
             is BreathSessionEvent.PermissionResult -> permissionResult(state, event)
+            is BreathSessionEvent.LocationPermissionResult -> locationPermissionResult(state, event)
             is BreathSessionEvent.StrengthSample -> strengthSample(state, event)
             is BreathSessionEvent.ReleaseRequested -> release(state, event)
             BreathSessionEvent.CancelRequested -> stop(state)
             BreathSessionEvent.LifecycleStopped -> stop(state)
+            is BreathSessionEvent.BurstFinished -> burstFinished(state, event)
             is BreathSessionEvent.InputFailed -> inputFailed(state, event)
         }
 
@@ -45,9 +47,25 @@ class BreathSessionReducer(
         }
         if (!event.granted) {
             return BreathSessionTransition(
-                state = BreathSessionState.Idle,
+                state = BreathSessionState.Idle(state.sessionId),
                 effects = listOf(BreathSessionEffect.ShowError(BreathInputError.PermissionDenied)),
             )
+        }
+        return BreathSessionTransition(
+            state = BreathSessionState.RequestingLocationPermission(state.sessionId),
+            effects = listOf(BreathSessionEffect.RequestLocationPermission(state.sessionId)),
+        )
+    }
+
+    private fun locationPermissionResult(
+        state: BreathSessionState,
+        event: BreathSessionEvent.LocationPermissionResult,
+    ): BreathSessionTransition {
+        if (state !is BreathSessionState.RequestingLocationPermission || state.sessionId != event.sessionId) {
+            return BreathSessionTransition(state)
+        }
+        if (!event.granted) {
+            return BreathSessionTransition(BreathSessionState.Idle(state.sessionId))
         }
         return BreathSessionTransition(
             state = BreathSessionState.Listening(state.sessionId, 0f, 0f, ZERO),
@@ -110,6 +128,7 @@ class BreathSessionReducer(
                     strength = activeState.strength,
                     quietFor = activeState.quietFor,
                 ),
+                effects = listOf(BreathSessionEffect.ShowNeedsMore(activeState.sessionId)),
             )
         }
         return BreathSessionTransition(
@@ -126,9 +145,19 @@ class BreathSessionReducer(
         val sessionId = state.sessionId
         if (state is BreathSessionState.Idle) return BreathSessionTransition(state)
         return BreathSessionTransition(
-            state = BreathSessionState.Idle,
+            state = BreathSessionState.Idle(sessionId),
             effects = listOf(BreathSessionEffect.StopInput(sessionId)),
         )
+    }
+
+    private fun burstFinished(
+        state: BreathSessionState,
+        event: BreathSessionEvent.BurstFinished,
+    ): BreathSessionTransition {
+        if (state !is BreathSessionState.Bursting || state.sessionId != event.sessionId) {
+            return BreathSessionTransition(state)
+        }
+        return BreathSessionTransition(BreathSessionState.Idle(state.sessionId))
     }
 
     private fun inputFailed(
@@ -139,7 +168,7 @@ class BreathSessionReducer(
             return BreathSessionTransition(state)
         }
         return BreathSessionTransition(
-            state = BreathSessionState.Idle,
+            state = BreathSessionState.Idle(event.sessionId),
             effects =
                 listOf(
                     BreathSessionEffect.StopInput(event.sessionId),

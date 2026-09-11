@@ -8,6 +8,10 @@ sealed interface BreathSessionEffect {
         val sessionId: Long,
     ) : BreathSessionEffect
 
+    data class RequestLocationPermission(
+        val sessionId: Long,
+    ) : BreathSessionEffect
+
     data class StartInput(
         val sessionId: Long,
     ) : BreathSessionEffect
@@ -17,6 +21,10 @@ sealed interface BreathSessionEffect {
     ) : BreathSessionEffect
 
     data class StartBurstAnimation(
+        val sessionId: Long,
+    ) : BreathSessionEffect
+
+    data class ShowNeedsMore(
         val sessionId: Long,
     ) : BreathSessionEffect
 

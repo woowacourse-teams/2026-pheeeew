@@ -12,7 +12,7 @@ class BreathSessionReducerTest {
 
     @Test
     fun `start permission success and strength sample use a new session`() {
-        val requesting = reducer.reduce(BreathSessionState.Idle, BreathSessionEvent.StartRequested)
+        val requesting = reducer.reduce(BreathSessionState.Idle(), BreathSessionEvent.StartRequested)
         val sessionId = assertIs<BreathSessionState.RequestingPermission>(requesting.state).sessionId
 
         val listening =
@@ -20,12 +20,20 @@ class BreathSessionReducerTest {
                 requesting.state,
                 BreathSessionEvent.PermissionResult(sessionId, granted = true),
             )
-        assertIs<BreathSessionState.Listening>(listening.state)
-        assertEquals(listOf(BreathSessionEffect.StartInput(sessionId)), listening.effects)
+        assertIs<BreathSessionState.RequestingLocationPermission>(listening.state)
+        assertEquals(listOf(BreathSessionEffect.RequestLocationPermission(sessionId)), listening.effects)
+
+        val locationGranted =
+            reducer.reduce(
+                listening.state,
+                BreathSessionEvent.LocationPermissionResult(sessionId, granted = true),
+            )
+        assertIs<BreathSessionState.Listening>(locationGranted.state)
+        assertEquals(listOf(BreathSessionEffect.StartInput(sessionId)), locationGranted.effects)
 
         val sampled =
             reducer.reduce(
-                listening.state,
+                locationGranted.state,
                 BreathSessionEvent.StrengthSample(sessionId, strength = 0.8f, elapsed = 220.milliseconds),
             )
         assertEquals(0.1f, assertIs<BreathSessionState.Listening>(sampled.state).growth)
@@ -33,7 +41,7 @@ class BreathSessionReducerTest {
 
     @Test
     fun `callback from an old session is ignored`() {
-        val requesting = reducer.reduce(BreathSessionState.Idle, BreathSessionEvent.StartRequested)
+        val requesting = reducer.reduce(BreathSessionState.Idle(), BreathSessionEvent.StartRequested)
         val state = assertIs<BreathSessionState.RequestingPermission>(requesting.state)
 
         val ignored =
@@ -59,7 +67,7 @@ class BreathSessionReducerTest {
             )
 
         assertIs<BreathSessionState.NeedsMore>(transition.state)
-        assertTrue(transition.effects.isEmpty())
+        assertEquals(listOf(BreathSessionEffect.ShowNeedsMore(1L)), transition.effects)
     }
 
     @Test
@@ -90,7 +98,7 @@ class BreathSessionReducerTest {
 
     @Test
     fun `permission denial returns idle and exposes one error effect`() {
-        val requesting = reducer.reduce(BreathSessionState.Idle, BreathSessionEvent.StartRequested)
+        val requesting = reducer.reduce(BreathSessionState.Idle(), BreathSessionEvent.StartRequested)
         val state = assertIs<BreathSessionState.RequestingPermission>(requesting.state)
         val transition =
             reducer.reduce(
@@ -113,5 +121,33 @@ class BreathSessionReducerTest {
 
         assertEquals(listOf(BreathSessionEffect.StopInput(4L)), stopped.effects)
         assertTrue(repeated.effects.isEmpty())
+    }
+
+    @Test
+    fun `burst completion returns to idle while preserving session sequence`() {
+        val bursting = BreathSessionState.Bursting(7L)
+        val finished = reducer.reduce(bursting, BreathSessionEvent.BurstFinished(7L))
+
+        assertEquals(BreathSessionState.Idle(7L), finished.state)
+        val next = reducer.reduce(finished.state, BreathSessionEvent.StartRequested)
+        assertEquals(8L, assertIs<BreathSessionState.RequestingPermission>(next.state).sessionId)
+    }
+
+    @Test
+    fun `location denial returns idle without starting audio`() {
+        val requestingMicrophone = reducer.reduce(BreathSessionState.Idle(), BreathSessionEvent.StartRequested)
+        val microphoneGranted =
+            reducer.reduce(
+                requestingMicrophone.state,
+                BreathSessionEvent.PermissionResult(1L, granted = true),
+            )
+        val locationDenied =
+            reducer.reduce(
+                microphoneGranted.state,
+                BreathSessionEvent.LocationPermissionResult(1L, granted = false),
+            )
+
+        assertEquals(BreathSessionState.Idle(1L), locationDenied.state)
+        assertTrue(locationDenied.effects.isEmpty())
     }
 }

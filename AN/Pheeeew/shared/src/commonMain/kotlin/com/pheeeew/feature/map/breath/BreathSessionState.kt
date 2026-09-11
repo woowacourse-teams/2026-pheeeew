@@ -11,14 +11,23 @@ sealed interface BreathSessionState {
     val strength: Float
     val quietFor: Duration
 
-    data object Idle : BreathSessionState {
-        override val sessionId: Long = 0L
+    data class Idle(
+        override val sessionId: Long = 0L,
+    ) : BreathSessionState {
         override val growth: Float = 0f
         override val strength: Float = 0f
         override val quietFor: Duration = ZERO
     }
 
     data class RequestingPermission(
+        override val sessionId: Long,
+    ) : BreathSessionState {
+        override val growth: Float = 0f
+        override val strength: Float = 0f
+        override val quietFor: Duration = ZERO
+    }
+
+    data class RequestingLocationPermission(
         override val sessionId: Long,
     ) : BreathSessionState {
         override val growth: Float = 0f
@@ -65,6 +74,11 @@ sealed interface BreathSessionEvent {
         val granted: Boolean,
     ) : BreathSessionEvent
 
+    data class LocationPermissionResult(
+        val sessionId: Long,
+        val granted: Boolean,
+    ) : BreathSessionEvent
+
     data class StrengthSample(
         val sessionId: Long,
         val strength: Float,
@@ -80,6 +94,10 @@ sealed interface BreathSessionEvent {
     data object CancelRequested : BreathSessionEvent
 
     data object LifecycleStopped : BreathSessionEvent
+
+    data class BurstFinished(
+        val sessionId: Long,
+    ) : BreathSessionEvent
 
     data class InputFailed(
         val sessionId: Long,
