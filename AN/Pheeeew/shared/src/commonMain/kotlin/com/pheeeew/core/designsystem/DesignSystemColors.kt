@@ -14,4 +14,9 @@ object DesignSystemColors {
     const val MAP_CONTROL_BACKGROUND_HEX = "#0B0C12"
     const val MAP_CONTROL_BORDER_HEX = "#343640"
     const val MAP_CONTROL_CONTENT_HEX = "#F4F2EC"
+
+    const val STAR_FRESH_HEX = "#BBD7FF"
+    const val STAR_WARM_HEX = "#F5D98B"
+    const val STAR_DEEP_HEX = "#F2A05C"
+    const val STAR_UNKNOWN_HEX = "#F4F2EC"
 }

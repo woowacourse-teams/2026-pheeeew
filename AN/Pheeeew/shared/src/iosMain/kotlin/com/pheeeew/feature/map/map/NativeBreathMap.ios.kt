@@ -102,6 +102,7 @@ private fun MapRenderState.toIosRenderState(cameraCommand: MapCameraCommand?): I
                     id = marker.id,
                     latitude = marker.latitude,
                     longitude = marker.longitude,
+                    visual = marker.visual,
                 )
             },
         currentLocation =

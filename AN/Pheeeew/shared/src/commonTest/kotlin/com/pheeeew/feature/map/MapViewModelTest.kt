@@ -136,6 +136,53 @@ class MapViewModelTest {
         }
 
     @Test
+    fun `유효하지 않은 bounds는 API를 호출하지 않는다`() =
+        runTest {
+            val repository = RecordingSighRepository()
+            val viewModel = createViewModel(repository)
+            viewModel.onMapForeground()
+
+            viewModel.loadSighs(firstBounds.copy(minLatitude = Double.NaN))
+            advanceTimeBy(250)
+            runCurrent()
+
+            assertEquals(emptyList(), repository.requestedBounds)
+            viewModel.onMapBackground()
+        }
+
+    @Test
+    fun `지도 목록은 식별자 기준으로 정렬되어 상태에 반영된다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository =
+                    RecordingSighRepository(
+                        mapSighs =
+                            listOf(
+                                SighPin(id = 3L, coordinate = Coordinate(37.55, 126.95)),
+                                SighPin(id = 1L, coordinate = Coordinate(37.55, 126.95)),
+                                SighPin(id = 2L, coordinate = Coordinate(37.55, 126.95)),
+                            ),
+                    )
+                val viewModel = createViewModel(repository)
+                viewModel.onMapForeground()
+
+                viewModel.loadSighs(firstBounds)
+                advanceTimeBy(250)
+                runCurrent()
+
+                val actualIds =
+                    viewModel.uiState.value.sighs
+                        .map(SighPin::id)
+                assertEquals(listOf(1L, 2L, 3L), actualIds)
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `오래된 요청의 응답은 최신 요청 결과를 덮어쓰지 않는다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
@@ -349,6 +396,7 @@ class MapViewModelTest {
         private val delayFirstResponse: Boolean = false,
         private var failNextRequest: Boolean = false,
         private var failNextCreate: Boolean = false,
+        private val mapSighs: List<SighPin>? = null,
     ) : SighRepository {
         val requestedBounds = mutableListOf<SighBounds>()
         val createdCommands = mutableListOf<CreateSighCommand>()
@@ -383,12 +431,13 @@ class MapViewModelTest {
             if (delayFirstResponse && requestNumber == 1) {
                 withContext(NonCancellable) { delay(1_000) }
             }
-            return listOf(
-                SighPin(
-                    id = requestNumber.toLong(),
-                    coordinate = Coordinate(latitude = 37.55, longitude = 126.95),
-                ),
-            )
+            return mapSighs
+                ?: listOf(
+                    SighPin(
+                        id = requestNumber.toLong(),
+                        coordinate = Coordinate(latitude = 37.55, longitude = 126.95),
+                    ),
+                )
         }
     }
 }

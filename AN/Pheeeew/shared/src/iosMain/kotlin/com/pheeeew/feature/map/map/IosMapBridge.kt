@@ -1,5 +1,6 @@
 package com.pheeeew.feature.map.map
 
+import com.pheeeew.feature.map.star.StarVisual
 import platform.UIKit.UIView
 
 /** Swift MapLibre renderer가 Kotlin 상태를 소비하기 위한 최소 브리지 계약입니다. */
@@ -47,6 +48,7 @@ data class IosSighMarker(
     val id: String,
     val latitude: Double,
     val longitude: Double,
+    val visual: StarVisual,
 ) {
     override fun toString(): String = "IosSighMarker(id=$id, coordinate=[redacted])"
 }

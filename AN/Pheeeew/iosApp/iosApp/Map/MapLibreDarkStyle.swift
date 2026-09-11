@@ -22,7 +22,14 @@ enum MapLibreDarkStyle {
 
     static let sighSourceID = "sigh-source"
     static let sighLayerID = "sigh-symbol-layer"
-    static let sighImageID = "sigh-star-dark"
+    static let starFreshImageID = "sigh-star-fresh"
+    static let starWarmImageID = "sigh-star-warm"
+    static let starDeepImageID = "sigh-star-deep"
+    static let starUnknownImageID = "sigh-star-unknown"
+    static let starFreshColor = color(hex: DesignSystemColors.shared.STAR_FRESH_HEX)
+    static let starWarmColor = color(hex: DesignSystemColors.shared.STAR_WARM_HEX)
+    static let starDeepColor = color(hex: DesignSystemColors.shared.STAR_DEEP_HEX)
+    static let starUnknownColor = color(hex: DesignSystemColors.shared.STAR_UNKNOWN_HEX)
 
     static let currentLocationSourceID = "current-location-source"
     static let currentLocationAccuracyLayerID = "current-location-accuracy-layer"
@@ -240,7 +247,7 @@ enum MapLibreDarkStyle {
         "park", "wood", "forest", "grass", "garden", "recreation", "cemetery", "nature",
     ]
 
-    static func makeSighStarImage() -> UIImage {
+    static func makeSighStarImage(color: UIColor) -> UIImage {
         let size = CGSize(width: 64, height: 64)
         let renderer = UIGraphicsImageRenderer(size: size)
         return renderer.image { context in
@@ -248,8 +255,8 @@ enum MapLibreDarkStyle {
             let center = CGPoint(x: size.width / 2, y: size.height / 2)
 
             let glowColors = [
-                UIColor(red: 1, green: 0.72, blue: 0.30, alpha: 0.70).cgColor,
-                UIColor(red: 1, green: 0.72, blue: 0.30, alpha: 0.24).cgColor,
+                color.withAlphaComponent(0.70).cgColor,
+                color.withAlphaComponent(0.24).cgColor,
                 UIColor.clear.cgColor,
             ] as CFArray
             if let glow = CGGradient(
@@ -289,8 +296,8 @@ enum MapLibreDarkStyle {
             graphics.clip()
 
             let colors = [
-                UIColor(red: 1, green: 0.96, blue: 0.80, alpha: 1).cgColor,
-                UIColor(red: 1, green: 0.82, blue: 0.40, alpha: 1).cgColor,
+                color.withAlphaComponent(1).cgColor,
+                color.withAlphaComponent(0.72).cgColor,
             ] as CFArray
             if let gradient = CGGradient(
                 colorsSpace: CGColorSpaceCreateDeviceRGB(),

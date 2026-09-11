@@ -1,6 +1,5 @@
 package com.pheeeew.feature.map.map
 
-import android.animation.ValueAnimator
 import android.graphics.Color
 import android.view.Gravity
 import androidx.compose.foundation.layout.Box
@@ -29,9 +28,6 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
-import org.maplibre.android.style.layers.PropertyFactory.iconOpacity
-import org.maplibre.android.style.layers.PropertyFactory.iconSize
-import org.maplibre.android.style.layers.SymbolLayer
 import java.util.ArrayDeque
 import kotlin.math.roundToInt
 
@@ -126,14 +122,12 @@ private class AndroidBreathMapHost(
     private var hasRenderedCurrentLocation = false
     private var hasReportedStyleFailure = false
     private var released = false
-    private var sighPulseAnimator: ValueAnimator? = null
     private var projectionRevision = 0L
     private var cameraIdle = true
     private var lastRenderedFocusId: String? = null
     private var lastPublishedPoints: Map<String, MapScreenPoint>? = null
     private var lastPublishedCameraIdle: Boolean? = null
     private var statusBarInset = 0
-    private var isInBackground = false
 
     private val mapLoadFailureListener =
         MapView.OnDidFailLoadingMapListener {
@@ -232,7 +226,6 @@ private class AndroidBreathMapHost(
                 }
 
                 style = loadedStyle
-                startSighPulse(loadedStyle)
                 onMapRecovered()
                 renderLatestState()
             }
@@ -260,23 +253,15 @@ private class AndroidBreathMapHost(
         map?.removeOnCameraMoveStartedListener(cameraMoveStartedListener)
         map?.removeOnCameraMoveListener(cameraMoveListener)
         map?.removeOnCameraIdleListener(cameraIdleListener)
-        sighPulseAnimator?.cancel()
-        sighPulseAnimator = null
         map = null
         style = null
         latestState = null
         pendingCameraCommands.clear()
     }
 
-    fun pauseAnimations() {
-        isInBackground = true
-        sighPulseAnimator?.takeIf { it.isStarted }?.pause()
-    }
+    fun pauseAnimations() = Unit
 
-    fun resumeAnimations() {
-        isInBackground = false
-        sighPulseAnimator?.takeIf { it.isPaused }?.resume()
-    }
+    fun resumeAnimations() = Unit
 
     private fun applyCompassMargins() {
         map?.uiSettings?.setCompassMargins(
@@ -285,33 +270,6 @@ private class AndroidBreathMapHost(
             (16f * mapView.resources.displayMetrics.density).roundToInt(),
             0,
         )
-    }
-
-    private fun startSighPulse(style: Style) {
-        if (AndroidMapSources.sighLayerIds().none { style.getLayerAs<SymbolLayer>(it) != null }) return
-        sighPulseAnimator?.cancel()
-        sighPulseAnimator =
-            ValueAnimator.ofFloat(0f, 1f).apply {
-                duration = 1_800L
-                repeatCount = ValueAnimator.INFINITE
-                repeatMode = ValueAnimator.RESTART
-                addUpdateListener { animator ->
-                    if (released) return@addUpdateListener
-                    val progress = animator.animatedValue as Float
-                    AndroidMapSources.sighLayerIds().forEachIndexed { group, layerId ->
-                        val layer = style.getLayerAs<SymbolLayer>(layerId) ?: return@forEachIndexed
-                        val phase = (progress + group.toFloat() / AndroidMapSources.PULSE_GROUP_COUNT) % 1f
-                        val wave = ((kotlin.math.sin(phase * 2f * kotlin.math.PI.toFloat()) + 1f) / 2f)
-                        val pulse = wave * wave * (3f - (2f * wave))
-                        layer.setProperties(
-                            iconSize(0.48f + (pulse * 0.20f)),
-                            iconOpacity(0.72f + (pulse * 0.28f)),
-                        )
-                    }
-                }
-                start()
-                if (isInBackground) pause()
-            }
     }
 
     private fun renderLatestState() {
@@ -349,13 +307,17 @@ private class AndroidBreathMapHost(
         if (released) return
         val currentMap = map ?: return
         val state = latestState ?: return
-        val targets =
-            buildList {
-                state.sighMarkers.forEach { add(MapPointTarget(it.id, it.latitude, it.longitude)) }
-                state.focusRequest?.let { focus ->
-                    if (none { it.id == focus.id }) add(MapPointTarget(focus.id, focus.latitude, focus.longitude))
-                }
+        val focus = state.focusRequest
+        if (focus == null) {
+            if (lastPublishedPoints?.isNotEmpty() == true) {
+                lastPublishedPoints = emptyMap()
+                lastPublishedCameraIdle = cameraIdle
+                projectionRevision += 1
+                onProjectionChanged(MapProjectionSnapshot(projectionRevision, emptyMap(), cameraIdle))
             }
+            return
+        }
+        val targets = listOf(MapPointTarget(focus.id, focus.latitude, focus.longitude))
         val points =
             targets.associate { target ->
                 val point = currentMap.projection.toScreenLocation(LatLng(target.latitude, target.longitude))
