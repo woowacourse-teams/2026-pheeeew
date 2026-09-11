@@ -16,6 +16,10 @@ import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import com.pheeeew.support.PostgisDataJpaTest;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,12 +33,19 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
+@ImportAutoConfiguration(AopAutoConfiguration.class)
+@Import({SighMapMetrics.class, SighMapMetricsAspect.class, SighServiceIntegrationTest.MetricsConfiguration.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class SighServiceIntegrationTest {
 
@@ -57,6 +68,9 @@ class SighServiceIntegrationTest {
 
     @Autowired
     private JdbcClient jdbcClient;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @AfterEach
     void tearDown() {
@@ -250,6 +264,12 @@ class SighServiceIntegrationTest {
         Long 살아있는_한숨 = insertSigh(126.9780, 37.5664, "2026-09-01T10:30:00Z");
         Long 삭제된_한숨 = insertSigh(126.9790, 37.5665, "2026-09-01T10:31:00Z");
         softDeleteSigh(삭제된_한숨);
+        Timer query = meterRegistry.get("pheeeew.sigh.map.query").timer();
+        DistributionSummary results = meterRegistry.get("pheeeew.sigh.map.results")
+                .tag("truncated", "false").summary();
+        long previousQueries = query.count();
+        long previousResults = results.count();
+        double previousReturnedCount = results.totalAmount();
 
         // when
         SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS);
@@ -258,6 +278,9 @@ class SighServiceIntegrationTest {
         assertThat(result.sighs())
                 .extracting(SighMapItem::id)
                 .containsExactly(살아있는_한숨);
+        assertThat(query.count()).isEqualTo(previousQueries + 1);
+        assertThat(results.count()).isEqualTo(previousResults + 1);
+        assertThat(results.totalAmount()).isEqualTo(previousReturnedCount + 1);
     }
 
     @Test
@@ -692,5 +715,14 @@ class SighServiceIntegrationTest {
                         DROP CONSTRAINT IF EXISTS ck_sighs_reject_test_request
                         """)
                 .update();
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class MetricsConfiguration {
+
+        @Bean
+        MeterRegistry meterRegistry() {
+            return new SimpleMeterRegistry();
+        }
     }
 }
