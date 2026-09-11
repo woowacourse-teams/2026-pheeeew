@@ -22,6 +22,10 @@ internal object MapDarkStyle {
     const val SIGH_LAYER_ID = "sigh-symbol-layer"
     const val SIGH_IMAGE_ID = "sigh-star-dark"
 
+    const val WARM_YELLOW = "#FFD166"
+    const val WARM_GLOW = "#FFB84D"
+    const val IVORY = "#FFF4CC"
+
     const val CURRENT_LOCATION_SOURCE_ID = "current-location-source"
     const val CURRENT_LOCATION_BORDER_LAYER_ID = "current-location-border-layer"
     const val CURRENT_LOCATION_LAYER_ID = "current-location-layer"
