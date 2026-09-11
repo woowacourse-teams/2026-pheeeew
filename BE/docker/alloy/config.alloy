@@ -29,7 +29,8 @@ prometheus.relabel "app" {
 
 prometheus.remote_write "grafana" {
 	endpoint {
-		url = sys.env("GRAFANA_METRICS_URL")
+		url              = sys.env("GRAFANA_METRICS_URL")
+		follow_redirects = false
 
 		basic_auth {
 			username = sys.env("GRAFANA_METRICS_USER")
@@ -105,7 +106,8 @@ loki.process "http_requests" {
 
 loki.write "grafana" {
 	endpoint {
-		url = sys.env("GRAFANA_LOGS_URL")
+		url              = sys.env("GRAFANA_LOGS_URL")
+		follow_redirects = false
 
 		basic_auth {
 			username = sys.env("GRAFANA_LOGS_USER")

@@ -76,6 +76,36 @@ jobs:
             fi
           done
 
+          python3 - <<'PYTHON'
+          import os
+          from urllib.parse import urlsplit
+
+          approved_endpoints = {
+              "GRAFANA_METRICS_URL": (
+                  "prometheus-prod-49-prod-ap-northeast-0.grafana.net", "/api/prom/push"
+              ),
+              "GRAFANA_LOGS_URL": (
+                  "logs-prod-030.grafana.net", "/loki/api/v1/push"
+              ),
+          }
+          for key, (host, path) in approved_endpoints.items():
+              value = os.environ[key]
+              try:
+                  url = urlsplit(value)
+                  valid = (
+                      url.scheme == "https"
+                      and url.netloc == host
+                      and url.path == path
+                      and not url.query
+                      and not url.fragment
+                      and url.geturl() == value
+                  )
+              except ValueError:
+                  valid = False
+              if not valid:
+                  raise SystemExit(f"::error::{key}는 승인된 Grafana Cloud HTTPS 전송 주소여야 합니다.")
+          PYTHON
+
           umask 077
           for key in "${keys[@]}"; do
             printf "%s='%s'\n" "$key" "${!key}"
