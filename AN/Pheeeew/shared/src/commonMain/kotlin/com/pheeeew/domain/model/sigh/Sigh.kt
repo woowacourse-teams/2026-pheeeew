@@ -14,5 +14,6 @@ data class Sigh(
         SighPin(
             id = id,
             coordinate = coordinate,
+            createdAt = createdAt,
         )
 }

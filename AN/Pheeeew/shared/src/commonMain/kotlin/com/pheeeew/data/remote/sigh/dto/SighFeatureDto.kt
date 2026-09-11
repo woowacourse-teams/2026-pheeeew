@@ -20,6 +20,7 @@ fun SighFeatureDto<SighV1PropertiesDto>.toSighPin(): SighPin {
     return SighPin(
         id = id,
         coordinate = geometry.toCoordinate(),
+        createdAt = properties.createdAt.toInstantOrNull(),
     )
 }
 
@@ -46,3 +47,8 @@ private fun PointGeometryDto.toCoordinate(): Coordinate =
         latitude = coordinates[1],
         longitude = coordinates[0],
     )
+
+private fun String?.toInstantOrNull(): Instant? =
+    this?.let { value ->
+        runCatching { Instant.parse(value) }.getOrNull()
+    }
