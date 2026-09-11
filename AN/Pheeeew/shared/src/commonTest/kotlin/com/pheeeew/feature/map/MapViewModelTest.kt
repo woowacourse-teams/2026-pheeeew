@@ -152,6 +152,21 @@ class MapViewModelTest {
         }
 
     @Test
+    fun `경도가 역순인 bounds는 API를 호출하지 않는다`() =
+        runTest {
+            val repository = RecordingSighRepository()
+            val viewModel = createViewModel(repository)
+            viewModel.onMapForeground()
+
+            viewModel.loadSighs(firstBounds.copy(minLongitude = 127.1, maxLongitude = 126.9))
+            advanceTimeBy(250)
+            runCurrent()
+
+            assertEquals(emptyList(), repository.requestedBounds)
+            viewModel.onMapBackground()
+        }
+
+    @Test
     fun `지도 목록은 식별자 기준으로 정렬되어 상태에 반영된다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
