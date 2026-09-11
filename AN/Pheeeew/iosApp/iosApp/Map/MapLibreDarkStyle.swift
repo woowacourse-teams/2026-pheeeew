@@ -22,13 +22,13 @@ enum MapLibreDarkStyle {
 
     static let sighSourceID = "sigh-source"
     static let sighLayerID = "sigh-symbol-layer"
-    static let starFreshImageID = "sigh-star-fresh"
-    static let starWarmImageID = "sigh-star-warm"
-    static let starDeepImageID = "sigh-star-deep"
+    static let starBlueImageID = "sigh-star-blue"
+    static let starExistingImageID = "sigh-star-existing"
+    static let starOrangeImageID = "sigh-star-orange"
     static let starUnknownImageID = "sigh-star-unknown"
-    static let starFreshColor = color(hex: DesignSystemColors.shared.STAR_FRESH_HEX)
-    static let starWarmColor = color(hex: DesignSystemColors.shared.STAR_WARM_HEX)
-    static let starDeepColor = color(hex: DesignSystemColors.shared.STAR_DEEP_HEX)
+    static let starBlueColor = color(hex: DesignSystemColors.shared.STAR_BLUE_HEX)
+    static let starExistingColor = color(hex: DesignSystemColors.shared.STAR_EXISTING_HEX)
+    static let starOrangeColor = color(hex: DesignSystemColors.shared.STAR_ORANGE_HEX)
     static let starUnknownColor = color(hex: DesignSystemColors.shared.STAR_UNKNOWN_HEX)
 
     static let currentLocationSourceID = "current-location-source"
@@ -295,13 +295,13 @@ enum MapLibreDarkStyle {
             graphics.addPath(star.cgPath)
             graphics.clip()
 
-            let colors = [
-                color.withAlphaComponent(1).cgColor,
+            let coreColors = [
+                MapLibreDarkStyle.color(hex: DesignSystemColors.shared.STAR_CORE_HEX).cgColor,
                 color.withAlphaComponent(0.72).cgColor,
             ] as CFArray
             if let gradient = CGGradient(
                 colorsSpace: CGColorSpaceCreateDeviceRGB(),
-                colors: colors,
+                colors: coreColors,
                 locations: [0, 1]
             ) {
                 graphics.drawRadialGradient(

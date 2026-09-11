@@ -15,8 +15,10 @@ object DesignSystemColors {
     const val MAP_CONTROL_BORDER_HEX = "#343640"
     const val MAP_CONTROL_CONTENT_HEX = "#F4F2EC"
 
-    const val STAR_FRESH_HEX = "#BBD7FF"
-    const val STAR_WARM_HEX = "#F5D98B"
-    const val STAR_DEEP_HEX = "#F2A05C"
+    /** 별 생애 가이드의 색상 팔레트입니다. 두 번째 색상이 기존 별의 기준 색상입니다. */
+    const val STAR_BLUE_HEX = "#BBD7FF"
+    const val STAR_EXISTING_HEX = "#F5D98B"
+    const val STAR_ORANGE_HEX = "#F2A05C"
+    const val STAR_CORE_HEX = "#FFF4CC"
     const val STAR_UNKNOWN_HEX = "#F4F2EC"
 }

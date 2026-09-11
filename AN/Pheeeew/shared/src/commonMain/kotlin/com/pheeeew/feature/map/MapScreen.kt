@@ -11,7 +11,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -41,11 +40,7 @@ import com.pheeeew.feature.map.overlay.ErrorSnackbar
 import com.pheeeew.feature.map.overlay.MapOverlay
 import com.pheeeew.feature.map.overlay.MemoEditor
 import com.pheeeew.feature.map.overlay.SighPhase
-import com.pheeeew.feature.map.star.StarAgePolicy
 import com.pheeeew.feature.map.star.StarVisualPolicy
-import kotlinx.coroutines.delay
-import kotlin.time.Clock
-import kotlin.time.Instant
 
 @Composable
 fun MapScreen(
@@ -82,7 +77,6 @@ fun MapScreen(
     var showMicrophonePermissionDialog by remember { mutableStateOf(false) }
     var sighPhase by remember { mutableStateOf(SighPhase.Idle) }
     var cancelSignal by remember { mutableStateOf(0) }
-    var starAgeRevision by remember { mutableIntStateOf(0) }
     val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
     val memoDraft = (uiState.sighRelease as? SighReleaseState.EditingMemo)?.draft
     val isMemoEditing = memoDraft != null
@@ -95,29 +89,10 @@ fun MapScreen(
             pendingFlightOrigin != null && landedFlightId != it
         }
 
-    LaunchedEffect(uiState.sighs, isActive) {
-        if (!isActive) return@LaunchedEffect
-
-        val agePolicy = StarAgePolicy()
-        while (true) {
-            val nextTransitionAt =
-                uiState.sighs
-                    .asSequence()
-                    .mapNotNull { sigh -> agePolicy.nextTransitionAt(sigh.createdAt) }
-                    .minOrNull()
-                    ?: return@LaunchedEffect
-            val delayMillis =
-                (nextTransitionAt - Clock.System.now()).inWholeMilliseconds.coerceAtLeast(1L)
-            delay(delayMillis)
-            starAgeRevision += 1
-        }
-    }
-
     val sighMarkers =
-        remember(uiState.sighs, hiddenMarkerId, starAgeRevision) {
+        remember(uiState.sighs, hiddenMarkerId) {
             uiState.toSighMarkers(
                 hiddenMarkerId = hiddenMarkerId,
-                now = Clock.System.now(),
             )
         }
 
@@ -344,10 +319,7 @@ fun MapScreen(
     }
 }
 
-private fun MapUiState.toSighMarkers(
-    hiddenMarkerId: String?,
-    now: Instant,
-): List<SighMarker> =
+private fun MapUiState.toSighMarkers(hiddenMarkerId: String?): List<SighMarker> =
     sighs
         .asSequence()
         .filterNot { it.id.toString() == hiddenMarkerId }
@@ -357,7 +329,7 @@ private fun MapUiState.toSighMarkers(
                 id = sighPin.id.toString(),
                 latitude = sighPin.coordinate.latitude,
                 longitude = sighPin.coordinate.longitude,
-                visual = StarVisualPolicy.visualFor(StarAgePolicy.stageOf(sighPin.createdAt, now)),
+                visual = StarVisualPolicy.visualFor(sighPin.id.toString()),
             )
         }.toList()
 
