@@ -1,5 +1,6 @@
 package com.pheeeew.feature.map.map
 
+import android.animation.ValueAnimator
 import android.graphics.Color
 import android.view.Gravity
 import androidx.compose.foundation.layout.Box
@@ -28,8 +29,13 @@ import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.PropertyFactory.iconOpacity
+import org.maplibre.android.style.layers.PropertyFactory.iconSize
+import org.maplibre.android.style.layers.SymbolLayer
 import java.util.ArrayDeque
+import kotlin.math.PI
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 @Composable
 internal actual fun NativeBreathMap(
@@ -122,6 +128,7 @@ private class AndroidBreathMapHost(
     private var hasRenderedCurrentLocation = false
     private var hasReportedStyleFailure = false
     private var released = false
+    private var sighPulseAnimator: ValueAnimator? = null
     private var projectionRevision = 0L
     private var cameraIdle = true
     private var lastRenderedFocusId: String? = null
@@ -226,6 +233,7 @@ private class AndroidBreathMapHost(
                 }
 
                 style = loadedStyle
+                startSighPulse(loadedStyle)
                 onMapRecovered()
                 renderLatestState()
             }
@@ -253,15 +261,47 @@ private class AndroidBreathMapHost(
         map?.removeOnCameraMoveStartedListener(cameraMoveStartedListener)
         map?.removeOnCameraMoveListener(cameraMoveListener)
         map?.removeOnCameraIdleListener(cameraIdleListener)
+        sighPulseAnimator?.cancel()
+        sighPulseAnimator = null
         map = null
         style = null
         latestState = null
         pendingCameraCommands.clear()
     }
 
-    fun pauseAnimations() = Unit
+    fun pauseAnimations() {
+        sighPulseAnimator?.pause()
+    }
 
-    fun resumeAnimations() = Unit
+    fun resumeAnimations() {
+        sighPulseAnimator?.resume()
+    }
+
+    private fun startSighPulse(style: Style) {
+        if (AndroidMapSources.sighLayerIds().none { style.getLayerAs<SymbolLayer>(it) != null }) return
+        sighPulseAnimator?.cancel()
+        sighPulseAnimator =
+            ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 1_800L
+                repeatCount = ValueAnimator.INFINITE
+                repeatMode = ValueAnimator.RESTART
+                addUpdateListener { animator ->
+                    if (released) return@addUpdateListener
+                    val progress = animator.animatedValue as Float
+                    AndroidMapSources.sighLayerIds().forEachIndexed { group, layerId ->
+                        val layer = style.getLayerAs<SymbolLayer>(layerId) ?: return@forEachIndexed
+                        val phase = (progress + group.toFloat() / AndroidMapSources.PULSE_GROUP_COUNT) % 1f
+                        val wave = (sin(phase * 2f * PI.toFloat()) + 1f) / 2f
+                        val pulse = wave * wave * (3f - (2f * wave))
+                        layer.setProperties(
+                            iconSize(0.48f + (pulse * 0.20f)),
+                            iconOpacity(0.72f + (pulse * 0.28f)),
+                        )
+                    }
+                }
+                start()
+            }
+    }
 
     private fun applyCompassMargins() {
         map?.uiSettings?.setCompassMargins(
