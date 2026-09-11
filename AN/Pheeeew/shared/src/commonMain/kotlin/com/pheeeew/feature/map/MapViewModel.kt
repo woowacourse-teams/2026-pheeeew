@@ -77,6 +77,10 @@ class MapViewModel(
     }
 
     fun loadSighs(bounds: SighBounds) {
+        if (!bounds.isValidForQuery()) {
+            mapPerformanceLogger("invalid_bounds_skipped")
+            return
+        }
         lastSighBounds = bounds
         mapPerformanceLogger("bounds_received")
 
@@ -99,7 +103,10 @@ class MapViewModel(
 
                     val serverSighs =
                         try {
-                            sighRepository.getMapSighs(bounds).distinctBy(SighPin::id)
+                            sighRepository
+                                .getMapSighs(bounds)
+                                .distinctBy(SighPin::id)
+                                .sortedBy(SighPin::id)
                         } catch (e: ApiException) {
                             sighOperationMutex.withLock {
                                 if (requestId != latestSighRequestId || !mapIsForeground) {
@@ -126,7 +133,10 @@ class MapViewModel(
 
                         val serverIds = serverSighs.mapTo(mutableSetOf(), SighPin::id)
                         serverIds.forEach(locallyRegisteredSighs::remove)
-                        val mergedSighs = (serverSighs + locallyRegisteredSighs.values).distinctBy(SighPin::id)
+                        val mergedSighs =
+                            (serverSighs + locallyRegisteredSighs.values)
+                                .distinctBy(SighPin::id)
+                                .sortedBy(SighPin::id)
                         _uiState.update { state ->
                             state.copy(
                                 sighs = mergedSighs,
@@ -185,7 +195,10 @@ class MapViewModel(
                     pendingRegistration = null
                     _uiState.update { state ->
                         state.copy(
-                            sighs = (state.sighs + sighPin).distinctBy(SighPin::id),
+                            sighs =
+                                (state.sighs + sighPin)
+                                    .distinctBy(SighPin::id)
+                                    .sortedBy(SighPin::id),
                             sighRelease = SighReleaseState.Idle,
                             viewport =
                                 state.viewport.copy(
@@ -382,3 +395,14 @@ class MapViewModel(
         }
     }
 }
+
+private fun SighBounds.isValidForQuery(): Boolean =
+    minLongitude.isFinite() &&
+        minLatitude.isFinite() &&
+        maxLongitude.isFinite() &&
+        maxLatitude.isFinite() &&
+        minLongitude in -180.0..180.0 &&
+        maxLongitude in -180.0..180.0 &&
+        minLatitude in -90.0..90.0 &&
+        maxLatitude in -90.0..90.0 &&
+        minLatitude <= maxLatitude

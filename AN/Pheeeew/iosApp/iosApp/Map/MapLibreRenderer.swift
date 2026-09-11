@@ -10,9 +10,8 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     private let eventSink: IosMapEventSink
     private var pendingState: IosMapRenderState?
     private var sighSource: MLNShapeSource?
-    private var sighLayers: [MLNSymbolStyleLayer] = []
-    private var sighPulseDisplayLink: CADisplayLink?
-    private var sighPulseStartedAt = CACurrentMediaTime()
+    private var sighLayer: MLNSymbolStyleLayer?
+    private var lastRenderedSighs: [RenderedSigh]?
     private var currentLocationSource: MLNShapeSource?
     private var styleIsReady = false
     private var didApplyProvisionalCamera = false
@@ -22,9 +21,7 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     private var lastFocusRequestID: String?
     private var pendingCameraCommands: [IosMapCameraCommand] = []
     private var cameraIsIdle = true
-    private var lastPublishedProjectionSignature: String?
-    private var isInBackground = false
-    private var lifecycleObservers: [NSObjectProtocol] = []
+    private var lastPublishedProjection: ProjectionSnapshot?
 
     private static let userCameraReasonMask: UInt =
         (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) |
@@ -34,8 +31,6 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         self.eventSink = eventSink
         mapView = MLNMapView(frame: .zero, styleURL: MapLibreDarkStyle.styleURL)
         super.init()
-
-        registerApplicationLifecycleObservers()
 
         mapView.backgroundColor = MapLibreDarkStyle.mapBackground
         mapView.delegate = self
@@ -71,14 +66,8 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         mapView.delegate = nil
         pendingState = nil
         sighSource = nil
-        sighLayers.removeAll()
-
-        sighPulseDisplayLink?.invalidate()
-        sighPulseDisplayLink = nil
-
-        let center = NotificationCenter.default
-        lifecycleObservers.forEach(center.removeObserver)
-        lifecycleObservers.removeAll()
+        sighLayer = nil
+        lastRenderedSighs = nil
 
         currentLocationSource = nil
         pendingCameraCommands.removeAll()
@@ -130,32 +119,27 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
 
     private func publishProjection(cameraIdle: Bool) {
         guard styleIsReady else { return }
-        let points = projectionPoints()
-        let signature = points.map { "\($0.id):\($0.xPx):\($0.yPx)" }.joined(separator: "|") + ":\(cameraIdle)"
-        if signature == lastPublishedProjectionSignature { return }
-        lastPublishedProjectionSignature = signature
+        let snapshot = ProjectionSnapshot(points: projectionPoints(), cameraIdle: cameraIdle)
+        if snapshot == lastPublishedProjection { return }
+        lastPublishedProjection = snapshot
+        let points = snapshot.points
         eventSink.onProjectionChanged(points: points, cameraIdle: cameraIdle)
     }
 
     private func projectionPoints() -> [IosMapScreenPoint] {
-        guard let state = pendingState else { return [] }
+        guard let focus = pendingState?.focusRequest else { return [] }
         // MapLibre reports UIKit points, while Compose Canvas coordinates are pixels on iOS.
         // Convert the projected map points before sending them to the Compose animation overlay.
         let screenScale = mapView.window?.screen.scale ?? mapView.contentScaleFactor
-        var targets: [(String, CLLocationCoordinate2D)] = state.sighMarkers.map {
-            ($0.id, CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude))
-        }
-        if let focus = state.focusRequest, !targets.contains(where: { $0.0 == focus.id }) {
-            targets.append((focus.id, CLLocationCoordinate2D(latitude: focus.latitude, longitude: focus.longitude)))
-        }
-        return targets.map { id, coordinate in
-            let point = mapView.convert(coordinate, toPointTo: mapView)
-            return IosMapScreenPoint(
-                id: id,
+        let coordinate = CLLocationCoordinate2D(latitude: focus.latitude, longitude: focus.longitude)
+        let point = mapView.convert(coordinate, toPointTo: mapView)
+        return [
+            IosMapScreenPoint(
+                id: focus.id,
                 xPx: Double(point.x * screenScale),
                 yPx: Double(point.y * screenScale)
             )
-        }
+        ]
     }
 
     func gestureRecognizer(
@@ -172,7 +156,7 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         let hitRect = CGRect(x: point.x - 22, y: point.y - 22, width: 44, height: 44)
         let features = mapView.visibleFeatures(
             in: hitRect,
-            styleLayerIdentifiers: Set(Self.sighLayerIDs),
+            styleLayerIdentifiers: [MapLibreDarkStyle.sighLayerID],
             predicate: nil
         )
         guard let feature = features.first else { return }
@@ -185,7 +169,15 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     }
 
     private func addRuntimeSourcesAndLayers(to style: MLNStyle) {
-        style.setImage(MapLibreDarkStyle.makeSighStarImage(), forName: MapLibreDarkStyle.sighImageID)
+        let starImages: [(String, UIColor)] = [
+            (MapLibreDarkStyle.starFreshImageID, MapLibreDarkStyle.starFreshColor),
+            (MapLibreDarkStyle.starWarmImageID, MapLibreDarkStyle.starWarmColor),
+            (MapLibreDarkStyle.starDeepImageID, MapLibreDarkStyle.starDeepColor),
+            (MapLibreDarkStyle.starUnknownImageID, MapLibreDarkStyle.starUnknownColor),
+        ]
+        for (imageID, color) in starImages {
+            style.setImage(MapLibreDarkStyle.makeSighStarImage(color: color), forName: imageID)
+        }
 
         let sighSource = MLNShapeSource(
             identifier: MapLibreDarkStyle.sighSourceID,
@@ -195,21 +187,17 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         style.addSource(sighSource)
         self.sighSource = sighSource
 
-        sighLayers.removeAll(keepingCapacity: true)
-        for group in 0..<Self.sighPulseGroupCount {
-            let sighLayer = MLNSymbolStyleLayer(
-                identifier: Self.sighLayerID(for: group),
-                source: sighSource
-            )
-            sighLayer.predicate = NSPredicate(format: "%K == %d", Self.sighPulseGroupProperty, group)
-            sighLayer.iconImageName = NSExpression(forConstantValue: MapLibreDarkStyle.sighImageID)
-            sighLayer.iconScale = NSExpression(forConstantValue: 0.3)
-            sighLayer.iconAllowsOverlap = NSExpression(forConstantValue: true)
-            sighLayer.iconIgnoresPlacement = NSExpression(forConstantValue: true)
-            style.addLayer(sighLayer)
-            sighLayers.append(sighLayer)
-        }
-        startSighPulse()
+        let sighLayer = MLNSymbolStyleLayer(
+            identifier: MapLibreDarkStyle.sighLayerID,
+            source: sighSource
+        )
+        sighLayer.iconImageName = NSExpression(mglJSONObject: ["get", "starImage"])
+        sighLayer.iconScale = NSExpression(mglJSONObject: ["get", "starScale"])
+        sighLayer.iconOpacity = NSExpression(mglJSONObject: ["get", "starOpacity"])
+        sighLayer.iconAllowsOverlap = NSExpression(forConstantValue: true)
+        sighLayer.iconIgnoresPlacement = NSExpression(forConstantValue: true)
+        style.addLayer(sighLayer)
+        self.sighLayer = sighLayer
 
         let currentSource = MLNShapeSource(
             identifier: MapLibreDarkStyle.currentLocationSourceID,
@@ -248,76 +236,45 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     }
 
     private func updateSighs(_ markers: [IosSighMarker]) {
+        let renderedSighs = markers.map {
+            RenderedSigh(
+                id: $0.id,
+                latitude: $0.latitude,
+                longitude: $0.longitude,
+                imageKey: $0.visual.imageKey,
+                scale: $0.visual.scale,
+                opacity: $0.visual.opacity
+            )
+        }
+        guard renderedSighs != lastRenderedSighs else { return }
+        lastRenderedSighs = renderedSighs
         let features = markers.map { marker -> MLNPointFeature in
             let feature = MLNPointFeature()
             feature.coordinate = CLLocationCoordinate2D(latitude: marker.latitude, longitude: marker.longitude)
             feature.identifier = marker.id as NSString
             feature.attributes = [
                 "id": marker.id,
-                Self.sighPulseGroupProperty: Self.pulseGroup(for: marker.id),
+                "starImage": marker.visual.imageKey,
+                "starScale": marker.visual.scale,
+                "starOpacity": marker.visual.opacity,
             ]
             return feature
         }
         sighSource?.shape = MLNShapeCollectionFeature(shapes: features)
     }
 
-    private func startSighPulse() {
-        sighPulseDisplayLink?.invalidate()
-        sighPulseStartedAt = CACurrentMediaTime()
-
-        let displayLink = CADisplayLink(
-            target: self,
-            selector: #selector(updateSighPulse)
-        )
-
-        displayLink.preferredFramesPerSecond = 30
-        displayLink.add(to: .main, forMode: .common)
-        displayLink.isPaused = isInBackground
-
-        sighPulseDisplayLink = displayLink
+    private struct RenderedSigh: Equatable {
+        let id: String
+        let latitude: Double
+        let longitude: Double
+        let imageKey: String
+        let scale: Float
+        let opacity: Float
     }
 
-    @objc
-    private func updateSighPulse() {
-        let elapsed = CACurrentMediaTime() - sighPulseStartedAt
-        for (group, sighLayer) in sighLayers.enumerated() {
-            let phase = (elapsed / Self.sighPulsePeriod + Double(group) / Double(Self.sighPulseGroupCount))
-                .truncatingRemainder(dividingBy: 1)
-            let wave = (sin(phase * 2 * .pi) + 1) / 2
-            let pulse = wave * wave * (3 - (2 * wave))
-            sighLayer.iconScale = NSExpression(forConstantValue: 0.24 + (pulse * 0.12))
-            sighLayer.iconOpacity = NSExpression(forConstantValue: 0.72 + (pulse * 0.28))
-        }
-    }
-
-    private func pauseAnimations() {
-        isInBackground = true
-        sighPulseDisplayLink?.isPaused = true
-    }
-
-    private func resumeAnimations() {
-        isInBackground = false
-        sighPulseDisplayLink?.isPaused = false
-    }
-
-    private static let sighPulseGroupCount = 12
-    private static let sighPulsePeriod = 1.8
-    private static let sighPulseGroupProperty = "sighPulseGroup"
-    private static var sighLayerIDs: [String] {
-        (0..<sighPulseGroupCount).map { sighLayerID(for: $0) }
-    }
-
-    private static func sighLayerID(for group: Int) -> String {
-        group == 0 ? MapLibreDarkStyle.sighLayerID : "\(MapLibreDarkStyle.sighLayerID)-\(group)"
-    }
-
-    private static func pulseGroup(for markerID: String) -> Int {
-        var hash: UInt64 = 14_695_981_039_346_656_037
-        for byte in markerID.utf8 {
-            hash ^= UInt64(byte)
-            hash &*= 1_099_511_628_211
-        }
-        return Int(hash % UInt64(sighPulseGroupCount))
+    private struct ProjectionSnapshot: Equatable {
+        let points: [IosMapScreenPoint]
+        let cameraIdle: Bool
     }
 
     private func updateCurrentLocation(_ location: IosCurrentLocation?) {
@@ -402,25 +359,4 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         }
     }
 
-    private func registerApplicationLifecycleObservers() {
-        let center = NotificationCenter.default
-
-        lifecycleObservers = [
-            center.addObserver(
-                forName: UIApplication.didEnterBackgroundNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                self?.pauseAnimations()
-            },
-
-            center.addObserver(
-                forName: UIApplication.willEnterForegroundNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in
-                self?.resumeAnimations()
-            },
-        ]
-    }
 }
