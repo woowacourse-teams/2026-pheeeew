@@ -199,7 +199,7 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
             )
             sighLayer.predicate = NSPredicate(format: "%K == %d", Self.sighPulseGroupProperty, group)
             sighLayer.iconImageName = NSExpression(mglJSONObject: ["get", "starImage"])
-            sighLayer.iconScale = NSExpression(forConstantValue: 0.58)
+            sighLayer.iconScale = NSExpression(forConstantValue: 0.3)
             sighLayer.iconOpacity = NSExpression(forConstantValue: 1.0)
             sighLayer.iconAllowsOverlap = NSExpression(forConstantValue: true)
             sighLayer.iconIgnoresPlacement = NSExpression(forConstantValue: true)
@@ -290,7 +290,7 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
                 .truncatingRemainder(dividingBy: 1)
             let wave = (sin(phase * 2 * .pi) + 1) / 2
             let pulse = wave * wave * (3 - (2 * wave))
-            sighLayer.iconScale = NSExpression(forConstantValue: 0.48 + (pulse * 0.20))
+            sighLayer.iconScale = NSExpression(forConstantValue: 0.24 + (pulse * 0.12))
             sighLayer.iconOpacity = NSExpression(forConstantValue: 0.72 + (pulse * 0.28))
         }
     }
