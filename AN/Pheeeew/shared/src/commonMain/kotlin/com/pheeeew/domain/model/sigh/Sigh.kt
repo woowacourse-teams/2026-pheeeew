@@ -10,6 +10,7 @@ data class Sigh(
     val nickname: String = "알 수 없음",
     val createdAt: Instant,
 ) {
+    /** 메모와 생성 시각을 보존하는 지도 핀 projection을 만듭니다. */
     fun toPin(): SighPin =
         SighPin(
             id = id,
