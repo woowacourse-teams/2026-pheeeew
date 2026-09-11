@@ -6,7 +6,6 @@ final class BreathAudioDetector {
     private var wantsRecording = false
     private var tapInstalled = false
     private var sessionGeneration = 0
-    private var smoothedStrength = 0.0
     private var previousInput = 0.0
     private var previousHighPassed = 0.0
     private var lowPassed500 = 0.0
@@ -40,7 +39,6 @@ final class BreathAudioDetector {
         wantsRecording = false
         if tapInstalled { engine.inputNode.removeTap(onBus: 0); tapInstalled = false }
         engine.stop(); engine.reset(); resetAnalysisState()
-        DispatchQueue.main.async { IosBreathBridge.shared.updateStrength(value: 0) }
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
 
@@ -68,6 +66,7 @@ final class BreathAudioDetector {
 
     private func process(_ buffer: AVAudioPCMBuffer) {
         guard wantsRecording, let channel = buffer.floatChannelData?.pointee, buffer.frameLength > 0 else { return }
+        let generation = sessionGeneration
         let rate = buffer.format.sampleRate
         let dt = 1.0 / rate
         let hpRC = 1.0 / (2.0 * Double.pi * 80.0)
@@ -91,17 +90,17 @@ final class BreathAudioDetector {
         let amplitude = min(max((20.0 * log10(sqrt(relevant)) + 48.0) / 40.0, 0), 1)
         let lowPresence = min(max((lowEnergy / Double(count) / relevant - 0.12) / 0.58, 0), 1)
         let texture = min(max((Double(crossings) / Double(count) - 0.035) / 0.16, 0), 1)
-        let audible = amplitude >= 0.08
-        let raw = audible ? amplitude * (0.72 + lowPresence * 0.20 + texture * 0.08) : 0
-        smoothedStrength = audible ? smoothedStrength * 0.55 + raw * 0.45 : 0
-        let strength = smoothedStrength
         DispatchQueue.main.async { [weak self] in
-            guard self?.wantsRecording == true else { return }
-            IosBreathBridge.shared.updateStrength(value: strength)
+            guard let self, self.wantsRecording, self.sessionGeneration == generation else { return }
+            IosBreathBridge.shared.updateMetrics(
+                amplitude: amplitude,
+                lowFrequencyPresence: lowPresence,
+                noisyTexture: texture
+            )
         }
     }
 
     private func resetAnalysisState() {
-        smoothedStrength = 0; previousInput = 0; previousHighPassed = 0; lowPassed500 = 0; lowPassed2000 = 0; previousBandLimited = 0
+        previousInput = 0; previousHighPassed = 0; lowPassed500 = 0; lowPassed2000 = 0; previousBandLimited = 0
     }
 }
