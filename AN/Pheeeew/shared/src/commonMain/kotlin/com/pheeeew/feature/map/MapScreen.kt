@@ -232,7 +232,7 @@ fun MapScreen(
                         },
                         onPhaseChanged = { sighPhase = it },
                         cancelSignal = cancelSignal,
-                        requestPermissionOnLaunch = true,
+                        requestPermissionOnLaunch = false,
                     )
                 }
                 ErrorSnackbar(
