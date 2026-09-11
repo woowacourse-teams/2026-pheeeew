@@ -11,6 +11,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -39,6 +40,11 @@ import com.pheeeew.feature.map.overlay.BreathControl
 import com.pheeeew.feature.map.overlay.ErrorSnackbar
 import com.pheeeew.feature.map.overlay.MapOverlay
 import com.pheeeew.feature.map.overlay.SighPhase
+import com.pheeeew.feature.map.star.StarAgePolicy
+import com.pheeeew.feature.map.star.StarVisualPolicy
+import kotlinx.coroutines.delay
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @Composable
 fun MapScreen(
@@ -71,12 +77,39 @@ fun MapScreen(
     var showMicrophonePermissionDialog by remember { mutableStateOf(false) }
     var sighPhase by remember { mutableStateOf(SighPhase.Idle) }
     var cancelSignal by remember { mutableStateOf(0) }
+    var starAgeRevision by remember { mutableIntStateOf(0) }
     val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
     val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting
 
     val hiddenMarkerId =
         uiState.viewport.focusRequest?.id?.takeIf {
             pendingFlightOrigin != null && landedFlightId != it
+        }
+
+    LaunchedEffect(uiState.sighs, isActive) {
+        if (!isActive) return@LaunchedEffect
+
+        val agePolicy = StarAgePolicy()
+        while (true) {
+            val nextTransitionAt =
+                uiState.sighs
+                    .asSequence()
+                    .mapNotNull { sigh -> agePolicy.nextTransitionAt(sigh.createdAt) }
+                    .minOrNull()
+                    ?: return@LaunchedEffect
+            val delayMillis =
+                (nextTransitionAt - Clock.System.now()).inWholeMilliseconds.coerceAtLeast(1L)
+            delay(delayMillis)
+            starAgeRevision += 1
+        }
+    }
+
+    val sighMarkers =
+        remember(uiState.sighs, hiddenMarkerId, starAgeRevision) {
+            uiState.toSighMarkers(
+                hiddenMarkerId = hiddenMarkerId,
+                now = Clock.System.now(),
+            )
         }
 
     LaunchedEffect(uiState.viewport.focusRequest?.id, projectionSnapshot.revision) {
@@ -98,7 +131,14 @@ fun MapScreen(
 
     Box(modifier = modifier.fillMaxSize().background(AppTheme.colors.background)) {
         BreathMap(
-            state = uiState.toMapRenderState(hiddenMarkerId),
+            state =
+                MapRenderState(
+                    currentLocation = (uiState.location.state as? LocationState.Available)?.location,
+                    locationState = uiState.location.state,
+                    fallbackCenter = DEFAULT_MAP_POINT,
+                    sighMarkers = sighMarkers,
+                    focusRequest = uiState.viewport.focusRequest,
+                ),
             cameraCommand = uiState.viewport.cameraCommand,
             onSighClick = {},
             onBoundsChanged = onBoundsChanged,
@@ -279,21 +319,22 @@ fun MapScreen(
     }
 }
 
-private fun MapUiState.toMapRenderState(hiddenMarkerId: String?): MapRenderState =
-    MapRenderState(
-        currentLocation = (location.state as? LocationState.Available)?.location,
-        locationState = location.state,
-        fallbackCenter = DEFAULT_MAP_POINT,
-        sighMarkers =
-            sighs.filterNot { it.id.toString() == hiddenMarkerId }.map { sighPin ->
-                SighMarker(
-                    id = sighPin.id.toString(),
-                    latitude = sighPin.coordinate.latitude,
-                    longitude = sighPin.coordinate.longitude,
-                )
-            },
-        focusRequest = viewport.focusRequest,
-    )
+private fun MapUiState.toSighMarkers(
+    hiddenMarkerId: String?,
+    now: Instant,
+): List<SighMarker> =
+    sighs
+        .asSequence()
+        .filterNot { it.id.toString() == hiddenMarkerId }
+        .sortedBy { it.id }
+        .map { sighPin ->
+            SighMarker(
+                id = sighPin.id.toString(),
+                latitude = sighPin.coordinate.latitude,
+                longitude = sighPin.coordinate.longitude,
+                visual = StarVisualPolicy.visualFor(StarAgePolicy.stageOf(sighPin.createdAt, now)),
+            )
+        }.toList()
 
 private val DEFAULT_MAP_POINT = MapPoint("default-location", 37.5505, 127.0373)
 
