@@ -38,6 +38,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 class MapViewModelTest {
@@ -274,7 +275,9 @@ class MapViewModelTest {
                         locationDependencies = locationDependencies(LocationState.Available(location)),
                     )
 
-                viewModel.registerSighAfterExplosion()
+                viewModel.beginMemoAfterExplosion()
+                assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease)
+                viewModel.submitMemo("  오늘은 조금 지쳤다  ")
                 runCurrent()
                 assertIs<SighReleaseState.Submitting>(viewModel.uiState.value.sighRelease)
 
@@ -285,6 +288,7 @@ class MapViewModelTest {
                 assertIs<SighReleaseState.Idle>(state.sighRelease)
                 assertEquals(1L, state.sighs.single().id)
                 assertEquals("1", state.viewport.focusRequest?.id)
+                assertEquals("오늘은 조금 지쳤다", repository.createdCommands.single().memo)
 
                 viewModel.consumeFocusRequest("other")
                 val unconsumedFocusRequest = viewModel.uiState.value.viewport.focusRequest
@@ -317,13 +321,14 @@ class MapViewModelTest {
                         locationDependencies = locationDependencies(LocationState.Available(location)),
                     )
 
-                viewModel.registerSighAfterExplosion()
+                viewModel.beginMemoAfterExplosion()
+                viewModel.submitMemo("같은 요청")
                 runCurrent()
                 advanceTimeBy(2_000)
                 runCurrent()
                 assertIs<SighReleaseState.Error>(viewModel.uiState.value.sighRelease)
 
-                viewModel.registerSighAfterExplosion()
+                viewModel.retrySighCreation()
                 runCurrent()
                 advanceTimeBy(2_000)
                 runCurrent()
@@ -337,10 +342,81 @@ class MapViewModelTest {
         }
 
     @Test
+    fun `메모 건너뛰기는 null payload를 한 번만 제출한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository = RecordingSighRepository()
+                val viewModel =
+                    createViewModel(
+                        repository = repository,
+                        locationDependencies =
+                            locationDependencies(
+                                LocationState.Available(
+                                    CurrentLocation(
+                                        latitude = 37.55,
+                                        longitude = 126.95,
+                                        accuracyMeters = 5f,
+                                        capturedAtMillis = 1L,
+                                    ),
+                                ),
+                            ),
+                    )
+
+                viewModel.beginMemoAfterExplosion()
+                viewModel.skipMemo()
+                viewModel.skipMemo()
+                runCurrent()
+
+                assertEquals(1, repository.createdCommands.size)
+                assertEquals(null, repository.createdCommands.single().memo)
+                advanceTimeBy(2_000)
+                runCurrent()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `메모 작성 중 닫기는 서버 요청 없이 draft를 정리한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository = RecordingSighRepository()
+                val viewModel =
+                    createViewModel(
+                        repository = repository,
+                        locationDependencies =
+                            locationDependencies(
+                                LocationState.Available(
+                                    CurrentLocation(
+                                        latitude = 37.55,
+                                        longitude = 126.95,
+                                        accuracyMeters = 5f,
+                                        capturedAtMillis = 1L,
+                                    ),
+                                ),
+                            ),
+                    )
+
+                viewModel.beginMemoAfterExplosion()
+                assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease)
+                viewModel.dismissMemo()
+
+                assertIs<SighReleaseState.Idle>(viewModel.uiState.value.sighRelease)
+                assertTrue(repository.createdCommands.isEmpty())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `위치가 없으면 한숨 등록을 시작하지 않고 재시도 불가 오류를 표시한다`() {
         val viewModel = createViewModel()
 
-        viewModel.registerSighAfterExplosion()
+        viewModel.beginMemoAfterExplosion()
 
         val error = assertIs<SighReleaseState.Error>(viewModel.uiState.value.sighRelease)
         assertEquals(false, error.canRetry)

@@ -1,6 +1,7 @@
 package com.pheeeew.feature.map
 
 import com.pheeeew.domain.model.location.LocationState
+import com.pheeeew.domain.model.sigh.CreateSighCommand
 import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.feature.map.map.MapCameraCommand
 
@@ -30,10 +31,17 @@ data class MapErrorUiState(
 sealed interface SighReleaseState {
     data object Idle : SighReleaseState
 
-    data object Submitting : SighReleaseState
+    data class EditingMemo(
+        val draft: PendingSighDraft,
+    ) : SighReleaseState
+
+    data class Submitting(
+        val command: CreateSighCommand,
+    ) : SighReleaseState
 
     data class Error(
         val message: String,
         val canRetry: Boolean,
+        val command: CreateSighCommand? = null,
     ) : SighReleaseState
 }
