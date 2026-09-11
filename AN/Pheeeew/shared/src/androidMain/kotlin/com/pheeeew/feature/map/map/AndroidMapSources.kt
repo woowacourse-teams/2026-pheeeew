@@ -8,7 +8,6 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import com.google.gson.JsonObject
-import com.pheeeew.core.designsystem.DesignSystemColors
 import com.pheeeew.domain.model.location.CurrentLocation
 import com.pheeeew.feature.map.SighMarker
 import com.pheeeew.feature.map.star.StarVisual
@@ -227,7 +226,7 @@ internal object AndroidMapSources {
                 innerRadius = 10f,
             ),
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.parseColor(DesignSystemColors.STAR_CORE_HEX)
+                color = Color.parseColor(MapDarkStyle.IVORY)
                 style = Paint.Style.FILL
             },
         )
