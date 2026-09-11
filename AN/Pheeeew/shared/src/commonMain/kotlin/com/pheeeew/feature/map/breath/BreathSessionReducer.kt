@@ -86,9 +86,15 @@ class BreathSessionReducer(
             }
         if (activeState.sessionId != event.sessionId) return BreathSessionTransition(state)
 
-        val elapsed = event.elapsed.coerceAtLeast(ZERO)
+        val elapsed = event.elapsed.coerceIn(ZERO, config.maxSampleElapsed)
         val strength = event.strength.coerceIn(0f, 1f)
-        val isActive = strength >= config.effectiveStrengthThreshold
+        val activeThreshold =
+            if (activeState.growth > 0f) {
+                config.sustainThreshold
+            } else {
+                config.activationThreshold
+            }
+        val isActive = strength >= activeThreshold
         val growth =
             if (isActive) {
                 (activeState.growth + (elapsed / config.growthDuration).toFloat()).coerceAtMost(1f)
@@ -117,10 +123,11 @@ class BreathSessionReducer(
                 else -> return BreathSessionTransition(state)
             }
         if (activeState.sessionId != event.sessionId) return BreathSessionTransition(state)
-        if (event.upwardVelocityDpPerSecond > -config.releaseVelocityThresholdDpPerSecond) {
-            return BreathSessionTransition(activeState)
-        }
-        if (activeState.growth < config.minimumReleaseGrowth) {
+        val reachedReleaseGesture =
+            event.upwardDistanceDp >= config.releaseDistanceDp ||
+                event.upwardVelocityDpPerSecond >= config.releaseVelocityDpPerSecond
+        if (!reachedReleaseGesture) return BreathSessionTransition(activeState)
+        if (activeState.growth < config.minimumReleaseProgress) {
             return BreathSessionTransition(
                 BreathSessionState.NeedsMore(
                     sessionId = activeState.sessionId,

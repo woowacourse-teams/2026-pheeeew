@@ -57,6 +57,7 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.map.breath.BreathControlState
 import com.pheeeew.feature.map.breath.BreathInteractionConfig
+import com.pheeeew.feature.map.breath.BreathSessionReducer
 import com.pheeeew.feature.map.breath.BreathSessionState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
@@ -71,13 +72,10 @@ private const val BURST_DURATION_MILLIS = 720L
 private const val IDLE_SCALE = 2f / 3f
 private const val NEEDS_MORE_HINT_MILLIS = 1_400L
 private const val RELEASE_DRAG_MAX_DP = 1200f
-private const val FLING_VELOCITY_THRESHOLD_DP = 250f
 private const val SHAKE_AMPLITUDE_DP = 3f
 private const val FLY_AWAY_DISTANCE_DP = 1600f
 private const val IDLE_TEXT_GAP_BOX_HEIGHT_DP = 100f
 private const val BUTTON_BOTTOM_MARGIN_DP = 32f
-
-private val DEFAULT_BREATH_CONFIG = BreathInteractionConfig()
 
 enum class SighPhase { Idle, Listening, Quiet, NeedsMore, Bursting }
 
@@ -90,6 +88,7 @@ fun BreathControl(
     onPhaseChanged: (SighPhase) -> Unit,
     cancelSignal: Int,
     requestPermissionOnLaunch: Boolean,
+    breathConfig: BreathInteractionConfig = BreathInteractionConfig(),
     modifier: Modifier = Modifier,
 ) {
     var burstProgress by remember { mutableStateOf(0f) }
@@ -106,11 +105,12 @@ fun BreathControl(
     val latestPhaseChanged = rememberUpdatedState(onPhaseChanged)
     val latestEnsureLocationPermission = rememberUpdatedState(ensureLocationPermission)
     val breathControlState =
-        remember(breathInput, lifecycleOwner) {
+        remember(breathInput, lifecycleOwner, breathConfig) {
             BreathControlState(
                 breathInput = breathInput,
                 scope = coroutineScope,
                 ensureLocationPermission = { latestEnsureLocationPermission.value() },
+                reducer = BreathSessionReducer(breathConfig),
             )
         }
     val sessionState by breathControlState.session.collectAsState()
@@ -217,7 +217,7 @@ fun BreathControl(
             !listening -> SighPhase.Idle
             needsMoreActive && sessionState is BreathSessionState.NeedsMore -> SighPhase.NeedsMore
             growth >= 1f -> SighPhase.Quiet
-            growth > 0f && quietForMillis >= DEFAULT_BREATH_CONFIG.quietDelay.inWholeMilliseconds -> SighPhase.Quiet
+            growth > 0f && quietForMillis >= breathConfig.quietDelay.inWholeMilliseconds -> SighPhase.Quiet
             else -> SighPhase.Listening
         }
     LaunchedEffect(phase) { latestPhaseChanged.value(phase) }
@@ -272,7 +272,7 @@ fun BreathControl(
             val isMaxedAndBlowing =
                 listening &&
                     growth >= 1f &&
-                    strength >= DEFAULT_BREATH_CONFIG.effectiveStrengthThreshold
+                    strength >= breathConfig.sustainThreshold
             val shakePhase by rememberInfiniteTransition(label = "maxShake").animateFloat(
                 initialValue = -1f,
                 targetValue = 1f,
@@ -314,7 +314,6 @@ fun BreathControl(
                                 })
                             } else {
                                 val maxDragPx = with(density) { RELEASE_DRAG_MAX_DP.dp.toPx() }
-                                val flingThresholdPx = with(density) { FLING_VELOCITY_THRESHOLD_DP.dp.toPx() }
                                 // Manual velocity calc (whole-gesture average) instead of Compose's
                                 // VelocityTracker: on iOS this app's fling detection was unreliable using
                                 // VelocityTracker, so this avoids depending on its platform-specific internal
@@ -345,36 +344,21 @@ fun BreathControl(
                                         }
                                     },
                                     onDragEnd = {
-                                        // A slow, deliberate raise must NOT register — only a fast upward
-                                        // flick (fling) does, regardless of how far the drag itself traveled.
                                         val elapsedMillis = (lastDragTimeMillis - dragStartTimeMillis).coerceAtLeast(1L)
                                         val flingVelocityY = rawTraveledY / elapsedMillis * 1000f
-                                        when {
-                                            flingVelocityY > -flingThresholdPx -> {
-                                                coroutineScope.launch {
-                                                    dragOffsetY.animateTo(
-                                                        0f,
-                                                        spring(dampingRatio = 0.7f, stiffness = 300f),
-                                                    )
-                                                }
+                                        burstOrigin = origin
+                                        val upwardDistanceDp =
+                                            with(density) {
+                                                (-rawTraveledY).coerceAtLeast(0f).toDp().value
                                             }
-
-                                            else -> {
-                                                burstOrigin = origin
-                                                val upwardDistanceDp =
-                                                    with(density) {
-                                                        (-rawTraveledY).coerceAtLeast(0f).toDp().value
-                                                    }
-                                                val upwardVelocityDpPerSecond =
-                                                    with(density) {
-                                                        flingVelocityY.toDp().value
-                                                    }
-                                                breathControlState.release(
-                                                    upwardDistanceDp = upwardDistanceDp,
-                                                    upwardVelocityDpPerSecond = upwardVelocityDpPerSecond,
-                                                )
+                                        val upwardVelocityDpPerSecond =
+                                            with(density) {
+                                                (-flingVelocityY).coerceAtLeast(0f).toDp().value
                                             }
-                                        }
+                                        breathControlState.release(
+                                            upwardDistanceDp = upwardDistanceDp,
+                                            upwardVelocityDpPerSecond = upwardVelocityDpPerSecond,
+                                        )
                                     },
                                     onDragCancel = {
                                         coroutineScope.launch {
@@ -443,7 +427,7 @@ private fun BreathControlPreview() {
         ensureLocationPermission = { true },
         onPhaseChanged = {},
         cancelSignal = 0,
-        requestPermissionOnLaunch = true,
+        requestPermissionOnLaunch = false,
     )
 }
 
