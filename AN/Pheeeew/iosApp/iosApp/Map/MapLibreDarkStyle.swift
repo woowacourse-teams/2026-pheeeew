@@ -297,8 +297,7 @@ enum MapLibreDarkStyle {
 
             let coreColors = [
                 MapLibreDarkStyle.color(hex: DesignSystemColors.shared.STAR_CORE_HEX).cgColor,
-                MapLibreDarkStyle.color(hex: DesignSystemColors.shared.STAR_EXISTING_HEX)
-                    .withAlphaComponent(0.72).cgColor,
+                color.withAlphaComponent(0.72).cgColor,
             ] as CFArray
             if let gradient = CGGradient(
                 colorsSpace: CGColorSpaceCreateDeviceRGB(),
