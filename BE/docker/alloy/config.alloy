@@ -1,0 +1,115 @@
+logging {
+	level = "warn"
+}
+
+prometheus.scrape "app" {
+	targets = [{
+		__address__ = "app:8080",
+		application = "pheeeew",
+		environment = "prod",
+		instance    = "pheeeew-prod",
+	}]
+	job_name        = "pheeeew-api"
+	honor_labels    = true
+	metrics_path    = "/actuator/prometheus"
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.app.receiver]
+}
+
+prometheus.relabel "app" {
+	forward_to = [prometheus.remote_write.grafana.receiver]
+
+	rule {
+		source_labels = ["__name__"]
+		regex         = "up|scrape_duration_seconds|scrape_samples_scraped|http_server_requests_seconds_(count|sum|bucket|max)|pheeeew_sigh_map_(query_seconds_(count|sum|bucket|max)|results_(count|sum|max))|jvm_memory_(used|committed|max)_bytes|jvm_gc_pause_seconds_(count|sum|max)|jvm_threads_live_threads|process_(cpu_usage|uptime_seconds)|system_cpu_usage|hikaricp_connections(_(active|idle|pending|max|min|timeout_total|acquire_seconds_(count|sum|max)))?"
+		action        = "keep"
+	}
+}
+
+prometheus.remote_write "grafana" {
+	endpoint {
+		url = sys.env("GRAFANA_METRICS_URL")
+
+		basic_auth {
+			username = sys.env("GRAFANA_METRICS_USER")
+			password = sys.env("GRAFANA_CLOUD_TOKEN")
+		}
+
+		queue_config {
+			min_shards           = 1
+			max_shards           = 2
+			capacity             = 2500
+			max_samples_per_send = 500
+		}
+	}
+
+	wal {
+		truncate_frequency = "15m"
+		min_keepalive_time = "5m"
+		max_keepalive_time = "1h"
+	}
+}
+
+// Read only the active file. Archives are retained locally, not re-ingested.
+loki.source.file "app" {
+	targets = [{
+		__path__    = "/var/log/pheeeew/application.json",
+		job         = "pheeeew-api",
+		application = "pheeeew",
+		environment = "prod",
+		instance    = "pheeeew-prod",
+	}]
+	forward_to = [loki.process.http_requests.receiver]
+}
+
+loki.process "http_requests" {
+	forward_to = [loki.write.grafana.receiver]
+
+	stage.json {
+		expressions = {
+			logger    = "logger_name",
+			event     = "event",
+			level     = "level",
+			timestamp = "\"@timestamp\"",
+		}
+		drop_malformed = true
+	}
+
+	stage.labels {
+		values = {logger = "", event = "", level = ""}
+	}
+	// Library/container logs have not been reviewed for personal data.
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", logger!=\"com.pheeeew.common.logging.RequestLogWriter\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_logger"
+	}
+
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", event!~\"http_request_failed|http_request_slow\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_event"
+	}
+
+	stage.timestamp {
+		source            = "timestamp"
+		format            = "RFC3339Nano"
+		action_on_failure = "skip"
+	}
+
+	stage.label_drop {
+		values = ["logger", "filename"]
+	}
+}
+
+loki.write "grafana" {
+	endpoint {
+		url = sys.env("GRAFANA_LOGS_URL")
+
+		basic_auth {
+			username = sys.env("GRAFANA_LOGS_USER")
+			password = sys.env("GRAFANA_CLOUD_TOKEN")
+		}
+	}
+}
