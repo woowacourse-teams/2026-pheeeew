@@ -274,7 +274,9 @@ class MapViewModelTest {
                         locationDependencies = locationDependencies(LocationState.Available(location)),
                     )
 
-                viewModel.registerSighAfterExplosion()
+                viewModel.beginMemoAfterExplosion()
+                assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease)
+                viewModel.submitMemo("  오늘은 조금 지쳤다  ")
                 runCurrent()
                 assertIs<SighReleaseState.Submitting>(viewModel.uiState.value.sighRelease)
 
@@ -285,6 +287,7 @@ class MapViewModelTest {
                 assertIs<SighReleaseState.Idle>(state.sighRelease)
                 assertEquals(1L, state.sighs.single().id)
                 assertEquals("1", state.viewport.focusRequest?.id)
+                assertEquals("오늘은 조금 지쳤다", repository.createdCommands.single().memo)
 
                 viewModel.consumeFocusRequest("other")
                 val unconsumedFocusRequest = viewModel.uiState.value.viewport.focusRequest
@@ -317,13 +320,14 @@ class MapViewModelTest {
                         locationDependencies = locationDependencies(LocationState.Available(location)),
                     )
 
-                viewModel.registerSighAfterExplosion()
+                viewModel.beginMemoAfterExplosion()
+                viewModel.submitMemo("같은 요청")
                 runCurrent()
                 advanceTimeBy(2_000)
                 runCurrent()
                 assertIs<SighReleaseState.Error>(viewModel.uiState.value.sighRelease)
 
-                viewModel.registerSighAfterExplosion()
+                viewModel.retrySighCreation()
                 runCurrent()
                 advanceTimeBy(2_000)
                 runCurrent()
@@ -340,7 +344,7 @@ class MapViewModelTest {
     fun `위치가 없으면 한숨 등록을 시작하지 않고 재시도 불가 오류를 표시한다`() {
         val viewModel = createViewModel()
 
-        viewModel.registerSighAfterExplosion()
+        viewModel.beginMemoAfterExplosion()
 
         val error = assertIs<SighReleaseState.Error>(viewModel.uiState.value.sighRelease)
         assertEquals(false, error.canRetry)

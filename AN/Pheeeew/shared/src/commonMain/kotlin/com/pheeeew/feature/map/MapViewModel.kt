@@ -42,6 +42,7 @@ class MapViewModel(
 ) : ViewModel() {
     private var nextCameraCommandId = 0L
     private var pendingRegistration: CreateSighCommand? = null
+    private var pendingMemoDraft: PendingSighDraft? = null
     private val sighOperationMutex = Mutex()
     private val locallyRegisteredSighs = mutableMapOf<Long, SighPin>()
     private var mapIsForeground = false
@@ -152,9 +153,9 @@ class MapViewModel(
             }
     }
 
-    fun registerSighAfterExplosion() {
+    fun beginMemoAfterExplosion() {
         val current = _uiState.value
-        if (current.sighRelease is SighReleaseState.Submitting) return
+        if (current.sighRelease !is SighReleaseState.Idle) return
         val location = (current.location.state as? LocationState.Available)?.location
 
         if (location == null) {
@@ -168,21 +169,60 @@ class MapViewModel(
             return
         }
 
-        val request =
+        val draft =
+            pendingMemoDraft
+                ?: PendingSighDraft(
+                    requestId = Uuid.random().toString(),
+                    coordinate = location.coordinate,
+                ).also { pendingMemoDraft = it }
+        _uiState.update { state -> state.copy(sighRelease = SighReleaseState.EditingMemo(draft)) }
+    }
+
+    @Deprecated("메모 입력을 시작하려면 beginMemoAfterExplosion을 사용합니다.")
+    fun registerSighAfterExplosion() = beginMemoAfterExplosion()
+
+    fun submitMemo(rawMemo: String) {
+        val state = _uiState.value.sighRelease as? SighReleaseState.EditingMemo ?: return
+        val memo =
+            try {
+                MemoPolicy.normalize(rawMemo)
+            } catch (e: IllegalArgumentException) {
+                _uiState.update { current ->
+                    current.copy(sighRelease = SighReleaseState.Error(e.message.orEmpty(), canRetry = false))
+                }
+                return
+            }
+        val command =
             pendingRegistration
                 ?: createSigh
                     .prepare(
-                        requestId = Uuid.random().toString(),
-                        coordinate = location.coordinate,
-                    ).also { command -> pendingRegistration = command }
-        submit(request)
+                        requestId = state.draft.requestId,
+                        coordinate = state.draft.coordinate,
+                        memo = memo,
+                    ).also { pendingRegistration = it }
+        submit(command)
+    }
+
+    fun skipMemo() {
+        submitMemo(rawMemo = "")
+    }
+
+    fun dismissMemo() {
+        if (_uiState.value.sighRelease !is SighReleaseState.EditingMemo) return
+        clearPendingSigh()
+        _uiState.update { state -> state.copy(sighRelease = SighReleaseState.Idle) }
+    }
+
+    fun retrySighCreation() {
+        val command = (_uiState.value.sighRelease as? SighReleaseState.Error)?.command ?: return
+        submit(command)
     }
 
     private fun submit(command: CreateSighCommand) {
         val submittingStartedAt = TimeSource.Monotonic.markNow()
         _uiState.update { state ->
             state.copy(
-                sighRelease = SighReleaseState.Submitting,
+                sighRelease = SighReleaseState.Submitting(command),
             )
         }
         viewModelScope.launch {
@@ -192,7 +232,7 @@ class MapViewModel(
 
                 sighOperationMutex.withLock {
                     locallyRegisteredSighs[sighPin.id] = sighPin
-                    pendingRegistration = null
+                    clearPendingSigh()
                     _uiState.update { state ->
                         state.copy(
                             sighs =
@@ -216,7 +256,12 @@ class MapViewModel(
                 waitForMinimumSubmittingDuration(submittingStartedAt)
                 _uiState.update { state ->
                     state.copy(
-                        sighRelease = SighReleaseState.Error(message = e.toUserMessage(), canRetry = true),
+                        sighRelease =
+                            SighReleaseState.Error(
+                                message = e.toUserMessage(),
+                                canRetry = true,
+                                command = command,
+                            ),
                     )
                 }
             }
@@ -230,8 +275,13 @@ class MapViewModel(
     }
 
     fun cancelFailedSighRegistration() {
-        pendingRegistration = null
+        clearPendingSigh()
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.Idle) }
+    }
+
+    private fun clearPendingSigh() {
+        pendingRegistration = null
+        pendingMemoDraft = null
     }
 
     fun consumeFocusRequest(id: String) {
