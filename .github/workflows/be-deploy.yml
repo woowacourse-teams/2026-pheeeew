@@ -153,6 +153,7 @@ jobs:
         run: |
           set -eu
           ssh -F ~/.ssh/config target 'mkdir -p /opt/pheeeew/nginx /opt/pheeeew/alloy'
+          ssh -F ~/.ssh/config target 'set -eu; cd /opt/pheeeew; if [ -f compose.yml ]; then cp compose.yml compose.yml.prev; fi'
           scp -F ~/.ssh/config BE/docker/compose.prod.yml target:/opt/pheeeew/compose.yml
           scp -F ~/.ssh/config BE/docker/nginx/api.conf target:/opt/pheeeew/nginx/api.conf
           scp -F ~/.ssh/config BE/docker/compose.monitoring.yml target:/opt/pheeeew/compose.monitoring.yml
@@ -242,6 +243,9 @@ jobs:
           fi
 
           echo "===== 롤백: $PREVIOUS ====="
+          if [ -f compose.yml.prev ]; then
+            cp compose.yml.prev compose.yml
+          fi
           if [ -f .env.prev ]; then
             echo ".env 도 이전 값으로 되돌립니다."
             cp .env.prev .env
