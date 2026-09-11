@@ -1,4 +1,4 @@
-package com.pheeeew.device.infra.jwt;
+package com.pheeeew.auth.infra.jwt;
 
 import java.time.Instant;
 import java.util.UUID;

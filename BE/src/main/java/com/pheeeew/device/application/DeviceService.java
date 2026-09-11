@@ -3,6 +3,7 @@ package com.pheeeew.device.application;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_REGISTRATION_WINDOW_EXPIRED;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_SAVE_FAILED;
 
+import com.pheeeew.auth.infra.jwt.TokenProperties;
 import com.pheeeew.device.application.dto.AccessTokenResult;
 import com.pheeeew.device.application.dto.DeviceSaveResult;
 import com.pheeeew.device.application.token.AccessTokenIssuer;
@@ -12,7 +13,6 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.DevicePlatform;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.device.infra.jwt.TokenProperties;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;

@@ -1,10 +1,12 @@
 package com.pheeeew.report.presentation;
 
+import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.report.application.SighReportResult;
 import com.pheeeew.report.application.SighReportService;
 import com.pheeeew.report.presentation.dto.SighReportCreateRequest;
 import com.pheeeew.report.presentation.dto.SighReportResponse;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -23,9 +25,10 @@ public class SighReportController implements SighReportControllerApi {
     @Override
     @PostMapping
     public ResponseEntity<SighReportResponse> save(
+            @CurrentDevice UUID devicePublicId,
             @Valid @RequestBody SighReportCreateRequest request
     ) {
-        SighReportResult result = sighReportService.save(request.sighId(), request.deviceId(), request.reason());
+        SighReportResult result = sighReportService.save(request.sighId(), devicePublicId, request.reason());
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {

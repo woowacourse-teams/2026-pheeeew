@@ -1,8 +1,9 @@
-package com.pheeeew.device.infra.jwt;
+package com.pheeeew.auth.infra.jwt;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
@@ -22,11 +23,14 @@ public class JwtConfig {
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(JwtProperties jwtProperties) {
+    public JwtDecoder jwtDecoder(JwtProperties jwtProperties, AccessTokenJwtValidator accessTokenJwtValidator) {
         NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withPublicKey(jwtProperties.publicKey())
                 .signatureAlgorithm(SignatureAlgorithm.RS256)
                 .build();
-        jwtDecoder.setJwtValidator(JwtValidators.createDefaultWithIssuer(AccessTokenContract.ISSUER));
+        jwtDecoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+                JwtValidators.createDefaultWithIssuer(AccessTokenContract.ISSUER),
+                accessTokenJwtValidator
+        ));
         return jwtDecoder;
     }
 }

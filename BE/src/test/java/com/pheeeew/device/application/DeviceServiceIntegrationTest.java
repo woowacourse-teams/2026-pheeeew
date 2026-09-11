@@ -9,6 +9,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
+import com.pheeeew.auth.infra.jwt.AccessTokenClaims;
 import com.pheeeew.device.application.dto.DeviceSaveResult;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.DevicePlatform;
@@ -16,8 +17,6 @@ import com.pheeeew.device.domain.repository.DeviceRefreshTokenRepository;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.device.infra.jwt.AccessTokenClaims;
-import com.pheeeew.device.infra.jwt.JwtTokenDecoder;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -34,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,7 +56,7 @@ class DeviceServiceIntegrationTest {
     private DeviceRefreshTokenRepository deviceRefreshTokenRepository;
 
     @Autowired
-    private JwtTokenDecoder jwtTokenDecoder;
+    private JwtDecoder jwtDecoder;
 
     @Autowired
     private JdbcClient jdbcClient;
@@ -257,7 +257,7 @@ class DeviceServiceIntegrationTest {
 
         // then
         Device device = deviceRepository.findByRequestId(requestId).orElseThrow();
-        AccessTokenClaims claims = jwtTokenDecoder.decodeAccessToken(result.accessToken());
+        AccessTokenClaims claims = AccessTokenClaims.from(jwtDecoder.decode(result.accessToken()));
         assertThat(claims.devicePublicId()).isEqualTo(device.getPublicId());
         assertThat(device.getId()).isNotNull();
         assertThat(catchThrowable(() -> Long.parseLong(claims.devicePublicId().toString())))
@@ -301,7 +301,7 @@ class DeviceServiceIntegrationTest {
     }
 
     private String 기기_공개_식별자를_뽑는다(String accessToken) {
-        return jwtTokenDecoder.decodeAccessToken(accessToken).devicePublicId().toString();
+        return AccessTokenClaims.from(jwtDecoder.decode(accessToken)).devicePublicId().toString();
     }
 
     private ListAppender<ILoggingEvent> 로그_수집을_시작한다() {

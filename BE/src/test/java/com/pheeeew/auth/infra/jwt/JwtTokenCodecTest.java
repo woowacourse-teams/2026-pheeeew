@@ -1,7 +1,7 @@
-package com.pheeeew.device.infra.jwt;
+package com.pheeeew.auth.infra.jwt;
 
-import static com.pheeeew.device.fixture.JwtTestKeys.기본_키_설정;
-import static com.pheeeew.device.fixture.JwtTestKeys.다른_키_설정;
+import static com.pheeeew.auth.fixture.JwtTestKeys.기본_키_설정;
+import static com.pheeeew.auth.fixture.JwtTestKeys.다른_키_설정;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -27,9 +27,8 @@ class JwtTokenCodecTest {
 
     private final JwtConfig jwtConfig = new JwtConfig();
     private final JwtEncoder jwtEncoder = jwtConfig.jwtEncoder(기본_키_설정());
-    private final JwtDecoder jwtDecoder = jwtConfig.jwtDecoder(기본_키_설정());
+    private final JwtDecoder jwtDecoder = jwtConfig.jwtDecoder(기본_키_설정(), new AccessTokenJwtValidator());
     private final JwtTokenEncoder jwtTokenEncoder = new JwtTokenEncoder(jwtEncoder);
-    private final JwtTokenDecoder jwtTokenDecoder = new JwtTokenDecoder(jwtDecoder);
     private final AccessTokenIssuer accessTokenIssuer = new AccessTokenIssuer(
             jwtTokenEncoder,
             new TokenProperties(Duration.ofMinutes(30), Duration.ofMinutes(5))
@@ -41,7 +40,7 @@ class JwtTokenCodecTest {
         AccessTokenResult result = accessTokenIssuer.issue(기기_공개_식별자);
 
         // when
-        AccessTokenClaims claims = jwtTokenDecoder.decodeAccessToken(result.accessToken());
+        AccessTokenClaims claims = AccessTokenClaims.from(jwtDecoder.decode(result.accessToken()));
 
         // then
         assertThat(claims.devicePublicId()).isEqualTo(기기_공개_식별자);
@@ -100,7 +99,7 @@ class JwtTokenCodecTest {
                 + (parts[1].endsWith("A") ? "B" : "A") + "." + parts[2];
 
         // when / then
-        assertThatThrownBy(() -> jwtTokenDecoder.decodeAccessToken(tampered))
+        assertThatThrownBy(() -> jwtDecoder.decode(tampered))
                 .isInstanceOf(JwtException.class);
     }
 
@@ -111,7 +110,7 @@ class JwtTokenCodecTest {
         String accessToken = otherEncoder.encodeAccessToken(기기_공개_식별자.toString(), Duration.ofMinutes(30));
 
         // when / then
-        assertThatThrownBy(() -> jwtTokenDecoder.decodeAccessToken(accessToken))
+        assertThatThrownBy(() -> jwtDecoder.decode(accessToken))
                 .isInstanceOf(JwtException.class);
     }
 
@@ -122,7 +121,7 @@ class JwtTokenCodecTest {
         String accessToken = 토큰을_발급한다(issuedAt, issuedAt.plus(Duration.ofMinutes(30)), "ACCESS");
 
         // when / then
-        assertThatThrownBy(() -> jwtTokenDecoder.decodeAccessToken(accessToken))
+        assertThatThrownBy(() -> jwtDecoder.decode(accessToken))
                 .isInstanceOf(JwtException.class);
     }
 
@@ -133,7 +132,7 @@ class JwtTokenCodecTest {
         String refreshUseToken = 토큰을_발급한다(issuedAt, issuedAt.plus(Duration.ofMinutes(30)), "REFRESH");
 
         // when / then
-        assertThatThrownBy(() -> jwtTokenDecoder.decodeAccessToken(refreshUseToken))
+        assertThatThrownBy(() -> jwtDecoder.decode(refreshUseToken))
                 .isInstanceOf(JwtException.class);
     }
 

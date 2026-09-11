@@ -7,21 +7,22 @@ import com.pheeeew.sigh.presentation.dto.SighFeature;
 import com.pheeeew.sigh.presentation.dto.SighListRequest;
 import com.pheeeew.sigh.presentation.dto.SighV2Properties;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springdoc.core.annotations.ParameterObject;
 
 @Tag(name = "한숨 v2", description = "메모와 익명 닉네임을 포함한 한숨 등록과 목록·상세 조회 API")
 public interface SighV2ControllerApi {
@@ -181,6 +182,10 @@ public interface SighV2ControllerApi {
     @Operation(
             summary = "메모와 익명 닉네임을 포함한 한숨 등록",
             description = """
+                    ### 인증
+
+                    - `Authorization: Bearer <access token>` 헤더가 필요합니다.
+
                     ### 메모
 
                     - `memo`는 생략할 수 있습니다.
@@ -207,7 +212,8 @@ public interface SighV2ControllerApi {
                     - 서버는 받은 좌표만으로 클라이언트의 무작위화 여부를 판별할 수 없습니다. 기존 격자 입력 앱은 새 계약으로 전환해야 합니다.
                     - 응답 좌표는 `[longitude, latitude]` 순서입니다.
                     - 최초 등록 성공 응답은 생성된 한숨의 상세 URI를 `Location` 헤더로 제공합니다.
-                    """
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses({
             @ApiResponse(
@@ -255,6 +261,17 @@ public interface SighV2ControllerApi {
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
                                     {"code":"COMMON-001","message":"요청 값이 올바르지 않습니다."}
+                                    """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "access token 이 없거나 사용할 수 없음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"AUTH-001","message":"인증이 필요합니다."}
                                     """)
                     )
             ),

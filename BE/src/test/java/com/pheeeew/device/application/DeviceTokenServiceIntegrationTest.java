@@ -4,6 +4,7 @@ import static com.pheeeew.device.fixture.DeviceFixture.다른_시크릿을_가�
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import com.pheeeew.auth.infra.jwt.AccessTokenClaims;
 import com.pheeeew.device.application.dto.AccessTokenResult;
 import com.pheeeew.device.application.dto.DeviceSaveResult;
 import com.pheeeew.device.domain.Device;
@@ -13,7 +14,6 @@ import com.pheeeew.device.domain.repository.DeviceRefreshTokenRepository;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.device.infra.jwt.JwtTokenDecoder;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -23,6 +23,7 @@ import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,7 +44,7 @@ class DeviceTokenServiceIntegrationTest {
     private DeviceRefreshTokenRepository deviceRefreshTokenRepository;
 
     @Autowired
-    private JwtTokenDecoder jwtTokenDecoder;
+    private JwtDecoder jwtDecoder;
 
     @AfterEach
     void tearDown() {
@@ -63,7 +64,7 @@ class DeviceTokenServiceIntegrationTest {
 
         // then
         assertThat(result.expiresIn()).isEqualTo(1800L);
-        assertThat(jwtTokenDecoder.decodeAccessToken(result.accessToken()).devicePublicId())
+        assertThat(AccessTokenClaims.from(jwtDecoder.decode(result.accessToken())).devicePublicId())
                 .isEqualTo(device.getPublicId());
     }
 
