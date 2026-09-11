@@ -272,7 +272,7 @@ fun BreathControl(
             val isMaxedAndBlowing =
                 listening &&
                     growth >= 1f &&
-                    strength >= DEFAULT_BREATH_CONFIG.effectiveStrengthThreshold
+                    strength >= DEFAULT_BREATH_CONFIG.activationThreshold
             val shakePhase by rememberInfiniteTransition(label = "maxShake").animateFloat(
                 initialValue = -1f,
                 targetValue = 1f,

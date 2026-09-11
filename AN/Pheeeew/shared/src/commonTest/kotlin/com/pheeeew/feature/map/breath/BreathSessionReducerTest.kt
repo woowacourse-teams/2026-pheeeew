@@ -3,9 +3,11 @@ package com.pheeeew.feature.map.breath
 import com.pheeeew.core.audio.BreathInputError
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.seconds
 
 class BreathSessionReducerTest {
     private val reducer = BreathSessionReducer()
@@ -36,7 +38,33 @@ class BreathSessionReducerTest {
                 locationGranted.state,
                 BreathSessionEvent.StrengthSample(sessionId, strength = 0.8f, elapsed = 220.milliseconds),
             )
-        assertEquals(0.1f, assertIs<BreathSessionState.Listening>(sampled.state).growth)
+        assertEquals(200f / 1_400f, assertIs<BreathSessionState.Listening>(sampled.state).growth)
+    }
+
+    @Test
+    fun `sustain threshold keeps an active breath alive after activation`() {
+        val listening = BreathSessionState.Listening(1L, growth = 0.1f, strength = 0.8f, quietFor = 0.milliseconds)
+
+        val sampled =
+            reducer.reduce(
+                listening,
+                BreathSessionEvent.StrengthSample(1L, strength = 0.13f, elapsed = 100.milliseconds),
+            )
+
+        assertEquals(0.1f + 100f / 1_400f, assertIs<BreathSessionState.Listening>(sampled.state).growth)
+    }
+
+    @Test
+    fun `long callback gap is capped before progress is accumulated`() {
+        val listening = BreathSessionState.Listening(1L, growth = 0f, strength = 0f, quietFor = 0.milliseconds)
+
+        val sampled =
+            reducer.reduce(
+                listening,
+                BreathSessionEvent.StrengthSample(1L, strength = 0.8f, elapsed = 5.seconds),
+            )
+
+        assertEquals(200f / 1_400f, assertIs<BreathSessionState.Listening>(sampled.state).growth)
     }
 
     @Test
@@ -55,14 +83,14 @@ class BreathSessionReducerTest {
 
     @Test
     fun `insufficient release enters needs more without stopping input`() {
-        val listening = BreathSessionState.Listening(1L, growth = 0.2f, strength = 0.7f, quietFor = 0.milliseconds)
+        val listening = BreathSessionState.Listening(1L, growth = 0.1f, strength = 0.7f, quietFor = 0.milliseconds)
         val transition =
             reducer.reduce(
                 listening,
                 BreathSessionEvent.ReleaseRequested(
                     sessionId = 1L,
                     upwardDistanceDp = 20f,
-                    upwardVelocityDpPerSecond = -300f,
+                    upwardVelocityDpPerSecond = 300f,
                 ),
             )
 
@@ -76,7 +104,7 @@ class BreathSessionReducerTest {
         val transition =
             reducer.reduce(
                 listening,
-                BreathSessionEvent.ReleaseRequested(1L, upwardDistanceDp = 40f, upwardVelocityDpPerSecond = -300f),
+                BreathSessionEvent.ReleaseRequested(1L, upwardDistanceDp = 40f, upwardVelocityDpPerSecond = 300f),
             )
 
         assertIs<BreathSessionState.Bursting>(transition.state)
@@ -91,9 +119,45 @@ class BreathSessionReducerTest {
         val repeated =
             reducer.reduce(
                 transition.state,
-                BreathSessionEvent.ReleaseRequested(1L, upwardDistanceDp = 40f, upwardVelocityDpPerSecond = -300f),
+                BreathSessionEvent.ReleaseRequested(1L, upwardDistanceDp = 40f, upwardVelocityDpPerSecond = 300f),
             )
         assertTrue(repeated.effects.isEmpty())
+    }
+
+    @Test
+    fun `slow upward drag succeeds when release distance is enough`() {
+        val listening = BreathSessionState.Listening(1L, growth = 0.4f, strength = 0.7f, quietFor = 0.milliseconds)
+
+        val transition =
+            reducer.reduce(
+                listening,
+                BreathSessionEvent.ReleaseRequested(1L, upwardDistanceDp = 48f, upwardVelocityDpPerSecond = 20f),
+            )
+
+        assertIs<BreathSessionState.Bursting>(transition.state)
+    }
+
+    @Test
+    fun `downward gesture cannot release the sigh`() {
+        val listening = BreathSessionState.Listening(1L, growth = 0.4f, strength = 0.7f, quietFor = 0.milliseconds)
+
+        val transition =
+            reducer.reduce(
+                listening,
+                BreathSessionEvent.ReleaseRequested(1L, upwardDistanceDp = 0f, upwardVelocityDpPerSecond = 0f),
+            )
+
+        assertEquals(listening, transition.state)
+    }
+
+    @Test
+    fun `invalid interaction config fails before a session starts`() {
+        assertFailsWith<IllegalArgumentException> {
+            BreathInteractionConfig(activationThreshold = 0.1f, sustainThreshold = 0.2f)
+        }
+        assertFailsWith<IllegalArgumentException> {
+            BreathInteractionConfig(minimumReleaseProgress = 1.1f)
+        }
     }
 
     @Test
