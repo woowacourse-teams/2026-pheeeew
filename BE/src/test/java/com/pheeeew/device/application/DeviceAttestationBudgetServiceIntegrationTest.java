@@ -9,6 +9,7 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.device.infra.attestation.PlayIntegrityProperties;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -84,7 +85,7 @@ class DeviceAttestationBudgetServiceIntegrationTest {
     }
 
     @Test
-    void 예산을_다_쓰면_한_시간_뒤_재시도를_알리는_증명_불가로_거절하고_카운터는_상한에_머문다() {
+    void 예산을_다_쓰면_다음_UTC_자정_뒤_재시도를_알리는_증명_불가로_거절하고_카운터는_상한에_머문다() {
         // given
         오늘_호출_수를_맞춘다(일일_예산());
 
@@ -97,7 +98,9 @@ class DeviceAttestationBudgetServiceIntegrationTest {
         assertThat(거절.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_ATTESTATION_UNAVAILABLE);
         assertThat(거절.getErrorCode().getCode()).isEqualTo("DEVICE-007");
         assertThat(거절.getErrorCode().getStatus().value()).isEqualTo(503);
-        assertThat(거절.getRetryAfter()).isEqualTo(Duration.ofHours(1));
+        Instant 다음_예산_날짜 = LocalDate.now(ZoneOffset.UTC).plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        assertThat(거절.getRetryAfter())
+                .isCloseTo(Duration.between(Instant.now(), 다음_예산_날짜), Duration.ofSeconds(10));
         assertThat(오늘_호출_수()).isEqualTo(일일_예산());
     }
 

@@ -37,6 +37,8 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -301,7 +303,7 @@ class PlayIntegrityRegistrationIntegrationTest {
     }
 
     @Test
-    void 일일_예산을_소진하면_구글을_부르지_않고_한_시간_뒤_재시도를_알리며_상류_장애와_다른_사유로_기록한다() {
+    void 일일_예산을_소진하면_구글을_부르지_않고_다음_UTC_자정_뒤_재시도를_알리며_상류_장애와_다른_사유로_기록한다() {
         // given
         DeviceChallengeResult 발급 = deviceChallengeService.save();
         가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답(발급.challenge()));
@@ -316,7 +318,9 @@ class PlayIntegrityRegistrationIntegrationTest {
         assertThat(throwable).isInstanceOf(DeviceException.class);
         assertThat(((DeviceException) throwable).getErrorCode())
                 .isEqualTo(DeviceErrorCode.DEVICE_ATTESTATION_UNAVAILABLE);
-        assertThat(((DeviceException) throwable).getRetryAfter()).isEqualTo(Duration.ofHours(1));
+        Instant 다음_예산_날짜 = LocalDate.now(ZoneOffset.UTC).plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant();
+        assertThat(((DeviceException) throwable).getRetryAfter())
+                .isCloseTo(Duration.between(Instant.now(), 다음_예산_날짜), Duration.ofSeconds(10));
         assertThat(구글_호출_수()).isZero();
         assertThat(거절_카운터("CALL_BUDGET_EXHAUSTED")).isOne();
         assertThat(거절_카운터("GOOGLE_QUOTA_EXHAUSTED")).isZero();
