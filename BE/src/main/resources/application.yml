@@ -22,6 +22,17 @@ pheeeew:
   token:
     access-ttl: PT30M
     registration-retry-window: PT5M
+    challenge-ttl: PT5M
+  play-integrity:
+    android-package-name: com.pheeeew
+    service-account-base64: ${PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64:}
+    cloud-project-number: ${PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER:}
+    # 무결성 증명 강제 스위치. 앱(#261) 배포가 끝난 뒤에만 켠다.
+    # 켠 상태를 되돌릴 수 없게 만들려면 PlayIntegrityProperties.ENFORCEMENT_LOCKED 를 함께 true 로 바꾼다.
+    require-attestation: false
+    # 개발, QA 우회 스위치. 에뮬레이터와 디버그 빌드는 Play Integrity 판정에서 떨어지므로 그때만 켠다.
+    # 기본값은 검증 활성이고, prod 프로필에서는 PlayIntegrityProductionGuard 가 부팅을 막는다.
+    skip-verification: ${PLAY_INTEGRITY_SKIP_VERIFICATION:false}
 
 management:
   prometheus:

@@ -31,7 +31,7 @@ class JwtTokenCodecTest {
     private final JwtTokenEncoder jwtTokenEncoder = new JwtTokenEncoder(jwtEncoder);
     private final AccessTokenIssuer accessTokenIssuer = new AccessTokenIssuer(
             jwtTokenEncoder,
-            new TokenProperties(Duration.ofMinutes(30), Duration.ofMinutes(5))
+            new TokenProperties(Duration.ofMinutes(30), Duration.ofMinutes(5), Duration.ofMinutes(5))
     );
 
     @Test

@@ -1,6 +1,7 @@
 package com.pheeeew.device.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.다른_시크릿을_가진_리프레시_토큰;
+import static com.pheeeew.device.fixture.DeviceFixture.무결성_증명_없음;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
@@ -56,7 +57,7 @@ class DeviceTokenServiceIntegrationTest {
     void 유효한_리프레시_토큰으로_그_기기의_액세스_토큰을_재발급한다() {
         // given
         UUID requestId = UUID.randomUUID();
-        DeviceSaveResult saved = deviceService.save(requestId, DevicePlatform.ANDROID);
+        DeviceSaveResult saved = deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
         Device device = deviceRepository.findByRequestId(requestId).orElseThrow();
 
         // when
@@ -71,7 +72,7 @@ class DeviceTokenServiceIntegrationTest {
     @Test
     void 같은_리프레시_토큰을_여러_번_써도_회전되지_않는다() {
         // given
-        DeviceSaveResult saved = deviceService.save(UUID.randomUUID(), DevicePlatform.ANDROID);
+        DeviceSaveResult saved = deviceService.save(UUID.randomUUID(), 무결성_증명_없음(DevicePlatform.ANDROID));
 
         // when
         deviceTokenService.reissueAccessToken(saved.refreshToken());
@@ -86,7 +87,7 @@ class DeviceTokenServiceIntegrationTest {
     @Test
     void 폐기된_리프레시_토큰으로는_재발급할_수_없다() {
         // given
-        DeviceSaveResult saved = deviceService.save(UUID.randomUUID(), DevicePlatform.ANDROID);
+        DeviceSaveResult saved = deviceService.save(UUID.randomUUID(), 무결성_증명_없음(DevicePlatform.ANDROID));
         폐기한다(saved.refreshToken());
 
         // when
@@ -99,7 +100,7 @@ class DeviceTokenServiceIntegrationTest {
     @Test
     void 존재하지_않는_세션의_리프레시_토큰으로는_재발급할_수_없다() {
         // given
-        deviceService.save(UUID.randomUUID(), DevicePlatform.ANDROID);
+        deviceService.save(UUID.randomUUID(), 무결성_증명_없음(DevicePlatform.ANDROID));
         String unknownSessionToken = 다른_시크릿을_가진_리프레시_토큰(UUID.randomUUID());
 
         // when
@@ -112,7 +113,7 @@ class DeviceTokenServiceIntegrationTest {
     @Test
     void 세션은_같지만_시크릿을_바꾼_토큰으로는_재발급할_수_없다() {
         // given
-        DeviceSaveResult saved = deviceService.save(UUID.randomUUID(), DevicePlatform.ANDROID);
+        DeviceSaveResult saved = deviceService.save(UUID.randomUUID(), 무결성_증명_없음(DevicePlatform.ANDROID));
         UUID sessionId = deviceRefreshTokenRepository.findAll().getFirst().getSessionId();
         String forged = 다른_시크릿을_가진_리프레시_토큰(sessionId);
 

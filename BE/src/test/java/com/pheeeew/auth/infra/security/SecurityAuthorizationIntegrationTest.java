@@ -11,6 +11,7 @@ import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.auth.fixture.JwtTestKeys;
 import com.pheeeew.auth.infra.jwt.JwtProperties;
 import com.pheeeew.device.domain.Device;
+import com.pheeeew.device.domain.repository.DeviceChallengeRepository;
 import com.pheeeew.device.domain.repository.DeviceRefreshTokenRepository;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.repository.SighReportRepository;
@@ -55,9 +56,14 @@ class SecurityAuthorizationIntegrationTest {
     private static final String 권한_없음_응답 = """
             {"code":"AUTH-002","message":"접근 권한이 없습니다."}
             """;
+    private static final String 증명_확인_불가_응답 = """
+            {"code":"DEVICE-006","message":"무결성 증명을 확인할 수 없습니다."}
+            """;
     private static final String 지도_영역_질의 =
             "?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6";
     private static final String 규칙에_없는_경로 = "/api/v2/unknown";
+    private static final String CHALLENGE_경로 = "/api/v2/devices/challenge";
+    private static final String 무결성_토큰 = "integrity-token-from-app";
 
     @LocalServerPort
     private int port;
@@ -67,6 +73,9 @@ class SecurityAuthorizationIntegrationTest {
 
     @Autowired
     private DeviceRefreshTokenRepository deviceRefreshTokenRepository;
+
+    @Autowired
+    private DeviceChallengeRepository deviceChallengeRepository;
 
     @Autowired
     private SighRepository sighRepository;
@@ -91,6 +100,7 @@ class SecurityAuthorizationIntegrationTest {
         sighReportRepository.deleteAll();
         deviceRefreshTokenRepository.deleteAll();
         deviceRepository.deleteAll();
+        deviceChallengeRepository.deleteAll();
         sighRepository.deleteAll();
     }
 
@@ -248,6 +258,111 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @Test
+    void 인증_없이_무결성_증명_challenge_를_발급받을_수_있다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.post()
+                .uri(CHALLENGE_경로)
+                .exchange();
+
+        // then
+        String challenge = result.expectStatus().isOk()
+                .expectBody(DeviceChallenge.class)
+                .returnResult()
+                .getResponseBody()
+                .challenge();
+        assertThat(challenge).hasSize(43).matches("^[A-Za-z0-9_-]{43}$");
+        assertThat(deviceChallengeRepository.count()).isOne();
+    }
+
+    @Test
+    void challenge_응답은_중간_경로에_저장되지_않게_no_store_를_붙인다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.post()
+                .uri(CHALLENGE_경로)
+                .exchange();
+
+        // then
+        result.expectStatus().isOk()
+                .expectHeader().valueMatches(HttpHeaders.CACHE_CONTROL, ".*no-store.*");
+    }
+
+    @Test
+    void challenge_경로는_POST_만_열리고_GET_은_인증을_요구한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(CHALLENGE_경로)
+                .exchange();
+
+        // then
+        인증_필요를_검증한다(result);
+        assertThat(deviceChallengeRepository.count()).isZero();
+    }
+
+    @Test
+    void 무결성_증명을_보낸_등록은_자격증명이_없으면_403으로_거절한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = 증명을_담아_등록한다(UUID.randomUUID());
+
+        // then
+        result.expectStatus().isForbidden()
+                .expectBody()
+                .json(증명_확인_불가_응답, JsonCompareMode.STRICT);
+        assertThat(deviceRepository.count()).isZero();
+    }
+
+    @Test
+    void challenge_발급과_증명_거절_경로는_challenge_값과_무결성_토큰을_로그에_남기지_않는다() {
+        // given
+        ListAppender<ILoggingEvent> appender = 개발_프로파일_로그_수집을_시작한다();
+
+        try {
+            // when
+            String challenge = challenge_를_발급받는다();
+            증명을_담아_등록한다(UUID.randomUUID(), challenge).expectStatus().isForbidden();
+
+            // then
+            String 남은_로그 = 수집한_로그(appender);
+            assertThat(남은_로그).doesNotContain(challenge);
+            assertThat(남은_로그).doesNotContain(무결성_토큰);
+        } finally {
+            개발_프로파일_로그_수집을_끝낸다(appender);
+        }
+    }
+
+    @Test
+    void 서버_웹_계층_본문_로그를_켜도_challenge_값과_무결성_토큰이_로그에_남지_않는다() {
+        // given
+        ListAppender<ILoggingEvent> appender = 서버_웹_계층_로그_수집을_시작한다();
+
+        try {
+            // when
+            String challenge = challenge_를_발급받는다();
+            증명을_담아_등록한다(UUID.randomUUID(), challenge).expectStatus().isForbidden();
+
+            // then
+            String 남은_로그 = 수집한_로그(appender);
+            assertThat(웹_계층_로거().getLevel()).isEqualTo(Level.TRACE);
+            assertThat(테스트_클라이언트_로거().getLevel()).isEqualTo(Level.INFO);
+            assertThat(남은_로그).contains("DeviceChallengeResponse[challenge=<redacted>, expiresIn=300]");
+            assertThat(남은_로그).contains("DeviceAttestationRequest[platform=ANDROID, "
+                    + "token=<redacted>, challenge=<redacted>, keyId=<redacted>]");
+            assertThat(남은_로그).doesNotContain(challenge);
+            assertThat(남은_로그).doesNotContain(무결성_토큰);
+        } finally {
+            서버_웹_계층_로그_수집을_끝낸다(appender);
+        }
+    }
+
+    @Test
+    void SQL_오류_로그_억제_설정이_실제로_적용되어_있다() {
+        // given / when
+        Logger hibernateJdbcErrorLogger = (Logger) LoggerFactory.getLogger("org.hibernate.orm.jdbc.error");
+
+        // then
+        assertThat(hibernateJdbcErrorLogger.getLevel()).isEqualTo(Level.ERROR);
+    }
+
+    @Test
     void 토큰_없이_규칙에_없는_경로를_호출하면_401을_반환한다() {
         // given / when
         RestTestClient.ResponseSpec result = client.get()
@@ -396,6 +511,33 @@ class SecurityAuthorizationIntegrationTest {
         return tokens.accessToken();
     }
 
+    private RestTestClient.ResponseSpec 증명을_담아_등록한다(UUID requestId) {
+        return 증명을_담아_등록한다(requestId, null);
+    }
+
+    private RestTestClient.ResponseSpec 증명을_담아_등록한다(UUID requestId, String challenge) {
+        return client.post()
+                .uri("/api/v2/devices")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"requestId": "%s", "attestation": {
+                          "platform": "ANDROID", "token": "%s", "challenge": %s
+                        }}
+                        """.formatted(requestId, 무결성_토큰, challenge == null ? "null" : "\"" + challenge + "\""))
+                .exchange();
+    }
+
+    private String challenge_를_발급받는다() {
+        return client.post()
+                .uri(CHALLENGE_경로)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(DeviceChallenge.class)
+                .returnResult()
+                .getResponseBody()
+                .challenge();
+    }
+
     private Long 한숨을_등록한다(String accessToken) {
         client.post()
                 .uri("/api/v2/sighs")
@@ -435,13 +577,58 @@ class SecurityAuthorizationIntegrationTest {
         appender.stop();
     }
 
+    private ListAppender<ILoggingEvent> 개발_프로파일_로그_수집을_시작한다() {
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        루트_로거().addAppender(appender);
+        개발_프로파일_로거().forEach(logger -> logger.setLevel(Level.DEBUG));
+        return appender;
+    }
+
+    private void 개발_프로파일_로그_수집을_끝낸다(ListAppender<ILoggingEvent> appender) {
+        개발_프로파일_로거().forEach(logger -> logger.setLevel(null));
+        루트_로거().detachAppender(appender);
+        appender.stop();
+    }
+
+    private List<Logger> 개발_프로파일_로거() {
+        return List.of(
+                (Logger) LoggerFactory.getLogger("com.pheeeew"),
+                (Logger) LoggerFactory.getLogger("org.hibernate.SQL")
+        );
+    }
+
     private List<Logger> 인증_경로_로거() {
         return List.of(
                 (Logger) LoggerFactory.getLogger("com.pheeeew"),
                 (Logger) LoggerFactory.getLogger("org.springframework.security"),
-                (Logger) LoggerFactory.getLogger("org.springframework.web"),
+                웹_계층_로거(),
                 (Logger) LoggerFactory.getLogger("org.hibernate.SQL")
         );
+    }
+
+    private ListAppender<ILoggingEvent> 서버_웹_계층_로그_수집을_시작한다() {
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        루트_로거().addAppender(appender);
+        웹_계층_로거().setLevel(Level.TRACE);
+        테스트_클라이언트_로거().setLevel(Level.INFO);
+        return appender;
+    }
+
+    private void 서버_웹_계층_로그_수집을_끝낸다(ListAppender<ILoggingEvent> appender) {
+        테스트_클라이언트_로거().setLevel(null);
+        웹_계층_로거().setLevel(null);
+        루트_로거().detachAppender(appender);
+        appender.stop();
+    }
+
+    private Logger 웹_계층_로거() {
+        return (Logger) LoggerFactory.getLogger("org.springframework.web");
+    }
+
+    private Logger 테스트_클라이언트_로거() {
+        return (Logger) LoggerFactory.getLogger("org.springframework.web.client");
     }
 
     private String 수집한_로그(ListAppender<ILoggingEvent> appender) {
@@ -462,6 +649,9 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     record DeviceTokens(String accessToken, String refreshToken, long expiresIn) {
+    }
+
+    record DeviceChallenge(String challenge, long expiresIn) {
     }
 
     @TestConfiguration(proxyBeanMethods = false)
