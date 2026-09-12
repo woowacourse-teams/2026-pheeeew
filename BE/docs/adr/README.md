@@ -88,7 +88,7 @@ Accepted (YYYY-MM-DD)
 | [0001](0001-use-postgresql-with-postgis.md) | PostgreSQL과 PostGIS 사용 | 지도 영역 조회를 공간 타입·함수와 GiST 인덱스로 처리해요 |
 | [0002](0002-use-grid-center-for-sigh-location.md) | 격자 중심과 최종 표시 위치 분리 | ADR-0006으로 대체됐어요. 이전 격자 계약의 근거를 보존해요 |
 | [0003](0003-share-postgis-testcontainer-per-jvm.md) | PostGIS 테스트 자원 공유 | 컨테이너와 같은 Data JPA Context를 테스트 JVM 단위로 공유해요 |
-| [0004](0004-skip-transaction-on-idempotent-save.md) | 멱등 저장 경로의 트랜잭션 | 선조회, 삽입, 재조회를 독립된 트랜잭션으로 두어 제약 위반 뒤에도 복구해요 |
+| [0004](0004-skip-transaction-on-idempotent-save.md) | 멱등 저장 경로의 트랜잭션 | 선조회, 삽입, 재조회를 독립된 트랜잭션으로 두어 제약 위반 뒤에도 복구해요. 증명을 실은 경로의 예외는 ADR-0015 에 있어요 |
 | [0005](0005-soft-delete-sigh.md) | 한숨 소프트 삭제 | 한숨을 지우지 않고 표시만 해서 신고 이력과 외래 키를 함께 지켜요 |
 | [0006](0006-use-independent-uniform-disks-for-sigh-location.md) | 클라이언트·서버 독립 균등 원 이동 | 두 단계에서 각각 반경 300m를 적용해요. 구형 앱 전환·실제 앱 검증 전에는 배포하지 않아요 |
 | [0007](0007-split-signed-access-token-and-stored-refresh-token.md) | 기기 인증 토큰 구조 | 서명만 검증하는 30분 access token과 해시로만 저장하는 refresh token을 나눠 써요 |
@@ -98,6 +98,10 @@ Accepted (YYYY-MM-DD)
 | [0011](0011-use-servlet-filter-for-http-request-logging.md) | HTTP 요청 로그와 추적 문맥을 필터에서 처리 | Proposed: 동기 MVC 처리 전후에 추적 문맥을 관리하고 오류·느린 요청을 기록해요 |
 | [0012](0012-limit-exported-http-logs-and-use-aggregate-metrics.md) | 요청 통계 집계와 외부 전송 로그 제한 | Proposed: 지표로 요청 통계를 관찰하고 검토된 서버 오류·느린 요청 로그만 전송해요 |
 | [0013](0013-validate-token-purpose-in-decoder-not-authority.md) | 토큰 용도 검증 위치 | 용도를 권한으로 바꾸지 않고 디코딩 단계에서 검사해 다른 용도의 토큰이 401로 나가게 해요 |
+| [0014](0014-call-play-integrity-without-google-client-library.md) | Play Integrity 호출 방식 | 구글 클라이언트 라이브러리를 쓰지 않고 이미 있는 기구로 직접 호출해요 |
+| [0015](0015-verify-attestation-only-when-token-is-present.md) | 무결성 증명 검증 시점 | 토큰이 있을 때만 검증해요. 강제 잠금은 설정이 아니라 코드 상수로 둬요 |
+| [0016](0016-consume-challenge-with-conditional-update.md) | challenge 1회용 보장 | 조건부 UPDATE 의 영향 행 수로 판정해 동시 요청에서 한 건만 통과시켜요 |
+| [0017](0017-skip-attestation-on-registration-retry.md) | 등록 재시도의 증명 검증 | 새 기기를 만드는 경로만 증명을 요구해요. 재시도는 challenge 1회용 때문에 면제해요 |
 
 ## AI 사용
 
