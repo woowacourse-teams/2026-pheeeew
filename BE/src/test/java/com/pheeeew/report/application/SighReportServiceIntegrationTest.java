@@ -262,7 +262,9 @@ class SighReportServiceIntegrationTest {
             assertThat(남은_로그).contains("sigh_reports");
             assertThat(남은_로그)
                     .doesNotContain("uk_sigh_reports_sigh_reporter")
+                    .doesNotContain("reporter_device_id)=(")
                     .doesNotContain(device.getPublicId().toString());
+            assertThat(sighReportRepository.count()).isOne();
         } finally {
             로그_수집을_끝낸다(appender);
         }
