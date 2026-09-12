@@ -40,6 +40,81 @@ class GoogleServiceAccountKeyTest {
         assertThat(key.tokenUri()).isEqualTo("https://oauth2.googleapis.com/token");
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "https://oauth2.googleapis.com/token",
+            "http://127.0.0.1:1234/token",
+            "http://127.0.0.1/token",
+            "http://127.255.255.255/token",
+            "http://[::1]:1234/token"
+    })
+    void https_와_루프백_리터럴_http_토큰_주소는_원문_그대로_쓴다(String tokenUri) {
+        // given
+        String serviceAccountBase64 = 서비스_계정_설정(tokenUri);
+
+        // when
+        GoogleServiceAccountKey key = GoogleServiceAccountKey.from(serviceAccountBase64);
+
+        // then
+        assertThat(key.tokenUri()).isEqualTo(tokenUri);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "http://evil.example.com/token",
+            "http://localhost:1234",
+            "http://LOCALHOST/token",
+            "http://127.0.0.1.evil.example.com/token",
+            "http://0.0.0.0/token",
+            "http://10.0.0.1/token",
+            "http://[::2]/token",
+            "http://127.0.0.256/token"
+    })
+    void 이름이나_루프백이_아닌_주소로_평문_토큰_교환을_하려_하면_설정_오류로_올린다(String tokenUri) {
+        // given
+        String serviceAccountBase64 = 서비스_계정_설정(tokenUri);
+
+        // when / then
+        assertThatThrownBy(() -> GoogleServiceAccountKey.from(serviceAccountBase64))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Play Integrity 서비스 계정 token_uri 설정이 올바르지 않습니다.");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "https://attacker:secret@oauth2.googleapis.com/token",
+            "http://attacker@127.0.0.1:1234/token"
+    })
+    void userinfo_가_붙은_토큰_주소는_설정_오류로_올린다(String tokenUri) {
+        // given
+        String serviceAccountBase64 = 서비스_계정_설정(tokenUri);
+
+        // when / then
+        assertThatThrownBy(() -> GoogleServiceAccountKey.from(serviceAccountBase64))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Play Integrity 서비스 계정 token_uri 설정이 올바르지 않습니다.");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/token",
+            "oauth2.googleapis.com/token",
+            "mailto:tokens@evil.example.com",
+            "file:///etc/passwd",
+            "ftp://oauth2.googleapis.com/token",
+            "ws://127.0.0.1:1234/token",
+            "https://"
+    })
+    void 계층적_절대_URI_가_아니거나_전송이_허용되지_않은_토큰_주소는_설정_오류로_올린다(String tokenUri) {
+        // given
+        String serviceAccountBase64 = 서비스_계정_설정(tokenUri);
+
+        // when / then
+        assertThatThrownBy(() -> GoogleServiceAccountKey.from(serviceAccountBase64))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Play Integrity 서비스 계정 token_uri 설정이 올바르지 않습니다.");
+    }
+
     @Test
     void 개인키가_PKCS8_PEM_이_아니면_설정_오류로_올린다() {
         // given

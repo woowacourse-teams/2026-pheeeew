@@ -1,12 +1,16 @@
 package com.pheeeew.device.infra.attestation;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.Base64;
+import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 import org.springframework.boot.json.JsonParserFactory;
 
 public record GoogleServiceAccountKey(String clientEmail, String tokenUri, RSAPrivateKey privateKey) {
@@ -17,6 +21,11 @@ public record GoogleServiceAccountKey(String clientEmail, String tokenUri, RSAPr
     private static final String PRIVATE_KEY_FIELD = "private_key";
     private static final String PEM_HEADER = "-----BEGIN PRIVATE KEY-----";
     private static final String PEM_FOOTER = "-----END PRIVATE KEY-----";
+    private static final String HTTPS_SCHEME = "https";
+    private static final String HTTP_SCHEME = "http";
+    private static final String LOOPBACK_IPV6_HOST = "[::1]";
+    private static final Pattern LOOPBACK_IPV4_PATTERN =
+            Pattern.compile("^127(?:\\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}$");
 
     public static GoogleServiceAccountKey from(String serviceAccountBase64) {
         Map<String, Object> serviceAccount = parseServiceAccount(serviceAccountBase64);
@@ -49,9 +58,38 @@ public record GoogleServiceAccountKey(String clientEmail, String tokenUri, RSAPr
     private static String tokenUri(Map<String, Object> serviceAccount) {
         Object value = serviceAccount.get(TOKEN_URI_FIELD);
         if (value instanceof String text && !text.isBlank()) {
-            return text;
+            return requireTokenExchangeUri(text);
         }
         return DEFAULT_TOKEN_URI;
+    }
+
+    private static String requireTokenExchangeUri(String tokenUri) {
+        URI parsed = parseTokenUri(tokenUri);
+        if (parsed.isOpaque() || parsed.getScheme() == null || parsed.getHost() == null
+                || parsed.getUserInfo() != null || !isAllowedTransport(parsed)) {
+            throw new IllegalStateException("Play Integrity 서비스 계정 token_uri 설정이 올바르지 않습니다.");
+        }
+        return tokenUri;
+    }
+
+    private static URI parseTokenUri(String tokenUri) {
+        try {
+            return new URI(tokenUri);
+        } catch (URISyntaxException exception) {
+            throw new IllegalStateException("Play Integrity 서비스 계정 token_uri 설정이 올바르지 않습니다.");
+        }
+    }
+
+    private static boolean isAllowedTransport(URI tokenUri) {
+        String scheme = tokenUri.getScheme().toLowerCase(Locale.ROOT);
+        if (HTTPS_SCHEME.equals(scheme)) {
+            return true;
+        }
+        return HTTP_SCHEME.equals(scheme) && isLoopbackLiteral(tokenUri.getHost());
+    }
+
+    private static boolean isLoopbackLiteral(String host) {
+        return LOOPBACK_IPV6_HOST.equals(host) || LOOPBACK_IPV4_PATTERN.matcher(host).matches();
     }
 
     private static RSAPrivateKey parsePrivateKey(String privateKeyPem) {
