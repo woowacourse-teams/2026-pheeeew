@@ -102,6 +102,9 @@ Accepted (YYYY-MM-DD)
 | [0015](0015-verify-attestation-only-when-token-is-present.md) | 무결성 증명 검증 시점 | 토큰이 있을 때만 검증해요. 강제 잠금은 설정이 아니라 코드 상수로 둬요 |
 | [0016](0016-consume-challenge-with-conditional-update.md) | challenge 1회용 보장 | 조건부 UPDATE 의 영향 행 수로 판정해 동시 요청에서 한 건만 통과시켜요 |
 | [0017](0017-skip-attestation-on-registration-retry.md) | 등록 재시도의 증명 검증 | 새 기기를 만드는 경로만 증명을 요구해요. 재시도는 challenge 1회용 때문에 면제해요 |
+| [0018](0018-limit-google-decode-attempts-per-challenge.md) | challenge 당 구글 호출 상한 | 구글을 부르기 전에 시도 수를 올려 challenge 한 건을 5회로 묶어요 |
+| [0019](0019-restrict-service-account-token-uri-to-https-and-loopback.md) | 서비스 계정 토큰 주소 제한 | HTTPS 와 루프백 리터럴만 허용해요. 이름 해석은 재바인딩 때문에 막아요 |
+| [0020](0020-limit-daily-google-decode-calls-per-project.md) | 구글 호출 하루 예산 | 날짜별 예산 행으로 분산 요청까지 묶어요. 넘으면 정상 등록도 막혀요 |
 
 ## AI 사용
 
