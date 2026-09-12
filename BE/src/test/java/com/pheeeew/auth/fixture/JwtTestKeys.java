@@ -1,6 +1,6 @@
-package com.pheeeew.device.fixture;
+package com.pheeeew.auth.fixture;
 
-import com.pheeeew.device.infra.jwt.JwtProperties;
+import com.pheeeew.auth.infra.jwt.JwtProperties;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;

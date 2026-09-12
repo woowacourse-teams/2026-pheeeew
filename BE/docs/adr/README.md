@@ -97,6 +97,7 @@ Accepted (YYYY-MM-DD)
 | [0010](0010-use-alloy-and-grafana-cloud-for-production-monitoring.md) | 운영 모니터링에 Alloy와 Grafana Cloud 사용 | Proposed: 운영 EC2에서 수집하고 지표·로그 저장과 조회는 Cloud에 맡겨요 |
 | [0011](0011-use-servlet-filter-for-http-request-logging.md) | HTTP 요청 로그와 추적 문맥을 필터에서 처리 | Proposed: 동기 MVC 처리 전후에 추적 문맥을 관리하고 오류·느린 요청을 기록해요 |
 | [0012](0012-limit-exported-http-logs-and-use-aggregate-metrics.md) | 요청 통계 집계와 외부 전송 로그 제한 | Proposed: 지표로 요청 통계를 관찰하고 검토된 서버 오류·느린 요청 로그만 전송해요 |
+| [0013](0013-validate-token-purpose-in-decoder-not-authority.md) | 토큰 용도 검증 위치 | 용도를 권한으로 바꾸지 않고 디코딩 단계에서 검사해 다른 용도의 토큰이 401로 나가게 해요 |
 
 ## AI 사용
 

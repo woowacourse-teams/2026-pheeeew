@@ -29,6 +29,7 @@ dependencies {
     implementation 'org.hibernate.orm:hibernate-spatial'
     implementation 'org.flywaydb:flyway-database-postgresql'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
+    implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server'
     implementation 'org.springframework.security:spring-security-oauth2-jose'
     implementation 'io.github.moduggagi:korean-nickname-generator:0.1.1'
 

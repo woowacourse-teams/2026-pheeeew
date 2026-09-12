@@ -1,6 +1,6 @@
-package com.pheeeew.device.infra.jwt;
+package com.pheeeew.auth.infra.jwt;
 
-import static com.pheeeew.device.fixture.JwtTestKeys.기본_키_설정;
+import static com.pheeeew.auth.fixture.JwtTestKeys.기본_키_설정;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;

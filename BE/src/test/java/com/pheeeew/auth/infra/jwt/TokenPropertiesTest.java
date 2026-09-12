@@ -1,4 +1,4 @@
-package com.pheeeew.device.infra.jwt;
+package com.pheeeew.auth.infra.jwt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

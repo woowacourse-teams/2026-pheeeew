@@ -1,8 +1,12 @@
 package com.pheeeew.report.application;
 
+import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.report.exception.SighReportErrorCode.SIGH_REPORT_SAVE_FAILED;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
 
+import com.pheeeew.device.domain.Device;
+import com.pheeeew.device.domain.repository.DeviceRepository;
+import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.report.domain.SighReport;
 import com.pheeeew.report.domain.repository.SighReportRepository;
 import com.pheeeew.report.exception.SighReportException;
@@ -27,9 +31,11 @@ public class SighReportService {
 
     private final SighReportRepository sighReportRepository;
     private final SighRepository sighRepository;
+    private final DeviceRepository deviceRepository;
 
-    public SighReportResult save(Long sighId, UUID reporterDeviceId, String reason) {
+    public SighReportResult save(Long sighId, UUID devicePublicId, String reason) {
         validateSighExists(sighId);
+        Long reporterDeviceId = findReporterDeviceId(devicePublicId);
 
         Optional<SighReport> existingReport = sighReportRepository.findBySighIdAndReporterDeviceId(sighId, reporterDeviceId);
 
@@ -46,7 +52,13 @@ public class SighReportService {
         }
     }
 
-    private SighReportResult saveNewReport(Long sighId, UUID reporterDeviceId, String reason) {
+    private Long findReporterDeviceId(UUID devicePublicId) {
+        return deviceRepository.findByPublicId(devicePublicId)
+                .map(Device::getId)
+                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+    }
+
+    private SighReportResult saveNewReport(Long sighId, Long reporterDeviceId, String reason) {
         SighReport report = SighReport.builder()
                 .sighId(sighId)
                 .reporterDeviceId(reporterDeviceId)
@@ -62,7 +74,7 @@ public class SighReportService {
 
     private SighReportResult findExistingReport(
             Long sighId,
-            UUID reporterDeviceId,
+            Long reporterDeviceId,
             DataIntegrityViolationException cause
     ) {
         return sighReportRepository.findBySighIdAndReporterDeviceId(sighId, reporterDeviceId)

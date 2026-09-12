@@ -14,9 +14,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springdoc.core.annotations.ParameterObject;
 
 @Tag(name = "한숨", description = "한숨 등록과 지도 영역 조회 API")
 public interface SighV1ControllerApi {
@@ -74,7 +74,13 @@ public interface SighV1ControllerApi {
 
     @Operation(
             summary = "한숨 등록",
+            deprecated = true,
             description = """
+                    ### 폐기 예정
+
+                    - 향후 버전에서 access token 이 필요해집니다.
+                    - 신규 연동은 `POST /api/v2/sighs` 를 사용합니다.
+
                     ### 중복 요청
 
                     - 한 번의 등록 시도마다 새로운 `requestId`를 사용합니다.

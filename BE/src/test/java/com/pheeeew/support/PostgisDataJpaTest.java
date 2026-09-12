@@ -1,14 +1,14 @@
 package com.pheeeew.support;
 
+import com.pheeeew.auth.infra.jwt.AccessTokenJwtValidator;
+import com.pheeeew.auth.infra.jwt.JwtConfig;
+import com.pheeeew.auth.infra.jwt.JwtTokenEncoder;
 import com.pheeeew.common.config.JpaAuditingConfig;
 import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.application.DeviceTokenService;
 import com.pheeeew.device.application.token.AccessTokenIssuer;
 import com.pheeeew.device.application.token.RefreshTokenIssuer;
 import com.pheeeew.device.application.token.RefreshTokenVerifier;
-import com.pheeeew.device.infra.jwt.JwtConfig;
-import com.pheeeew.device.infra.jwt.JwtTokenDecoder;
-import com.pheeeew.device.infra.jwt.JwtTokenEncoder;
 import com.pheeeew.report.application.SighReportService;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.infra.KoreanSighNicknameGenerator;
@@ -34,9 +34,9 @@ import org.springframework.test.context.ActiveProfiles;
         SharedPostgisTestConfiguration.class,
         SharedJwtTestConfiguration.class,
         JpaAuditingConfig.class,
+        AccessTokenJwtValidator.class,
         JwtConfig.class,
         JwtTokenEncoder.class,
-        JwtTokenDecoder.class,
         AccessTokenIssuer.class,
         RefreshTokenIssuer.class,
         RefreshTokenVerifier.class,
