@@ -19,7 +19,6 @@ import com.pheeeew.support.PostgisDataJpaTest;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -35,8 +34,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -45,7 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
 @ImportAutoConfiguration(AopAutoConfiguration.class)
-@Import({SighMapMetrics.class, SighMapMetricsAspect.class, SighServiceIntegrationTest.MetricsConfiguration.class})
+@Import({SighMapMetrics.class, SighMapMetricsAspect.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class SighServiceIntegrationTest {
 
@@ -715,14 +712,5 @@ class SighServiceIntegrationTest {
                         DROP CONSTRAINT IF EXISTS ck_sighs_reject_test_request
                         """)
                 .update();
-    }
-
-    @TestConfiguration(proxyBeanMethods = false)
-    static class MetricsConfiguration {
-
-        @Bean
-        MeterRegistry meterRegistry() {
-            return new SimpleMeterRegistry();
-        }
     }
 }

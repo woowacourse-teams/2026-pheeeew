@@ -30,6 +30,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/v2/devices").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v2/devices/tokens").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v2/devices/challenge").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/sighs").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v2/sighs").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v2/sighs/*").permitAll()

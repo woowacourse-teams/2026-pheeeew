@@ -1,5 +1,6 @@
 package com.pheeeew.device.application;
 
+import static com.pheeeew.device.fixture.DeviceFixture.무결성_증명_없음;
 import static com.pheeeew.device.fixture.DeviceFixture.토큰_해시;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -73,7 +74,7 @@ class DeviceServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        DeviceSaveResult result = deviceService.save(requestId, DevicePlatform.ANDROID);
+        DeviceSaveResult result = deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
 
         // then
         assertThat(result.created()).isTrue();
@@ -88,10 +89,10 @@ class DeviceServiceIntegrationTest {
     void 같은_요청_식별자로_다시_등록해도_기기는_하나만_생긴다() {
         // given
         UUID requestId = UUID.randomUUID();
-        DeviceSaveResult first = deviceService.save(requestId, DevicePlatform.ANDROID);
+        DeviceSaveResult first = deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
 
         // when
-        DeviceSaveResult retried = deviceService.save(requestId, DevicePlatform.IOS);
+        DeviceSaveResult retried = deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.IOS));
 
         // then
         assertThat(retried.created()).isFalse();
@@ -105,8 +106,8 @@ class DeviceServiceIntegrationTest {
     void 재시도로_받은_두_리프레시_토큰_모두_재발급에_쓸_수_있다() {
         // given
         UUID requestId = UUID.randomUUID();
-        DeviceSaveResult first = deviceService.save(requestId, DevicePlatform.ANDROID);
-        DeviceSaveResult retried = deviceService.save(requestId, DevicePlatform.ANDROID);
+        DeviceSaveResult first = deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
+        DeviceSaveResult retried = deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
 
         // when
         String firstSubject = 기기_공개_식별자를_뽑는다(deviceTokenService.reissueAccessToken(first.refreshToken())
@@ -181,11 +182,11 @@ class DeviceServiceIntegrationTest {
     void 등록_후_5분이_지나기_전_재요청에는_토큰을_다시_발급한다() {
         // given
         UUID requestId = UUID.randomUUID();
-        deviceService.save(requestId, DevicePlatform.ANDROID);
+        deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
         등록_시각을_민다(requestId, "4 minutes 59 seconds");
 
         // when
-        DeviceSaveResult retried = deviceService.save(requestId, DevicePlatform.ANDROID);
+        DeviceSaveResult retried = deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
 
         // then
         assertThat(retried.created()).isFalse();
@@ -197,11 +198,13 @@ class DeviceServiceIntegrationTest {
     void 등록_후_5분이_지난_재요청에는_토큰을_발급하지_않는다() {
         // given
         UUID requestId = UUID.randomUUID();
-        deviceService.save(requestId, DevicePlatform.ANDROID);
+        deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
         등록_시각을_민다(requestId, "5 minutes 1 second");
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(requestId, DevicePlatform.ANDROID));
+        Throwable throwable = catchThrowable(
+                () -> deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID))
+        );
 
         // then
         assertThat(throwable).isInstanceOf(DeviceException.class);
@@ -215,11 +218,13 @@ class DeviceServiceIntegrationTest {
     void 창_밖_재요청의_예외_메시지에_요청_식별자가_들어가지_않는다() {
         // given
         UUID requestId = UUID.randomUUID();
-        deviceService.save(requestId, DevicePlatform.ANDROID);
+        deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
         등록_시각을_민다(requestId, "5 minutes 1 second");
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(requestId, DevicePlatform.ANDROID));
+        Throwable throwable = catchThrowable(
+                () -> deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID))
+        );
 
         // then
         assertThat(throwable).hasMessage("기기 등록 재시도 시간이 지났습니다. 새 요청으로 등록해 주세요.");
@@ -232,7 +237,7 @@ class DeviceServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        DeviceSaveResult result = deviceService.save(requestId, DevicePlatform.ANDROID);
+        DeviceSaveResult result = deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
 
         // then
         Map<String, Object> row = jdbcClient.sql("SELECT * FROM device_refresh_tokens")
@@ -253,7 +258,7 @@ class DeviceServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        DeviceSaveResult result = deviceService.save(requestId, DevicePlatform.ANDROID);
+        DeviceSaveResult result = deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
 
         // then
         Device device = deviceRepository.findByRequestId(requestId).orElseThrow();
@@ -273,7 +278,7 @@ class DeviceServiceIntegrationTest {
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
                     start.await();
-                    return deviceService.save(requestId, DevicePlatform.ANDROID);
+                    return deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
                 }));
             }
 

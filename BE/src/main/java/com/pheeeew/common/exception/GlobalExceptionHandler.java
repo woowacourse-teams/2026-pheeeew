@@ -8,6 +8,8 @@ import static com.pheeeew.common.logging.RequestLogWriter.FAILURE_ATTRIBUTE;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import java.time.Duration;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
@@ -26,7 +28,7 @@ public class GlobalExceptionHandler {
         if (exception.getErrorCode().getStatus().is5xxServerError()) {
             recordFailure(request, exception, exception.getErrorCode());
         }
-        return toResponseEntity(exception.getErrorCode());
+        return toResponseEntity(exception.getErrorCode(), exception.getRetryAfter());
     }
 
     @ExceptionHandler({
@@ -58,7 +60,15 @@ public class GlobalExceptionHandler {
     }
 
     private ResponseEntity<ErrorResponse> toResponseEntity(ErrorCode errorCode) {
-        return ResponseEntity.status(errorCode.getStatus())
-                .body(ErrorResponse.from(errorCode));
+        return toResponseEntity(errorCode, null);
+    }
+
+    private ResponseEntity<ErrorResponse> toResponseEntity(ErrorCode errorCode, Duration retryAfter) {
+        ResponseEntity.BodyBuilder builder = ResponseEntity.status(errorCode.getStatus());
+        if (retryAfter != null) {
+            builder.header(HttpHeaders.RETRY_AFTER, Long.toString(retryAfter.toSeconds()));
+        }
+
+        return builder.body(ErrorResponse.from(errorCode));
     }
 }
