@@ -4,6 +4,7 @@ import com.pheeeew.auth.infra.jwt.AccessTokenJwtValidator;
 import com.pheeeew.auth.infra.jwt.JwtConfig;
 import com.pheeeew.auth.infra.jwt.JwtTokenEncoder;
 import com.pheeeew.common.config.JpaAuditingConfig;
+import com.pheeeew.device.application.DeviceAttestationBudgetService;
 import com.pheeeew.device.application.DeviceChallengeMetrics;
 import com.pheeeew.device.application.DeviceChallengeService;
 import com.pheeeew.device.application.DeviceService;
@@ -47,6 +48,7 @@ import org.springframework.test.context.ActiveProfiles;
         RefreshTokenIssuer.class,
         RefreshTokenVerifier.class,
         DeviceService.class,
+        DeviceAttestationBudgetService.class,
         DeviceTokenService.class,
         DeviceChallengeService.class,
         DeviceChallengeMetrics.class,

@@ -33,6 +33,9 @@ pheeeew:
     # 개발, QA 우회 스위치. 에뮬레이터와 디버그 빌드는 Play Integrity 판정에서 떨어지므로 그때만 켠다.
     # 기본값은 검증 활성이고, prod 프로필에서는 PlayIntegrityProductionGuard 가 부팅을 막는다.
     skip-verification: ${PLAY_INTEGRITY_SKIP_VERIFICATION:false}
+    # 프로젝트 단위 구글 호출 일일 예산. 구글 무료 티어 10,000건보다 낮게 두어 여유를 남긴다.
+    # UTC 자정 기준 고정 창이라 구글의 창과 어긋나도 두 창에 걸쳐 최대 2배까지만 나가므로 5,000을 넘기지 않는다.
+    daily-call-budget: ${PLAY_INTEGRITY_DAILY_CALL_BUDGET:3000}
 
 management:
   prometheus:

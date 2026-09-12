@@ -21,6 +21,8 @@ import lombok.NoArgsConstructor;
 @Entity
 public class DeviceChallenge extends BaseEntity {
 
+    public static final int MAX_ATTEMPTS = 5;
+
     private static final int CHALLENGE_LENGTH = 43;
     private static final Pattern CHALLENGE_PATTERN = Pattern.compile("^[A-Za-z0-9_-]{43}$");
 
@@ -36,6 +38,9 @@ public class DeviceChallenge extends BaseEntity {
 
     @Column(name = "consumed_at")
     private Instant consumedAt;
+
+    @Column(name = "attempt_count", nullable = false)
+    private int attemptCount;
 
     @Builder
     private DeviceChallenge(String challenge, Instant expiresAt) {

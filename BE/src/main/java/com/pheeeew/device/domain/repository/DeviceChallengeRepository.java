@@ -8,14 +8,17 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface DeviceChallengeRepository extends JpaRepository<DeviceChallenge, Long> {
 
+    @Modifying
     @Query("""
-            SELECT COUNT(deviceChallenge) > 0
-              FROM DeviceChallenge deviceChallenge
+            UPDATE DeviceChallenge deviceChallenge
+               SET deviceChallenge.attemptCount = deviceChallenge.attemptCount + 1,
+                   deviceChallenge.updatedAt = :now
              WHERE deviceChallenge.challenge = :challenge
                AND deviceChallenge.consumedAt IS NULL
                AND deviceChallenge.expiresAt > :now
+               AND deviceChallenge.attemptCount < :maxAttempts
             """)
-    boolean existsConsumable(String challenge, Instant now);
+    int consumeAttempt(String challenge, Instant now, int maxAttempts);
 
     @Modifying
     @Query("""

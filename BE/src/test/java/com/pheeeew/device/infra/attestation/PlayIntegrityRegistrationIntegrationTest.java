@@ -9,11 +9,13 @@ import static com.pheeeew.device.fixture.PlayIntegrityFixture.우리_패키지�
 import static com.pheeeew.device.fixture.PlayIntegrityFixture.자격증명이_없는_설정;
 import static com.pheeeew.device.fixture.PlayIntegrityFixture.자격증명이_있는_설정;
 import static com.pheeeew.device.fixture.PlayIntegrityFixture.정품_복호화_응답;
+import static com.pheeeew.device.fixture.PlayIntegrityFixture.키_조각이_빈_JWE_무결성_토큰;
 import static com.pheeeew.device.fixture.PlayIntegrityFixture.토큰_응답;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.pheeeew.auth.infra.jwt.TokenProperties;
+import com.pheeeew.device.application.DeviceAttestationBudgetService;
 import com.pheeeew.device.application.DeviceChallengeService;
 import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.application.dto.DeviceAttestation;
@@ -23,6 +25,7 @@ import com.pheeeew.device.application.token.AccessTokenIssuer;
 import com.pheeeew.device.application.token.RefreshTokenIssuer;
 import com.pheeeew.device.domain.DeviceChallenge;
 import com.pheeeew.device.domain.DevicePlatform;
+import com.pheeeew.device.domain.repository.DeviceAttestationBudgetRepository;
 import com.pheeeew.device.domain.repository.DeviceChallengeRepository;
 import com.pheeeew.device.domain.repository.DeviceRefreshTokenRepository;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -51,6 +54,7 @@ import org.junit.jupiter.params.provider.EmptySource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
@@ -71,6 +75,12 @@ class PlayIntegrityRegistrationIntegrationTest {
     private DeviceChallengeRepository deviceChallengeRepository;
 
     @Autowired
+    private DeviceAttestationBudgetService deviceAttestationBudgetService;
+
+    @Autowired
+    private DeviceAttestationBudgetRepository deviceAttestationBudgetRepository;
+
+    @Autowired
     private DeviceRepository deviceRepository;
 
     @Autowired
@@ -84,6 +94,12 @@ class PlayIntegrityRegistrationIntegrationTest {
 
     @Autowired
     private TokenProperties tokenProperties;
+
+    @Autowired
+    private PlayIntegrityProperties 설정된_play_integrity_설정;
+
+    @Autowired
+    private JdbcClient jdbcClient;
 
     private FakeGoogleApiServer 가짜_구글;
     private SimpleMeterRegistry registry;
@@ -103,6 +119,7 @@ class PlayIntegrityRegistrationIntegrationTest {
         deviceRefreshTokenRepository.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
         deviceChallengeRepository.deleteAllInBatch();
+        deviceAttestationBudgetRepository.deleteAllInBatch();
     }
 
     @Test
@@ -128,6 +145,8 @@ class PlayIntegrityRegistrationIntegrationTest {
             ".leadingDotIsNotASegment.a.b.c",
             "eyJhbGciOiJBMjU2S1cifQ.has space.a.b.c",
             "eyJhbGciOiJBMjU2S1cifQ.has+plus/and=padding.a.b.c",
+            "eyJhbGciOiJBMjU2S1cifQ.a.b.c",
+            "eyJhbGciOiJBMjU2S1cifQ.a.b.c.d.e",
             "eyJhbGciOiJBMjU2S1cifQ.a.b.c.d\n"
     })
     void 컴팩트_직렬화_형태가_아닌_토큰은_구글을_한_번도_부르지_않고_거절한다(String 형태가_아닌_토큰) {
@@ -145,10 +164,11 @@ class PlayIntegrityRegistrationIntegrationTest {
         assertThat(거절_카운터("MALFORMED_TOKEN")).isOne();
         assertThat(deviceRepository.count()).isZero();
         assertThat(소모_시각(발급.challenge())).isNull();
+        assertThat(시도_수(발급.challenge())).isZero();
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {JWS_무결성_토큰, JWE_무결성_토큰})
+    @ValueSource(strings = {JWS_무결성_토큰, JWE_무결성_토큰, 키_조각이_빈_JWE_무결성_토큰})
     void 세_조각_JWS_와_다섯_조각_JWE_는_모두_형태_검사를_통과하고_구글에_잘리지_않은_채_전달된다(String 무결성_토큰) {
         // given
         DeviceChallengeResult 발급 = deviceChallengeService.save();
@@ -233,10 +253,11 @@ class PlayIntegrityRegistrationIntegrationTest {
         assertThat(구글_호출_수()).isEqualTo(최초_등록까지의_구글_호출_수);
         assertThat(거절_카운터("CHALLENGE_UNUSABLE")).isOne();
         assertThat(deviceRepository.count()).isOne();
+        assertThat(시도_수(발급.challenge())).isOne();
     }
 
     @Test
-    void challenge_사전_조회는_읽기_전용이라_거절_뒤에도_같은_challenge_로_등록할_수_있다() {
+    void 형태_검사에서_떨어진_요청은_시도를_소모하지_않아_같은_challenge_로_다시_등록할_수_있다() {
         // given
         DeviceChallengeResult 발급 = deviceChallengeService.save();
         Throwable 형태가_틀린_요청 = catchThrowable(() -> deviceService.save(
@@ -251,6 +272,58 @@ class PlayIntegrityRegistrationIntegrationTest {
         증명을_확인할_수_없다(형태가_틀린_요청);
         assertThat(다시_등록.created()).isTrue();
         assertThat(소모_시각(발급.challenge())).isNotNull();
+        assertThat(시도_수(발급.challenge())).isOne();
+    }
+
+    @Test
+    void 같은_challenge_로_시도_상한을_넘기면_구글을_부르지_않고_거절한다() {
+        // given
+        DeviceChallengeResult 발급 = deviceChallengeService.save();
+        가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답(토큰이_담은_다른_nonce));
+        for (int 시도 = 0; 시도 < DeviceChallenge.MAX_ATTEMPTS; 시도++) {
+            catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명을_담은_요청(발급.challenge())));
+        }
+        long 상한까지의_구글_호출_수 = 구글_호출_수();
+
+        // when
+        Throwable throwable = catchThrowable(() -> deviceService.save(
+                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+        ));
+
+        // then
+        challenge_를_쓸_수_없다(throwable);
+        assertThat(상한까지의_구글_호출_수).isEqualTo(DeviceChallenge.MAX_ATTEMPTS + 1);
+        assertThat(구글_호출_수()).isEqualTo(상한까지의_구글_호출_수);
+        assertThat(시도_수(발급.challenge())).isEqualTo(DeviceChallenge.MAX_ATTEMPTS);
+        assertThat(거절_카운터("CHALLENGE_UNUSABLE")).isOne();
+        assertThat(거절_카운터("CHALLENGE_MISMATCH")).isEqualTo(DeviceChallenge.MAX_ATTEMPTS);
+        assertThat(deviceRepository.count()).isZero();
+    }
+
+    @Test
+    void 일일_예산을_소진하면_구글을_부르지_않고_한_시간_뒤_재시도를_알리며_상류_장애와_다른_사유로_기록한다() {
+        // given
+        DeviceChallengeResult 발급 = deviceChallengeService.save();
+        가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답(발급.challenge()));
+        예산을_모두_소진시킨다();
+
+        // when
+        Throwable throwable = catchThrowable(() -> deviceService.save(
+                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+        ));
+
+        // then
+        assertThat(throwable).isInstanceOf(DeviceException.class);
+        assertThat(((DeviceException) throwable).getErrorCode())
+                .isEqualTo(DeviceErrorCode.DEVICE_ATTESTATION_UNAVAILABLE);
+        assertThat(((DeviceException) throwable).getRetryAfter()).isEqualTo(Duration.ofHours(1));
+        assertThat(구글_호출_수()).isZero();
+        assertThat(거절_카운터("CALL_BUDGET_EXHAUSTED")).isOne();
+        assertThat(거절_카운터("GOOGLE_QUOTA_EXHAUSTED")).isZero();
+        assertThat(거절_카운터("GOOGLE_UNAVAILABLE")).isZero();
+        assertThat(deviceRepository.count()).isZero();
+        assertThat(소모_시각(발급.challenge())).isNull();
+        assertThat(시도_수(발급.challenge())).isOne();
     }
 
     @Test
@@ -555,6 +628,7 @@ class PlayIntegrityRegistrationIntegrationTest {
         PlayIntegrityDeviceAttestationVerifier verifier = new PlayIntegrityDeviceAttestationVerifier(
                 decoder,
                 deviceChallengeService,
+                deviceAttestationBudgetService,
                 properties,
                 metrics
         );
@@ -610,17 +684,33 @@ class PlayIntegrityRegistrationIntegrationTest {
         return 결과들;
     }
 
+    private void 예산을_모두_소진시킨다() {
+        jdbcClient.sql("""
+                        INSERT INTO device_attestation_budgets (budget_date, call_count, created_at, updated_at)
+                             VALUES ((NOW() AT TIME ZONE 'UTC')::date, :callCount, NOW(), NOW())
+                        ON CONFLICT (budget_date) DO UPDATE SET call_count = :callCount, updated_at = NOW()
+                        """)
+                .param("callCount", 설정된_play_integrity_설정.dailyCallBudget())
+                .update();
+    }
+
+    private int 시도_수(String challenge) {
+        return 저장된_challenge(challenge).getAttemptCount();
+    }
+
     private long 구글_호출_수() {
         return 가짜_구글.토큰_요청_수() + 가짜_구글.복호화_요청_수();
     }
 
     private Instant 소모_시각(String challenge) {
-        DeviceChallenge 저장된_challenge = deviceChallengeRepository.findAll().stream()
+        return 저장된_challenge(challenge).getConsumedAt();
+    }
+
+    private DeviceChallenge 저장된_challenge(String challenge) {
+        return deviceChallengeRepository.findAll().stream()
                 .filter(deviceChallenge -> deviceChallenge.getChallenge().equals(challenge))
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("challenge 행이 없습니다."));
-
-        return 저장된_challenge.getConsumedAt();
     }
 
     private double 카운터(String name) {

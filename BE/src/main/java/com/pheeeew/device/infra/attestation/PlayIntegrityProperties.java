@@ -9,15 +9,26 @@ public record PlayIntegrityProperties(
         String serviceAccountBase64,
         String cloudProjectNumber,
         boolean requireAttestation,
-        boolean skipVerification
+        boolean skipVerification,
+        Integer dailyCallBudget
 ) {
 
+    private static final int DEFAULT_DAILY_CALL_BUDGET = 3_000;
+    private static final int MIN_DAILY_CALL_BUDGET = 1;
+    private static final int MAX_DAILY_CALL_BUDGET = 5_000;
     private static final boolean ENFORCEMENT_LOCKED = false;
     private static final Pattern PACKAGE_NAME_PATTERN =
             Pattern.compile("^[a-zA-Z][a-zA-Z0-9_]*(\\.[a-zA-Z][a-zA-Z0-9_]*)+$");
     private static final Pattern CLOUD_PROJECT_NUMBER_PATTERN = Pattern.compile("^[0-9]{1,20}$");
 
     public PlayIntegrityProperties {
+        dailyCallBudget = dailyCallBudget == null ? DEFAULT_DAILY_CALL_BUDGET : dailyCallBudget;
+        if (dailyCallBudget < MIN_DAILY_CALL_BUDGET || dailyCallBudget > MAX_DAILY_CALL_BUDGET) {
+            throw new IllegalArgumentException(
+                    "Play Integrity 일일 호출 예산은 " + MIN_DAILY_CALL_BUDGET
+                            + " 이상 " + MAX_DAILY_CALL_BUDGET + " 이하여야 합니다."
+            );
+        }
         if (androidPackageName == null || !PACKAGE_NAME_PATTERN.matcher(androidPackageName).matches()) {
             throw new IllegalArgumentException("Play Integrity 안드로이드 패키지명 설정이 올바르지 않습니다.");
         }
@@ -53,6 +64,7 @@ public record PlayIntegrityProperties(
                 + ", serviceAccountBase64=<redacted>"
                 + ", cloudProjectNumber=<redacted>"
                 + ", requireAttestation=" + requireAttestation
-                + ", skipVerification=" + skipVerification + "]";
+                + ", skipVerification=" + skipVerification
+                + ", dailyCallBudget=" + dailyCallBudget + "]";
     }
 }

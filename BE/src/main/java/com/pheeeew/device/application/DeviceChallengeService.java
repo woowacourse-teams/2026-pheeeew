@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.Base64;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
@@ -41,13 +42,19 @@ public class DeviceChallengeService {
         return DeviceChallengeResult.of(deviceChallenge.getChallenge(), challengeTtl.toSeconds());
     }
 
-    public void requireConsumable(String challenge) {
-        if (!deviceChallengeRepository.existsConsumable(challenge, Instant.now())) {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void consumeAttempt(String challenge) {
+        int attemptedCount = deviceChallengeRepository.consumeAttempt(
+                challenge,
+                Instant.now(),
+                DeviceChallenge.MAX_ATTEMPTS
+        );
+        if (attemptedCount == 0) {
             throw new DeviceException(DEVICE_CHALLENGE_INVALID);
         }
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void consume(String challenge) {
         if (deviceChallengeRepository.consume(challenge, Instant.now()) == 0) {
             throw new DeviceException(DEVICE_CHALLENGE_INVALID);

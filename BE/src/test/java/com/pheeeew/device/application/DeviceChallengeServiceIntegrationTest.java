@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 class DeviceChallengeServiceIntegrationTest {
 
     private static final int 동시_요청_수 = 6;
+    private static final int 동시_시도_수 = 12;
     private static final String 발급하지_않은_challenge = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 
     @Autowired
@@ -42,6 +44,9 @@ class DeviceChallengeServiceIntegrationTest {
 
     @Autowired
     private JdbcClient jdbcClient;
+
+    @Autowired
+    private TransactionTemplate transactionTemplate;
 
     @AfterEach
     void tearDown() {
@@ -145,6 +150,81 @@ class DeviceChallengeServiceIntegrationTest {
                 .hasSize(동시_요청_수 - 1)
                 .allSatisfy(this::challenge_를_사용할_수_없다);
         assertThat(deviceChallengeRepository.findAll().getFirst().getConsumedAt()).isNotNull();
+    }
+
+    @Test
+    void 시도는_상한까지_소모할_수_있고_상한을_넘는_시도는_거절된다() {
+        // given
+        DeviceChallengeResult 발급 = deviceChallengeService.save();
+
+        // when
+        for (int 시도 = 0; 시도 < DeviceChallenge.MAX_ATTEMPTS; 시도++) {
+            deviceChallengeService.consumeAttempt(발급.challenge());
+        }
+        Throwable throwable = catchThrowable(() -> deviceChallengeService.consumeAttempt(발급.challenge()));
+
+        // then
+        challenge_를_사용할_수_없다(throwable);
+        DeviceChallenge 저장된_challenge = deviceChallengeRepository.findAll().getFirst();
+        assertThat(저장된_challenge.getAttemptCount()).isEqualTo(DeviceChallenge.MAX_ATTEMPTS);
+        assertThat(저장된_challenge.getConsumedAt()).isNull();
+    }
+
+    @Test
+    void 없음과_만료와_이미_소모된_challenge_는_시도를_소모할_수_없다() {
+        // given
+        DeviceChallengeResult 소모한_challenge = deviceChallengeService.save();
+        deviceChallengeService.consume(소모한_challenge.challenge());
+        DeviceChallengeResult 만료한_challenge = deviceChallengeService.save();
+        발급_시각을_민다(만료한_challenge.challenge(), "5 minutes 1 second");
+
+        // when
+        List<Throwable> 실패들 = List.of(
+                catchThrowable(() -> deviceChallengeService.consumeAttempt(발급하지_않은_challenge)),
+                catchThrowable(() -> deviceChallengeService.consumeAttempt(만료한_challenge.challenge())),
+                catchThrowable(() -> deviceChallengeService.consumeAttempt(소모한_challenge.challenge()))
+        );
+
+        // then
+        assertThat(실패들).allSatisfy(this::challenge_를_사용할_수_없다);
+        assertThat(deviceChallengeRepository.findAll())
+                .extracting(DeviceChallenge::getAttemptCount)
+                .containsOnly(0);
+    }
+
+    @Test
+    void 같은_challenge_에_동시에_시도를_소모해도_상한을_넘지_않는다() throws Exception {
+        // given
+        DeviceChallengeResult 발급 = deviceChallengeService.save();
+        CountDownLatch ready = new CountDownLatch(동시_시도_수);
+        CountDownLatch start = new CountDownLatch(1);
+
+        // when
+        List<Throwable> 결과들 = new ArrayList<>();
+        try (ExecutorService executorService = Executors.newFixedThreadPool(동시_시도_수)) {
+            List<Future<Throwable>> futures = new ArrayList<>();
+            for (int index = 0; index < 동시_시도_수; index++) {
+                futures.add(executorService.submit(() -> {
+                    ready.countDown();
+                    start.await();
+                    return catchThrowable(() -> deviceChallengeService.consumeAttempt(발급.challenge()));
+                }));
+            }
+            boolean 모두_준비됨 = ready.await(5, TimeUnit.SECONDS);
+            start.countDown();
+            assertThat(모두_준비됨).isTrue();
+            for (Future<Throwable> future : futures) {
+                결과들.add(future.get(10, TimeUnit.SECONDS));
+            }
+        }
+
+        // then
+        assertThat(결과들.stream().filter(Objects::isNull)).hasSize(DeviceChallenge.MAX_ATTEMPTS);
+        assertThat(결과들.stream().filter(Objects::nonNull).toList())
+                .hasSize(동시_시도_수 - DeviceChallenge.MAX_ATTEMPTS)
+                .allSatisfy(this::challenge_를_사용할_수_없다);
+        assertThat(deviceChallengeRepository.findAll().getFirst().getAttemptCount())
+                .isEqualTo(DeviceChallenge.MAX_ATTEMPTS);
     }
 
     @Test
@@ -265,7 +345,9 @@ class DeviceChallengeServiceIntegrationTest {
 
         // then
         assertThat(저장된_행.keySet())
-                .containsExactlyInAnyOrder("id", "challenge", "expires_at", "consumed_at", "created_at", "updated_at");
+                .containsExactlyInAnyOrder(
+                        "id", "challenge", "expires_at", "consumed_at", "attempt_count", "created_at", "updated_at"
+                );
     }
 
     private void 발급_시각을_민다(String challenge, String interval) {
@@ -283,5 +365,43 @@ class DeviceChallengeServiceIntegrationTest {
         assertThat(throwable).isInstanceOf(DeviceException.class);
         assertThat(((DeviceException) throwable).getErrorCode())
                 .isEqualTo(DeviceErrorCode.DEVICE_CHALLENGE_INVALID);
+    }
+
+    @Test
+    void 바깥_트랜잭션이_롤백돼도_시도_수는_남는다() {
+        // given
+        String challenge = deviceChallengeService.save().challenge();
+
+        // when
+        transactionTemplate.executeWithoutResult(status -> {
+            deviceChallengeService.consumeAttempt(challenge);
+            status.setRollbackOnly();
+        });
+
+        // then
+        Integer 시도_수 = jdbcClient.sql("SELECT attempt_count FROM device_challenges WHERE challenge = ?")
+                .param(challenge)
+                .query(Integer.class)
+                .single();
+        assertThat(시도_수).isOne();
+    }
+
+    @Test
+    void 바깥_트랜잭션이_롤백돼도_소모_표시는_남는다() {
+        // given
+        String challenge = deviceChallengeService.save().challenge();
+
+        // when
+        transactionTemplate.executeWithoutResult(status -> {
+            deviceChallengeService.consume(challenge);
+            status.setRollbackOnly();
+        });
+
+        // then
+        Instant 소모_시각 = jdbcClient.sql("SELECT consumed_at FROM device_challenges WHERE challenge = ?")
+                .param(challenge)
+                .query(Instant.class)
+                .single();
+        assertThat(소모_시각).isNotNull();
     }
 }

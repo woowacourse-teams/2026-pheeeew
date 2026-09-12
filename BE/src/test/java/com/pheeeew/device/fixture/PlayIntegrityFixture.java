@@ -13,6 +13,8 @@ public final class PlayIntegrityFixture {
     public static final String JWE_무결성_토큰 =
             "eyJhbGciOiJBMjU2S1ciLCJlbmMiOiJBMjU2R0NNIn0.encryptedKey.initializationVector.cipherText.authTag";
     public static final String JWS_무결성_토큰 = "eyJhbGciOiJSUzI1NiJ9.eyJub25jZSI6IngifQ.signature";
+    public static final String 키_조각이_빈_JWE_무결성_토큰 =
+            "eyJhbGciOiJkaXIiLCJlbmMiOiJBMjU2R0NNIn0..initializationVector.cipherText.authTag";
     public static final String 서비스_계정_이메일 = "play-integrity@pheeeew-test.iam.gserviceaccount.com";
     public static final String 클라우드_프로젝트_번호 = "123456789012";
 
@@ -41,19 +43,19 @@ public final class PlayIntegrityFixture {
     }
 
     public static PlayIntegrityProperties 자격증명이_있는_설정(String tokenUri) {
-        return new PlayIntegrityProperties(우리_패키지명, 서비스_계정_설정(tokenUri), 클라우드_프로젝트_번호, false, false);
+        return new PlayIntegrityProperties(우리_패키지명, 서비스_계정_설정(tokenUri), 클라우드_프로젝트_번호, false, false, null);
     }
 
     public static PlayIntegrityProperties 강제가_켜진_설정(String tokenUri) {
-        return new PlayIntegrityProperties(우리_패키지명, 서비스_계정_설정(tokenUri), 클라우드_프로젝트_번호, true, false);
+        return new PlayIntegrityProperties(우리_패키지명, 서비스_계정_설정(tokenUri), 클라우드_프로젝트_번호, true, false, null);
     }
 
     public static PlayIntegrityProperties 검증을_건너뛰는_설정(String tokenUri) {
-        return new PlayIntegrityProperties(우리_패키지명, 서비스_계정_설정(tokenUri), 클라우드_프로젝트_번호, false, true);
+        return new PlayIntegrityProperties(우리_패키지명, 서비스_계정_설정(tokenUri), 클라우드_프로젝트_번호, false, true, null);
     }
 
     public static PlayIntegrityProperties 자격증명이_없는_설정() {
-        return new PlayIntegrityProperties(우리_패키지명, null, null, false, false);
+        return new PlayIntegrityProperties(우리_패키지명, null, null, false, false, null);
     }
 
     public static String 토큰_응답(String accessToken, long expiresIn) {

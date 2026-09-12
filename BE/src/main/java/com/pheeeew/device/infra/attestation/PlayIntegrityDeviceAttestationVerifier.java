@@ -4,6 +4,7 @@ import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_ATTESTATION_IN
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_ATTESTATION_UNAVAILABLE;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_CHALLENGE_INVALID;
 
+import com.pheeeew.device.application.DeviceAttestationBudgetService;
 import com.pheeeew.device.application.DeviceAttestationVerifier;
 import com.pheeeew.device.application.DeviceChallengeService;
 import com.pheeeew.device.application.dto.DeviceAttestation;
@@ -21,21 +22,24 @@ public class PlayIntegrityDeviceAttestationVerifier implements DeviceAttestation
     private static final String RECOGNIZED_APP_VERDICT = "PLAY_RECOGNIZED";
     private static final String DEVICE_INTEGRITY_VERDICT = "MEETS_DEVICE_INTEGRITY";
     private static final Pattern JOSE_COMPACT_PATTERN =
-            Pattern.compile("^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]*){2,}$");
+            Pattern.compile("^[A-Za-z0-9_-]+(?:\\.[A-Za-z0-9_-]*){2}(?:(?:\\.[A-Za-z0-9_-]*){2})?$");
 
     private final PlayIntegrityTokenDecoder playIntegrityTokenDecoder;
     private final DeviceChallengeService deviceChallengeService;
+    private final DeviceAttestationBudgetService deviceAttestationBudgetService;
     private final PlayIntegrityProperties playIntegrityProperties;
     private final PlayIntegrityMetrics playIntegrityMetrics;
 
     public PlayIntegrityDeviceAttestationVerifier(
             PlayIntegrityTokenDecoder playIntegrityTokenDecoder,
             DeviceChallengeService deviceChallengeService,
+            DeviceAttestationBudgetService deviceAttestationBudgetService,
             PlayIntegrityProperties playIntegrityProperties,
             PlayIntegrityMetrics playIntegrityMetrics
     ) {
         this.playIntegrityTokenDecoder = playIntegrityTokenDecoder;
         this.deviceChallengeService = deviceChallengeService;
+        this.deviceAttestationBudgetService = deviceAttestationBudgetService;
         this.playIntegrityProperties = playIntegrityProperties;
         this.playIntegrityMetrics = playIntegrityMetrics;
         warnWhenVerificationSkipped();
@@ -59,7 +63,8 @@ public class PlayIntegrityDeviceAttestationVerifier implements DeviceAttestation
         requireConfiguredCredentials();
         requireCompactJoseForm(integrityToken);
         String challenge = requireChallenge(attestation.challenge());
-        requireConsumableChallenge(challenge);
+        consumeChallengeAttempt(challenge);
+        consumeCallBudget();
 
         PlayIntegrityPayload payload = decode(integrityToken);
         playIntegrityMetrics.recordVerdict(payload.appRecognitionVerdict(), meetsDeviceIntegrity(payload));
@@ -118,11 +123,20 @@ public class PlayIntegrityDeviceAttestationVerifier implements DeviceAttestation
         return challenge;
     }
 
-    private void requireConsumableChallenge(String challenge) {
+    private void consumeChallengeAttempt(String challenge) {
         try {
-            deviceChallengeService.requireConsumable(challenge);
+            deviceChallengeService.consumeAttempt(challenge);
         } catch (DeviceException exception) {
             playIntegrityMetrics.recordRejected(PlayIntegrityRejection.CHALLENGE_UNUSABLE);
+            throw exception;
+        }
+    }
+
+    private void consumeCallBudget() {
+        try {
+            deviceAttestationBudgetService.consumeCall();
+        } catch (DeviceException exception) {
+            playIntegrityMetrics.recordRejected(PlayIntegrityRejection.CALL_BUDGET_EXHAUSTED);
             throw exception;
         }
     }
