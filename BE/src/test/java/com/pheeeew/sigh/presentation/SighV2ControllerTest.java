@@ -506,8 +506,8 @@ class SighV2ControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"not-a-number"})
-    void 한숨_ID_형식이_올바르지_않으면_400을_반환한다(String id) {
+    @ValueSource(strings = {"not-a-number", "0", "-1"})
+    void 한숨_ID_형식이_올바르지_않거나_1보다_작으면_400을_반환한다(String id) {
         // given / when
         RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(id);
 
@@ -527,20 +527,6 @@ class SighV2ControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .exchange();
-    }
-
-    @ParameterizedTest
-    @ValueSource(longs = {0L, -1L})
-    void 한숨_ID가_1보다_작으면_404를_반환한다(long id) {
-        // given
-        when(sighService.findById(id, DEVICE_PUBLIC_ID))
-                .thenThrow(new SighException(SighErrorCode.SIGH_NOT_FOUND));
-
-        // when
-        RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(Long.toString(id));
-
-        // then
-        result.expectStatus().isNotFound();
     }
 
     private RestTestClient.ResponseSpec 한숨_상세를_조회한다(String id) {

@@ -100,8 +100,8 @@ class SighV2LikeControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"not-a-number"})
-    void 한숨_ID_형식이_올바르지_않으면_400을_반환한다(String sighId) {
+    @ValueSource(strings = {"0", "-1", "not-a-number"})
+    void 한숨_ID가_유효하지_않으면_400을_반환한다(String sighId) {
         // given / when
         RestTestClient.ResponseSpec result = request("/api/v2/sighs/" + sighId + "/likes", "access-token", "{\"liked\":true}");
 

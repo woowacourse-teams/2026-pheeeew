@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
@@ -239,6 +240,7 @@ public interface SighV2ControllerApi {
                     example = "42",
                     schema = @Schema(minimum = "1")
             )
+            @Min(value = 1, message = "한숨 ID는 1 이상이어야 합니다.")
             Long id,
             @Parameter(hidden = true) UUID devicePublicId
     );
@@ -423,7 +425,7 @@ public interface SighV2ControllerApi {
     })
     SighLikeResponse update(
             @Parameter(description = "좋아요 상태를 변경할 한숨 ID", example = "42", schema = @Schema(minimum = "1"))
-            Long sighId,
+            @Min(value = 1, message = "한숨 ID는 1 이상이어야 합니다.") Long sighId,
             @Parameter(hidden = true) UUID devicePublicId,
             @RequestBody(required = true, content = @Content(examples = {
                     @ExampleObject(name = "좋아요 추가", value = "{\"liked\":true}"),
