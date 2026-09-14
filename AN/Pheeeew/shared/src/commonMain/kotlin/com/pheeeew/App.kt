@@ -5,9 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -16,8 +13,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.notification.CommonNotification
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.PredictiveBackContent
 import com.pheeeew.core.navigation.Screen
@@ -152,15 +151,12 @@ fun App(
 
             if (registrationState is DeviceRegistrationState.Failed) {
                 val error = (registrationState as DeviceRegistrationState.Failed).error
-                AlertDialog(
-                    onDismissRequest = {},
-                    title = { Text("기기 등록 실패") },
-                    text = { Text(error.message()) },
-                    confirmButton = {
-                        Button(onClick = ::registerDevice) {
-                            Text("다시 시도")
-                        }
-                    },
+                CommonNotification(
+                    title = "기기 등록에 실패했어요",
+                    message = error.message(),
+                    actionLabel = "다시 시도",
+                    onAction = ::registerDevice,
+                    modifier = Modifier.align(Alignment.Center),
                 )
             }
         }
