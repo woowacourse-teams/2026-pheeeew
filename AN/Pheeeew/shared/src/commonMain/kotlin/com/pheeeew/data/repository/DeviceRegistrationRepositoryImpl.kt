@@ -1,6 +1,7 @@
 package com.pheeeew.data.repository
 
 import com.pheeeew.data.local.device.DeviceAttestationProvider
+import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.local.device.DeviceTokenStorage
 import com.pheeeew.data.remote.device.api.DeviceRegistrationApi
 import com.pheeeew.data.remote.device.dto.DeviceAttestationDto
@@ -21,6 +22,7 @@ class DeviceRegistrationRepositoryImpl(
     private val api: DeviceRegistrationApi,
     private val tokenStorage: DeviceTokenStorage,
     private val attestationProvider: DeviceAttestationProvider,
+    private val accessTokenStore: AccessTokenStore,
     private val nowEpochSeconds: () -> Long = { Clock.System.now().epochSeconds },
 ) : DeviceRegistrationRepository {
     override suspend fun getStoredRefreshToken(): RefreshToken? = tokenStorage.getRefreshToken()
@@ -41,8 +43,9 @@ class DeviceRegistrationRepositoryImpl(
         )
         val refreshToken = RefreshToken(response.refreshToken)
         tokenStorage.saveRefreshToken(refreshToken)
+        accessTokenStore.save(AccessToken(response.accessToken))
         AuthSession(
-            accessToken = AccessToken(response.accessToken),
+            accessToken = accessTokenStore.accessToken!!,
             refreshToken = refreshToken,
             accessTokenExpiresAtEpochSeconds = nowEpochSeconds() + response.expiresIn,
         )
@@ -55,7 +58,7 @@ class DeviceRegistrationRepositoryImpl(
     override suspend fun refreshAccessToken(refreshToken: RefreshToken): AccessTokenInfo = try {
         val response = api.refresh(RefreshTokenRequestDto(refreshToken.value))
         AccessTokenInfo(
-            accessToken = AccessToken(response.accessToken),
+            accessToken = AccessToken(response.accessToken).also(accessTokenStore::save),
             accessTokenExpiresAtEpochSeconds = nowEpochSeconds() + response.expiresIn,
         )
     } catch (error: CancellationException) {
@@ -64,7 +67,10 @@ class DeviceRegistrationRepositoryImpl(
         throw error.toDeviceRegistrationException()
     }
 
-    override suspend fun clearCredentials() = tokenStorage.clear()
+    override suspend fun clearCredentials() {
+        tokenStorage.clear()
+        accessTokenStore.clear()
+    }
 
     private fun Throwable.toDeviceRegistrationException(): DeviceRegistrationException = when (this) {
         is DeviceRegistrationException -> this

@@ -5,9 +5,11 @@ import com.pheeeew.data.remote.sigh.dto.SighCreateV2RequestDto
 import com.pheeeew.data.remote.sigh.dto.SighFeatureDto
 import com.pheeeew.data.remote.sigh.dto.SighPageResponseDto
 import com.pheeeew.data.remote.sigh.dto.SighV2PropertiesDto
+import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.domain.model.sigh.SighBounds
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -16,6 +18,7 @@ import io.ktor.http.contentType
 
 class KtorSighV2Api(
     private val client: HttpClient,
+    private val accessTokenStore: AccessTokenStore? = null,
 ) : SighV2Api {
     override suspend fun getFirstPage(bounds: SighBounds): SighPageResponseDto =
         executeRequest {
@@ -48,6 +51,9 @@ class KtorSighV2Api(
     override suspend fun create(request: SighCreateV2RequestDto): SighFeatureDto<SighV2PropertiesDto> =
         executeRequest {
             client.post(SIGHS_PATH) {
+                accessTokenStore?.accessToken?.let { token ->
+                    header("Authorization", "Bearer ${token.value}")
+                }
                 contentType(ContentType.Application.Json)
                 setBody(request)
             }

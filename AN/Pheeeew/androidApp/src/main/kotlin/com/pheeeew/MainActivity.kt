@@ -15,6 +15,7 @@ import com.pheeeew.di.LocationDependencies
 import com.pheeeew.di.SighModule
 import com.pheeeew.di.createAndroidEnsureDeviceRegisteredUseCase
 import com.pheeeew.di.createAndroidEnsureDeviceRegisteredWithPlayIntegrityUseCase
+import com.pheeeew.data.local.device.InMemoryAccessTokenStore
 import com.pheeeew.di.createAndroidLocationDependencies
 
 class MainActivity : ComponentActivity() {
@@ -31,17 +32,23 @@ class MainActivity : ComponentActivity() {
                 activity = this,
                 retainedDependencies = holder.dependencies,
             ).also { holder.dependencies = it }
-        val sighDependencies = SighModule.create(ApiConfig(baseUrl = BuildConfig.API_BASE_URL))
+        val accessTokenStore = InMemoryAccessTokenStore()
+        val sighDependencies = SighModule.create(
+            config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
+            accessTokenStore = accessTokenStore,
+        )
         val deviceRegistration = if (BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER > 0L) {
             createAndroidEnsureDeviceRegisteredWithPlayIntegrityUseCase(
                 context = this,
                 config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
                 cloudProjectNumber = BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
+                accessTokenStore = accessTokenStore,
             )
         } else {
             createAndroidEnsureDeviceRegisteredUseCase(
                 context = this,
                 config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
+                accessTokenStore = accessTokenStore,
             )
         }
 

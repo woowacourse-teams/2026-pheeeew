@@ -3,6 +3,7 @@ package com.pheeeew.di
 import com.pheeeew.core.geo.Epsg5179SighLocationObfuscator
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createPlatformHttpClient
+import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.remote.sigh.api.KtorSighV1Api
 import com.pheeeew.data.remote.sigh.api.KtorSighV2Api
 import com.pheeeew.data.repository.SighRepositoryImpl
@@ -15,12 +16,12 @@ data class SighDependencies(
 )
 
 object SighModule {
-    fun create(config: ApiConfig): SighDependencies {
+    fun create(config: ApiConfig, accessTokenStore: AccessTokenStore? = null): SighDependencies {
         val client = createPlatformHttpClient(config)
         val repository =
             SighRepositoryImpl(
                 sighV1Api = KtorSighV1Api(client),
-                sighV2Api = KtorSighV2Api(client),
+                sighV2Api = KtorSighV2Api(client, accessTokenStore),
             )
         return SighDependencies(
             repository = repository,
