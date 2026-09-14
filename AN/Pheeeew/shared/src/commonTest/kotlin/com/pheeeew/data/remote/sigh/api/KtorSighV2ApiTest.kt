@@ -4,8 +4,10 @@ package com.pheeeew.data.remote.sigh.api
 
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createHttpClient
+import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.remote.sigh.dto.SighCreateV2RequestDto
 import com.pheeeew.domain.model.sigh.SighBounds
+import com.pheeeew.domain.model.device.AccessToken
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
@@ -139,11 +141,65 @@ class KtorSighV2ApiTest {
             client.close()
         }
 
+    @Test
+    fun `등록 요청은 access token을 bearer 헤더로 전달한다`() = runTest {
+        val store = TestAccessTokenStore(AccessToken("access-123"))
+        val engine = MockEngine { request ->
+            assertEquals("Bearer access-123", request.headers[HttpHeaders.Authorization])
+            respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
+        }
+        val client = createClient(engine)
+        val api = KtorSighV2Api(client, store)
+
+        api.create(SighCreateV2RequestDto("request-123", 37.5, 126.9))
+
+        client.close()
+    }
+
+    @Test
+    fun `access token 만료 시 refresh 후 요청을 한 번 재시도한다`() = runTest {
+        val store = TestAccessTokenStore(AccessToken("expired"))
+        var requestCount = 0
+        var refreshCount = 0
+        val engine = MockEngine { request ->
+            requestCount++
+            if (requestCount == 1) {
+                respondJson("""{"code":"AUTH-001","message":"expired"}""", HttpStatusCode.Unauthorized)
+            } else {
+                assertEquals("Bearer refreshed", request.headers[HttpHeaders.Authorization])
+                respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
+            }
+        }
+        val client = createClient(engine)
+        val api = KtorSighV2Api(client, store) {
+            refreshCount++
+            AccessToken("refreshed")
+        }
+
+        api.create(SighCreateV2RequestDto("request-123", 37.5, 126.9))
+
+        assertEquals(2, requestCount)
+        assertEquals(1, refreshCount)
+        client.close()
+    }
+
     private fun createClient(engine: MockEngine) =
         createHttpClient(
             engine = engine,
             config = ApiConfig("https://api-dev.pheeeew.com"),
         )
+
+    private class TestAccessTokenStore(
+        override var accessToken: AccessToken?,
+    ) : AccessTokenStore {
+        override fun save(accessToken: AccessToken) {
+            this.accessToken = accessToken
+        }
+
+        override fun clear() {
+            accessToken = null
+        }
+    }
 
     private companion object {
         val FEATURE_RESPONSE =
