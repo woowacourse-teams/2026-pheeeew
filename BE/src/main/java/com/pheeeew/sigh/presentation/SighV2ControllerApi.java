@@ -32,7 +32,12 @@ public interface SighV2ControllerApi {
 
     @Operation(
             summary = "지도 바텀시트용 한숨 목록 조회",
+            security = @SecurityRequirement(name = "bearerAuth"),
             description = """
+                    ### 인증
+
+                    - `Authorization: Bearer <access token>` 헤더가 필요합니다.
+
                     ### 첫 페이지
 
                     - WGS84 검색 영역을 네 좌표로 모두 전달하고 `cursor`는 전달하지 않습니다.
@@ -105,6 +110,17 @@ public interface SighV2ControllerApi {
                     )
             ),
             @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 정보가 없거나 유효하지 않음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                    """)
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "500",
                     description = "한숨 목록 조회 처리 중 서버 오류",
                     content = @Content(
@@ -119,7 +135,14 @@ public interface SighV2ControllerApi {
 
     @Operation(
             summary = "한숨 상세 조회",
+            security = @SecurityRequirement(name = "bearerAuth"),
             description = """
+                    ### 인증
+
+                    - `Authorization: Bearer <access token>` 헤더가 필요합니다.
+
+                    ### 조회 결과
+
                     - 경로의 `id`로 삭제되지 않은 한숨을 조회합니다.
                     - 등록 시 저장된 최종 표시 위치, 생성 시각, 메모와 익명 닉네임을 반환합니다.
                     - 조회할 때 위치나 닉네임을 다시 생성하지 않습니다.
@@ -149,6 +172,17 @@ public interface SighV2ControllerApi {
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
                                     {"code":"COMMON-001","message":"요청 값이 올바르지 않습니다."}
+                                    """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 정보가 없거나 유효하지 않음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"AUTH-001","message":"인증이 필요합니다."}
                                     """)
                     )
             ),

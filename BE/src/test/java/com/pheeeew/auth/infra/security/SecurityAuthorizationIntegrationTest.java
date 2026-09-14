@@ -184,23 +184,73 @@ class SecurityAuthorizationIntegrationTest {
         assertThat(sighRepository.count()).isOne();
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/sighs", "/api/v2/sighs"})
-    void 인증_없이_한숨을_조회할_수_있다(String uri) {
+    @Test
+    void v1_한숨_목록은_인증_없이_조회할_수_있다() {
         // given / when
         RestTestClient.ResponseSpec result = client.get()
-                .uri(uri + 지도_영역_질의)
+                .uri("/api/v1/sighs" + 지도_영역_질의)
                 .exchange();
 
         // then
         result.expectStatus().isOk();
     }
 
-    @Test
-    void 인증_없이_한숨_단건을_조회하는_요청은_필터를_통과한다() {
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v2/sighs" + 지도_영역_질의, "/api/v2/sighs/42"})
+    void 토큰_없이_v2_목록이나_단건을_조회하면_401을_반환한다(String uri) {
         // given / when
+        RestTestClient.ResponseSpec result = client.get().uri(uri).exchange();
+
+        // then
+        인증_필요를_검증한다(result);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v2/sighs" + 지도_영역_질의, "/api/v2/sighs/42"})
+    void 만료된_토큰으로_v2_목록이나_단건을_조회하면_401을_반환한다(String uri) {
+        // given
+        String accessToken = AccessTokenFixture.만료된_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(uri)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .exchange();
+
+        // then
+        인증_필요를_검증한다(result);
+    }
+
+    @Test
+    void 유효한_토큰으로_v2_목록과_단건을_조회할_수_있다() {
+        // given
+        String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        Long sighId = 한숨을_등록한다(accessToken);
+
+        // when
+        RestTestClient.ResponseSpec listResult = client.get()
+                .uri("/api/v2/sighs" + 지도_영역_질의)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .exchange();
+        RestTestClient.ResponseSpec detailResult = client.get()
+                .uri("/api/v2/sighs/" + sighId)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .exchange();
+
+        // then
+        listResult.expectStatus().isOk().expectBody().jsonPath("$.items[0].id").isEqualTo(sighId.intValue());
+        detailResult.expectStatus().isOk().expectBody().jsonPath("$.id").isEqualTo(sighId.intValue());
+    }
+
+    @Test
+    void 유효한_토큰으로_없는_한숨을_조회하면_404를_반환한다() {
+        // given
+        String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+
+        // when
         RestTestClient.ResponseSpec result = client.get()
                 .uri("/api/v2/sighs/" + Long.MAX_VALUE)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .exchange();
 
         // then
