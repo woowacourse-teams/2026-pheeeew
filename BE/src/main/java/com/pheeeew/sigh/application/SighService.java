@@ -46,17 +46,13 @@ public class SighService {
     private final SighNicknameGenerator sighNicknameGenerator;
 
     public SighSaveResult save(UUID requestId, double longitude, double latitude) {
-        return save(requestId, longitude, latitude, null, null);
+        return saveSigh(requestId, longitude, latitude, null, null);
     }
 
     public SighSaveResult save(UUID requestId, double longitude, double latitude, String memo, UUID devicePublicId) {
-        Optional<SighDetailProjection> existingSigh = sighRepository.findByRequestId(requestId, devicePublicId);
+        Long deviceId = findDeviceId(devicePublicId);
 
-        if (existingSigh.isPresent()) {
-            return createSaveResult(existingSigh.get(), devicePublicId);
-        }
-
-        return saveNewSigh(requestId, longitude, latitude, memo, devicePublicId);
+        return saveSigh(requestId, longitude, latitude, memo, deviceId);
     }
 
     @Transactional(readOnly = true)
@@ -108,16 +104,22 @@ public class SighService {
         return findList(SighListCursorCodec.decode(encodedCursor), devicePublicId);
     }
 
-    private SighSaveResult createSaveResult(SighDetailProjection projection, UUID devicePublicId) {
-        if (devicePublicId != null) {
-            findDeviceId(devicePublicId);
+    private SighSaveResult saveSigh(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
+        Optional<SighDetailProjection> existingSigh = sighRepository.findByRequestId(requestId, deviceId);
+
+        if (existingSigh.isPresent()) {
+            return createSaveResult(existingSigh.get());
         }
 
+        return saveNewSigh(requestId, longitude, latitude, memo, deviceId);
+    }
+
+    private SighSaveResult createSaveResult(SighDetailProjection projection) {
         SighDetailResult detail = SighDetailResult.from(projection);
         return SighSaveResult.of(detail.sigh(), false, detail.like());
     }
 
-    private SighSaveResult saveNewSigh(UUID requestId, double longitude, double latitude, String memo, UUID devicePublicId) {
+    private SighSaveResult saveNewSigh(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
         Point location = sighLocationGenerator.generate(longitude, latitude);
         Sigh sigh = Sigh.builder()
                 .requestId(requestId)
@@ -130,13 +132,13 @@ public class SighService {
             Sigh savedSigh = sighRepository.saveAndFlush(sigh);
             return SighSaveResult.of(SighResult.from(savedSigh), true, SighLikeResult.of(false, 0));
         } catch (DataIntegrityViolationException cause) {
-            return findExistingSigh(requestId, devicePublicId, cause);
+            return findExistingSigh(requestId, deviceId, cause);
         }
     }
 
-    private SighSaveResult findExistingSigh(UUID requestId, UUID devicePublicId, DataIntegrityViolationException cause) {
-        return sighRepository.findByRequestId(requestId, devicePublicId)
-                .map(projection -> createSaveResult(projection, devicePublicId))
+    private SighSaveResult findExistingSigh(UUID requestId, Long deviceId, DataIntegrityViolationException cause) {
+        return sighRepository.findByRequestId(requestId, deviceId)
+                .map(this::createSaveResult)
                 .orElseThrow(() -> new SighException(SIGH_SAVE_FAILED, cause));
     }
 

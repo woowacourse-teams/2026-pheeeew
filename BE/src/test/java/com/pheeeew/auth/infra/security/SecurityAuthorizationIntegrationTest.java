@@ -167,21 +167,68 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @Test
-    void 유효한_토큰으로_한숨을_등록하면_인증을_통과해_201을_반환한다() {
+    void 등록된_기기의_유효한_토큰으로_한숨을_등록하면_201이고_같은_요청은_200을_반환한다() {
         // given
-        String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
+        String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        String requestBody = 한숨_등록_본문();
 
         // when
         RestTestClient.ResponseSpec result = client.post()
                 .uri("/api/v2/sighs")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(한숨_등록_본문())
+                .body(requestBody)
                 .exchange();
 
         // then
         result.expectStatus().isCreated();
+
+        // when
+        RestTestClient.ResponseSpec retried = client.post()
+                .uri("/api/v2/sighs")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestBody)
+                .exchange();
+
+        // then
+        retried.expectStatus().isOk();
         assertThat(sighRepository.count()).isOne();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 등록되지_않은_기기의_토큰으로는_신규_등록과_재요청을_모두_거부한다(boolean existingSigh) {
+        // given
+        String requestBody = 한숨_등록_본문();
+        if (existingSigh) {
+            String registeredDeviceToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+            client.post()
+                    .uri("/api/v2/sighs")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + registeredDeviceToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(requestBody)
+                    .exchange()
+                    .expectStatus().isCreated();
+        }
+        String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
+        long originalCount = sighRepository.count();
+
+        // when
+        RestTestClient.ResponseSpec result = client.post()
+                .uri("/api/v2/sighs")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(requestBody)
+                .exchange();
+
+        // then
+        result.expectStatus().isUnauthorized()
+                .expectBody()
+                .json("""
+                        {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
+                        """, JsonCompareMode.STRICT);
+        assertThat(sighRepository.count()).isEqualTo(originalCount);
     }
 
     @Test
@@ -265,7 +312,8 @@ class SecurityAuthorizationIntegrationTest {
     void 등록되지_않은_기기의_토큰으로_신고하면_401_기기_없음을_반환한다() {
         // given
         String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
-        Long sighId = 한숨을_등록한다(accessToken);
+        String registeredDeviceToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        Long sighId = 한숨을_등록한다(registeredDeviceToken);
 
         // when
         RestTestClient.ResponseSpec result = 신고한다(accessToken, sighId);

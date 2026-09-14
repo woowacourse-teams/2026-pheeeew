@@ -25,13 +25,12 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
     @Query("""
             SELECT s AS sigh, CASE WHEN sighLike.id IS NOT NULL THEN true ELSE false END AS liked
             FROM Sigh s
-            LEFT JOIN Device device ON device.publicId = :devicePublicId
-            LEFT JOIN SighLike sighLike ON sighLike.sighId = s.id AND sighLike.deviceId = device.id
+            LEFT JOIN SighLike sighLike ON sighLike.sighId = s.id AND sighLike.deviceId = :deviceId
             WHERE s.requestId = :requestId
             """)
     Optional<SighDetailProjection> findByRequestId(
             @Param("requestId") UUID requestId,
-            @Param("devicePublicId") UUID devicePublicId
+            @Param("deviceId") Long deviceId
     );
 
     Optional<Sigh> findByIdAndDeletedAtIsNull(Long id);
