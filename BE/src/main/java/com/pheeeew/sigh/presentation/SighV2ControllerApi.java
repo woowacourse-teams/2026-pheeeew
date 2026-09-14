@@ -59,6 +59,11 @@ public interface SighV2ControllerApi {
                     - 메모가 없는 경우 `properties.memo`는 `null`입니다.
                     - 각 항목의 `properties.liked`는 인증된 기기의 좋아요 여부, `properties.likeCount`는 전체 좋아요 수입니다.
                     - 좋아요 정보는 각 페이지를 조회하는 시점의 값이며, 첫 페이지의 스냅샷 시각에 고정되지 않습니다.
+
+                    ### 차단
+
+                    - 인증한 기기가 차단한 한숨과 차단한 사용자의 한숨은 제외하고 반환합니다.
+                    - 작성자 정보가 없는 한숨(`POST /api/v1/sighs`로 등록한 한숨)은 사용자 차단의 영향을 받지 않습니다. 개별 차단으로만 가릴 수 있습니다.
                     """
     )
     @ApiResponses({
@@ -247,6 +252,7 @@ public interface SighV2ControllerApi {
 
                     - `Authorization: Bearer <access token>` 헤더가 필요합니다.
                     - 신규 등록과 재요청 모두 토큰에 해당하는 기기가 등록되어 있어야 합니다.
+                    - 인증한 기기를 이 한숨의 작성자로 저장합니다. 응답에는 작성자 정보를 담지 않습니다.
 
                     ### 메모
 
@@ -263,6 +269,7 @@ public interface SighV2ControllerApi {
 
                     - 한 번의 등록 시도마다 새로운 `requestId`를 사용합니다.
                     - 같은 `requestId`로 재시도하면 좌표와 메모가 달라도 최초 등록 내용과 위치를 반환합니다.
+                    - 같은 `requestId`를 다른 기기가 보내도 최초 등록 결과를 반환하며, 작성자는 최초 등록한 기기로 유지됩니다.
                     - 신규 생성의 `properties.liked`는 `false`, `properties.likeCount`는 `0`입니다.
                     - 재시도 응답은 요청한 기기의 현재 좋아요 여부와 전체 좋아요 수를 반환합니다.
                     - 삭제된 한숨도 같은 `requestId`로 재시도하면 기존 등록 결과를 반환합니다.

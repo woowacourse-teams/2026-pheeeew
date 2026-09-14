@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
@@ -33,6 +34,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -68,6 +70,8 @@ class SighServiceIntegrationTest {
             SighSearchBounds.of(-180.0000, -90.0000, 180.0000, 90.0000);
     private static final UUID REJECTED_REQUEST_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000001");
+    private static final UUID 없는_기기_공개_식별자 =
+            UUID.fromString("1f9b0c6a-7d4e-4a1b-9c2d-8e3f5a6b7c8d");
 
     @Autowired
     private SighService sighService;
@@ -96,6 +100,8 @@ class SighServiceIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        jdbcClient.sql("DELETE FROM sigh_blocks").update();
+        jdbcClient.sql("DELETE FROM device_blocks").update();
         jdbcClient.sql("DELETE FROM sigh_reports").update();
         jdbcClient.sql("DELETE FROM sigh_likes").update();
         sighRepository.deleteAll();
@@ -176,6 +182,96 @@ class SighServiceIntegrationTest {
     }
 
     @Test
+    void 인증한_기기를_작성자로_저장한다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+        Device device = deviceRepository.saveAndFlush(기본_기기_빌더().build());
+
+        // when
+        SighSaveResult result = sighService.save(
+                requestId,
+                SEOUL_CITY_HALL_LONGITUDE,
+                SEOUL_CITY_HALL_LATITUDE,
+                "오늘은 조금 지쳤다",
+                device.getPublicId()
+        );
+
+        // then
+        Sigh saved = sighRepository.findById(result.sigh().id()).orElseThrow();
+        assertThat(result.created()).isTrue();
+        assertThat(saved.getDeviceId()).isEqualTo(device.getId());
+    }
+
+    @Test
+    void 작성자를_넘기지_않으면_작성자를_비운_채_저장한다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+
+        // when
+        SighSaveResult result = sighService.save(
+                requestId,
+                SEOUL_CITY_HALL_LONGITUDE,
+                SEOUL_CITY_HALL_LATITUDE
+        );
+
+        // then
+        Sigh saved = sighRepository.findById(result.sigh().id()).orElseThrow();
+        assertThat(saved.getDeviceId()).isNull();
+    }
+
+    @Test
+    void 같은_requestId를_다른_기기가_재전송해도_작성자는_최초_기기로_남는다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+        Device 최초_기기 = deviceRepository.saveAndFlush(기본_기기_빌더().build());
+        Device 나중_기기 = deviceRepository.saveAndFlush(기본_기기_빌더().build());
+        SighSaveResult first = sighService.save(
+                requestId,
+                SEOUL_CITY_HALL_LONGITUDE,
+                SEOUL_CITY_HALL_LATITUDE,
+                "최초 메모",
+                최초_기기.getPublicId()
+        );
+
+        // when
+        SighSaveResult retried = sighService.save(
+                requestId,
+                SEOUL_CITY_HALL_LONGITUDE,
+                SEOUL_CITY_HALL_LATITUDE,
+                "재시도 메모",
+                나중_기기.getPublicId()
+        );
+
+        // then
+        Sigh saved = sighRepository.findById(first.sigh().id()).orElseThrow();
+        assertThat(retried.created()).isFalse();
+        assertThat(retried.sigh().id()).isEqualTo(first.sigh().id());
+        assertThat(saved.getDeviceId()).isEqualTo(최초_기기.getId());
+        assertThat(sighRepository.count()).isOne();
+    }
+
+    @Test
+    void 등록되지_않은_기기를_작성자로_저장하면_예외가_발생하고_한숨이_생기지_않는다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+
+        // when
+        Throwable throwable = catchThrowable(() -> sighService.save(
+                requestId,
+                SEOUL_CITY_HALL_LONGITUDE,
+                SEOUL_CITY_HALL_LATITUDE,
+                null,
+                없는_기기_공개_식별자
+        ));
+
+        // then
+        assertThat(throwable).isInstanceOf(DeviceException.class);
+        assertThat(((DeviceException) throwable).getErrorCode())
+                .isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND);
+        assertThat(sighRepository.count()).isZero();
+    }
+
+    @Test
     void 같은_requestId는_다른_중심으로_재시도해도_기존_한숨을_반환한다() {
         // given
         UUID requestId = UUID.randomUUID();
@@ -251,6 +347,28 @@ class SighServiceIntegrationTest {
     }
 
     @Test
+    void 등록되지_않은_기기로_조회하면_차단_필터를_끄지_않고_거부한다() {
+        // given
+        insertSigh(126.9780, 37.5664, "2026-09-01T10:30:00Z");
+
+        // when
+        Throwable 지도_조회 = catchThrowable(
+                () -> sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.of(없는_기기_공개_식별자))
+        );
+        Throwable 목록_조회 = catchThrowable(
+                () -> sighService.findFirstListPage(SEOUL_BOUNDS, 없는_기기_공개_식별자)
+        );
+
+        // then
+        assertThat(지도_조회).isInstanceOf(DeviceException.class);
+        assertThat(((DeviceException) 지도_조회).getErrorCode())
+                .isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND);
+        assertThat(목록_조회).isInstanceOf(DeviceException.class);
+        assertThat(((DeviceException) 목록_조회).getErrorCode())
+                .isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND);
+    }
+
+    @Test
     void 삭제된_한숨은_지도_영역_조회에_나오지_않는다() {
         // given
         Long 살아있는_한숨 = insertSigh(126.9780, 37.5664, "2026-09-01T10:30:00Z");
@@ -264,7 +382,7 @@ class SighServiceIntegrationTest {
         double previousReturnedCount = results.totalAmount();
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS);
+        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.sighs())
@@ -283,7 +401,7 @@ class SighServiceIntegrationTest {
         Long boundaryId = insertSigh(127.1000, 37.6000, "2026-08-31T10:32:00Z");
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS);
+        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
@@ -306,7 +424,7 @@ class SighServiceIntegrationTest {
         insertSigh(175.0000, 10.0001, "2026-08-31T10:34:00Z");
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(DATE_LINE_BOUNDS);
+        SighMapResult result = sighService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
@@ -322,7 +440,7 @@ class SighServiceIntegrationTest {
         insertSighs(500, -175.0000, 0.0000);
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(DATE_LINE_BOUNDS);
+        SighMapResult result = sighService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isTrue();
@@ -340,7 +458,7 @@ class SighServiceIntegrationTest {
         Long 동쪽_경계_한숨 = insertSigh(180.0000, 0.0000, "2026-08-31T10:32:00Z");
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(WORLD_BOUNDS);
+        SighMapResult result = sighService.findAllWithinBounds(WORLD_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
@@ -355,7 +473,7 @@ class SighServiceIntegrationTest {
         insertSighs(500, 126.9780, 37.5664);
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS);
+        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
@@ -369,7 +487,7 @@ class SighServiceIntegrationTest {
         insertSighs(500, 126.9780, 37.5664);
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS);
+        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isTrue();
@@ -784,6 +902,7 @@ class SighServiceIntegrationTest {
                 cursor.snapshotAt(),
                 cursor.lastItemCreatedAt(),
                 cursor.lastId(),
+                null,
                 500,
                 21,
                 deviceRepository.findByPublicId(devicePublicId).orElseThrow().getId()

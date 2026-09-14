@@ -3,6 +3,8 @@ package com.pheeeew.support;
 import com.pheeeew.auth.infra.jwt.AccessTokenJwtValidator;
 import com.pheeeew.auth.infra.jwt.JwtConfig;
 import com.pheeeew.auth.infra.jwt.JwtTokenEncoder;
+import com.pheeeew.block.application.DeviceBlockService;
+import com.pheeeew.block.application.SighBlockService;
 import com.pheeeew.common.config.JpaAuditingConfig;
 import com.pheeeew.device.application.DeviceAttestationBudgetService;
 import com.pheeeew.device.application.DeviceChallengeMetrics;
@@ -57,6 +59,8 @@ import org.springframework.test.context.ActiveProfiles;
         PlayIntegrityMetrics.class,
         SighReportService.class,
         SighService.class,
+        SighBlockService.class,
+        DeviceBlockService.class,
         KoreanSighNicknameGenerator.class,
         PostgisSighLocationGenerator.class,
         SighLocationConfig.class

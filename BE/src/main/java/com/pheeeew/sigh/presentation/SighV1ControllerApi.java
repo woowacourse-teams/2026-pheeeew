@@ -7,13 +7,17 @@ import com.pheeeew.sigh.presentation.dto.SighMapRequest;
 import com.pheeeew.sigh.presentation.dto.SighMapResponse;
 import com.pheeeew.sigh.presentation.dto.SighV1Properties;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Optional;
+import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -37,7 +41,16 @@ public interface SighV1ControllerApi {
                     - DB에 저장된 최종 표시 위치를 최신순으로 최대 500건 반환합니다.
                     - 결과가 500건을 초과하면 `truncated`가 `true`입니다.
                     - 결과가 없으면 `truncated`가 `false`이고 `features`는 빈 배열입니다.
-                    """
+
+                    ### 차단
+
+                    - 이 엔드포인트는 인증 없이도 호출할 수 있습니다.
+                    - `Authorization: Bearer <access token>` 헤더를 함께 보내면 그 기기가 차단한 한숨과 차단한 사용자의 한숨을 제외하고 반환합니다.
+                    - 헤더를 보내지 않으면 차단을 적용하지 않고 전체를 반환합니다.
+                    - 헤더를 보냈는데 토큰이 만료되었거나 잘못되었으면 401을 반환합니다. 이때 결과를 대신 돌려주지 않습니다.
+                    - 작성자 정보가 없는 한숨(이전 버전이나 `POST /api/v1/sighs`로 등록한 한숨)은 사용자 차단의 영향을 받지 않습니다. 개별 차단으로만 가릴 수 있습니다.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses({
             @ApiResponse(
@@ -60,6 +73,17 @@ public interface SighV1ControllerApi {
                     )
             ),
             @ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더를 보냈으나 access token 을 사용할 수 없음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                    """)
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "500",
                     description = "한숨을 조회하지 못한 서버 오류",
                     content = @Content(
@@ -69,6 +93,7 @@ public interface SighV1ControllerApi {
             )
     })
     ResponseEntity<SighMapResponse> findAllWithinBounds(
+            @Parameter(hidden = true) Optional<UUID> devicePublicId,
             @ParameterObject SighMapRequest request
     );
 
