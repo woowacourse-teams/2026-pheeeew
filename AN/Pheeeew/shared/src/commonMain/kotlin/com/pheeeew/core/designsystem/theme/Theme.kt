@@ -18,7 +18,7 @@ fun AppTheme(content: @Composable () -> Unit) {
                 caption = base.caption.copy(fontFamily = gaegu),
                 dialogTitle = base.dialogTitle.copy(fontFamily = FontFamily.Default),
                 dialogBody = base.dialogBody.copy(fontFamily = FontFamily.Default),
-                button = base.button.copy(fontFamily = FontFamily.Default),
+                button = base.button.copy(fontFamily = gaegu),
             )
         }
 

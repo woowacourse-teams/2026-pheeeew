@@ -18,5 +18,6 @@ object DesignSystemColors {
     const val STAR_FRESH_HEX = "#BBD7FF"
     const val STAR_WARM_HEX = "#F5D98B"
     const val STAR_DEEP_HEX = "#F2A05C"
+    const val STAR_CORE_HEX = "#FFFFFF"
     const val STAR_UNKNOWN_HEX = "#F4F2EC"
 }

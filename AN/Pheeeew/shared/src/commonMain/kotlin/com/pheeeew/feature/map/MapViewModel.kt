@@ -450,6 +450,7 @@ private fun SighBounds.isValidForQuery(): Boolean =
         maxLatitude.isFinite() &&
         minLongitude in -180.0..180.0 &&
         maxLongitude in -180.0..180.0 &&
+        minLongitude <= maxLongitude &&
         minLatitude in -90.0..90.0 &&
         maxLatitude in -90.0..90.0 &&
         minLatitude <= maxLatitude

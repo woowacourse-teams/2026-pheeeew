@@ -89,7 +89,7 @@ fun MapScreen(
     val retryableSighError =
         (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
     val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing
-
+    val currentLocation = (uiState.location.state as? LocationState.Available)?.location
     val hiddenMarkerId =
         uiState.viewport.focusRequest?.id?.takeIf {
             pendingFlightOrigin != null && landedFlightId != it
@@ -115,10 +115,8 @@ fun MapScreen(
 
     val sighMarkers =
         remember(uiState.sighs, hiddenMarkerId, starAgeRevision) {
-            uiState.toSighMarkers(
-                hiddenMarkerId = hiddenMarkerId,
-                now = Clock.System.now(),
-            )
+            val now = Clock.System.now()
+            uiState.toSighMarkers(hiddenMarkerId = hiddenMarkerId, now = now)
         }
 
     LaunchedEffect(uiState.viewport.focusRequest?.id, projectionSnapshot.revision) {
@@ -142,7 +140,7 @@ fun MapScreen(
         BreathMap(
             state =
                 MapRenderState(
-                    currentLocation = (uiState.location.state as? LocationState.Available)?.location,
+                    currentLocation = currentLocation,
                     locationState = uiState.location.state,
                     fallbackCenter = DEFAULT_MAP_POINT,
                     sighMarkers = sighMarkers,

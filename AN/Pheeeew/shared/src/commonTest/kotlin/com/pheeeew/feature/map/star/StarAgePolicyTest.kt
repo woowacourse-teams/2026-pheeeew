@@ -23,7 +23,7 @@ class StarAgePolicyTest {
 
         assertEquals(
             StarAgeStage.Warm,
-            policy.stageOf(Instant.parse("2026-09-02T11:00:00Z")),
+            policy.stageOf(Instant.parse("2026-08-29T12:00:00Z")),
         )
     }
 
@@ -33,43 +33,43 @@ class StarAgePolicyTest {
         assertEquals(StarAgeStage.Unknown, StarAgePolicy.stageOf(createdAt = null, now = now))
     }
 
-    /** 미래 생성 시각을 Fresh로 보정하고 전환 시각을 계산하는지 확인합니다. */
+    /** 미래 생성 시각을 Fresh로 보정하고 3일 뒤 전환 시각을 계산하는지 확인합니다. */
     @Test
     fun `미래 생성 시각은 Fresh로 보정한다`() {
         val createdAt = Instant.parse("2026-09-02T13:00:00Z")
 
         assertEquals(StarAgeStage.Fresh, StarAgePolicy.stageOf(createdAt, now))
-        assertEquals(Instant.parse("2026-09-02T14:00:00Z"), StarAgePolicy.nextTransitionAt(createdAt, now))
+        assertEquals(Instant.parse("2026-09-05T13:00:00Z"), StarAgePolicy.nextTransitionAt(createdAt, now))
     }
 
-    /** 한 시간 미만의 별이 Fresh로 분류되는지 확인합니다. */
+    /** 생성 후 2일인 별이 Fresh로 분류되는지 확인합니다. */
     @Test
-    fun `한 시간 미만은 Fresh이다`() {
-        val createdAt = Instant.parse("2026-09-02T11:00:00.001Z")
+    fun `생성 후 이틀은 Fresh이다`() {
+        val createdAt = Instant.parse("2026-08-31T11:59:59.999Z")
 
         assertEquals(StarAgeStage.Fresh, StarAgePolicy.stageOf(createdAt, now))
-        assertEquals(Instant.parse("2026-09-02T12:00:00.001Z"), StarAgePolicy.nextTransitionAt(createdAt, now))
+        assertEquals(Instant.parse("2026-09-03T11:59:59.999Z"), StarAgePolicy.nextTransitionAt(createdAt, now))
     }
 
-    /** 정확히 한 시간 경계에서 Warm으로 전환되는지 확인합니다. */
+    /** 정확히 3일 경계에서 기존 별 색상 단계인 Warm으로 전환되는지 확인합니다. */
     @Test
-    fun `정확히 한 시간은 Warm이다`() {
-        val createdAt = Instant.parse("2026-09-02T11:00:00Z")
+    fun `정확히 사흘은 Warm이다`() {
+        val createdAt = Instant.parse("2026-08-30T12:00:00Z")
 
         assertEquals(StarAgeStage.Warm, StarAgePolicy.stageOf(createdAt, now))
-        assertEquals(Instant.parse("2026-09-03T11:00:00Z"), StarAgePolicy.nextTransitionAt(createdAt, now))
+        assertEquals(Instant.parse("2026-09-05T12:00:00Z"), StarAgePolicy.nextTransitionAt(createdAt, now))
     }
 
-    /** 정확히 스물네 시간 경계에서 Deep으로 전환되는지 확인합니다. */
+    /** 정확히 6일 경계에서 Deep으로 전환되는지 확인합니다. */
     @Test
-    fun `정확히 스물네 시간은 Deep이다`() {
-        val createdAt = Instant.parse("2026-09-01T12:00:00Z")
+    fun `정확히 엿새는 Deep이다`() {
+        val createdAt = Instant.parse("2026-08-27T12:00:00Z")
 
         assertEquals(StarAgeStage.Deep, StarAgePolicy.stageOf(createdAt, now))
         assertNull(StarAgePolicy.nextTransitionAt(createdAt, now))
     }
 
-    /** 마지막 단계가 일주일 이후에도 유지되는지 확인합니다. */
+    /** 마지막 단계가 7일 이후에도 유지되는지 확인합니다. */
     @Test
     fun `일주일이 지나도 Deep을 유지한다`() {
         val createdAt = Instant.parse("2026-08-20T12:00:00Z")
@@ -81,9 +81,9 @@ class StarAgePolicyTest {
     @Test
     fun `시간이 증가할 때 단계가 역행하지 않는다`() {
         val createdAt = Instant.parse("2026-09-01T12:00:00Z")
-        val later = Instant.parse("2026-09-03T12:00:00Z")
+        val later = Instant.parse("2026-09-09T12:00:00Z")
 
-        assertEquals(StarAgeStage.Deep, StarAgePolicy.stageOf(createdAt, now))
+        assertEquals(StarAgeStage.Fresh, StarAgePolicy.stageOf(createdAt, now))
         assertEquals(StarAgeStage.Deep, StarAgePolicy.stageOf(createdAt, later))
     }
 }
