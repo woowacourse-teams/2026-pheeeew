@@ -107,6 +107,8 @@ Accepted (YYYY-MM-DD)
 | [0020](0020-limit-daily-google-decode-calls-per-project.md) | 구글 호출 하루 예산 | 날짜별 예산 행으로 분산 요청까지 묶어요. 넘으면 정상 등록도 막혀요 |
 | [0021](0021-consume-challenge-before-app-attest-verification.md) | iOS challenge 조기 소모 | 체인 검증 앞에서 소모해요. 실패해도 challenge 가 사라져요 |
 | [0022](0022-route-attestation-verifier-by-platform.md) | 증명 검증기 플랫폼 라우팅 | `switch` 로 갈라요. 강제 스위치는 플랫폼마다 따로 둬요 |
+| [0023](0023-store-authoring-device-on-sighs.md) | 한숨에 작성 기기 저장 | 사용자 차단을 위해 저장해요. 모으면 생활 반경이 드러나요 |
+| [0024](0024-filter-blocks-with-not-exists.md) | 차단 필터를 `NOT EXISTS` 로 | nullable 컬럼에서 `NOT IN` 은 행을 조용히 지워요 |
 
 ## AI 사용
 

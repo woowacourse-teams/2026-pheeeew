@@ -47,6 +47,9 @@ public class Sigh extends BaseEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @Column(name = "device_id", updatable = false)
+    private Long deviceId;
+
     @Column(name = "like_count", nullable = false)
     private long likeCount;
 
@@ -55,11 +58,12 @@ public class Sigh extends BaseEntity {
     private Long version;
 
     @Builder
-    private Sigh(UUID requestId, Point location, String memo, String nickname) {
+    private Sigh(UUID requestId, Point location, String memo, String nickname, Long deviceId) {
         this.requestId = Objects.requireNonNull(requestId);
         this.location = requireWgs84Point(location);
         this.memo = normalizeMemo(memo);
         this.nickname = requireValidNickname(nickname);
+        this.deviceId = deviceId;
     }
 
     public void increaseLikeCount() {

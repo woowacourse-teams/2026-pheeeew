@@ -1,8 +1,8 @@
 package com.pheeeew.report.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
-import com.pheeeew.report.application.SighReportResult;
 import com.pheeeew.report.application.SighReportService;
+import com.pheeeew.report.application.dto.SighReportResult;
 import com.pheeeew.report.presentation.dto.SighReportCreateRequest;
 import com.pheeeew.report.presentation.dto.SighReportResponse;
 import jakarta.validation.Valid;

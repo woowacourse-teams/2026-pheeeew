@@ -76,6 +76,24 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                     WHERE sigh.deleted_at IS NULL
                       AND sigh.location && bounds.area
                       AND ST_Intersects(sigh.location, bounds.area)
+                      AND (
+                          CAST(:blockerDeviceId AS BIGINT) IS NULL
+                          OR NOT EXISTS (
+                              SELECT 1
+                              FROM sigh_blocks sigh_block
+                              WHERE sigh_block.blocker_device_id = :blockerDeviceId
+                                AND sigh_block.sigh_id = sigh.id
+                          )
+                      )
+                      AND (
+                          CAST(:blockerDeviceId AS BIGINT) IS NULL
+                          OR NOT EXISTS (
+                              SELECT 1
+                              FROM device_blocks device_block
+                              WHERE device_block.blocker_device_id = :blockerDeviceId
+                                AND device_block.blocked_device_id = sigh.device_id
+                          )
+                      )
                     ORDER BY sigh.created_at DESC, sigh.id DESC
                     LIMIT :limit
                     """,
@@ -86,6 +104,7 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             @Param("minLatitude") double minLatitude,
             @Param("maxLongitude") double maxLongitude,
             @Param("maxLatitude") double maxLatitude,
+            @Param("blockerDeviceId") Long blockerDeviceId,
             @Param("limit") int limit
     );
 
@@ -125,6 +144,24 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                           AND sigh.created_at < :snapshotAt
                           AND sigh.location && bounds.area
                           AND ST_Intersects(sigh.location, bounds.area)
+                          AND (
+                              CAST(:blockerDeviceId AS BIGINT) IS NULL
+                              OR NOT EXISTS (
+                                  SELECT 1
+                                  FROM sigh_blocks sigh_block
+                                  WHERE sigh_block.blocker_device_id = :blockerDeviceId
+                                    AND sigh_block.sigh_id = sigh.id
+                              )
+                          )
+                          AND (
+                              CAST(:blockerDeviceId AS BIGINT) IS NULL
+                              OR NOT EXISTS (
+                                  SELECT 1
+                                  FROM device_blocks device_block
+                                  WHERE device_block.blocker_device_id = :blockerDeviceId
+                                    AND device_block.blocked_device_id = sigh.device_id
+                              )
+                          )
                         ORDER BY sigh.created_at DESC, sigh.id DESC
                         LIMIT :maxCount
                     )
@@ -154,6 +191,7 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             @Param("snapshotAt") Instant snapshotAt,
             @Param("lastItemCreatedAt") Instant lastItemCreatedAt,
             @Param("lastId") long lastId,
+            @Param("blockerDeviceId") Long blockerDeviceId,
             @Param("maxCount") int maxCount,
             @Param("limit") int limit,
             @Param("deviceId") Long deviceId

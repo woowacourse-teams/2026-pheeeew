@@ -10,8 +10,8 @@ import static org.mockito.Mockito.when;
 
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
-import com.pheeeew.report.application.SighReportResult;
 import com.pheeeew.report.application.SighReportService;
+import com.pheeeew.report.application.dto.SighReportResult;
 import com.pheeeew.report.exception.SighReportErrorCode;
 import com.pheeeew.report.exception.SighReportException;
 import com.pheeeew.sigh.exception.SighErrorCode;

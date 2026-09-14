@@ -1,4 +1,4 @@
-package com.pheeeew.report.application;
+package com.pheeeew.report.application.dto;
 
 import com.pheeeew.report.domain.SighReport;
 import java.time.Instant;

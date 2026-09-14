@@ -75,19 +75,19 @@ class SighMapMetricsAspectTest {
         when(projection.getLongitude()).thenReturn(127.0);
         when(projection.getLatitude()).thenReturn(37.55);
         when(projection.getCreatedAt()).thenReturn(Instant.parse("2026-09-11T00:00:00Z"));
-        when(repository.findAllWithinBounds(126.9, 37.5, 127.1, 37.6, 501))
+        when(repository.findAllWithinBounds(126.9, 37.5, 127.1, 37.6, null, 501))
                 .thenAnswer(invocation -> {
                     clock.add(Duration.ofMillis(250));
                     return Collections.nCopies(fetched, projection);
                 });
 
         // when
-        SighMapResult result = service.findAllWithinBounds(BOUNDS);
+        SighMapResult result = service.findAllWithinBounds(BOUNDS, Optional.empty());
 
         // then
         assertThat(result.sighs()).hasSize(returned);
         assertThat(result.truncated()).isEqualTo(truncated);
-        verify(repository).findAllWithinBounds(126.9, 37.5, 127.1, 37.6, 501);
+        verify(repository).findAllWithinBounds(126.9, 37.5, 127.1, 37.6, null, 501);
         Timer query = registry.get("pheeeew.sigh.map.query").timer();
         assertThat(query.count()).isEqualTo(1);
         assertThat(query.totalTime(TimeUnit.MILLISECONDS)).isEqualTo(250);
@@ -107,14 +107,14 @@ class SighMapMetricsAspectTest {
     void 조회가_실패해도_시간은_기록하고_결과_개수는_기록하지_않으며_같은_예외를_전파한다() {
         // given
         IllegalStateException failure = new IllegalStateException("query failed");
-        when(repository.findAllWithinBounds(126.9, 37.5, 127.1, 37.6, 501))
+        when(repository.findAllWithinBounds(126.9, 37.5, 127.1, 37.6, null, 501))
                 .thenAnswer(invocation -> {
                     clock.add(Duration.ofMillis(100));
                     throw failure;
                 });
 
         // when / then
-        assertThatThrownBy(() -> service.findAllWithinBounds(BOUNDS)).isSameAs(failure);
+        assertThatThrownBy(() -> service.findAllWithinBounds(BOUNDS, Optional.empty())).isSameAs(failure);
         Timer query = registry.get("pheeeew.sigh.map.query").timer();
         assertThat(query.count()).isEqualTo(1);
         assertThat(query.totalTime(TimeUnit.MILLISECONDS)).isEqualTo(100);

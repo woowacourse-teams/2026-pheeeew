@@ -25,6 +25,10 @@ public final class SighFixture {
                 .nickname("외로운 회사원");
     }
 
+    public static Sigh.SighBuilder 기기가_있는_한숨_빌더(Long deviceId) {
+        return 기본_한숨_빌더().deviceId(deviceId);
+    }
+
     public static Point 서울시청_좌표() {
         return GEOMETRY_FACTORY.createPoint(new Coordinate(126.9774, 37.5669));
     }

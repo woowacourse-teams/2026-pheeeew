@@ -36,6 +36,7 @@ import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
@@ -97,11 +98,13 @@ class SecurityAuthorizationIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        jdbcClient.sql("DELETE FROM sigh_blocks").update();
+        jdbcClient.sql("DELETE FROM device_blocks").update();
         sighReportRepository.deleteAll();
+        sighRepository.deleteAll();
         deviceRefreshTokenRepository.deleteAll();
         deviceRepository.deleteAll();
         deviceChallengeRepository.deleteAll();
-        sighRepository.deleteAll();
     }
 
     @Test
@@ -132,6 +135,52 @@ class SecurityAuthorizationIntegrationTest {
         // then
         인증_필요를_검증한다(result);
         assertThat(sighReportRepository.count()).isZero();
+    }
+
+    @ParameterizedTest(name = "{0} {1}")
+    @MethodSource("인증이_필요한_차단_경로들")
+    void 토큰_없이_차단_API를_호출하면_401을_반환한다(String method, String uri) {
+        // given / when
+        RestTestClient.ResponseSpec result = client.method(HttpMethod.valueOf(method))
+                .uri(uri)
+                .exchange();
+
+        // then
+        인증_필요를_검증한다(result);
+        assertThat(차단_행_수()).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/sighs", "/api/v2/sighs"})
+    void 조회_경로에_쓸_수_없는_토큰을_보내면_결과_대신_401을_반환한다(String uri) {
+        // given
+        String 만료된_토큰 = AccessTokenFixture.만료된_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(uri + 지도_영역_질의)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + 만료된_토큰)
+                .exchange();
+
+        // then
+        인증_필요를_검증한다(result);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/sighs", "/api/v2/sighs"})
+    void 인증된_기기가_조회하면_차단_필터를_켜고_200을_반환한다(String uri) {
+        // given
+        String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        작성자를_모르는_한숨을_넣는다();
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(uri + 지도_영역_질의)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .exchange();
+
+        // then
+        result.expectStatus().isOk();
     }
 
     @ParameterizedTest(name = "{0}")
@@ -194,6 +243,28 @@ class SecurityAuthorizationIntegrationTest {
         // then
         retried.expectStatus().isOk();
         assertThat(sighRepository.count()).isOne();
+    }
+
+    @Test
+    void 등록되지_않은_기기의_토큰으로_한숨을_등록하면_401_기기_없음을_반환한다() {
+        // given
+        String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.post()
+                .uri("/api/v2/sighs")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(한숨_등록_본문())
+                .exchange();
+
+        // then
+        result.expectStatus().isUnauthorized()
+                .expectBody()
+                .json("""
+                        {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
+                        """, JsonCompareMode.STRICT);
+        assertThat(sighRepository.count()).isZero();
     }
 
     @ParameterizedTest
@@ -341,6 +412,64 @@ class SecurityAuthorizationIntegrationTest {
         // then
         result.expectStatus().isCreated();
         assertThat(sighRepository.count()).isOne();
+        assertThat(작성자_기기_식별자()).isNull();
+    }
+
+    @Test
+    void 인증한_기기가_등록한_한숨은_작성자를_저장하고_응답에는_내보내지_않는다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+        String accessToken = 기기를_등록하고_토큰을_받는다(requestId);
+        Device device = deviceRepository.findByRequestId(requestId).orElseThrow();
+
+        // when
+        RestTestClient.ResponseSpec result = client.post()
+                .uri("/api/v2/sighs")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(한숨_등록_본문())
+                .exchange();
+
+        // then
+        String 응답_본문 = result.expectStatus().isCreated()
+                .expectBody(String.class)
+                .returnResult()
+                .getResponseBody();
+        assertThat(응답_본문)
+                .doesNotContain(device.getPublicId().toString())
+                .doesNotContain(device.getId().toString() + ",")
+                .doesNotContain("deviceId");
+        assertThat(작성자_기기_식별자()).isEqualTo(device.getId());
+    }
+
+    @Test
+    void 인증한_기기는_한숨_차단과_사용자_차단을_등록하고_조회하고_해제할_수_있다() {
+        // given
+        String 차단자_토큰 = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        String 작성자_토큰 = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        Long sighId = 한숨을_등록한다(작성자_토큰);
+
+        // when / then
+        차단한다(차단자_토큰, "/api/v2/blocks/sighs", sighId).expectStatus().isCreated();
+        차단_목록을_조회한다(차단자_토큰, "/api/v2/blocks/sighs")
+                .expectStatus().isOk()
+                .expectBody()
+                .json("""
+                        {"items": [{"sighId": %d}], "hasNext": false, "nextCursor": null}
+                        """.formatted(sighId), JsonCompareMode.LENIENT);
+        해제한다(차단자_토큰, "/api/v2/blocks/sighs/" + sighId).expectStatus().isNoContent();
+
+        차단한다(차단자_토큰, "/api/v2/blocks/devices", sighId).expectStatus().isCreated();
+        Long blockId = jdbcClient.sql("SELECT id FROM device_blocks").query(Long.class).single();
+        차단_목록을_조회한다(차단자_토큰, "/api/v2/blocks/devices")
+                .expectStatus().isOk()
+                .expectBody()
+                .json("""
+                        {"items": [{"blockId": %d, "sighId": %d}], "hasNext": false, "nextCursor": null}
+                        """.formatted(blockId, sighId), JsonCompareMode.LENIENT);
+        해제한다(차단자_토큰, "/api/v2/blocks/devices/" + blockId).expectStatus().isNoContent();
+
+        assertThat(차단_행_수()).isZero();
     }
 
     @ParameterizedTest
@@ -571,6 +700,17 @@ class SecurityAuthorizationIntegrationTest {
         assertThat(device.getPublicId()).isNotEqualTo(사칭하려는_기기_식별자);
     }
 
+    private static Stream<Arguments> 인증이_필요한_차단_경로들() {
+        return Stream.of(
+                Arguments.of("POST", "/api/v2/blocks/sighs"),
+                Arguments.of("GET", "/api/v2/blocks/sighs"),
+                Arguments.of("DELETE", "/api/v2/blocks/sighs/1"),
+                Arguments.of("POST", "/api/v2/blocks/devices"),
+                Arguments.of("GET", "/api/v2/blocks/devices"),
+                Arguments.of("DELETE", "/api/v2/blocks/devices/1")
+        );
+    }
+
     private static Stream<Arguments> 거부해야_하는_토큰들() {
         return Stream.of(
                 Arguments.of("만료된 토큰", AccessTokenFixture.만료된_토큰(기기_공개_식별자)),
@@ -646,6 +786,60 @@ class SecurityAuthorizationIntegrationTest {
                 .expectStatus().isCreated();
 
         return jdbcClient.sql("SELECT id FROM sighs")
+                .query(Long.class)
+                .single();
+    }
+
+    private RestTestClient.ResponseSpec 차단한다(String accessToken, String uri, Long sighId) {
+        return client.post()
+                .uri(uri)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"sighId": %d}
+                        """.formatted(sighId))
+                .exchange();
+    }
+
+    private RestTestClient.ResponseSpec 차단_목록을_조회한다(String accessToken, String uri) {
+        return client.get()
+                .uri(uri)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .exchange();
+    }
+
+    private RestTestClient.ResponseSpec 해제한다(String accessToken, String uri) {
+        return client.delete()
+                .uri(uri)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .exchange();
+    }
+
+    private Object 작성자_기기_식별자() {
+        return jdbcClient.sql("SELECT device_id FROM sighs")
+                .query()
+                .singleRow()
+                .get("device_id");
+    }
+
+    private long 차단_행_수() {
+        return jdbcClient.sql("SELECT COUNT(*) FROM sigh_blocks").query(Long.class).single()
+                + jdbcClient.sql("SELECT COUNT(*) FROM device_blocks").query(Long.class).single();
+    }
+
+    private Long 작성자를_모르는_한숨을_넣는다() {
+        return jdbcClient.sql("""
+                        INSERT INTO sighs (request_id, location, nickname, created_at, updated_at)
+                        VALUES (
+                            :requestId,
+                            ST_SetSRID(ST_MakePoint(126.9780, 37.5664), 4326),
+                            '외로운 회사원',
+                            NOW(),
+                            NOW()
+                        )
+                        RETURNING id
+                        """)
+                .param("requestId", UUID.randomUUID())
                 .query(Long.class)
                 .single();
     }

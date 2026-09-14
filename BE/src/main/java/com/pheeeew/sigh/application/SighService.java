@@ -64,12 +64,14 @@ public class SighService {
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
     }
 
-    public SighMapResult findAllWithinBounds(SighSearchBounds bounds) {
+    public SighMapResult findAllWithinBounds(SighSearchBounds bounds, Optional<UUID> viewerDevicePublicId) {
+        Long blockerDeviceId = findBlockerDeviceId(viewerDevicePublicId);
         List<SighMapProjection> projections = sighRepository.findAllWithinBounds(
                 bounds.minLongitude(),
                 bounds.minLatitude(),
                 bounds.maxLongitude(),
                 bounds.maxLatitude(),
+                blockerDeviceId,
                 MAX_FIND_COUNT + 1
         );
 
@@ -123,6 +125,7 @@ public class SighService {
                 .location(location)
                 .memo(memo)
                 .nickname(sighNicknameGenerator.generate())
+                .deviceId(deviceId)
                 .build();
 
         try {
@@ -145,6 +148,12 @@ public class SighService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
     }
 
+    private Long findBlockerDeviceId(Optional<UUID> viewerDevicePublicId) {
+        return viewerDevicePublicId
+                .map(this::findDeviceId)
+                .orElse(null);
+    }
+
     private SighListResult findList(SighListCursor cursor, UUID devicePublicId) {
         Long deviceId = findDeviceId(devicePublicId);
 
@@ -157,6 +166,7 @@ public class SighService {
                 cursor.snapshotAt(),
                 cursor.lastItemCreatedAt(),
                 cursor.lastId(),
+                deviceId,
                 MAX_FIND_COUNT,
                 LIST_PAGE_SIZE + 1,
                 deviceId
