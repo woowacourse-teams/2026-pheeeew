@@ -295,8 +295,9 @@ enum MapLibreDarkStyle {
             graphics.addPath(star.cgPath)
             graphics.clip()
 
+            let coreColor = color(hex: DesignSystemColors.shared.STAR_CORE_HEX)
             let colors = [
-                color.withAlphaComponent(1).cgColor,
+                coreColor.withAlphaComponent(1).cgColor,
                 color.withAlphaComponent(0.72).cgColor,
             ] as CFArray
             if let gradient = CGGradient(
