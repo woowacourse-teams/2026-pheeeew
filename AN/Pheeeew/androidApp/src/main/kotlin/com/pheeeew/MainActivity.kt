@@ -33,7 +33,9 @@ class MainActivity : ComponentActivity() {
                 retainedDependencies = holder.dependencies,
             ).also { holder.dependencies = it }
         val accessTokenStore = InMemoryAccessTokenStore()
-        val deviceDependencies = if (BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER > 0L) {
+        val deviceDependencies = if (
+            !BuildConfig.DEBUG && BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER > 0L
+        ) {
             createAndroidDeviceRegistrationWithPlayIntegrityDependencies(
                 context = this,
                 config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
