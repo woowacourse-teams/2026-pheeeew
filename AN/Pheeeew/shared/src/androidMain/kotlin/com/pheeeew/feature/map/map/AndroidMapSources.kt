@@ -39,15 +39,20 @@ import kotlin.math.sin
 /** 앱 소유 GeoJSON source와 레이어를 설치하고 상태만 교체합니다. */
 internal object AndroidMapSources {
     const val MARKER_ID_PROPERTY = "sigh-id"
+    const val PULSE_GROUP_COUNT = 12
 
     private const val FEATURE_KIND_PROPERTY = "location-kind"
     private const val FEATURE_KIND_POINT = "point"
     private const val STAR_IMAGE_PROPERTY = "star-image"
     private const val STAR_SCALE_PROPERTY = "star-scale"
     private const val STAR_OPACITY_PROPERTY = "star-opacity"
+    private const val PULSE_GROUP_PROPERTY = "sigh-pulse-group"
     private const val STAR_BITMAP_SIZE = 96
 
-    fun sighLayerIds(): Array<String> = arrayOf(MapDarkStyle.SIGH_LAYER_ID)
+    fun sighLayerIds(): Array<String> =
+        Array(PULSE_GROUP_COUNT) { group ->
+            if (group == 0) MapDarkStyle.SIGH_LAYER_ID else "${MapDarkStyle.SIGH_LAYER_ID}-$group"
+        }
 
     fun install(style: Style) {
         installSighLayers(style)
@@ -66,6 +71,7 @@ internal object AndroidMapSources {
                         addProperty(STAR_IMAGE_PROPERTY, marker.visual.imageKey)
                         addProperty(STAR_SCALE_PROPERTY, marker.visual.scale)
                         addProperty(STAR_OPACITY_PROPERTY, marker.visual.opacity)
+                        addProperty(PULSE_GROUP_PROPERTY, pulseGroup(marker.id))
                     }
                 Feature.fromGeometry(
                     Point.fromLngLat(marker.longitude, marker.latitude),
@@ -118,19 +124,25 @@ internal object AndroidMapSources {
                 ),
             )
         }
-        val layerId = MapDarkStyle.SIGH_LAYER_ID
-        if (style.getLayer(layerId) == null) {
-            style.addLayer(
-                SymbolLayer(layerId, MapDarkStyle.SIGH_SOURCE_ID)
-                    .withProperties(
-                        iconImage(Expression.get(STAR_IMAGE_PROPERTY)),
-                        iconSize(Expression.get(STAR_SCALE_PROPERTY)),
-                        iconOpacity(Expression.get(STAR_OPACITY_PROPERTY)),
-                        iconAnchor(Property.ICON_ANCHOR_CENTER),
-                        iconAllowOverlap(true),
-                        iconIgnorePlacement(true),
-                    ),
-            )
+        sighLayerIds().forEachIndexed { group, layerId ->
+            if (style.getLayer(layerId) == null) {
+                style.addLayer(
+                    SymbolLayer(layerId, MapDarkStyle.SIGH_SOURCE_ID)
+                        .withFilter(
+                            Expression.eq(
+                                Expression.get(PULSE_GROUP_PROPERTY),
+                                Expression.literal(group),
+                            ),
+                        ).withProperties(
+                            iconImage(Expression.get(STAR_IMAGE_PROPERTY)),
+                            iconSize(0.58f),
+                            iconOpacity(1f),
+                            iconAnchor(Property.ICON_ANCHOR_CENTER),
+                            iconAllowOverlap(true),
+                            iconIgnorePlacement(true),
+                        ),
+                )
+            }
         }
     }
 
@@ -233,6 +245,8 @@ internal object AndroidMapSources {
         )
         return bitmap
     }
+
+    private fun pulseGroup(markerId: String): Int = markerId.hashCode().ushr(1) % PULSE_GROUP_COUNT
 
     private fun starPath(
         center: Float,
