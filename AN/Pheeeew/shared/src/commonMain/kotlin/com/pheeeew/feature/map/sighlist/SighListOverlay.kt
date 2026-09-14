@@ -110,39 +110,50 @@ fun SighBrowserOverlay(
             enter = slideInVertically(animationSpec = tween(260), initialOffsetY = { it }),
             exit = slideOutVertically(animationSpec = tween(220), targetOffsetY = { it }),
         ) {
-            if (showActionMenu && selectedItem != null) {
-                SighActionSheet(
-                    onReportClick = {
-                        showActionMenu = false
-                        onReportClick(selectedItem)
-                    },
-                    onBlockClick = {
-                        showActionMenu = false
-                        onBlockClick(selectedItem)
-                    },
-                    onCancelClick = { showActionMenu = false },
-                )
-            } else {
-                SighListSheet(
-                    items = if (selectedItem == null) items else listOf(selectedItem),
-                    compact = selectedItem != null,
-                    isLoading = isLoading,
-                    isLoadingMore = isLoadingMore,
-                    isLoadMoreError = isLoadMoreError,
-                    refreshRevision = refreshRevision,
-                    canLoadMore = canLoadMore,
-                    errorMessage = errorMessage,
-                    onItemClick =
-                        if (selectedItem == null) {
-                            onItemClick
-                        } else {
-                            { _: SighListItemUiModel -> onDismissDetail() }
-                        },
-                    onDismissList = onDismissList,
-                    onCompactBackgroundClick = onDismissDetail,
-                    onLoadMore = onLoadMore,
-                    onRefresh = onRefresh,
-                )
+            Box(contentAlignment = Alignment.BottomCenter) {
+                if (!showActionMenu || selectedItem == null) {
+                    SighListSheet(
+                        items = if (selectedItem == null) items else listOf(selectedItem),
+                        compact = selectedItem != null,
+                        isLoading = isLoading,
+                        isLoadingMore = isLoadingMore,
+                        isLoadMoreError = isLoadMoreError,
+                        refreshRevision = refreshRevision,
+                        canLoadMore = canLoadMore,
+                        errorMessage = errorMessage,
+                        onItemClick =
+                            if (selectedItem == null) {
+                                onItemClick
+                            } else {
+                                { _: SighListItemUiModel -> onDismissDetail() }
+                            },
+                        onDismissList = onDismissList,
+                        onCompactBackgroundClick = onDismissDetail,
+                        onLoadMore = onLoadMore,
+                        onRefresh = onRefresh,
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = showActionMenu && selectedItem != null,
+                    enter = slideInVertically(animationSpec = tween(260), initialOffsetY = { it }),
+                    exit = slideOutVertically(animationSpec = tween(220), targetOffsetY = { it }),
+                ) {
+                    val actionItem = selectedItem
+                    if (actionItem != null) {
+                        SighActionSheet(
+                            onReportClick = {
+                                showActionMenu = false
+                                onReportClick(actionItem)
+                            },
+                            onBlockClick = {
+                                showActionMenu = false
+                                onBlockClick(actionItem)
+                            },
+                            onCancelClick = { showActionMenu = false },
+                        )
+                    }
+                }
             }
         }
     }
