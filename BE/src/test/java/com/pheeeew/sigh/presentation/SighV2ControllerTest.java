@@ -6,11 +6,13 @@ import static org.mockito.Mockito.when;
 
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.dto.SighSearchBounds;
 import com.pheeeew.sigh.application.like.SighLikeRetryService;
+import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import java.time.Instant;
@@ -387,7 +389,7 @@ class SighV2ControllerTest {
     @Test
     void application_json_응답을_요청해도_한숨_상세를_GeoJSON_Feature로_반환한다() {
         // given
-        when(sighService.findById(SIGH_ID))
+        when(sighService.findById(SIGH_ID, null))
                 .thenReturn(기본_상세_조회_결과("오늘은 조금 지쳤다"));
 
         // when
@@ -401,13 +403,13 @@ class SighV2ControllerTest {
                 .expectHeader().contentType(GEO_JSON)
                 .expectBody()
                 .json(기본_GeoJSON("\"오늘은 조금 지쳤다\""), JsonCompareMode.STRICT);
-        verify(sighService).findById(SIGH_ID);
+        verify(sighService).findById(SIGH_ID, null);
     }
 
     @Test
     void 메모가_없는_한숨_상세는_memo를_null로_반환한다() {
         // given
-        when(sighService.findById(SIGH_ID))
+        when(sighService.findById(SIGH_ID, null))
                 .thenReturn(기본_상세_조회_결과(null));
 
         // when
@@ -418,13 +420,13 @@ class SighV2ControllerTest {
                 .expectHeader().contentType(GEO_JSON)
                 .expectBody()
                 .json(기본_GeoJSON("null"), JsonCompareMode.STRICT);
-        verify(sighService).findById(SIGH_ID);
+        verify(sighService).findById(SIGH_ID, null);
     }
 
     @Test
     void 존재하지_않는_한숨_상세를_조회하면_404를_반환한다() {
         // given
-        when(sighService.findById(SIGH_ID))
+        when(sighService.findById(SIGH_ID, null))
                 .thenThrow(new SighException(SighErrorCode.SIGH_NOT_FOUND));
 
         // when
@@ -437,7 +439,7 @@ class SighV2ControllerTest {
                 .json("""
                         {"code":"SIGH-002","message":"한숨을 찾을 수 없습니다."}
                         """, JsonCompareMode.STRICT);
-        verify(sighService).findById(SIGH_ID);
+        verify(sighService).findById(SIGH_ID, null);
     }
 
     @ParameterizedTest
@@ -484,14 +486,17 @@ class SighV2ControllerTest {
         );
     }
 
-    private SighResult 기본_상세_조회_결과(String memo) {
-        return SighResult.of(
-                SIGH_ID,
-                126.9774,
-                37.5669,
-                CREATED_AT,
-                memo,
-                "날아가는 고라니"
+    private SighDetailResult 기본_상세_조회_결과(String memo) {
+        return new SighDetailResult(
+                SighResult.of(
+                        SIGH_ID,
+                        126.9774,
+                        37.5669,
+                        CREATED_AT,
+                        memo,
+                        "날아가는 고라니"
+                ),
+                SighLikeResult.of(false, 0)
         );
     }
 

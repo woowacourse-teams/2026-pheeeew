@@ -3,6 +3,7 @@ package com.pheeeew.sigh.presentation;
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
@@ -62,11 +63,11 @@ public class SighV2Controller implements SighV2ControllerApi {
     public ResponseEntity<SighFeature<SighV2Properties>> findById(
             @PathVariable Long id
     ) {
-        SighResult result = sighService.findById(id);
+        SighDetailResult result = sighService.findById(id, null);
 
         return ResponseEntity.ok()
                 .contentType(GEO_JSON)
-                .body(toFeature(result));
+                .body(toFeature(result.sigh()));
     }
 
     @Override

@@ -208,7 +208,7 @@ class SighServiceIntegrationTest {
         );
 
         // when
-        SighResult result = sighService.findById(saved.sigh().id());
+        SighResult result = sighService.findById(saved.sigh().id(), null).sigh();
 
         // then
         assertThat(result.id()).isEqualTo(saved.sigh().id());
@@ -225,7 +225,7 @@ class SighServiceIntegrationTest {
         Long nonexistentId = Long.MAX_VALUE;
 
         // when
-        Throwable throwable = catchThrowable(() -> sighService.findById(nonexistentId));
+        Throwable throwable = catchThrowable(() -> sighService.findById(nonexistentId, null));
 
         // then
         assertThat(throwable)
@@ -246,7 +246,7 @@ class SighServiceIntegrationTest {
         softDeleteSigh(saved.sigh().id());
 
         // when
-        Throwable throwable = catchThrowable(() -> sighService.findById(saved.sigh().id()));
+        Throwable throwable = catchThrowable(() -> sighService.findById(saved.sigh().id(), null));
 
         // then
         assertThat(throwable)

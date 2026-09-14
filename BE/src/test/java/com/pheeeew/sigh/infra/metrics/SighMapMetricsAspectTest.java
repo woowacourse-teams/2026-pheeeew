@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.sigh.application.SighLocationGenerator;
 import com.pheeeew.sigh.application.SighNicknameGenerator;
 import com.pheeeew.sigh.application.SighService;
@@ -44,6 +45,7 @@ class SighMapMetricsAspectTest {
     @BeforeEach
     void setUp() {
         context.registerBean(SighRepository.class, () -> repository);
+        context.registerBean(DeviceRepository.class, () -> mock(DeviceRepository.class));
         context.registerBean(SighLocationGenerator.class, () -> mock(SighLocationGenerator.class));
         context.registerBean(SighNicknameGenerator.class, () -> mock(SighNicknameGenerator.class));
         context.registerBean(SimpleMeterRegistry.class, () -> registry);
@@ -120,7 +122,7 @@ class SighMapMetricsAspectTest {
     void 다른_조회는_지도_전용_지표에_기록하지_않는다() {
         // when / then
         context.getBean(SighRepository.class).count();
-        assertThatThrownBy(() -> service.findById(1L))
+        assertThatThrownBy(() -> service.findById(1L, null))
                 .isInstanceOf(SighException.class);
         assertThat(registry.get("pheeeew.sigh.map.query").timer().count()).isZero();
         assertThat(registry.get("pheeeew.sigh.map.results").summaries())

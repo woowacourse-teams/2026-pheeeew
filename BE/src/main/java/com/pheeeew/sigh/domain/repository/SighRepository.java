@@ -2,6 +2,7 @@ package com.pheeeew.sigh.domain.repository;
 
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.projection.GeneratedLocation;
+import com.pheeeew.sigh.domain.repository.projection.SighDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
 import java.time.Instant;
@@ -24,6 +25,14 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
     Optional<Sigh> findByRequestId(UUID requestId);
 
     Optional<Sigh> findByIdAndDeletedAtIsNull(Long id);
+
+    @Query("""
+            SELECT s AS sigh, CASE WHEN sighLike.id IS NOT NULL THEN true ELSE false END AS liked
+            FROM Sigh s
+            LEFT JOIN SighLike sighLike ON sighLike.sighId = s.id AND sighLike.deviceId = :deviceId
+            WHERE s.id = :id AND s.deletedAt IS NULL
+            """)
+    Optional<SighDetailProjection> findById(@Param("id") Long id, @Param("deviceId") Long deviceId);
 
     @Query(
             value = """

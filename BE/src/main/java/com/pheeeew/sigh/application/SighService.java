@@ -1,8 +1,13 @@
 package com.pheeeew.sigh.application;
 
+import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_SAVE_FAILED;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
 
+import com.pheeeew.device.domain.Device;
+import com.pheeeew.device.domain.repository.DeviceRepository;
+import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighMapItem;
@@ -24,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Point;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
@@ -33,6 +39,7 @@ public class SighService {
     private static final int LIST_PAGE_SIZE = 20;
 
     private final SighRepository sighRepository;
+    private final DeviceRepository deviceRepository;
     private final SighLocationGenerator sighLocationGenerator;
     private final SighNicknameGenerator sighNicknameGenerator;
 
@@ -50,9 +57,17 @@ public class SighService {
         return saveNewSigh(requestId, longitude, latitude, memo);
     }
 
-    public SighResult findById(Long id) {
-        return sighRepository.findByIdAndDeletedAtIsNull(id)
-                .map(SighResult::from)
+    @Transactional(readOnly = true)
+    public SighDetailResult findById(Long id, UUID devicePublicId) {
+        Long deviceId = null;
+        if (devicePublicId != null) {
+            deviceId = deviceRepository.findByPublicId(devicePublicId)
+                    .map(Device::getId)
+                    .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+        }
+
+        return sighRepository.findById(id, deviceId)
+                .map(SighDetailResult::from)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
     }
 
