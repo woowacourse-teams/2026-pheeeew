@@ -1,4 +1,4 @@
-package com.pheeeew.sigh.application;
+package com.pheeeew.sigh.infra.metrics;
 
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;

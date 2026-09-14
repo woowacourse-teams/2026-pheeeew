@@ -15,6 +15,8 @@ import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.infra.metrics.SighMapMetrics;
+import com.pheeeew.sigh.infra.metrics.SighMapMetricsAspect;
 import com.pheeeew.support.PostgisDataJpaTest;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
