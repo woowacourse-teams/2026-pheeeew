@@ -117,6 +117,7 @@ fun MapScreen(
     val retryableSighError =
         (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
     val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing
+    val currentLocation = (uiState.location.state as? LocationState.Available)?.location
     val renderedSighs =
         remember(uiState.sighs, sighBrowser.selectedSigh) {
             (listOfNotNull(sighBrowser.selectedSigh?.toPin()) + uiState.sighs)
@@ -181,9 +182,10 @@ fun MapScreen(
 
     val sighMarkers =
         remember(renderedSighs, hiddenMarkerId, starAgeRevision) {
+            val now = Clock.System.now()
             renderedSighs.toSighMarkers(
                 hiddenMarkerId = hiddenMarkerId,
-                now = Clock.System.now(),
+                now = now,
             )
         }
 
@@ -208,7 +210,7 @@ fun MapScreen(
         BreathMap(
             state =
                 MapRenderState(
-                    currentLocation = (uiState.location.state as? LocationState.Available)?.location,
+                    currentLocation = currentLocation,
                     locationState = uiState.location.state,
                     fallbackCenter = DEFAULT_MAP_POINT,
                     sighMarkers = sighMarkers,

@@ -2,6 +2,7 @@
 
 package com.pheeeew.feature.map.star
 
+import com.pheeeew.core.designsystem.DesignSystemColors
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -12,6 +13,14 @@ class StarVisualPolicyTest {
 
         assertEquals(visuals.size, visuals.map(StarVisual::imageKey).toSet().size)
         assertEquals(StarVisualPolicy.allVisuals, visuals)
+    }
+
+    @Test
+    fun `두 번째 생애 단계는 기존 별 색상을 사용한다`() {
+        assertEquals(
+            DesignSystemColors.STAR_WARM_HEX,
+            StarVisualPolicy.visualFor(StarAgeStage.Warm).colorHex,
+        )
     }
 
     @Test

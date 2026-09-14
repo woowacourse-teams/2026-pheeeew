@@ -2,7 +2,7 @@ package com.pheeeew.feature.map.star
 
 import kotlin.time.Clock
 import kotlin.time.Duration
-import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 /**
@@ -27,8 +27,11 @@ class StarAgePolicy(
         )
 
     companion object {
-        private val FRESH_DURATION = 1.hours
-        private val DEEP_DURATION = 24.hours
+        /** 생성 후 3일이 되기 전까지는 첫 번째 단계(0~2일)입니다. */
+        private val FRESH_DURATION = 3.days
+
+        /** 생성 후 6일이 되기 전까지는 두 번째 단계(3~5일)입니다. */
+        private val DEEP_DURATION = 6.days
 
         /** 전달받은 현재 시각을 기준으로 별의 생애 단계를 계산합니다. */
         fun stageOf(
