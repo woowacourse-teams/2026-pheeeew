@@ -13,10 +13,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.Alignment
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.core.designsystem.notification.CommonNotification
+import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.PredictiveBackContent
 import com.pheeeew.core.navigation.Screen
@@ -151,12 +150,13 @@ fun App(
 
             if (registrationState is DeviceRegistrationState.Failed) {
                 val error = (registrationState as DeviceRegistrationState.Failed).error
-                CommonNotification(
-                    title = "기기 등록에 실패했어요",
-                    message = error.message(),
-                    actionLabel = "다시 시도",
-                    onAction = ::registerDevice,
-                    modifier = Modifier.align(Alignment.Center),
+                AppDialog(
+                    title = "기기 등록 실패",
+                    body = error.message(),
+                    confirmText = "다시 시도",
+                    onConfirmClick = ::registerDevice,
+                    onDismissRequest = {},
+                    onDismissClick = {},
                 )
             }
         }
