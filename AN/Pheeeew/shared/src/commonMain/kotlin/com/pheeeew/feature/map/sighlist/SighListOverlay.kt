@@ -54,7 +54,7 @@ fun SighBrowserOverlay(
     onRequestReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val showActionMenu = selectedItem?.id == moderationUiState.actionTarget?.sighId
+    val showActionMenu = shouldShowSighActionMenu(selectedItem?.id, moderationUiState.actionTarget?.sighId)
     val detailStarRadiusPx = with(LocalDensity.current) { 24.dp.roundToPx() }
 
     if (visible && !moderationUiState.isReportVisible) {
@@ -176,6 +176,11 @@ fun SighBrowserOverlay(
         }
     }
 }
+
+internal fun shouldShowSighActionMenu(
+    selectedSighId: Long?,
+    actionTargetSighId: Long?,
+): Boolean = selectedSighId != null && selectedSighId == actionTargetSighId
 
 @Preview
 @Composable
