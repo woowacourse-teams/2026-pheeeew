@@ -37,6 +37,7 @@ import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -101,6 +102,29 @@ class SighServiceIntegrationTest {
                 .isNotBlank()
                 .hasSizeLessThanOrEqualTo(50);
         assertThat(sighRepository.count()).isOne();
+    }
+
+    @Test
+    void 이전_버전으로_좋아요_수를_저장하면_먼저_저장된_값을_덮어쓰지_못한다() {
+        // given
+        SighSaveResult created = sighService.save(
+                UUID.randomUUID(),
+                SEOUL_CITY_HALL_LONGITUDE,
+                SEOUL_CITY_HALL_LATITUDE
+        );
+        Long sighId = created.sigh().id();
+        Sigh first = sighRepository.findById(sighId).orElseThrow();
+        Sigh second = sighRepository.findById(sighId).orElseThrow();
+        first.increaseLikeCount();
+        sighRepository.saveAndFlush(first);
+
+        // when
+        second.increaseLikeCount();
+        Throwable throwable = catchThrowable(() -> sighRepository.saveAndFlush(second));
+
+        // then
+        assertThat(throwable).isInstanceOf(ObjectOptimisticLockingFailureException.class);
+        assertThat(sighRepository.findById(sighId).orElseThrow().getLikeCount()).isOne();
     }
 
     @Test

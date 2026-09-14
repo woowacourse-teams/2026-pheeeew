@@ -14,6 +14,46 @@ import org.junit.jupiter.params.provider.ValueSource;
 class SighTest {
 
     @Test
+    void 좋아요_수를_한_개씩_증가시킨다() {
+        // given
+        Sigh sigh = 기본_한숨_빌더().build();
+
+        // when
+        sigh.increaseLikeCount();
+        sigh.increaseLikeCount();
+
+        // then
+        assertThat(sigh.getLikeCount()).isEqualTo(2);
+    }
+
+    @Test
+    void 좋아요_수를_한_개_감소시킨다() {
+        // given
+        Sigh sigh = 기본_한숨_빌더().build();
+        sigh.increaseLikeCount();
+        sigh.increaseLikeCount();
+
+        // when
+        sigh.decreaseLikeCount();
+
+        // then
+        assertThat(sigh.getLikeCount()).isOne();
+    }
+
+    @Test
+    void 좋아요_수가_0이면_감소시킬_수_없다() {
+        // given
+        Sigh sigh = 기본_한숨_빌더().build();
+
+        // when
+        Throwable throwable = catchThrowable(sigh::decreaseLikeCount);
+
+        // then
+        assertThat(throwable).isInstanceOf(IllegalStateException.class);
+        assertThat(sigh.getLikeCount()).isZero();
+    }
+
+    @Test
     void 삭제하면_삭제_시각이_기록된다() {
         // given
         Sigh sigh = 기본_한숨_빌더().build();
