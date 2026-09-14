@@ -1,5 +1,6 @@
 package com.pheeeew.sigh.presentation;
 
+import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
@@ -10,6 +11,8 @@ import com.pheeeew.sigh.presentation.dto.SighMapRequest;
 import com.pheeeew.sigh.presentation.dto.SighMapResponse;
 import com.pheeeew.sigh.presentation.dto.SighV1Properties;
 import jakarta.validation.Valid;
+import java.util.Optional;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,9 +36,10 @@ public class SighV1Controller implements SighV1ControllerApi {
     @Override
     @GetMapping
     public ResponseEntity<SighMapResponse> findAllWithinBounds(
+            @CurrentDevice Optional<UUID> devicePublicId,
             @Valid @ModelAttribute SighMapRequest request
     ) {
-        SighMapResult result = sighService.findAllWithinBounds(request.toBounds());
+        SighMapResult result = sighService.findAllWithinBounds(request.toBounds(), devicePublicId);
 
         return ResponseEntity.ok()
                 .contentType(GEO_JSON)

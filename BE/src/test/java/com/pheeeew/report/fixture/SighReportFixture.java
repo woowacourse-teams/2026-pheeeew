@@ -26,11 +26,15 @@ public final class SighReportFixture {
         return report;
     }
 
-    public static UUID 신고자_기기_식별자() {
+    public static Long 신고자_기기_식별자() {
+        return 1L;
+    }
+
+    public static UUID 신고자_기기_공개_식별자() {
         return UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b");
     }
 
-    public static UUID 다른_신고자_기기_식별자() {
+    public static UUID 없는_기기_공개_식별자() {
         return UUID.fromString("1f9b0c6a-7d4e-4a1b-9c2d-8e3f5a6b7c8d");
     }
 

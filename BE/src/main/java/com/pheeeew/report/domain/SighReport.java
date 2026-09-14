@@ -8,7 +8,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.util.Objects;
-import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -30,13 +29,13 @@ public class SighReport extends BaseEntity {
     private Long sighId;
 
     @Column(name = "reporter_device_id", nullable = false, updatable = false)
-    private UUID reporterDeviceId;
+    private Long reporterDeviceId;
 
     @Column(nullable = false, updatable = false, length = MAX_REASON_LENGTH)
     private String reason;
 
     @Builder
-    private SighReport(Long sighId, UUID reporterDeviceId, String reason) {
+    private SighReport(Long sighId, Long reporterDeviceId, String reason) {
         this.sighId = Objects.requireNonNull(sighId);
         this.reporterDeviceId = Objects.requireNonNull(reporterDeviceId);
         this.reason = requireValidReason(reason);

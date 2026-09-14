@@ -1,6 +1,6 @@
 package com.pheeeew.report.presentation.dto;
 
-import com.pheeeew.report.application.SighReportResult;
+import com.pheeeew.report.application.dto.SighReportResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 

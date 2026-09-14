@@ -8,4 +8,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface DeviceRepository extends JpaRepository<Device, Long> {
 
     Optional<Device> findByRequestId(UUID requestId);
+
+    Optional<Device> findByPublicId(UUID publicId);
 }

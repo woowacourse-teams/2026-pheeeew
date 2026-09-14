@@ -1,0 +1,6 @@
+teamId=1234567890
+appId=1234567890.com.pheeeew.app
+otherAppId=1234567890.com.attacker.app
+challenge=appattest-fixture-challenge-000000000000000
+keyId=sTHBS+RSPepvh/O5Bu2ZMFH0JkMw79cUePN+F/NVxAg=
+spkiKeyId=Yw16i11PpeuI/os+Y6beW0gzX+u+3AQFz87bPAH7qk4=

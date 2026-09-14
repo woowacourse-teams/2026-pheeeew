@@ -1,8 +1,8 @@
 package com.pheeeew.device.application.token;
 
+import com.pheeeew.auth.infra.jwt.JwtTokenEncoder;
+import com.pheeeew.auth.infra.jwt.TokenProperties;
 import com.pheeeew.device.application.dto.AccessTokenResult;
-import com.pheeeew.device.infra.jwt.JwtTokenEncoder;
-import com.pheeeew.device.infra.jwt.TokenProperties;
 import java.time.Duration;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;

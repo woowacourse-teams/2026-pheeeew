@@ -1,17 +1,25 @@
 package com.pheeeew.sigh.presentation;
 
+import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
+import com.pheeeew.sigh.application.like.SighLikeRetryService;
+import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.presentation.dto.SighCreateV2Request;
 import com.pheeeew.sigh.presentation.dto.SighFeature;
+import com.pheeeew.sigh.presentation.dto.SighLikeRequest;
+import com.pheeeew.sigh.presentation.dto.SighLikeResponse;
 import com.pheeeew.sigh.presentation.dto.SighListRequest;
 import com.pheeeew.sigh.presentation.dto.SighV2Properties;
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,48 +38,56 @@ public class SighV2Controller implements SighV2ControllerApi {
     private static final MediaType GEO_JSON = MediaType.parseMediaType("application/geo+json");
 
     private final SighService sighService;
+    private final SighLikeRetryService sighLikeRetryService;
 
     @Override
     @GetMapping
-    public CursorResponse<SighFeature<SighV2Properties>> findAll(
-            @ModelAttribute SighListRequest request
+    public ResponseEntity<CursorResponse<SighFeature<SighV2Properties>>> findAll(
+            @ModelAttribute SighListRequest request,
+            @CurrentDevice UUID devicePublicId
     ) {
         SighListResult result;
         if (request.isNextPageRequest()) {
-            result = sighService.findNextListPage(request.cursor());
+            result = sighService.findNextListPage(request.cursor(), devicePublicId);
         } else {
-            result = sighService.findFirstListPage(request.toBounds());
+            result = sighService.findFirstListPage(request.toBounds(), devicePublicId);
         }
 
         List<SighFeature<SighV2Properties>> items = result.items().stream()
-                .map(this::toFeature)
+                .map(item -> toFeature(item.sigh(), item.like()))
                 .toList();
 
-        return CursorResponse.of(items, result.hasNext(), result.nextCursor());
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(CursorResponse.of(items, result.hasNext(), result.nextCursor()));
     }
 
     @Override
     @GetMapping("/{id}")
     public ResponseEntity<SighFeature<SighV2Properties>> findById(
-            @PathVariable Long id
+            @PathVariable Long id,
+            @CurrentDevice UUID devicePublicId
     ) {
-        SighResult result = sighService.findById(id);
+        SighDetailResult result = sighService.findById(id, devicePublicId);
 
         return ResponseEntity.ok()
                 .contentType(GEO_JSON)
-                .body(toFeature(result));
+                .cacheControl(CacheControl.noStore())
+                .body(toFeature(result.sigh(), result.like()));
     }
 
     @Override
     @PostMapping
     public ResponseEntity<SighFeature<SighV2Properties>> save(
-            @RequestBody SighCreateV2Request request
+            @RequestBody SighCreateV2Request request,
+            @CurrentDevice UUID devicePublicId
     ) {
         SighSaveResult result = sighService.save(
                 request.requestId(),
                 request.longitude(),
                 request.latitude(),
-                request.memo()
+                request.memo(),
+                devicePublicId
         );
         SighResult sigh = result.sigh();
 
@@ -82,10 +98,22 @@ public class SighV2Controller implements SighV2ControllerApi {
 
         return response
                 .contentType(GEO_JSON)
-                .body(toFeature(sigh));
+                .cacheControl(CacheControl.noStore())
+                .body(toFeature(sigh, result.like()));
     }
 
-    private SighFeature<SighV2Properties> toFeature(SighResult sigh) {
-        return SighFeature.of(sigh, SighV2Properties.from(sigh));
+    @Override
+    @PostMapping("/{sighId}/likes")
+    public SighLikeResponse update(
+            @PathVariable Long sighId,
+            @CurrentDevice UUID devicePublicId,
+            @RequestBody SighLikeRequest request
+    ) {
+        SighLikeResult result = sighLikeRetryService.update(sighId, devicePublicId, request.liked());
+        return SighLikeResponse.from(result);
+    }
+
+    private SighFeature<SighV2Properties> toFeature(SighResult sigh, SighLikeResult like) {
+        return SighFeature.of(sigh, SighV2Properties.of(sigh, like));
     }
 }

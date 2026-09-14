@@ -23,7 +23,13 @@ public record DeviceCreateRequest(
 
         @NotNull(message = "무결성 증명 정보는 필수입니다.")
         @Valid
-        @Schema(description = "무결성 증명 정보입니다. 현재 버전에서는 `platform`만 저장하고 나머지는 검증하지 않습니다.")
+        @Schema(
+                description = """
+                        무결성 증명 정보입니다. `platform`만 저장합니다.
+
+                        `token`은 보낸 경우에만 검증하며, 보내면 `challenge`도 필수입니다.
+                        """
+        )
         DeviceAttestationRequest attestation
 ) {
 }
