@@ -3,7 +3,6 @@ package com.pheeeew.device.infra.attestation;
 public enum PlayIntegrityRejection {
 
     ATTESTATION_REQUIRED,
-    UNSUPPORTED_PLATFORM,
     CREDENTIALS_MISSING,
     MALFORMED_TOKEN,
     CHALLENGE_MISSING,

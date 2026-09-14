@@ -105,6 +105,8 @@ Accepted (YYYY-MM-DD)
 | [0018](0018-limit-google-decode-attempts-per-challenge.md) | challenge 당 구글 호출 상한 | 구글을 부르기 전에 시도 수를 올려 challenge 한 건을 5회로 묶어요 |
 | [0019](0019-restrict-service-account-token-uri-to-https-and-loopback.md) | 서비스 계정 토큰 주소 제한 | HTTPS 와 루프백 리터럴만 허용해요. 이름 해석은 재바인딩 때문에 막아요 |
 | [0020](0020-limit-daily-google-decode-calls-per-project.md) | 구글 호출 하루 예산 | 날짜별 예산 행으로 분산 요청까지 묶어요. 넘으면 정상 등록도 막혀요 |
+| [0021](0021-consume-challenge-before-app-attest-verification.md) | iOS challenge 조기 소모 | 체인 검증 앞에서 소모해요. 실패해도 challenge 가 사라져요 |
+| [0022](0022-route-attestation-verifier-by-platform.md) | 증명 검증기 플랫폼 라우팅 | `switch` 로 갈라요. 강제 스위치는 플랫폼마다 따로 둬요 |
 
 ## AI 사용
 
