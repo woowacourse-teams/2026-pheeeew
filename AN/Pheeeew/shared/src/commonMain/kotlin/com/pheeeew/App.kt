@@ -6,6 +6,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,6 +21,7 @@ import com.pheeeew.core.navigation.Screen
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.domain.repository.SighRepository
 import com.pheeeew.domain.usecase.CreateSighUseCase
+import com.pheeeew.domain.usecase.EnsureDeviceRegisteredUseCase
 import com.pheeeew.feature.map.MapPerformanceLogger
 import com.pheeeew.feature.map.MapRoute
 import com.pheeeew.feature.map.MapViewModel
@@ -37,6 +39,7 @@ fun App(
     sighRepository: SighRepository,
     createSigh: CreateSighUseCase,
     mapPerformanceLogger: MapPerformanceLogger,
+    ensureDeviceRegistered: EnsureDeviceRegisteredUseCase? = null,
 ) {
     AppTheme {
         val coroutineScope = rememberCoroutineScope()
@@ -47,6 +50,10 @@ fun App(
             }
         val mapReadiness = remember { MutableStateFlow(false) }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
+
+        LaunchedEffect(ensureDeviceRegistered) {
+            ensureDeviceRegistered?.invoke()
+        }
 
         // 오버레이 화면들이 뒤에 깔린 지도로 터치가 새어나가지 않도록 막습니다.
         val overlayModifier =

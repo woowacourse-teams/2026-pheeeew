@@ -55,6 +55,7 @@ android {
                 "API_BASE_URL",
                 "\"https://api-dev.pheeeew.com\"",
             )
+            buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", "0L")
         }
         release {
             isMinifyEnabled = false
@@ -63,6 +64,7 @@ android {
                 "API_BASE_URL",
                 "\"https://api.pheeeew.com\"",
             )
+            buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", "0L")
             proguardFiles(
                 getDefaultProguardFile(
                     "proguard-android-optimize.txt",

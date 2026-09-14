@@ -13,6 +13,8 @@ import androidx.lifecycle.ViewModelProvider
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.di.SighModule
+import com.pheeeew.di.createAndroidEnsureDeviceRegisteredUseCase
+import com.pheeeew.di.createAndroidEnsureDeviceRegisteredWithPlayIntegrityUseCase
 import com.pheeeew.di.createAndroidLocationDependencies
 
 class MainActivity : ComponentActivity() {
@@ -30,6 +32,18 @@ class MainActivity : ComponentActivity() {
                 retainedDependencies = holder.dependencies,
             ).also { holder.dependencies = it }
         val sighDependencies = SighModule.create(ApiConfig(baseUrl = BuildConfig.API_BASE_URL))
+        val deviceRegistration = if (BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER > 0L) {
+            createAndroidEnsureDeviceRegisteredWithPlayIntegrityUseCase(
+                context = this,
+                config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
+                cloudProjectNumber = BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
+            )
+        } else {
+            createAndroidEnsureDeviceRegisteredUseCase(
+                context = this,
+                config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
+            )
+        }
 
         setContent {
             App(
@@ -40,6 +54,7 @@ class MainActivity : ComponentActivity() {
                 mapPerformanceLogger = { event ->
                     if (BuildConfig.DEBUG) Log.d("Pheeeew.MapPerf", event)
                 },
+                ensureDeviceRegistered = deviceRegistration,
             )
         }
     }
