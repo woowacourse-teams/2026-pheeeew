@@ -7,6 +7,4 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface SighLikeRepository extends JpaRepository<SighLike, Long> {
 
     Optional<SighLike> findBySighIdAndDeviceId(Long sighId, Long deviceId);
-
-    long countBySighId(Long sighId);
 }

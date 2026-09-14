@@ -62,7 +62,6 @@ class SighTest {
         sigh.delete();
 
         // then
-        assertThat(sigh.isDeleted()).isTrue();
         assertThat(sigh.getDeletedAt()).isNotNull();
     }
 

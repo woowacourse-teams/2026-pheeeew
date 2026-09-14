@@ -28,6 +28,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.util.AopTestUtils;
@@ -60,6 +61,9 @@ class SighLikeRetryServiceIntegrationTest {
 
     @Autowired
     private PlatformTransactionManager transactionManager;
+
+    @Autowired
+    private JdbcClient jdbcClient;
 
     private Device device;
     private Sigh sigh;
@@ -168,7 +172,12 @@ class SighLikeRetryServiceIntegrationTest {
     }
 
     private void assertLikeCount(long expected) {
-        assertThat(sighLikeRepository.countBySighId(sigh.getId())).isEqualTo(expected);
+        long likeRowCount = jdbcClient.sql("SELECT COUNT(*) FROM sigh_likes WHERE sigh_id = :sighId")
+                .param("sighId", sigh.getId())
+                .query(Long.class)
+                .single();
+
+        assertThat(likeRowCount).isEqualTo(expected);
         assertThat(sighRepository.findById(sigh.getId()).orElseThrow().getLikeCount()).isEqualTo(expected);
     }
 }

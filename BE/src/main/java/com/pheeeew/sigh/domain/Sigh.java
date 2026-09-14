@@ -80,10 +80,6 @@ public class Sigh extends BaseEntity {
         this.deletedAt = Instant.now();
     }
 
-    public boolean isDeleted() {
-        return deletedAt != null;
-    }
-
     public double getLongitude() {
         return location.getX();
     }
