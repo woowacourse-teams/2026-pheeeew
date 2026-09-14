@@ -242,7 +242,9 @@ class MapViewModel(
             )
         }
 
-        if (_uiState.value.sighBrowser.items.any { it.id == id }) {
+        if (_uiState.value.sighBrowser.items
+                .any { it.id == id }
+        ) {
             pendingSighDetailId = null
             selectSigh(id)
             return
