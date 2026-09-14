@@ -84,14 +84,7 @@ class SighV2ControllerTest {
         SighSearchBounds bounds = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
         when(sighService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
                 .thenReturn(SighListResult.of(
-                        List.of(SighResult.of(
-                                SIGH_ID,
-                                126.9774,
-                                37.5669,
-                                CREATED_AT,
-                                "오늘은 조금 지쳤다",
-                                "날아가는 고라니"
-                        )),
+                        List.of(기본_상세_조회_결과("오늘은 조금 지쳤다", true, 12)),
                         true,
                         "next-cursor"
                 ));
@@ -105,6 +98,7 @@ class SighV2ControllerTest {
         // then
         result.expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody()
                 .json("""
                         {
@@ -119,7 +113,9 @@ class SighV2ControllerTest {
                               "properties": {
                                 "createdAt": "2026-09-01T12:00:00Z",
                                 "memo": "오늘은 조금 지쳤다",
-                                "nickname": "날아가는 고라니"
+                                "nickname": "날아가는 고라니",
+                                "liked": true,
+                                "likeCount": 12
                               }
                             }
                           ],
@@ -152,14 +148,7 @@ class SighV2ControllerTest {
         // given
         when(sighService.findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID))
                 .thenReturn(SighListResult.of(
-                        List.of(SighResult.of(
-                                SIGH_ID,
-                                126.9774,
-                                37.5669,
-                                CREATED_AT,
-                                null,
-                                "날아가는 고라니"
-                        )),
+                        List.of(기본_상세_조회_결과(null, false, 0)),
                         false,
                         null
                 ));
@@ -172,6 +161,7 @@ class SighV2ControllerTest {
         // then
         result.expectStatus().isOk()
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody()
                 .json("""
                         {
@@ -186,7 +176,9 @@ class SighV2ControllerTest {
                               "properties": {
                                 "createdAt": "2026-09-01T12:00:00Z",
                                 "memo": null,
-                                "nickname": "날아가는 고라니"
+                                "nickname": "날아가는 고라니",
+                                "liked": false,
+                                "likeCount": 0
                               }
                             }
                           ],

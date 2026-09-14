@@ -57,12 +57,16 @@ public interface SighV2ControllerApi {
                     - 현재 검색 영역의 최신 500건까지만 페이지로 조회할 수 있습니다.
                     - `geometry`는 저장된 최종 표시 위치이며 좌표는 `[longitude, latitude]` 순서입니다.
                     - 메모가 없는 경우 `properties.memo`는 `null`입니다.
+                    - 각 항목의 `properties.liked`는 인증된 기기의 좋아요 여부, `properties.likeCount`는 전체 좋아요 수입니다.
+                    - 좋아요 정보는 각 페이지를 조회하는 시점의 값이며, 첫 페이지의 스냅샷 시각에 고정되지 않습니다.
                     """
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
                     description = "한숨 목록 조회 성공",
+                    headers = @Header(name = "Cache-Control", description = "개인별 조회 응답을 캐시에 저장하지 않습니다.",
+                            schema = @Schema(type = "string", example = "no-store")),
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             examples = @ExampleObject(value = """
@@ -78,7 +82,9 @@ public interface SighV2ControllerApi {
                                           "properties": {
                                             "createdAt": "2026-09-01T12:00:00Z",
                                             "memo": "오늘은 조금 지쳤다",
-                                            "nickname": "날아가는 고라니"
+                                            "nickname": "날아가는 고라니",
+                                            "liked": true,
+                                            "likeCount": 12
                                           }
                                         }
                                       ],
@@ -135,7 +141,7 @@ public interface SighV2ControllerApi {
                     )
             )
     })
-    CursorResponse<SighFeature<SighV2Properties>> findAll(
+    ResponseEntity<CursorResponse<SighFeature<SighV2Properties>>> findAll(
             @ParameterObject @Valid SighListRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );

@@ -113,9 +113,9 @@ public class SighService {
     }
 
     private SighListResult findList(SighListCursor cursor, UUID devicePublicId) {
-        if (deviceRepository.findByPublicId(devicePublicId).isEmpty()) {
-            throw new DeviceException(DEVICE_NOT_FOUND);
-        }
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
+                .map(Device::getId)
+                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
         SighSearchBounds bounds = cursor.bounds();
         List<SighListProjection> projections = sighRepository.findListWithinBounds(
@@ -127,7 +127,8 @@ public class SighService {
                 cursor.lastItemCreatedAt(),
                 cursor.lastId(),
                 MAX_FIND_COUNT,
-                LIST_PAGE_SIZE + 1
+                LIST_PAGE_SIZE + 1,
+                deviceId
         );
 
         boolean hasNext = projections.size() > LIST_PAGE_SIZE;
@@ -135,15 +136,8 @@ public class SighService {
             projections = projections.subList(0, LIST_PAGE_SIZE);
         }
 
-        List<SighResult> items = projections.stream()
-                .map(projection -> SighResult.of(
-                        projection.getId(),
-                        projection.getLongitude(),
-                        projection.getLatitude(),
-                        projection.getCreatedAt(),
-                        projection.getMemo(),
-                        projection.getNickname()
-                ))
+        List<SighDetailResult> items = projections.stream()
+                .map(SighDetailResult::from)
                 .toList();
         String nextCursor = createNextCursor(cursor, projections, hasNext);
 

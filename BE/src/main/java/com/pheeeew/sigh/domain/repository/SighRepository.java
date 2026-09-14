@@ -108,7 +108,8 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                             sigh.location,
                             sigh.created_at,
                             sigh.nickname,
-                            sigh.memo
+                            sigh.memo,
+                            sigh.like_count
                         FROM sighs sigh
                         CROSS JOIN bounds
                         WHERE sigh.deleted_at IS NULL
@@ -124,8 +125,12 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                         ST_Y(latest_sighs.location) AS latitude,
                         latest_sighs.created_at AS "createdAt",
                         latest_sighs.nickname AS nickname,
-                        latest_sighs.memo AS memo
+                        latest_sighs.memo AS memo,
+                        latest_sighs.like_count AS "likeCount",
+                        sigh_like.id IS NOT NULL AS liked
                     FROM latest_sighs
+                    LEFT JOIN sigh_likes sigh_like
+                      ON sigh_like.sigh_id = latest_sighs.id AND sigh_like.device_id = :deviceId
                     WHERE (latest_sighs.created_at, latest_sighs.id) < (:lastItemCreatedAt, :lastId)
                     ORDER BY latest_sighs.created_at DESC, latest_sighs.id DESC
                     LIMIT :limit
@@ -141,7 +146,8 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             @Param("lastItemCreatedAt") Instant lastItemCreatedAt,
             @Param("lastId") long lastId,
             @Param("maxCount") int maxCount,
-            @Param("limit") int limit
+            @Param("limit") int limit,
+            @Param("deviceId") Long deviceId
     );
 
     @Query(

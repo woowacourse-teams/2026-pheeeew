@@ -15,4 +15,8 @@ public interface SighListProjection {
     String getNickname();
 
     String getMemo();
+
+    boolean getLiked();
+
+    long getLikeCount();
 }

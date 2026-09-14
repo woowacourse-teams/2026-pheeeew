@@ -42,7 +42,7 @@ public class SighV2Controller implements SighV2ControllerApi {
 
     @Override
     @GetMapping
-    public CursorResponse<SighFeature<SighV2Properties>> findAll(
+    public ResponseEntity<CursorResponse<SighFeature<SighV2Properties>>> findAll(
             @ModelAttribute SighListRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
@@ -54,10 +54,12 @@ public class SighV2Controller implements SighV2ControllerApi {
         }
 
         List<SighFeature<SighV2Properties>> items = result.items().stream()
-                .map(this::toFeature)
+                .map(item -> SighFeature.of(item.sigh(), SighV2Properties.from(item)))
                 .toList();
 
-        return CursorResponse.of(items, result.hasNext(), result.nextCursor());
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(CursorResponse.of(items, result.hasNext(), result.nextCursor()));
     }
 
     @Override

@@ -18,11 +18,11 @@ public record SighV2Properties(
         String nickname,
 
         @JsonInclude(Include.NON_NULL)
-        @Schema(description = "인증된 기기의 좋아요 여부. 단건 조회 응답에 포함됩니다.", example = "true")
+        @Schema(description = "인증된 기기의 좋아요 여부. 단건·목록 조회 응답에 포함됩니다.", example = "true")
         Boolean liked,
 
         @JsonInclude(Include.NON_NULL)
-        @Schema(description = "한숨의 전체 좋아요 수. 단건 조회 응답에 포함됩니다.", minimum = "0", example = "12")
+        @Schema(description = "한숨의 전체 좋아요 수. 단건·목록 조회 응답에 포함됩니다.", minimum = "0", example = "12")
         Long likeCount
 ) {
 

@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighMapItem;
@@ -15,6 +16,8 @@ import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.dto.SighSearchBounds;
+import com.pheeeew.sigh.application.like.SighLikeService;
+import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
@@ -51,7 +54,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
 @ImportAutoConfiguration(AopAutoConfiguration.class)
-@Import({SighMapMetrics.class, SighMapMetricsAspect.class})
+@Import({SighMapMetrics.class, SighMapMetricsAspect.class, SighLikeService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class SighServiceIntegrationTest {
 
@@ -76,6 +79,9 @@ class SighServiceIntegrationTest {
     private DeviceRepository deviceRepository;
 
     @Autowired
+    private SighLikeService sighLikeService;
+
+    @Autowired
     private JdbcClient jdbcClient;
 
     @Autowired
@@ -91,6 +97,7 @@ class SighServiceIntegrationTest {
     @AfterEach
     void tearDown() {
         jdbcClient.sql("DELETE FROM sigh_reports").update();
+        jdbcClient.sql("DELETE FROM sigh_likes").update();
         sighRepository.deleteAll();
         deviceRepository.deleteAll();
     }
@@ -429,6 +436,64 @@ class SighServiceIntegrationTest {
     }
 
     @Test
+    void 목록은_각_페이지의_한숨별_좋아요_수와_조회한_기기의_좋아요_여부를_반환한다() {
+        // given
+        UUID anotherDevicePublicId = deviceRepository.save(기본_기기_빌더().build()).getPublicId();
+        List<Long> ids = new ArrayList<>();
+        String createdAt = Instant.now().minusSeconds(60).toString();
+        for (int index = 0; index < 21; index++) {
+            ids.add(insertSigh(126.9780, 37.5664, createdAt));
+        }
+        Long firstPageSighId = ids.getLast();
+        Long secondPageSighId = ids.getFirst();
+        sighLikeService.update(firstPageSighId, devicePublicId, true);
+        sighLikeService.update(firstPageSighId, anotherDevicePublicId, true);
+        sighLikeService.update(ids.get(19), anotherDevicePublicId, true);
+        sighLikeService.update(secondPageSighId, devicePublicId, true);
+
+        // when
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        SighListResult anotherDevicePage = sighService.findNextListPage(
+                firstPage.nextCursor(), anotherDevicePublicId
+        );
+
+        // then
+        assertThat(firstPage.items()).extracting(item -> item.sigh().id())
+                .containsExactlyElementsOf(ids.subList(1, 21).reversed());
+        assertThat(firstPage.items().get(0).like()).isEqualTo(SighLikeResult.of(true, 2));
+        assertThat(firstPage.items().get(1).like()).isEqualTo(SighLikeResult.of(false, 1));
+        assertThat(firstPage.items().get(2).like()).isEqualTo(SighLikeResult.of(false, 0));
+        assertThat(secondPage.items()).singleElement().satisfies(item -> {
+            assertThat(item.sigh().id()).isEqualTo(secondPageSighId);
+            assertThat(item.like()).isEqualTo(SighLikeResult.of(true, 1));
+        });
+        assertThat(anotherDevicePage.items()).singleElement().satisfies(item -> {
+            assertThat(item.sigh().id()).isEqualTo(secondPageSighId);
+            assertThat(item.like()).isEqualTo(SighLikeResult.of(false, 1));
+        });
+    }
+
+    @Test
+    void 다음_페이지의_좋아요_정보는_첫_페이지_이후의_취소를_반영한다() {
+        // given
+        Long oldestId = insertSigh(126.9780, 37.5664, "2026-08-31T10:29:00Z");
+        insertSighs(20, 126.9780, 37.5664);
+        sighLikeService.update(oldestId, devicePublicId, true);
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        sighLikeService.update(oldestId, devicePublicId, false);
+
+        // when
+        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+
+        // then
+        assertThat(secondPage.items()).singleElement().satisfies(item -> {
+            assertThat(item.sigh().id()).isEqualTo(oldestId);
+            assertThat(item.like()).isEqualTo(SighLikeResult.of(false, 0));
+        });
+    }
+
+    @Test
     void 등록되지_않은_기기는_바텀시트_첫_페이지를_조회할_수_없다() {
         // given
         UUID unknownDevicePublicId = UUID.randomUUID();
@@ -478,20 +543,21 @@ class SighServiceIntegrationTest {
         expectedFirstPageIds.sort(Comparator.reverseOrder());
 
         assertThat(firstPage.items())
+                .extracting(SighDetailResult::sigh)
                 .extracting(SighResult::id)
                 .containsExactlyElementsOf(expectedFirstPageIds);
-        assertThat(firstPage.items().getFirst().nickname()).isEqualTo("날아가는 고라니");
-        assertThat(firstPage.items().getFirst().memo()).isEqualTo("오늘은 조금 지쳤다");
-        assertThat(firstPage.items().getFirst().longitude()).isEqualTo(126.9780);
-        assertThat(firstPage.items().getFirst().latitude()).isEqualTo(37.5664);
+        assertThat(firstPage.items().getFirst().sigh().nickname()).isEqualTo("날아가는 고라니");
+        assertThat(firstPage.items().getFirst().sigh().memo()).isEqualTo("오늘은 조금 지쳤다");
+        assertThat(firstPage.items().getFirst().sigh().longitude()).isEqualTo(126.9780);
+        assertThat(firstPage.items().getFirst().sigh().latitude()).isEqualTo(37.5664);
         assertThat(firstPage.hasNext()).isTrue();
         assertThat(firstPage.nextCursor()).isNotBlank();
 
         assertThat(secondPage.items())
                 .singleElement()
                 .satisfies(item -> {
-                    assertThat(item.id()).isEqualTo(ids.getFirst());
-                    assertThat(item.memo()).isNull();
+                    assertThat(item.sigh().id()).isEqualTo(ids.getFirst());
+                    assertThat(item.sigh().memo()).isNull();
                 });
         assertThat(secondPage.hasNext()).isFalse();
         assertThat(secondPage.nextCursor()).isNull();
@@ -511,6 +577,7 @@ class SighServiceIntegrationTest {
 
         // then
         assertThat(result.items())
+                .extracting(SighDetailResult::sigh)
                 .extracting(SighResult::id)
                 .containsExactly(음의_경도_경계_한숨, 양의_경도_경계_한숨);
         assertThat(result.hasNext()).isFalse();
@@ -577,6 +644,7 @@ class SighServiceIntegrationTest {
 
         // then
         assertThat(secondPage.items())
+                .extracting(SighDetailResult::sigh)
                 .extracting(SighResult::id)
                 .containsExactly(ids.getFirst())
                 .doesNotContain(이후에_등록된_한숨);
@@ -749,7 +817,7 @@ class SighServiceIntegrationTest {
 
         for (int pageIndex = 0; pageIndex < 25; pageIndex++) {
             assertThat(page.items()).hasSizeLessThanOrEqualTo(20);
-            items.addAll(page.items());
+            items.addAll(page.items().stream().map(SighDetailResult::sigh).toList());
             if (!page.hasNext()) {
                 return items;
             }
@@ -770,7 +838,8 @@ class SighServiceIntegrationTest {
                 cursor.lastItemCreatedAt(),
                 cursor.lastId(),
                 500,
-                21
+                21,
+                deviceRepository.findByPublicId(devicePublicId).orElseThrow().getId()
         );
     }
 
