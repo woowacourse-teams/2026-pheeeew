@@ -186,7 +186,10 @@ private fun DeviceRegistrationError.message(): String = when (this) {
     DeviceRegistrationError.InvalidChallenge -> "인증 요청이 만료되었습니다. 다시 시도해주세요."
     DeviceRegistrationError.AttestationRejected -> "기기 무결성 확인에 실패했습니다."
     DeviceRegistrationError.Server,
-    is DeviceRegistrationError.RetryableServer,
     DeviceRegistrationError.Unknown,
     -> "잠시 후 다시 시도해주세요."
+    is DeviceRegistrationError.RetryableServer -> {
+        val seconds = retryAfterSeconds
+        if (seconds != null) "${seconds}초 후 다시 시도해주세요." else "잠시 후 다시 시도해주세요."
+    }
 }

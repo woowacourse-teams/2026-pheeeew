@@ -88,7 +88,10 @@ class DeviceRegistrationRepositoryImpl(
             else -> DeviceRegistrationException.Server(this)
         }
         is ApiException.Unknown -> when (code) {
-            "DEVICE-007" -> DeviceRegistrationException.RetryableServer(cause = this)
+            "DEVICE-007" -> DeviceRegistrationException.RetryableServer(
+                retryAfterSeconds = retryAfterSeconds,
+                cause = this,
+            )
             else -> DeviceRegistrationException.Server(this)
         }
         is ApiException.Network -> DeviceRegistrationException.Network(this)
