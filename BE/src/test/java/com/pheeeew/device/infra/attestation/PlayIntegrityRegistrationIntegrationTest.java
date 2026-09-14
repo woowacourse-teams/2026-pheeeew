@@ -1,5 +1,6 @@
 package com.pheeeew.device.infra.attestation;
 
+import static com.pheeeew.device.fixture.AppAttestFixture.설정이_없는_app_attest_설정;
 import static com.pheeeew.device.fixture.PlayIntegrityFixture.JWE_무결성_토큰;
 import static com.pheeeew.device.fixture.PlayIntegrityFixture.JWS_무결성_토큰;
 import static com.pheeeew.device.fixture.PlayIntegrityFixture.강제가_켜진_설정;
@@ -32,6 +33,10 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.device.fixture.FakeGoogleApiServer;
+import com.pheeeew.device.infra.attestation.appattest.AppAttestCertificateChainValidator;
+import com.pheeeew.device.infra.attestation.appattest.AppAttestDeviceAttestationVerifier;
+import com.pheeeew.device.infra.attestation.appattest.AppAttestMetrics;
+import com.pheeeew.device.infra.attestation.appattest.AppAttestObjectDecoder;
 import com.pheeeew.support.PostgisDataJpaTest;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -509,22 +514,6 @@ class PlayIntegrityRegistrationIntegrationTest {
     }
 
     @Test
-    void 증명을_보낸_IOS_등록은_거절한다() {
-        // given
-        DeviceAttestation ios_증명 =
-                DeviceAttestation.of(DevicePlatform.IOS, JWE_무결성_토큰, 발급되지_않은_challenge, null);
-
-        // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), ios_증명));
-
-        // then
-        증명을_확인할_수_없다(throwable);
-        assertThat(deviceRepository.count()).isZero();
-        assertThat(거절_카운터("UNSUPPORTED_PLATFORM")).isOne();
-        assertThat(구글_호출_수()).isZero();
-    }
-
-    @Test
     void 강제를_켜면_증명을_보내지_않은_등록도_거절한다() {
         // given
         DeviceService 강제하는_서비스 = 등록_서비스를_만든다(강제가_켜진_설정(가짜_구글.토큰_엔드포인트()));
@@ -541,7 +530,7 @@ class PlayIntegrityRegistrationIntegrationTest {
     }
 
     @Test
-    void 검증을_건너뛰면_형태가_아닌_토큰도_challenge_없이_통과하고_구글을_부르지_않는다() {
+    void 검증을_건너뛰면_안드로이드는_형태가_아닌_토큰도_challenge_없이_통과하고_구글을_부르지_않는다() {
         // given
         DeviceService 건너뛰는_서비스 = 등록_서비스를_만든다(검증을_건너뛰는_설정(가짜_구글.토큰_엔드포인트()));
 
@@ -549,17 +538,30 @@ class PlayIntegrityRegistrationIntegrationTest {
         DeviceSaveResult 안드로이드_등록 = 건너뛰는_서비스.save(
                 UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.ANDROID, "junk", null, null)
         );
-        DeviceSaveResult 아이오에스_등록 = 건너뛰는_서비스.save(
-                UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.IOS, "junk", null, null)
-        );
 
         // then
         assertThat(안드로이드_등록.created()).isTrue();
-        assertThat(아이오에스_등록.created()).isTrue();
-        assertThat(deviceRepository.count()).isEqualTo(2);
+        assertThat(deviceRepository.count()).isOne();
         assertThat(구글_호출_수()).isZero();
-        assertThat(카운터("pheeeew.device.attestation.skipped")).isEqualTo(2);
+        assertThat(카운터("pheeeew.device.attestation.skipped")).isOne();
         assertThat(카운터("pheeeew.device.attestation.accepted")).isZero();
+    }
+
+    @Test
+    void 검증_건너뛰기는_안드로이드_전용이라_IOS_증명은_그대로_App_Attest_검증을_탄다() {
+        // given
+        DeviceService 건너뛰는_서비스 = 등록_서비스를_만든다(검증을_건너뛰는_설정(가짜_구글.토큰_엔드포인트()));
+
+        // when
+        Throwable throwable = catchThrowable(() -> 건너뛰는_서비스.save(
+                UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.IOS, "junk", null, null)
+        ));
+
+        // then
+        증명을_확인할_수_없다(throwable);
+        assertThat(deviceRepository.count()).isZero();
+        assertThat(구글_호출_수()).isZero();
+        assertThat(카운터("pheeeew.device.attestation.skipped")).isZero();
     }
 
     @Test
@@ -641,8 +643,18 @@ class PlayIntegrityRegistrationIntegrationTest {
                 deviceRepository,
                 refreshTokenIssuer,
                 accessTokenIssuer,
-                verifier,
+                new RoutingDeviceAttestationVerifier(verifier, App_Attest_검증기를_만든다()),
                 tokenProperties
+        );
+    }
+
+    private AppAttestDeviceAttestationVerifier App_Attest_검증기를_만든다() {
+        return new AppAttestDeviceAttestationVerifier(
+                new AppAttestObjectDecoder(),
+                new AppAttestCertificateChainValidator(),
+                deviceChallengeService,
+                설정이_없는_app_attest_설정(),
+                new AppAttestMetrics(registry)
         );
     }
 

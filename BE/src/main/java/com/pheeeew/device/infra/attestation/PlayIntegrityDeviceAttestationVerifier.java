@@ -8,7 +8,6 @@ import com.pheeeew.device.application.DeviceAttestationBudgetService;
 import com.pheeeew.device.application.DeviceAttestationVerifier;
 import com.pheeeew.device.application.DeviceChallengeService;
 import com.pheeeew.device.application.dto.DeviceAttestation;
-import com.pheeeew.device.domain.DevicePlatform;
 import com.pheeeew.device.exception.DeviceException;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
@@ -18,7 +17,6 @@ import org.springframework.stereotype.Component;
 @Component
 public class PlayIntegrityDeviceAttestationVerifier implements DeviceAttestationVerifier {
 
-    private static final DevicePlatform VERIFIABLE_PLATFORM = DevicePlatform.ANDROID;
     private static final String RECOGNIZED_APP_VERDICT = "PLAY_RECOGNIZED";
     private static final String DEVICE_INTEGRITY_VERDICT = "MEETS_DEVICE_INTEGRITY";
     private static final Pattern JOSE_COMPACT_PATTERN =
@@ -59,7 +57,6 @@ public class PlayIntegrityDeviceAttestationVerifier implements DeviceAttestation
             return;
         }
 
-        requireVerifiablePlatform(attestation.platform());
         requireConfiguredCredentials();
         requireCompactJoseForm(integrityToken);
         String challenge = requireChallenge(attestation.challenge());
@@ -94,12 +91,6 @@ public class PlayIntegrityDeviceAttestationVerifier implements DeviceAttestation
     private void rejectWhenAttestationRequired() {
         if (playIntegrityProperties.requireAttestation()) {
             throw rejected(PlayIntegrityRejection.ATTESTATION_REQUIRED);
-        }
-    }
-
-    private void requireVerifiablePlatform(DevicePlatform platform) {
-        if (platform != VERIFIABLE_PLATFORM) {
-            throw rejected(PlayIntegrityRejection.UNSUPPORTED_PLATFORM);
         }
     }
 
