@@ -145,6 +145,8 @@ public interface SighV2ControllerApi {
 
                     - 경로의 `id`로 삭제되지 않은 한숨을 조회합니다.
                     - 등록 시 저장된 최종 표시 위치, 생성 시각, 메모와 익명 닉네임을 반환합니다.
+                    - `properties.liked`는 인증된 기기의 좋아요 여부, `properties.likeCount`는 전체 좋아요 수입니다.
+                    - 전체 좋아요가 없으면 `liked`는 `false`, `likeCount`는 `0`입니다.
                     - 조회할 때 위치나 닉네임을 다시 생성하지 않습니다.
                     - 메모가 없는 경우 `memo`는 `null`입니다.
                     """
@@ -153,6 +155,8 @@ public interface SighV2ControllerApi {
             @ApiResponse(
                     responseCode = "200",
                     description = "한숨 상세 조회 성공",
+                    headers = @Header(name = "Cache-Control", description = "개인별 조회 응답을 캐시에 저장하지 않습니다.",
+                            schema = @Schema(type = "string", example = "no-store")),
                     content = @Content(
                             mediaType = "application/geo+json",
                             schema = @Schema(
@@ -213,7 +217,8 @@ public interface SighV2ControllerApi {
                     schema = @Schema(minimum = "1")
             )
             @Min(value = 1, message = "한숨 ID는 1 이상이어야 합니다.")
-            Long id
+            Long id,
+            @Parameter(hidden = true) UUID devicePublicId
     );
 
     @Operation(

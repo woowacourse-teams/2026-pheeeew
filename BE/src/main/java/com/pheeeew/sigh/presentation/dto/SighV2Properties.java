@@ -1,5 +1,8 @@
 package com.pheeeew.sigh.presentation.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -12,10 +15,25 @@ public record SighV2Properties(
         String memo,
 
         @Schema(description = "서버에서 최초 등록 시 생성한 익명 닉네임", example = "날아가는 고라니")
-        String nickname
+        String nickname,
+
+        @JsonInclude(Include.NON_NULL)
+        @Schema(description = "인증된 기기의 좋아요 여부. 단건 조회 응답에 포함됩니다.", example = "true")
+        Boolean liked,
+
+        @JsonInclude(Include.NON_NULL)
+        @Schema(description = "한숨의 전체 좋아요 수. 단건 조회 응답에 포함됩니다.", minimum = "0", example = "12")
+        Long likeCount
 ) {
 
     public static SighV2Properties from(SighResult sigh) {
-        return new SighV2Properties(sigh.createdAt(), sigh.memo(), sigh.nickname());
+        return new SighV2Properties(sigh.createdAt(), sigh.memo(), sigh.nickname(), null, null);
+    }
+
+    public static SighV2Properties from(SighDetailResult result) {
+        SighResult sigh = result.sigh();
+        return new SighV2Properties(
+                sigh.createdAt(), sigh.memo(), sigh.nickname(), result.like().liked(), result.like().likeCount()
+        );
     }
 }

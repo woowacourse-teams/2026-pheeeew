@@ -19,6 +19,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,13 +62,15 @@ public class SighV2Controller implements SighV2ControllerApi {
     @Override
     @GetMapping("/{id}")
     public ResponseEntity<SighFeature<SighV2Properties>> findById(
-            @PathVariable Long id
+            @PathVariable Long id,
+            @CurrentDevice UUID devicePublicId
     ) {
-        SighDetailResult result = sighService.findById(id, null);
+        SighDetailResult result = sighService.findById(id, devicePublicId);
 
         return ResponseEntity.ok()
                 .contentType(GEO_JSON)
-                .body(toFeature(result.sigh()));
+                .cacheControl(CacheControl.noStore())
+                .body(SighFeature.of(result.sigh(), SighV2Properties.from(result)));
     }
 
     @Override
