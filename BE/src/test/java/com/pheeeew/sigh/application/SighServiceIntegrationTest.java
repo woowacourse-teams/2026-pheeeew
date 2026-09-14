@@ -1,8 +1,13 @@
 package com.pheeeew.sigh.application;
 
+import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import com.pheeeew.device.domain.repository.DeviceRepository;
+import com.pheeeew.device.exception.DeviceErrorCode;
+import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.dto.SighListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighMapItem;
@@ -32,6 +37,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -67,15 +73,26 @@ class SighServiceIntegrationTest {
     private SighRepository sighRepository;
 
     @Autowired
+    private DeviceRepository deviceRepository;
+
+    @Autowired
     private JdbcClient jdbcClient;
 
     @Autowired
     private MeterRegistry meterRegistry;
 
+    private UUID devicePublicId;
+
+    @BeforeEach
+    void setUp() {
+        devicePublicId = deviceRepository.save(기본_기기_빌더().build()).getPublicId();
+    }
+
     @AfterEach
     void tearDown() {
         jdbcClient.sql("DELETE FROM sigh_reports").update();
         sighRepository.deleteAll();
+        deviceRepository.deleteAll();
     }
 
     @Test
@@ -412,6 +429,31 @@ class SighServiceIntegrationTest {
     }
 
     @Test
+    void 등록되지_않은_기기는_바텀시트_첫_페이지를_조회할_수_없다() {
+        // given
+        UUID unknownDevicePublicId = UUID.randomUUID();
+
+        // when / then
+        assertThatThrownBy(() -> sighService.findFirstListPage(SEOUL_BOUNDS, unknownDevicePublicId))
+                .isInstanceOfSatisfying(DeviceException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
+    }
+
+    @Test
+    void 기기가_삭제되면_발급된_커서가_있어도_다음_페이지를_조회할_수_없다() {
+        // given
+        insertSighs(21, 126.9780, 37.5664);
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        deviceRepository.deleteAll();
+
+        // when / then
+        assertThat(firstPage.nextCursor()).isNotBlank();
+        assertThatThrownBy(() -> sighService.findNextListPage(firstPage.nextCursor(), devicePublicId))
+                .isInstanceOfSatisfying(DeviceException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
+    }
+
+    @Test
     void 바텀시트_목록은_메모와_닉네임을_포함해_20건씩_최신순으로_조회한다() {
         // given
         String createdAt = Instant.now().minusSeconds(60).toString();
@@ -428,8 +470,8 @@ class SighServiceIntegrationTest {
         ));
 
         // when
-        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS);
-        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor());
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         List<Long> expectedFirstPageIds = new ArrayList<>(ids.subList(1, ids.size()));
@@ -465,7 +507,7 @@ class SighServiceIntegrationTest {
         softDeleteSigh(삭제된_한숨);
 
         // when
-        SighListResult result = sighService.findFirstListPage(DATE_LINE_BOUNDS);
+        SighListResult result = sighService.findFirstListPage(DATE_LINE_BOUNDS, devicePublicId);
 
         // then
         assertThat(result.items())
@@ -522,7 +564,7 @@ class SighServiceIntegrationTest {
         for (int index = 0; index < 21; index++) {
             ids.add(insertSigh(126.9780, 37.5664, createdAt));
         }
-        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS);
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         SighListCursor cursor = SighListCursorCodec.decode(firstPage.nextCursor());
         Long 이후에_등록된_한숨 = insertSigh(
                 126.9780,
@@ -531,7 +573,7 @@ class SighServiceIntegrationTest {
         );
 
         // when
-        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor());
+        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         assertThat(secondPage.items())
@@ -703,7 +745,7 @@ class SighServiceIntegrationTest {
 
     private List<SighResult> findAllListPages(SighSearchBounds bounds) {
         List<SighResult> items = new ArrayList<>();
-        SighListResult page = sighService.findFirstListPage(bounds);
+        SighListResult page = sighService.findFirstListPage(bounds, devicePublicId);
 
         for (int pageIndex = 0; pageIndex < 25; pageIndex++) {
             assertThat(page.items()).hasSizeLessThanOrEqualTo(20);
@@ -711,7 +753,7 @@ class SighServiceIntegrationTest {
             if (!page.hasNext()) {
                 return items;
             }
-            page = sighService.findNextListPage(page.nextCursor());
+            page = sighService.findNextListPage(page.nextCursor(), devicePublicId);
         }
 
         throw new AssertionError("500건 조회는 25페이지 안에 끝나야 합니다.");

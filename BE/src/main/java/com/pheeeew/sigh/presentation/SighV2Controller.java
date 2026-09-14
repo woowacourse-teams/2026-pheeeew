@@ -43,13 +43,14 @@ public class SighV2Controller implements SighV2ControllerApi {
     @Override
     @GetMapping
     public CursorResponse<SighFeature<SighV2Properties>> findAll(
-            @ModelAttribute SighListRequest request
+            @ModelAttribute SighListRequest request,
+            @CurrentDevice UUID devicePublicId
     ) {
         SighListResult result;
         if (request.isNextPageRequest()) {
-            result = sighService.findNextListPage(request.cursor());
+            result = sighService.findNextListPage(request.cursor(), devicePublicId);
         } else {
-            result = sighService.findFirstListPage(request.toBounds());
+            result = sighService.findFirstListPage(request.toBounds(), devicePublicId);
         }
 
         List<SighFeature<SighV2Properties>> items = result.items().stream()

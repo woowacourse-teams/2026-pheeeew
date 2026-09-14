@@ -37,6 +37,7 @@ public interface SighV2ControllerApi {
                     ### 인증
 
                     - `Authorization: Bearer <access token>` 헤더가 필요합니다.
+                    - 토큰에 해당하는 기기가 등록되어 있어야 하며, 다음 페이지에서도 확인합니다.
 
                     ### 첫 페이지
 
@@ -115,9 +116,14 @@ public interface SighV2ControllerApi {
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
-                            examples = @ExampleObject(value = """
-                                    {"code":"AUTH-001","message":"인증이 필요합니다."}
-                                    """)
+                            examples = {
+                                    @ExampleObject(name = "인증 실패", value = """
+                                            {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                            """),
+                                    @ExampleObject(name = "등록되지 않은 기기", value = """
+                                            {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
+                                            """)
+                            }
                     )
             ),
             @ApiResponse(
@@ -130,7 +136,8 @@ public interface SighV2ControllerApi {
             )
     })
     CursorResponse<SighFeature<SighV2Properties>> findAll(
-            @ParameterObject @Valid SighListRequest request
+            @ParameterObject @Valid SighListRequest request,
+            @Parameter(hidden = true) UUID devicePublicId
     );
 
     @Operation(

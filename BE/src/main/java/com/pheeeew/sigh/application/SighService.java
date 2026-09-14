@@ -97,22 +97,26 @@ public class SighService {
         return SighMapResult.of(sighs, truncated);
     }
 
-    public SighListResult findFirstListPage(SighSearchBounds bounds) {
+    public SighListResult findFirstListPage(SighSearchBounds bounds, UUID devicePublicId) {
         Instant snapshotAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
         SighListCursor cursor = SighListCursor.initial(bounds, snapshotAt);
 
-        return findList(cursor);
+        return findList(cursor, devicePublicId);
     }
 
-    public SighListResult findNextListPage(String encodedCursor) {
-        return findList(SighListCursorCodec.decode(encodedCursor));
+    public SighListResult findNextListPage(String encodedCursor, UUID devicePublicId) {
+        return findList(SighListCursorCodec.decode(encodedCursor), devicePublicId);
     }
 
     private SighSaveResult createSaveResult(Sigh sigh, boolean created) {
         return SighSaveResult.of(SighResult.from(sigh), created);
     }
 
-    private SighListResult findList(SighListCursor cursor) {
+    private SighListResult findList(SighListCursor cursor, UUID devicePublicId) {
+        if (deviceRepository.findByPublicId(devicePublicId).isEmpty()) {
+            throw new DeviceException(DEVICE_NOT_FOUND);
+        }
+
         SighSearchBounds bounds = cursor.bounds();
         List<SighListProjection> projections = sighRepository.findListWithinBounds(
                 bounds.minLongitude(),

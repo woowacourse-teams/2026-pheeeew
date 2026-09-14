@@ -82,7 +82,7 @@ class SighV2ControllerTest {
     void 검색_영역으로_바텀시트_첫_페이지를_조회한다() {
         // given
         SighSearchBounds bounds = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
-        when(sighService.findFirstListPage(bounds))
+        when(sighService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
                 .thenReturn(SighListResult.of(
                         List.of(SighResult.of(
                                 SIGH_ID,
@@ -98,7 +98,7 @@ class SighV2ControllerTest {
 
         // when
         RestTestClient.ResponseSpec result = client.get()
-                .uri("/api/v2/sighs?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6")
+                .uri("/api/v2/sighs?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6&devicePublicId={spoofedId}", UUID.randomUUID())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange();
 
@@ -127,14 +127,14 @@ class SighV2ControllerTest {
                           "nextCursor": "next-cursor"
                         }
                         """, JsonCompareMode.STRICT);
-        verify(sighService).findFirstListPage(bounds);
+        verify(sighService).findFirstListPage(bounds, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 날짜변경선을_가로지르는_검색_영역으로_첫_페이지를_조회한다() {
         // given
         SighSearchBounds bounds = SighSearchBounds.of(170.0, -10.0, -170.0, 10.0);
-        when(sighService.findFirstListPage(bounds))
+        when(sighService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
                 .thenReturn(SighListResult.of(List.of(), false, null));
 
         // when
@@ -144,13 +144,13 @@ class SighV2ControllerTest {
 
         // then
         result.expectStatus().isOk();
-        verify(sighService).findFirstListPage(bounds);
+        verify(sighService).findFirstListPage(bounds, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 서버가_발급한_커서만으로_바텀시트_다음_페이지를_조회한다() {
         // given
-        when(sighService.findNextListPage("opaque-cursor"))
+        when(sighService.findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID))
                 .thenReturn(SighListResult.of(
                         List.of(SighResult.of(
                                 SIGH_ID,
@@ -166,7 +166,7 @@ class SighV2ControllerTest {
 
         // when
         RestTestClient.ResponseSpec result = client.get()
-                .uri("/api/v2/sighs?cursor=opaque-cursor")
+                .uri("/api/v2/sighs?cursor=opaque-cursor&devicePublicId={spoofedId}", UUID.randomUUID())
                 .exchange();
 
         // then
@@ -194,7 +194,7 @@ class SighV2ControllerTest {
                           "nextCursor": null
                         }
                         """, JsonCompareMode.STRICT);
-        verify(sighService).findNextListPage("opaque-cursor");
+        verify(sighService).findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID);
     }
 
     @ParameterizedTest
@@ -225,7 +225,7 @@ class SighV2ControllerTest {
     @Test
     void 사용할_수_없는_커서는_400을_반환한다() {
         // given
-        when(sighService.findNextListPage("invalid-cursor"))
+        when(sighService.findNextListPage("invalid-cursor", DEVICE_PUBLIC_ID))
                 .thenThrow(new SighException(SighErrorCode.SIGH_INVALID_CURSOR));
 
         // when
@@ -240,7 +240,29 @@ class SighV2ControllerTest {
                 .json("""
                         {"code":"SIGH-003","message":"한숨 목록 커서를 사용할 수 없습니다."}
                         """, JsonCompareMode.STRICT);
-        verify(sighService).findNextListPage("invalid-cursor");
+        verify(sighService).findNextListPage("invalid-cursor", DEVICE_PUBLIC_ID);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "/api/v2/sighs?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6",
+            "/api/v2/sighs?cursor=opaque-cursor"
+    })
+    void 토큰의_기기가_등록되어_있지_않으면_목록_조회는_401을_반환한다(String uri) {
+        // given
+        SighSearchBounds bounds = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
+        when(sighService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
+                .thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND));
+        when(sighService.findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID))
+                .thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND));
+
+        // when
+        RestTestClient.ResponseSpec result = client.get().uri(uri).exchange();
+
+        // then
+        result.expectStatus().isUnauthorized().expectBody().json("""
+                {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
+                """, JsonCompareMode.STRICT);
     }
 
     @Test
