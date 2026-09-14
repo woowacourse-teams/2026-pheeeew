@@ -255,7 +255,10 @@ public interface SighV2ControllerApi {
                     ### 중복 요청
 
                     - 한 번의 등록 시도마다 새로운 `requestId`를 사용합니다.
-                    - 같은 `requestId`로 재시도하면 좌표와 메모가 달라도 최초 등록 결과를 반환합니다.
+                    - 같은 `requestId`로 재시도하면 좌표와 메모가 달라도 최초 등록 내용과 위치를 반환합니다.
+                    - 신규 생성의 `properties.liked`는 `false`, `properties.likeCount`는 `0`입니다.
+                    - 재시도 응답은 요청한 기기의 현재 좋아요 여부와 전체 좋아요 수를 반환합니다.
+                    - 삭제된 한숨도 같은 `requestId`로 재시도하면 기존 등록 결과를 반환합니다.
 
                     ### 위치
 
@@ -371,7 +374,8 @@ public interface SighV2ControllerApi {
                     )
             )
             @Valid
-            SighCreateV2Request request
+            SighCreateV2Request request,
+            @Parameter(hidden = true) UUID devicePublicId
     );
 
     @Operation(summary = "한숨 좋아요 상태 변경", description = """

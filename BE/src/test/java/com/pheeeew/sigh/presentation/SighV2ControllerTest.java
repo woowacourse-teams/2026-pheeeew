@@ -2,6 +2,7 @@ package com.pheeeew.sigh.presentation;
 
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import com.pheeeew.auth.fixture.AccessTokenFixture;
@@ -260,7 +261,7 @@ class SighV2ControllerTest {
     @Test
     void 메모가_있는_한숨을_최초_등록하면_201과_상세_URI와_메모와_닉네임을_반환한다() {
         // given
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, "  오늘은 조금 지쳤다  "))
+        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, "  오늘은 조금 지쳤다  ", DEVICE_PUBLIC_ID))
                 .thenReturn(기본_저장_결과("오늘은 조금 지쳤다", true));
 
         // when
@@ -277,15 +278,17 @@ class SighV2ControllerTest {
         result.expectStatus().isCreated()
                 .expectHeader().contentType(GEO_JSON)
                 .expectHeader().valueEquals(HttpHeaders.LOCATION, "/api/v2/sighs/42")
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody()
-                .json(기본_GeoJSON("\"오늘은 조금 지쳤다\""), JsonCompareMode.STRICT);
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, "  오늘은 조금 지쳤다  ");
+                .json(좋아요를_포함한_GeoJSON("\"오늘은 조금 지쳤다\"", false, 0), JsonCompareMode.STRICT);
+        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, "  오늘은 조금 지쳤다  ", DEVICE_PUBLIC_ID);
+        verifyNoMoreInteractions(sighService);
     }
 
     @Test
     void application_json_응답을_요청해도_406_없이_한숨을_등록한다() {
         // given
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, null))
+        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID))
                 .thenReturn(기본_저장_결과(null, true));
 
         // when
@@ -305,13 +308,13 @@ class SighV2ControllerTest {
         // then
         result.expectStatus().isCreated()
                 .expectHeader().contentType(GEO_JSON);
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, null);
+        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 메모를_생략하면_null로_등록하고_반환한다() {
         // given
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, null))
+        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID))
                 .thenReturn(기본_저장_결과(null, true));
 
         // when
@@ -327,14 +330,14 @@ class SighV2ControllerTest {
         result.expectStatus().isCreated()
                 .expectHeader().contentType(GEO_JSON)
                 .expectBody()
-                .json(기본_GeoJSON("null"), JsonCompareMode.STRICT);
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, null);
+                .json(좋아요를_포함한_GeoJSON("null", false, 0), JsonCompareMode.STRICT);
+        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 공백으로만_이루어진_메모는_null로_등록한다() {
         // given
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, "   "))
+        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, "   ", DEVICE_PUBLIC_ID))
                 .thenReturn(기본_저장_결과(null, true));
 
         // when
@@ -349,14 +352,17 @@ class SighV2ControllerTest {
 
         // then
         result.expectStatus().isCreated();
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, "   ");
+        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, "   ", DEVICE_PUBLIC_ID);
     }
 
-    @Test
-    void 같은_requestId로_재시도하면_200과_최초_메모와_닉네임을_반환한다() {
+    @ParameterizedTest
+    @CsvSource({"true, 12", "false, 12", "false, 0"})
+    void 같은_requestId로_재시도하면_200과_최초_내용과_현재_좋아요_정보를_반환한다(boolean liked, long likeCount) {
         // given
-        when(sighService.save(REQUEST_ID, 129.0756, 35.1796, "재시도 메모"))
-                .thenReturn(기본_저장_결과("최초 메모", false));
+        when(sighService.save(REQUEST_ID, 129.0756, 35.1796, "재시도 메모", DEVICE_PUBLIC_ID))
+                .thenReturn(SighSaveResult.of(
+                        기본_저장_결과("최초 메모", false).sigh(), false, SighLikeResult.of(liked, likeCount)
+                ));
 
         // when
         RestTestClient.ResponseSpec result = 한숨을_등록한다("""
@@ -372,9 +378,11 @@ class SighV2ControllerTest {
         result.expectStatus().isOk()
                 .expectHeader().contentType(GEO_JSON)
                 .expectHeader().doesNotExist(HttpHeaders.LOCATION)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody()
-                .json(기본_GeoJSON("\"최초 메모\""), JsonCompareMode.STRICT);
-        verify(sighService).save(REQUEST_ID, 129.0756, 35.1796, "재시도 메모");
+                .json(좋아요를_포함한_GeoJSON("\"최초 메모\"", liked, likeCount), JsonCompareMode.STRICT);
+        verify(sighService).save(REQUEST_ID, 129.0756, 35.1796, "재시도 메모", DEVICE_PUBLIC_ID);
+        verifyNoMoreInteractions(sighService);
     }
 
     @Test
@@ -382,7 +390,7 @@ class SighV2ControllerTest {
         // given
         String memo = "가".repeat(50);
         String requestedMemo = "  " + memo + "  ";
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, requestedMemo))
+        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, requestedMemo, DEVICE_PUBLIC_ID))
                 .thenReturn(기본_저장_결과(memo, true));
 
         // when
@@ -397,7 +405,7 @@ class SighV2ControllerTest {
 
         // then
         result.expectStatus().isCreated();
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, requestedMemo);
+        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, requestedMemo, DEVICE_PUBLIC_ID);
     }
 
     @Test
@@ -515,7 +523,7 @@ class SighV2ControllerTest {
 
     private RestTestClient.ResponseSpec 한숨을_등록한다(String body) {
         return client.post()
-                .uri("/api/v2/sighs")
+                .uri("/api/v2/sighs?devicePublicId={spoofedId}", UUID.randomUUID())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .exchange();
@@ -537,7 +545,8 @@ class SighV2ControllerTest {
                         memo,
                         "날아가는 고라니"
                 ),
-                created
+                created,
+                SighLikeResult.of(false, 0)
         );
     }
 
@@ -573,23 +582,5 @@ class SighV2ControllerTest {
                   }
                 }
                 """.formatted(memo, liked, likeCount);
-    }
-
-    private String 기본_GeoJSON(String memo) {
-        return """
-                {
-                  "type": "Feature",
-                  "id": 42,
-                  "geometry": {
-                    "type": "Point",
-                    "coordinates": [126.9774, 37.5669]
-                  },
-                  "properties": {
-                    "createdAt": "2026-09-01T12:00:00Z",
-                    "memo": %s,
-                    "nickname": "날아가는 고라니"
-                  }
-                }
-                """.formatted(memo);
     }
 }

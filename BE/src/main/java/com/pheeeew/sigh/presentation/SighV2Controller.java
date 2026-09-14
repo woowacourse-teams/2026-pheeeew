@@ -54,7 +54,7 @@ public class SighV2Controller implements SighV2ControllerApi {
         }
 
         List<SighFeature<SighV2Properties>> items = result.items().stream()
-                .map(item -> SighFeature.of(item.sigh(), SighV2Properties.from(item)))
+                .map(item -> toFeature(item.sigh(), item.like()))
                 .toList();
 
         return ResponseEntity.ok()
@@ -73,19 +73,21 @@ public class SighV2Controller implements SighV2ControllerApi {
         return ResponseEntity.ok()
                 .contentType(GEO_JSON)
                 .cacheControl(CacheControl.noStore())
-                .body(SighFeature.of(result.sigh(), SighV2Properties.from(result)));
+                .body(toFeature(result.sigh(), result.like()));
     }
 
     @Override
     @PostMapping
     public ResponseEntity<SighFeature<SighV2Properties>> save(
-            @RequestBody SighCreateV2Request request
+            @RequestBody SighCreateV2Request request,
+            @CurrentDevice UUID devicePublicId
     ) {
         SighSaveResult result = sighService.save(
                 request.requestId(),
                 request.longitude(),
                 request.latitude(),
-                request.memo()
+                request.memo(),
+                devicePublicId
         );
         SighResult sigh = result.sigh();
 
@@ -96,7 +98,8 @@ public class SighV2Controller implements SighV2ControllerApi {
 
         return response
                 .contentType(GEO_JSON)
-                .body(toFeature(sigh));
+                .cacheControl(CacheControl.noStore())
+                .body(toFeature(sigh, result.like()));
     }
 
     @Override
@@ -110,7 +113,7 @@ public class SighV2Controller implements SighV2ControllerApi {
         return SighLikeResponse.from(result);
     }
 
-    private SighFeature<SighV2Properties> toFeature(SighResult sigh) {
-        return SighFeature.of(sigh, SighV2Properties.from(sigh));
+    private SighFeature<SighV2Properties> toFeature(SighResult sigh, SighLikeResult like) {
+        return SighFeature.of(sigh, SighV2Properties.of(sigh, like));
     }
 }

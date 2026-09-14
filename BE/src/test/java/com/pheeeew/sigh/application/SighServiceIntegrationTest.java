@@ -163,7 +163,8 @@ class SighServiceIntegrationTest {
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
-                "  오늘은 힘들었다  "
+                "  오늘은 힘들었다  ",
+                devicePublicId
         );
 
         // then
@@ -203,7 +204,8 @@ class SighServiceIntegrationTest {
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
-                "최초 메모"
+                "최초 메모",
+                devicePublicId
         );
 
         // when
@@ -211,7 +213,8 @@ class SighServiceIntegrationTest {
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
-                "재시도 메모"
+                "재시도 메모",
+                devicePublicId
         );
 
         // then
@@ -228,7 +231,8 @@ class SighServiceIntegrationTest {
                 UUID.randomUUID(),
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
-                "오늘은 조금 지쳤다"
+                "오늘은 조금 지쳤다",
+                devicePublicId
         );
 
         // when
@@ -302,6 +306,7 @@ class SighServiceIntegrationTest {
                 .extracting(result -> result.sigh().latitude())
                 .containsOnly(results.getFirst().sigh().latitude());
         assertThat(results).filteredOn(SighSaveResult::created).hasSize(1);
+        assertThat(results).extracting(SighSaveResult::like).containsOnly(SighLikeResult.of(false, 0));
         assertThat(sighRepository.count()).isOne();
     }
 
@@ -708,7 +713,9 @@ class SighServiceIntegrationTest {
                     return sighService.save(
                             requestId,
                             SEOUL_CITY_HALL_LONGITUDE,
-                            SEOUL_CITY_HALL_LATITUDE
+                            SEOUL_CITY_HALL_LATITUDE,
+                            null,
+                            devicePublicId
                     );
                 }));
             }
