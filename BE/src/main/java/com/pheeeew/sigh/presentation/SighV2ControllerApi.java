@@ -153,6 +153,7 @@ public interface SighV2ControllerApi {
                     ### 인증
 
                     - `Authorization: Bearer <access token>` 헤더가 필요합니다.
+                    - 토큰에 해당하는 기기가 등록되어 있어야 합니다.
 
                     ### 조회 결과
 
@@ -194,13 +195,18 @@ public interface SighV2ControllerApi {
             ),
             @ApiResponse(
                     responseCode = "401",
-                    description = "인증 정보가 없거나 유효하지 않음",
+                    description = "토큰이 없거나 유효하지 않거나 등록된 기기를 찾을 수 없음",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
-                            examples = @ExampleObject(value = """
-                                    {"code":"AUTH-001","message":"인증이 필요합니다."}
-                                    """)
+                            examples = {
+                                    @ExampleObject(name = "인증 실패", value = """
+                                            {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                            """),
+                                    @ExampleObject(name = "등록되지 않은 기기", value = """
+                                            {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
+                                            """)
+                            }
                     )
             ),
             @ApiResponse(
@@ -240,6 +246,7 @@ public interface SighV2ControllerApi {
                     ### 인증
 
                     - `Authorization: Bearer <access token>` 헤더가 필요합니다.
+                    - 신규 등록과 재요청 모두 토큰에 해당하는 기기가 등록되어 있어야 합니다.
 
                     ### 메모
 
@@ -324,13 +331,18 @@ public interface SighV2ControllerApi {
             ),
             @ApiResponse(
                     responseCode = "401",
-                    description = "access token 이 없거나 사용할 수 없음",
+                    description = "토큰이 없거나 유효하지 않거나 등록된 기기를 찾을 수 없음",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
-                            examples = @ExampleObject(value = """
-                                    {"code":"AUTH-001","message":"인증이 필요합니다."}
-                                    """)
+                            examples = {
+                                    @ExampleObject(name = "인증 실패", value = """
+                                            {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                            """),
+                                    @ExampleObject(name = "등록되지 않은 기기", value = """
+                                            {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
+                                            """)
+                            }
                     )
             ),
             @ApiResponse(
