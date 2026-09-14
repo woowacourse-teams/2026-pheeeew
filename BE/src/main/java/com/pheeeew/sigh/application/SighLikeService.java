@@ -1,0 +1,46 @@
+package com.pheeeew.sigh.application;
+
+import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
+import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
+
+import com.pheeeew.device.domain.Device;
+import com.pheeeew.device.domain.repository.DeviceRepository;
+import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.sigh.domain.SighLike;
+import com.pheeeew.sigh.domain.repository.SighLikeRepository;
+import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.exception.SighException;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+@Service
+public class SighLikeService {
+
+    private final SighLikeRepository sighLikeRepository;
+    private final SighRepository sighRepository;
+    private final DeviceRepository deviceRepository;
+
+    @Transactional
+    public boolean update(Long sighId, UUID devicePublicId, boolean liked) {
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
+                .map(Device::getId)
+                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+        sighRepository.findByIdAndDeletedAtIsNull(sighId)
+                .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
+        SighLike like = sighLikeRepository.findBySighIdAndDeviceId(sighId, deviceId).orElse(null);
+
+        if (liked && like == null) {
+            sighLikeRepository.save(SighLike.builder()
+                    .sighId(sighId)
+                    .deviceId(deviceId)
+                    .build());
+        } else if (!liked && like != null) {
+            sighLikeRepository.delete(like);
+        }
+        return liked;
+    }
+}
