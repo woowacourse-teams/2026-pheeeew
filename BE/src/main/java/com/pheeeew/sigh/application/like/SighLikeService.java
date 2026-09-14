@@ -1,4 +1,4 @@
-package com.pheeeew.sigh.application;
+package com.pheeeew.sigh.application.like;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;

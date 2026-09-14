@@ -1,4 +1,4 @@
-package com.pheeeew.sigh.application;
+package com.pheeeew.sigh.application.like;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.sigh.fixture.SighFixture.기본_한숨_빌더;
