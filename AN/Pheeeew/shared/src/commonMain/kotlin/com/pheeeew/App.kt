@@ -5,6 +5,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -20,6 +23,9 @@ import com.pheeeew.core.navigation.PredictiveBackContent
 import com.pheeeew.core.navigation.Screen
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.domain.repository.SighRepository
+import com.pheeeew.domain.exception.device.DeviceRegistrationException
+import com.pheeeew.domain.model.device.DeviceRegistrationError
+import com.pheeeew.domain.model.device.DeviceRegistrationState
 import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.domain.usecase.EnsureDeviceRegisteredUseCase
 import com.pheeeew.feature.map.MapPerformanceLogger
@@ -50,9 +56,26 @@ fun App(
             }
         val mapReadiness = remember { MutableStateFlow(false) }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
+        var registrationState by remember { mutableStateOf<DeviceRegistrationState?>(null) }
+
+        fun registerDevice() {
+            ensureDeviceRegistered ?: return
+            coroutineScope.launch {
+                registrationState = DeviceRegistrationState.Registering
+                val result = ensureDeviceRegistered.invoke()
+                registrationState = result.fold(
+                    onSuccess = { session ->
+                        DeviceRegistrationState.Registered(session.accessTokenExpiresAtEpochSeconds)
+                    },
+                    onFailure = { error ->
+                        DeviceRegistrationState.Failed(error.toDeviceRegistrationError())
+                    },
+                )
+            }
+        }
 
         LaunchedEffect(ensureDeviceRegistered) {
-            ensureDeviceRegistered?.invoke()
+            registerDevice()
         }
 
         // 오버레이 화면들이 뒤에 깔린 지도로 터치가 새어나가지 않도록 막습니다.
@@ -126,6 +149,40 @@ fun App(
                     modifier = overlayModifier,
                 )
             }
+
+            if (registrationState is DeviceRegistrationState.Failed) {
+                val error = (registrationState as DeviceRegistrationState.Failed).error
+                AlertDialog(
+                    onDismissRequest = {},
+                    title = { Text("기기 등록 실패") },
+                    text = { Text(error.message()) },
+                    confirmButton = {
+                        Button(onClick = ::registerDevice) {
+                            Text("다시 시도")
+                        }
+                    },
+                )
+            }
         }
     }
+}
+
+private fun Throwable.toDeviceRegistrationError(): DeviceRegistrationError = when (this) {
+    is DeviceRegistrationException.InvalidRefreshToken -> DeviceRegistrationError.InvalidRefreshToken
+    is DeviceRegistrationException.DeviceNotFound -> DeviceRegistrationError.DeviceNotFound
+    is DeviceRegistrationException.Network -> DeviceRegistrationError.Network
+    else -> DeviceRegistrationError.Unknown
+}
+
+private fun DeviceRegistrationError.message(): String = when (this) {
+    DeviceRegistrationError.Network -> "네트워크 연결을 확인해주세요."
+    DeviceRegistrationError.InvalidRefreshToken,
+    DeviceRegistrationError.DeviceNotFound,
+    -> "기기 인증 정보가 만료되어 다시 등록해야 합니다."
+    DeviceRegistrationError.InvalidChallenge -> "인증 요청이 만료되었습니다. 다시 시도해주세요."
+    DeviceRegistrationError.AttestationRejected -> "기기 무결성 확인에 실패했습니다."
+    DeviceRegistrationError.Server,
+    is DeviceRegistrationError.RetryableServer,
+    DeviceRegistrationError.Unknown,
+    -> "잠시 후 다시 시도해주세요."
 }
