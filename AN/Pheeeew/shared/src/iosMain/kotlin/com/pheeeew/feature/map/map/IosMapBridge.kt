@@ -78,6 +78,8 @@ data class IosMapScreenPoint(
 enum class IosMapCameraCommandKind {
     ZoomBy,
     MoveToCurrentLocation,
+    MoveToCoordinate,
+    MoveToBounds,
 }
 
 data class IosMapCameraCommand(
@@ -85,6 +87,13 @@ data class IosMapCameraCommand(
     val kind: IosMapCameraCommandKind,
     val delta: Double,
     val zoom: Double?,
+    val latitude: Double,
+    val longitude: Double,
+    val minLongitude: Double,
+    val minLatitude: Double,
+    val maxLongitude: Double,
+    val maxLatitude: Double,
+    val verticalPosition: Double?,
 )
 
 data class IosMapRenderState(
@@ -93,6 +102,7 @@ data class IosMapRenderState(
     val initialCenter: IosMapCoordinate?,
     val initialCenterIsProvisional: Boolean,
     val focusRequest: IosMapFocusRequest?,
+    val projectionTargets: List<IosMapFocusRequest>,
     val cameraCommand: IosMapCameraCommand?,
 ) {
     override fun toString(): String = "IosMapRenderState([redacted])"
