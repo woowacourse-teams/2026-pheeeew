@@ -4,6 +4,8 @@ import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.sigh.presentation.dto.SighCreateV2Request;
 import com.pheeeew.sigh.presentation.dto.SighFeature;
+import com.pheeeew.sigh.presentation.dto.SighLikeRequest;
+import com.pheeeew.sigh.presentation.dto.SighLikeResponse;
 import com.pheeeew.sigh.presentation.dto.SighListRequest;
 import com.pheeeew.sigh.presentation.dto.SighV2Properties;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,11 +22,12 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-@Tag(name = "한숨 v2", description = "메모와 익명 닉네임을 포함한 한숨 등록과 목록·상세 조회 API")
+@Tag(name = "한숨 v2", description = "메모와 익명 닉네임을 포함한 한숨 등록, 목록·상세 조회 및 좋아요 API")
 public interface SighV2ControllerApi {
 
     @Operation(
@@ -317,5 +320,38 @@ public interface SighV2ControllerApi {
             )
             @Valid
             SighCreateV2Request request
+    );
+
+    @Operation(summary = "한숨 좋아요 상태 변경", description = """
+            `Authorization: Bearer <access token>` 헤더가 필요하며, 인증된 기기의 좋아요만 변경합니다.
+
+            `liked: true`는 좋아요 추가, `liked: false`는 취소입니다. 이미 원하는 상태라면 그대로 유지합니다.
+            네트워크 재시도에는 같은 `liked` 값을 보내며, `requestId`와 기기 식별자는 보내지 않습니다.
+            존재하지 않거나 삭제된 한숨은 추가와 취소 모두 404를 반환합니다.
+
+            응답에는 처리 후 내 좋아요 여부와 전체 좋아요 수가 담깁니다.
+            다른 기기의 이후 변경에 따라 다음 조회의 좋아요 수는 달라질 수 있습니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "요청한 상태 반영 또는 기존 상태 유지",
+                    content = @Content(schema = @Schema(implementation = SighLikeResponse.class))),
+            @ApiResponse(responseCode = "400", description = "한숨 ID가 1 미만이거나 liked가 누락 또는 유효하지 않음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "토큰이 없거나 유효하지 않거나 등록된 기기를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "한숨이 없거나 삭제됨",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "동시 변경 충돌이 해소되지 않거나 처리 중 서버 오류",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    SighLikeResponse update(
+            @Parameter(description = "좋아요 상태를 변경할 한숨 ID", example = "42", schema = @Schema(minimum = "1"))
+            @Min(value = 1, message = "한숨 ID는 1 이상이어야 합니다.") Long sighId,
+            @Parameter(hidden = true) UUID devicePublicId,
+            @RequestBody(required = true, content = @Content(examples = {
+                    @ExampleObject(name = "좋아요 추가", value = "{\"liked\":true}"),
+                    @ExampleObject(name = "좋아요 취소", value = "{\"liked\":false}")
+            }))
+            @Valid SighLikeRequest request
     );
 }

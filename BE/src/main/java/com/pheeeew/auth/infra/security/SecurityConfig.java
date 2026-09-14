@@ -36,6 +36,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v2/sighs/*").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/sighs").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v2/sighs").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v2/sighs/*/likes").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v2/reports").authenticated()
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**", "/actuator/prometheus").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()

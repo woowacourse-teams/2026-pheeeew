@@ -10,6 +10,7 @@ import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.dto.SighSearchBounds;
+import com.pheeeew.sigh.application.like.SighLikeRetryService;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import java.time.Instant;
@@ -42,6 +43,9 @@ class SighV2ControllerTest {
 
     @MockitoBean
     private SighService sighService;
+
+    @MockitoBean
+    private SighLikeRetryService sighLikeRetryService;
 
     @Autowired
     SighV2ControllerTest(RestTestClient client) {
