@@ -42,6 +42,7 @@ import com.pheeeew.feature.map.overlay.ErrorSnackbar
 import com.pheeeew.feature.map.overlay.MapOverlay
 import com.pheeeew.feature.map.overlay.MemoEditor
 import com.pheeeew.feature.map.overlay.SighPhase
+import com.pheeeew.feature.map.sighlist.SIGH_BROWSER_EXIT_DURATION_MILLIS
 import com.pheeeew.feature.map.sighlist.SighBrowserOverlay
 import com.pheeeew.feature.map.sighlist.SighModerationUiState
 import com.pheeeew.feature.map.sighlist.SighReportScreen
@@ -109,6 +110,7 @@ fun MapScreen(
     var starAgeRevision by remember { mutableIntStateOf(0) }
     var relativeTimeRevision by remember { mutableIntStateOf(0) }
     val sighBrowser = uiState.sighBrowser
+    var isSighBrowserComposed by remember { mutableStateOf(sighBrowser.isVisible) }
     val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
     val memoDraft = (uiState.sighRelease as? SighReleaseState.EditingMemo)?.draft
     val isMemoEditing = memoDraft != null
@@ -120,6 +122,15 @@ fun MapScreen(
             (listOfNotNull(sighBrowser.selectedSigh?.toPin()) + uiState.sighs)
                 .distinctBy(SighPin::id)
         }
+
+    LaunchedEffect(sighBrowser.isVisible) {
+        if (sighBrowser.isVisible) {
+            isSighBrowserComposed = true
+        } else {
+            delay(SIGH_BROWSER_EXIT_DURATION_MILLIS)
+            isSighBrowserComposed = false
+        }
+    }
 
     LaunchedEffect(sighBrowser.isVisible) {
         if (!sighBrowser.isVisible) return@LaunchedEffect
@@ -233,31 +244,33 @@ fun MapScreen(
             controlsEnabled = sighPhase == SighPhase.Idle && uiState.sighRelease is SighReleaseState.Idle,
         )
 
-        SighBrowserOverlay(
-            visible = sighBrowser.isVisible,
-            items = listItems,
-            selectedItem = selectedItem,
-            selectedItemPositionPx =
-                selectedProjectionPoint?.let { point -> Offset(point.xPx, point.yPx) },
-            isLoading = sighBrowser.isLoading || sighBrowser.isDetailLoading,
-            isLoadingMore = sighBrowser.isLoadingMore,
-            isLoadMoreError = sighBrowser.isLoadMoreError,
-            refreshRevision = sighBrowser.refreshRevision,
-            canLoadMore = sighBrowser.nextCursor != null,
-            errorMessage = sighBrowser.errorMessage,
-            moderationUiState = moderationUiState,
-            onItemClick = { onSighItemClick(it.id) },
-            onDismissList = onDismissSighList,
-            onDismissDetail = onDismissSighDetail,
-            onLoadMore = onLoadNextSighPage,
-            onRefresh = onRefreshSighList,
-            onOpenActionMenu = { item -> onOpenSighActionMenu(item.id, item.nickname) },
-            onDismissActionMenu = onDismissSighActionMenu,
-            onRequestBlock = onRequestSighBlock,
-            onDismissBlock = onDismissSighBlock,
-            onConfirmBlock = onConfirmSighBlock,
-            onRequestReport = onRequestSighReport,
-        )
+        if (isSighBrowserComposed) {
+            SighBrowserOverlay(
+                visible = sighBrowser.isVisible,
+                items = listItems,
+                selectedItem = selectedItem,
+                selectedItemPositionPx =
+                    selectedProjectionPoint?.let { point -> Offset(point.xPx, point.yPx) },
+                isLoading = sighBrowser.isLoading || sighBrowser.isDetailLoading,
+                isLoadingMore = sighBrowser.isLoadingMore,
+                isLoadMoreError = sighBrowser.isLoadMoreError,
+                refreshRevision = sighBrowser.refreshRevision,
+                canLoadMore = sighBrowser.nextCursor != null,
+                errorMessage = sighBrowser.errorMessage,
+                moderationUiState = moderationUiState,
+                onItemClick = { onSighItemClick(it.id) },
+                onDismissList = onDismissSighList,
+                onDismissDetail = onDismissSighDetail,
+                onLoadMore = onLoadNextSighPage,
+                onRefresh = onRefreshSighList,
+                onOpenActionMenu = { item -> onOpenSighActionMenu(item.id, item.nickname) },
+                onDismissActionMenu = onDismissSighActionMenu,
+                onRequestBlock = onRequestSighBlock,
+                onDismissBlock = onDismissSighBlock,
+                onConfirmBlock = onConfirmSighBlock,
+                onRequestReport = onRequestSighReport,
+            )
+        }
 
         if (moderationUiState.isReportVisible) {
             SighReportScreen(

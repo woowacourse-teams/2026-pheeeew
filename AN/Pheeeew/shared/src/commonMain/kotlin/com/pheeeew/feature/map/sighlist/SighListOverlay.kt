@@ -26,6 +26,8 @@ import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.navigation.PredictiveBackEffect
 import kotlin.math.roundToInt
 
+internal const val SIGH_BROWSER_EXIT_DURATION_MILLIS = 220L
+
 @Composable
 fun SighBrowserOverlay(
     visible: Boolean,
@@ -112,7 +114,11 @@ fun SighBrowserOverlay(
             visible = visible,
             modifier = Modifier.align(Alignment.BottomCenter),
             enter = slideInVertically(animationSpec = tween(260), initialOffsetY = { it }),
-            exit = slideOutVertically(animationSpec = tween(220), targetOffsetY = { it }),
+            exit =
+                slideOutVertically(
+                    animationSpec = tween(SIGH_BROWSER_EXIT_DURATION_MILLIS.toInt()),
+                    targetOffsetY = { it },
+                ),
         ) {
             Box(contentAlignment = Alignment.BottomCenter) {
                 if (!showActionMenu || selectedItem == null) {
