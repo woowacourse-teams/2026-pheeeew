@@ -21,6 +21,7 @@ data class SighBrowserUiState(
     val selectedSigh: Sigh? = null,
     val nextCursor: String? = null,
     val isLoading: Boolean = false,
+    val isDetailLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val isLoadMoreError: Boolean = false,
     val refreshRevision: Long = 0L,

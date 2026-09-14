@@ -568,6 +568,68 @@ class MapViewModelTest {
         }
 
     @Test
+    fun `지도 핀의 상세가 목록에 있으면 API 요청 없이 상세를 연다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository =
+                    RecordingSighRepository(
+                        firstPage = SighPage(listOf(sigh(id = 1L)), nextCursor = null),
+                    )
+                val viewModel = createViewModel(repository)
+                viewModel.onMapForeground()
+                viewModel.loadSighs(firstBounds)
+                viewModel.setSighListVisible(true)
+                runCurrent()
+                viewModel.setSighListVisible(false)
+
+                viewModel.openSighFromPin(1L)
+
+                assertTrue(viewModel.uiState.value.sighBrowser.isVisible)
+                assertEquals(
+                    1L,
+                    viewModel.uiState.value.sighBrowser.selectedSigh
+                        ?.id,
+                )
+                assertEquals(emptyList(), repository.requestedDetailIds)
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `지도 핀의 상세가 목록에 없으면 상세 API 응답을 캐시에 합쳐 연다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val detail = sigh(id = 7L, memo = "핀 상세")
+                val repository =
+                    RecordingSighRepository(
+                        detailSighs = mapOf(7L to detail),
+                    )
+                val viewModel = createViewModel(repository)
+                viewModel.onMapForeground()
+                viewModel.loadSighs(firstBounds)
+
+                viewModel.openSighFromPin(7L)
+                assertTrue(viewModel.uiState.value.sighBrowser.isVisible)
+                assertTrue(viewModel.uiState.value.sighBrowser.isDetailLoading)
+                runCurrent()
+
+                assertEquals(listOf(7L), repository.requestedDetailIds)
+                assertEquals(detail, viewModel.uiState.value.sighBrowser.selectedSigh)
+                assertEquals(listOf(detail), viewModel.uiState.value.sighBrowser.items)
+                assertEquals(false, viewModel.uiState.value.sighBrowser.isDetailLoading)
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `한숨 선택은 별도 요청 없이 목록 데이터로 상세를 연다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
@@ -722,10 +784,12 @@ class MapViewModelTest {
         private val mapSighs: List<SighPin>? = null,
         private val firstPage: SighPage = SighPage(emptyList(), nextCursor = null),
         private val nextPages: Map<String, SighPage> = emptyMap(),
+        private val detailSighs: Map<Long, Sigh> = emptyMap(),
     ) : SighRepository {
         val requestedBounds = mutableListOf<SighBounds>()
         val requestedListBounds = mutableListOf<SighBounds>()
         val requestedCursors = mutableListOf<String>()
+        val requestedDetailIds = mutableListOf<Long>()
         val createdCommands = mutableListOf<CreateSighCommand>()
 
         override suspend fun getFirstPage(bounds: SighBounds): SighPage {
@@ -738,7 +802,10 @@ class MapViewModelTest {
             return checkNotNull(nextPages[cursor]) { "다음 페이지 테스트 응답이 없습니다: $cursor" }
         }
 
-        override suspend fun getById(id: Long): Sigh = error("지원하지 않는 테스트 API입니다.")
+        override suspend fun getById(id: Long): Sigh {
+            requestedDetailIds += id
+            return checkNotNull(detailSighs[id]) { "상세 조회 테스트 응답이 없습니다: $id" }
+        }
 
         override suspend fun create(command: CreateSighCommand): Sigh {
             createdCommands += command

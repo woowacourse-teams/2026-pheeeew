@@ -44,11 +44,13 @@ class MapViewModel(
     private var nextCameraCommandId = 0L
     private var pendingRegistration: CreateSighCommand? = null
     private var pendingMemoDraft: PendingSighDraft? = null
+    private var pendingSighDetailId: Long? = null
     private val sighOperationMutex = Mutex()
     private val locallyRegisteredSighs = mutableMapOf<Long, SighPin>()
     private var mapIsForeground = false
     private var loadSighsJob: Job? = null
     private var loadSighListJob: Job? = null
+    private var loadSighDetailJob: Job? = null
     private var lastSighBounds: SighBounds? = null
     private var cameraBeforeSighDetailBounds: SighBounds? = null
     private var detailCameraMovePending = false
@@ -56,6 +58,7 @@ class MapViewModel(
     private var lastRequestedSighBounds: SighBounds? = null
     private var latestSighRequestId = 0L
     private var latestSighListRequestId = 0L
+    private var latestSighDetailRequestId = 0L
     private var myLocationJob: Job? = null
 
     private val _uiState =
@@ -188,8 +191,12 @@ class MapViewModel(
         if (!visible) {
             restoreCameraBeforeSighDetail()
             latestSighListRequestId += 1L
+            latestSighDetailRequestId += 1L
             loadSighListJob?.cancel()
             loadSighListJob = null
+            loadSighDetailJob?.cancel()
+            loadSighDetailJob = null
+            pendingSighDetailId = null
             _uiState.update { state ->
                 state.copy(
                     sighBrowser =
@@ -197,6 +204,7 @@ class MapViewModel(
                             isVisible = false,
                             selectedSigh = null,
                             isLoading = false,
+                            isDetailLoading = false,
                             isLoadingMore = false,
                             isLoadMoreError = false,
                             errorMessage = null,
@@ -214,8 +222,90 @@ class MapViewModel(
         lastSighBounds?.let { bounds -> loadFirstSighPage(bounds) }
     }
 
+    fun openSighFromPin(id: Long) {
+        if (!mapIsForeground || lastSighBounds == null) return
+
+        latestSighDetailRequestId += 1L
+        val requestId = latestSighDetailRequestId
+        loadSighDetailJob?.cancel()
+        loadSighDetailJob = null
+
+        _uiState.update { state ->
+            state.copy(
+                sighBrowser =
+                    state.sighBrowser.copy(
+                        isVisible = true,
+                        selectedSigh = null,
+                        isDetailLoading = false,
+                        errorMessage = null,
+                    ),
+            )
+        }
+
+        if (_uiState.value.sighBrowser.items.any { it.id == id }) {
+            pendingSighDetailId = null
+            selectSigh(id)
+            return
+        }
+
+        pendingSighDetailId = id
+        _uiState.update { state ->
+            state.copy(
+                sighBrowser = state.sighBrowser.copy(isDetailLoading = true),
+            )
+        }
+        loadSighDetailJob =
+            viewModelScope.launch {
+                try {
+                    val sigh = sighRepository.getById(id)
+                    if (
+                        requestId != latestSighDetailRequestId ||
+                        !mapIsForeground ||
+                        !_uiState.value.sighBrowser.isVisible
+                    ) {
+                        return@launch
+                    }
+                    _uiState.update { state ->
+                        state.copy(
+                            sighBrowser =
+                                state.sighBrowser.copy(
+                                    items = (listOf(sigh) + state.sighBrowser.items).distinctBy(Sigh::id),
+                                    isDetailLoading = false,
+                                    errorMessage = null,
+                                ),
+                        )
+                    }
+                    pendingSighDetailId = null
+                    selectSigh(id)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (exception: ApiException) {
+                    if (
+                        requestId != latestSighDetailRequestId ||
+                        !mapIsForeground ||
+                        !_uiState.value.sighBrowser.isVisible
+                    ) {
+                        return@launch
+                    }
+                    _uiState.update { state ->
+                        state.copy(
+                            sighBrowser =
+                                state.sighBrowser.copy(
+                                    isDetailLoading = false,
+                                    errorMessage = exception.toUserMessage(),
+                                ),
+                        )
+                    }
+                }
+            }
+    }
+
     fun refreshSighList() {
         if (!_uiState.value.sighBrowser.isVisible) return
+        pendingSighDetailId?.let { id ->
+            openSighFromPin(id)
+            return
+        }
         lastSighBounds?.let { bounds -> loadFirstSighPage(bounds) }
     }
 
@@ -671,6 +761,9 @@ class MapViewModel(
         loadSighsJob = null
         loadSighListJob?.cancel()
         loadSighListJob = null
+        loadSighDetailJob?.cancel()
+        loadSighDetailJob = null
+        pendingSighDetailId = null
         lastRequestedSighBounds = null
         detailCameraMovePending = false
         restoringSighDetailBounds = null
@@ -680,6 +773,7 @@ class MapViewModel(
                 sighBrowser =
                     state.sighBrowser.copy(
                         isLoading = false,
+                        isDetailLoading = false,
                         isLoadingMore = false,
                     ),
             )

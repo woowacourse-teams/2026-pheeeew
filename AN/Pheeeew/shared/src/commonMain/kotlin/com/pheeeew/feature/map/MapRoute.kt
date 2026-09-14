@@ -59,6 +59,7 @@ fun MapRoute(
         onBoundsChanged = viewModel::loadSighs,
         onSighListVisibilityChange = viewModel::setSighListVisible,
         onSighItemClick = viewModel::selectSigh,
+        onSighPinClick = viewModel::openSighFromPin,
         onDismissSighList = { viewModel.setSighListVisible(false) },
         onDismissSighDetail = viewModel::dismissSighDetail,
         onLoadNextSighPage = viewModel::loadNextSighPage,
