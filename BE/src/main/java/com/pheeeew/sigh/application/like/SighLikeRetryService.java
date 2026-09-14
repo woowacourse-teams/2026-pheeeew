@@ -1,5 +1,6 @@
 package com.pheeeew.sigh.application.like;
 
+import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -16,7 +17,7 @@ public class SighLikeRetryService {
     private final SighLikeService sighLikeService;
 
     @Transactional(propagation = Propagation.NEVER)
-    public boolean update(Long sighId, UUID devicePublicId, boolean liked) {
+    public SighLikeResult update(Long sighId, UUID devicePublicId, boolean liked) {
         for (int attempt = 1; ; attempt++) {
             try {
                 return sighLikeService.update(sighId, devicePublicId, liked);

@@ -10,6 +10,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.SighLike;
 import com.pheeeew.sigh.domain.repository.SighLikeRepository;
@@ -74,20 +75,20 @@ class SighLikeServiceIntegrationTest {
         UUID devicePublicId = device.getPublicId();
 
         // when / then
-        assertThat(sighLikeService.update(sighId, devicePublicId, false)).isFalse();
+        assertThat(sighLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
         assertLikeCount(sighId, 0);
-        assertThat(sighLikeService.update(sighId, devicePublicId, true)).isTrue();
+        assertThat(sighLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
         assertLikeCount(sighId, 1);
         Long likeId = sighLikeRepository.findBySighIdAndDeviceId(sighId, device.getId()).orElseThrow().getId();
-        assertThat(sighLikeService.update(sighId, devicePublicId, true)).isTrue();
+        assertThat(sighLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
         assertThat(sighLikeRepository.findAll()).extracting(SighLike::getId).containsExactly(likeId);
         assertLikeCount(sighId, 1);
 
-        assertThat(sighLikeService.update(sighId, devicePublicId, false)).isFalse();
+        assertThat(sighLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
         assertLikeCount(sighId, 0);
-        assertThat(sighLikeService.update(sighId, devicePublicId, false)).isFalse();
+        assertThat(sighLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
         assertLikeCount(sighId, 0);
-        assertThat(sighLikeService.update(sighId, devicePublicId, true)).isTrue();
+        assertThat(sighLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
         assertLikeCount(sighId, 1);
         assertThat(sighLikeRepository.findBySighIdAndDeviceId(sighId, device.getId()))
                 .get().extracting(SighLike::getId).isNotEqualTo(likeId);
@@ -103,9 +104,10 @@ class SighLikeServiceIntegrationTest {
         SighLike anotherSighLike = saveLike(anotherSigh.getId(), device.getId());
 
         // when
-        sighLikeService.update(sigh.getId(), device.getPublicId(), false);
+        SighLikeResult result = sighLikeService.update(sigh.getId(), device.getPublicId(), false);
 
         // then
+        assertThat(result).isEqualTo(SighLikeResult.of(false, 1));
         assertThat(sighLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
         assertThat(sighLikeRepository.findAll()).extracting(SighLike::getId)
                 .containsExactlyInAnyOrder(anotherDeviceLike.getId(), anotherSighLike.getId());

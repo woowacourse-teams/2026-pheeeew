@@ -6,6 +6,7 @@ import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.SighLike;
 import com.pheeeew.sigh.domain.repository.SighLikeRepository;
@@ -26,7 +27,7 @@ public class SighLikeService {
     private final DeviceRepository deviceRepository;
 
     @Transactional
-    public boolean update(Long sighId, UUID devicePublicId, boolean liked) {
+    public SighLikeResult update(Long sighId, UUID devicePublicId, boolean liked) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
@@ -47,6 +48,6 @@ public class SighLikeService {
             sigh.decreaseLikeCount();
         }
 
-        return liked;
+        return SighLikeResult.of(liked, sigh.getLikeCount());
     }
 }

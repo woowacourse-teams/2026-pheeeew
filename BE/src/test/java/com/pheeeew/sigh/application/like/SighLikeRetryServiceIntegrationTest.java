@@ -14,6 +14,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighLikeRepository;
 import com.pheeeew.sigh.domain.repository.SighRepository;
@@ -86,10 +87,10 @@ class SighLikeRetryServiceIntegrationTest {
         conflictOnFirstAttempts(liked, 1);
 
         // when
-        boolean result = sighLikeRetryService.update(sigh.getId(), device.getPublicId(), liked);
+        SighLikeResult result = sighLikeRetryService.update(sigh.getId(), device.getPublicId(), liked);
 
         // then
-        assertThat(result).isEqualTo(liked);
+        assertThat(result).isEqualTo(SighLikeResult.of(liked, liked ? 2 : 1));
         verify(serviceSpy(), times(2)).update(sigh.getId(), device.getPublicId(), liked);
         assertThat(sighLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId()).isPresent())
                 .isEqualTo(liked);
