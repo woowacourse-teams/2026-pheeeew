@@ -10,32 +10,38 @@ import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.remote.device.api.KtorDeviceRegistrationApi
 import com.pheeeew.data.repository.DeviceRegistrationRepositoryImpl
 import com.pheeeew.domain.usecase.EnsureDeviceRegisteredUseCase
+import com.pheeeew.domain.repository.DeviceRegistrationRepository
 
-fun createAndroidEnsureDeviceRegisteredUseCase(
+data class AndroidDeviceRegistrationDependencies(
+    val repository: DeviceRegistrationRepository,
+    val ensureRegistered: EnsureDeviceRegisteredUseCase,
+)
+
+fun createAndroidDeviceRegistrationDependencies(
     context: Context,
     config: ApiConfig,
     accessTokenStore: AccessTokenStore,
-): EnsureDeviceRegisteredUseCase {
+): AndroidDeviceRegistrationDependencies {
     val repository = DeviceRegistrationRepositoryImpl(
         api = KtorDeviceRegistrationApi(createPlatformHttpClient(config)),
         tokenStorage = AndroidEncryptedDeviceTokenStorage(context.applicationContext),
         attestationProvider = AndroidDeviceAttestationProvider(),
         accessTokenStore = accessTokenStore,
     )
-    return EnsureDeviceRegisteredUseCase(repository)
+    return AndroidDeviceRegistrationDependencies(repository, EnsureDeviceRegisteredUseCase(repository))
 }
 
-fun createAndroidEnsureDeviceRegisteredWithPlayIntegrityUseCase(
+fun createAndroidDeviceRegistrationWithPlayIntegrityDependencies(
     context: Context,
     config: ApiConfig,
     cloudProjectNumber: Long,
     accessTokenStore: AccessTokenStore,
-): EnsureDeviceRegisteredUseCase {
+): AndroidDeviceRegistrationDependencies {
     val repository = DeviceRegistrationRepositoryImpl(
         api = KtorDeviceRegistrationApi(createPlatformHttpClient(config)),
         tokenStorage = AndroidEncryptedDeviceTokenStorage(context.applicationContext),
         attestationProvider = AndroidPlayIntegrityAttestationProvider(context, cloudProjectNumber),
         accessTokenStore = accessTokenStore,
     )
-    return EnsureDeviceRegisteredUseCase(repository)
+    return AndroidDeviceRegistrationDependencies(repository, EnsureDeviceRegisteredUseCase(repository))
 }

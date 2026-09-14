@@ -6,6 +6,8 @@ import com.pheeeew.data.remote.sigh.dto.SighFeatureDto
 import com.pheeeew.data.remote.sigh.dto.SighPageResponseDto
 import com.pheeeew.data.remote.sigh.dto.SighV2PropertiesDto
 import com.pheeeew.data.local.device.AccessTokenStore
+import com.pheeeew.domain.exception.ApiException
+import com.pheeeew.domain.model.device.AccessToken
 import com.pheeeew.domain.model.sigh.SighBounds
 import io.ktor.client.HttpClient
 import io.ktor.client.request.get
@@ -19,6 +21,7 @@ import io.ktor.http.contentType
 class KtorSighV2Api(
     private val client: HttpClient,
     private val accessTokenStore: AccessTokenStore? = null,
+    private val refreshAccessToken: (suspend () -> AccessToken?)? = null,
 ) : SighV2Api {
     override suspend fun getFirstPage(bounds: SighBounds): SighPageResponseDto =
         executeRequest {
@@ -49,15 +52,26 @@ class KtorSighV2Api(
     }
 
     override suspend fun create(request: SighCreateV2RequestDto): SighFeatureDto<SighV2PropertiesDto> =
-        executeRequest {
-            client.post(SIGHS_PATH) {
-                accessTokenStore?.accessToken?.let { token ->
-                    header("Authorization", "Bearer ${token.value}")
-                }
-                contentType(ContentType.Application.Json)
-                setBody(request)
-            }
+        try {
+            createRequest(request)
+        } catch (error: ApiException.Unauthorized) {
+            if (error.code != "AUTH-001") throw error
+            val refreshedToken = refreshAccessToken?.invoke() ?: throw error
+            accessTokenStore?.save(refreshedToken)
+            createRequest(request)
         }
+
+    private suspend fun createRequest(
+        request: SighCreateV2RequestDto,
+    ): SighFeatureDto<SighV2PropertiesDto> = executeRequest {
+        client.post(SIGHS_PATH) {
+            accessTokenStore?.accessToken?.let { token ->
+                header("Authorization", "Bearer ${token.value}")
+            }
+            contentType(ContentType.Application.Json)
+            setBody(request)
+        }
+    }
 
     private companion object {
         const val SIGHS_PATH = "/api/v2/sighs"

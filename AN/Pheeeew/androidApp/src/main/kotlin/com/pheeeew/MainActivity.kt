@@ -13,8 +13,8 @@ import androidx.lifecycle.ViewModelProvider
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.di.SighModule
-import com.pheeeew.di.createAndroidEnsureDeviceRegisteredUseCase
-import com.pheeeew.di.createAndroidEnsureDeviceRegisteredWithPlayIntegrityUseCase
+import com.pheeeew.di.createAndroidDeviceRegistrationDependencies
+import com.pheeeew.di.createAndroidDeviceRegistrationWithPlayIntegrityDependencies
 import com.pheeeew.data.local.device.InMemoryAccessTokenStore
 import com.pheeeew.di.createAndroidLocationDependencies
 
@@ -33,24 +33,27 @@ class MainActivity : ComponentActivity() {
                 retainedDependencies = holder.dependencies,
             ).also { holder.dependencies = it }
         val accessTokenStore = InMemoryAccessTokenStore()
-        val sighDependencies = SighModule.create(
-            config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
-            accessTokenStore = accessTokenStore,
-        )
-        val deviceRegistration = if (BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER > 0L) {
-            createAndroidEnsureDeviceRegisteredWithPlayIntegrityUseCase(
+        val deviceDependencies = if (BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER > 0L) {
+            createAndroidDeviceRegistrationWithPlayIntegrityDependencies(
                 context = this,
                 config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
                 cloudProjectNumber = BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
                 accessTokenStore = accessTokenStore,
             )
         } else {
-            createAndroidEnsureDeviceRegisteredUseCase(
+            createAndroidDeviceRegistrationDependencies(
                 context = this,
                 config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
                 accessTokenStore = accessTokenStore,
             )
         }
+        val sighDependencies = SighModule.create(
+            config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
+            accessTokenStore = accessTokenStore,
+            refreshAccessToken = {
+                deviceDependencies.ensureRegistered().getOrNull()?.accessToken
+            },
+        )
 
         setContent {
             App(
@@ -61,7 +64,7 @@ class MainActivity : ComponentActivity() {
                 mapPerformanceLogger = { event ->
                     if (BuildConfig.DEBUG) Log.d("Pheeeew.MapPerf", event)
                 },
-                ensureDeviceRegistered = deviceRegistration,
+                ensureDeviceRegistered = deviceDependencies.ensureRegistered,
             )
         }
     }
