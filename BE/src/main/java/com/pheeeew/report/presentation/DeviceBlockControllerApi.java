@@ -87,7 +87,7 @@ public interface DeviceBlockControllerApi {
             ),
             @ApiResponse(
                     responseCode = "401",
-                    description = "access token 이 없거나 사용할 수 없음",
+                    description = "인증할 수 없음. `AUTH-001`은 access token이 없거나 만료된 경우로 `POST /api/v2/devices/tokens`로 갱신한 뒤 재시도합니다. `DEVICE-004`는 토큰은 유효하지만 그 기기가 서버에 없는 경우로 **갱신해도 해결되지 않으며 기기를 다시 등록해야 합니다.**",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
@@ -200,7 +200,7 @@ public interface DeviceBlockControllerApi {
             ),
             @ApiResponse(
                     responseCode = "401",
-                    description = "access token 이 없거나 사용할 수 없음",
+                    description = "인증할 수 없음. `AUTH-001`은 access token이 없거나 만료된 경우로 `POST /api/v2/devices/tokens`로 갱신한 뒤 재시도합니다. `DEVICE-004`는 토큰은 유효하지만 그 기기가 서버에 없는 경우로 **갱신해도 해결되지 않으며 기기를 다시 등록해야 합니다.**",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
@@ -252,7 +252,7 @@ public interface DeviceBlockControllerApi {
             ),
             @ApiResponse(
                     responseCode = "401",
-                    description = "access token 이 없거나 사용할 수 없음",
+                    description = "인증할 수 없음. `AUTH-001`은 access token이 없거나 만료된 경우로 `POST /api/v2/devices/tokens`로 갱신한 뒤 재시도합니다. `DEVICE-004`는 토큰은 유효하지만 그 기기가 서버에 없는 경우로 **갱신해도 해결되지 않으며 기기를 다시 등록해야 합니다.**",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),

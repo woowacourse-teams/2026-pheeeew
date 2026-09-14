@@ -21,7 +21,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Min;
 import java.util.UUID;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
@@ -123,7 +122,7 @@ public interface SighV2ControllerApi {
             ),
             @ApiResponse(
                     responseCode = "401",
-                    description = "인증 정보가 없거나 유효하지 않음",
+                    description = "인증할 수 없음. `AUTH-001`은 access token이 없거나 만료된 경우로 `POST /api/v2/devices/tokens`로 갱신한 뒤 재시도합니다. `DEVICE-004`는 토큰은 유효하지만 그 기기가 서버에 없는 경우로 **갱신해도 해결되지 않으며 기기를 다시 등록해야 합니다.**",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
@@ -200,7 +199,7 @@ public interface SighV2ControllerApi {
             ),
             @ApiResponse(
                     responseCode = "401",
-                    description = "토큰이 없거나 유효하지 않거나 등록된 기기를 찾을 수 없음",
+                    description = "인증할 수 없음. `AUTH-001`은 access token이 없거나 만료된 경우로 `POST /api/v2/devices/tokens`로 갱신한 뒤 재시도합니다. `DEVICE-004`는 토큰은 유효하지만 그 기기가 서버에 없는 경우로 **갱신해도 해결되지 않으며 기기를 다시 등록해야 합니다.**",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
@@ -240,7 +239,6 @@ public interface SighV2ControllerApi {
                     example = "42",
                     schema = @Schema(minimum = "1")
             )
-            @Min(value = 1, message = "한숨 ID는 1 이상이어야 합니다.")
             Long id,
             @Parameter(hidden = true) UUID devicePublicId
     );
@@ -338,7 +336,7 @@ public interface SighV2ControllerApi {
             ),
             @ApiResponse(
                     responseCode = "401",
-                    description = "토큰이 없거나 유효하지 않거나 등록된 기기를 찾을 수 없음",
+                    description = "인증할 수 없음. `AUTH-001`은 access token이 없거나 만료된 경우로 `POST /api/v2/devices/tokens`로 갱신한 뒤 재시도합니다. `DEVICE-004`는 토큰은 유효하지만 그 기기가 서버에 없는 경우로 **갱신해도 해결되지 않으며 기기를 다시 등록해야 합니다.**",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
@@ -412,7 +410,11 @@ public interface SighV2ControllerApi {
                     content = @Content(schema = @Schema(implementation = SighLikeResponse.class))),
             @ApiResponse(responseCode = "400", description = "한숨 ID가 1 미만이거나 liked가 누락 또는 유효하지 않음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "401", description = "토큰이 없거나 유효하지 않거나 등록된 기기를 찾을 수 없음",
+            @ApiResponse(responseCode = "401",
+                    description = "인증할 수 없음. `AUTH-001`은 access token이 없거나 만료된 경우로 "
+                            + "`POST /api/v2/devices/tokens`로 갱신한 뒤 재시도합니다. "
+                            + "`DEVICE-004`는 토큰은 유효하지만 그 기기가 서버에 없는 경우로 "
+                            + "**갱신해도 해결되지 않으며 기기를 다시 등록해야 합니다.**",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "한숨이 없거나 삭제됨",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -421,7 +423,7 @@ public interface SighV2ControllerApi {
     })
     SighLikeResponse update(
             @Parameter(description = "좋아요 상태를 변경할 한숨 ID", example = "42", schema = @Schema(minimum = "1"))
-            @Min(value = 1, message = "한숨 ID는 1 이상이어야 합니다.") Long sighId,
+            Long sighId,
             @Parameter(hidden = true) UUID devicePublicId,
             @RequestBody(required = true, content = @Content(examples = {
                     @ExampleObject(name = "좋아요 추가", value = "{\"liked\":true}"),
