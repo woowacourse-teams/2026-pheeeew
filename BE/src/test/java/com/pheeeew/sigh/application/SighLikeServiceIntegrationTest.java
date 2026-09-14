@@ -25,6 +25,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,19 +75,20 @@ class SighLikeServiceIntegrationTest {
 
         // when / then
         assertThat(sighLikeService.update(sighId, devicePublicId, false)).isFalse();
-        assertThat(sighLikeRepository.countBySighId(sighId)).isZero();
+        assertLikeCount(sighId, 0);
         assertThat(sighLikeService.update(sighId, devicePublicId, true)).isTrue();
+        assertLikeCount(sighId, 1);
         Long likeId = sighLikeRepository.findBySighIdAndDeviceId(sighId, device.getId()).orElseThrow().getId();
         assertThat(sighLikeService.update(sighId, devicePublicId, true)).isTrue();
         assertThat(sighLikeRepository.findAll()).extracting(SighLike::getId).containsExactly(likeId);
-        assertThat(sighLikeRepository.countBySighId(sighId)).isOne();
+        assertLikeCount(sighId, 1);
 
         assertThat(sighLikeService.update(sighId, devicePublicId, false)).isFalse();
-        assertThat(sighLikeRepository.countBySighId(sighId)).isZero();
+        assertLikeCount(sighId, 0);
         assertThat(sighLikeService.update(sighId, devicePublicId, false)).isFalse();
-        assertThat(sighLikeRepository.countBySighId(sighId)).isZero();
+        assertLikeCount(sighId, 0);
         assertThat(sighLikeService.update(sighId, devicePublicId, true)).isTrue();
-        assertThat(sighLikeRepository.countBySighId(sighId)).isOne();
+        assertLikeCount(sighId, 1);
         assertThat(sighLikeRepository.findBySighIdAndDeviceId(sighId, device.getId()))
                 .get().extracting(SighLike::getId).isNotEqualTo(likeId);
     }
@@ -107,8 +109,8 @@ class SighLikeServiceIntegrationTest {
         assertThat(sighLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
         assertThat(sighLikeRepository.findAll()).extracting(SighLike::getId)
                 .containsExactlyInAnyOrder(anotherDeviceLike.getId(), anotherSighLike.getId());
-        assertThat(sighLikeRepository.countBySighId(sigh.getId())).isOne();
-        assertThat(sighLikeRepository.countBySighId(anotherSigh.getId())).isOne();
+        assertLikeCount(sigh.getId(), 1);
+        assertLikeCount(anotherSigh.getId(), 1);
     }
 
     @ParameterizedTest
@@ -124,17 +126,19 @@ class SighLikeServiceIntegrationTest {
         assertThatThrownBy(() -> sighLikeService.update(Long.MAX_VALUE, device.getPublicId(), liked))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
-        sigh.delete();
-        sighRepository.saveAndFlush(sigh);
+        Sigh latestSigh = sighRepository.findById(sigh.getId()).orElseThrow();
+        latestSigh.delete();
+        sighRepository.saveAndFlush(latestSigh);
         assertThatThrownBy(() -> sighLikeService.update(sigh.getId(), device.getPublicId(), liked))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
         assertThat(sighLikeRepository.findAll()).extracting(SighLike::getId).containsExactly(like.getId());
+        assertLikeCount(sigh.getId(), 1);
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void 트랜잭션이_실패하면_좋아요_생성이나_삭제가_롤백된다(boolean desiredLiked) {
+    void 트랜잭션이_실패하면_좋아요_생성이나_삭제와_개수가_함께_롤백된다(boolean desiredLiked) {
         // given
         SighLike original = desiredLiked ? null : saveLike(sigh.getId(), device.getId());
 
@@ -142,7 +146,7 @@ class SighLikeServiceIntegrationTest {
         assertThatThrownBy(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             sighLikeService.update(sigh.getId(), device.getPublicId(), desiredLiked);
             sighLikeRepository.flush();
-            assertThat(sighLikeRepository.countBySighId(sigh.getId())).isEqualTo(desiredLiked ? 1 : 0);
+            assertLikeCount(sigh.getId(), desiredLiked ? 1 : 0);
             throw new IllegalStateException("저장 후 실패");
         })).isInstanceOf(IllegalStateException.class).hasMessage("저장 후 실패");
 
@@ -152,12 +156,51 @@ class SighLikeServiceIntegrationTest {
         } else {
             assertThat(sighLikeRepository.findAll()).extracting(SighLike::getId).containsExactly(original.getId());
         }
+        assertLikeCount(sigh.getId(), desiredLiked ? 0 : 1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 낙관적_잠금_충돌이_발생하면_먼저_성공한_좋아요와_개수를_보존한다(boolean desiredLiked) {
+        // given
+        SighLike original = desiredLiked ? null : saveLike(sigh.getId(), device.getId());
+        Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
+        TransactionTemplate anotherTransaction = new TransactionTemplate(transactionManager);
+        anotherTransaction.setPropagationBehavior(Propagation.REQUIRES_NEW.value());
+
+        // when
+        assertThatThrownBy(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            // 바깥 트랜잭션이 읽은 버전을 유지한 채 다른 기기의 변경을 먼저 커밋한다.
+            sighRepository.findById(sigh.getId()).orElseThrow();
+            anotherTransaction.executeWithoutResult(anotherStatus ->
+                    sighLikeService.update(sigh.getId(), anotherDevice.getPublicId(), true));
+            sighLikeService.update(sigh.getId(), device.getPublicId(), desiredLiked);
+            sighLikeRepository.flush();
+        })).isInstanceOf(ObjectOptimisticLockingFailureException.class);
+
+        // then
+        assertThat(sighLikeRepository.findBySighIdAndDeviceId(sigh.getId(), anotherDevice.getId())).isPresent();
+        if (desiredLiked) {
+            assertThat(sighLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
+        } else {
+            assertThat(sighLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId()))
+                    .get().extracting(SighLike::getId).isEqualTo(original.getId());
+        }
+        assertLikeCount(sigh.getId(), desiredLiked ? 1 : 2);
+    }
+
+    private void assertLikeCount(Long sighId, long expected) {
+        assertThat(sighLikeRepository.countBySighId(sighId)).isEqualTo(expected);
+        assertThat(sighRepository.findById(sighId).orElseThrow().getLikeCount()).isEqualTo(expected);
     }
 
     private SighLike saveLike(Long sighId, Long deviceId) {
-        return sighLikeRepository.save(기본_좋아요_빌더()
-                .sighId(sighId)
-                .deviceId(deviceId)
-                .build());
+        return new TransactionTemplate(transactionManager).execute(status -> {
+            sighRepository.findById(sighId).orElseThrow().increaseLikeCount();
+            return sighLikeRepository.save(기본_좋아요_빌더()
+                    .sighId(sighId)
+                    .deviceId(deviceId)
+                    .build());
+        });
     }
 }

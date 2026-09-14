@@ -6,6 +6,7 @@ import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.SighLike;
 import com.pheeeew.sigh.domain.repository.SighLikeRepository;
 import com.pheeeew.sigh.domain.repository.SighRepository;
@@ -29,18 +30,23 @@ public class SighLikeService {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
-        sighRepository.findByIdAndDeletedAtIsNull(sighId)
+        Sigh sigh = sighRepository.findByIdAndDeletedAtIsNull(sighId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
         SighLike like = sighLikeRepository.findBySighIdAndDeviceId(sighId, deviceId).orElse(null);
 
         if (liked && like == null) {
-            sighLikeRepository.save(SighLike.builder()
-                    .sighId(sighId)
-                    .deviceId(deviceId)
-                    .build());
+            sighLikeRepository.save(
+                    SighLike.builder()
+                            .sighId(sighId)
+                            .deviceId(deviceId)
+                            .build()
+            );
+            sigh.increaseLikeCount();
         } else if (!liked && like != null) {
             sighLikeRepository.delete(like);
+            sigh.decreaseLikeCount();
         }
+
         return liked;
     }
 }
