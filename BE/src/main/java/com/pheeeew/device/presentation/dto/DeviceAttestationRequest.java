@@ -40,8 +40,9 @@ public record DeviceAttestationRequest(
                         `ANDROID`는 이 값을 복호화 전 사전 조회에만 씁니다. 소모 기준은 복호화한 토큰 안의 값이고,
                         두 값이 다르면 403이며 challenge는 남습니다.
 
-                        `IOS`는 이 값을 검증 시작 전에 소모합니다. **검증에 실패해도 challenge는 사라지므로**
-                        다시 시도하려면 새로 발급받아야 합니다.
+                        `IOS`는 attestation 객체를 해석한 뒤, 암호 검증을 시작하기 전에 이 값을 소모합니다.
+                        형식 오류나 `keyId` 누락으로 떨어지면 소모되지 않지만, **인증서 체인 검증부터 뒤에서 실패하면
+                        challenge는 사라지므로** 다시 시도하려면 새로 발급받아야 합니다.
                         """,
                 example = "PjONwTh56rDaOsphVQQeqQcPyQtLZL-reX5Us2xD2SM",
                 nullable = true
