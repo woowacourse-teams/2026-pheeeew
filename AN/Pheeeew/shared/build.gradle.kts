@@ -56,6 +56,7 @@ kotlin {
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.maplibre.android)
             implementation(libs.play.services.location)
+            implementation(libs.play.integrity)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

@@ -19,6 +19,7 @@ coroutines = "1.10.2"
 ktlintGradle = "14.2.0"
 maplibre = "13.6.0"
 play-services-location = "21.3.0"
+play-integrity = "1.5.0"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -50,6 +51,7 @@ kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutine
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
 maplibre-android = { module = "org.maplibre.gl:android-sdk-opengl", version.ref = "maplibre" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
+play-integrity = { module = "com.google.android.play:integrity", version.ref = "play-integrity" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
