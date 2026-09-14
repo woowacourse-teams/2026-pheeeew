@@ -1,6 +1,7 @@
 package com.pheeeew.sigh.presentation.dto;
 
 import com.pheeeew.sigh.application.dto.SighResult;
+import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
@@ -12,10 +13,18 @@ public record SighV2Properties(
         String memo,
 
         @Schema(description = "서버에서 최초 등록 시 생성한 익명 닉네임", example = "날아가는 고라니")
-        String nickname
+        String nickname,
+
+        @Schema(description = "인증된 기기의 좋아요 여부", example = "true")
+        boolean liked,
+
+        @Schema(description = "한숨의 전체 좋아요 수", minimum = "0", example = "12")
+        long likeCount
 ) {
 
-    public static SighV2Properties from(SighResult sigh) {
-        return new SighV2Properties(sigh.createdAt(), sigh.memo(), sigh.nickname());
+    public static SighV2Properties of(SighResult sigh, SighLikeResult like) {
+        return new SighV2Properties(
+                sigh.createdAt(), sigh.memo(), sigh.nickname(), like.liked(), like.likeCount()
+        );
     }
 }

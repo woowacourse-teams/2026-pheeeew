@@ -10,6 +10,7 @@ import com.pheeeew.sigh.application.dto.SighMapItem;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
+import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.application.dto.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
@@ -318,7 +319,8 @@ class SighV1ControllerTest {
                         null,
                         "외로운 회사원"
                 ),
-                created
+                created,
+                SighLikeResult.of(false, 0)
         );
     }
 

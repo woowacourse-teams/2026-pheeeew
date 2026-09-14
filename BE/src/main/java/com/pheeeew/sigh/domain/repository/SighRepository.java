@@ -2,6 +2,7 @@ package com.pheeeew.sigh.domain.repository;
 
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.projection.GeneratedLocation;
+import com.pheeeew.sigh.domain.repository.projection.SighDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
 import java.time.Instant;
@@ -21,9 +22,26 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
      * 같은 {@code requestId}로 다시 등록할 때 선조회가 비어 삽입을 시도하고, 유니크 위반 뒤의 재조회도
      * 비어 멱등 복구가 실패한다(ADR-0004, ADR-0005).
      */
-    Optional<Sigh> findByRequestId(UUID requestId);
+    @Query("""
+            SELECT s AS sigh, CASE WHEN sighLike.id IS NOT NULL THEN true ELSE false END AS liked
+            FROM Sigh s
+            LEFT JOIN SighLike sighLike ON sighLike.sighId = s.id AND sighLike.deviceId = :deviceId
+            WHERE s.requestId = :requestId
+            """)
+    Optional<SighDetailProjection> findByRequestId(
+            @Param("requestId") UUID requestId,
+            @Param("deviceId") Long deviceId
+    );
 
     Optional<Sigh> findByIdAndDeletedAtIsNull(Long id);
+
+    @Query("""
+            SELECT s AS sigh, CASE WHEN sighLike.id IS NOT NULL THEN true ELSE false END AS liked
+            FROM Sigh s
+            LEFT JOIN SighLike sighLike ON sighLike.sighId = s.id AND sighLike.deviceId = :deviceId
+            WHERE s.id = :id AND s.deletedAt IS NULL
+            """)
+    Optional<SighDetailProjection> findById(@Param("id") Long id, @Param("deviceId") Long deviceId);
 
     @Query(
             value = """
@@ -99,7 +117,8 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                             sigh.location,
                             sigh.created_at,
                             sigh.nickname,
-                            sigh.memo
+                            sigh.memo,
+                            sigh.like_count
                         FROM sighs sigh
                         CROSS JOIN bounds
                         WHERE sigh.deleted_at IS NULL
@@ -115,8 +134,12 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                         ST_Y(latest_sighs.location) AS latitude,
                         latest_sighs.created_at AS "createdAt",
                         latest_sighs.nickname AS nickname,
-                        latest_sighs.memo AS memo
+                        latest_sighs.memo AS memo,
+                        latest_sighs.like_count AS "likeCount",
+                        sigh_like.id IS NOT NULL AS liked
                     FROM latest_sighs
+                    LEFT JOIN sigh_likes sigh_like
+                      ON sigh_like.sigh_id = latest_sighs.id AND sigh_like.device_id = :deviceId
                     WHERE (latest_sighs.created_at, latest_sighs.id) < (:lastItemCreatedAt, :lastId)
                     ORDER BY latest_sighs.created_at DESC, latest_sighs.id DESC
                     LIMIT :limit
@@ -132,7 +155,8 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             @Param("lastItemCreatedAt") Instant lastItemCreatedAt,
             @Param("lastId") long lastId,
             @Param("maxCount") int maxCount,
-            @Param("limit") int limit
+            @Param("limit") int limit,
+            @Param("deviceId") Long deviceId
     );
 
     @Query(
