@@ -171,6 +171,10 @@ private fun Throwable.toDeviceRegistrationError(): DeviceRegistrationError = whe
     is DeviceRegistrationException.InvalidRefreshToken -> DeviceRegistrationError.InvalidRefreshToken
     is DeviceRegistrationException.DeviceNotFound -> DeviceRegistrationError.DeviceNotFound
     is DeviceRegistrationException.Network -> DeviceRegistrationError.Network
+    is DeviceRegistrationException.InvalidChallenge -> DeviceRegistrationError.InvalidChallenge
+    is DeviceRegistrationException.AttestationRejected -> DeviceRegistrationError.AttestationRejected
+    is DeviceRegistrationException.RetryableServer -> DeviceRegistrationError.RetryableServer(retryAfterSeconds)
+    is DeviceRegistrationException.Server -> DeviceRegistrationError.Server
     else -> DeviceRegistrationError.Unknown
 }
 

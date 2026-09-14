@@ -79,6 +79,18 @@ class DeviceRegistrationRepositoryImpl(
             "DEVICE-004" -> DeviceRegistrationException.DeviceNotFound(this)
             else -> DeviceRegistrationException.Server(this)
         }
+        is ApiException.InvalidRequest -> when (code) {
+            "DEVICE-005" -> DeviceRegistrationException.InvalidChallenge(this)
+            else -> DeviceRegistrationException.Server(this)
+        }
+        is ApiException.Forbidden -> when (code) {
+            "DEVICE-006" -> DeviceRegistrationException.AttestationRejected(this)
+            else -> DeviceRegistrationException.Server(this)
+        }
+        is ApiException.Unknown -> when (code) {
+            "DEVICE-007" -> DeviceRegistrationException.RetryableServer(cause = this)
+            else -> DeviceRegistrationException.Server(this)
+        }
         is ApiException.Network -> DeviceRegistrationException.Network(this)
         else -> DeviceRegistrationException.Server(this)
     }

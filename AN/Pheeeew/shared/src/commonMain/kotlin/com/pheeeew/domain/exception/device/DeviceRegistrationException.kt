@@ -31,4 +31,22 @@ sealed class DeviceRegistrationException(
         message = "Device server error occurred.",
         cause = cause,
     )
+
+    class InvalidChallenge(cause: Throwable? = null) : DeviceRegistrationException(
+        message = "Device challenge is invalid or expired.",
+        cause = cause,
+    )
+
+    class AttestationRejected(cause: Throwable? = null) : DeviceRegistrationException(
+        message = "Device attestation was rejected.",
+        cause = cause,
+    )
+
+    class RetryableServer(
+        val retryAfterSeconds: Long? = null,
+        cause: Throwable? = null,
+    ) : DeviceRegistrationException(
+        message = "Device verification is temporarily unavailable.",
+        cause = cause,
+    )
 }
