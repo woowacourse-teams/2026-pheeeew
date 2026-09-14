@@ -23,6 +23,7 @@ import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.feature.map.MapPerformanceLogger
 import com.pheeeew.feature.map.MapRoute
 import com.pheeeew.feature.map.MapViewModel
+import com.pheeeew.feature.map.sighlist.SighModerationViewModel
 import com.pheeeew.feature.setting.SettingsScreen
 import com.pheeeew.feature.setting.legal.LegalDocument
 import com.pheeeew.feature.setting.legal.LegalDocumentRoute
@@ -45,6 +46,8 @@ fun App(
             viewModel {
                 MapViewModel(sighRepository, createSigh, locationDependencies, mapPerformanceLogger)
             }
+        val sighModerationViewModel: SighModerationViewModel =
+            viewModel { SighModerationViewModel() }
         val mapReadiness = remember { MutableStateFlow(false) }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
 
@@ -60,6 +63,7 @@ fun App(
                 onMapReady = { mapReadiness.value = true },
                 isActive = screen == Screen.Map,
                 viewModel = mapViewModel,
+                moderationViewModel = sighModerationViewModel,
             )
 
             if (screen == Screen.Map) {

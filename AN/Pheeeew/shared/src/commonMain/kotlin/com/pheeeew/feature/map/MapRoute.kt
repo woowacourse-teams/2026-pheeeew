@@ -11,6 +11,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.pheeeew.feature.map.sighlist.SighModerationViewModel
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 
@@ -19,10 +20,12 @@ fun MapRoute(
     onSettingsClick: () -> Unit,
     onMapReady: () -> Unit,
     viewModel: MapViewModel,
+    moderationViewModel: SighModerationViewModel,
     isActive: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val moderationUiState by moderationViewModel.uiState.collectAsStateWithLifecycle()
     var startupPermissionsChecked by remember { mutableStateOf(false) }
     val lifeCycleOwner = LocalLifecycleOwner.current
 
@@ -52,6 +55,7 @@ fun MapRoute(
 
     MapScreen(
         uiState = uiState,
+        moderationUiState = moderationUiState,
         onSettingsClick = onSettingsClick,
         onZoomInClick = viewModel::onZoomInClick,
         onZoomOutClick = viewModel::onZoomOutClick,
@@ -64,6 +68,17 @@ fun MapRoute(
         onDismissSighDetail = viewModel::dismissSighDetail,
         onLoadNextSighPage = viewModel::loadNextSighPage,
         onRefreshSighList = viewModel::refreshSighList,
+        onOpenSighActionMenu = moderationViewModel::openActions,
+        onDismissSighActionMenu = moderationViewModel::dismissActions,
+        onRequestSighBlock = moderationViewModel::requestBlock,
+        onDismissSighBlock = moderationViewModel::dismissBlock,
+        onConfirmSighBlock = moderationViewModel::confirmBlock,
+        onRequestSighReport = moderationViewModel::requestReport,
+        onSighReportReasonSelect = moderationViewModel::selectReason,
+        onSighReportDescriptionChange = moderationViewModel::updateDescription,
+        onSubmitSighReport = moderationViewModel::submitReport,
+        onDismissSighReport = moderationViewModel::dismissReport,
+        onDismissReportSuccess = moderationViewModel::clearSuccess,
         onBeginMemoAfterExplosion = viewModel::beginMemoAfterExplosion,
         onSubmitMemo = viewModel::submitMemo,
         onSkipMemo = viewModel::skipMemo,

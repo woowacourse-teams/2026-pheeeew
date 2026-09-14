@@ -11,10 +11,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -24,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.navigation.PredictiveBackEffect
@@ -41,24 +38,31 @@ fun SighBrowserOverlay(
     refreshRevision: Long,
     canLoadMore: Boolean,
     errorMessage: String?,
+    moderationUiState: SighModerationUiState,
     onItemClick: (SighListItemUiModel) -> Unit,
     onDismissList: () -> Unit,
     onDismissDetail: () -> Unit,
     onLoadMore: () -> Unit,
     onRefresh: () -> Unit,
-    onBlockClick: (SighListItemUiModel) -> Unit = {},
-    onReportClick: (SighListItemUiModel) -> Unit = {},
+    onOpenActionMenu: (SighListItemUiModel) -> Unit,
+    onDismissActionMenu: () -> Unit,
+    onRequestBlock: () -> Unit,
+    onDismissBlock: () -> Unit,
+    onConfirmBlock: () -> Unit,
+    onRequestReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var showActionMenu by remember(selectedItem?.id) { mutableStateOf(false) }
+    val showActionMenu = selectedItem?.id == moderationUiState.actionTarget?.sighId
     val detailStarRadiusPx = with(LocalDensity.current) { 24.dp.roundToPx() }
 
-    if (visible) {
+    if (visible && !moderationUiState.isReportVisible) {
         PredictiveBackEffect(
             onProgress = {},
             onCompleted = {
-                if (showActionMenu) {
-                    showActionMenu = false
+                if (moderationUiState.blockTarget != null) {
+                    onDismissBlock()
+                } else if (showActionMenu) {
+                    onDismissActionMenu()
                 } else if (selectedItem != null) {
                     onDismissDetail()
                 } else {
@@ -74,7 +78,7 @@ fun SighBrowserOverlay(
             SighDetailModal(
                 item = selectedItem,
                 onDismiss = onDismissDetail,
-                onMoreClick = { showActionMenu = true },
+                onMoreClick = { onOpenActionMenu(selectedItem) },
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -100,7 +104,7 @@ fun SighBrowserOverlay(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .pointerInput(Unit) { detectTapGestures { showActionMenu = false } },
+                        .pointerInput(Unit) { detectTapGestures { onDismissActionMenu() } },
             )
         }
 
@@ -139,22 +143,30 @@ fun SighBrowserOverlay(
                     enter = slideInVertically(animationSpec = tween(260), initialOffsetY = { it }),
                     exit = slideOutVertically(animationSpec = tween(220), targetOffsetY = { it }),
                 ) {
-                    val actionItem = selectedItem
-                    if (actionItem != null) {
+                    if (selectedItem != null) {
                         SighActionSheet(
                             onReportClick = {
-                                showActionMenu = false
-                                onReportClick(actionItem)
+                                onRequestReport()
                             },
                             onBlockClick = {
-                                showActionMenu = false
-                                onBlockClick(actionItem)
+                                onRequestBlock()
                             },
-                            onCancelClick = { showActionMenu = false },
+                            onCancelClick = onDismissActionMenu,
                         )
                     }
                 }
             }
+        }
+
+        moderationUiState.blockTarget?.let {
+            ConfirmDialog(
+                title = "해당 사용자를 차단하시겠습니까?",
+                body = "차단 이후 해당 사용자가 올린 한숨은 더 이상 보이지 않으며 다시 해제할 수 없습니다.",
+                confirmText = "차단하기",
+                onConfirmClick = onConfirmBlock,
+                onDismissRequest = onDismissBlock,
+                onDismissClick = onDismissBlock,
+            )
         }
     }
 }
@@ -175,11 +187,18 @@ private fun SighBrowserListPreview() {
                 refreshRevision = 0L,
                 canLoadMore = false,
                 errorMessage = null,
+                moderationUiState = SighModerationUiState(),
                 onItemClick = {},
                 onDismissList = {},
                 onDismissDetail = {},
                 onLoadMore = {},
                 onRefresh = {},
+                onOpenActionMenu = {},
+                onDismissActionMenu = {},
+                onRequestBlock = {},
+                onDismissBlock = {},
+                onConfirmBlock = {},
+                onRequestReport = {},
             )
         }
     }
@@ -201,11 +220,18 @@ private fun SighBrowserDetailPreview() {
                 refreshRevision = 0L,
                 canLoadMore = false,
                 errorMessage = null,
+                moderationUiState = SighModerationUiState(),
                 onItemClick = {},
                 onDismissList = {},
                 onDismissDetail = {},
                 onLoadMore = {},
                 onRefresh = {},
+                onOpenActionMenu = {},
+                onDismissActionMenu = {},
+                onRequestBlock = {},
+                onDismissBlock = {},
+                onConfirmBlock = {},
+                onRequestReport = {},
             )
         }
     }

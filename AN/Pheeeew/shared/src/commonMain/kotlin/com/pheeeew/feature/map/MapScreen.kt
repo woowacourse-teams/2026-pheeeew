@@ -43,6 +43,8 @@ import com.pheeeew.feature.map.overlay.MapOverlay
 import com.pheeeew.feature.map.overlay.MemoEditor
 import com.pheeeew.feature.map.overlay.SighPhase
 import com.pheeeew.feature.map.sighlist.SighBrowserOverlay
+import com.pheeeew.feature.map.sighlist.SighModerationUiState
+import com.pheeeew.feature.map.sighlist.SighReportScreen
 import com.pheeeew.feature.map.sighlist.toSighListItemUiModel
 import com.pheeeew.feature.map.star.StarAgePolicy
 import com.pheeeew.feature.map.star.StarVisualPolicy
@@ -53,6 +55,7 @@ import kotlin.time.Instant
 @Composable
 fun MapScreen(
     uiState: MapUiState,
+    moderationUiState: SighModerationUiState,
     onSettingsClick: () -> Unit,
     onZoomInClick: () -> Unit,
     onZoomOutClick: () -> Unit,
@@ -65,6 +68,17 @@ fun MapScreen(
     onDismissSighDetail: () -> Unit,
     onLoadNextSighPage: () -> Unit,
     onRefreshSighList: () -> Unit,
+    onOpenSighActionMenu: (Long, String) -> Unit,
+    onDismissSighActionMenu: () -> Unit,
+    onRequestSighBlock: () -> Unit,
+    onDismissSighBlock: () -> Unit,
+    onConfirmSighBlock: () -> Unit,
+    onRequestSighReport: () -> Unit,
+    onSighReportReasonSelect: (String) -> Unit,
+    onSighReportDescriptionChange: (String) -> Unit,
+    onSubmitSighReport: () -> Unit,
+    onDismissSighReport: () -> Unit,
+    onDismissReportSuccess: () -> Unit,
     onBeginMemoAfterExplosion: () -> Unit,
     onSubmitMemo: (String) -> Unit,
     onSkipMemo: () -> Unit,
@@ -231,11 +245,38 @@ fun MapScreen(
             refreshRevision = sighBrowser.refreshRevision,
             canLoadMore = sighBrowser.nextCursor != null,
             errorMessage = sighBrowser.errorMessage,
+            moderationUiState = moderationUiState,
             onItemClick = { onSighItemClick(it.id) },
             onDismissList = onDismissSighList,
             onDismissDetail = onDismissSighDetail,
             onLoadMore = onLoadNextSighPage,
             onRefresh = onRefreshSighList,
+            onOpenActionMenu = { item -> onOpenSighActionMenu(item.id, item.nickname) },
+            onDismissActionMenu = onDismissSighActionMenu,
+            onRequestBlock = onRequestSighBlock,
+            onDismissBlock = onDismissSighBlock,
+            onConfirmBlock = onConfirmSighBlock,
+            onRequestReport = onRequestSighReport,
+        )
+
+        if (moderationUiState.isReportVisible) {
+            SighReportScreen(
+                uiState = moderationUiState,
+                onReasonSelect = onSighReportReasonSelect,
+                onDescriptionChange = onSighReportDescriptionChange,
+                onSubmit = onSubmitSighReport,
+                onDismiss = onDismissSighReport,
+            )
+        }
+
+        ErrorSnackbar(
+            message = moderationUiState.successMessage,
+            onDismiss = onDismissReportSuccess,
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, top = 8.dp, end = 16.dp),
         )
 
         if (isSighInteractionVisible) {
@@ -440,6 +481,7 @@ private fun MapScreenPreview() {
     AppTheme {
         MapScreen(
             uiState = MapUiState(),
+            moderationUiState = SighModerationUiState(),
             onSettingsClick = {},
             onZoomInClick = {},
             onZoomOutClick = {},
@@ -452,6 +494,17 @@ private fun MapScreenPreview() {
             onDismissSighDetail = {},
             onLoadNextSighPage = {},
             onRefreshSighList = {},
+            onOpenSighActionMenu = { _, _ -> },
+            onDismissSighActionMenu = {},
+            onRequestSighBlock = {},
+            onDismissSighBlock = {},
+            onConfirmSighBlock = {},
+            onRequestSighReport = {},
+            onSighReportReasonSelect = {},
+            onSighReportDescriptionChange = {},
+            onSubmitSighReport = {},
+            onDismissSighReport = {},
+            onDismissReportSuccess = {},
             onBeginMemoAfterExplosion = {},
             onSubmitMemo = {},
             onSkipMemo = {},
