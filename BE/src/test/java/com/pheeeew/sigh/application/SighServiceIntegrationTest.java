@@ -225,66 +225,6 @@ class SighServiceIntegrationTest {
     }
 
     @Test
-    void ID로_한숨_상세를_조회한다() {
-        // given
-        SighSaveResult saved = sighService.save(
-                UUID.randomUUID(),
-                SEOUL_CITY_HALL_LONGITUDE,
-                SEOUL_CITY_HALL_LATITUDE,
-                "오늘은 조금 지쳤다",
-                devicePublicId
-        );
-
-        // when
-        SighResult result = sighService.findById(saved.sigh().id(), null).sigh();
-
-        // then
-        assertThat(result.id()).isEqualTo(saved.sigh().id());
-        assertThat(result.longitude()).isEqualTo(saved.sigh().longitude());
-        assertThat(result.latitude()).isEqualTo(saved.sigh().latitude());
-        assertThat(result.createdAt()).isEqualTo(saved.sigh().createdAt());
-        assertThat(result.memo()).isEqualTo("오늘은 조금 지쳤다");
-        assertThat(result.nickname()).isEqualTo(saved.sigh().nickname());
-    }
-
-    @Test
-    void 존재하지_않는_ID로_한숨_상세를_조회하면_예외가_발생한다() {
-        // given
-        Long nonexistentId = Long.MAX_VALUE;
-
-        // when
-        Throwable throwable = catchThrowable(() -> sighService.findById(nonexistentId, null));
-
-        // then
-        assertThat(throwable)
-                .isInstanceOf(SighException.class)
-                .hasMessage("한숨을 찾을 수 없습니다.");
-        assertThat(((SighException) throwable).getErrorCode())
-                .isEqualTo(SighErrorCode.SIGH_NOT_FOUND);
-    }
-
-    @Test
-    void 삭제된_한숨_상세를_조회하면_예외가_발생한다() {
-        // given
-        SighSaveResult saved = sighService.save(
-                UUID.randomUUID(),
-                SEOUL_CITY_HALL_LONGITUDE,
-                SEOUL_CITY_HALL_LATITUDE
-        );
-        softDeleteSigh(saved.sigh().id());
-
-        // when
-        Throwable throwable = catchThrowable(() -> sighService.findById(saved.sigh().id(), null));
-
-        // then
-        assertThat(throwable)
-                .isInstanceOf(SighException.class)
-                .hasMessage("한숨을 찾을 수 없습니다.");
-        assertThat(((SighException) throwable).getErrorCode())
-                .isEqualTo(SighErrorCode.SIGH_NOT_FOUND);
-    }
-
-    @Test
     void 같은_requestId가_동시에_요청되어도_한_건만_저장한다() throws Exception {
         // given
         int requestCount = 6;

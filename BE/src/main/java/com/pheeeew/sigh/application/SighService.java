@@ -57,10 +57,7 @@ public class SighService {
 
     @Transactional(readOnly = true)
     public SighDetailResult findById(Long id, UUID devicePublicId) {
-        Long deviceId = null;
-        if (devicePublicId != null) {
-            deviceId = findDeviceId(devicePublicId);
-        }
+        Long deviceId = findDeviceId(devicePublicId);
 
         return sighRepository.findById(id, deviceId)
                 .map(SighDetailResult::from)

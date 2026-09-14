@@ -81,43 +81,35 @@ class SighServiceDetailIntegrationTest {
         // when
         SighDetailResult liked = sighService.findById(sigh.getId(), device.getPublicId());
         SighDetailResult unliked = sighService.findById(sigh.getId(), unlikedDevice.getPublicId());
-        SighDetailResult anonymous = sighService.findById(sigh.getId(), null);
 
         // then
         assertThat(liked.sigh()).isEqualTo(expectedSigh);
+        assertThat(liked.sigh().memo()).isEqualTo("오늘은 힘들었다");
         assertThat(unliked.sigh()).isEqualTo(expectedSigh);
-        assertThat(anonymous.sigh()).isEqualTo(expectedSigh);
         assertThat(liked.like()).isEqualTo(SighLikeResult.of(true, 2));
         assertThat(unliked.like()).isEqualTo(SighLikeResult.of(false, 2));
-        assertThat(anonymous.like()).isEqualTo(SighLikeResult.of(false, 2));
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void 좋아요가_없으면_인증_여부와_관계없이_false와_0을_반환한다(boolean authenticated) {
-        // given
-        UUID devicePublicId = authenticated ? device.getPublicId() : null;
-
+    @Test
+    void 좋아요가_없으면_false와_0을_반환한다() {
         // when
-        SighDetailResult result = sighService.findById(sigh.getId(), devicePublicId);
+        SighDetailResult result = sighService.findById(sigh.getId(), device.getPublicId());
 
         // then
         assertThat(result.like()).isEqualTo(SighLikeResult.of(false, 0));
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void 없거나_삭제된_한숨은_인증_여부와_관계없이_조회할_수_없다(boolean authenticated) {
+    @Test
+    void 없거나_삭제된_한숨은_조회할_수_없다() {
         // given
-        UUID devicePublicId = authenticated ? device.getPublicId() : null;
         sighLikeService.update(sigh.getId(), device.getPublicId(), true);
         Sigh deletedSigh = sighRepository.findById(sigh.getId()).orElseThrow();
         deletedSigh.delete();
         sighRepository.saveAndFlush(deletedSigh);
 
         // when / then
-        assertSighNotFound(Long.MAX_VALUE, devicePublicId);
-        assertSighNotFound(sigh.getId(), devicePublicId);
+        assertSighNotFound(Long.MAX_VALUE, device.getPublicId());
+        assertSighNotFound(sigh.getId(), device.getPublicId());
     }
 
     @Test
@@ -185,6 +177,7 @@ class SighServiceDetailIntegrationTest {
 
     private void assertSighNotFound(Long sighId, UUID devicePublicId) {
         assertThatThrownBy(() -> sighService.findById(sighId, devicePublicId))
+                .hasMessage("한숨을 찾을 수 없습니다.")
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
     }

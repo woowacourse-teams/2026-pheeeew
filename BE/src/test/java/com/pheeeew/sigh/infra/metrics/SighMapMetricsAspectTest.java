@@ -1,11 +1,13 @@
 package com.pheeeew.sigh.infra.metrics;
 
+import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.sigh.application.SighLocationGenerator;
 import com.pheeeew.sigh.application.SighNicknameGenerator;
@@ -23,6 +25,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +34,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class SighMapMetricsAspectTest {
 
@@ -120,10 +124,17 @@ class SighMapMetricsAspectTest {
 
     @Test
     void 다른_조회는_지도_전용_지표에_기록하지_않는다() {
+        // given
+        Device device = 기본_기기_빌더().build();
+        ReflectionTestUtils.setField(device, "id", 1L);
+        when(context.getBean(DeviceRepository.class).findByPublicId(device.getPublicId()))
+                .thenReturn(Optional.of(device));
+
         // when / then
         context.getBean(SighRepository.class).count();
-        assertThatThrownBy(() -> service.findById(1L, null))
+        assertThatThrownBy(() -> service.findById(1L, device.getPublicId()))
                 .isInstanceOf(SighException.class);
+        verify(repository).findById(1L, device.getId());
         assertThat(registry.get("pheeeew.sigh.map.query").timer().count()).isZero();
         assertThat(registry.get("pheeeew.sigh.map.results").summaries())
                 .allSatisfy(summary -> assertThat(summary.count()).isZero());
