@@ -2,6 +2,7 @@ package com.pheeeew.feature.map
 
 import com.pheeeew.domain.model.location.LocationState
 import com.pheeeew.domain.model.sigh.CreateSighCommand
+import com.pheeeew.domain.model.sigh.Sigh
 import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.feature.map.map.MapCameraCommand
 
@@ -10,7 +11,20 @@ data class MapUiState(
     val location: MapLocationUiState = MapLocationUiState(),
     val viewport: MapViewportUiState = MapViewportUiState(),
     val sighRelease: SighReleaseState = SighReleaseState.Idle,
+    val sighBrowser: SighBrowserUiState = SighBrowserUiState(),
     val errors: MapErrorUiState = MapErrorUiState(),
+)
+
+data class SighBrowserUiState(
+    val isVisible: Boolean = false,
+    val items: List<Sigh> = emptyList(),
+    val selectedSigh: Sigh? = null,
+    val nextCursor: String? = null,
+    val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val isLoadMoreError: Boolean = false,
+    val refreshRevision: Long = 0L,
+    val errorMessage: String? = null,
 )
 
 data class MapLocationUiState(

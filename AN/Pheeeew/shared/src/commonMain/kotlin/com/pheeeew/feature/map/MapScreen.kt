@@ -31,6 +31,7 @@ import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.domain.model.location.LocationState
 import com.pheeeew.domain.model.sigh.SighBounds
+import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.feature.map.animation.SighAnimationCoordinator
 import com.pheeeew.feature.map.animation.StarFlightOverlay
 import com.pheeeew.feature.map.map.BreathMap
@@ -41,6 +42,8 @@ import com.pheeeew.feature.map.overlay.ErrorSnackbar
 import com.pheeeew.feature.map.overlay.MapOverlay
 import com.pheeeew.feature.map.overlay.MemoEditor
 import com.pheeeew.feature.map.overlay.SighPhase
+import com.pheeeew.feature.map.sighlist.SighBrowserOverlay
+import com.pheeeew.feature.map.sighlist.toSighListItemUiModel
 import com.pheeeew.feature.map.star.StarAgePolicy
 import com.pheeeew.feature.map.star.StarVisualPolicy
 import kotlinx.coroutines.delay
@@ -55,6 +58,12 @@ fun MapScreen(
     onZoomOutClick: () -> Unit,
     onMyLocationClick: () -> Unit,
     onBoundsChanged: (SighBounds) -> Unit,
+    onSighListVisibilityChange: (Boolean) -> Unit,
+    onSighItemClick: (Long) -> Unit,
+    onDismissSighList: () -> Unit,
+    onDismissSighDetail: () -> Unit,
+    onLoadNextSighPage: () -> Unit,
+    onRefreshSighList: () -> Unit,
     onBeginMemoAfterExplosion: () -> Unit,
     onSubmitMemo: (String) -> Unit,
     onSkipMemo: () -> Unit,
@@ -83,25 +92,56 @@ fun MapScreen(
     var sighPhase by remember { mutableStateOf(SighPhase.Idle) }
     var cancelSignal by remember { mutableStateOf(0) }
     var starAgeRevision by remember { mutableIntStateOf(0) }
+    var relativeTimeRevision by remember { mutableIntStateOf(0) }
+    val sighBrowser = uiState.sighBrowser
     val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
     val memoDraft = (uiState.sighRelease as? SighReleaseState.EditingMemo)?.draft
     val isMemoEditing = memoDraft != null
     val retryableSighError =
         (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
     val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing
-
-    val hiddenMarkerId =
-        uiState.viewport.focusRequest?.id?.takeIf {
-            pendingFlightOrigin != null && landedFlightId != it
+    val renderedSighs =
+        remember(uiState.sighs, sighBrowser.selectedSigh) {
+            (listOfNotNull(sighBrowser.selectedSigh?.toPin()) + uiState.sighs)
+                .distinctBy(SighPin::id)
         }
 
-    LaunchedEffect(uiState.sighs, isActive) {
+    LaunchedEffect(sighBrowser.isVisible) {
+        if (!sighBrowser.isVisible) return@LaunchedEffect
+        while (true) {
+            delay(60_000L)
+            relativeTimeRevision += 1
+        }
+    }
+
+    val listItems =
+        remember(sighBrowser.items, relativeTimeRevision) {
+            val now = Clock.System.now()
+            sighBrowser.items.map { it.toSighListItemUiModel(now) }
+        }
+    val selectedItem =
+        remember(sighBrowser.selectedSigh, relativeTimeRevision) {
+            sighBrowser.selectedSigh?.toSighListItemUiModel(Clock.System.now())
+        }
+    val selectedProjectionId = sighBrowser.selectedSigh?.let { sigh -> "selected-sigh-${sigh.id}" }
+    val selectedProjectionPoint = selectedProjectionId?.let(projectionSnapshot.points::get)
+
+    val hiddenMarkerId =
+        sighBrowser.selectedSigh
+            ?.id
+            ?.toString()
+            ?.takeIf { selectedProjectionPoint != null }
+            ?: uiState.viewport.focusRequest?.id?.takeIf {
+                pendingFlightOrigin != null && landedFlightId != it
+            }
+
+    LaunchedEffect(renderedSighs, isActive) {
         if (!isActive) return@LaunchedEffect
 
         val agePolicy = StarAgePolicy()
         while (true) {
             val nextTransitionAt =
-                uiState.sighs
+                renderedSighs
                     .asSequence()
                     .mapNotNull { sigh -> agePolicy.nextTransitionAt(sigh.createdAt) }
                     .minOrNull()
@@ -114,8 +154,8 @@ fun MapScreen(
     }
 
     val sighMarkers =
-        remember(uiState.sighs, hiddenMarkerId, starAgeRevision) {
-            uiState.toSighMarkers(
+        remember(renderedSighs, hiddenMarkerId, starAgeRevision) {
+            renderedSighs.toSighMarkers(
                 hiddenMarkerId = hiddenMarkerId,
                 now = Clock.System.now(),
             )
@@ -147,6 +187,16 @@ fun MapScreen(
                     fallbackCenter = DEFAULT_MAP_POINT,
                     sighMarkers = sighMarkers,
                     focusRequest = uiState.viewport.focusRequest,
+                    projectionTargets =
+                        listOfNotNull(
+                            sighBrowser.selectedSigh?.let { sigh ->
+                                MapPoint(
+                                    id = "selected-sigh-${sigh.id}",
+                                    latitude = sigh.coordinate.latitude,
+                                    longitude = sigh.coordinate.longitude,
+                                )
+                            },
+                        ),
                 ),
             cameraCommand = uiState.viewport.cameraCommand,
             onSighClick = {},
@@ -159,11 +209,32 @@ fun MapScreen(
 
         MapOverlay(
             onSettingsClick = onSettingsClick,
+            isSighListVisible = sighBrowser.isVisible,
+            onSighListVisibilityChange = onSighListVisibilityChange,
             onZoomInClick = onZoomInClick,
             onZoomOutClick = onZoomOutClick,
             onMyLocationClick = onMyLocationClick,
             errorMessage = uiState.toBannerMessage(),
             controlsEnabled = sighPhase == SighPhase.Idle && uiState.sighRelease is SighReleaseState.Idle,
+        )
+
+        SighBrowserOverlay(
+            visible = sighBrowser.isVisible,
+            items = listItems,
+            selectedItem = selectedItem,
+            selectedItemPositionPx =
+                selectedProjectionPoint?.let { point -> Offset(point.xPx, point.yPx) },
+            isLoading = sighBrowser.isLoading,
+            isLoadingMore = sighBrowser.isLoadingMore,
+            isLoadMoreError = sighBrowser.isLoadMoreError,
+            refreshRevision = sighBrowser.refreshRevision,
+            canLoadMore = sighBrowser.nextCursor != null,
+            errorMessage = sighBrowser.errorMessage,
+            onItemClick = { onSighItemClick(it.id) },
+            onDismissList = onDismissSighList,
+            onDismissDetail = onDismissSighDetail,
+            onLoadMore = onLoadNextSighPage,
+            onRefresh = onRefreshSighList,
         )
 
         if (isSighInteractionVisible) {
@@ -202,7 +273,7 @@ fun MapScreen(
             }
         }
 
-        if (isActive) {
+        if (isActive && !sighBrowser.isVisible) {
             Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding().align(Alignment.BottomCenter)) {
                 if (!isSighSubmitting) {
                     if (uiState.sighRelease is SighReleaseState.Idle) {
@@ -344,12 +415,11 @@ fun MapScreen(
     }
 }
 
-private fun MapUiState.toSighMarkers(
+private fun List<SighPin>.toSighMarkers(
     hiddenMarkerId: String?,
     now: Instant,
 ): List<SighMarker> =
-    sighs
-        .asSequence()
+    asSequence()
         .filterNot { it.id.toString() == hiddenMarkerId }
         .sortedBy { it.id }
         .map { sighPin ->
@@ -374,6 +444,12 @@ private fun MapScreenPreview() {
             onZoomOutClick = {},
             onMyLocationClick = {},
             onBoundsChanged = {},
+            onSighListVisibilityChange = {},
+            onSighItemClick = {},
+            onDismissSighList = {},
+            onDismissSighDetail = {},
+            onLoadNextSighPage = {},
+            onRefreshSighList = {},
             onBeginMemoAfterExplosion = {},
             onSubmitMemo = {},
             onSkipMemo = {},

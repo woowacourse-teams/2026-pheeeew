@@ -15,6 +15,7 @@ internal object MapDarkStyle {
     const val INITIAL_ZOOM = 12.6
     const val POI_LABEL_MIN_ZOOM = 14.5
     const val FOCUS_ZOOM = 15.5
+    const val SIGH_DETAIL_ZOOM = 17.0
     const val MINIMUM_ZOOM = 0.0
     const val MAXIMUM_ZOOM = 22.0
 
