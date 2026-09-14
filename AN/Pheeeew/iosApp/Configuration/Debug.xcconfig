@@ -2,3 +2,4 @@
 
 SLASH = /
 API_BASE_URL = https:$(SLASH)/api-dev.pheeeew.com
+APP_ATTEST_ENVIRONMENT = development
