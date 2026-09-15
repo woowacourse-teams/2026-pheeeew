@@ -47,14 +47,6 @@ fun App(
     AppTheme {
         val coroutineScope = rememberCoroutineScope()
         var screen by remember { mutableStateOf(Screen.Splash) }
-        val mapViewModel: MapViewModel =
-            viewModel {
-                MapViewModel(sighRepository, createSigh, locationDependencies, mapPerformanceLogger)
-            }
-        val sighModerationViewModel: SighModerationViewModel =
-            viewModel { SighModerationViewModel() }
-        val mapReadiness = remember { MutableStateFlow(false) }
-        var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
         var firstSighGuideActive by remember { mutableStateOf(!hasCompletedFirstSighGuide) }
 
         val completeFirstSighGuide = {
@@ -63,6 +55,16 @@ fun App(
                 onFirstSighGuideCompleted()
             }
         }
+        val mapViewModel: MapViewModel =
+            viewModel {
+                MapViewModel(sighRepository, createSigh, locationDependencies, mapPerformanceLogger)
+            }
+        val sighModerationViewModel: SighModerationViewModel =
+            viewModel { SighModerationViewModel() }
+        val mapReadiness = remember { MutableStateFlow(false) }
+        var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
+        @Suppress("UNUSED_VARIABLE")
+        var requestPermissionsAfterOnboarding by remember { mutableStateOf(false) }
 
         // 오버레이 화면들이 뒤에 깔린 지도로 터치가 새어나가지 않도록 막습니다.
         val overlayModifier =

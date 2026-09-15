@@ -2,17 +2,21 @@ package com.pheeeew.feature.map.overlay
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -83,33 +86,31 @@ private fun MemoBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = Color.Transparent,
+        containerColor = AppColors.Navy800,
         contentColor = AppColors.Cream100,
         scrimColor = Color.Black.copy(alpha = 0.6f),
-        dragHandle = null,
     ) {
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        BoxWithConstraints(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .navigationBarsPadding(),
         ) {
-            if (guideMode) {
-                FirstSighGuideBubble(
-                    step = FirstSighGuideStep.Memo,
-                    modifier = Modifier.padding(bottom = 12.dp),
-                )
-            }
             Column(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .background(
-                            color = AppColors.Navy800,
-                            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-                        ).imePadding()
-                        .navigationBarsPadding()
-                        .padding(start = 26.dp, top = 24.dp, end = 26.dp, bottom = 24.dp),
+                        .heightIn(max = maxHeight)
+                        .padding(start = 26.dp, top = 4.dp, end = 26.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
+                if (guideMode) {
+                    FirstSighGuideBubble(
+                        step = FirstSighGuideStep.Memo,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    )
+                }
                 Text(
                     text = "한숨에 담아 보낼 마음",
                     style = AppTheme.typography.screenTitle,
@@ -119,46 +120,55 @@ private fun MemoBottomSheet(
                     style = AppTheme.typography.dialogBody,
                     color = AppColors.Cream100.copy(alpha = 0.7f),
                 )
-                BasicTextField(
-                    value = value,
-                    onValueChange = onValueChange,
-                    enabled = !submitting,
+                Column(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(184.dp)
-                            .background(AppColors.Navy700, RoundedCornerShape(14.dp))
-                            .padding(16.dp),
-                    textStyle =
-                        TextStyle(
-                            color = AppColors.Cream100,
-                            fontSize = AppTheme.typography.dialogBody.fontSize,
-                        ),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Done),
-                    keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                    maxLines = 6,
-                    decorationBox = { innerTextField ->
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            if (value.isEmpty()) {
-                                Text(
-                                    text = "오늘 어떤 일이 있었나요?",
-                                    style = AppTheme.typography.dialogBody,
-                                    color = AppColors.Cream100.copy(alpha = 0.4f),
-                                )
-                            }
-                            innerTextField()
-                        }
-                    },
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                            .weight(weight = 1f, fill = false)
+                            .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    Text(
-                        text = "${value.length}/$MAX_MEMO_LENGTH",
-                        style = AppTheme.typography.caption,
-                        color = AppColors.Cream100.copy(alpha = 0.6f),
+                    BasicTextField(
+                        value = value,
+                        onValueChange = onValueChange,
+                        enabled = !submitting,
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 120.dp, max = 184.dp)
+                                .background(AppColors.Navy700, RoundedCornerShape(14.dp))
+                                .padding(16.dp),
+                        textStyle = AppTheme.typography.dialogBody.copy(color = AppColors.Cream100),
+                        keyboardOptions =
+                            KeyboardOptions(
+                                keyboardType = KeyboardType.Text,
+                                imeAction = ImeAction.Done,
+                            ),
+                        keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+                        maxLines = 6,
+                        decorationBox = { innerTextField ->
+                            Box(modifier = Modifier.fillMaxWidth()) {
+                                if (value.isEmpty()) {
+                                    Text(
+                                        text = "오늘 어떤 일이 있었나요?",
+                                        style = AppTheme.typography.dialogBody,
+                                        color = AppColors.Cream100.copy(alpha = 0.4f),
+                                    )
+                                }
+                                innerTextField()
+                            }
+                        },
                     )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        Text(
+                            text = "${value.length}/$MAX_MEMO_LENGTH",
+                            style = AppTheme.typography.caption,
+                            color = AppColors.Cream100.copy(alpha = 0.6f),
+                        )
+                    }
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
