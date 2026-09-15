@@ -796,6 +796,18 @@ class MapViewModel(
         }
     }
 
+    /** 온보딩에서는 저장된 거부 이력으로 요청을 생략하지 않고 시스템 요청 결과를 직접 사용합니다. */
+    suspend fun requestLocationPermission(): LocationPermissionStatus {
+        val dependencies = locationDependencies ?: return LocationPermissionStatus.Denied
+        return try {
+            dependencies.permissionController.requestPermission()
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            LocationPermissionStatus.Denied
+        }
+    }
+
     suspend fun refreshLocationPermission(): LocationPermissionStatus? {
         val dependencies = locationDependencies ?: return null
         return try {

@@ -19,8 +19,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.lerp
@@ -32,19 +35,29 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.audio.rememberBreathInput
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.permission.LocationPermissionSettingsDialog
+import com.pheeeew.core.permission.LocationPermissionStatus
+import com.pheeeew.core.permission.LocationServicesSettingsDialog
 import com.pheeeew.feature.splash.TwinklingStars
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 @Composable
 fun OnboardingScreen(
+    onRequestLocationPermission: suspend () -> LocationPermissionStatus,
+    onOpenLocationSettings: () -> Unit,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState(pageCount = { PAGE_COUNT })
     val coroutineScope = rememberCoroutineScope()
+    val breathInput = rememberBreathInput()
+    var isRequestingPermissions by remember { mutableStateOf(false) }
+    var locationPermissionIssue by remember { mutableStateOf<LocationPermissionStatus?>(null) }
     val page = pagerState.currentPage
     val indicatorPosition = pagerState.currentPage + pagerState.currentPageOffsetFraction
 
@@ -71,13 +84,75 @@ fun OnboardingScreen(
             indicatorPosition = indicatorPosition,
             onClick = {
                 if (page == LAST_PAGE_INDEX) {
-                    onFinished()
+                    if (!isRequestingPermissions) {
+                        isRequestingPermissions = true
+                        coroutineScope.launch {
+                            val locationStatus =
+                                requestOnboardingPermissions(
+                                    requestLocationPermission = onRequestLocationPermission,
+                                    requestMicrophonePermission = { breathInput.requestPermission() },
+                                )
+                            if (locationStatus == LocationPermissionStatus.Granted) {
+                                onFinished()
+                            } else {
+                                locationPermissionIssue = locationStatus
+                                isRequestingPermissions = false
+                            }
+                        }
+                    }
                 } else {
                     coroutineScope.launch { pagerState.animateScrollToPage(page + 1) }
                 }
             },
+            enabled = !isRequestingPermissions,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+
+        when (locationPermissionIssue) {
+            LocationPermissionStatus.ServicesDisabled -> {
+                LocationServicesSettingsDialog(
+                    onOpenSettings = {
+                        locationPermissionIssue = null
+                        onOpenLocationSettings()
+                    },
+                    onDismiss = {
+                        locationPermissionIssue = null
+                        isRequestingPermissions = true
+                        continueOnboardingWithoutLocation(
+                            coroutineScope = coroutineScope,
+                            requestMicrophonePermission = { breathInput.requestPermission() },
+                            onFinished = onFinished,
+                        )
+                    },
+                )
+            }
+
+            LocationPermissionStatus.Denied,
+            LocationPermissionStatus.PermanentlyDenied,
+            -> {
+                LocationPermissionSettingsDialog(
+                    onOpenSettings = {
+                        locationPermissionIssue = null
+                        onOpenLocationSettings()
+                    },
+                    onDismiss = {
+                        locationPermissionIssue = null
+                        isRequestingPermissions = true
+                        continueOnboardingWithoutLocation(
+                            coroutineScope = coroutineScope,
+                            requestMicrophonePermission = { breathInput.requestPermission() },
+                            onFinished = onFinished,
+                        )
+                    },
+                )
+            }
+
+            LocationPermissionStatus.Granted,
+            null,
+            -> {
+                Unit
+            }
+        }
     }
 }
 
@@ -126,6 +201,7 @@ private fun BottomControls(
     page: Int,
     indicatorPosition: Float,
     onClick: () -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -142,6 +218,7 @@ private fun BottomControls(
                     .height(48.dp)
                     .background(AppColors.Blue100, RoundedCornerShape(24.dp))
                     .clickable(
+                        enabled = enabled,
                         role = Role.Button,
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -186,6 +263,49 @@ private fun PageIndicator(position: Float) {
 private const val PAGE_COUNT = 3
 private const val LAST_PAGE_INDEX = PAGE_COUNT - 1
 
+internal suspend fun requestOnboardingPermissions(
+    requestLocationPermission: suspend () -> LocationPermissionStatus,
+    requestMicrophonePermission: suspend () -> Unit,
+): LocationPermissionStatus {
+    val locationStatus = requestLocationPermissionSafely(requestLocationPermission)
+    if (locationStatus == LocationPermissionStatus.Granted) {
+        requestPermissionSafely(requestMicrophonePermission)
+    }
+    return locationStatus
+}
+
+private fun continueOnboardingWithoutLocation(
+    coroutineScope: kotlinx.coroutines.CoroutineScope,
+    requestMicrophonePermission: suspend () -> Unit,
+    onFinished: () -> Unit,
+) {
+    coroutineScope.launch {
+        requestPermissionSafely(requestMicrophonePermission)
+        onFinished()
+    }
+}
+
+private suspend fun requestLocationPermissionSafely(
+    requestPermission: suspend () -> LocationPermissionStatus,
+): LocationPermissionStatus =
+    try {
+        requestPermission()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Throwable) {
+        LocationPermissionStatus.Denied
+    }
+
+private suspend fun requestPermissionSafely(requestPermission: suspend () -> Unit) {
+    try {
+        requestPermission()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Throwable) {
+        // 한 권한 요청의 플랫폼 오류가 다음 권한 요청과 온보딩 완료를 막지 않게 합니다.
+    }
+}
+
 @Composable
 internal fun OnboardingPagePreview(
     page: Int,
@@ -209,6 +329,10 @@ internal fun OnboardingPagePreview(
 @Composable
 private fun OnboardingScreenPreview() {
     AppTheme {
-        OnboardingScreen(onFinished = {})
+        OnboardingScreen(
+            onRequestLocationPermission = { LocationPermissionStatus.Granted },
+            onOpenLocationSettings = {},
+            onFinished = {},
+        )
     }
 }

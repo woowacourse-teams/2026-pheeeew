@@ -134,6 +134,10 @@ fun App(
 
             if (screen == Screen.Onboarding) {
                 OnboardingScreen(
+                    onRequestLocationPermission = {
+                        mapViewModel.requestLocationPermission()
+                    },
+                    onOpenLocationSettings = mapViewModel::openLocationSettings,
                     onFinished = {
                         onOnboardingCompleted()
                         firstSighGuideActive = true

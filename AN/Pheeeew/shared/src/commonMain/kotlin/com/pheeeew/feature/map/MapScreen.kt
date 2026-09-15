@@ -30,7 +30,9 @@ import com.pheeeew.core.audio.BreathInputError
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.permission.LocationPermissionSettingsDialog
 import com.pheeeew.core.permission.LocationPermissionStatus
+import com.pheeeew.core.permission.LocationServicesSettingsDialog
 import com.pheeeew.domain.model.location.LocationState
 import com.pheeeew.domain.model.sigh.SighBounds
 import com.pheeeew.domain.model.sigh.SighPin
@@ -486,32 +488,22 @@ fun MapScreen(
         }
 
         if (showLocationPermissionDialog) {
-            AppDialog(
-                title = "위치 권한 설정 안내",
-                body = "한숨을 별로 만들려면 위치 권한이 필요합니다.\n설정에서 위치 권한을 '허용'으로 변경해주세요.",
-                confirmText = "설정으로 이동",
-                onConfirmClick = {
+            LocationPermissionSettingsDialog(
+                onOpenSettings = {
                     showLocationPermissionDialog = false
                     onOpenLocationSettings()
                 },
-                onDismissRequest = { showLocationPermissionDialog = false },
-                onDismissClick = { showLocationPermissionDialog = false },
-                dismissText = "취소",
+                onDismiss = { showLocationPermissionDialog = false },
             )
         }
 
         if (showLocationServicesDialog) {
-            AppDialog(
-                title = "위치 서비스 설정 안내",
-                body = "현재 위치를 확인하려면 기기 설정에서 위치 서비스를 켜주세요.",
-                confirmText = "설정으로 이동",
-                onConfirmClick = {
+            LocationServicesSettingsDialog(
+                onOpenSettings = {
                     showLocationServicesDialog = false
                     onOpenLocationSettings()
                 },
-                onDismissRequest = { showLocationServicesDialog = false },
-                onDismissClick = { showLocationServicesDialog = false },
-                dismissText = "취소",
+                onDismiss = { showLocationServicesDialog = false },
             )
         }
 

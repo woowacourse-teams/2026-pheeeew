@@ -371,6 +371,43 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `온보딩 위치 권한 요청은 기존 영구 거부 판정을 거치지 않고 시스템 요청을 호출한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                var requestCount = 0
+                val dependencies =
+                    LocationDependencies(
+                        permissionController =
+                            object : LocationPermissionController {
+                                override suspend fun currentStatus() = LocationPermissionStatus.PermanentlyDenied
+
+                                override suspend fun requestPermission(): LocationPermissionStatus {
+                                    requestCount += 1
+                                    return LocationPermissionStatus.Denied
+                                }
+                            },
+                        permissionSettingsLauncher =
+                            object : LocationPermissionSettingsLauncher {
+                                override suspend fun openAppSettings() = true
+
+                                override suspend fun openLocationSettings() = true
+                            },
+                        repository = FakeLocationRepository(LocationState.Loading),
+                    )
+                val viewModel = createViewModel(locationDependencies = dependencies)
+
+                val status = viewModel.requestLocationPermission()
+
+                assertEquals(1, requestCount)
+                assertEquals(LocationPermissionStatus.Denied, status)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `한숨 등록 성공 시 핀과 포커스 요청을 추가한다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
