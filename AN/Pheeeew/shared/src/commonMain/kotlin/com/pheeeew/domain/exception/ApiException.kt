@@ -25,6 +25,11 @@ sealed class ApiException(
         message: String,
     ) : ApiException(code, message)
 
+    class Gone(
+        code: String,
+        message: String,
+    ) : ApiException(code, message)
+
     class Conflict(
         code: String,
         message: String,
