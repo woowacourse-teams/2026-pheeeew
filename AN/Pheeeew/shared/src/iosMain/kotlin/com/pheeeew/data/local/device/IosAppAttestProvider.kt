@@ -22,7 +22,7 @@ class IosAppAttestProvider(
         val service = DCAppAttestService.sharedService
         check(service.isSupported()) { "App Attest is not supported on this device" }
 
-        val keyId = keychain.readString(KEY_ID_ACCOUNT) ?: service.generateKey()
+        val keyId = service.generateKey()
             .also { keychain.writeString(KEY_ID_ACCOUNT, it) }
         val attestation = service.attestKey(keyId, challenge.sha256Data())
 

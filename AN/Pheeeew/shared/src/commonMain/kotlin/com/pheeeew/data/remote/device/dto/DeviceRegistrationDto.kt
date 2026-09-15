@@ -16,7 +16,7 @@ data class DeviceAttestationDto(
 @Serializable
 data class DeviceRegistrationRequestDto(
     val requestId: String,
-    val attestation: DeviceAttestationDto,
+    val attestation: DeviceAttestationDto? = null,
 )
 
 @Serializable

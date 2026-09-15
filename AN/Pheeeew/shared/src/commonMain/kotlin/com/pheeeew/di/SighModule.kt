@@ -26,7 +26,11 @@ object SighModule {
         val repository =
             SighRepositoryImpl(
                 sighV1Api = KtorSighV1Api(client),
-                sighV2Api = KtorSighV2Api(client, accessTokenStore, refreshAccessToken),
+                sighV2Api = KtorSighV2Api(
+                    client = client,
+                    accessTokenStore = accessTokenStore,
+                    refreshAccessToken = refreshAccessToken,
+                ),
             )
         return SighDependencies(
             repository = repository,

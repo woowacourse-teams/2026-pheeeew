@@ -19,6 +19,7 @@ import platform.CoreFoundation.CFDictionarySetValue
 import platform.CoreFoundation.CFStringCreateWithCString
 import platform.CoreFoundation.kCFStringEncodingUTF8
 import platform.CoreFoundation.kCFBooleanTrue
+import platform.Foundation.NSUserDefaults
 import platform.Security.SecItemAdd
 import platform.Security.SecItemCopyMatching
 import platform.Security.SecItemDelete
@@ -35,6 +36,15 @@ import platform.Security.kSecValueData
 
 @OptIn(ExperimentalForeignApi::class)
 class IosKeychainDeviceTokenStorage : DeviceTokenStorage {
+    private val userDefaults = NSUserDefaults.standardUserDefaults
+
+    init {
+        if (!userDefaults.boolForKey(INSTALL_MARKER)) {
+            delete(REFRESH_TOKEN_ACCOUNT)
+            userDefaults.setBool(true, forKey = INSTALL_MARKER)
+        }
+    }
+
     override suspend fun getRefreshToken(): RefreshToken? =
         read(REFRESH_TOKEN_ACCOUNT)?.let(::RefreshToken)
 
@@ -95,5 +105,6 @@ class IosKeychainDeviceTokenStorage : DeviceTokenStorage {
     private companion object {
         const val SERVICE = "com.pheeeew.device-registration"
         const val REFRESH_TOKEN_ACCOUNT = "refresh-token"
+        const val INSTALL_MARKER = "device-registration-install-marker"
     }
 }

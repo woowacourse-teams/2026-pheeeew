@@ -12,18 +12,22 @@ import com.pheeeew.data.repository.DeviceRegistrationRepositoryImpl
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.repository.DeviceRegistrationRepository
 import com.pheeeew.domain.usecase.EnsureDeviceRegisteredUseCase
+import kotlin.experimental.ExperimentalNativeApi
 import platform.DeviceCheck.DCAppAttestService
+import kotlin.native.Platform
 
 data class IosDeviceRegistrationDependencies(
     val repository: DeviceRegistrationRepository,
     val ensureRegistered: EnsureDeviceRegisteredUseCase,
 )
 
+@OptIn(ExperimentalNativeApi::class)
 fun createIosDeviceRegistrationDependencies(
     config: ApiConfig,
     accessTokenStore: AccessTokenStore,
 ): IosDeviceRegistrationDependencies {
     val tokenStorage = IosKeychainDeviceTokenStorage()
+    val isDebugBuild = Platform.isDebugBinary
     val attestationProvider: DeviceAttestationProvider =
         if (DCAppAttestService.sharedService.isSupported()) {
             IosAppAttestProvider(tokenStorage)
@@ -38,6 +42,9 @@ fun createIosDeviceRegistrationDependencies(
     )
     return IosDeviceRegistrationDependencies(
         repository = repository,
-        ensureRegistered = EnsureDeviceRegisteredUseCase(repository),
+        ensureRegistered = EnsureDeviceRegisteredUseCase(
+            repository = repository,
+            forceRegistrationOnce = isDebugBuild,
+        ),
     )
 }

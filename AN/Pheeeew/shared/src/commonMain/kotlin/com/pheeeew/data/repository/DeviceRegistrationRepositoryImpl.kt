@@ -30,24 +30,24 @@ class DeviceRegistrationRepositoryImpl(
     override suspend fun register(): AuthSession = try {
         val challenge = api.getChallenge()
         val attestation = attestationProvider.create(challenge.challenge)
-        val response = api.register(
-            DeviceRegistrationRequestDto(
-                requestId = Uuid.random().toString(),
-                attestation = DeviceAttestationDto(
-                    platform = attestation.platform.name,
-                    token = attestation.token,
-                    challenge = attestation.challenge,
-                    keyId = attestation.keyId,
-                ),
+        val request = DeviceRegistrationRequestDto(
+            requestId = Uuid.random().toString(),
+            attestation = DeviceAttestationDto(
+                platform = attestation.platform.name,
+                token = attestation.token,
+                challenge = attestation.challenge,
+                keyId = attestation.keyId,
             ),
         )
+        val response = registerWithRetry(request)
         val refreshToken = RefreshToken(response.refreshToken)
+        val accessTokenExpiresAtEpochSeconds = nowEpochSeconds() + response.expiresIn
         tokenStorage.saveRefreshToken(refreshToken)
-        accessTokenStore.save(AccessToken(response.accessToken))
+        accessTokenStore.save(AccessToken(response.accessToken), accessTokenExpiresAtEpochSeconds)
         AuthSession(
             accessToken = accessTokenStore.accessToken!!,
             refreshToken = refreshToken,
-            accessTokenExpiresAtEpochSeconds = nowEpochSeconds() + response.expiresIn,
+            accessTokenExpiresAtEpochSeconds = accessTokenExpiresAtEpochSeconds,
         )
     } catch (error: CancellationException) {
         throw error
@@ -57,9 +57,12 @@ class DeviceRegistrationRepositoryImpl(
 
     override suspend fun refreshAccessToken(refreshToken: RefreshToken): AccessTokenInfo = try {
         val response = api.refresh(RefreshTokenRequestDto(refreshToken.value))
+        val accessTokenExpiresAtEpochSeconds = nowEpochSeconds() + response.expiresIn
         AccessTokenInfo(
-            accessToken = AccessToken(response.accessToken).also(accessTokenStore::save),
-            accessTokenExpiresAtEpochSeconds = nowEpochSeconds() + response.expiresIn,
+            accessToken = AccessToken(response.accessToken).also {
+                accessTokenStore.save(it, accessTokenExpiresAtEpochSeconds)
+            },
+            accessTokenExpiresAtEpochSeconds = accessTokenExpiresAtEpochSeconds,
         )
     } catch (error: CancellationException) {
         throw error
@@ -70,6 +73,16 @@ class DeviceRegistrationRepositoryImpl(
     override suspend fun clearCredentials() {
         tokenStorage.clear()
         accessTokenStore.clear()
+    }
+
+    private suspend fun registerWithRetry(
+        request: DeviceRegistrationRequestDto,
+    ): com.pheeeew.data.remote.device.dto.DeviceRegistrationResponseDto = try {
+        api.register(request)
+    } catch (error: ApiException.Network) {
+        api.register(request.copy(attestation = null))
+    } catch (error: ApiException.Unknown) {
+        api.register(request.copy(attestation = null))
     }
 
     private fun Throwable.toDeviceRegistrationException(): DeviceRegistrationException = when (this) {

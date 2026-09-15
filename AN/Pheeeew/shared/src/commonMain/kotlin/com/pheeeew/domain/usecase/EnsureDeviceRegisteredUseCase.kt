@@ -7,8 +7,17 @@ import kotlin.coroutines.cancellation.CancellationException
 
 class EnsureDeviceRegisteredUseCase(
     private val repository: DeviceRegistrationRepository,
+    private val forceRegistrationOnce: Boolean = false,
 ) {
+    private var didForceRegistration = false
+
     suspend operator fun invoke(): Result<AuthSession> {
+        if (forceRegistrationOnce && !didForceRegistration) {
+            didForceRegistration = true
+            repository.clearCredentials()
+            return register()
+        }
+
         val refreshToken = repository.getStoredRefreshToken()
 
         if (refreshToken == null) {
