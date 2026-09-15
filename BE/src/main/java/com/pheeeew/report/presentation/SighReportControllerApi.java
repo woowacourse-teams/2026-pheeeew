@@ -87,6 +87,16 @@ public interface SighReportControllerApi {
                     )
             ),
             @ApiResponse(
+                    responseCode = "409",
+                    description = "자기 한숨을 신고함. 작성자를 모르는 한숨은 이 판정을 하지 않는다",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"REPORT-002","message":"자기 한숨은 신고할 수 없습니다."}
+                                    """)
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "500",
                     description = "신고를 저장하지 못했거나 처리하지 못한 서버 오류",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
