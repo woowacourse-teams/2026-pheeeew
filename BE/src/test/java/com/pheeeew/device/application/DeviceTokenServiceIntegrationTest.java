@@ -64,7 +64,7 @@ class DeviceTokenServiceIntegrationTest {
         AccessTokenResult result = deviceTokenService.reissueAccessToken(saved.refreshToken());
 
         // then
-        assertThat(result.expiresIn()).isEqualTo(30L);
+        assertThat(result.expiresIn()).isEqualTo(1800L);
         assertThat(AccessTokenClaims.from(jwtDecoder.decode(result.accessToken())).devicePublicId())
                 .isEqualTo(device.getPublicId());
     }

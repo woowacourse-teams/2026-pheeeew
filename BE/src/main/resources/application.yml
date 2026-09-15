@@ -20,7 +20,7 @@ pheeeew:
     private-key-base64: ${JWT_PRIVATE_KEY_BASE64}
     public-key-base64: ${JWT_PUBLIC_KEY_BASE64}
   token:
-    access-ttl: PT30S
+    access-ttl: PT30M
     registration-retry-window: PT5M
     challenge-ttl: PT5M
   play-integrity:

@@ -1,5 +1,10 @@
 package com.pheeeew.auth.infra.security;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.HashSet;
+import java.util.Set;
 import static com.pheeeew.appversion.fixture.AppVersionFixture.기본_앱_버전_정책_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -488,8 +493,9 @@ class SecurityAuthorizationIntegrationTest {
                 .getResponseBody();
         assertThat(응답_본문)
                 .doesNotContain(device.getPublicId().toString())
-                .doesNotContain(device.getId().toString() + ",")
-                .doesNotContain("deviceId");
+                .doesNotContain("device");
+        assertThat(한숨_속성_이름들(응답_본문))
+                .containsExactlyInAnyOrder("createdAt", "memo", "nickname", "liked", "likeCount");
         assertThat(작성자_기기_식별자()).isEqualTo(device.getId());
     }
 
@@ -1007,6 +1013,17 @@ class SecurityAuthorizationIntegrationTest {
                 registry.add("pheeeew.jwt.private-key-base64", keys::privateKeyBase64);
                 registry.add("pheeeew.jwt.public-key-base64", keys::publicKeyBase64);
             };
+        }
+    }
+
+    private Set<String> 한숨_속성_이름들(String 응답_본문) {
+        try {
+            JsonNode properties = new ObjectMapper().readTree(응답_본문).get("properties");
+            Set<String> 이름들 = new HashSet<>();
+            properties.fieldNames().forEachRemaining(이름들::add);
+            return 이름들;
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("응답 본문을 해석할 수 없습니다.", exception);
         }
     }
 }
