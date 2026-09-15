@@ -4,7 +4,9 @@ package com.pheeeew.data.remote.sigh.api
 
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createHttpClient
+import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.remote.sigh.dto.SighCreateV2RequestDto
+import com.pheeeew.domain.model.device.AccessToken
 import com.pheeeew.domain.model.sigh.SighBounds
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.MockRequestHandleScope
@@ -16,6 +18,9 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -139,11 +144,139 @@ class KtorSighV2ApiTest {
             client.close()
         }
 
+    @Test
+    fun `등록 요청은 access token을 bearer 헤더로 전달한다`() =
+        runTest {
+            val store = TestAccessTokenStore(AccessToken("access-123"))
+            val engine =
+                MockEngine { request ->
+                    assertEquals("Bearer access-123", request.headers[HttpHeaders.Authorization])
+                    respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
+                }
+            val client = createClient(engine)
+            val api = KtorSighV2Api(client, store)
+
+            api.create(SighCreateV2RequestDto("request-123", 37.5, 126.9))
+
+            client.close()
+        }
+
+    @Test
+    fun `access token 만료가 임박하면 요청 전에 refresh한다`() =
+        runTest {
+            val store =
+                TestAccessTokenStore(
+                    accessToken = AccessToken("expiring"),
+                    accessTokenExpiresAtEpochSeconds = 1050L,
+                )
+            var refreshCount = 0
+            val engine =
+                MockEngine { request ->
+                    assertEquals("Bearer refreshed", request.headers[HttpHeaders.Authorization])
+                    respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
+                }
+            val client = createClient(engine)
+            val api =
+                KtorSighV2Api(
+                    client = client,
+                    accessTokenStore = store,
+                    refreshAccessToken = {
+                        refreshCount++
+                        AccessToken("refreshed")
+                    },
+                    nowEpochSeconds = { 1000L },
+                )
+
+            api.create(SighCreateV2RequestDto("request-123", 37.5, 126.9))
+
+            assertEquals(1, refreshCount)
+            client.close()
+        }
+
+    @Test
+    fun `access token 만료 시 refresh 후 요청을 한 번 재시도한다`() =
+        runTest {
+            val store = TestAccessTokenStore(AccessToken("expired"))
+            var requestCount = 0
+            var refreshCount = 0
+            val engine =
+                MockEngine { request ->
+                    requestCount++
+                    if (requestCount == 1) {
+                        respondJson("""{"code":"AUTH-001","message":"expired"}""", HttpStatusCode.Unauthorized)
+                    } else {
+                        assertEquals("Bearer refreshed", request.headers[HttpHeaders.Authorization])
+                        respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
+                    }
+                }
+            val client = createClient(engine)
+            val api =
+                KtorSighV2Api(client, store, refreshAccessToken = {
+                    refreshCount++
+                    AccessToken("refreshed")
+                })
+
+            api.create(SighCreateV2RequestDto("request-123", 37.5, 126.9))
+
+            assertEquals(2, requestCount)
+            assertEquals(1, refreshCount)
+            client.close()
+        }
+
+    @Test
+    fun `동시에 만료된 요청이 발생해도 refresh는 한 번만 실행한다`() =
+        runTest {
+            val store = TestAccessTokenStore(AccessToken("expired"))
+            var requestCount = 0
+            var refreshCount = 0
+            val engine =
+                MockEngine { request ->
+                    requestCount++
+                    if (request.headers[HttpHeaders.Authorization] == "Bearer expired") {
+                        respondJson("""{"code":"AUTH-001","message":"expired"}""", HttpStatusCode.Unauthorized)
+                    } else {
+                        assertEquals("Bearer refreshed", request.headers[HttpHeaders.Authorization])
+                        respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
+                    }
+                }
+            val client = createClient(engine)
+            val api =
+                KtorSighV2Api(client, store, refreshAccessToken = {
+                    refreshCount++
+                    delay(10)
+                    AccessToken("refreshed")
+                })
+
+            listOf(1, 2)
+                .map {
+                    async {
+                        api.create(SighCreateV2RequestDto("request-$it", 37.5, 126.9))
+                    }
+                }.awaitAll()
+
+            assertEquals(4, requestCount)
+            assertEquals(1, refreshCount)
+            client.close()
+        }
+
     private fun createClient(engine: MockEngine) =
         createHttpClient(
             engine = engine,
             config = ApiConfig("https://api-dev.pheeeew.com"),
         )
+
+    private class TestAccessTokenStore(
+        override var accessToken: AccessToken?,
+        override var accessTokenExpiresAtEpochSeconds: Long? = null,
+    ) : AccessTokenStore {
+        override fun save(accessToken: AccessToken) {
+            this.accessToken = accessToken
+        }
+
+        override fun clear() {
+            accessToken = null
+        }
+    }
 
     private companion object {
         val FEATURE_RESPONSE =

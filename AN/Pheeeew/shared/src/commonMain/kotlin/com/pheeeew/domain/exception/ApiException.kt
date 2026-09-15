@@ -3,6 +3,7 @@ package com.pheeeew.domain.exception
 sealed class ApiException(
     val code: String,
     override val message: String,
+    val retryAfterSeconds: Long? = null,
 ) : Exception(message) {
     class InvalidRequest(
         code: String,
@@ -32,7 +33,8 @@ sealed class ApiException(
     class Unknown(
         code: String,
         message: String,
-    ) : ApiException(code, message)
+        retryAfterSeconds: Long? = null,
+    ) : ApiException(code, message, retryAfterSeconds)
 
     class Network(
         code: String,
