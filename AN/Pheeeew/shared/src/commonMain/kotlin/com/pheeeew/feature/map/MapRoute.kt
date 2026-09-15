@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
@@ -23,6 +24,9 @@ fun MapRoute(
     moderationViewModel: SighModerationViewModel,
     isActive: Boolean,
     requestPermissionsAfterOnboarding: Boolean,
+    guideMode: Boolean,
+    onGuideSkip: () -> Unit,
+    onSighRegistrationSucceeded: (SighRegistrationSucceeded) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -30,6 +34,13 @@ fun MapRoute(
     var startupPermissionsChecked by remember { mutableStateOf(false) }
     var requestMicrophonePermissionOnLaunch by remember { mutableStateOf(false) }
     val lifeCycleOwner = LocalLifecycleOwner.current
+    val latestOnSighRegistrationSucceeded = rememberUpdatedState(onSighRegistrationSucceeded)
+
+    LaunchedEffect(viewModel) {
+        viewModel.registrationEvents.collect { event ->
+            latestOnSighRegistrationSucceeded.value(event)
+        }
+    }
 
     LaunchedEffect(lifeCycleOwner, isActive) {
         if (!isActive) {
@@ -101,6 +112,8 @@ fun MapRoute(
         onMicrophonePermissionLaunchRequestHandled = {
             requestMicrophonePermissionOnLaunch = false
         },
+        guideMode = guideMode,
+        onGuideSkip = onGuideSkip,
         modifier = modifier,
     )
 }

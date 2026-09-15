@@ -36,7 +36,9 @@ import kotlinx.coroutines.launch
 fun App(
     appVersion: String,
     hasCompletedOnboarding: Boolean,
+    hasCompletedFirstSighGuide: Boolean,
     onOnboardingCompleted: () -> Unit,
+    onFirstSighGuideCompleted: () -> Unit,
     locationDependencies: LocationDependencies?,
     sighRepository: SighRepository,
     createSigh: CreateSighUseCase,
@@ -54,6 +56,14 @@ fun App(
         val mapReadiness = remember { MutableStateFlow(false) }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
         var requestPermissionsAfterOnboarding by remember { mutableStateOf(false) }
+        var firstSighGuideActive by remember { mutableStateOf(!hasCompletedFirstSighGuide) }
+
+        val completeFirstSighGuide = {
+            if (firstSighGuideActive) {
+                firstSighGuideActive = false
+                onFirstSighGuideCompleted()
+            }
+        }
 
         // 오버레이 화면들이 뒤에 깔린 지도로 터치가 새어나가지 않도록 막습니다.
         val overlayModifier =
@@ -67,11 +77,14 @@ fun App(
                 onMapReady = { mapReadiness.value = true },
                 isActive = screen == Screen.Map,
                 requestPermissionsAfterOnboarding = requestPermissionsAfterOnboarding,
+                guideMode = firstSighGuideActive,
+                onGuideSkip = completeFirstSighGuide,
+                onSighRegistrationSucceeded = { completeFirstSighGuide() },
                 viewModel = mapViewModel,
                 moderationViewModel = sighModerationViewModel,
             )
 
-            if (screen == Screen.Map) {
+            if (screen == Screen.Map && !firstSighGuideActive) {
                 DoubleBackToExitHandler()
             }
 
@@ -126,6 +139,7 @@ fun App(
                     onFinished = {
                         onOnboardingCompleted()
                         requestPermissionsAfterOnboarding = true
+                        firstSighGuideActive = true
                         screen = Screen.Map
                     },
                     modifier = overlayModifier,

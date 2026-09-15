@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
@@ -34,6 +35,9 @@ import com.pheeeew.domain.model.sigh.SighBounds
 import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.feature.map.animation.SighAnimationCoordinator
 import com.pheeeew.feature.map.animation.StarFlightOverlay
+import com.pheeeew.feature.map.guide.FirstSighGuideOverlay
+import com.pheeeew.feature.map.guide.FirstSighGuideStep
+import com.pheeeew.feature.map.guide.toFirstSighGuideStep
 import com.pheeeew.feature.map.map.BreathMap
 import com.pheeeew.feature.map.map.MapError
 import com.pheeeew.feature.map.map.MapProjectionSnapshot
@@ -95,6 +99,8 @@ fun MapScreen(
     isActive: Boolean,
     requestMicrophonePermissionOnLaunch: Boolean,
     onMicrophonePermissionLaunchRequestHandled: () -> Unit,
+    guideMode: Boolean,
+    onGuideSkip: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var pendingFlightOrigin by remember { mutableStateOf<Offset?>(null) }
@@ -108,6 +114,7 @@ fun MapScreen(
     var showLocationServicesDialog by remember { mutableStateOf(false) }
     var showMicrophonePermissionDialog by remember { mutableStateOf(false) }
     var sighPhase by remember { mutableStateOf(SighPhase.Idle) }
+    var breathControlBounds by remember { mutableStateOf(Rect.Zero) }
     var cancelSignal by remember { mutableStateOf(0) }
     var starAgeRevision by remember { mutableIntStateOf(0) }
     var relativeTimeRevision by remember { mutableIntStateOf(0) }
@@ -119,6 +126,12 @@ fun MapScreen(
     val retryableSighError =
         (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
     val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing
+    val guideStep = sighPhase.toFirstSighGuideStep()
+    val isGuidePromptVisible =
+        guideMode &&
+            uiState.sighRelease is SighReleaseState.Idle &&
+            guideStep != FirstSighGuideStep.Hidden
+    val shouldShowInteractionBackdrop = isSighInteractionVisible || isGuidePromptVisible
     val currentLocation = (uiState.location.state as? LocationState.Available)?.location
     val renderedSighs =
         remember(uiState.sighs, sighBrowser.selectedSigh) {
@@ -245,7 +258,10 @@ fun MapScreen(
             onZoomOutClick = onZoomOutClick,
             onMyLocationClick = onMyLocationClick,
             errorMessage = uiState.toBannerMessage(),
-            controlsEnabled = sighPhase == SighPhase.Idle && uiState.sighRelease is SighReleaseState.Idle,
+            controlsEnabled =
+                !guideMode &&
+                    sighPhase == SighPhase.Idle &&
+                    uiState.sighRelease is SighReleaseState.Idle,
         )
 
         if (isSighBrowserComposed) {
@@ -296,7 +312,7 @@ fun MapScreen(
                     .padding(start = 16.dp, top = 8.dp, end = 16.dp),
         )
 
-        if (isSighInteractionVisible) {
+        if (shouldShowInteractionBackdrop) {
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
@@ -305,30 +321,47 @@ fun MapScreen(
                         Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.8f))
-                            .pointerInput(Unit) {
-                                detectTapGestures(onTap = { cancelSignal += 1 })
+                            .pointerInput(isGuidePromptVisible) {
+                                detectTapGestures(
+                                    onTap = {
+                                        if (!isGuidePromptVisible) cancelSignal += 1
+                                    },
+                                )
                             },
                 )
-                Text(
-                    text =
-                        if (isSighSubmitting) {
-                            "별을 만드는 중이에요"
-                        } else if (isMemoEditing) {
-                            ""
-                        } else {
-                            when (sighPhase) {
-                                SighPhase.Listening -> "후– 하고\n한숨을 내쉬어보세요"
-                                SighPhase.Quiet -> "한숨을 날려\n별을 만들어보세요"
-                                SighPhase.NeedsMore -> "한숨을 더 크게 불어주세요"
-                                SighPhase.Bursting -> ""
-                                SighPhase.Idle -> ""
-                            }
+                if (!isGuidePromptVisible) {
+                    Text(
+                        text =
+                            if (isSighSubmitting) {
+                                "별을 만드는 중이에요"
+                            } else if (isMemoEditing) {
+                                ""
+                            } else {
+                                when (sighPhase) {
+                                    SighPhase.Listening -> "후– 하고\n한숨을 내쉬어보세요"
+                                    SighPhase.Quiet -> "한숨을 날려\n별을 만들어보세요"
+                                    SighPhase.NeedsMore -> "한숨을 더 크게 불어주세요"
+                                    SighPhase.Bursting -> ""
+                                    SighPhase.Idle -> ""
+                                }
+                            },
+                        style = AppTheme.typography.screenTitle,
+                        color = AppColors.Cream100,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.align(BiasAlignment(0f, -0.15f)),
+                    )
+                } else {
+                    FirstSighGuideOverlay(
+                        step = guideStep,
+                        controlBoundsInRoot = breathControlBounds,
+                        onSkip = {
+                            cancelSignal += 1
+                            pendingFlightOrigin = null
+                            onGuideSkip()
                         },
-                    style = AppTheme.typography.screenTitle,
-                    color = AppColors.Cream100,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.align(BiasAlignment(0f, -0.15f)),
-                )
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
 
@@ -374,6 +407,8 @@ fun MapScreen(
                             cancelSignal = cancelSignal,
                             requestPermissionOnLaunch = requestMicrophonePermissionOnLaunch,
                             onPermissionLaunchRequestHandled = onMicrophonePermissionLaunchRequestHandled,
+                            onControlBoundsChanged = { breathControlBounds = it },
+                            showIdleLabel = !guideMode,
                         )
                     }
                 }
@@ -538,6 +573,8 @@ private fun MapScreenPreview() {
             isActive = true,
             requestMicrophonePermissionOnLaunch = false,
             onMicrophonePermissionLaunchRequestHandled = {},
+            guideMode = false,
+            onGuideSkip = {},
         )
     }
 }

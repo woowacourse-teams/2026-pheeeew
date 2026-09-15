@@ -35,11 +35,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -89,6 +90,8 @@ fun BreathControl(
     cancelSignal: Int,
     requestPermissionOnLaunch: Boolean,
     onPermissionLaunchRequestHandled: () -> Unit,
+    onControlBoundsChanged: (Rect) -> Unit = {},
+    showIdleLabel: Boolean = true,
     breathConfig: BreathInteractionConfig = BreathInteractionConfig(),
     modifier: Modifier = Modifier,
 ) {
@@ -105,6 +108,7 @@ fun BreathControl(
     val latestMicrophoneError = rememberUpdatedState(onMicrophoneError)
     val latestPhaseChanged = rememberUpdatedState(onPhaseChanged)
     val latestEnsureLocationPermission = rememberUpdatedState(ensureLocationPermission)
+    val latestControlBoundsChanged = rememberUpdatedState(onControlBoundsChanged)
     val breathControlState =
         remember(breathInput, lifecycleOwner, breathConfig) {
             BreathControlState(
@@ -217,8 +221,8 @@ fun BreathControl(
         when {
             burst -> SighPhase.Bursting
             !listening -> SighPhase.Idle
-            needsMoreActive && sessionState is BreathSessionState.NeedsMore -> SighPhase.NeedsMore
             growth >= 1f -> SighPhase.Quiet
+            needsMoreActive && sessionState is BreathSessionState.NeedsMore -> SighPhase.NeedsMore
             growth > 0f && quietForMillis >= breathConfig.quietDelay.inWholeMilliseconds -> SighPhase.Quiet
             else -> SighPhase.Listening
         }
@@ -233,7 +237,7 @@ fun BreathControl(
         }
 
     Column(modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        if (!listening && !burst) {
+        if (showIdleLabel && !listening && !burst) {
             Text(
                 text = "한숨 내쉬기",
                 style = AppTheme.typography.menuItem,
@@ -305,9 +309,9 @@ fun BreathControl(
                             )
                         }.requiredSize(124.dp * scale)
                         .onGloballyPositioned { coordinates ->
-                            val point = coordinates.positionInRoot()
-                            origin =
-                                Offset(point.x + coordinates.size.width / 2f, point.y + coordinates.size.height / 2f)
+                            val bounds = coordinates.boundsInRoot()
+                            origin = bounds.center
+                            latestControlBoundsChanged.value(bounds)
                         }.pointerInput(enabled, listening, burst) {
                             if (!listening) {
                                 detectTapGestures(onTap = {

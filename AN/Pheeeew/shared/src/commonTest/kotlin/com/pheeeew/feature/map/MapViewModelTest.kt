@@ -24,8 +24,10 @@ import com.pheeeew.feature.map.map.MapCameraCommand
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
@@ -387,6 +389,8 @@ class MapViewModelTest {
                         repository = repository,
                         locationDependencies = locationDependencies(LocationState.Available(location)),
                     )
+                val registrationEvent = async { viewModel.registrationEvents.first() }
+                runCurrent()
 
                 viewModel.beginMemoAfterExplosion()
                 assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease)
@@ -402,6 +406,13 @@ class MapViewModelTest {
                 assertEquals(1L, state.sighs.single().id)
                 assertEquals("1", state.viewport.focusRequest?.id)
                 assertEquals("오늘은 조금 지쳤다", repository.createdCommands.single().memo)
+                assertEquals(
+                    SighRegistrationSucceeded(
+                        requestId = repository.createdCommands.single().requestId,
+                        sighId = 1L,
+                    ),
+                    registrationEvent.await(),
+                )
 
                 viewModel.consumeFocusRequest("other")
                 val unconsumedFocusRequest = viewModel.uiState.value.viewport.focusRequest

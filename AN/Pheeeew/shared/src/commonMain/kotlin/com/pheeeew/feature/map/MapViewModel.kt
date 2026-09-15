@@ -19,10 +19,13 @@ import com.pheeeew.feature.map.map.MapError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -74,6 +77,8 @@ class MapViewModel(
             ),
         )
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
+    private val registrationEventChannel = Channel<SighRegistrationSucceeded>(Channel.BUFFERED)
+    val registrationEvents: Flow<SighRegistrationSucceeded> = registrationEventChannel.receiveAsFlow()
 
     init {
         locationDependencies?.let { dependencies ->
@@ -633,6 +638,12 @@ class MapViewModel(
                 sighOperationMutex.withLock {
                     locallyRegisteredSighs[sighPin.id] = sighPin
                     clearPendingSigh()
+                    registrationEventChannel.trySend(
+                        SighRegistrationSucceeded(
+                            requestId = command.requestId,
+                            sighId = sighPin.id,
+                        ),
+                    )
                     _uiState.update { state ->
                         state.copy(
                             sighs =
