@@ -206,7 +206,7 @@ fun MapScreen(
     val selectedItem =
         remember(sighBrowser.selectedSigh, relativeTimeRevision) {
             sighBrowser.selectedSigh?.toSighListItemUiModel(Clock.System.now())
-    }
+        }
     val selectedProjectionId = sighBrowser.selectedSigh?.let { sigh -> "selected-sigh-${sigh.id}" }
     val selectedProjectionPoint =
         selectedProjectionId
