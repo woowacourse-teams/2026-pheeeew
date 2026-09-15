@@ -27,6 +27,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.audio.BreathInputError
 import com.pheeeew.core.designsystem.component.AppDialog
+import com.pheeeew.core.designsystem.component.AppSnackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.permission.LocationPermissionStatus
@@ -299,7 +300,7 @@ fun MapScreen(
                     .padding(start = 16.dp, top = 8.dp, end = 16.dp),
         )
 
-        ErrorSnackbar(
+        AppSnackbar(
             message = moderationUiState.blockErrorMessage,
             onDismiss = onDismissBlockError,
             modifier =
