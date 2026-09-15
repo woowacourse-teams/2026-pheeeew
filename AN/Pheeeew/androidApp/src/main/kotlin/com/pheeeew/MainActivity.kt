@@ -30,10 +30,15 @@ class MainActivity : ComponentActivity() {
                 retainedDependencies = holder.dependencies,
             ).also { holder.dependencies = it }
         val sighDependencies = SighModule.create(ApiConfig(baseUrl = BuildConfig.API_BASE_URL))
+        val appPreferences = getSharedPreferences(APP_PREFERENCES_NAME, MODE_PRIVATE)
 
         setContent {
             App(
                 appVersion = BuildConfig.VERSION_NAME,
+                hasCompletedOnboarding = appPreferences.getBoolean(KEY_ONBOARDING_COMPLETED, false),
+                onOnboardingCompleted = {
+                    appPreferences.edit().putBoolean(KEY_ONBOARDING_COMPLETED, true).apply()
+                },
                 locationDependencies = locationDependencies,
                 sighRepository = sighDependencies.repository,
                 createSigh = sighDependencies.createSigh,
@@ -44,6 +49,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+private const val APP_PREFERENCES_NAME = "pheeeew_preferences"
+private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
 
 class LocationDependenciesHolder : ViewModel() {
     var dependencies: LocationDependencies? = null

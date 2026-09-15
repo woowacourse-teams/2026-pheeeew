@@ -24,6 +24,7 @@ import com.pheeeew.feature.map.MapPerformanceLogger
 import com.pheeeew.feature.map.MapRoute
 import com.pheeeew.feature.map.MapViewModel
 import com.pheeeew.feature.map.sighlist.SighModerationViewModel
+import com.pheeeew.feature.onboarding.OnboardingScreen
 import com.pheeeew.feature.setting.SettingsScreen
 import com.pheeeew.feature.setting.legal.LegalDocument
 import com.pheeeew.feature.setting.legal.LegalDocumentRoute
@@ -34,6 +35,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun App(
     appVersion: String,
+    hasCompletedOnboarding: Boolean,
+    onOnboardingCompleted: () -> Unit,
     locationDependencies: LocationDependencies?,
     sighRepository: SighRepository,
     createSigh: CreateSighUseCase,
@@ -116,10 +119,22 @@ fun App(
                 }
             }
 
+            if (screen == Screen.Onboarding) {
+                OnboardingScreen(
+                    onFinished = {
+                        onOnboardingCompleted()
+                        screen = Screen.Map
+                    },
+                    modifier = overlayModifier,
+                )
+            }
+
             if (screen == Screen.Splash) {
                 SplashScreen(
                     isReady = mapReadiness,
-                    onFinished = { screen = Screen.Map },
+                    onFinished = {
+                        screen = if (hasCompletedOnboarding) Screen.Map else Screen.Onboarding
+                    },
                     modifier = overlayModifier,
                 )
             }
