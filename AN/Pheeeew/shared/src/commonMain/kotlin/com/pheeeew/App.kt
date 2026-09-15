@@ -70,6 +70,7 @@ fun App(
             viewModel { SighModerationViewModel() }
         val mapReadiness = remember { MutableStateFlow(false) }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
+
         @Suppress("UNUSED_VARIABLE")
         var requestPermissionsAfterOnboarding by remember { mutableStateOf(false) }
         var registrationState by remember { mutableStateOf<DeviceRegistrationState?>(null) }
