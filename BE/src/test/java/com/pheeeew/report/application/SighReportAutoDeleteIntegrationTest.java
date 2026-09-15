@@ -1,13 +1,17 @@
 package com.pheeeew.report.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.sigh.fixture.SighFixture.기기가_있는_한숨_빌더;
 import static com.pheeeew.sigh.fixture.SighFixture.기본_한숨_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.SighReport;
 import com.pheeeew.report.domain.repository.SighReportRepository;
+import com.pheeeew.report.exception.SighReportErrorCode;
+import com.pheeeew.report.exception.SighReportException;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -146,9 +150,58 @@ class SighReportAutoDeleteIntegrationTest {
         assertThat(한숨들).allSatisfy(sighId -> assertThat(삭제_시각(sighId)).isNotNull());
     }
 
+    @Test
+    void 자기_한숨은_신고할_수_없다() {
+        // given
+        Device 작성자 = deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
+        Long sighId = 작성자가_쓴_한숨을_저장한다(작성자.getId());
 
+        // when
+        Throwable throwable = catchThrowable(
+                () -> sighReportService.save(sighId, 작성자.getPublicId(), "테스트 신고")
+        );
 
+        // then
+        assertThat(throwable).isInstanceOf(SighReportException.class);
+        assertThat(((SighReportException) throwable).getErrorCode())
+                .isEqualTo(SighReportErrorCode.SIGH_REPORT_SELF_NOT_ALLOWED);
+        assertThat(sighReportRepository.count()).isZero();
+    }
 
+    @Test
+    void 남의_한숨은_신고할_수_있다() {
+        // given
+        Device 작성자 = deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
+        Device 신고자 = deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
+        Long sighId = 작성자가_쓴_한숨을_저장한다(작성자.getId());
+
+        // when
+        sighReportService.save(sighId, 신고자.getPublicId(), "테스트 신고");
+
+        // then
+        assertThat(sighReportRepository.count()).isOne();
+    }
+
+    @Test
+    void 작성자를_모르는_한숨은_누구나_신고할_수_있다() {
+        // given
+        Device 신고자 = deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
+        Long sighId = 한숨을_저장한다();
+
+        // when
+        sighReportService.save(sighId, 신고자.getPublicId(), "테스트 신고");
+
+        // then
+        assertThat(sighReportRepository.count()).isOne();
+    }
+
+    private Long 작성자가_쓴_한숨을_저장한다(Long deviceId) {
+        Sigh sigh = sighRepository.saveAndFlush(
+                기기가_있는_한숨_빌더(deviceId).requestId(UUID.randomUUID()).build()
+        );
+
+        return sigh.getId();
+    }
 
     private Long 한숨을_저장한다() {
         Sigh sigh = sighRepository.saveAndFlush(기본_한숨_빌더().requestId(UUID.randomUUID()).build());

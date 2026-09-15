@@ -2,6 +2,7 @@ package com.pheeeew.report.application;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.report.exception.SighReportErrorCode.SIGH_REPORT_SAVE_FAILED;
+import static com.pheeeew.report.exception.SighReportErrorCode.SIGH_REPORT_SELF_NOT_ALLOWED;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
@@ -11,6 +12,7 @@ import com.pheeeew.report.application.dto.SighReportResult;
 import com.pheeeew.report.domain.SighReport;
 import com.pheeeew.report.domain.repository.SighReportRepository;
 import com.pheeeew.report.exception.SighReportException;
+import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.exception.SighException;
 import java.time.Instant;
@@ -51,8 +53,9 @@ public class SighReportService {
     }
 
     public SighReportResult save(Long sighId, UUID devicePublicId, String reason) {
-        validateSighExists(sighId);
+        Sigh sigh = findSigh(sighId);
         Long reporterDeviceId = findReporterDeviceId(devicePublicId);
+        validateNotSelf(sigh, reporterDeviceId);
 
         Optional<SighReport> existingReport = sighReportRepository.findBySighIdAndReporterDeviceId(sighId, reporterDeviceId);
 
@@ -63,9 +66,14 @@ public class SighReportService {
         return saveNewReport(sighId, reporterDeviceId, reason);
     }
 
-    private void validateSighExists(Long sighId) {
-        if (!sighRepository.existsById(sighId)) {
-            throw new SighException(SIGH_NOT_FOUND);
+    private Sigh findSigh(Long sighId) {
+        return sighRepository.findById(sighId)
+                .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
+    }
+
+    private void validateNotSelf(Sigh sigh, Long reporterDeviceId) {
+        if (reporterDeviceId.equals(sigh.getDeviceId())) {
+            throw new SighReportException(SIGH_REPORT_SELF_NOT_ALLOWED);
         }
     }
 

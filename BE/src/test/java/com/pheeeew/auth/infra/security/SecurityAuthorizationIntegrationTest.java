@@ -737,10 +737,11 @@ class SecurityAuthorizationIntegrationTest {
     @Test
     void 인증된_기기로_신고하면_본문의_기기_식별자를_무시하고_중복_신고를_막는다() {
         // given
+        Long sighId = 한숨을_등록한다(기기를_등록하고_토큰을_받는다(UUID.randomUUID()));
+
         UUID requestId = UUID.randomUUID();
         String accessToken = 기기를_등록하고_토큰을_받는다(requestId);
         Device device = deviceRepository.findByRequestId(requestId).orElseThrow();
-        Long sighId = 한숨을_등록한다(accessToken);
 
         // when
         RestTestClient.ResponseSpec 최초_신고 = 신고한다(accessToken, sighId);
