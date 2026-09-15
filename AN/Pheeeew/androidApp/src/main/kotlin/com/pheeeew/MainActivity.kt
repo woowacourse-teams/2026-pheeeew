@@ -32,7 +32,6 @@ class MainActivity : ComponentActivity() {
                 activity = this,
                 retainedDependencies = holder.dependencies,
             ).also { holder.dependencies = it }
-        val sighDependencies = SighModule.create(ApiConfig(baseUrl = BuildConfig.API_BASE_URL))
         val appPreferences = getSharedPreferences(APP_PREFERENCES_NAME, MODE_PRIVATE)
         val accessTokenStore = InMemoryAccessTokenStore()
         val deviceDependencies =
