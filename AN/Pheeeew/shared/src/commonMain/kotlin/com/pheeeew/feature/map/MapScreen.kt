@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -294,6 +295,7 @@ fun MapScreen(
                 Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(start = 16.dp, top = 8.dp, end = 16.dp),
         )
 
@@ -304,6 +306,7 @@ fun MapScreen(
                 Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(start = 16.dp, top = 8.dp, end = 16.dp),
         )
 
