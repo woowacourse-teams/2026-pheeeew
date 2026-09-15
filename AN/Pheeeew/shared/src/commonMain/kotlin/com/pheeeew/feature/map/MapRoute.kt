@@ -3,9 +3,6 @@ package com.pheeeew.feature.map
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -13,7 +10,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.pheeeew.feature.map.sighlist.SighModerationViewModel
 import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.launch
 
 @Composable
 fun MapRoute(
@@ -26,7 +22,6 @@ fun MapRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val moderationUiState by moderationViewModel.uiState.collectAsStateWithLifecycle()
-    var startupPermissionsChecked by remember { mutableStateOf(false) }
     val lifeCycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(lifeCycleOwner, isActive) {
@@ -39,13 +34,6 @@ fun MapRoute(
             viewModel.onMapForeground()
 
             try {
-                if (!startupPermissionsChecked) {
-                    viewModel.ensureLocationPermission(refreshLocation = false)
-                    startupPermissionsChecked = true
-                    launch { viewModel.refreshLocationPermission() }
-                } else {
-                    viewModel.refreshLocationPermission()
-                }
                 awaitCancellation()
             } finally {
                 viewModel.onMapBackground()
@@ -86,7 +74,7 @@ fun MapRoute(
         onRetrySighCreation = viewModel::retrySighCreation,
         onCancelFailedSighRegistration = viewModel::cancelFailedSighRegistration,
         onConsumeFocusRequest = viewModel::consumeFocusRequest,
-        onEnsureLocationPermission = { viewModel.ensureLocationPermission(refreshLocation = true) },
+        onRequestLocationPermission = viewModel::requestLocationPermission,
         onOpenLocationSettings = viewModel::openLocationSettings,
         onOpenAppSettings = viewModel::openAppSettings,
         onMapError = viewModel::onMapError,

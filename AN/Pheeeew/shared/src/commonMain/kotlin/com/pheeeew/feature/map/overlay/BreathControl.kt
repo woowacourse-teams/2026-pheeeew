@@ -82,12 +82,12 @@ enum class SighPhase { Idle, Listening, Quiet, NeedsMore, Bursting }
 @Composable
 fun BreathControl(
     enabled: Boolean,
+    canStart: Boolean,
+    onStartBlocked: () -> Unit,
     onExplosionFinished: (originInRoot: Offset) -> Unit,
     onMicrophoneError: (BreathInputError) -> Unit,
-    ensureLocationPermission: suspend () -> Boolean,
     onPhaseChanged: (SighPhase) -> Unit,
     cancelSignal: Int,
-    requestPermissionOnLaunch: Boolean,
     breathConfig: BreathInteractionConfig = BreathInteractionConfig(),
     modifier: Modifier = Modifier,
 ) {
@@ -103,13 +103,12 @@ fun BreathControl(
     val latestExplosionFinished = rememberUpdatedState(onExplosionFinished)
     val latestMicrophoneError = rememberUpdatedState(onMicrophoneError)
     val latestPhaseChanged = rememberUpdatedState(onPhaseChanged)
-    val latestEnsureLocationPermission = rememberUpdatedState(ensureLocationPermission)
+    val latestStartBlocked = rememberUpdatedState(onStartBlocked)
     val breathControlState =
         remember(breathInput, lifecycleOwner, breathConfig) {
             BreathControlState(
                 breathInput = breathInput,
                 scope = coroutineScope,
-                ensureLocationPermission = { latestEnsureLocationPermission.value() },
                 reducer = BreathSessionReducer(breathConfig),
             )
         }
@@ -129,12 +128,6 @@ fun BreathControl(
             is BreathSessionState.NeedsMore -> SighPhase.NeedsMore
             else -> SighPhase.Idle
         }
-
-    LaunchedEffect(breathControlState, requestPermissionOnLaunch) {
-        if (requestPermissionOnLaunch) {
-            breathControlState.warmUpMicrophonePermission()
-        }
-    }
 
     LaunchedEffect(breathControlState) {
         breathControlState.errors.collect { error -> latestMicrophoneError.value(error) }
@@ -306,10 +299,14 @@ fun BreathControl(
                             val point = coordinates.positionInRoot()
                             origin =
                                 Offset(point.x + coordinates.size.width / 2f, point.y + coordinates.size.height / 2f)
-                        }.pointerInput(enabled, listening, burst) {
+                        }.pointerInput(enabled, canStart, listening, burst) {
                             if (!listening) {
                                 detectTapGestures(onTap = {
                                     if (!enabled || burst) return@detectTapGestures
+                                    if (!canStart) {
+                                        latestStartBlocked.value()
+                                        return@detectTapGestures
+                                    }
                                     breathControlState.start()
                                 })
                             } else {
@@ -422,12 +419,12 @@ fun BreathControl(
 private fun BreathControlPreview() {
     BreathControl(
         enabled = true,
+        canStart = true,
+        onStartBlocked = {},
         onExplosionFinished = {},
         onMicrophoneError = {},
-        ensureLocationPermission = { true },
         onPhaseChanged = {},
         cancelSignal = 0,
-        requestPermissionOnLaunch = false,
     )
 }
 

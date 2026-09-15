@@ -1,5 +1,6 @@
 package com.pheeeew.feature.map
 
+import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.domain.model.location.LocationState
 import com.pheeeew.domain.model.sigh.CreateSighCommand
 import com.pheeeew.domain.model.sigh.Sigh
@@ -30,6 +31,9 @@ data class SighBrowserUiState(
 
 data class MapLocationUiState(
     val state: LocationState = LocationState.Loading,
+    val permissionStatus: LocationPermissionStatus? = null,
+    val hasCompletedInitialPermissionCheck: Boolean = false,
+    val isRequestingPermission: Boolean = false,
     val isRequesting: Boolean = false,
 )
 

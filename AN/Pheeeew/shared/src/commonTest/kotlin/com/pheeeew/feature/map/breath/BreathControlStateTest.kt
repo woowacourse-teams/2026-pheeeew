@@ -12,20 +12,20 @@ import kotlin.time.Duration.Companion.ZERO
 @OptIn(ExperimentalCoroutinesApi::class)
 class BreathControlStateTest {
     @Test
-    fun `permission and location effects start one input session`() =
+    fun `microphone permission starts one input session`() =
         runTest {
             val input = FakeBreathInput()
             val state =
                 BreathControlState(
                     breathInput = input,
                     scope = this,
-                    ensureLocationPermission = { true },
                 )
 
             state.start()
             advanceUntilIdle()
 
             assertEquals(BreathSessionState.Listening(1L, 0f, 0f, ZERO), state.session.value)
+            assertEquals(1, input.permissionRequestCount)
             assertEquals(1, input.startCount)
             state.dispose()
         }
@@ -38,7 +38,6 @@ class BreathControlStateTest {
                 BreathControlState(
                     breathInput = input,
                     scope = this,
-                    ensureLocationPermission = { true },
                 )
 
             state.start()
@@ -57,10 +56,14 @@ class BreathControlStateTest {
 
     private class FakeBreathInput : BreathInput {
         val strengthCallbacks = mutableListOf<(Float) -> Unit>()
+        var permissionRequestCount = 0
         var startCount = 0
         var stopCount = 0
 
-        override suspend fun requestPermission(): Boolean = true
+        override suspend fun requestPermission(): Boolean {
+            permissionRequestCount += 1
+            return true
+        }
 
         override fun start(
             onStrengthChanged: (Float) -> Unit,

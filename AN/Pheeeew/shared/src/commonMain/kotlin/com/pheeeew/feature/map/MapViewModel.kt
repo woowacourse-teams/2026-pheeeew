@@ -63,6 +63,8 @@ class MapViewModel(
     private var latestSighListRequestId = 0L
     private var latestSighDetailRequestId = 0L
     private var myLocationJob: Job? = null
+    private var locationPermissionRequestJob: Job? = null
+    private var locationPermissionRefreshJob: Job? = null
 
     private val _uiState =
         MutableStateFlow<MapUiState>(
@@ -701,7 +703,7 @@ class MapViewModel(
     fun onMyLocationClick() {
         val dependencies = locationDependencies ?: return
         val current = _uiState.value
-        if (current.location.isRequesting) return
+        if (current.location.isRequesting || current.location.isRequestingPermission) return
 
         myLocationJob?.cancel()
 
@@ -712,6 +714,7 @@ class MapViewModel(
                 }
                 try {
                     val status = ensureLocationPermission(refreshLocation = true)
+                    updateLocationPermissionStatus(status)
                     if (status != LocationPermissionStatus.Granted) {
                         return@launch
                     }
@@ -735,7 +738,41 @@ class MapViewModel(
             }
     }
 
-    suspend fun ensureLocationPermission(refreshLocation: Boolean): LocationPermissionStatus {
+    fun requestLocationPermission() {
+        if (locationPermissionRequestJob?.isActive == true) return
+
+        locationPermissionRefreshJob?.cancel()
+        locationPermissionRefreshJob = null
+
+        val requestJob =
+            viewModelScope.launch(start = CoroutineStart.LAZY) {
+                _uiState.update { state ->
+                    state.copy(
+                        location = state.location.copy(isRequestingPermission = true),
+                    )
+                }
+                try {
+                    val status = ensureLocationPermission(refreshLocation = true)
+                    updateLocationPermissionStatus(status)
+                } finally {
+                    _uiState.update { state ->
+                        state.copy(
+                            location =
+                                state.location.copy(
+                                    hasCompletedInitialPermissionCheck = true,
+                                    isRequestingPermission = false,
+                                ),
+                        )
+                    }
+                    locationPermissionRequestJob = null
+                }
+            }
+
+        locationPermissionRequestJob = requestJob
+        requestJob.start()
+    }
+
+    private suspend fun ensureLocationPermission(refreshLocation: Boolean): LocationPermissionStatus {
         val dependencies =
             locationDependencies
                 ?: return LocationPermissionStatus.Denied
@@ -776,11 +813,12 @@ class MapViewModel(
         }
     }
 
-    suspend fun refreshLocationPermission(): LocationPermissionStatus? {
+    private suspend fun refreshLocationPermission(): LocationPermissionStatus? {
         val dependencies = locationDependencies ?: return null
         return try {
             val status = dependencies.permissionController.currentStatus()
             dependencies.repository.refreshCurrentLocation()
+            updateLocationPermissionStatus(status)
             status
         } catch (cancellation: CancellationException) {
             throw cancellation
@@ -788,6 +826,34 @@ class MapViewModel(
             // 위치나 권한 값은 로그에 남기지 않습니다.
             LocationPermissionStatus.Denied
         }
+    }
+
+    private fun updateLocationPermissionStatus(status: LocationPermissionStatus) {
+        _uiState.update { state ->
+            state.copy(
+                location =
+                    state.location.copy(
+                        permissionStatus = status,
+                        hasCompletedInitialPermissionCheck = true,
+                    ),
+            )
+        }
+    }
+
+    private fun refreshLocationPermissionInBackground() {
+        if (locationPermissionRequestJob?.isActive == true) return
+        if (locationPermissionRefreshJob?.isActive == true) return
+
+        val refreshJob =
+            viewModelScope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    refreshLocationPermission()
+                } finally {
+                    locationPermissionRefreshJob = null
+                }
+            }
+        locationPermissionRefreshJob = refreshJob
+        refreshJob.start()
     }
 
     fun openLocationSettings() {
@@ -821,6 +887,14 @@ class MapViewModel(
 
     fun onMapForeground() {
         mapIsForeground = true
+
+        if (locationDependencies != null) {
+            if (_uiState.value.location.hasCompletedInitialPermissionCheck) {
+                refreshLocationPermissionInBackground()
+            } else {
+                requestLocationPermission()
+            }
+        }
 
         lastSighBounds?.let(::loadSighs)
     }

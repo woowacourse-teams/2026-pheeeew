@@ -87,7 +87,7 @@ fun MapScreen(
     onRetrySighCreation: () -> Unit,
     onCancelFailedSighRegistration: () -> Unit,
     onConsumeFocusRequest: (String) -> Unit,
-    onEnsureLocationPermission: suspend () -> LocationPermissionStatus,
+    onRequestLocationPermission: () -> Unit,
     onOpenLocationSettings: () -> Unit,
     onOpenAppSettings: () -> Unit,
     onMapError: (MapError) -> Unit,
@@ -118,6 +118,11 @@ fun MapScreen(
         (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
     val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing
     val currentLocation = (uiState.location.state as? LocationState.Available)?.location
+    val locationPermissionReady =
+        uiState.location.hasCompletedInitialPermissionCheck &&
+            !uiState.location.isRequestingPermission &&
+            !uiState.location.isRequesting
+    val canStartBreath = uiState.location.permissionStatus == LocationPermissionStatus.Granted
     val renderedSighs =
         remember(uiState.sighs, sighBrowser.selectedSigh) {
             (listOfNotNull(sighBrowser.selectedSigh?.toPin()) + uiState.sighs)
@@ -335,7 +340,27 @@ fun MapScreen(
                 if (!isSighSubmitting) {
                     if (uiState.sighRelease is SighReleaseState.Idle) {
                         BreathControl(
-                            enabled = !isFlightInProgress,
+                            enabled = locationPermissionReady && !isFlightInProgress,
+                            canStart = canStartBreath,
+                            onStartBlocked = {
+                                when (uiState.location.permissionStatus) {
+                                    LocationPermissionStatus.ServicesDisabled -> {
+                                        showLocationServicesDialog = true
+                                    }
+
+                                    LocationPermissionStatus.Denied -> {
+                                        onRequestLocationPermission()
+                                    }
+
+                                    LocationPermissionStatus.PermanentlyDenied -> {
+                                        showLocationPermissionDialog = true
+                                    }
+
+                                    LocationPermissionStatus.Granted,
+                                    null,
+                                    -> {}
+                                }
+                            },
                             onExplosionFinished = { origin ->
                                 pendingFlightOrigin = origin
                                 onBeginMemoAfterExplosion()
@@ -347,30 +372,8 @@ fun MapScreen(
                                     microphoneError = error
                                 }
                             },
-                            ensureLocationPermission = {
-                                when (onEnsureLocationPermission()) {
-                                    LocationPermissionStatus.Granted -> {
-                                        true
-                                    }
-
-                                    LocationPermissionStatus.ServicesDisabled -> {
-                                        showLocationServicesDialog = true
-                                        false
-                                    }
-
-                                    LocationPermissionStatus.PermanentlyDenied -> {
-                                        showLocationPermissionDialog = true
-                                        false
-                                    }
-
-                                    LocationPermissionStatus.Denied -> {
-                                        false
-                                    }
-                                }
-                            },
                             onPhaseChanged = { sighPhase = it },
                             cancelSignal = cancelSignal,
-                            requestPermissionOnLaunch = false,
                         )
                     }
                 }
@@ -527,7 +530,7 @@ private fun MapScreenPreview() {
             onRetrySighCreation = {},
             onCancelFailedSighRegistration = {},
             onConsumeFocusRequest = {},
-            onEnsureLocationPermission = { LocationPermissionStatus.Granted },
+            onRequestLocationPermission = {},
             onOpenLocationSettings = {},
             onOpenAppSettings = {},
             onMapError = {},

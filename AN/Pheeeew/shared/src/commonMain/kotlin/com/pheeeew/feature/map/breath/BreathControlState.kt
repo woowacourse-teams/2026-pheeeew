@@ -4,9 +4,7 @@ import com.pheeeew.core.audio.BreathInput
 import com.pheeeew.core.audio.BreathInputError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +26,6 @@ import kotlin.time.TimeSource
 class BreathControlState(
     private val breathInput: BreathInput,
     private val scope: CoroutineScope,
-    private val ensureLocationPermission: suspend () -> Boolean,
     private val reducer: BreathSessionReducer = BreathSessionReducer(),
 ) {
     private data class MeasuredStrength(
@@ -44,9 +41,7 @@ class BreathControlState(
     private val _burstRevision = MutableStateFlow(0L)
     private val _needsMoreRevision = MutableStateFlow(0L)
 
-    private var permissionWarmup: Deferred<Boolean>? = null
     private var permissionJob: Job? = null
-    private var locationPermissionJob: Job? = null
     private var lastSampleAt: Duration? = null
     private val sampleTimeOrigin = TimeSource.Monotonic.markNow()
 
@@ -64,14 +59,6 @@ class BreathControlState(
     val errors = _errors.receiveAsFlow()
     val burstRevision: StateFlow<Long> = _burstRevision.asStateFlow()
     val needsMoreRevision: StateFlow<Long> = _needsMoreRevision.asStateFlow()
-
-    fun warmUpMicrophonePermission() {
-        if (permissionWarmup?.isActive == true) return
-        permissionWarmup =
-            scope.async {
-                requestPermissionSafely()
-            }
-    }
 
     fun start() {
         dispatch(BreathSessionEvent.StartRequested)
@@ -105,9 +92,7 @@ class BreathControlState(
     }
 
     fun dispose() {
-        permissionWarmup?.cancel()
         permissionJob?.cancel()
-        locationPermissionJob?.cancel()
         lastSampleAt = null
         breathInput.stop()
         eventJob.cancel()
@@ -141,7 +126,6 @@ class BreathControlState(
     private fun execute(effect: BreathSessionEffect) {
         when (effect) {
             is BreathSessionEffect.RequestMicrophonePermission -> requestMicrophonePermission(effect.sessionId)
-            is BreathSessionEffect.RequestLocationPermission -> requestLocationPermission(effect.sessionId)
             is BreathSessionEffect.StartInput -> startInput(effect.sessionId)
             is BreathSessionEffect.StopInput -> stopInput()
             is BreathSessionEffect.StartBurstAnimation -> _burstRevision.value += 1L
@@ -152,21 +136,10 @@ class BreathControlState(
 
     private fun requestMicrophonePermission(sessionId: Long) {
         permissionJob?.cancel()
-        val warmup = permissionWarmup
-        permissionWarmup = null
         permissionJob =
             scope.launch {
-                val granted = warmup?.await() ?: requestPermissionSafely()
+                val granted = requestPermissionSafely()
                 controlEvents.trySend(BreathSessionEvent.PermissionResult(sessionId, granted))
-            }
-    }
-
-    private fun requestLocationPermission(sessionId: Long) {
-        locationPermissionJob?.cancel()
-        locationPermissionJob =
-            scope.launch {
-                val granted = runCatchingCancellable { ensureLocationPermission() } ?: false
-                controlEvents.trySend(BreathSessionEvent.LocationPermissionResult(sessionId, granted))
             }
     }
 
@@ -197,7 +170,6 @@ class BreathControlState(
 
     private fun stopInput() {
         permissionJob?.cancel()
-        locationPermissionJob?.cancel()
         lastSampleAt = null
         while (strengthSamples.tryReceive().isSuccess) {
             // Drop samples from the stopped session.

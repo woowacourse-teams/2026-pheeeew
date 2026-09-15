@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -540,6 +541,90 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `지도 최초 진입은 위치 권한을 한 번만 요청하고 완료 상태를 저장한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val requestGate = CompletableDeferred<Unit>()
+                val permissionController =
+                    RecordingLocationPermissionController(
+                        initialStatus = LocationPermissionStatus.Denied,
+                        requestedStatus = LocationPermissionStatus.Granted,
+                        requestGate = requestGate,
+                    )
+                val viewModel =
+                    createViewModel(
+                        locationDependencies =
+                            locationDependencies(
+                                initialState = LocationState.Loading,
+                                permissionController = permissionController,
+                            ),
+                    )
+
+                viewModel.onMapForeground()
+                runCurrent()
+
+                assertEquals(1, permissionController.requestCount)
+                assertTrue(viewModel.uiState.value.location.isRequestingPermission)
+                assertEquals(false, viewModel.uiState.value.location.hasCompletedInitialPermissionCheck)
+
+                viewModel.onMapForeground()
+                runCurrent()
+                assertEquals(1, permissionController.requestCount)
+
+                requestGate.complete(Unit)
+                advanceUntilIdle()
+
+                val location = viewModel.uiState.value.location
+                assertEquals(LocationPermissionStatus.Granted, location.permissionStatus)
+                assertTrue(location.hasCompletedInitialPermissionCheck)
+                assertEquals(false, location.isRequestingPermission)
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `지도 재진입은 위치 권한을 자동 재요청하지 않고 현재 상태만 갱신한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val permissionController =
+                    RecordingLocationPermissionController(
+                        initialStatus = LocationPermissionStatus.Denied,
+                        requestedStatus = LocationPermissionStatus.Denied,
+                    )
+                val viewModel =
+                    createViewModel(
+                        locationDependencies =
+                            locationDependencies(
+                                initialState = LocationState.Loading,
+                                permissionController = permissionController,
+                            ),
+                    )
+
+                viewModel.onMapForeground()
+                advanceUntilIdle()
+                assertEquals(1, permissionController.requestCount)
+                assertEquals(LocationPermissionStatus.Denied, viewModel.uiState.value.location.permissionStatus)
+
+                viewModel.onMapBackground()
+                permissionController.status = LocationPermissionStatus.Granted
+                viewModel.onMapForeground()
+                advanceUntilIdle()
+
+                assertEquals(1, permissionController.requestCount)
+                assertEquals(LocationPermissionStatus.Granted, viewModel.uiState.value.location.permissionStatus)
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `한숨 목록을 열면 마지막 지도 영역의 첫 페이지를 조회한다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
@@ -871,15 +956,17 @@ class MapViewModelTest {
             }
         }
 
-    private fun locationDependencies(initialState: LocationState): LocationDependencies {
+    private fun locationDependencies(
+        initialState: LocationState,
+        permissionController: LocationPermissionController =
+            RecordingLocationPermissionController(
+                initialStatus = LocationPermissionStatus.Granted,
+                requestedStatus = LocationPermissionStatus.Granted,
+            ),
+    ): LocationDependencies {
         val locationRepository = FakeLocationRepository(initialState)
         return LocationDependencies(
-            permissionController =
-                object : LocationPermissionController {
-                    override suspend fun currentStatus() = LocationPermissionStatus.Granted
-
-                    override suspend fun requestPermission() = LocationPermissionStatus.Granted
-                },
+            permissionController = permissionController,
             permissionSettingsLauncher =
                 object : LocationPermissionSettingsLauncher {
                     override suspend fun openAppSettings() = true
@@ -923,6 +1010,30 @@ class MapViewModelTest {
         override val locationState: StateFlow<LocationState> = MutableStateFlow(initialState)
 
         override suspend fun refreshCurrentLocation() = Unit
+    }
+
+    private class RecordingLocationPermissionController(
+        initialStatus: LocationPermissionStatus,
+        private val requestedStatus: LocationPermissionStatus,
+        private val requestGate: CompletableDeferred<Unit>? = null,
+    ) : LocationPermissionController {
+        var status = initialStatus
+        var currentStatusCount = 0
+            private set
+        var requestCount = 0
+            private set
+
+        override suspend fun currentStatus(): LocationPermissionStatus {
+            currentStatusCount += 1
+            return status
+        }
+
+        override suspend fun requestPermission(): LocationPermissionStatus {
+            requestCount += 1
+            requestGate?.await()
+            status = requestedStatus
+            return status
+        }
     }
 
     private class RecordingSighRepository(

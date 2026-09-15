@@ -13,29 +13,22 @@ class BreathSessionReducerTest {
     private val reducer = BreathSessionReducer()
 
     @Test
-    fun `start permission success and strength sample use a new session`() {
+    fun `start requests microphone and permission success starts a new input session`() {
         val requesting = reducer.reduce(BreathSessionState.Idle(), BreathSessionEvent.StartRequested)
         val sessionId = assertIs<BreathSessionState.RequestingPermission>(requesting.state).sessionId
+        assertEquals(listOf(BreathSessionEffect.RequestMicrophonePermission(sessionId)), requesting.effects)
 
         val listening =
             reducer.reduce(
                 requesting.state,
                 BreathSessionEvent.PermissionResult(sessionId, granted = true),
             )
-        assertIs<BreathSessionState.RequestingLocationPermission>(listening.state)
-        assertEquals(listOf(BreathSessionEffect.RequestLocationPermission(sessionId)), listening.effects)
-
-        val locationGranted =
-            reducer.reduce(
-                listening.state,
-                BreathSessionEvent.LocationPermissionResult(sessionId, granted = true),
-            )
-        assertIs<BreathSessionState.Listening>(locationGranted.state)
-        assertEquals(listOf(BreathSessionEffect.StartInput(sessionId)), locationGranted.effects)
+        assertIs<BreathSessionState.Listening>(listening.state)
+        assertEquals(listOf(BreathSessionEffect.StartInput(sessionId)), listening.effects)
 
         val sampled =
             reducer.reduce(
-                locationGranted.state,
+                listening.state,
                 BreathSessionEvent.StrengthSample(sessionId, strength = 0.8f, elapsed = 220.milliseconds),
             )
         assertEquals(200f / 1_400f, assertIs<BreathSessionState.Listening>(sampled.state).growth)
@@ -195,23 +188,5 @@ class BreathSessionReducerTest {
         assertEquals(BreathSessionState.Idle(7L), finished.state)
         val next = reducer.reduce(finished.state, BreathSessionEvent.StartRequested)
         assertEquals(8L, assertIs<BreathSessionState.RequestingPermission>(next.state).sessionId)
-    }
-
-    @Test
-    fun `location denial returns idle without starting audio`() {
-        val requestingMicrophone = reducer.reduce(BreathSessionState.Idle(), BreathSessionEvent.StartRequested)
-        val microphoneGranted =
-            reducer.reduce(
-                requestingMicrophone.state,
-                BreathSessionEvent.PermissionResult(1L, granted = true),
-            )
-        val locationDenied =
-            reducer.reduce(
-                microphoneGranted.state,
-                BreathSessionEvent.LocationPermissionResult(1L, granted = false),
-            )
-
-        assertEquals(BreathSessionState.Idle(1L), locationDenied.state)
-        assertTrue(locationDenied.effects.isEmpty())
     }
 }

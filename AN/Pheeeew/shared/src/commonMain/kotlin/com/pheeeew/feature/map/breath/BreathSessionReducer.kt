@@ -20,7 +20,6 @@ class BreathSessionReducer(
         when (event) {
             BreathSessionEvent.StartRequested -> start(state)
             is BreathSessionEvent.PermissionResult -> permissionResult(state, event)
-            is BreathSessionEvent.LocationPermissionResult -> locationPermissionResult(state, event)
             is BreathSessionEvent.StrengthSample -> strengthSample(state, event)
             is BreathSessionEvent.ReleaseRequested -> release(state, event)
             BreathSessionEvent.CancelRequested -> stop(state)
@@ -50,22 +49,6 @@ class BreathSessionReducer(
                 state = BreathSessionState.Idle(state.sessionId),
                 effects = listOf(BreathSessionEffect.ShowError(BreathInputError.PermissionDenied)),
             )
-        }
-        return BreathSessionTransition(
-            state = BreathSessionState.RequestingLocationPermission(state.sessionId),
-            effects = listOf(BreathSessionEffect.RequestLocationPermission(state.sessionId)),
-        )
-    }
-
-    private fun locationPermissionResult(
-        state: BreathSessionState,
-        event: BreathSessionEvent.LocationPermissionResult,
-    ): BreathSessionTransition {
-        if (state !is BreathSessionState.RequestingLocationPermission || state.sessionId != event.sessionId) {
-            return BreathSessionTransition(state)
-        }
-        if (!event.granted) {
-            return BreathSessionTransition(BreathSessionState.Idle(state.sessionId))
         }
         return BreathSessionTransition(
             state = BreathSessionState.Listening(state.sessionId, 0f, 0f, ZERO),

@@ -27,14 +27,6 @@ sealed interface BreathSessionState {
         override val quietFor: Duration = ZERO
     }
 
-    data class RequestingLocationPermission(
-        override val sessionId: Long,
-    ) : BreathSessionState {
-        override val growth: Float = 0f
-        override val strength: Float = 0f
-        override val quietFor: Duration = ZERO
-    }
-
     data class Listening(
         override val sessionId: Long,
         override val growth: Float,
@@ -70,11 +62,6 @@ sealed interface BreathSessionEvent {
     data object StartRequested : BreathSessionEvent
 
     data class PermissionResult(
-        val sessionId: Long,
-        val granted: Boolean,
-    ) : BreathSessionEvent
-
-    data class LocationPermissionResult(
         val sessionId: Long,
         val granted: Boolean,
     ) : BreathSessionEvent
