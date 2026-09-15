@@ -73,6 +73,7 @@ fun MapRoute(
         onDismissSighDetail = viewModel::dismissSighDetail,
         onLoadNextSighPage = viewModel::loadNextSighPage,
         onRefreshSighList = viewModel::refreshSighList,
+        onDismissSighBrowserNotice = viewModel::clearSighBrowserNotice,
         onOpenSighActionMenu = moderationViewModel::openActions,
         onDismissSighActionMenu = moderationViewModel::dismissActions,
         onRequestSighBlock = moderationViewModel::requestBlock,

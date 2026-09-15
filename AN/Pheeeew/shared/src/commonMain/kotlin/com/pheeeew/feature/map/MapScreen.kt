@@ -69,6 +69,7 @@ fun MapScreen(
     onDismissSighDetail: () -> Unit,
     onLoadNextSighPage: () -> Unit,
     onRefreshSighList: () -> Unit,
+    onDismissSighBrowserNotice: () -> Unit,
     onOpenSighActionMenu: (Long, String) -> Unit,
     onDismissSighActionMenu: () -> Unit,
     onRequestSighBlock: () -> Unit,
@@ -287,8 +288,15 @@ fun MapScreen(
         }
 
         ErrorSnackbar(
-            message = moderationUiState.successMessage,
-            onDismiss = onDismissReportSuccess,
+            message = sighBrowser.noticeMessage ?: moderationUiState.successMessage,
+            onDismiss = {
+                if (sighBrowser.noticeMessage != null) {
+                    onDismissSighBrowserNotice()
+                    onDismissReportSuccess()
+                } else {
+                    onDismissReportSuccess()
+                }
+            },
             modifier =
                 Modifier
                     .align(Alignment.TopCenter)
@@ -512,6 +520,7 @@ private fun MapScreenPreview() {
             onDismissSighDetail = {},
             onLoadNextSighPage = {},
             onRefreshSighList = {},
+            onDismissSighBrowserNotice = {},
             onOpenSighActionMenu = { _, _ -> },
             onDismissSighActionMenu = {},
             onRequestSighBlock = {},
