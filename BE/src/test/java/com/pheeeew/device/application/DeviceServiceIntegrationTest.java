@@ -80,7 +80,7 @@ class DeviceServiceIntegrationTest {
         assertThat(result.created()).isTrue();
         assertThat(result.accessToken()).isNotBlank();
         assertThat(result.refreshToken()).isNotBlank();
-        assertThat(result.expiresIn()).isEqualTo(1800L);
+        assertThat(result.expiresIn()).isEqualTo(30L);
         assertThat(deviceRepository.count()).isOne();
         assertThat(deviceRefreshTokenRepository.count()).isOne();
     }
