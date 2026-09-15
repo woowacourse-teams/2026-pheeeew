@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.audio.BreathInputError
 import com.pheeeew.core.designsystem.component.AppDialog
+import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.permission.LocationPermissionSettingsDialog
@@ -96,7 +97,7 @@ fun MapScreen(
     onSkipMemo: () -> Unit,
     onDismissMemo: () -> Unit,
     onRetrySighCreation: () -> Unit,
-    onCancelFailedSighRegistration: () -> Unit,
+    onCancelFailedSighRegistration: () -> Boolean,
     onConsumeFocusRequest: (String) -> Unit,
     onEnsureLocationPermission: suspend () -> LocationPermissionStatus,
     onOpenLocationSettings: () -> Unit,
@@ -133,6 +134,9 @@ fun MapScreen(
     val awaitingBreath = uiState.sighRelease as? SighReleaseState.AwaitingBreath
     val retryableSighError =
         (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
+    val cancelFailedSighRegistration = {
+        if (onCancelFailedSighRegistration()) pendingFlightOrigin = null
+    }
     val isSighInteractionVisible =
         sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing || awaitingBreath != null
     val guideStep = firstSighGuideStepFor(uiState.sighRelease, sighPhase)
@@ -250,8 +254,7 @@ fun MapScreen(
     LaunchedEffect(uiState.sighRelease) {
         val error = uiState.sighRelease as? SighReleaseState.Error ?: return@LaunchedEffect
         if (!error.canRetry) {
-            pendingFlightOrigin = null
-            onCancelFailedSighRegistration()
+            cancelFailedSighRegistration()
         }
     }
 
@@ -445,9 +448,8 @@ fun MapScreen(
                     }
                 }
                 ErrorSnackbar(
-                    message = microphoneError?.toKoreanMessage() ?: retryableSighError?.message,
+                    message = microphoneError?.toKoreanMessage(),
                     onDismiss = { microphoneError = null },
-                    onClick = retryableSighError?.let { { onRetrySighCreation() } },
                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 8.dp, end = 16.dp),
                 )
             }
@@ -537,6 +539,17 @@ fun MapScreen(
                 dismissText = "취소",
             )
         }
+
+        retryableSighError?.let { error ->
+            ConfirmDialog(
+                title = "한숨 등록 실패",
+                body = error.message,
+                confirmText = "다시 시도",
+                onConfirmClick = onRetrySighCreation,
+                onDismissRequest = cancelFailedSighRegistration,
+                onDismissClick = cancelFailedSighRegistration,
+            )
+        }
     }
 }
 
@@ -595,7 +608,7 @@ private fun MapScreenPreview() {
             onSkipMemo = {},
             onDismissMemo = {},
             onRetrySighCreation = {},
-            onCancelFailedSighRegistration = {},
+            onCancelFailedSighRegistration = { true },
             onConsumeFocusRequest = {},
             onEnsureLocationPermission = { LocationPermissionStatus.Granted },
             onOpenLocationSettings = {},

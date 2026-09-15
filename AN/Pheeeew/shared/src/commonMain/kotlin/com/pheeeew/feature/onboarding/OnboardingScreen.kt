@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -38,9 +39,10 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.rememberBreathInput
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.core.permission.LocationPermissionSettingsDialog
 import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.core.permission.LocationServicesSettingsDialog
+import com.pheeeew.core.permission.PermissionSettingsDialog
+import com.pheeeew.core.permission.PermissionSettingsTarget
 import com.pheeeew.feature.splash.TwinklingStars
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -50,6 +52,7 @@ import kotlin.math.abs
 fun OnboardingScreen(
     onRequestLocationPermission: suspend () -> LocationPermissionStatus,
     onOpenLocationSettings: () -> Unit,
+    onOpenAppSettings: () -> Unit,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -57,7 +60,7 @@ fun OnboardingScreen(
     val coroutineScope = rememberCoroutineScope()
     val breathInput = rememberBreathInput()
     var isRequestingPermissions by remember { mutableStateOf(false) }
-    var locationPermissionIssue by remember { mutableStateOf<LocationPermissionStatus?>(null) }
+    var permissionResult by remember { mutableStateOf<OnboardingPermissionResult?>(null) }
     val page = pagerState.currentPage
     val indicatorPosition = pagerState.currentPage + pagerState.currentPageOffsetFraction
 
@@ -87,15 +90,15 @@ fun OnboardingScreen(
                     if (!isRequestingPermissions) {
                         isRequestingPermissions = true
                         coroutineScope.launch {
-                            val locationStatus =
+                            val result =
                                 requestOnboardingPermissions(
                                     requestLocationPermission = onRequestLocationPermission,
                                     requestMicrophonePermission = { breathInput.requestPermission() },
                                 )
-                            if (locationStatus == LocationPermissionStatus.Granted) {
+                            if (result.allPermissionsGranted) {
                                 onFinished()
                             } else {
-                                locationPermissionIssue = locationStatus
+                                permissionResult = result
                                 isRequestingPermissions = false
                             }
                         }
@@ -108,49 +111,35 @@ fun OnboardingScreen(
             modifier = Modifier.align(Alignment.BottomCenter),
         )
 
-        when (locationPermissionIssue) {
-            LocationPermissionStatus.ServicesDisabled -> {
-                LocationServicesSettingsDialog(
-                    onOpenSettings = {
-                        locationPermissionIssue = null
-                        onOpenLocationSettings()
-                    },
-                    onDismiss = {
-                        locationPermissionIssue = null
-                        isRequestingPermissions = true
-                        continueOnboardingWithoutLocation(
-                            coroutineScope = coroutineScope,
-                            requestMicrophonePermission = { breathInput.requestPermission() },
-                            onFinished = onFinished,
-                        )
-                    },
-                )
-            }
+        permissionResult?.let { result ->
+            val deniedPermissions = result.deniedPermissions
+            when {
+                deniedPermissions != null -> {
+                    PermissionSettingsDialog(
+                        target = deniedPermissions,
+                        onOpenSettings = {
+                            permissionResult = null
+                            onOpenAppSettings()
+                        },
+                        onDismiss = {
+                            permissionResult = null
+                            onFinished()
+                        },
+                    )
+                }
 
-            LocationPermissionStatus.Denied,
-            LocationPermissionStatus.PermanentlyDenied,
-            -> {
-                LocationPermissionSettingsDialog(
-                    onOpenSettings = {
-                        locationPermissionIssue = null
-                        onOpenLocationSettings()
-                    },
-                    onDismiss = {
-                        locationPermissionIssue = null
-                        isRequestingPermissions = true
-                        continueOnboardingWithoutLocation(
-                            coroutineScope = coroutineScope,
-                            requestMicrophonePermission = { breathInput.requestPermission() },
-                            onFinished = onFinished,
-                        )
-                    },
-                )
-            }
-
-            LocationPermissionStatus.Granted,
-            null,
-            -> {
-                Unit
+                result.locationStatus == LocationPermissionStatus.ServicesDisabled -> {
+                    LocationServicesSettingsDialog(
+                        onOpenSettings = {
+                            permissionResult = null
+                            onOpenLocationSettings()
+                        },
+                        onDismiss = {
+                            permissionResult = null
+                            onFinished()
+                        },
+                    )
+                }
             }
         }
     }
@@ -206,7 +195,12 @@ private fun BottomControls(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(bottom = 28.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 22.dp)
+                .padding(bottom = 28.dp),
     ) {
         PageIndicator(position = indicatorPosition)
         Spacer(Modifier.height(16.dp))
@@ -265,24 +259,32 @@ private const val LAST_PAGE_INDEX = PAGE_COUNT - 1
 
 internal suspend fun requestOnboardingPermissions(
     requestLocationPermission: suspend () -> LocationPermissionStatus,
-    requestMicrophonePermission: suspend () -> Unit,
-): LocationPermissionStatus {
+    requestMicrophonePermission: suspend () -> Boolean,
+): OnboardingPermissionResult {
     val locationStatus = requestLocationPermissionSafely(requestLocationPermission)
-    if (locationStatus == LocationPermissionStatus.Granted) {
-        requestPermissionSafely(requestMicrophonePermission)
-    }
-    return locationStatus
+    val microphoneGranted = requestMicrophonePermissionSafely(requestMicrophonePermission)
+    return OnboardingPermissionResult(locationStatus, microphoneGranted)
 }
 
-private fun continueOnboardingWithoutLocation(
-    coroutineScope: kotlinx.coroutines.CoroutineScope,
-    requestMicrophonePermission: suspend () -> Unit,
-    onFinished: () -> Unit,
+internal data class OnboardingPermissionResult(
+    val locationStatus: LocationPermissionStatus,
+    val microphoneGranted: Boolean,
 ) {
-    coroutineScope.launch {
-        requestPermissionSafely(requestMicrophonePermission)
-        onFinished()
-    }
+    val allPermissionsGranted: Boolean
+        get() = locationStatus == LocationPermissionStatus.Granted && microphoneGranted
+
+    val deniedPermissions: PermissionSettingsTarget?
+        get() {
+            val locationDenied =
+                locationStatus == LocationPermissionStatus.Denied ||
+                    locationStatus == LocationPermissionStatus.PermanentlyDenied
+            return when {
+                locationDenied && !microphoneGranted -> PermissionSettingsTarget.LocationAndMicrophone
+                locationDenied -> PermissionSettingsTarget.Location
+                !microphoneGranted -> PermissionSettingsTarget.Microphone
+                else -> null
+            }
+        }
 }
 
 private suspend fun requestLocationPermissionSafely(
@@ -296,15 +298,14 @@ private suspend fun requestLocationPermissionSafely(
         LocationPermissionStatus.Denied
     }
 
-private suspend fun requestPermissionSafely(requestPermission: suspend () -> Unit) {
+private suspend fun requestMicrophonePermissionSafely(requestPermission: suspend () -> Boolean): Boolean =
     try {
         requestPermission()
     } catch (cancellation: CancellationException) {
         throw cancellation
     } catch (_: Throwable) {
-        // 한 권한 요청의 플랫폼 오류가 다음 권한 요청과 온보딩 완료를 막지 않게 합니다.
+        false
     }
-}
 
 @Composable
 internal fun OnboardingPagePreview(
@@ -332,6 +333,7 @@ private fun OnboardingScreenPreview() {
         OnboardingScreen(
             onRequestLocationPermission = { LocationPermissionStatus.Granted },
             onOpenLocationSettings = {},
+            onOpenAppSettings = {},
             onFinished = {},
         )
     }

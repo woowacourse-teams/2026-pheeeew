@@ -3,19 +3,43 @@ package com.pheeeew.core.permission
 import androidx.compose.runtime.Composable
 import com.pheeeew.core.designsystem.component.AppDialog
 
+enum class PermissionSettingsTarget(
+    internal val displayName: String,
+) {
+    Location("위치"),
+    Microphone("마이크"),
+    LocationAndMicrophone("위치/마이크"),
+}
+
 @Composable
-fun LocationPermissionSettingsDialog(
+fun PermissionSettingsDialog(
+    target: PermissionSettingsTarget,
     onOpenSettings: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val permissionName = target.displayName
     AppDialog(
-        title = "위치 권한 설정 안내",
-        body = "한숨을 별로 만들려면 위치 권한이 필요합니다.\n설정에서 위치 권한을 '허용'으로 변경해주세요.",
+        title = "$permissionName 권한 설정 안내",
+        body =
+            "한숨을 별로 만들기 위해 $permissionName 권한이 필요합니다.\n" +
+                "설정에서 $permissionName 권한을 '허용'으로 변경해주세요.",
         confirmText = "설정으로 이동",
         onConfirmClick = onOpenSettings,
         onDismissRequest = onDismiss,
         onDismissClick = onDismiss,
         dismissText = "취소",
+    )
+}
+
+@Composable
+fun LocationPermissionSettingsDialog(
+    onOpenSettings: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    PermissionSettingsDialog(
+        target = PermissionSettingsTarget.Location,
+        onOpenSettings = onOpenSettings,
+        onDismiss = onDismiss,
     )
 }
 

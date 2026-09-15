@@ -745,9 +745,11 @@ class MapViewModel(
         if (remainingMillis > 0) delay(remainingMillis)
     }
 
-    fun cancelFailedSighRegistration() {
+    fun cancelFailedSighRegistration(): Boolean {
+        if (_uiState.value.sighRelease !is SighReleaseState.Error) return false
         clearPendingSigh()
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.Idle) }
+        return true
     }
 
     private fun clearPendingSigh() {

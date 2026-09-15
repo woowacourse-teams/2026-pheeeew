@@ -170,6 +170,7 @@ fun App(
                         mapViewModel.requestLocationPermission()
                     },
                     onOpenLocationSettings = mapViewModel::openLocationSettings,
+                    onOpenAppSettings = mapViewModel::openAppSettings,
                     onFinished = {
                         onOnboardingCompleted()
                         firstSighGuideActive = true
