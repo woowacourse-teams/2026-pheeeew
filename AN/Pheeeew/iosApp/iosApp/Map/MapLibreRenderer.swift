@@ -22,6 +22,8 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     private var lastReceivedCameraCommandID: Int64?
     private var lastFocusRequestID: String?
     private var pendingCameraCommands: [IosMapCameraCommand] = []
+    private var cameraOperationRevision: UInt64 = 0
+    private var isAwaitingCoordinateMoveNormalization = false
     private var cameraIsIdle = true
     private var lastPublishedProjection: ProjectionSnapshot?
 
@@ -75,6 +77,8 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
 
         currentLocationSource = nil
         pendingCameraCommands.removeAll()
+        cameraOperationRevision &+= 1
+        isAwaitingCoordinateMoveNormalization = false
     }
 
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
@@ -105,13 +109,15 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         cameraIsIdle = false
         eventSink.onProjectionChanged(points: projectionPoints(), cameraIdle: false)
         if reason.rawValue & Self.userCameraReasonMask != 0 {
+            cameraOperationRevision &+= 1
+            isAwaitingCoordinateMoveNormalization = false
             didResolveInitialCamera = true
         }
     }
 
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
-        cameraIsIdle = true
-        eventSink.onProjectionChanged(points: projectionPoints(), cameraIdle: true)
+        cameraIsIdle = !isAwaitingCoordinateMoveNormalization
+        eventSink.onProjectionChanged(points: projectionPoints(), cameraIdle: cameraIsIdle)
         let bounds = mapView.visibleCoordinateBounds
         eventSink.onBoundsChanged(
             minLongitude: bounds.sw.longitude,
@@ -372,6 +378,8 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
 
         if let focus = state.focusRequest, focus.id != lastFocusRequestID {
             cameraIsIdle = false
+            cameraOperationRevision &+= 1
+            isAwaitingCoordinateMoveNormalization = false
             lastFocusRequestID = focus.id
             MapLibreCamera.focus(focus, on: mapView)
             didResolveInitialCamera = true
@@ -382,7 +390,27 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
             let command = pendingCameraCommands.removeFirst()
             guard command.id != lastCameraCommandID else { continue }
             lastCameraCommandID = command.id
-            if MapLibreCamera.apply(command, currentLocation: state.currentLocation, to: mapView) {
+            cameraOperationRevision &+= 1
+            isAwaitingCoordinateMoveNormalization = false
+            let operationRevision = cameraOperationRevision
+            if MapLibreCamera.apply(
+                command,
+                currentLocation: state.currentLocation,
+                to: mapView,
+                onCoordinateMoveStarted: { [weak self] in
+                    self?.isAwaitingCoordinateMoveNormalization = true
+                },
+                onCoordinateMoveCompleted: { [weak self] in
+                    guard let self,
+                          self.cameraOperationRevision == operationRevision else { return }
+                    self.cameraOperationRevision &+= 1
+                    self.isAwaitingCoordinateMoveNormalization = false
+                    if !MapLibreCamera.clearTransientPaddingPreservingViewport(on: self.mapView) {
+                        self.cameraIsIdle = true
+                        self.publishProjection(cameraIdle: true)
+                    }
+                }
+            ) {
                 didResolveInitialCamera = true
             }
         }
