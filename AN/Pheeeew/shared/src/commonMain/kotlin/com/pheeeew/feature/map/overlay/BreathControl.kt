@@ -35,11 +35,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -82,13 +83,15 @@ enum class SighPhase { Idle, Listening, Quiet, NeedsMore, Bursting }
 @Composable
 fun BreathControl(
     enabled: Boolean,
+    startSignal: Int,
+    onIdleClick: () -> Unit,
     onExplosionFinished: (originInRoot: Offset) -> Unit,
     onMicrophoneError: (BreathInputError) -> Unit,
     ensureLocationPermission: suspend () -> Boolean,
     onPhaseChanged: (SighPhase) -> Unit,
     cancelSignal: Int,
-    requestPermissionOnLaunch: Boolean,
-    onPermissionLaunchRequestHandled: () -> Unit,
+    onControlBoundsChanged: (Rect) -> Unit = {},
+    showIdleLabel: Boolean = true,
     breathConfig: BreathInteractionConfig = BreathInteractionConfig(),
     modifier: Modifier = Modifier,
 ) {
@@ -103,8 +106,10 @@ fun BreathControl(
     val density = LocalDensity.current
     val latestExplosionFinished = rememberUpdatedState(onExplosionFinished)
     val latestMicrophoneError = rememberUpdatedState(onMicrophoneError)
+    val latestIdleClick = rememberUpdatedState(onIdleClick)
     val latestPhaseChanged = rememberUpdatedState(onPhaseChanged)
     val latestEnsureLocationPermission = rememberUpdatedState(ensureLocationPermission)
+    val latestControlBoundsChanged = rememberUpdatedState(onControlBoundsChanged)
     val breathControlState =
         remember(breathInput, lifecycleOwner, breathConfig) {
             BreathControlState(
@@ -131,11 +136,8 @@ fun BreathControl(
             else -> SighPhase.Idle
         }
 
-    LaunchedEffect(breathControlState, requestPermissionOnLaunch) {
-        if (requestPermissionOnLaunch) {
-            breathControlState.warmUpMicrophonePermission()
-            onPermissionLaunchRequestHandled()
-        }
+    LaunchedEffect(breathControlState, startSignal) {
+        if (startSignal > 0) breathControlState.start()
     }
 
     LaunchedEffect(breathControlState) {
@@ -217,8 +219,8 @@ fun BreathControl(
         when {
             burst -> SighPhase.Bursting
             !listening -> SighPhase.Idle
+            growth >= breathConfig.minimumReleaseProgress -> SighPhase.Quiet
             needsMoreActive && sessionState is BreathSessionState.NeedsMore -> SighPhase.NeedsMore
-            growth >= 1f -> SighPhase.Quiet
             growth > 0f && quietForMillis >= breathConfig.quietDelay.inWholeMilliseconds -> SighPhase.Quiet
             else -> SighPhase.Listening
         }
@@ -233,7 +235,7 @@ fun BreathControl(
         }
 
     Column(modifier = modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-        if (!listening && !burst) {
+        if (showIdleLabel && !listening && !burst) {
             Text(
                 text = "한숨 내쉬기",
                 style = AppTheme.typography.menuItem,
@@ -305,14 +307,14 @@ fun BreathControl(
                             )
                         }.requiredSize(124.dp * scale)
                         .onGloballyPositioned { coordinates ->
-                            val point = coordinates.positionInRoot()
-                            origin =
-                                Offset(point.x + coordinates.size.width / 2f, point.y + coordinates.size.height / 2f)
+                            val bounds = coordinates.boundsInRoot()
+                            origin = bounds.center
+                            latestControlBoundsChanged.value(bounds)
                         }.pointerInput(enabled, listening, burst) {
                             if (!listening) {
                                 detectTapGestures(onTap = {
                                     if (!enabled || burst) return@detectTapGestures
-                                    breathControlState.start()
+                                    latestIdleClick.value()
                                 })
                             } else {
                                 val maxDragPx = with(density) { RELEASE_DRAG_MAX_DP.dp.toPx() }
@@ -357,10 +359,24 @@ fun BreathControl(
                                             with(density) {
                                                 (-flingVelocityY).coerceAtLeast(0f).toDp().value
                                             }
-                                        breathControlState.release(
-                                            upwardDistanceDp = upwardDistanceDp,
-                                            upwardVelocityDpPerSecond = upwardVelocityDpPerSecond,
-                                        )
+                                        if (
+                                            breathConfig.isReleaseGesture(
+                                                upwardDistanceDp = upwardDistanceDp,
+                                                upwardVelocityDpPerSecond = upwardVelocityDpPerSecond,
+                                            )
+                                        ) {
+                                            breathControlState.release(
+                                                upwardDistanceDp = upwardDistanceDp,
+                                                upwardVelocityDpPerSecond = upwardVelocityDpPerSecond,
+                                            )
+                                        } else {
+                                            coroutineScope.launch {
+                                                dragOffsetY.animateTo(
+                                                    0f,
+                                                    spring(dampingRatio = 0.7f, stiffness = 300f),
+                                                )
+                                            }
+                                        }
                                     },
                                     onDragCancel = {
                                         coroutineScope.launch {
@@ -424,13 +440,13 @@ fun BreathControl(
 private fun BreathControlPreview() {
     BreathControl(
         enabled = true,
+        startSignal = 0,
+        onIdleClick = {},
         onExplosionFinished = {},
         onMicrophoneError = {},
         ensureLocationPermission = { true },
         onPhaseChanged = {},
         cancelSignal = 0,
-        requestPermissionOnLaunch = false,
-        onPermissionLaunchRequestHandled = {},
     )
 }
 

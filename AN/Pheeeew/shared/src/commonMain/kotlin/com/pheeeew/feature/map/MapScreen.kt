@@ -14,11 +14,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
@@ -28,12 +30,18 @@ import com.pheeeew.core.audio.BreathInputError
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.permission.LocationPermissionSettingsDialog
 import com.pheeeew.core.permission.LocationPermissionStatus
+import com.pheeeew.core.permission.LocationServicesSettingsDialog
 import com.pheeeew.domain.model.location.LocationState
 import com.pheeeew.domain.model.sigh.SighBounds
 import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.feature.map.animation.SighAnimationCoordinator
 import com.pheeeew.feature.map.animation.StarFlightOverlay
+import com.pheeeew.feature.map.guide.FirstSighGuideOverlay
+import com.pheeeew.feature.map.guide.FirstSighGuideStep
+import com.pheeeew.feature.map.guide.FirstSighSwipeOverlay
+import com.pheeeew.feature.map.guide.firstSighGuideStepFor
 import com.pheeeew.feature.map.map.BreathMap
 import com.pheeeew.feature.map.map.MapError
 import com.pheeeew.feature.map.map.MapProjectionSnapshot
@@ -50,6 +58,7 @@ import com.pheeeew.feature.map.sighlist.toSighListItemUiModel
 import com.pheeeew.feature.map.star.StarAgePolicy
 import com.pheeeew.feature.map.star.StarVisualPolicy
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -80,7 +89,8 @@ fun MapScreen(
     onSubmitSighReport: () -> Unit,
     onDismissSighReport: () -> Unit,
     onDismissReportSuccess: () -> Unit,
-    onBeginMemoAfterExplosion: () -> Unit,
+    onBeginSighRegistration: () -> Unit,
+    onBreathCompleted: () -> Unit,
     onSubmitMemo: (String) -> Unit,
     onSkipMemo: () -> Unit,
     onDismissMemo: () -> Unit,
@@ -93,11 +103,12 @@ fun MapScreen(
     onMapError: (MapError) -> Unit,
     onMapReady: () -> Unit,
     isActive: Boolean,
-    requestMicrophonePermissionOnLaunch: Boolean,
-    onMicrophonePermissionLaunchRequestHandled: () -> Unit,
+    guideMode: Boolean,
+    onGuideSkip: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var pendingFlightOrigin by remember { mutableStateOf<Offset?>(null) }
+    val coroutineScope = rememberCoroutineScope()
     var projectionSnapshot by remember { mutableStateOf(MapProjectionSnapshot.Empty) }
     var activeFlightId by remember { mutableStateOf<String?>(null) }
     var landedFlightId by remember { mutableStateOf<String?>(null) }
@@ -108,7 +119,9 @@ fun MapScreen(
     var showLocationServicesDialog by remember { mutableStateOf(false) }
     var showMicrophonePermissionDialog by remember { mutableStateOf(false) }
     var sighPhase by remember { mutableStateOf(SighPhase.Idle) }
+    var breathControlBounds by remember { mutableStateOf(Rect.Zero) }
     var cancelSignal by remember { mutableStateOf(0) }
+    var breathStartSignal by remember { mutableIntStateOf(0) }
     var starAgeRevision by remember { mutableIntStateOf(0) }
     var relativeTimeRevision by remember { mutableIntStateOf(0) }
     val sighBrowser = uiState.sighBrowser
@@ -116,15 +129,44 @@ fun MapScreen(
     val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
     val memoDraft = (uiState.sighRelease as? SighReleaseState.EditingMemo)?.draft
     val isMemoEditing = memoDraft != null
+    val awaitingBreath = uiState.sighRelease as? SighReleaseState.AwaitingBreath
     val retryableSighError =
         (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
-    val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing
+    val isSighInteractionVisible =
+        sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing || awaitingBreath != null
+    val guideStep = firstSighGuideStepFor(uiState.sighRelease, sighPhase)
+    val isGuidePromptVisible =
+        guideMode &&
+            !isMemoEditing &&
+            guideStep != FirstSighGuideStep.Hidden
+    val shouldShowInteractionBackdrop = isSighInteractionVisible || isGuidePromptVisible
     val currentLocation = (uiState.location.state as? LocationState.Available)?.location
     val renderedSighs =
         remember(uiState.sighs, sighBrowser.selectedSigh) {
             (listOfNotNull(sighBrowser.selectedSigh?.toPin()) + uiState.sighs)
                 .distinctBy(SighPin::id)
         }
+    val ensureRegistrationLocation: suspend () -> Boolean = {
+        when (onEnsureLocationPermission()) {
+            LocationPermissionStatus.Granted -> {
+                true
+            }
+
+            LocationPermissionStatus.ServicesDisabled -> {
+                showLocationServicesDialog = true
+                false
+            }
+
+            LocationPermissionStatus.PermanentlyDenied -> {
+                showLocationPermissionDialog = true
+                false
+            }
+
+            LocationPermissionStatus.Denied -> {
+                false
+            }
+        }
+    }
 
     LaunchedEffect(sighBrowser.isVisible) {
         if (sighBrowser.isVisible) {
@@ -133,6 +175,10 @@ fun MapScreen(
             delay(SIGH_BROWSER_EXIT_DURATION_MILLIS)
             isSighBrowserComposed = false
         }
+    }
+
+    LaunchedEffect(awaitingBreath?.command?.requestId) {
+        if (awaitingBreath != null) breathStartSignal += 1
     }
 
     LaunchedEffect(sighBrowser.isVisible) {
@@ -245,7 +291,10 @@ fun MapScreen(
             onZoomOutClick = onZoomOutClick,
             onMyLocationClick = onMyLocationClick,
             errorMessage = uiState.toBannerMessage(),
-            controlsEnabled = sighPhase == SighPhase.Idle && uiState.sighRelease is SighReleaseState.Idle,
+            controlsEnabled =
+                !guideMode &&
+                    sighPhase == SighPhase.Idle &&
+                    uiState.sighRelease is SighReleaseState.Idle,
         )
 
         if (isSighBrowserComposed) {
@@ -296,7 +345,7 @@ fun MapScreen(
                     .padding(start = 16.dp, top = 8.dp, end = 16.dp),
         )
 
-        if (isSighInteractionVisible) {
+        if (shouldShowInteractionBackdrop) {
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
@@ -305,42 +354,72 @@ fun MapScreen(
                         Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.8f))
-                            .pointerInput(Unit) {
-                                detectTapGestures(onTap = { cancelSignal += 1 })
+                            .pointerInput(isGuidePromptVisible) {
+                                detectTapGestures(
+                                    onTap = {
+                                        if (!isGuidePromptVisible) cancelSignal += 1
+                                    },
+                                )
                             },
                 )
-                Text(
-                    text =
-                        if (isSighSubmitting) {
-                            "별을 만드는 중이에요"
-                        } else if (isMemoEditing) {
-                            ""
-                        } else {
-                            when (sighPhase) {
-                                SighPhase.Listening -> "후– 하고\n한숨을 내쉬어보세요"
-                                SighPhase.Quiet -> "한숨을 날려\n별을 만들어보세요"
-                                SighPhase.NeedsMore -> "한숨을 더 크게 불어주세요"
-                                SighPhase.Bursting -> ""
-                                SighPhase.Idle -> ""
-                            }
+                if (!isGuidePromptVisible) {
+                    Text(
+                        text =
+                            if (isSighSubmitting) {
+                                "별을 만드는 중이에요"
+                            } else if (isMemoEditing) {
+                                ""
+                            } else {
+                                when (sighPhase) {
+                                    SighPhase.Listening -> "후– 하고\n한숨을 내쉬어보세요"
+                                    SighPhase.Quiet -> "한숨을 날려\n별을 만들어보세요"
+                                    SighPhase.NeedsMore -> "한숨을 더 크게 불어주세요"
+                                    SighPhase.Bursting -> ""
+                                    SighPhase.Idle -> ""
+                                }
+                            },
+                        style = AppTheme.typography.screenTitle,
+                        color = AppColors.Cream100,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.align(BiasAlignment(0f, -0.15f)),
+                    )
+                } else {
+                    FirstSighGuideOverlay(
+                        step = guideStep,
+                        controlBoundsInRoot = breathControlBounds,
+                        onSkip = {
+                            cancelSignal += 1
+                            pendingFlightOrigin = null
+                            onGuideSkip()
                         },
-                    style = AppTheme.typography.screenTitle,
-                    color = AppColors.Cream100,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.align(BiasAlignment(0f, -0.15f)),
-                )
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
 
         if (isActive && !sighBrowser.isVisible) {
             Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding().align(Alignment.BottomCenter)) {
                 if (!isSighSubmitting) {
-                    if (uiState.sighRelease is SighReleaseState.Idle) {
+                    if (
+                        uiState.sighRelease is SighReleaseState.Idle ||
+                        uiState.sighRelease is SighReleaseState.AwaitingBreath
+                    ) {
                         BreathControl(
                             enabled = !isFlightInProgress,
+                            startSignal = breathStartSignal,
+                            onIdleClick = {
+                                if (uiState.sighRelease is SighReleaseState.Idle) {
+                                    coroutineScope.launch {
+                                        if (ensureRegistrationLocation()) onBeginSighRegistration()
+                                    }
+                                } else {
+                                    breathStartSignal += 1
+                                }
+                            },
                             onExplosionFinished = { origin ->
                                 pendingFlightOrigin = origin
-                                onBeginMemoAfterExplosion()
+                                onBreathCompleted()
                             },
                             onMicrophoneError = { error ->
                                 if (error == BreathInputError.PermissionDenied) {
@@ -349,31 +428,11 @@ fun MapScreen(
                                     microphoneError = error
                                 }
                             },
-                            ensureLocationPermission = {
-                                when (onEnsureLocationPermission()) {
-                                    LocationPermissionStatus.Granted -> {
-                                        true
-                                    }
-
-                                    LocationPermissionStatus.ServicesDisabled -> {
-                                        showLocationServicesDialog = true
-                                        false
-                                    }
-
-                                    LocationPermissionStatus.PermanentlyDenied -> {
-                                        showLocationPermissionDialog = true
-                                        false
-                                    }
-
-                                    LocationPermissionStatus.Denied -> {
-                                        false
-                                    }
-                                }
-                            },
+                            ensureLocationPermission = ensureRegistrationLocation,
                             onPhaseChanged = { sighPhase = it },
                             cancelSignal = cancelSignal,
-                            requestPermissionOnLaunch = requestMicrophonePermissionOnLaunch,
-                            onPermissionLaunchRequestHandled = onMicrophonePermissionLaunchRequestHandled,
+                            onControlBoundsChanged = { breathControlBounds = it },
+                            showIdleLabel = !guideMode,
                         )
                     }
                 }
@@ -386,10 +445,18 @@ fun MapScreen(
             }
         }
 
+        if (isGuidePromptVisible && guideStep == FirstSighGuideStep.SwipeUp) {
+            FirstSighSwipeOverlay(
+                controlBoundsInRoot = breathControlBounds,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
         memoDraft?.let { draft ->
             MemoEditor(
                 draft = draft,
                 submitting = false,
+                guideMode = guideMode,
                 onSubmit = onSubmitMemo,
                 onSkip = onSkipMemo,
                 onDismiss = {
@@ -429,32 +496,22 @@ fun MapScreen(
         }
 
         if (showLocationPermissionDialog) {
-            AppDialog(
-                title = "위치 권한 설정 안내",
-                body = "한숨을 별로 만들려면 위치 권한이 필요합니다.\n설정에서 위치 권한을 '허용'으로 변경해주세요.",
-                confirmText = "설정으로 이동",
-                onConfirmClick = {
+            LocationPermissionSettingsDialog(
+                onOpenSettings = {
                     showLocationPermissionDialog = false
                     onOpenLocationSettings()
                 },
-                onDismissRequest = { showLocationPermissionDialog = false },
-                onDismissClick = { showLocationPermissionDialog = false },
-                dismissText = "취소",
+                onDismiss = { showLocationPermissionDialog = false },
             )
         }
 
         if (showLocationServicesDialog) {
-            AppDialog(
-                title = "위치 서비스 설정 안내",
-                body = "현재 위치를 확인하려면 기기 설정에서 위치 서비스를 켜주세요.",
-                confirmText = "설정으로 이동",
-                onConfirmClick = {
+            LocationServicesSettingsDialog(
+                onOpenSettings = {
                     showLocationServicesDialog = false
                     onOpenLocationSettings()
                 },
-                onDismissRequest = { showLocationServicesDialog = false },
-                onDismissClick = { showLocationServicesDialog = false },
-                dismissText = "취소",
+                onDismiss = { showLocationServicesDialog = false },
             )
         }
 
@@ -523,7 +580,8 @@ private fun MapScreenPreview() {
             onSubmitSighReport = {},
             onDismissSighReport = {},
             onDismissReportSuccess = {},
-            onBeginMemoAfterExplosion = {},
+            onBeginSighRegistration = {},
+            onBreathCompleted = {},
             onSubmitMemo = {},
             onSkipMemo = {},
             onDismissMemo = {},
@@ -536,8 +594,8 @@ private fun MapScreenPreview() {
             onMapError = {},
             onMapReady = {},
             isActive = true,
-            requestMicrophonePermissionOnLaunch = false,
-            onMicrophonePermissionLaunchRequestHandled = {},
+            guideMode = false,
+            onGuideSkip = {},
         )
     }
 }

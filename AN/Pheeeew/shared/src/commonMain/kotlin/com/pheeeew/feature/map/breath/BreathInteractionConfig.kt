@@ -28,4 +28,11 @@ data class BreathInteractionConfig(
         require(releaseVelocityDpPerSecond >= 0f) { "releaseVelocityDpPerSecond must not be negative" }
         require(maxSampleElapsed > ZERO) { "maxSampleElapsed must be positive" }
     }
+
+    fun isReleaseGesture(
+        upwardDistanceDp: Float,
+        upwardVelocityDpPerSecond: Float,
+    ): Boolean =
+        upwardDistanceDp >= releaseDistanceDp ||
+            upwardVelocityDpPerSecond >= releaseVelocityDpPerSecond
 }

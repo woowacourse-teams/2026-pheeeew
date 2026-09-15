@@ -103,7 +103,7 @@ class BreathSessionReducer(
             }
         val quietFor = if (isActive) ZERO else activeState.quietFor + elapsed
         val nextState =
-            if (growth >= 1f || quietFor >= config.quietDelay) {
+            if (growth >= config.minimumReleaseProgress || quietFor >= config.quietDelay) {
                 BreathSessionState.Quiet(activeState.sessionId, growth, strength, quietFor)
             } else {
                 BreathSessionState.Listening(activeState.sessionId, growth, strength, quietFor)
@@ -124,8 +124,10 @@ class BreathSessionReducer(
             }
         if (activeState.sessionId != event.sessionId) return BreathSessionTransition(state)
         val reachedReleaseGesture =
-            event.upwardDistanceDp >= config.releaseDistanceDp ||
-                event.upwardVelocityDpPerSecond >= config.releaseVelocityDpPerSecond
+            config.isReleaseGesture(
+                upwardDistanceDp = event.upwardDistanceDp,
+                upwardVelocityDpPerSecond = event.upwardVelocityDpPerSecond,
+            )
         if (!reachedReleaseGesture) return BreathSessionTransition(activeState)
         if (activeState.growth < config.minimumReleaseProgress) {
             return BreathSessionTransition(

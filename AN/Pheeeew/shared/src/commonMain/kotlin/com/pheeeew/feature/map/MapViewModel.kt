@@ -19,10 +19,13 @@ import com.pheeeew.feature.map.map.MapError
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -74,6 +77,8 @@ class MapViewModel(
             ),
         )
     val uiState: StateFlow<MapUiState> = _uiState.asStateFlow()
+    private val registrationEventChannel = Channel<SighRegistrationSucceeded>(Channel.BUFFERED)
+    val registrationEvents: Flow<SighRegistrationSucceeded> = registrationEventChannel.receiveAsFlow()
 
     init {
         locationDependencies?.let { dependencies ->
@@ -556,7 +561,7 @@ class MapViewModel(
         }
     }
 
-    fun beginMemoAfterExplosion() {
+    fun beginSighRegistration() {
         val current = _uiState.value
         if (current.sighRelease !is SighReleaseState.Idle) return
         val location = (current.location.state as? LocationState.Available)?.location
@@ -600,7 +605,9 @@ class MapViewModel(
                         coordinate = state.draft.coordinate,
                         memo = memo,
                     ).also { pendingRegistration = it }
-        submit(command)
+        _uiState.update { current ->
+            current.copy(sighRelease = SighReleaseState.AwaitingBreath(command))
+        }
     }
 
     fun skipMemo() {
@@ -611,6 +618,13 @@ class MapViewModel(
         if (_uiState.value.sighRelease !is SighReleaseState.EditingMemo) return
         clearPendingSigh()
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.Idle) }
+    }
+
+    fun completeBreath() {
+        val command =
+            (_uiState.value.sighRelease as? SighReleaseState.AwaitingBreath)?.command
+                ?: return
+        submit(command)
     }
 
     fun retrySighCreation() {
@@ -633,6 +647,12 @@ class MapViewModel(
                 sighOperationMutex.withLock {
                     locallyRegisteredSighs[sighPin.id] = sighPin
                     clearPendingSigh()
+                    registrationEventChannel.trySend(
+                        SighRegistrationSucceeded(
+                            requestId = command.requestId,
+                            sighId = sighPin.id,
+                        ),
+                    )
                     _uiState.update { state ->
                         state.copy(
                             sighs =
@@ -769,6 +789,18 @@ class MapViewModel(
                 dependencies.repository.refreshCurrentLocation()
             }
             status
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            LocationPermissionStatus.Denied
+        }
+    }
+
+    /** 온보딩에서는 저장된 거부 이력으로 요청을 생략하지 않고 시스템 요청 결과를 직접 사용합니다. */
+    suspend fun requestLocationPermission(): LocationPermissionStatus {
+        val dependencies = locationDependencies ?: return LocationPermissionStatus.Denied
+        return try {
+            dependencies.permissionController.requestPermission()
         } catch (cancellation: CancellationException) {
             throw cancellation
         } catch (_: Exception) {

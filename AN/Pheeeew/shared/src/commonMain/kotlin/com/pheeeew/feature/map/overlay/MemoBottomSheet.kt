@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
@@ -39,12 +40,15 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.map.MAX_MEMO_LENGTH
 import com.pheeeew.feature.map.PendingSighDraft
+import com.pheeeew.feature.map.guide.FirstSighGuideBubble
+import com.pheeeew.feature.map.guide.FirstSighGuideStep
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun MemoEditor(
     draft: PendingSighDraft,
     submitting: Boolean,
+    guideMode: Boolean,
     onSubmit: (String) -> Unit,
     onSkip: () -> Unit,
     onDismiss: () -> Unit,
@@ -56,6 +60,7 @@ fun MemoEditor(
             if (nextValue.length <= MAX_MEMO_LENGTH) value = nextValue
         },
         submitting = submitting,
+        guideMode = guideMode,
         onSubmit = { onSubmit(value) },
         onSkip = onSkip,
         onDismiss = onDismiss,
@@ -68,6 +73,7 @@ private fun MemoBottomSheet(
     value: String,
     onValueChange: (String) -> Unit,
     submitting: Boolean,
+    guideMode: Boolean,
     onSubmit: () -> Unit,
     onSkip: () -> Unit,
     onDismiss: () -> Unit,
@@ -99,6 +105,12 @@ private fun MemoBottomSheet(
                         .padding(start = 26.dp, top = 4.dp, end = 26.dp, bottom = 24.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
+                if (guideMode) {
+                    FirstSighGuideBubble(
+                        step = FirstSighGuideStep.Memo,
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    )
+                }
                 Text(
                     text = "한숨에 담아 보낼 마음",
                     style = AppTheme.typography.screenTitle,
