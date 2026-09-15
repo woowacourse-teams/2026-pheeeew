@@ -159,10 +159,7 @@ public class SighService {
 
         SighSearchBounds bounds = cursor.bounds();
         List<SighListProjection> projections = sighRepository.findListWithinBounds(
-                bounds.minLongitude(),
-                bounds.minLatitude(),
-                bounds.maxLongitude(),
-                bounds.maxLatitude(),
+                bounds,
                 cursor.snapshotAt(),
                 cursor.lastItemCreatedAt(),
                 cursor.lastId(),
