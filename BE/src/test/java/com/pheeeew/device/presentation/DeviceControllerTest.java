@@ -70,7 +70,7 @@ class DeviceControllerTest {
     void 최초_등록하면_201과_토큰만_반환한다() {
         // given
         when(deviceService.save(REQUEST_ID, 무결성_증명_없음(DevicePlatform.ANDROID)))
-                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 1800L), REFRESH_TOKEN, true));
+                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 30L), REFRESH_TOKEN, true));
 
         // when
         RestTestClient.ResponseSpec result = 등록한다(기본_등록_본문());
@@ -87,7 +87,7 @@ class DeviceControllerTest {
     void 같은_요청_식별자로_재시도하면_200과_토큰만_반환한다() {
         // given
         when(deviceService.save(REQUEST_ID, 무결성_증명_없음(DevicePlatform.ANDROID)))
-                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 1800L), REFRESH_TOKEN, false));
+                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 30L), REFRESH_TOKEN, false));
 
         // when
         RestTestClient.ResponseSpec result = 등록한다(기본_등록_본문());
@@ -103,7 +103,7 @@ class DeviceControllerTest {
     void 무결성_증명_값을_생략해도_플랫폼만으로_등록한다() {
         // given
         when(deviceService.save(REQUEST_ID, 무결성_증명_없음(DevicePlatform.IOS)))
-                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 1800L), REFRESH_TOKEN, true));
+                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 30L), REFRESH_TOKEN, true));
 
         // when
         RestTestClient.ResponseSpec result = 등록한다("""
@@ -122,7 +122,7 @@ class DeviceControllerTest {
     void 무결성_증명_토큰과_challenge_와_키_식별자는_서비스까지_그대로_전달된다() {
         // given
         when(deviceService.save(REQUEST_ID, 무결성_증명(DevicePlatform.ANDROID, INTEGRITY_TOKEN, CHALLENGE, KEY_ID)))
-                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 1800L), REFRESH_TOKEN, true));
+                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 30L), REFRESH_TOKEN, true));
 
         // when
         RestTestClient.ResponseSpec result = 등록한다(무결성_증명을_담은_등록_본문());
@@ -136,7 +136,7 @@ class DeviceControllerTest {
     void challenge_없이_무결성_증명_토큰만_보내면_challenge_자리를_비운_채로_서비스까지_전달된다() {
         // given
         when(deviceService.save(REQUEST_ID, 무결성_증명(DevicePlatform.ANDROID, INTEGRITY_TOKEN, null, KEY_ID)))
-                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 1800L), REFRESH_TOKEN, true));
+                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 30L), REFRESH_TOKEN, true));
 
         // when
         RestTestClient.ResponseSpec result = 등록한다("""
@@ -211,7 +211,7 @@ class DeviceControllerTest {
     void 요청_본문에_기기_식별자를_넣어도_서버가_쓰지_않는다() {
         // given
         when(deviceService.save(REQUEST_ID, 무결성_증명_없음(DevicePlatform.ANDROID)))
-                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 1800L), REFRESH_TOKEN, true));
+                .thenReturn(DeviceSaveResult.of(AccessTokenResult.of(ACCESS_TOKEN, 30L), REFRESH_TOKEN, true));
 
         // when
         RestTestClient.ResponseSpec result = 등록한다("""
@@ -377,7 +377,7 @@ class DeviceControllerTest {
     void 리프레시_토큰으로_재발급하면_액세스_토큰만_반환한다() {
         // given
         when(deviceTokenService.reissueAccessToken(REFRESH_TOKEN))
-                .thenReturn(AccessTokenResult.of(ACCESS_TOKEN, 1800L));
+                .thenReturn(AccessTokenResult.of(ACCESS_TOKEN, 30L));
 
         // when
         RestTestClient.ResponseSpec result = 재발급한다("""
@@ -389,7 +389,7 @@ class DeviceControllerTest {
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
                 .expectBody()
                 .json("""
-                        {"accessToken":"%s","expiresIn":1800}
+                        {"accessToken":"%s","expiresIn":30}
                         """.formatted(ACCESS_TOKEN), JsonCompareMode.STRICT);
         verify(deviceTokenService).reissueAccessToken(REFRESH_TOKEN);
     }
@@ -483,7 +483,7 @@ class DeviceControllerTest {
 
     private String 기본_등록_응답() {
         return """
-                {"accessToken":"%s","refreshToken":"%s","expiresIn":1800}
+                {"accessToken":"%s","refreshToken":"%s","expiresIn":30}
                 """.formatted(ACCESS_TOKEN, REFRESH_TOKEN);
     }
 }
