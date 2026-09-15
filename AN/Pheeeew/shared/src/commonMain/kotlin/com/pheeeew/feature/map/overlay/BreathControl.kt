@@ -221,7 +221,7 @@ fun BreathControl(
         when {
             burst -> SighPhase.Bursting
             !listening -> SighPhase.Idle
-            growth >= 1f -> SighPhase.Quiet
+            growth >= breathConfig.minimumReleaseProgress -> SighPhase.Quiet
             needsMoreActive && sessionState is BreathSessionState.NeedsMore -> SighPhase.NeedsMore
             growth > 0f && quietForMillis >= breathConfig.quietDelay.inWholeMilliseconds -> SighPhase.Quiet
             else -> SighPhase.Listening

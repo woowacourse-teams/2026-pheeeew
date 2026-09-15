@@ -103,7 +103,7 @@ class BreathSessionReducer(
             }
         val quietFor = if (isActive) ZERO else activeState.quietFor + elapsed
         val nextState =
-            if (growth >= 1f || quietFor >= config.quietDelay) {
+            if (growth >= config.minimumReleaseProgress || quietFor >= config.quietDelay) {
                 BreathSessionState.Quiet(activeState.sessionId, growth, strength, quietFor)
             } else {
                 BreathSessionState.Listening(activeState.sessionId, growth, strength, quietFor)
