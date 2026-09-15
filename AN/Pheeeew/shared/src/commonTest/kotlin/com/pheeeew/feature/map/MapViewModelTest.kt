@@ -21,9 +21,9 @@ import com.pheeeew.domain.repository.SighRepository
 import com.pheeeew.domain.service.SighLocationObfuscator
 import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.feature.map.map.MapCameraCommand
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -32,7 +32,6 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -55,6 +54,11 @@ class MapViewModelTest {
             minLongitude = 127.0,
             maxLongitude = 127.1,
         )
+    private val thirdBounds =
+        firstBounds.copy(
+            minLongitude = 127.1,
+            maxLongitude = 127.2,
+        )
 
     @Test
     fun `초기 상태는 부분 상태의 기본값을 가진다`() =
@@ -76,10 +80,10 @@ class MapViewModelTest {
 
                 viewModel.loadSighs(firstBounds)
                 viewModel.loadSighs(firstBounds)
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
 
-                assertEquals(listOf(firstBounds), repository.requestedBounds)
+                assertEquals(listOf(firstBounds.expandForPrefetch()), repository.requestedBounds)
                 viewModel.onMapBackground()
             } finally {
                 Dispatchers.resetMain()
@@ -97,15 +101,18 @@ class MapViewModelTest {
                 viewModel.onMapForeground()
 
                 viewModel.loadSighs(firstBounds)
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
                 assertNotNull(viewModel.uiState.value.errors.refreshMessage)
 
                 viewModel.loadSighs(firstBounds)
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
 
-                assertEquals(listOf(firstBounds, firstBounds), repository.requestedBounds)
+                assertEquals(
+                    listOf(firstBounds.expandForPrefetch(), firstBounds.expandForPrefetch()),
+                    repository.requestedBounds,
+                )
                 assertNull(viewModel.uiState.value.errors.refreshMessage)
                 viewModel.onMapBackground()
             } finally {
@@ -126,10 +133,10 @@ class MapViewModelTest {
                 viewModel.loadSighs(firstBounds)
                 advanceTimeBy(100)
                 viewModel.loadSighs(secondBounds)
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
 
-                assertEquals(listOf(secondBounds), repository.requestedBounds)
+                assertEquals(listOf(secondBounds.expandForPrefetch()), repository.requestedBounds)
                 viewModel.onMapBackground()
             } finally {
                 Dispatchers.resetMain()
@@ -144,7 +151,7 @@ class MapViewModelTest {
             viewModel.onMapForeground()
 
             viewModel.loadSighs(firstBounds.copy(minLatitude = Double.NaN))
-            advanceTimeBy(250)
+            advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
             runCurrent()
 
             assertEquals(emptyList(), repository.requestedBounds)
@@ -159,7 +166,7 @@ class MapViewModelTest {
             viewModel.onMapForeground()
 
             viewModel.loadSighs(firstBounds.copy(minLongitude = 127.1, maxLongitude = 126.9))
-            advanceTimeBy(250)
+            advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
             runCurrent()
 
             assertEquals(emptyList(), repository.requestedBounds)
@@ -185,7 +192,7 @@ class MapViewModelTest {
                 viewModel.onMapForeground()
 
                 viewModel.loadSighs(firstBounds)
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
 
                 val actualIds =
@@ -199,26 +206,114 @@ class MapViewModelTest {
         }
 
     @Test
-    fun `오래된 요청의 응답은 최신 요청 결과를 덮어쓰지 않는다`() =
+    fun `진행 중인 요청은 취소하지 않고 pending 중 최신 bounds만 후속 요청한다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
             Dispatchers.setMain(dispatcher)
             try {
-                val repository = RecordingSighRepository(delayFirstResponse = true)
+                val repository = RecordingSighRepository(holdFirstResponse = true)
                 val viewModel = createViewModel(repository)
                 viewModel.onMapForeground()
 
                 viewModel.loadSighs(firstBounds)
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
 
-                viewModel.onMapBackground()
-                viewModel.onMapForeground()
-                advanceTimeBy(1_000)
+                viewModel.loadSighs(secondBounds)
+                viewModel.loadSighs(thirdBounds)
+                runCurrent()
+                assertEquals(1, repository.requestedBounds.size)
+                assertEquals(false, repository.firstRequestCancelled)
+
+                repository.releaseFirstResponse.complete(Unit)
+                runCurrent()
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
 
                 val state = viewModel.uiState.value
                 assertEquals(2L, state.sighs.single().id)
+                assertEquals(false, repository.firstRequestCancelled)
+                assertEquals(
+                    listOf(firstBounds.expandForPrefetch(), thirdBounds.expandForPrefetch()),
+                    repository.requestedBounds,
+                )
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `백그라운드 전환은 진행 중인 별 조회 요청을 취소하지 않는다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository = RecordingSighRepository(holdFirstResponse = true)
+                val viewModel = createViewModel(repository)
+                viewModel.onMapForeground()
+                viewModel.loadSighs(firstBounds)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                runCurrent()
+
+                viewModel.onMapBackground()
+                runCurrent()
+                assertEquals(false, repository.firstRequestCancelled)
+
+                repository.releaseFirstResponse.complete(Unit)
+                runCurrent()
+
+                assertEquals(false, repository.firstRequestCancelled)
+                assertEquals(emptyList(), viewModel.uiState.value.sighs)
+
+                viewModel.onMapForeground()
+                runCurrent()
+
+                assertEquals(1, repository.requestedBounds.size)
+                assertEquals(
+                    1L,
+                    viewModel.uiState.value.sighs
+                        .single()
+                        .id,
+                )
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `조회 완료 범위 안에서 지도를 이동하면 추가 요청하지 않는다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository = RecordingSighRepository()
+                val viewModel = createViewModel(repository)
+                val coveredBounds =
+                    firstBounds.copy(
+                        minLongitude = 126.92,
+                        maxLongitude = 127.02,
+                        minLatitude = 37.52,
+                        maxLatitude = 37.62,
+                    )
+                viewModel.onMapForeground()
+
+                viewModel.loadSighs(firstBounds)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                runCurrent()
+
+                viewModel.loadSighs(coveredBounds)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                runCurrent()
+
+                assertEquals(1, repository.requestedBounds.size)
+                assertEquals(
+                    1L,
+                    viewModel.uiState.value.sighs
+                        .single()
+                        .id,
+                )
                 viewModel.onMapBackground()
             } finally {
                 Dispatchers.resetMain()
@@ -235,20 +330,23 @@ class MapViewModelTest {
                 val viewModel = createViewModel(repository)
                 viewModel.onMapForeground()
                 viewModel.loadSighs(firstBounds)
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
 
                 viewModel.onMapBackground()
                 viewModel.loadSighs(secondBounds)
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
-                assertEquals(listOf(firstBounds), repository.requestedBounds)
+                assertEquals(listOf(firstBounds.expandForPrefetch()), repository.requestedBounds)
 
                 viewModel.onMapForeground()
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
 
-                assertEquals(listOf(firstBounds, secondBounds), repository.requestedBounds)
+                assertEquals(
+                    listOf(firstBounds.expandForPrefetch(), secondBounds.expandForPrefetch()),
+                    repository.requestedBounds,
+                )
                 viewModel.onMapBackground()
             } finally {
                 Dispatchers.resetMain()
@@ -713,15 +811,15 @@ class MapViewModelTest {
                 viewModel.loadSighs(firstBounds)
                 viewModel.setSighListVisible(true)
                 runCurrent()
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
-                assertEquals(listOf(firstBounds), repository.requestedBounds)
+                assertEquals(listOf(firstBounds.expandForPrefetch()), repository.requestedBounds)
 
                 viewModel.selectSigh(1L)
                 viewModel.loadSighs(secondBounds)
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
-                assertEquals(listOf(firstBounds), repository.requestedBounds)
+                assertEquals(listOf(firstBounds.expandForPrefetch()), repository.requestedBounds)
 
                 viewModel.dismissSighDetail()
                 assertIs<MapCameraCommand.MoveToCoordinate>(
@@ -729,9 +827,44 @@ class MapViewModelTest {
                 )
                 viewModel.setSighListVisible(false)
                 viewModel.loadSighs(firstBounds)
-                advanceTimeBy(250)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
                 runCurrent()
-                assertEquals(listOf(firstBounds), repository.requestedBounds)
+                assertEquals(listOf(firstBounds.expandForPrefetch()), repository.requestedBounds)
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `복원 bounds와 다른 카메라 콜백은 이후 지도 조회를 막지 않는다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository =
+                    RecordingSighRepository(
+                        firstPage = SighPage(listOf(sigh(id = 1L)), nextCursor = null),
+                    )
+                val viewModel = createViewModel(repository)
+                viewModel.onMapForeground()
+                viewModel.loadSighs(firstBounds)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                runCurrent()
+
+                viewModel.setSighListVisible(true)
+                runCurrent()
+                viewModel.selectSigh(1L)
+                viewModel.setSighListVisible(false)
+
+                viewModel.loadSighs(secondBounds)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                runCurrent()
+
+                assertEquals(
+                    listOf(firstBounds.expandForPrefetch(), secondBounds.expandForPrefetch()),
+                    repository.requestedBounds,
+                )
                 viewModel.onMapBackground()
             } finally {
                 Dispatchers.resetMain()
@@ -793,7 +926,7 @@ class MapViewModelTest {
     }
 
     private class RecordingSighRepository(
-        private val delayFirstResponse: Boolean = false,
+        private val holdFirstResponse: Boolean = false,
         private var failNextRequest: Boolean = false,
         private var failNextCreate: Boolean = false,
         private val mapSighs: List<SighPin>? = null,
@@ -806,6 +939,9 @@ class MapViewModelTest {
         val requestedCursors = mutableListOf<String>()
         val requestedDetailIds = mutableListOf<Long>()
         val createdCommands = mutableListOf<CreateSighCommand>()
+        val releaseFirstResponse = CompletableDeferred<Unit>()
+        var firstRequestCancelled = false
+            private set
 
         override suspend fun getFirstPage(bounds: SighBounds): SighPage {
             requestedListBounds += bounds
@@ -843,14 +979,23 @@ class MapViewModelTest {
                 throw ApiException.Network(code = "TEST-001", message = "조회 실패")
             }
             val requestNumber = requestedBounds.size
-            if (delayFirstResponse && requestNumber == 1) {
-                withContext(NonCancellable) { delay(1_000) }
+            if (holdFirstResponse && requestNumber == 1) {
+                try {
+                    releaseFirstResponse.await()
+                } catch (cancellation: CancellationException) {
+                    firstRequestCancelled = true
+                    throw cancellation
+                }
             }
             return mapSighs
                 ?: listOf(
                     SighPin(
                         id = requestNumber.toLong(),
-                        coordinate = Coordinate(latitude = 37.55, longitude = 126.95),
+                        coordinate =
+                            Coordinate(
+                                latitude = (bounds.minLatitude + bounds.maxLatitude) / 2.0,
+                                longitude = (bounds.minLongitude + bounds.maxLongitude) / 2.0,
+                            ),
                     ),
                 )
         }

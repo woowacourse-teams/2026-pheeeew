@@ -17,6 +17,7 @@ import com.pheeeew.feature.map.map.MapCameraCommand
 import com.pheeeew.feature.map.map.MapDarkStyle
 import com.pheeeew.feature.map.map.MapError
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +32,6 @@ import kotlin.time.TimeSource
 import kotlin.uuid.Uuid
 
 private const val MIN_SIGH_SUBMITTING_DURATION_MILLIS = 2_000L
-private const val SIGH_BOUNDS_DEBOUNCE_MILLIS = 250L
 
 typealias MapPerformanceLogger = (String) -> Unit
 
@@ -47,16 +47,19 @@ class MapViewModel(
     private var pendingSighDetailId: Long? = null
     private val sighOperationMutex = Mutex()
     private val locallyRegisteredSighs = mutableMapOf<Long, SighPin>()
+    private val sighMapCache = SighMapCache()
     private var mapIsForeground = false
-    private var loadSighsJob: Job? = null
+    private var sighDebounceJob: Job? = null
+    private var activeSighRequestJob: Job? = null
+    private var pendingViewportIntent: ViewportIntent? = null
     private var loadSighListJob: Job? = null
     private var loadSighDetailJob: Job? = null
     private var lastSighBounds: SighBounds? = null
+    private var latestViewportIntent: ViewportIntent? = null
+    private var latestViewportVersion = 0L
     private var cameraBeforeSighDetailBounds: SighBounds? = null
     private var detailCameraMovePending = false
     private var restoringSighDetailBounds: SighBounds? = null
-    private var lastRequestedSighBounds: SighBounds? = null
-    private var latestSighRequestId = 0L
     private var latestSighListRequestId = 0L
     private var latestSighDetailRequestId = 0L
     private var myLocationJob: Job? = null
@@ -104,15 +107,21 @@ class MapViewModel(
             return
         }
         restoringSighDetailBounds?.let { restoringBounds ->
+            restoringSighDetailBounds = null
             if (bounds.isApproximatelyEqualTo(restoringBounds)) {
-                restoringSighDetailBounds = null
+                mapPerformanceLogger("detail_restore_bounds_skipped")
+                return
             }
-            mapPerformanceLogger("detail_restore_bounds_skipped")
-            return
         }
         val isInitialBounds = lastSighBounds == null
         lastSighBounds = bounds
-        mapPerformanceLogger("bounds_received")
+        val intent =
+            ViewportIntent(
+                version = ++latestViewportVersion,
+                visibleBounds = bounds,
+            )
+        latestViewportIntent = intent
+        mapPerformanceLogger("bounds_received version=${intent.version}")
 
         val browser = _uiState.value.sighBrowser
         if (isInitialBounds && browser.isVisible && browser.items.isEmpty() && !browser.isLoading) {
@@ -120,71 +129,131 @@ class MapViewModel(
         }
 
         if (!mapIsForeground) return
-        if (bounds == lastRequestedSighBounds) {
-            mapPerformanceLogger("duplicate_bounds_skipped")
+
+        publishCachedSighsFor(bounds)
+        pendingViewportIntent = intent
+        schedulePendingViewport()
+    }
+
+    private fun schedulePendingViewport() {
+        val pendingIntent = pendingViewportIntent ?: return
+        if (!mapIsForeground) return
+        if (activeSighRequestJob?.isActive == true) {
+            mapPerformanceLogger("request_pending version=${pendingIntent.version}")
             return
         }
 
-        lastRequestedSighBounds = bounds
-        val requestId = ++latestSighRequestId
-
-        loadSighsJob?.cancel()
-
-        loadSighsJob =
+        sighDebounceJob?.cancel()
+        sighDebounceJob =
             viewModelScope.launch {
+                delay(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                val intent = pendingViewportIntent ?: return@launch
+                pendingViewportIntent = null
+                sighDebounceJob = null
+                if (!mapIsForeground) return@launch
+                startSighRequest(intent)
+            }
+    }
+
+    private fun startSighRequest(intent: ViewportIntent) {
+        check(activeSighRequestJob?.isActive != true)
+
+        val requestJob =
+            viewModelScope.launch(start = CoroutineStart.LAZY) {
                 try {
-                    delay(SIGH_BOUNDS_DEBOUNCE_MILLIS)
-                    mapPerformanceLogger("request_started id=$requestId")
-
-                    val serverSighs =
-                        try {
-                            sighRepository
-                                .getMapSighs(bounds)
-                                .distinctBy(SighPin::id)
-                                .sortedBy(SighPin::id)
-                        } catch (e: ApiException) {
-                            sighOperationMutex.withLock {
-                                if (requestId != latestSighRequestId || !mapIsForeground) {
-                                    mapPerformanceLogger("stale_error_dropped id=$requestId")
-                                    return@withLock
-                                }
-
-                                lastRequestedSighBounds = null
-                                mapPerformanceLogger("request_failed id=$requestId")
-                                _uiState.update { state ->
-                                    state.copy(
-                                        errors = state.errors.copy(refreshMessage = e.toUserMessage()),
-                                    )
-                                }
-                            }
-                            return@launch
-                        }
-
-                    sighOperationMutex.withLock {
-                        if (requestId != latestSighRequestId || !mapIsForeground) {
-                            mapPerformanceLogger("stale_response_dropped id=$requestId")
-                            return@withLock
-                        }
-
-                        val serverIds = serverSighs.mapTo(mutableSetOf(), SighPin::id)
-                        serverIds.forEach(locallyRegisteredSighs::remove)
-                        val mergedSighs =
-                            (serverSighs + locallyRegisteredSighs.values)
-                                .distinctBy(SighPin::id)
-                                .sortedBy(SighPin::id)
-                        _uiState.update { state ->
-                            state.copy(
-                                sighs = mergedSighs,
-                                errors = state.errors.copy(refreshMessage = null),
-                            )
-                        }
-                        mapPerformanceLogger("response_applied id=$requestId")
-                    }
-                } catch (e: CancellationException) {
-                    mapPerformanceLogger("request_cancelled id=$requestId")
-                    throw e
+                    processViewport(intent)
+                } finally {
+                    activeSighRequestJob = null
+                    schedulePendingViewport()
                 }
             }
+        activeSighRequestJob = requestJob
+        requestJob.start()
+    }
+
+    private suspend fun processViewport(intent: ViewportIntent) {
+        if (!mapIsForeground || intent.version != latestViewportIntent?.version) {
+            mapPerformanceLogger("stale_viewport_skipped version=${intent.version}")
+            return
+        }
+
+        if (sighMapCache.covers(intent.visibleBounds)) {
+            mapPerformanceLogger("cache_hit version=${intent.version}")
+            publishCachedSighsFor(intent.visibleBounds, clearRefreshError = true)
+            return
+        }
+
+        val queryBounds = intent.visibleBounds.expandForPrefetch()
+        mapPerformanceLogger("request_started version=${intent.version}")
+        val serverSighs =
+            try {
+                sighRepository
+                    .getMapSighs(queryBounds)
+                    .distinctBy(SighPin::id)
+                    .sortedBy(SighPin::id)
+            } catch (e: ApiException) {
+                handleSighRequestFailure(intent, e)
+                return
+            }
+
+        sighOperationMutex.withLock {
+            sighMapCache.put(queryBounds, serverSighs)
+            val serverIds = serverSighs.mapTo(mutableSetOf(), SighPin::id)
+            serverIds.forEach(locallyRegisteredSighs::remove)
+
+            val currentIntent = latestViewportIntent
+            if (!mapIsForeground || currentIntent == null) {
+                mapPerformanceLogger("response_cached_while_inactive version=${intent.version}")
+                return@withLock
+            }
+
+            publishCachedSighsFor(currentIntent.visibleBounds, clearRefreshError = true)
+            if (intent.version == currentIntent.version) {
+                mapPerformanceLogger("response_applied version=${intent.version}")
+            } else {
+                mapPerformanceLogger("stale_response_cached version=${intent.version}")
+            }
+        }
+    }
+
+    private suspend fun handleSighRequestFailure(
+        intent: ViewportIntent,
+        error: ApiException,
+    ) {
+        sighOperationMutex.withLock {
+            if (!mapIsForeground || intent.version != latestViewportIntent?.version) {
+                mapPerformanceLogger("stale_error_dropped version=${intent.version}")
+                return@withLock
+            }
+
+            mapPerformanceLogger("request_failed version=${intent.version}")
+            _uiState.update { state ->
+                state.copy(
+                    errors = state.errors.copy(refreshMessage = error.toUserMessage()),
+                )
+            }
+        }
+    }
+
+    private fun publishCachedSighsFor(
+        bounds: SighBounds,
+        clearRefreshError: Boolean = false,
+    ) {
+        val mergedSighs =
+            (sighMapCache.visibleSighs(bounds) + locallyRegisteredSighs.values)
+                .distinctBy(SighPin::id)
+                .sortedBy(SighPin::id)
+        _uiState.update { state ->
+            state.copy(
+                sighs = mergedSighs,
+                errors =
+                    if (clearRefreshError) {
+                        state.errors.copy(refreshMessage = null)
+                    } else {
+                        state.errors
+                    },
+            )
+        }
     }
 
     fun setSighListVisible(visible: Boolean) {
@@ -758,15 +827,14 @@ class MapViewModel(
 
     fun onMapBackground() {
         mapIsForeground = false
-
-        loadSighsJob?.cancel()
-        loadSighsJob = null
+        sighDebounceJob?.cancel()
+        sighDebounceJob = null
+        pendingViewportIntent = null
         loadSighListJob?.cancel()
         loadSighListJob = null
         loadSighDetailJob?.cancel()
         loadSighDetailJob = null
         pendingSighDetailId = null
-        lastRequestedSighBounds = null
         detailCameraMovePending = false
         restoringSighDetailBounds = null
 
@@ -795,6 +863,11 @@ class MapViewModel(
     }
 }
 
+private data class ViewportIntent(
+    val version: Long,
+    val visibleBounds: SighBounds,
+)
+
 private fun SighBounds.isValidForQuery(): Boolean =
     minLongitude.isFinite() &&
         minLatitude.isFinite() &&
@@ -802,7 +875,6 @@ private fun SighBounds.isValidForQuery(): Boolean =
         maxLatitude.isFinite() &&
         minLongitude in -180.0..180.0 &&
         maxLongitude in -180.0..180.0 &&
-        minLongitude <= maxLongitude &&
         minLatitude in -90.0..90.0 &&
         maxLatitude in -90.0..90.0 &&
         minLatitude <= maxLatitude
