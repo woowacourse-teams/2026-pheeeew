@@ -35,7 +35,7 @@ internal fun BreathInputError.toKoreanMessage(): String =
 
 internal fun MapUiState.toBannerMessage(): String? =
     when (val release = sighRelease) {
-        is SighReleaseState.Error -> {
+        is SighReleaseState.Error if !release.canRetry -> {
             release.message
         }
 

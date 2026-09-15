@@ -44,7 +44,7 @@ class ErrorMessageMapperTest {
     }
 
     @Test
-    fun `배너 메시지는 등록 지도 조회 위치 오류 순으로 우선한다`() {
+    fun `배너 메시지는 지도 조회 위치 오류 순으로 우선한다`() {
         val locationError =
             MapUiState(
                 location = MapLocationUiState(state = LocationState.Unavailable(LocationError.GpsUnavailable)),
@@ -67,6 +67,16 @@ class ErrorMessageMapperTest {
             renderError.copy(
                 sighRelease = SighReleaseState.Error(message = "등록 오류", canRetry = true),
             )
-        assertEquals("등록 오류", releaseError.toBannerMessage())
+        assertEquals("지도 오류", releaseError.toBannerMessage())
+    }
+
+    @Test
+    fun `재시도 가능한 등록 오류는 배너에 표시하지 않는다`() {
+        val state =
+            MapUiState(
+                sighRelease = SighReleaseState.Error(message = "등록 오류", canRetry = true),
+            )
+
+        assertEquals(null, state.toBannerMessage())
     }
 }

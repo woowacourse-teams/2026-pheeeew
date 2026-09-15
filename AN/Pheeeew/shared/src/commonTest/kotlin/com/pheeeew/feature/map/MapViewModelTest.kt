@@ -510,6 +510,106 @@ class MapViewModelTest {
         }
 
     @Test
+    fun `한숨 등록 실패를 취소하면 대기 데이터를 정리하고 Idle로 전환한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository = RecordingSighRepository(failNextCreate = true)
+                val viewModel =
+                    createViewModel(
+                        repository = repository,
+                        locationDependencies =
+                            locationDependencies(
+                                LocationState.Available(
+                                    CurrentLocation(
+                                        latitude = 37.55,
+                                        longitude = 126.95,
+                                        accuracyMeters = 5f,
+                                        capturedAtMillis = 1L,
+                                    ),
+                                ),
+                            ),
+                    )
+
+                viewModel.beginSighRegistration()
+                viewModel.submitMemo("취소할 한숨")
+                val failedCommand =
+                    assertIs<SighReleaseState.AwaitingBreath>(viewModel.uiState.value.sighRelease).command
+                viewModel.completeBreath()
+                runCurrent()
+                advanceTimeBy(2_000)
+                runCurrent()
+                assertIs<SighReleaseState.Error>(viewModel.uiState.value.sighRelease)
+
+                assertEquals(true, viewModel.cancelFailedSighRegistration())
+
+                assertIs<SighReleaseState.Idle>(viewModel.uiState.value.sighRelease)
+
+                viewModel.beginSighRegistration()
+                val newDraft =
+                    assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease).draft
+                assertTrue(failedCommand.requestId != newDraft.requestId)
+
+                viewModel.submitMemo("새로운 한숨")
+                val newCommand =
+                    assertIs<SighReleaseState.AwaitingBreath>(viewModel.uiState.value.sighRelease).command
+                assertEquals(newDraft.requestId, newCommand.requestId)
+                assertTrue(failedCommand.requestId != newCommand.requestId)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `등록 오류가 아닌 상태에서 실패 취소를 호출해도 상태가 바뀌지 않는다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val viewModel =
+                    createViewModel(
+                        locationDependencies =
+                            locationDependencies(
+                                LocationState.Available(
+                                    CurrentLocation(
+                                        latitude = 37.55,
+                                        longitude = 126.95,
+                                        accuracyMeters = 5f,
+                                        capturedAtMillis = 1L,
+                                    ),
+                                ),
+                            ),
+                    )
+
+                assertEquals(false, viewModel.cancelFailedSighRegistration())
+                assertIs<SighReleaseState.Idle>(viewModel.uiState.value.sighRelease)
+
+                viewModel.beginSighRegistration()
+                val editing = assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease)
+                assertEquals(false, viewModel.cancelFailedSighRegistration())
+                assertEquals(editing, viewModel.uiState.value.sighRelease)
+
+                viewModel.submitMemo("진행 중인 한숨")
+                val awaiting = assertIs<SighReleaseState.AwaitingBreath>(viewModel.uiState.value.sighRelease)
+                assertEquals(false, viewModel.cancelFailedSighRegistration())
+                assertEquals(awaiting, viewModel.uiState.value.sighRelease)
+
+                viewModel.completeBreath()
+                val submitting = assertIs<SighReleaseState.Submitting>(viewModel.uiState.value.sighRelease)
+                assertEquals(false, viewModel.cancelFailedSighRegistration())
+                assertEquals(submitting, viewModel.uiState.value.sighRelease)
+
+                runCurrent()
+                advanceTimeBy(2_000)
+                runCurrent()
+                assertIs<SighReleaseState.Idle>(viewModel.uiState.value.sighRelease)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `메모 건너뛰기는 null payload를 준비하고 한숨 완료 뒤 한 번만 제출한다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
