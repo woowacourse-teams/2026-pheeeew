@@ -40,6 +40,7 @@ import com.pheeeew.feature.map.animation.SighAnimationCoordinator
 import com.pheeeew.feature.map.animation.StarFlightOverlay
 import com.pheeeew.feature.map.guide.FirstSighGuideOverlay
 import com.pheeeew.feature.map.guide.FirstSighGuideStep
+import com.pheeeew.feature.map.guide.FirstSighSwipeOverlay
 import com.pheeeew.feature.map.guide.firstSighGuideStepFor
 import com.pheeeew.feature.map.map.BreathMap
 import com.pheeeew.feature.map.map.MapError
@@ -442,6 +443,13 @@ fun MapScreen(
                     modifier = Modifier.fillMaxWidth().padding(start = 16.dp, top = 8.dp, end = 16.dp),
                 )
             }
+        }
+
+        if (isGuidePromptVisible && guideStep == FirstSighGuideStep.SwipeUp) {
+            FirstSighSwipeOverlay(
+                controlBoundsInRoot = breathControlBounds,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
 
         memoDraft?.let { draft ->

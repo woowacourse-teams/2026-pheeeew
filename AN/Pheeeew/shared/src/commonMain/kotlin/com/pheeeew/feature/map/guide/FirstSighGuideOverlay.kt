@@ -13,17 +13,14 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,6 +35,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -59,9 +57,10 @@ fun FirstSighGuideOverlay(
     if (step == FirstSighGuideStep.Hidden) return
 
     BoxWithConstraints(modifier = modifier) {
+        val density = LocalDensity.current
         val targetTop =
             if (controlBoundsInRoot.height > 0f) {
-                with(androidx.compose.ui.platform.LocalDensity.current) { controlBoundsInRoot.top.toDp() }
+                with(density) { controlBoundsInRoot.top.toDp() }
             } else {
                 maxHeight - 132.dp
             }
@@ -93,15 +92,64 @@ fun FirstSighGuideOverlay(
                     .align(Alignment.BottomCenter)
                     .padding(bottom = bubbleBottomPadding),
         )
+    }
+}
 
-        if (step == FirstSighGuideStep.SwipeUp) {
-            SwipeUpAnimation(
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = (maxHeight - targetTop - 8.dp).coerceAtLeast(54.dp)),
-            )
-        }
+@Composable
+fun FirstSighSwipeOverlay(
+    controlBoundsInRoot: Rect,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(modifier = modifier) {
+        val transition = rememberInfiniteTransition(label = "firstSighSwipeGuide")
+        val progress =
+            transition
+                .animateFloat(
+                    initialValue = 0f,
+                    targetValue = 1f,
+                    animationSpec =
+                        infiniteRepeatable(
+                            animation = tween(durationMillis = 1_250, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Restart,
+                        ),
+                    label = "firstSighSwipeProgress",
+                ).value
+        val fingerAlpha =
+            when {
+                progress < 0.15f -> progress / 0.15f
+                progress > 0.82f -> (1f - progress) / 0.18f
+                else -> 1f
+            }.coerceIn(0f, 1f)
+        val density = LocalDensity.current
+        val targetTop =
+            if (controlBoundsInRoot.height > 0f) {
+                with(density) { controlBoundsInRoot.top.toDp() }
+            } else {
+                maxHeight - 132.dp
+            }
+        val targetHeight =
+            if (controlBoundsInRoot.height > 0f) {
+                with(density) { controlBoundsInRoot.height.toDp() }
+            } else {
+                124.dp
+            }
+        val fingerStartY = targetTop + targetHeight * SWIPE_FINGER_START_FRACTION
+
+        SwipeUpArrow(
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = (maxHeight - targetTop - 8.dp).coerceAtLeast(54.dp)),
+        )
+        SwipeFinger(
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .offset(
+                        x = SWIPE_FINGER_WIDTH / 2,
+                        y = fingerStartY - SWIPE_FINGER_TRAVEL_DISTANCE * progress,
+                    ).alpha(fingerAlpha),
+        )
     }
 }
 
@@ -172,78 +220,48 @@ internal fun FirstSighGuideBubble(
 }
 
 @Composable
-private fun SwipeUpAnimation(modifier: Modifier = Modifier) {
-    val transition = rememberInfiniteTransition(label = "firstSighSwipeGuide")
-    val progress =
-        transition
-            .animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec =
-                    infiniteRepeatable(
-                        animation = tween(durationMillis = 1_250, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Restart,
-                    ),
-                label = "firstSighSwipeProgress",
-            ).value
-    val fingerAlpha =
-        when {
-            progress < 0.15f -> progress / 0.15f
-            progress > 0.82f -> (1f - progress) / 0.18f
-            else -> 1f
-        }.coerceIn(0f, 1f)
-
-    Box(modifier = modifier.size(width = 78.dp, height = 126.dp)) {
-        Canvas(Modifier.fillMaxSize()) {
-            val centerX = size.width / 2f
-            val startY = size.height * 0.72f
-            val endY = size.height * 0.16f
-            drawLine(
-                brush =
-                    Brush.verticalGradient(
-                        0f to AppColors.Blue100.copy(alpha = 0.85f),
-                        1f to AppColors.Blue200.copy(alpha = 0.08f),
-                        startY = endY,
-                        endY = startY,
-                    ),
-                start = Offset(centerX, startY),
-                end = Offset(centerX, endY),
-                strokeWidth = 3.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-            drawLine(
-                color = AppColors.Blue100.copy(alpha = 0.9f),
-                start = Offset(centerX, endY),
-                end = Offset(centerX - 8.dp.toPx(), endY + 10.dp.toPx()),
-                strokeWidth = 3.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-            drawLine(
-                color = AppColors.Blue100.copy(alpha = 0.9f),
-                start = Offset(centerX, endY),
-                end = Offset(centerX + 8.dp.toPx(), endY + 10.dp.toPx()),
-                strokeWidth = 3.dp.toPx(),
-                cap = StrokeCap.Round,
-            )
-            drawCircle(
-                brush =
-                    Brush.radialGradient(
-                        0f to AppColors.Blue100.copy(alpha = 0.32f),
-                        1f to Color.Transparent,
-                        center = Offset(centerX, endY),
-                        radius = 24.dp.toPx(),
-                    ),
-                radius = 24.dp.toPx(),
-                center = Offset(centerX, endY),
-            )
-        }
-
-        SwipeFinger(
-            modifier =
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .offset(y = (-progress * 70f).dp)
-                    .alpha(fingerAlpha),
+private fun SwipeUpArrow(modifier: Modifier = Modifier) {
+    Canvas(modifier.size(width = 78.dp, height = 126.dp)) {
+        val centerX = size.width / 2f
+        val startY = size.height * 0.72f
+        val endY = size.height * 0.16f
+        drawLine(
+            brush =
+                Brush.verticalGradient(
+                    0f to AppColors.Blue100.copy(alpha = 0.85f),
+                    1f to AppColors.Blue200.copy(alpha = 0.08f),
+                    startY = endY,
+                    endY = startY,
+                ),
+            start = Offset(centerX, startY),
+            end = Offset(centerX, endY),
+            strokeWidth = 3.dp.toPx(),
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = AppColors.Blue100.copy(alpha = 0.9f),
+            start = Offset(centerX, endY),
+            end = Offset(centerX - 8.dp.toPx(), endY + 10.dp.toPx()),
+            strokeWidth = 3.dp.toPx(),
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = AppColors.Blue100.copy(alpha = 0.9f),
+            start = Offset(centerX, endY),
+            end = Offset(centerX + 8.dp.toPx(), endY + 10.dp.toPx()),
+            strokeWidth = 3.dp.toPx(),
+            cap = StrokeCap.Round,
+        )
+        drawCircle(
+            brush =
+                Brush.radialGradient(
+                    0f to AppColors.Blue100.copy(alpha = 0.32f),
+                    1f to Color.Transparent,
+                    center = Offset(centerX, endY),
+                    radius = 24.dp.toPx(),
+                ),
+            radius = 24.dp.toPx(),
+            center = Offset(centerX, endY),
         )
     }
 }
@@ -253,6 +271,11 @@ private fun SwipeFinger(modifier: Modifier = Modifier) {
     Image(
         painter = painterResource(Res.drawable.ic_hand),
         contentDescription = null,
-        modifier = modifier.size(width = 59.dp, height = 80.dp),
+        modifier = modifier.size(width = SWIPE_FINGER_WIDTH, height = SWIPE_FINGER_HEIGHT),
     )
 }
+
+private const val SWIPE_FINGER_START_FRACTION = 0.375f
+private val SWIPE_FINGER_WIDTH = 59.dp
+private val SWIPE_FINGER_HEIGHT = 80.dp
+private val SWIPE_FINGER_TRAVEL_DISTANCE = 240.dp
