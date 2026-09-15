@@ -1,4 +1,4 @@
-package com.pheeeew.sigh.application.dto;
+package com.pheeeew.sigh.domain.repository.query;
 
 public record SighSearchBounds(
         double minLongitude,

@@ -109,6 +109,7 @@ Accepted (YYYY-MM-DD)
 | [0022](0022-route-attestation-verifier-by-platform.md) | 증명 검증기 플랫폼 라우팅 | `switch` 로 갈라요. 강제 스위치는 플랫폼마다 따로 둬요 |
 | [0023](0023-store-authoring-device-on-sighs.md) | 한숨에 작성 기기 저장 | 사용자 차단을 위해 저장해요. 모으면 생활 반경이 드러나요 |
 | [0024](0024-filter-blocks-with-not-exists.md) | 차단 필터를 `NOT EXISTS` 로 | nullable 컬럼에서 `NOT IN` 은 행을 조용히 지워요 |
+| [0025](0025-check-sigh-expiration-on-detail-request.md) | 한숨의 조회 기간 만료를 상세 재요청 시 판정 | 목록은 이어서 조회하고, 만료된 상세 요청은 전용 코드로 소멸을 안내해요 |
 
 ## AI 사용
 

@@ -5,6 +5,8 @@ import com.pheeeew.sigh.domain.repository.projection.GeneratedLocation;
 import com.pheeeew.sigh.domain.repository.projection.SighDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
+import com.pheeeew.sigh.domain.repository.query.SighQueryPeriod;
+import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -47,24 +49,25 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             value = """
                     WITH bounds AS (
                         SELECT ST_MakeEnvelope(
-                            :minLongitude,
-                            :minLatitude,
+                            :#{#bounds.minLongitude()},
+                            :#{#bounds.minLatitude()},
                             CASE
-                                WHEN :minLongitude < :maxLongitude THEN :maxLongitude
+                                WHEN :#{#bounds.minLongitude()} < :#{#bounds.maxLongitude()}
+                                    THEN :#{#bounds.maxLongitude()}
                                 ELSE 180.0
                             END,
-                            :maxLatitude,
+                            :#{#bounds.maxLatitude()},
                             4326
                         ) AS area
                         UNION ALL
                         SELECT ST_MakeEnvelope(
                             -180.0,
-                            :minLatitude,
-                            :maxLongitude,
-                            :maxLatitude,
+                            :#{#bounds.minLatitude()},
+                            :#{#bounds.maxLongitude()},
+                            :#{#bounds.maxLatitude()},
                             4326
                         ) AS area
-                        WHERE :minLongitude > :maxLongitude
+                        WHERE :#{#bounds.minLongitude()} > :#{#bounds.maxLongitude()}
                     )
                     SELECT
                         sigh.id AS id,
@@ -74,6 +77,8 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                     FROM sighs sigh
                     CROSS JOIN bounds
                     WHERE sigh.deleted_at IS NULL
+                      AND sigh.created_at >= :#{#period.startAt()}
+                      AND sigh.created_at <= :#{#period.endAt()}
                       AND sigh.location && bounds.area
                       AND ST_Intersects(sigh.location, bounds.area)
                       AND (
@@ -100,10 +105,8 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             nativeQuery = true
     )
     List<SighMapProjection> findAllWithinBounds(
-            @Param("minLongitude") double minLongitude,
-            @Param("minLatitude") double minLatitude,
-            @Param("maxLongitude") double maxLongitude,
-            @Param("maxLatitude") double maxLatitude,
+            @Param("bounds") SighSearchBounds bounds,
+            @Param("period") SighQueryPeriod period,
             @Param("blockerDeviceId") Long blockerDeviceId,
             @Param("limit") int limit
     );
@@ -112,24 +115,25 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             value = """
                     WITH bounds AS (
                         SELECT ST_MakeEnvelope(
-                            :minLongitude,
-                            :minLatitude,
+                            :#{#bounds.minLongitude()},
+                            :#{#bounds.minLatitude()},
                             CASE
-                                WHEN :minLongitude < :maxLongitude THEN :maxLongitude
+                                WHEN :#{#bounds.minLongitude()} < :#{#bounds.maxLongitude()}
+                                    THEN :#{#bounds.maxLongitude()}
                                 ELSE 180.0
                             END,
-                            :maxLatitude,
+                            :#{#bounds.maxLatitude()},
                             4326
                         ) AS area
                         UNION ALL
                         SELECT ST_MakeEnvelope(
                             -180.0,
-                            :minLatitude,
-                            :maxLongitude,
-                            :maxLatitude,
+                            :#{#bounds.minLatitude()},
+                            :#{#bounds.maxLongitude()},
+                            :#{#bounds.maxLatitude()},
                             4326
                         ) AS area
-                        WHERE :minLongitude > :maxLongitude
+                        WHERE :#{#bounds.minLongitude()} > :#{#bounds.maxLongitude()}
                     ), latest_sighs AS (
                         SELECT
                             sigh.id,
@@ -141,7 +145,8 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                         FROM sighs sigh
                         CROSS JOIN bounds
                         WHERE sigh.deleted_at IS NULL
-                          AND sigh.created_at < :snapshotAt
+                          AND sigh.created_at >= :#{#period.startAt()}
+                          AND sigh.created_at < :#{#period.endAt()}
                           AND sigh.location && bounds.area
                           AND ST_Intersects(sigh.location, bounds.area)
                           AND (
@@ -184,11 +189,8 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             nativeQuery = true
     )
     List<SighListProjection> findListWithinBounds(
-            @Param("minLongitude") double minLongitude,
-            @Param("minLatitude") double minLatitude,
-            @Param("maxLongitude") double maxLongitude,
-            @Param("maxLatitude") double maxLatitude,
-            @Param("snapshotAt") Instant snapshotAt,
+            @Param("bounds") SighSearchBounds bounds,
+            @Param("period") SighQueryPeriod period,
             @Param("lastItemCreatedAt") Instant lastItemCreatedAt,
             @Param("lastId") long lastId,
             @Param("blockerDeviceId") Long blockerDeviceId,

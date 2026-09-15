@@ -3,19 +3,24 @@ package com.pheeeew.sigh.infra.metrics;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.pheeeew.common.config.ClockConfig;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.sigh.application.SighLocationGenerator;
 import com.pheeeew.sigh.application.SighNicknameGenerator;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.application.dto.SighMapResult;
-import com.pheeeew.sigh.application.dto.SighSearchBounds;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
+import com.pheeeew.sigh.domain.repository.query.SighQueryPeriod;
+import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighException;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MockClock;
@@ -53,7 +58,10 @@ class SighMapMetricsAspectTest {
         context.registerBean(SighLocationGenerator.class, () -> mock(SighLocationGenerator.class));
         context.registerBean(SighNicknameGenerator.class, () -> mock(SighNicknameGenerator.class));
         context.registerBean(SimpleMeterRegistry.class, () -> registry);
-        context.register(AopAutoConfiguration.class, SighMapMetrics.class, SighMapMetricsAspect.class, SighService.class);
+        context.register(
+                AopAutoConfiguration.class, ClockConfig.class,
+                SighMapMetrics.class, SighMapMetricsAspect.class, SighService.class
+        );
         context.refresh();
         service = context.getBean(SighService.class);
     }
@@ -75,7 +83,9 @@ class SighMapMetricsAspectTest {
         when(projection.getLongitude()).thenReturn(127.0);
         when(projection.getLatitude()).thenReturn(37.55);
         when(projection.getCreatedAt()).thenReturn(Instant.parse("2026-09-11T00:00:00Z"));
-        when(repository.findAllWithinBounds(126.9, 37.5, 127.1, 37.6, null, 501))
+        when(repository.findAllWithinBounds(
+                eq(BOUNDS), any(SighQueryPeriod.class), isNull(), eq(501)
+        ))
                 .thenAnswer(invocation -> {
                     clock.add(Duration.ofMillis(250));
                     return Collections.nCopies(fetched, projection);
@@ -87,7 +97,9 @@ class SighMapMetricsAspectTest {
         // then
         assertThat(result.sighs()).hasSize(returned);
         assertThat(result.truncated()).isEqualTo(truncated);
-        verify(repository).findAllWithinBounds(126.9, 37.5, 127.1, 37.6, null, 501);
+        verify(repository).findAllWithinBounds(
+                eq(BOUNDS), any(SighQueryPeriod.class), isNull(), eq(501)
+        );
         Timer query = registry.get("pheeeew.sigh.map.query").timer();
         assertThat(query.count()).isEqualTo(1);
         assertThat(query.totalTime(TimeUnit.MILLISECONDS)).isEqualTo(250);
@@ -107,7 +119,9 @@ class SighMapMetricsAspectTest {
     void 조회가_실패해도_시간은_기록하고_결과_개수는_기록하지_않으며_같은_예외를_전파한다() {
         // given
         IllegalStateException failure = new IllegalStateException("query failed");
-        when(repository.findAllWithinBounds(126.9, 37.5, 127.1, 37.6, null, 501))
+        when(repository.findAllWithinBounds(
+                eq(BOUNDS), any(SighQueryPeriod.class), isNull(), eq(501)
+        ))
                 .thenAnswer(invocation -> {
                     clock.add(Duration.ofMillis(100));
                     throw failure;
