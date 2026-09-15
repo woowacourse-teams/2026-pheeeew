@@ -32,34 +32,16 @@ class MainActivity : ComponentActivity() {
                 activity = this,
                 retainedDependencies = holder.dependencies,
             ).also { holder.dependencies = it }
-        val accessTokenStore = InMemoryAccessTokenStore()
-        val deviceDependencies = if (
-            !BuildConfig.DEBUG && BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER > 0L
-        ) {
-            createAndroidDeviceRegistrationWithPlayIntegrityDependencies(
-                context = this,
-                config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
-                cloudProjectNumber = BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
-                accessTokenStore = accessTokenStore,
-            )
-        } else {
-            createAndroidDeviceRegistrationDependencies(
-                context = this,
-                config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
-                accessTokenStore = accessTokenStore,
-            )
-        }
-        val sighDependencies = SighModule.create(
-            config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
-            accessTokenStore = accessTokenStore,
-            refreshAccessToken = {
-                deviceDependencies.ensureRegistered().getOrNull()?.accessToken
-            },
-        )
+        val sighDependencies = SighModule.create(ApiConfig(baseUrl = BuildConfig.API_BASE_URL))
+        val appPreferences = getSharedPreferences(APP_PREFERENCES_NAME, MODE_PRIVATE)
 
         setContent {
             App(
                 appVersion = BuildConfig.VERSION_NAME,
+                hasCompletedOnboarding = appPreferences.getBoolean(KEY_ONBOARDING_COMPLETED, false),
+                onOnboardingCompleted = {
+                    appPreferences.edit().putBoolean(KEY_ONBOARDING_COMPLETED, true).apply()
+                },
                 locationDependencies = locationDependencies,
                 sighRepository = sighDependencies.repository,
                 createSigh = sighDependencies.createSigh,
@@ -71,6 +53,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+private const val APP_PREFERENCES_NAME = "pheeeew_preferences"
+private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
 
 class LocationDependenciesHolder : ViewModel() {
     var dependencies: LocationDependencies? = null

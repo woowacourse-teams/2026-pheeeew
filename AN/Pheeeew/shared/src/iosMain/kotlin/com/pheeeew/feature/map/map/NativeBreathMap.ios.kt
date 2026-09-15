@@ -135,6 +135,14 @@ private fun MapRenderState.toIosRenderState(cameraCommand: MapCameraCommand?): I
                         longitude = it.longitude,
                     )
                 },
+        projectionTargets =
+            projectionTargets.map { target ->
+                IosMapFocusRequest(
+                    id = target.id,
+                    latitude = target.latitude,
+                    longitude = target.longitude,
+                )
+            },
         cameraCommand = cameraCommand?.toIosCameraCommand(),
     )
 }
@@ -147,6 +155,45 @@ private fun MapCameraCommand.toIosCameraCommand(): IosMapCameraCommand =
                 kind = IosMapCameraCommandKind.MoveToCurrentLocation,
                 delta = 0.0,
                 zoom = zoom,
+                latitude = 0.0,
+                longitude = 0.0,
+                minLongitude = 0.0,
+                minLatitude = 0.0,
+                maxLongitude = 0.0,
+                maxLatitude = 0.0,
+                verticalPosition = null,
+            )
+        }
+
+        is MapCameraCommand.MoveToCoordinate -> {
+            IosMapCameraCommand(
+                id = id,
+                kind = IosMapCameraCommandKind.MoveToCoordinate,
+                delta = 0.0,
+                zoom = zoom,
+                latitude = latitude,
+                longitude = longitude,
+                minLongitude = 0.0,
+                minLatitude = 0.0,
+                maxLongitude = 0.0,
+                maxLatitude = 0.0,
+                verticalPosition = verticalPosition,
+            )
+        }
+
+        is MapCameraCommand.MoveToBounds -> {
+            IosMapCameraCommand(
+                id = id,
+                kind = IosMapCameraCommandKind.MoveToBounds,
+                delta = 0.0,
+                zoom = null,
+                latitude = 0.0,
+                longitude = 0.0,
+                minLongitude = bounds.minLongitude,
+                minLatitude = bounds.minLatitude,
+                maxLongitude = bounds.maxLongitude,
+                maxLatitude = bounds.maxLatitude,
+                verticalPosition = null,
             )
         }
 
@@ -156,6 +203,13 @@ private fun MapCameraCommand.toIosCameraCommand(): IosMapCameraCommand =
                 kind = IosMapCameraCommandKind.ZoomBy,
                 delta = delta,
                 zoom = null,
+                latitude = 0.0,
+                longitude = 0.0,
+                minLongitude = 0.0,
+                minLatitude = 0.0,
+                maxLongitude = 0.0,
+                maxLatitude = 0.0,
+                verticalPosition = null,
             )
         }
     }

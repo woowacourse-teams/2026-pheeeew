@@ -31,4 +31,5 @@ data class MapRenderState(
     val fallbackCenter: MapPoint?,
     val sighMarkers: List<SighMarker>,
     val focusRequest: MapFocusRequest?,
+    val projectionTargets: List<MapPoint> = emptyList(),
 )

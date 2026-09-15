@@ -1,6 +1,6 @@
 package com.pheeeew.di
 
-import com.pheeeew.core.geo.Epsg5179SighLocationObfuscator
+import com.pheeeew.core.geo.GeodesicSighLocationObfuscator
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createPlatformHttpClient
 import com.pheeeew.data.local.device.AccessTokenStore
@@ -37,7 +37,7 @@ object SighModule {
             createSigh =
                 CreateSighUseCase(
                     repository = repository,
-                    locationObfuscator = Epsg5179SighLocationObfuscator(),
+                    locationObfuscator = GeodesicSighLocationObfuscator(),
                 ),
         )
     }

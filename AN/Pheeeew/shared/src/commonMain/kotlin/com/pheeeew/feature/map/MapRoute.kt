@@ -11,6 +11,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.pheeeew.feature.map.sighlist.SighModerationViewModel
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
 
@@ -19,11 +20,15 @@ fun MapRoute(
     onSettingsClick: () -> Unit,
     onMapReady: () -> Unit,
     viewModel: MapViewModel,
+    moderationViewModel: SighModerationViewModel,
     isActive: Boolean,
+    requestPermissionsAfterOnboarding: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val moderationUiState by moderationViewModel.uiState.collectAsStateWithLifecycle()
     var startupPermissionsChecked by remember { mutableStateOf(false) }
+    var requestMicrophonePermissionOnLaunch by remember { mutableStateOf(false) }
     val lifeCycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(lifeCycleOwner, isActive) {
@@ -39,6 +44,9 @@ fun MapRoute(
                 if (!startupPermissionsChecked) {
                     viewModel.ensureLocationPermission(refreshLocation = false)
                     startupPermissionsChecked = true
+                    if (requestPermissionsAfterOnboarding) {
+                        requestMicrophonePermissionOnLaunch = true
+                    }
                     launch { viewModel.refreshLocationPermission() }
                 } else {
                     viewModel.refreshLocationPermission()
@@ -52,11 +60,30 @@ fun MapRoute(
 
     MapScreen(
         uiState = uiState,
+        moderationUiState = moderationUiState,
         onSettingsClick = onSettingsClick,
         onZoomInClick = viewModel::onZoomInClick,
         onZoomOutClick = viewModel::onZoomOutClick,
         onMyLocationClick = viewModel::onMyLocationClick,
         onBoundsChanged = viewModel::loadSighs,
+        onSighListVisibilityChange = viewModel::setSighListVisible,
+        onSighItemClick = viewModel::selectSigh,
+        onSighPinClick = viewModel::openSighFromPin,
+        onDismissSighList = { viewModel.setSighListVisible(false) },
+        onDismissSighDetail = viewModel::dismissSighDetail,
+        onLoadNextSighPage = viewModel::loadNextSighPage,
+        onRefreshSighList = viewModel::refreshSighList,
+        onOpenSighActionMenu = moderationViewModel::openActions,
+        onDismissSighActionMenu = moderationViewModel::dismissActions,
+        onRequestSighBlock = moderationViewModel::requestBlock,
+        onDismissSighBlock = moderationViewModel::dismissBlock,
+        onConfirmSighBlock = moderationViewModel::confirmBlock,
+        onRequestSighReport = moderationViewModel::requestReport,
+        onSighReportReasonSelect = moderationViewModel::selectReason,
+        onSighReportDescriptionChange = moderationViewModel::updateDescription,
+        onSubmitSighReport = moderationViewModel::submitReport,
+        onDismissSighReport = moderationViewModel::dismissReport,
+        onDismissReportSuccess = moderationViewModel::clearSuccess,
         onBeginMemoAfterExplosion = viewModel::beginMemoAfterExplosion,
         onSubmitMemo = viewModel::submitMemo,
         onSkipMemo = viewModel::skipMemo,
@@ -70,6 +97,10 @@ fun MapRoute(
         onMapError = viewModel::onMapError,
         onMapReady = onMapReady,
         isActive = isActive,
+        requestMicrophonePermissionOnLaunch = requestMicrophonePermissionOnLaunch,
+        onMicrophonePermissionLaunchRequestHandled = {
+            requestMicrophonePermissionOnLaunch = false
+        },
         modifier = modifier,
     )
 }

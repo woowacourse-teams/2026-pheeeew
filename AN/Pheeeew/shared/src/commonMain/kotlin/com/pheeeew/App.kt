@@ -29,6 +29,8 @@ import com.pheeeew.domain.usecase.EnsureDeviceRegisteredUseCase
 import com.pheeeew.feature.map.MapPerformanceLogger
 import com.pheeeew.feature.map.MapRoute
 import com.pheeeew.feature.map.MapViewModel
+import com.pheeeew.feature.map.sighlist.SighModerationViewModel
+import com.pheeeew.feature.onboarding.OnboardingScreen
 import com.pheeeew.feature.setting.SettingsScreen
 import com.pheeeew.feature.setting.legal.LegalDocument
 import com.pheeeew.feature.setting.legal.LegalDocumentRoute
@@ -39,6 +41,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun App(
     appVersion: String,
+    hasCompletedOnboarding: Boolean,
+    onOnboardingCompleted: () -> Unit,
     locationDependencies: LocationDependencies?,
     sighRepository: SighRepository,
     createSigh: CreateSighUseCase,
@@ -52,29 +56,11 @@ fun App(
             viewModel {
                 MapViewModel(sighRepository, createSigh, locationDependencies, mapPerformanceLogger)
             }
+        val sighModerationViewModel: SighModerationViewModel =
+            viewModel { SighModerationViewModel() }
         val mapReadiness = remember { MutableStateFlow(false) }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
-        var registrationState by remember { mutableStateOf<DeviceRegistrationState?>(null) }
-
-        fun registerDevice() {
-            ensureDeviceRegistered ?: return
-            coroutineScope.launch {
-                registrationState = DeviceRegistrationState.Registering
-                val result = ensureDeviceRegistered.invoke()
-                registrationState = result.fold(
-                    onSuccess = { session ->
-                        DeviceRegistrationState.Registered(session.accessTokenExpiresAtEpochSeconds)
-                    },
-                    onFailure = { error ->
-                        DeviceRegistrationState.Failed(error.toDeviceRegistrationError())
-                    },
-                )
-            }
-        }
-
-        LaunchedEffect(ensureDeviceRegistered) {
-            registerDevice()
-        }
+        var requestPermissionsAfterOnboarding by remember { mutableStateOf(false) }
 
         // 오버레이 화면들이 뒤에 깔린 지도로 터치가 새어나가지 않도록 막습니다.
         val overlayModifier =
@@ -87,7 +73,9 @@ fun App(
                 onSettingsClick = { screen = Screen.Settings },
                 onMapReady = { mapReadiness.value = true },
                 isActive = screen == Screen.Map,
+                requestPermissionsAfterOnboarding = requestPermissionsAfterOnboarding,
                 viewModel = mapViewModel,
+                moderationViewModel = sighModerationViewModel,
             )
 
             if (screen == Screen.Map) {
@@ -140,10 +128,23 @@ fun App(
                 }
             }
 
+            if (screen == Screen.Onboarding) {
+                OnboardingScreen(
+                    onFinished = {
+                        onOnboardingCompleted()
+                        requestPermissionsAfterOnboarding = true
+                        screen = Screen.Map
+                    },
+                    modifier = overlayModifier,
+                )
+            }
+
             if (screen == Screen.Splash) {
                 SplashScreen(
                     isReady = mapReadiness,
-                    onFinished = { screen = Screen.Map },
+                    onFinished = {
+                        screen = if (hasCompletedOnboarding) Screen.Map else Screen.Onboarding
+                    },
                     modifier = overlayModifier,
                 )
             }

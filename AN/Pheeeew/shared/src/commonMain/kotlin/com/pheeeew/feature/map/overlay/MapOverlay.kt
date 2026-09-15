@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.feature.map.sighlist.SighListButton
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_my_location
 import pheeeew.shared.generated.resources.ic_settings
@@ -23,6 +24,8 @@ import pheeeew.shared.generated.resources.ic_settings
 @Composable
 fun MapOverlay(
     onSettingsClick: () -> Unit,
+    isSighListVisible: Boolean,
+    onSighListVisibilityChange: (Boolean) -> Unit,
     onZoomInClick: () -> Unit,
     onZoomOutClick: () -> Unit,
     onMyLocationClick: () -> Unit,
@@ -34,27 +37,37 @@ fun MapOverlay(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        OverlayIconButton(
-            icon = Res.drawable.ic_settings,
-            contentDescription = "설정",
-            onClick = onSettingsClick,
-            enabled = controlsEnabled,
+        Box(
             modifier =
                 Modifier
-                    .align(Alignment.Start)
+                    .fillMaxWidth()
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-        )
-
-        if (errorMessage != null) {
-            MapErrorBanner(
-                message = errorMessage,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        ) {
+            OverlayIconButton(
+                icon = Res.drawable.ic_settings,
+                contentDescription = "설정",
+                onClick = onSettingsClick,
+                enabled = controlsEnabled,
+                modifier = Modifier.align(Alignment.CenterStart),
+            )
+            SighListButton(
+                checked = isSighListVisible,
+                onCheckedChange = onSighListVisibilityChange,
+                interactionEnabled = controlsEnabled,
+                modifier = Modifier.align(Alignment.Center),
             )
         }
-
-        Spacer(modifier = Modifier.weight(1f))
-
+        Box(
+            modifier = Modifier.height(80.dp),
+        ) {
+            if (errorMessage != null) {
+                MapErrorBanner(
+                    message = errorMessage,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+        }
         Column(
             modifier =
                 Modifier
@@ -71,7 +84,7 @@ fun MapOverlay(
                 enabled = controlsEnabled,
             )
         }
-        Spacer(modifier = Modifier.navigationBarsPadding())
+        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
@@ -82,6 +95,8 @@ private fun MapOverlayPreview() {
         Box(modifier = Modifier.fillMaxSize().background(AppTheme.colors.background)) {
             MapOverlay(
                 onSettingsClick = {},
+                isSighListVisible = false,
+                onSighListVisibilityChange = {},
                 onZoomInClick = {},
                 onZoomOutClick = {},
                 onMyLocationClick = {},
@@ -99,6 +114,8 @@ private fun MapOverlayNetworkErrorPreview() {
         Box(modifier = Modifier.fillMaxSize().background(AppTheme.colors.background)) {
             MapOverlay(
                 onSettingsClick = {},
+                isSighListVisible = false,
+                onSighListVisibilityChange = {},
                 onZoomInClick = {},
                 onZoomOutClick = {},
                 onMyLocationClick = {},
@@ -116,6 +133,8 @@ private fun MapOverlayPermissionErrorPreview() {
         Box(modifier = Modifier.fillMaxSize().background(AppTheme.colors.background)) {
             MapOverlay(
                 onSettingsClick = {},
+                isSighListVisible = false,
+                onSighListVisibilityChange = {},
                 onZoomInClick = {},
                 onZoomOutClick = {},
                 onMyLocationClick = {},
@@ -133,6 +152,8 @@ private fun MapOverlayGpsErrorPreview() {
         Box(modifier = Modifier.fillMaxSize().background(AppTheme.colors.background)) {
             MapOverlay(
                 onSettingsClick = {},
+                isSighListVisible = false,
+                onSighListVisibilityChange = {},
                 onZoomInClick = {},
                 onZoomOutClick = {},
                 onMyLocationClick = {},
