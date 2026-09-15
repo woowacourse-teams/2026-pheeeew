@@ -78,45 +78,48 @@ class AppAttestPropertiesTest {
     }
 
     @Test
-    void 설정_파일의_기본값은_App_ID_가_비어_있고_운영_환경이며_강제하지_않는다() {
+    void 설정_파일이_실제_App_ID_를_담고_있다() {
         // given / when / then
         new ApplicationContextRunner()
                 .withInitializer(new ConfigDataApplicationContextInitializer())
                 .withUserConfiguration(AppAttestConfig.class)
                 .run(context -> {
                     AppAttestProperties properties = context.getBean(AppAttestProperties.class);
-                    assertThat(properties.isConfigured()).isFalse();
-                    assertThat(properties.environment()).isEqualTo(AppAttestEnvironment.PRODUCTION);
+                    assertThat(properties.isConfigured()).isTrue();
+                    assertThat(properties.appId()).isEqualTo("Z6V4SXKRL6.com.itda.pheeeew");
                     assertThat(properties.requireAttestation()).isFalse();
                 });
     }
 
     @Test
-    void 설정_파일이_App_ID_와_환경을_환경변수에서_읽는다() {
+    void 기본_환경은_운영이다() {
         // given / when / then
         new ApplicationContextRunner()
                 .withInitializer(new ConfigDataApplicationContextInitializer())
                 .withUserConfiguration(AppAttestConfig.class)
-                .withPropertyValues(
-                        "APP_ATTEST_TEAM_ID=" + 팀_ID,
-                        "APP_ATTEST_BUNDLE_ID=" + 번들_ID,
-                        "APP_ATTEST_ENVIRONMENT=DEVELOPMENT"
-                )
-                .run(context -> {
-                    AppAttestProperties properties = context.getBean(AppAttestProperties.class);
-                    assertThat(properties.isConfigured()).isTrue();
-                    assertThat(properties.appId()).isEqualTo(팀_ID + "." + 번들_ID);
-                    assertThat(properties.environment()).isEqualTo(AppAttestEnvironment.DEVELOPMENT);
-                });
+                .run(context -> assertThat(context.getBean(AppAttestProperties.class).environment())
+                        .isEqualTo(AppAttestEnvironment.PRODUCTION));
     }
 
     @Test
-    void 설정_파일의_환경_값이_잘못되면_부팅이_실패한다() {
+    void 개발_프로필은_개발_환경으로_재정의한다() {
         // given / when / then
         new ApplicationContextRunner()
                 .withInitializer(new ConfigDataApplicationContextInitializer())
                 .withUserConfiguration(AppAttestConfig.class)
-                .withPropertyValues("APP_ATTEST_ENVIRONMENT=STAGING")
+                .withPropertyValues("spring.profiles.active=dev", "DB_URL=jdbc:postgresql://localhost/x",
+                        "DB_USERNAME=x", "DB_PASSWORD=x")
+                .run(context -> assertThat(context.getBean(AppAttestProperties.class).environment())
+                        .isEqualTo(AppAttestEnvironment.DEVELOPMENT));
+    }
+
+    @Test
+    void 환경_값이_잘못되면_부팅이_실패한다() {
+        // given / when / then
+        new ApplicationContextRunner()
+                .withInitializer(new ConfigDataApplicationContextInitializer())
+                .withUserConfiguration(AppAttestConfig.class)
+                .withPropertyValues("pheeeew.app-attest.environment=STAGING")
                 .run(context -> assertThat(context).hasFailed());
     }
 }
