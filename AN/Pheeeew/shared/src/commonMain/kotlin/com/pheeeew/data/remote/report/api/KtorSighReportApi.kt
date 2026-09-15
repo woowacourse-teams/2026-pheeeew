@@ -1,9 +1,10 @@
 package com.pheeeew.data.remote.report.api
 
 import com.pheeeew.data.local.device.AccessTokenStore
-import com.pheeeew.data.remote.common.executeRequest
+import com.pheeeew.data.remote.common.executeRequestWithStatus
 import com.pheeeew.data.remote.report.dto.SighReportCreateRequestDto
 import com.pheeeew.data.remote.report.dto.SighReportResponseDto
+import com.pheeeew.data.remote.report.dto.SighReportResultDto
 import com.pheeeew.domain.exception.ApiException
 import com.pheeeew.domain.model.device.AccessToken
 import io.ktor.client.HttpClient
@@ -11,6 +12,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -24,15 +26,20 @@ class KtorSighReportApi(
 ) : SighReportApi {
     private val refreshMutex = Mutex()
 
-    override suspend fun create(request: SighReportCreateRequestDto): SighReportResponseDto =
+    override suspend fun create(request: SighReportCreateRequestDto): SighReportResultDto =
         executeAuthenticatedRequest { accessToken ->
-            executeRequest {
-                client.post(REPORTS_PATH) {
-                    accessToken?.let { header("Authorization", "Bearer ${it.value}") }
-                    contentType(ContentType.Application.Json)
-                    setBody(request)
+            val (status, response) =
+                executeRequestWithStatus<SighReportResponseDto> {
+                    client.post(REPORTS_PATH) {
+                        accessToken?.let { header("Authorization", "Bearer ${it.value}") }
+                        contentType(ContentType.Application.Json)
+                        setBody(request)
+                    }
                 }
-            }
+            SighReportResultDto(
+                report = response,
+                isNew = status == HttpStatusCode.Created,
+            )
         }
 
     private suspend fun <T> executeAuthenticatedRequest(request: suspend (AccessToken?) -> T): T {

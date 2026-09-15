@@ -6,6 +6,7 @@ import com.pheeeew.data.local.device.DeviceIdStorage
 import com.pheeeew.data.remote.report.api.SighReportApi
 import com.pheeeew.data.remote.report.dto.SighReportCreateRequestDto
 import com.pheeeew.data.remote.report.dto.SighReportResponseDto
+import com.pheeeew.data.remote.report.dto.SighReportResultDto
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -57,13 +58,17 @@ class ReportSighUseCaseTest {
     private class RecordingSighReportApi : SighReportApi {
         var request: SighReportCreateRequestDto? = null
 
-        override suspend fun create(request: SighReportCreateRequestDto): SighReportResponseDto {
+        override suspend fun create(request: SighReportCreateRequestDto): SighReportResultDto {
             this.request = request
-            return SighReportResponseDto(
-                id = 1L,
-                sighId = request.sighId,
-                reason = request.reason,
-                createdAt = "2026-09-15T00:00:00Z",
+            return SighReportResultDto(
+                report =
+                    SighReportResponseDto(
+                        id = 1L,
+                        sighId = request.sighId,
+                        reason = request.reason,
+                        createdAt = "2026-09-15T00:00:00Z",
+                    ),
+                isNew = true,
             )
         }
     }

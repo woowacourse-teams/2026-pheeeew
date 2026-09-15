@@ -99,12 +99,17 @@ class SighModerationViewModel(
         _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
         viewModelScope.launch {
             runCatching { reportSigh(target.sighId, reason) }
-                .onSuccess {
+                .onSuccess { result ->
                     _uiState.update {
                         it.copy(
                             reportTarget = null,
                             isSubmitting = false,
-                            successMessage = "신고가 접수되었습니다.",
+                            successMessage =
+                                if (result.isNew) {
+                                    "신고가 접수되었습니다."
+                                } else {
+                                    "이미 신고한 한숨입니다."
+                                },
                         )
                     }
                 }.onFailure { error ->

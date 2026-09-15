@@ -9,6 +9,7 @@ import com.pheeeew.data.remote.block.dto.DeviceBlockResponseDto
 import com.pheeeew.data.remote.report.api.SighReportApi
 import com.pheeeew.data.remote.report.dto.SighReportCreateRequestDto
 import com.pheeeew.data.remote.report.dto.SighReportResponseDto
+import com.pheeeew.data.remote.report.dto.SighReportResultDto
 import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.domain.usecase.ReportSighUseCase
 import kotlinx.coroutines.Dispatchers
@@ -114,6 +115,26 @@ class SighModerationViewModelTest {
             }
         }
 
+    @Test
+    fun `중복 신고 응답이면 이미 신고한 메시지를 표시한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val api = RecordingSighReportApi(isNew = false)
+                val viewModel = createViewModel(api)
+                viewModel.openActions(sighId = 42L, nickname = "테스터")
+                viewModel.requestReport()
+
+                viewModel.submitReport()
+                advanceUntilIdle()
+
+                assertEquals("이미 신고한 한숨입니다.", viewModel.uiState.value.successMessage)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun createViewModel(api: SighReportApi = FakeSighReportApi): SighModerationViewModel =
         SighModerationViewModel(
             blockUser = BlockUserUseCase(FakeDeviceBlockApi),
@@ -139,25 +160,35 @@ class SighModerationViewModelTest {
     }
 
     private object FakeSighReportApi : SighReportApi {
-        override suspend fun create(request: SighReportCreateRequestDto): SighReportResponseDto =
-            SighReportResponseDto(
-                id = 1L,
-                sighId = request.sighId,
-                reason = request.reason,
-                createdAt = "2026-09-15T00:00:00Z",
+        override suspend fun create(request: SighReportCreateRequestDto): SighReportResultDto =
+            SighReportResultDto(
+                report =
+                    SighReportResponseDto(
+                        id = 1L,
+                        sighId = request.sighId,
+                        reason = request.reason,
+                        createdAt = "2026-09-15T00:00:00Z",
+                    ),
+                isNew = true,
             )
     }
 
-    private class RecordingSighReportApi : SighReportApi {
+    private class RecordingSighReportApi(
+        private val isNew: Boolean = true,
+    ) : SighReportApi {
         var callCount = 0
 
-        override suspend fun create(request: SighReportCreateRequestDto): SighReportResponseDto {
+        override suspend fun create(request: SighReportCreateRequestDto): SighReportResultDto {
             callCount += 1
-            return SighReportResponseDto(
-                id = 1L,
-                sighId = request.sighId,
-                reason = request.reason,
-                createdAt = "2026-09-15T00:00:00Z",
+            return SighReportResultDto(
+                report =
+                    SighReportResponseDto(
+                        id = 1L,
+                        sighId = request.sighId,
+                        reason = request.reason,
+                        createdAt = "2026-09-15T00:00:00Z",
+                    ),
+                isNew = isNew,
             )
         }
     }

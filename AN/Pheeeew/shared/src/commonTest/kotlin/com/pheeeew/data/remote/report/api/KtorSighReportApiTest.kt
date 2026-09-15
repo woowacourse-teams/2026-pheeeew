@@ -58,10 +58,43 @@ class KtorSighReportApiTest {
                     ),
                 )
 
-            assertEquals(7L, result.id)
-            assertEquals(42L, result.sighId)
-            assertEquals("광고성 게시물입니다", result.reason)
-            assertEquals("2026-09-01T02:44:00Z", result.createdAt)
+            assertEquals(7L, result.report.id)
+            assertTrue(result.isNew)
+            assertEquals(42L, result.report.sighId)
+            assertEquals("광고성 게시물입니다", result.report.reason)
+            assertEquals("2026-09-01T02:44:00Z", result.report.createdAt)
+            client.close()
+        }
+
+    @Test
+    fun `이미 신고한 한숨은 200 응답으로 중복 신고로 구분한다`() =
+        runTest {
+            val engine =
+                MockEngine {
+                    respond(
+                        content = REPORT_RESPONSE,
+                        status = HttpStatusCode.OK,
+                        headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                    )
+                }
+            val client =
+                createHttpClient(
+                    engine = engine,
+                    config = ApiConfig("https://api-dev.pheeeew.com"),
+                )
+            val api = KtorSighReportApi(client)
+
+            val result =
+                api.create(
+                    SighReportCreateRequestDto(
+                        sighId = 42L,
+                        deviceId = "device-id",
+                        reason = "광고성 게시물입니다",
+                    ),
+                )
+
+            assertEquals(7L, result.report.id)
+            assertEquals(false, result.isNew)
             client.close()
         }
 
