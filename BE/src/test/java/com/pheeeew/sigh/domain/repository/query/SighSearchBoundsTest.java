@@ -1,4 +1,4 @@
-package com.pheeeew.sigh.application.dto;
+package com.pheeeew.sigh.domain.repository.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
