@@ -836,6 +836,41 @@ class MapViewModelTest {
             }
         }
 
+    @Test
+    fun `복원 bounds와 다른 카메라 콜백은 이후 지도 조회를 막지 않는다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val repository =
+                    RecordingSighRepository(
+                        firstPage = SighPage(listOf(sigh(id = 1L)), nextCursor = null),
+                    )
+                val viewModel = createViewModel(repository)
+                viewModel.onMapForeground()
+                viewModel.loadSighs(firstBounds)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                runCurrent()
+
+                viewModel.setSighListVisible(true)
+                runCurrent()
+                viewModel.selectSigh(1L)
+                viewModel.setSighListVisible(false)
+
+                viewModel.loadSighs(secondBounds)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                runCurrent()
+
+                assertEquals(
+                    listOf(firstBounds.expandForPrefetch(), secondBounds.expandForPrefetch()),
+                    repository.requestedBounds,
+                )
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun locationDependencies(initialState: LocationState): LocationDependencies {
         val locationRepository = FakeLocationRepository(initialState)
         return LocationDependencies(

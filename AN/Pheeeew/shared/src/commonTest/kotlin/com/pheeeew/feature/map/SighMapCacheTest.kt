@@ -30,6 +30,22 @@ class SighMapCacheTest {
     }
 
     @Test
+    fun `날짜변경선을 넘는 viewport도 원래 경도를 유지한 채 확장한다`() {
+        val wrappedViewport =
+            SighBounds(
+                minLongitude = 170.0,
+                minLatitude = -10.0,
+                maxLongitude = -170.0,
+                maxLatitude = 10.0,
+            )
+
+        val expandedBounds = wrappedViewport.expandForPrefetch()
+
+        assertEquals(160.0, expandedBounds.minLongitude, absoluteTolerance = 0.0000001)
+        assertEquals(-160.0, expandedBounds.maxLongitude, absoluteTolerance = 0.0000001)
+    }
+
+    @Test
     fun `확장 범위는 위도와 경도 한계를 넘지 않는다`() {
         val edgeBounds =
             SighBounds(
@@ -70,6 +86,26 @@ class SighMapCacheTest {
         cache.put(viewport.expandForPrefetch(), listOf(visiblePin, prefetchedPin))
 
         assertEquals(listOf(visiblePin), cache.visibleSighs(viewport))
+    }
+
+    @Test
+    fun `날짜변경선을 넘는 캐시 범위는 양쪽 끝의 별을 반환한다`() {
+        val wrappedViewport =
+            SighBounds(
+                minLongitude = 170.0,
+                minLatitude = -10.0,
+                maxLongitude = -170.0,
+                maxLatitude = 10.0,
+            )
+        val eastPin = SighPin(id = 1L, coordinate = Coordinate(latitude = 0.0, longitude = 175.0))
+        val westPin = SighPin(id = 2L, coordinate = Coordinate(latitude = 0.0, longitude = -175.0))
+        val middlePin = SighPin(id = 3L, coordinate = Coordinate(latitude = 0.0, longitude = 0.0))
+        val cache = SighMapCache(currentTimeMillis = { 0L })
+
+        cache.put(wrappedViewport.expandForPrefetch(), listOf(eastPin, westPin, middlePin))
+
+        assertTrue(cache.covers(wrappedViewport))
+        assertEquals(listOf(eastPin, westPin), cache.visibleSighs(wrappedViewport))
     }
 
     @Test

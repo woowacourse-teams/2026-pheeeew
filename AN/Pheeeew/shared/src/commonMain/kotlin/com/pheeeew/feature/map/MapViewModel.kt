@@ -107,11 +107,11 @@ class MapViewModel(
             return
         }
         restoringSighDetailBounds?.let { restoringBounds ->
+            restoringSighDetailBounds = null
             if (bounds.isApproximatelyEqualTo(restoringBounds)) {
-                restoringSighDetailBounds = null
+                mapPerformanceLogger("detail_restore_bounds_skipped")
+                return
             }
-            mapPerformanceLogger("detail_restore_bounds_skipped")
-            return
         }
         val isInitialBounds = lastSighBounds == null
         lastSighBounds = bounds
@@ -875,7 +875,6 @@ private fun SighBounds.isValidForQuery(): Boolean =
         maxLatitude.isFinite() &&
         minLongitude in -180.0..180.0 &&
         maxLongitude in -180.0..180.0 &&
-        minLongitude <= maxLongitude &&
         minLatitude in -90.0..90.0 &&
         maxLatitude in -90.0..90.0 &&
         minLatitude <= maxLatitude

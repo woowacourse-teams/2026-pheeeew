@@ -12,6 +12,7 @@ private const val DEFAULT_CACHE_TTL_MILLIS = 3 * 60 * 1_000L
 private const val PREFETCH_PADDING_RATIO = 0.5
 private const val MIN_LONGITUDE = -180.0
 private const val MAX_LONGITUDE = 180.0
+private const val WORLD_LONGITUDE_SPAN = MAX_LONGITUDE - MIN_LONGITUDE
 private const val MIN_LATITUDE = -90.0
 private const val MAX_LATITUDE = 90.0
 
@@ -101,29 +102,84 @@ private data class CachedRegion(
 )
 
 internal fun SighBounds.expandForPrefetch(): SighBounds {
-    val longitudePadding = (maxLongitude - minLongitude) * PREFETCH_PADDING_RATIO
+    val longitudeSpan = longitudeSpan()
+    if (longitudeSpan >= WORLD_LONGITUDE_SPAN) {
+        return copy(
+            minLongitude = MIN_LONGITUDE,
+            maxLongitude = MAX_LONGITUDE,
+        )
+    }
+
+    val longitudePadding = longitudeSpan * PREFETCH_PADDING_RATIO
     val latitudePadding = (maxLatitude - minLatitude) * PREFETCH_PADDING_RATIO
+    val expandedMinLongitude = minLongitude - longitudePadding
+    val expandedMaxLongitude = minLongitude + longitudeSpan + longitudePadding
+    val expandedLongitudeSpan = expandedMaxLongitude - expandedMinLongitude
+
+    if (expandedLongitudeSpan >= WORLD_LONGITUDE_SPAN) {
+        return SighBounds(
+            minLongitude = MIN_LONGITUDE,
+            minLatitude = (minLatitude - latitudePadding).coerceAtLeast(MIN_LATITUDE),
+            maxLongitude = MAX_LONGITUDE,
+            maxLatitude = (maxLatitude + latitudePadding).coerceAtMost(MAX_LATITUDE),
+        )
+    }
 
     return SighBounds(
-        minLongitude = (minLongitude - longitudePadding).coerceAtLeast(MIN_LONGITUDE),
+        minLongitude = normalizeLongitude(expandedMinLongitude),
         minLatitude = (minLatitude - latitudePadding).coerceAtLeast(MIN_LATITUDE),
-        maxLongitude = (maxLongitude + longitudePadding).coerceAtMost(MAX_LONGITUDE),
+        maxLongitude = normalizeLongitude(expandedMaxLongitude),
         maxLatitude = (maxLatitude + latitudePadding).coerceAtMost(MAX_LATITUDE),
     )
 }
 
 private fun SighBounds.contains(other: SighBounds): Boolean =
-    minLongitude <= other.minLongitude &&
-        minLatitude <= other.minLatitude &&
-        maxLongitude >= other.maxLongitude &&
-        maxLatitude >= other.maxLatitude
+    minLatitude <= other.minLatitude &&
+        maxLatitude >= other.maxLatitude &&
+        other.longitudeIntervals().all { otherInterval ->
+            longitudeIntervals().any { interval -> interval.contains(otherInterval) }
+        }
 
 private fun SighBounds.intersects(other: SighBounds): Boolean =
-    minLongitude <= other.maxLongitude &&
-        maxLongitude >= other.minLongitude &&
-        minLatitude <= other.maxLatitude &&
-        maxLatitude >= other.minLatitude
+    minLatitude <= other.maxLatitude &&
+        maxLatitude >= other.minLatitude &&
+        longitudeIntervals().any { interval ->
+            other.longitudeIntervals().any(interval::intersects)
+        }
 
 private fun Coordinate.isInside(bounds: SighBounds): Boolean =
-    longitude in bounds.minLongitude..bounds.maxLongitude &&
+    bounds.longitudeIntervals().any { interval -> longitude in interval.min..interval.max } &&
         latitude in bounds.minLatitude..bounds.maxLatitude
+
+private fun SighBounds.longitudeSpan(): Double =
+    if (minLongitude <= maxLongitude) {
+        maxLongitude - minLongitude
+    } else {
+        WORLD_LONGITUDE_SPAN - (minLongitude - maxLongitude)
+    }
+
+private fun SighBounds.longitudeIntervals(): List<LongitudeInterval> =
+    if (minLongitude <= maxLongitude) {
+        listOf(LongitudeInterval(minLongitude, maxLongitude))
+    } else {
+        listOf(
+            LongitudeInterval(minLongitude, MAX_LONGITUDE),
+            LongitudeInterval(MIN_LONGITUDE, maxLongitude),
+        )
+    }
+
+private fun normalizeLongitude(longitude: Double): Double {
+    val normalized =
+        ((longitude - MIN_LONGITUDE) % WORLD_LONGITUDE_SPAN + WORLD_LONGITUDE_SPAN) % WORLD_LONGITUDE_SPAN +
+            MIN_LONGITUDE
+    return if (normalized == MIN_LONGITUDE && longitude > 0.0) MAX_LONGITUDE else normalized
+}
+
+private data class LongitudeInterval(
+    val min: Double,
+    val max: Double,
+) {
+    fun contains(other: LongitudeInterval): Boolean = min <= other.min && max >= other.max
+
+    fun intersects(other: LongitudeInterval): Boolean = min <= other.max && max >= other.min
+}
