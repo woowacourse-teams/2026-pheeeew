@@ -335,10 +335,15 @@ private class AndroidBreathMapHost(
             cameraIdle = false
             lastRenderedFocusId = state.focusRequest.id
         }
-        camera.render(currentMap, state, cameraCommand = null)
+        camera.render(currentMap, state, cameraCommand = null, viewportHeightPx = mapView.height)
         while (pendingCameraCommands.isNotEmpty()) {
             cameraIdle = false
-            camera.render(currentMap, state, pendingCameraCommands.removeFirst())
+            camera.render(
+                currentMap,
+                state,
+                pendingCameraCommands.removeFirst(),
+                viewportHeightPx = mapView.height,
+            )
         }
         publishProjection(cameraIdle = cameraIdle)
     }
@@ -347,8 +352,16 @@ private class AndroidBreathMapHost(
         if (released) return
         val currentMap = map ?: return
         val state = latestState ?: return
-        val focus = state.focusRequest
-        if (focus == null) {
+        val targets =
+            buildList {
+                state.focusRequest?.let { focus ->
+                    add(MapPointTarget(focus.id, focus.latitude, focus.longitude))
+                }
+                state.projectionTargets.forEach { target ->
+                    add(MapPointTarget(target.id, target.latitude, target.longitude))
+                }
+            }.distinctBy(MapPointTarget::id)
+        if (targets.isEmpty()) {
             if (lastPublishedPoints?.isNotEmpty() == true) {
                 lastPublishedPoints = emptyMap()
                 lastPublishedCameraIdle = cameraIdle
@@ -357,7 +370,6 @@ private class AndroidBreathMapHost(
             }
             return
         }
-        val targets = listOf(MapPointTarget(focus.id, focus.latitude, focus.longitude))
         val points =
             targets.associate { target ->
                 val point = currentMap.projection.toScreenLocation(LatLng(target.latitude, target.longitude))

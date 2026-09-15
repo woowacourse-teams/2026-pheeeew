@@ -8,6 +8,7 @@ import com.pheeeew.domain.exception.ApiException
 import com.pheeeew.domain.model.geo.Coordinate
 import com.pheeeew.domain.model.location.LocationState
 import com.pheeeew.domain.model.sigh.CreateSighCommand
+import com.pheeeew.domain.model.sigh.Sigh
 import com.pheeeew.domain.model.sigh.SighBounds
 import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.domain.repository.SighRepository
@@ -43,6 +44,7 @@ class MapViewModel(
     private var nextCameraCommandId = 0L
     private var pendingRegistration: CreateSighCommand? = null
     private var pendingMemoDraft: PendingSighDraft? = null
+    private var pendingSighDetailId: Long? = null
     private val sighOperationMutex = Mutex()
     private val locallyRegisteredSighs = mutableMapOf<Long, SighPin>()
     private val sighMapCache = SighMapCache()
@@ -50,9 +52,16 @@ class MapViewModel(
     private var sighDebounceJob: Job? = null
     private var activeSighRequestJob: Job? = null
     private var pendingViewportIntent: ViewportIntent? = null
+    private var loadSighListJob: Job? = null
+    private var loadSighDetailJob: Job? = null
     private var lastSighBounds: SighBounds? = null
     private var latestViewportIntent: ViewportIntent? = null
     private var latestViewportVersion = 0L
+    private var cameraBeforeSighDetailBounds: SighBounds? = null
+    private var detailCameraMovePending = false
+    private var restoringSighDetailBounds: SighBounds? = null
+    private var latestSighListRequestId = 0L
+    private var latestSighDetailRequestId = 0L
     private var myLocationJob: Job? = null
 
     private val _uiState =
@@ -85,6 +94,26 @@ class MapViewModel(
             mapPerformanceLogger("invalid_bounds_skipped")
             return
         }
+        if (_uiState.value.sighBrowser.selectedSigh != null) {
+            lastSighBounds = bounds
+            detailCameraMovePending = false
+            mapPerformanceLogger("detail_camera_bounds_skipped")
+            return
+        }
+        if (detailCameraMovePending) {
+            lastSighBounds = bounds
+            detailCameraMovePending = false
+            mapPerformanceLogger("detail_camera_bounds_skipped")
+            return
+        }
+        restoringSighDetailBounds?.let { restoringBounds ->
+            if (bounds.isApproximatelyEqualTo(restoringBounds)) {
+                restoringSighDetailBounds = null
+            }
+            mapPerformanceLogger("detail_restore_bounds_skipped")
+            return
+        }
+        val isInitialBounds = lastSighBounds == null
         lastSighBounds = bounds
         val intent =
             ViewportIntent(
@@ -93,6 +122,11 @@ class MapViewModel(
             )
         latestViewportIntent = intent
         mapPerformanceLogger("bounds_received version=${intent.version}")
+
+        val browser = _uiState.value.sighBrowser
+        if (isInitialBounds && browser.isVisible && browser.items.isEmpty() && !browser.isLoading) {
+            loadFirstSighPage(bounds)
+        }
 
         if (!mapIsForeground) return
 
@@ -218,6 +252,306 @@ class MapViewModel(
                     } else {
                         state.errors
                     },
+            )
+        }
+    }
+
+    fun setSighListVisible(visible: Boolean) {
+        if (!visible) {
+            restoreCameraBeforeSighDetail()
+            latestSighListRequestId += 1L
+            latestSighDetailRequestId += 1L
+            loadSighListJob?.cancel()
+            loadSighListJob = null
+            loadSighDetailJob?.cancel()
+            loadSighDetailJob = null
+            pendingSighDetailId = null
+            _uiState.update { state ->
+                state.copy(
+                    sighBrowser =
+                        state.sighBrowser.copy(
+                            isVisible = false,
+                            selectedSigh = null,
+                            isLoading = false,
+                            isDetailLoading = false,
+                            isLoadingMore = false,
+                            isLoadMoreError = false,
+                            errorMessage = null,
+                        ),
+                )
+            }
+            return
+        }
+
+        _uiState.update { state ->
+            state.copy(
+                sighBrowser = state.sighBrowser.copy(isVisible = true, selectedSigh = null),
+            )
+        }
+        lastSighBounds?.let { bounds -> loadFirstSighPage(bounds) }
+    }
+
+    fun openSighFromPin(id: Long) {
+        if (!mapIsForeground || lastSighBounds == null) return
+
+        latestSighDetailRequestId += 1L
+        val requestId = latestSighDetailRequestId
+        loadSighDetailJob?.cancel()
+        loadSighDetailJob = null
+
+        _uiState.update { state ->
+            state.copy(
+                sighBrowser =
+                    state.sighBrowser.copy(
+                        isVisible = true,
+                        selectedSigh = null,
+                        isDetailLoading = false,
+                        errorMessage = null,
+                    ),
+            )
+        }
+
+        if (_uiState.value.sighBrowser.items
+                .any { it.id == id }
+        ) {
+            pendingSighDetailId = null
+            selectSigh(id)
+            return
+        }
+
+        pendingSighDetailId = id
+        _uiState.update { state ->
+            state.copy(
+                sighBrowser = state.sighBrowser.copy(isDetailLoading = true),
+            )
+        }
+        loadSighDetailJob =
+            viewModelScope.launch {
+                try {
+                    val sigh = sighRepository.getById(id)
+                    if (
+                        requestId != latestSighDetailRequestId ||
+                        !mapIsForeground ||
+                        !_uiState.value.sighBrowser.isVisible
+                    ) {
+                        return@launch
+                    }
+                    _uiState.update { state ->
+                        state.copy(
+                            sighBrowser =
+                                state.sighBrowser.copy(
+                                    items = (listOf(sigh) + state.sighBrowser.items).distinctBy(Sigh::id),
+                                    isDetailLoading = false,
+                                    errorMessage = null,
+                                ),
+                        )
+                    }
+                    pendingSighDetailId = null
+                    selectSigh(id)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (exception: ApiException) {
+                    if (
+                        requestId != latestSighDetailRequestId ||
+                        !mapIsForeground ||
+                        !_uiState.value.sighBrowser.isVisible
+                    ) {
+                        return@launch
+                    }
+                    _uiState.update { state ->
+                        state.copy(
+                            sighBrowser =
+                                state.sighBrowser.copy(
+                                    isDetailLoading = false,
+                                    errorMessage = exception.toUserMessage(),
+                                ),
+                        )
+                    }
+                }
+            }
+    }
+
+    fun refreshSighList() {
+        if (!_uiState.value.sighBrowser.isVisible) return
+        pendingSighDetailId?.let { id ->
+            openSighFromPin(id)
+            return
+        }
+        lastSighBounds?.let { bounds -> loadFirstSighPage(bounds) }
+    }
+
+    fun loadNextSighPage() {
+        val browser = _uiState.value.sighBrowser
+        val cursor = browser.nextCursor ?: return
+        if (!mapIsForeground || !browser.isVisible || browser.isLoading || browser.isLoadingMore) return
+        val requestId = latestSighListRequestId
+
+        _uiState.update { state ->
+            state.copy(
+                sighBrowser =
+                    state.sighBrowser.copy(
+                        isLoadingMore = true,
+                        isLoadMoreError = false,
+                        errorMessage = null,
+                    ),
+            )
+        }
+        loadSighListJob =
+            viewModelScope.launch {
+                try {
+                    val page = sighRepository.getNextPage(cursor)
+                    _uiState.update { state ->
+                        val current = state.sighBrowser
+                        if (
+                            requestId != latestSighListRequestId ||
+                            !mapIsForeground ||
+                            !current.isVisible ||
+                            current.nextCursor != cursor
+                        ) {
+                            return@update state
+                        }
+                        state.copy(
+                            sighBrowser =
+                                current.copy(
+                                    items = (current.items + page.items).distinctBy(Sigh::id),
+                                    nextCursor = page.nextCursor,
+                                    isLoadingMore = false,
+                                    isLoadMoreError = false,
+                                ),
+                        )
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (exception: ApiException) {
+                    _uiState.update { state ->
+                        if (
+                            requestId != latestSighListRequestId ||
+                            !mapIsForeground ||
+                            !state.sighBrowser.isVisible
+                        ) {
+                            return@update state
+                        }
+                        state.copy(
+                            sighBrowser =
+                                state.sighBrowser.copy(
+                                    isLoadingMore = false,
+                                    isLoadMoreError = true,
+                                    errorMessage = exception.toUserMessage(),
+                                ),
+                        )
+                    }
+                }
+            }
+    }
+
+    fun selectSigh(id: Long) {
+        val browser = _uiState.value.sighBrowser
+        if (!browser.isVisible) return
+        val cachedSigh = browser.items.firstOrNull { it.id == id } ?: return
+        val bounds = lastSighBounds ?: return
+
+        if (cameraBeforeSighDetailBounds == null) {
+            cameraBeforeSighDetailBounds = bounds
+        }
+        detailCameraMovePending = true
+        sendCameraCommand { commandId ->
+            MapCameraCommand.MoveToCoordinate(
+                id = commandId,
+                latitude = cachedSigh.coordinate.latitude,
+                longitude = cachedSigh.coordinate.longitude,
+                zoom = MapDarkStyle.SIGH_DETAIL_ZOOM,
+                verticalPosition = DETAIL_MARKER_VERTICAL_POSITION,
+            )
+        }
+
+        _uiState.update { state ->
+            state.copy(sighBrowser = state.sighBrowser.copy(selectedSigh = cachedSigh))
+        }
+    }
+
+    fun dismissSighDetail() {
+        _uiState.update { state ->
+            state.copy(sighBrowser = state.sighBrowser.copy(selectedSigh = null))
+        }
+    }
+
+    private fun loadFirstSighPage(bounds: SighBounds) {
+        if (!mapIsForeground || !_uiState.value.sighBrowser.isVisible || !bounds.isValidForQuery()) return
+
+        val requestId = ++latestSighListRequestId
+        loadSighListJob?.cancel()
+        _uiState.update { state ->
+            state.copy(
+                sighBrowser =
+                    state.sighBrowser.copy(
+                        isLoading = true,
+                        isLoadingMore = false,
+                        isLoadMoreError = false,
+                        selectedSigh = null,
+                        nextCursor = null,
+                        errorMessage = null,
+                    ),
+            )
+        }
+        loadSighListJob =
+            viewModelScope.launch {
+                try {
+                    val page = sighRepository.getFirstPage(bounds)
+                    _uiState.update { state ->
+                        if (
+                            requestId != latestSighListRequestId ||
+                            !mapIsForeground ||
+                            !state.sighBrowser.isVisible ||
+                            lastSighBounds != bounds
+                        ) {
+                            return@update state
+                        }
+                        state.copy(
+                            sighBrowser =
+                                state.sighBrowser.copy(
+                                    items = page.items.distinctBy(Sigh::id),
+                                    selectedSigh = null,
+                                    nextCursor = page.nextCursor,
+                                    isLoading = false,
+                                    isLoadMoreError = false,
+                                    refreshRevision = state.sighBrowser.refreshRevision + 1L,
+                                ),
+                        )
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (exception: ApiException) {
+                    _uiState.update { state ->
+                        if (
+                            requestId != latestSighListRequestId ||
+                            !mapIsForeground ||
+                            !state.sighBrowser.isVisible ||
+                            lastSighBounds != bounds
+                        ) {
+                            return@update state
+                        }
+                        state.copy(
+                            sighBrowser =
+                                state.sighBrowser.copy(
+                                    isLoading = false,
+                                    errorMessage = exception.toUserMessage(),
+                                ),
+                        )
+                    }
+                }
+            }
+    }
+
+    private fun restoreCameraBeforeSighDetail() {
+        val bounds = cameraBeforeSighDetailBounds ?: return
+        cameraBeforeSighDetailBounds = null
+        lastSighBounds = bounds
+        detailCameraMovePending = false
+        restoringSighDetailBounds = bounds
+        sendCameraCommand { commandId ->
+            MapCameraCommand.MoveToBounds(
+                id = commandId,
+                bounds = bounds,
             )
         }
     }
@@ -496,6 +830,24 @@ class MapViewModel(
         sighDebounceJob?.cancel()
         sighDebounceJob = null
         pendingViewportIntent = null
+        loadSighListJob?.cancel()
+        loadSighListJob = null
+        loadSighDetailJob?.cancel()
+        loadSighDetailJob = null
+        pendingSighDetailId = null
+        detailCameraMovePending = false
+        restoringSighDetailBounds = null
+
+        _uiState.update { state ->
+            state.copy(
+                sighBrowser =
+                    state.sighBrowser.copy(
+                        isLoading = false,
+                        isDetailLoading = false,
+                        isLoadingMore = false,
+                    ),
+            )
+        }
 
         myLocationJob?.cancel()
         myLocationJob = null
@@ -527,3 +879,12 @@ private fun SighBounds.isValidForQuery(): Boolean =
         minLatitude in -90.0..90.0 &&
         maxLatitude in -90.0..90.0 &&
         minLatitude <= maxLatitude
+
+private fun SighBounds.isApproximatelyEqualTo(other: SighBounds): Boolean =
+    kotlin.math.abs(minLongitude - other.minLongitude) <= BOUNDS_RESTORE_TOLERANCE &&
+        kotlin.math.abs(minLatitude - other.minLatitude) <= BOUNDS_RESTORE_TOLERANCE &&
+        kotlin.math.abs(maxLongitude - other.maxLongitude) <= BOUNDS_RESTORE_TOLERANCE &&
+        kotlin.math.abs(maxLatitude - other.maxLatitude) <= BOUNDS_RESTORE_TOLERANCE
+
+private const val DETAIL_MARKER_VERTICAL_POSITION = 0.28
+private const val BOUNDS_RESTORE_TOLERANCE = 0.0001
