@@ -7,12 +7,20 @@ import com.pheeeew.data.remote.report.api.SighReportApi
 import com.pheeeew.data.remote.report.dto.SighReportCreateRequestDto
 import com.pheeeew.data.remote.report.dto.SighReportResponseDto
 import com.pheeeew.domain.usecase.ReportSighUseCase
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SighModerationViewModelTest {
     @Test
     fun `액션 메뉴에서 차단 확인 상태로 전환한다`() {
@@ -77,10 +85,35 @@ class SighModerationViewModelTest {
         assertEquals("", viewModel.uiState.value.description)
     }
 
-    private fun createViewModel(): SighModerationViewModel =
+    @Test
+    fun `신고 제출 중에는 중복 요청을 보내지 않고 성공 상태로 전환한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val api = RecordingSighReportApi()
+                val viewModel = createViewModel(api)
+                viewModel.openActions(sighId = 42L, nickname = "테스터")
+                viewModel.requestReport()
+
+                viewModel.submitReport()
+                viewModel.submitReport()
+                assertTrue(viewModel.uiState.value.isSubmitting)
+
+                advanceUntilIdle()
+
+                assertEquals(1, api.callCount)
+                assertFalse(viewModel.uiState.value.isReportVisible)
+                assertEquals("신고가 접수되었습니다.", viewModel.uiState.value.successMessage)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    private fun createViewModel(api: SighReportApi = FakeSighReportApi): SighModerationViewModel =
         SighModerationViewModel(
             ReportSighUseCase(
-                api = FakeSighReportApi,
+                api = api,
                 deviceIdStorage = FakeDeviceIdStorage,
             ),
         )
@@ -97,5 +130,19 @@ class SighModerationViewModelTest {
                 reason = request.reason,
                 createdAt = "2026-09-15T00:00:00Z",
             )
+    }
+
+    private class RecordingSighReportApi : SighReportApi {
+        var callCount = 0
+
+        override suspend fun create(request: SighReportCreateRequestDto): SighReportResponseDto {
+            callCount += 1
+            return SighReportResponseDto(
+                id = 1L,
+                sighId = request.sighId,
+                reason = request.reason,
+                createdAt = "2026-09-15T00:00:00Z",
+            )
+        }
     }
 }
