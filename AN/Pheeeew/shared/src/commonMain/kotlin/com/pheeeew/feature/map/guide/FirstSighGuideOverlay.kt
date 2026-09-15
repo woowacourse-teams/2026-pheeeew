@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -84,7 +86,7 @@ fun FirstSighGuideOverlay(
                     ).padding(horizontal = 8.dp, vertical = 6.dp),
         )
 
-        GuideBubble(
+        FirstSighGuideBubble(
             step = step,
             modifier =
                 Modifier
@@ -104,21 +106,23 @@ fun FirstSighGuideOverlay(
 }
 
 @Composable
-private fun GuideBubble(
+internal fun FirstSighGuideBubble(
     step: FirstSighGuideStep,
     modifier: Modifier = Modifier,
 ) {
     val page =
         when (step) {
             FirstSighGuideStep.TapButton -> 1
-            FirstSighGuideStep.Blow -> 2
-            FirstSighGuideStep.SwipeUp -> 3
+            FirstSighGuideStep.Memo -> 2
+            FirstSighGuideStep.Blow -> 3
+            FirstSighGuideStep.SwipeUp -> 4
             FirstSighGuideStep.Hidden -> return
         }
     val message =
         when (step) {
             FirstSighGuideStep.TapButton -> "빛나는 버튼을 눌러\n한숨을 시작해 보세요"
-            FirstSighGuideStep.Blow -> "휴대폰에 후- 하고\n한숨을 내쉬어 보세요"
+            FirstSighGuideStep.Memo -> "오늘 어떤 일이 있었는지\n한숨에 담아 보세요"
+            FirstSighGuideStep.Blow -> "마이크에 대고 후- 하고\n한숨을 불어 보세요"
             FirstSighGuideStep.SwipeUp -> "모인 한숨을 위로 밀어\n날려보내요"
             FirstSighGuideStep.Hidden -> return
         }
@@ -132,19 +136,19 @@ private fun GuideBubble(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier =
                 Modifier
-                    .width(190.dp)
                     .shadow(18.dp, RoundedCornerShape(14.dp), ambientColor = AppColors.Blue200)
                     .background(AppColors.Navy700.copy(alpha = 0.96f), RoundedCornerShape(14.dp))
                     .border(1.dp, AppColors.Blue200.copy(alpha = 0.9f), RoundedCornerShape(14.dp))
-                    .padding(horizontal = 18.dp, vertical = 14.dp),
+                    .padding(horizontal = 20.dp, vertical = 20.dp),
         ) {
             Text(
-                text = "$page / 3",
+                text = "$page / 4",
                 color = AppColors.Blue100,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Normal,
                 letterSpacing = 1.5.sp,
             )
+            Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = message,
                 color = AppColors.Cream100,

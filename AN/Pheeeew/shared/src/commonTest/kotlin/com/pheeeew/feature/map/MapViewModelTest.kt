@@ -392,9 +392,14 @@ class MapViewModelTest {
                 val registrationEvent = async { viewModel.registrationEvents.first() }
                 runCurrent()
 
-                viewModel.beginMemoAfterExplosion()
+                viewModel.beginSighRegistration()
                 assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease)
                 viewModel.submitMemo("  오늘은 조금 지쳤다  ")
+                runCurrent()
+                assertIs<SighReleaseState.AwaitingBreath>(viewModel.uiState.value.sighRelease)
+                assertTrue(repository.createdCommands.isEmpty())
+
+                viewModel.completeBreath()
                 runCurrent()
                 assertIs<SighReleaseState.Submitting>(viewModel.uiState.value.sighRelease)
 
@@ -445,8 +450,10 @@ class MapViewModelTest {
                         locationDependencies = locationDependencies(LocationState.Available(location)),
                     )
 
-                viewModel.beginMemoAfterExplosion()
+                viewModel.beginSighRegistration()
                 viewModel.submitMemo("같은 요청")
+                assertIs<SighReleaseState.AwaitingBreath>(viewModel.uiState.value.sighRelease)
+                viewModel.completeBreath()
                 runCurrent()
                 advanceTimeBy(2_000)
                 runCurrent()
@@ -466,7 +473,7 @@ class MapViewModelTest {
         }
 
     @Test
-    fun `메모 건너뛰기는 null payload를 한 번만 제출한다`() =
+    fun `메모 건너뛰기는 null payload를 준비하고 한숨 완료 뒤 한 번만 제출한다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
             Dispatchers.setMain(dispatcher)
@@ -488,9 +495,17 @@ class MapViewModelTest {
                             ),
                     )
 
-                viewModel.beginMemoAfterExplosion()
+                viewModel.beginSighRegistration()
                 viewModel.skipMemo()
                 viewModel.skipMemo()
+                runCurrent()
+
+                val awaiting = assertIs<SighReleaseState.AwaitingBreath>(viewModel.uiState.value.sighRelease)
+                assertEquals(null, awaiting.command.memo)
+                assertTrue(repository.createdCommands.isEmpty())
+
+                viewModel.completeBreath()
+                viewModel.completeBreath()
                 runCurrent()
 
                 assertEquals(1, repository.createdCommands.size)
@@ -525,7 +540,7 @@ class MapViewModelTest {
                             ),
                     )
 
-                viewModel.beginMemoAfterExplosion()
+                viewModel.beginSighRegistration()
                 assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease)
                 viewModel.dismissMemo()
 
@@ -540,7 +555,7 @@ class MapViewModelTest {
     fun `위치가 없으면 한숨 등록을 시작하지 않고 재시도 불가 오류를 표시한다`() {
         val viewModel = createViewModel()
 
-        viewModel.beginMemoAfterExplosion()
+        viewModel.beginSighRegistration()
 
         val error = assertIs<SighReleaseState.Error>(viewModel.uiState.value.sighRelease)
         assertEquals(false, error.canRetry)

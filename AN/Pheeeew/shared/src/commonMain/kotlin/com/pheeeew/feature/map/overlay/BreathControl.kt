@@ -83,13 +83,13 @@ enum class SighPhase { Idle, Listening, Quiet, NeedsMore, Bursting }
 @Composable
 fun BreathControl(
     enabled: Boolean,
+    startSignal: Int,
+    onIdleClick: () -> Unit,
     onExplosionFinished: (originInRoot: Offset) -> Unit,
     onMicrophoneError: (BreathInputError) -> Unit,
     ensureLocationPermission: suspend () -> Boolean,
     onPhaseChanged: (SighPhase) -> Unit,
     cancelSignal: Int,
-    requestPermissionOnLaunch: Boolean,
-    onPermissionLaunchRequestHandled: () -> Unit,
     onControlBoundsChanged: (Rect) -> Unit = {},
     showIdleLabel: Boolean = true,
     breathConfig: BreathInteractionConfig = BreathInteractionConfig(),
@@ -106,6 +106,7 @@ fun BreathControl(
     val density = LocalDensity.current
     val latestExplosionFinished = rememberUpdatedState(onExplosionFinished)
     val latestMicrophoneError = rememberUpdatedState(onMicrophoneError)
+    val latestIdleClick = rememberUpdatedState(onIdleClick)
     val latestPhaseChanged = rememberUpdatedState(onPhaseChanged)
     val latestEnsureLocationPermission = rememberUpdatedState(ensureLocationPermission)
     val latestControlBoundsChanged = rememberUpdatedState(onControlBoundsChanged)
@@ -135,11 +136,8 @@ fun BreathControl(
             else -> SighPhase.Idle
         }
 
-    LaunchedEffect(breathControlState, requestPermissionOnLaunch) {
-        if (requestPermissionOnLaunch) {
-            breathControlState.warmUpMicrophonePermission()
-            onPermissionLaunchRequestHandled()
-        }
+    LaunchedEffect(breathControlState, startSignal) {
+        if (startSignal > 0) breathControlState.start()
     }
 
     LaunchedEffect(breathControlState) {
@@ -316,7 +314,7 @@ fun BreathControl(
                             if (!listening) {
                                 detectTapGestures(onTap = {
                                     if (!enabled || burst) return@detectTapGestures
-                                    breathControlState.start()
+                                    latestIdleClick.value()
                                 })
                             } else {
                                 val maxDragPx = with(density) { RELEASE_DRAG_MAX_DP.dp.toPx() }
@@ -428,13 +426,13 @@ fun BreathControl(
 private fun BreathControlPreview() {
     BreathControl(
         enabled = true,
+        startSignal = 0,
+        onIdleClick = {},
         onExplosionFinished = {},
         onMicrophoneError = {},
         ensureLocationPermission = { true },
         onPhaseChanged = {},
         cancelSignal = 0,
-        requestPermissionOnLaunch = false,
-        onPermissionLaunchRequestHandled = {},
     )
 }
 

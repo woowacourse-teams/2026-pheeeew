@@ -1,5 +1,9 @@
 package com.pheeeew.feature.map.guide
 
+import com.pheeeew.domain.model.geo.Coordinate
+import com.pheeeew.domain.model.sigh.CreateSighCommand
+import com.pheeeew.feature.map.PendingSighDraft
+import com.pheeeew.feature.map.SighReleaseState
 import com.pheeeew.feature.map.overlay.SighPhase
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -7,11 +11,34 @@ import kotlin.test.assertEquals
 class FirstSighGuideStateTest {
     @Test
     fun `실제 한숨 단계가 가이드 단계에 대응한다`() {
-        assertEquals(FirstSighGuideStep.TapButton, SighPhase.Idle.toFirstSighGuideStep())
-        assertEquals(FirstSighGuideStep.Blow, SighPhase.Listening.toFirstSighGuideStep())
-        assertEquals(FirstSighGuideStep.Blow, SighPhase.NeedsMore.toFirstSighGuideStep())
-        assertEquals(FirstSighGuideStep.SwipeUp, SighPhase.Quiet.toFirstSighGuideStep())
-        assertEquals(FirstSighGuideStep.Hidden, SighPhase.Bursting.toFirstSighGuideStep())
+        val coordinate = Coordinate(latitude = 37.55, longitude = 126.95)
+        val draft = PendingSighDraft(requestId = "request-id", coordinate = coordinate)
+        val command = CreateSighCommand(requestId = "request-id", coordinate = coordinate, memo = "메모")
+
+        assertEquals(
+            FirstSighGuideStep.TapButton,
+            firstSighGuideStepFor(SighReleaseState.Idle, SighPhase.Idle),
+        )
+        assertEquals(
+            FirstSighGuideStep.Memo,
+            firstSighGuideStepFor(SighReleaseState.EditingMemo(draft), SighPhase.Idle),
+        )
+        assertEquals(
+            FirstSighGuideStep.Blow,
+            firstSighGuideStepFor(SighReleaseState.AwaitingBreath(command), SighPhase.Listening),
+        )
+        assertEquals(
+            FirstSighGuideStep.Blow,
+            firstSighGuideStepFor(SighReleaseState.AwaitingBreath(command), SighPhase.NeedsMore),
+        )
+        assertEquals(
+            FirstSighGuideStep.SwipeUp,
+            firstSighGuideStepFor(SighReleaseState.AwaitingBreath(command), SighPhase.Quiet),
+        )
+        assertEquals(
+            FirstSighGuideStep.Hidden,
+            firstSighGuideStepFor(SighReleaseState.AwaitingBreath(command), SighPhase.Bursting),
+        )
     }
 
     @Test

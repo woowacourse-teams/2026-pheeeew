@@ -14,6 +14,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
@@ -37,7 +38,7 @@ import com.pheeeew.feature.map.animation.SighAnimationCoordinator
 import com.pheeeew.feature.map.animation.StarFlightOverlay
 import com.pheeeew.feature.map.guide.FirstSighGuideOverlay
 import com.pheeeew.feature.map.guide.FirstSighGuideStep
-import com.pheeeew.feature.map.guide.toFirstSighGuideStep
+import com.pheeeew.feature.map.guide.firstSighGuideStepFor
 import com.pheeeew.feature.map.map.BreathMap
 import com.pheeeew.feature.map.map.MapError
 import com.pheeeew.feature.map.map.MapProjectionSnapshot
@@ -54,6 +55,7 @@ import com.pheeeew.feature.map.sighlist.toSighListItemUiModel
 import com.pheeeew.feature.map.star.StarAgePolicy
 import com.pheeeew.feature.map.star.StarVisualPolicy
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.time.Clock
 import kotlin.time.Instant
 
@@ -84,7 +86,8 @@ fun MapScreen(
     onSubmitSighReport: () -> Unit,
     onDismissSighReport: () -> Unit,
     onDismissReportSuccess: () -> Unit,
-    onBeginMemoAfterExplosion: () -> Unit,
+    onBeginSighRegistration: () -> Unit,
+    onBreathCompleted: () -> Unit,
     onSubmitMemo: (String) -> Unit,
     onSkipMemo: () -> Unit,
     onDismissMemo: () -> Unit,
@@ -97,13 +100,12 @@ fun MapScreen(
     onMapError: (MapError) -> Unit,
     onMapReady: () -> Unit,
     isActive: Boolean,
-    requestMicrophonePermissionOnLaunch: Boolean,
-    onMicrophonePermissionLaunchRequestHandled: () -> Unit,
     guideMode: Boolean,
     onGuideSkip: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var pendingFlightOrigin by remember { mutableStateOf<Offset?>(null) }
+    val coroutineScope = rememberCoroutineScope()
     var projectionSnapshot by remember { mutableStateOf(MapProjectionSnapshot.Empty) }
     var activeFlightId by remember { mutableStateOf<String?>(null) }
     var landedFlightId by remember { mutableStateOf<String?>(null) }
@@ -116,6 +118,7 @@ fun MapScreen(
     var sighPhase by remember { mutableStateOf(SighPhase.Idle) }
     var breathControlBounds by remember { mutableStateOf(Rect.Zero) }
     var cancelSignal by remember { mutableStateOf(0) }
+    var breathStartSignal by remember { mutableIntStateOf(0) }
     var starAgeRevision by remember { mutableIntStateOf(0) }
     var relativeTimeRevision by remember { mutableIntStateOf(0) }
     val sighBrowser = uiState.sighBrowser
@@ -123,13 +126,15 @@ fun MapScreen(
     val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
     val memoDraft = (uiState.sighRelease as? SighReleaseState.EditingMemo)?.draft
     val isMemoEditing = memoDraft != null
+    val awaitingBreath = uiState.sighRelease as? SighReleaseState.AwaitingBreath
     val retryableSighError =
         (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
-    val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing
-    val guideStep = sighPhase.toFirstSighGuideStep()
+    val isSighInteractionVisible =
+        sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing || awaitingBreath != null
+    val guideStep = firstSighGuideStepFor(uiState.sighRelease, sighPhase)
     val isGuidePromptVisible =
         guideMode &&
-            uiState.sighRelease is SighReleaseState.Idle &&
+            !isMemoEditing &&
             guideStep != FirstSighGuideStep.Hidden
     val shouldShowInteractionBackdrop = isSighInteractionVisible || isGuidePromptVisible
     val currentLocation = (uiState.location.state as? LocationState.Available)?.location
@@ -138,6 +143,27 @@ fun MapScreen(
             (listOfNotNull(sighBrowser.selectedSigh?.toPin()) + uiState.sighs)
                 .distinctBy(SighPin::id)
         }
+    val ensureRegistrationLocation: suspend () -> Boolean = {
+        when (onEnsureLocationPermission()) {
+            LocationPermissionStatus.Granted -> {
+                true
+            }
+
+            LocationPermissionStatus.ServicesDisabled -> {
+                showLocationServicesDialog = true
+                false
+            }
+
+            LocationPermissionStatus.PermanentlyDenied -> {
+                showLocationPermissionDialog = true
+                false
+            }
+
+            LocationPermissionStatus.Denied -> {
+                false
+            }
+        }
+    }
 
     LaunchedEffect(sighBrowser.isVisible) {
         if (sighBrowser.isVisible) {
@@ -146,6 +172,10 @@ fun MapScreen(
             delay(SIGH_BROWSER_EXIT_DURATION_MILLIS)
             isSighBrowserComposed = false
         }
+    }
+
+    LaunchedEffect(awaitingBreath?.command?.requestId) {
+        if (awaitingBreath != null) breathStartSignal += 1
     }
 
     LaunchedEffect(sighBrowser.isVisible) {
@@ -368,12 +398,25 @@ fun MapScreen(
         if (isActive && !sighBrowser.isVisible) {
             Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding().align(Alignment.BottomCenter)) {
                 if (!isSighSubmitting) {
-                    if (uiState.sighRelease is SighReleaseState.Idle) {
+                    if (
+                        uiState.sighRelease is SighReleaseState.Idle ||
+                        uiState.sighRelease is SighReleaseState.AwaitingBreath
+                    ) {
                         BreathControl(
                             enabled = !isFlightInProgress,
+                            startSignal = breathStartSignal,
+                            onIdleClick = {
+                                if (uiState.sighRelease is SighReleaseState.Idle) {
+                                    coroutineScope.launch {
+                                        if (ensureRegistrationLocation()) onBeginSighRegistration()
+                                    }
+                                } else {
+                                    breathStartSignal += 1
+                                }
+                            },
                             onExplosionFinished = { origin ->
                                 pendingFlightOrigin = origin
-                                onBeginMemoAfterExplosion()
+                                onBreathCompleted()
                             },
                             onMicrophoneError = { error ->
                                 if (error == BreathInputError.PermissionDenied) {
@@ -382,31 +425,9 @@ fun MapScreen(
                                     microphoneError = error
                                 }
                             },
-                            ensureLocationPermission = {
-                                when (onEnsureLocationPermission()) {
-                                    LocationPermissionStatus.Granted -> {
-                                        true
-                                    }
-
-                                    LocationPermissionStatus.ServicesDisabled -> {
-                                        showLocationServicesDialog = true
-                                        false
-                                    }
-
-                                    LocationPermissionStatus.PermanentlyDenied -> {
-                                        showLocationPermissionDialog = true
-                                        false
-                                    }
-
-                                    LocationPermissionStatus.Denied -> {
-                                        false
-                                    }
-                                }
-                            },
+                            ensureLocationPermission = ensureRegistrationLocation,
                             onPhaseChanged = { sighPhase = it },
                             cancelSignal = cancelSignal,
-                            requestPermissionOnLaunch = requestMicrophonePermissionOnLaunch,
-                            onPermissionLaunchRequestHandled = onMicrophonePermissionLaunchRequestHandled,
                             onControlBoundsChanged = { breathControlBounds = it },
                             showIdleLabel = !guideMode,
                         )
@@ -425,6 +446,7 @@ fun MapScreen(
             MemoEditor(
                 draft = draft,
                 submitting = false,
+                guideMode = guideMode,
                 onSubmit = onSubmitMemo,
                 onSkip = onSkipMemo,
                 onDismiss = {
@@ -558,7 +580,8 @@ private fun MapScreenPreview() {
             onSubmitSighReport = {},
             onDismissSighReport = {},
             onDismissReportSuccess = {},
-            onBeginMemoAfterExplosion = {},
+            onBeginSighRegistration = {},
+            onBreathCompleted = {},
             onSubmitMemo = {},
             onSkipMemo = {},
             onDismissMemo = {},
@@ -571,8 +594,6 @@ private fun MapScreenPreview() {
             onMapError = {},
             onMapReady = {},
             isActive = true,
-            requestMicrophonePermissionOnLaunch = false,
-            onMicrophonePermissionLaunchRequestHandled = {},
             guideMode = false,
             onGuideSkip = {},
         )

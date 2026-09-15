@@ -561,7 +561,7 @@ class MapViewModel(
         }
     }
 
-    fun beginMemoAfterExplosion() {
+    fun beginSighRegistration() {
         val current = _uiState.value
         if (current.sighRelease !is SighReleaseState.Idle) return
         val location = (current.location.state as? LocationState.Available)?.location
@@ -605,7 +605,9 @@ class MapViewModel(
                         coordinate = state.draft.coordinate,
                         memo = memo,
                     ).also { pendingRegistration = it }
-        submit(command)
+        _uiState.update { current ->
+            current.copy(sighRelease = SighReleaseState.AwaitingBreath(command))
+        }
     }
 
     fun skipMemo() {
@@ -616,6 +618,13 @@ class MapViewModel(
         if (_uiState.value.sighRelease !is SighReleaseState.EditingMemo) return
         clearPendingSigh()
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.Idle) }
+    }
+
+    fun completeBreath() {
+        val command =
+            (_uiState.value.sighRelease as? SighReleaseState.AwaitingBreath)?.command
+                ?: return
+        submit(command)
     }
 
     fun retrySighCreation() {

@@ -1,25 +1,42 @@
 package com.pheeeew.feature.map.guide
 
+import com.pheeeew.feature.map.SighReleaseState
 import com.pheeeew.feature.map.overlay.SighPhase
 
 enum class FirstSighGuideStep {
     TapButton,
+    Memo,
     Blow,
     SwipeUp,
     Hidden,
 }
 
-fun SighPhase.toFirstSighGuideStep(): FirstSighGuideStep =
-    when (this) {
-        SighPhase.Idle -> FirstSighGuideStep.TapButton
+fun firstSighGuideStepFor(
+    releaseState: SighReleaseState,
+    phase: SighPhase,
+): FirstSighGuideStep =
+    when (releaseState) {
+        SighReleaseState.Idle -> {
+            FirstSighGuideStep.TapButton
+        }
 
-        SighPhase.Listening,
-        SighPhase.NeedsMore,
-        -> FirstSighGuideStep.Blow
+        is SighReleaseState.EditingMemo -> {
+            FirstSighGuideStep.Memo
+        }
 
-        SighPhase.Quiet -> FirstSighGuideStep.SwipeUp
+        is SighReleaseState.AwaitingBreath -> {
+            when (phase) {
+                SighPhase.Quiet -> FirstSighGuideStep.SwipeUp
+                SighPhase.Bursting -> FirstSighGuideStep.Hidden
+                else -> FirstSighGuideStep.Blow
+            }
+        }
 
-        SighPhase.Bursting -> FirstSighGuideStep.Hidden
+        is SighReleaseState.Submitting,
+        is SighReleaseState.Error,
+        -> {
+            FirstSighGuideStep.Hidden
+        }
     }
 
 /**

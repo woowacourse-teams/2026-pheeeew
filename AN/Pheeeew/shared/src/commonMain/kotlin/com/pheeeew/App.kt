@@ -55,7 +55,6 @@ fun App(
             viewModel { SighModerationViewModel() }
         val mapReadiness = remember { MutableStateFlow(false) }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
-        var requestPermissionsAfterOnboarding by remember { mutableStateOf(false) }
         var firstSighGuideActive by remember { mutableStateOf(!hasCompletedFirstSighGuide) }
 
         val completeFirstSighGuide = {
@@ -76,7 +75,6 @@ fun App(
                 onSettingsClick = { screen = Screen.Settings },
                 onMapReady = { mapReadiness.value = true },
                 isActive = screen == Screen.Map,
-                requestPermissionsAfterOnboarding = requestPermissionsAfterOnboarding,
                 guideMode = firstSighGuideActive,
                 onGuideSkip = completeFirstSighGuide,
                 onSighRegistrationSucceeded = { completeFirstSighGuide() },
@@ -138,7 +136,6 @@ fun App(
                 OnboardingScreen(
                     onFinished = {
                         onOnboardingCompleted()
-                        requestPermissionsAfterOnboarding = true
                         firstSighGuideActive = true
                         screen = Screen.Map
                     },
