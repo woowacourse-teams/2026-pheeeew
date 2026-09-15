@@ -2,6 +2,11 @@
 
 package com.pheeeew.feature.map.sighlist
 
+import com.pheeeew.data.local.device.DeviceIdStorage
+import com.pheeeew.data.remote.report.api.SighReportApi
+import com.pheeeew.data.remote.report.dto.SighReportCreateRequestDto
+import com.pheeeew.data.remote.report.dto.SighReportResponseDto
+import com.pheeeew.domain.usecase.ReportSighUseCase
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -11,7 +16,7 @@ import kotlin.test.assertTrue
 class SighModerationViewModelTest {
     @Test
     fun `액션 메뉴에서 차단 확인 상태로 전환한다`() {
-        val viewModel = SighModerationViewModel()
+        val viewModel = createViewModel()
 
         viewModel.openActions(sighId = 42L, nickname = "테스터")
         viewModel.requestBlock()
@@ -29,7 +34,7 @@ class SighModerationViewModelTest {
 
     @Test
     fun `액션 메뉴에서 신고 화면으로 전환하고 입력 상태를 관리한다`() {
-        val viewModel = SighModerationViewModel()
+        val viewModel = createViewModel()
 
         viewModel.openActions(sighId = 42L, nickname = "테스터")
         viewModel.requestReport()
@@ -49,7 +54,7 @@ class SighModerationViewModelTest {
 
     @Test
     fun `상세 설명은 최대 이백 자까지 보관한다`() {
-        val viewModel = SighModerationViewModel()
+        val viewModel = createViewModel()
         viewModel.openActions(sighId = 42L, nickname = "테스터")
         viewModel.requestReport()
 
@@ -60,7 +65,7 @@ class SighModerationViewModelTest {
 
     @Test
     fun `신고 화면을 닫으면 입력 상태를 초기화한다`() {
-        val viewModel = SighModerationViewModel()
+        val viewModel = createViewModel()
         viewModel.openActions(sighId = 42L, nickname = "테스터")
         viewModel.requestReport()
         viewModel.selectReason("기타")
@@ -70,5 +75,27 @@ class SighModerationViewModelTest {
         assertFalse(viewModel.uiState.value.isReportVisible)
         assertNull(viewModel.uiState.value.selectedReason)
         assertEquals("", viewModel.uiState.value.description)
+    }
+
+    private fun createViewModel(): SighModerationViewModel =
+        SighModerationViewModel(
+            ReportSighUseCase(
+                api = FakeSighReportApi,
+                deviceIdStorage = FakeDeviceIdStorage,
+            ),
+        )
+
+    private object FakeDeviceIdStorage : DeviceIdStorage {
+        override fun getOrCreate(): String = "device-id"
+    }
+
+    private object FakeSighReportApi : SighReportApi {
+        override suspend fun create(request: SighReportCreateRequestDto): SighReportResponseDto =
+            SighReportResponseDto(
+                id = 1L,
+                sighId = request.sighId,
+                reason = request.reason,
+                createdAt = "2026-09-15T00:00:00Z",
+            )
     }
 }

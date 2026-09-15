@@ -4,6 +4,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.data.local.device.InMemoryAccessTokenStore
+import com.pheeeew.data.local.device.IosDeviceIdStorage
 import com.pheeeew.di.SighModule
 import com.pheeeew.di.createIosDeviceRegistrationDependencies
 import com.pheeeew.di.createIosLocationDependencies
@@ -30,6 +31,7 @@ fun MainViewController() =
             remember(apiBaseUrl, deviceDependencies) {
                 SighModule.create(
                     config = apiConfig,
+                    deviceIdStorage = IosDeviceIdStorage(userDefaults),
                     accessTokenStore = accessTokenStore,
                     refreshAccessToken = {
                         deviceDependencies.ensureRegistered().getOrThrow().accessToken
@@ -45,6 +47,7 @@ fun MainViewController() =
             locationDependencies = locationDependencies,
             sighRepository = sighDependencies.repository,
             createSigh = sighDependencies.createSigh,
+            reportSigh = sighDependencies.reportSigh,
             mapPerformanceLogger = {},
             ensureDeviceRegistered = deviceDependencies.ensureRegistered,
         )

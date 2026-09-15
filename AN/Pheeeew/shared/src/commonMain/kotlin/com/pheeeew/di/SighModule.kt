@@ -4,21 +4,26 @@ import com.pheeeew.core.geo.GeodesicSighLocationObfuscator
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createPlatformHttpClient
 import com.pheeeew.data.local.device.AccessTokenStore
+import com.pheeeew.data.local.device.DeviceIdStorage
+import com.pheeeew.data.remote.report.api.KtorSighReportApi
 import com.pheeeew.data.remote.sigh.api.KtorSighV1Api
 import com.pheeeew.data.remote.sigh.api.KtorSighV2Api
 import com.pheeeew.data.repository.SighRepositoryImpl
 import com.pheeeew.domain.model.device.AccessToken
 import com.pheeeew.domain.repository.SighRepository
 import com.pheeeew.domain.usecase.CreateSighUseCase
+import com.pheeeew.domain.usecase.ReportSighUseCase
 
 data class SighDependencies(
     val repository: SighRepository,
     val createSigh: CreateSighUseCase,
+    val reportSigh: ReportSighUseCase,
 )
 
 object SighModule {
     fun create(
         config: ApiConfig,
+        deviceIdStorage: DeviceIdStorage,
         accessTokenStore: AccessTokenStore? = null,
         refreshAccessToken: (suspend () -> AccessToken?)? = null,
     ): SighDependencies {
@@ -35,6 +40,7 @@ object SighModule {
             )
         return SighDependencies(
             repository = repository,
+            reportSigh = ReportSighUseCase(KtorSighReportApi(client), deviceIdStorage),
             createSigh =
                 CreateSighUseCase(
                     repository = repository,
