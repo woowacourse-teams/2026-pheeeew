@@ -18,6 +18,7 @@ import com.pheeeew.sigh.application.SighNicknameGenerator;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
 import com.pheeeew.sigh.domain.repository.query.SighQueryPeriod;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
@@ -30,6 +31,7 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
@@ -37,13 +39,19 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.test.util.ReflectionTestUtils;
 
-class SighMapMetricsAspectTest {
+class SighMetricsAspectTest {
 
     private static final SighSearchBounds BOUNDS = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
+
+    private static final Instant SNAPSHOT_AT = Instant.parse("2026-09-15T00:00:00Z");
+    private static final SighQueryPeriod PERIOD = SighQueryPeriod.of(
+            Instant.parse("2026-09-01T15:00:00Z"), SNAPSHOT_AT
+    );
 
     private final MockClock clock = new MockClock();
     private final SimpleMeterRegistry registry = new SimpleMeterRegistry(SimpleConfig.DEFAULT, clock);
@@ -60,7 +68,7 @@ class SighMapMetricsAspectTest {
         context.registerBean(SimpleMeterRegistry.class, () -> registry);
         context.register(
                 AopAutoConfiguration.class, ClockConfig.class,
-                SighMapMetrics.class, SighMapMetricsAspect.class, SighService.class
+                SighMetrics.class, SighMetricsAspect.class, SighService.class
         );
         context.refresh();
         service = context.getBean(SighService.class);
@@ -109,7 +117,8 @@ class SighMapMetricsAspectTest {
         assertThat(results.totalAmount()).isEqualTo(returned);
         assertThat(registry.get("pheeeew.sigh.map.results")
                 .tag("truncated", Boolean.toString(!truncated)).summary().count()).isZero();
-        assertThat(registry.getMeters()).hasSize(3);
+        assertThat(registry.getMeters()).hasSize(4);
+        assertThat(registry.get("pheeeew.sigh.list.query").timer().count()).isZero();
         assertThat(query.getId().getTags()).isEmpty();
         assertThat(registry.get("pheeeew.sigh.map.results").summaries())
                 .allSatisfy(summary -> assertThat(summary.getId().getTags()).hasSize(1));
@@ -137,7 +146,7 @@ class SighMapMetricsAspectTest {
     }
 
     @Test
-    void 다른_조회는_지도_전용_지표에_기록하지_않는다() {
+    void 다른_조회는_지도와_목록_전용_지표에_기록하지_않는다() {
         // given
         Device device = 기본_기기_빌더().build();
         ReflectionTestUtils.setField(device, "id", 1L);
@@ -150,7 +159,57 @@ class SighMapMetricsAspectTest {
                 .isInstanceOf(SighException.class);
         verify(repository).findById(1L, device.getId());
         assertThat(registry.get("pheeeew.sigh.map.query").timer().count()).isZero();
+        assertThat(registry.get("pheeeew.sigh.list.query").timer().count()).isZero();
         assertThat(registry.get("pheeeew.sigh.map.results").summaries())
                 .allSatisfy(summary -> assertThat(summary.count()).isZero());
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 21})
+    void 목록_조회_시간만_기록하고_반환값을_그대로_전달한다(int fetched) {
+        // given
+        List<SighListProjection> projections = Collections.nCopies(fetched, mock(SighListProjection.class));
+        when(repository.findListWithinBounds(BOUNDS, PERIOD, SNAPSHOT_AT, Long.MAX_VALUE, 1L, 500, 21, 1L))
+                .thenAnswer(invocation -> {
+                    clock.add(Duration.ofMillis(250));
+                    return projections;
+                });
+
+        // when
+        List<SighListProjection> result = context.getBean(SighRepository.class).findListWithinBounds(
+                BOUNDS, PERIOD, SNAPSHOT_AT, Long.MAX_VALUE, 1L, 500, 21, 1L
+        );
+        clock.add(Duration.ofMillis(50));
+
+        // then
+        assertThat(result).isSameAs(projections);
+        verify(repository).findListWithinBounds(BOUNDS, PERIOD, SNAPSHOT_AT, Long.MAX_VALUE, 1L, 500, 21, 1L);
+        Timer query = registry.get("pheeeew.sigh.list.query").timer();
+        assertThat(query.count()).isEqualTo(1);
+        assertThat(query.totalTime(TimeUnit.MILLISECONDS)).isEqualTo(250);
+        assertThat(query.getId().getTags()).isEmpty();
+        assertThat(registry.getMeters()).hasSize(4);
+        assertThat(registry.get("pheeeew.sigh.map.query").timer().count()).isZero();
+        assertThat(registry.get("pheeeew.sigh.map.results").summaries())
+                .allSatisfy(summary -> assertThat(summary.count()).isZero());
+    }
+
+    @Test
+    void 목록_조회가_실패해도_시간을_기록하고_같은_예외를_전파한다() {
+        // given
+        IllegalStateException failure = new IllegalStateException("query failed");
+        when(repository.findListWithinBounds(BOUNDS, PERIOD, SNAPSHOT_AT, Long.MAX_VALUE, 1L, 500, 21, 1L))
+                .thenAnswer(invocation -> {
+                    clock.add(Duration.ofMillis(100));
+                    throw failure;
+                });
+
+        // when / then
+        assertThatThrownBy(() -> context.getBean(SighRepository.class).findListWithinBounds(
+                BOUNDS, PERIOD, SNAPSHOT_AT, Long.MAX_VALUE, 1L, 500, 21, 1L
+        )).isSameAs(failure);
+        Timer query = registry.get("pheeeew.sigh.list.query").timer();
+        assertThat(query.count()).isEqualTo(1);
+        assertThat(query.totalTime(TimeUnit.MILLISECONDS)).isEqualTo(100);
     }
 }

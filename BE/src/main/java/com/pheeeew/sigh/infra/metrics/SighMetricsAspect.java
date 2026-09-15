@@ -12,17 +12,27 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Aspect
 @Component
-public class SighMapMetricsAspect {
+public class SighMetricsAspect {
 
-    private final SighMapMetrics metrics;
+    private final SighMetrics metrics;
 
     @Around("execution(* com.pheeeew.sigh.domain.repository.SighRepository.findAllWithinBounds(..))")
-    public Object recordQuery(ProceedingJoinPoint joinPoint) throws Throwable {
+    public Object recordMapQuery(ProceedingJoinPoint joinPoint) throws Throwable {
         Timer.Sample sample = metrics.startQuery();
         try {
             return joinPoint.proceed();
         } finally {
-            metrics.recordQuery(sample);
+            metrics.recordMapQuery(sample);
+        }
+    }
+
+    @Around("execution(* com.pheeeew.sigh.domain.repository.SighRepository.findListWithinBounds(..))")
+    public Object recordListQuery(ProceedingJoinPoint joinPoint) throws Throwable {
+        Timer.Sample sample = metrics.startQuery();
+        try {
+            return joinPoint.proceed();
+        } finally {
+            metrics.recordListQuery(sample);
         }
     }
 
@@ -30,7 +40,7 @@ public class SighMapMetricsAspect {
             pointcut = "execution(* com.pheeeew.sigh.application.SighService.findAllWithinBounds(..))",
             returning = "result"
     )
-    public void recordResult(SighMapResult result) {
-        metrics.recordResult(result.sighs().size(), result.truncated());
+    public void recordMapResult(SighMapResult result) {
+        metrics.recordMapResult(result.sighs().size(), result.truncated());
     }
 }
