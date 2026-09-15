@@ -2,12 +2,15 @@ package com.pheeeew.common;
 
 import static com.pheeeew.common.exception.CommonErrorCode.INVALID_REQUEST;
 
+import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.common.exception.PheeeewException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan.Filter;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.client.RestTestClient;
@@ -20,7 +23,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @Import({GlobalExceptionHandler.class, CommonWebContractTest.TestController.class})
 @AutoConfigureRestTestClient
-@WebMvcTest(controllers = CommonWebContractTest.TestController.class)
+@WebMvcTest(
+        controllers = CommonWebContractTest.TestController.class,
+        excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
+)
 class CommonWebContractTest {
 
     private final RestTestClient client;
