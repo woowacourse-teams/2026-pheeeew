@@ -3,6 +3,7 @@ package com.pheeeew.feature.map.sighlist
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -155,7 +156,7 @@ internal fun SighReportScreen(
                     ),
                 maxLines = 6,
                 decorationBox = { innerTextField ->
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
                         if (uiState.description.isEmpty()) {
                             Text(
                                 text = "신고 내용을 자세히 작성해주세요.",
