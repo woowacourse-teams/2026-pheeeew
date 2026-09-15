@@ -88,6 +88,7 @@ fun BreathControl(
     onPhaseChanged: (SighPhase) -> Unit,
     cancelSignal: Int,
     requestPermissionOnLaunch: Boolean,
+    onPermissionLaunchRequestHandled: () -> Unit,
     breathConfig: BreathInteractionConfig = BreathInteractionConfig(),
     modifier: Modifier = Modifier,
 ) {
@@ -133,6 +134,7 @@ fun BreathControl(
     LaunchedEffect(breathControlState, requestPermissionOnLaunch) {
         if (requestPermissionOnLaunch) {
             breathControlState.warmUpMicrophonePermission()
+            onPermissionLaunchRequestHandled()
         }
     }
 
@@ -428,6 +430,7 @@ private fun BreathControlPreview() {
         onPhaseChanged = {},
         cancelSignal = 0,
         requestPermissionOnLaunch = false,
+        onPermissionLaunchRequestHandled = {},
     )
 }
 

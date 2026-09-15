@@ -22,11 +22,13 @@ fun MapRoute(
     viewModel: MapViewModel,
     moderationViewModel: SighModerationViewModel,
     isActive: Boolean,
+    requestPermissionsAfterOnboarding: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val moderationUiState by moderationViewModel.uiState.collectAsStateWithLifecycle()
     var startupPermissionsChecked by remember { mutableStateOf(false) }
+    var requestMicrophonePermissionOnLaunch by remember { mutableStateOf(false) }
     val lifeCycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(lifeCycleOwner, isActive) {
@@ -42,6 +44,9 @@ fun MapRoute(
                 if (!startupPermissionsChecked) {
                     viewModel.ensureLocationPermission(refreshLocation = false)
                     startupPermissionsChecked = true
+                    if (requestPermissionsAfterOnboarding) {
+                        requestMicrophonePermissionOnLaunch = true
+                    }
                     launch { viewModel.refreshLocationPermission() }
                 } else {
                     viewModel.refreshLocationPermission()
@@ -92,6 +97,10 @@ fun MapRoute(
         onMapError = viewModel::onMapError,
         onMapReady = onMapReady,
         isActive = isActive,
+        requestMicrophonePermissionOnLaunch = requestMicrophonePermissionOnLaunch,
+        onMicrophonePermissionLaunchRequestHandled = {
+            requestMicrophonePermissionOnLaunch = false
+        },
         modifier = modifier,
     )
 }
