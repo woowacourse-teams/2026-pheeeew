@@ -53,6 +53,7 @@ fun App(
             viewModel { SighModerationViewModel() }
         val mapReadiness = remember { MutableStateFlow(false) }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
+        var requestPermissionsAfterOnboarding by remember { mutableStateOf(false) }
 
         // 오버레이 화면들이 뒤에 깔린 지도로 터치가 새어나가지 않도록 막습니다.
         val overlayModifier =
@@ -65,6 +66,7 @@ fun App(
                 onSettingsClick = { screen = Screen.Settings },
                 onMapReady = { mapReadiness.value = true },
                 isActive = screen == Screen.Map,
+                requestPermissionsAfterOnboarding = requestPermissionsAfterOnboarding,
                 viewModel = mapViewModel,
                 moderationViewModel = sighModerationViewModel,
             )
@@ -123,6 +125,7 @@ fun App(
                 OnboardingScreen(
                     onFinished = {
                         onOnboardingCompleted()
+                        requestPermissionsAfterOnboarding = true
                         screen = Screen.Map
                     },
                     modifier = overlayModifier,

@@ -93,6 +93,8 @@ fun MapScreen(
     onMapError: (MapError) -> Unit,
     onMapReady: () -> Unit,
     isActive: Boolean,
+    requestMicrophonePermissionOnLaunch: Boolean,
+    onMicrophonePermissionLaunchRequestHandled: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var pendingFlightOrigin by remember { mutableStateOf<Offset?>(null) }
@@ -370,7 +372,8 @@ fun MapScreen(
                             },
                             onPhaseChanged = { sighPhase = it },
                             cancelSignal = cancelSignal,
-                            requestPermissionOnLaunch = false,
+                            requestPermissionOnLaunch = requestMicrophonePermissionOnLaunch,
+                            onPermissionLaunchRequestHandled = onMicrophonePermissionLaunchRequestHandled,
                         )
                     }
                 }
@@ -533,6 +536,8 @@ private fun MapScreenPreview() {
             onMapError = {},
             onMapReady = {},
             isActive = true,
+            requestMicrophonePermissionOnLaunch = false,
+            onMicrophonePermissionLaunchRequestHandled = {},
         )
     }
 }
