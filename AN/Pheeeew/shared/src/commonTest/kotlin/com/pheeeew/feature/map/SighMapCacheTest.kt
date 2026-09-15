@@ -89,6 +89,27 @@ class SighMapCacheTest {
     }
 
     @Test
+    fun `별 제거는 모든 영역에서 같은 ID만 제거하고 coverage를 유지한다`() {
+        val cache = SighMapCache(currentTimeMillis = { 0L })
+        val firstViewport = viewport
+        val secondViewport = viewport.shiftLongitude(1.0)
+        val removedPin = SighPin(id = 1L, coordinate = Coordinate(latitude = 37.55, longitude = 126.95))
+        val removedPinInSecondRegion =
+            removedPin.copy(coordinate = Coordinate(latitude = 37.55, longitude = 127.95))
+        val remainingPin = SighPin(id = 2L, coordinate = Coordinate(latitude = 37.55, longitude = 127.96))
+        cache.put(firstViewport.expandForPrefetch(), listOf(removedPin))
+        cache.put(secondViewport.expandForPrefetch(), listOf(removedPinInSecondRegion, remainingPin))
+
+        cache.remove(1L)
+
+        assertTrue(cache.covers(firstViewport))
+        assertTrue(cache.covers(secondViewport))
+        assertEquals(emptyList(), cache.visibleSighs(firstViewport))
+        assertEquals(listOf(remainingPin), cache.visibleSighs(secondViewport))
+        assertEquals(2, cache.regionCount)
+    }
+
+    @Test
     fun `날짜변경선을 넘는 캐시 범위는 양쪽 끝의 별을 반환한다`() {
         val wrappedViewport =
             SighBounds(
