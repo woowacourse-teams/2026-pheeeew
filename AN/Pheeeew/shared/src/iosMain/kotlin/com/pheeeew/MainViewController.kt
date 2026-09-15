@@ -1,5 +1,6 @@
 package com.pheeeew
 
+import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.data.local.device.InMemoryAccessTokenStore
@@ -15,22 +16,26 @@ fun MainViewController() =
         val appVersion = NSBundle.mainBundle.infoDictionary?.get("CFBundleShortVersionString") as? String ?: "-"
         val apiBaseUrl = NSBundle.mainBundle.infoDictionary?.get("API_BASE_URL") as? String ?: ""
         val userDefaults = NSUserDefaults.standardUserDefaults
-        val locationDependencies = createIosLocationDependencies()
+        val locationDependencies = remember { createIosLocationDependencies() }
         val apiConfig = ApiConfig(baseUrl = apiBaseUrl)
-        val accessTokenStore = InMemoryAccessTokenStore()
+        val accessTokenStore = remember { InMemoryAccessTokenStore() }
         val deviceDependencies =
-            createIosDeviceRegistrationDependencies(
-                config = apiConfig,
-                accessTokenStore = accessTokenStore,
-            )
+            remember(apiBaseUrl) {
+                createIosDeviceRegistrationDependencies(
+                    config = apiConfig,
+                    accessTokenStore = accessTokenStore,
+                )
+            }
         val sighDependencies =
-            SighModule.create(
-                config = apiConfig,
-                accessTokenStore = accessTokenStore,
-                refreshAccessToken = {
-                    deviceDependencies.ensureRegistered().getOrNull()?.accessToken
-                },
-            )
+            remember(apiBaseUrl, deviceDependencies) {
+                SighModule.create(
+                    config = apiConfig,
+                    accessTokenStore = accessTokenStore,
+                    refreshAccessToken = {
+                        deviceDependencies.ensureRegistered().getOrThrow().accessToken
+                    },
+                )
+            }
         App(
             appVersion = appVersion,
             hasCompletedOnboarding = userDefaults.boolForKey(KEY_ONBOARDING_COMPLETED),

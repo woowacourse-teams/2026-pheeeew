@@ -94,9 +94,20 @@ class IosKeychainDeviceTokenStorage : DeviceTokenStorage {
         val updateAttributes = CFDictionaryCreateMutable(null, 0, null, null)
         CFDictionarySetValue(updateAttributes, kSecValueData, data)
         val updateStatus = SecItemUpdate(query, updateAttributes)
-        if (updateStatus == errSecItemNotFound) {
-            CFDictionarySetValue(query, kSecValueData, data)
-            SecItemAdd(query, null)
+        when {
+            updateStatus == 0 -> {
+                Unit
+            }
+
+            updateStatus == errSecItemNotFound -> {
+                CFDictionarySetValue(query, kSecValueData, data)
+                val addStatus = SecItemAdd(query, null)
+                check(addStatus == 0) { "Keychain 저장에 실패했습니다. status=$addStatus" }
+            }
+
+            else -> {
+                error("Keychain 갱신에 실패했습니다. status=$updateStatus")
+            }
         }
     }
 

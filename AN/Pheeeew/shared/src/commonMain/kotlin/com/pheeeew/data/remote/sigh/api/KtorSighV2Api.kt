@@ -58,23 +58,25 @@ class KtorSighV2Api(
     }
 
     override suspend fun create(request: SighCreateV2RequestDto): SighFeatureDto<SighV2PropertiesDto> =
-        try {
-            createRequest(request, accessTokenForRequest())
-        } catch (error: ApiException.Unauthorized) {
-            if (error.code != "AUTH-001") throw error
-            val tokenUsedForRequest = accessTokenStore?.accessToken
-            val retryToken =
-                refreshMutex.withLock {
-                    val latestToken = accessTokenStore?.accessToken
-                    if (latestToken != null && latestToken != tokenUsedForRequest) {
-                        latestToken
-                    } else {
-                        refreshAccessToken?.invoke()?.also { refreshedToken ->
-                            accessTokenStore?.save(refreshedToken)
+        run {
+            val tokenUsedForRequest = accessTokenForRequest()
+            try {
+                createRequest(request, tokenUsedForRequest)
+            } catch (error: ApiException.Unauthorized) {
+                if (error.code != "AUTH-001") throw error
+                val retryToken =
+                    refreshMutex.withLock {
+                        val latestToken = accessTokenStore?.accessToken
+                        if (latestToken != null && latestToken != tokenUsedForRequest) {
+                            latestToken
+                        } else {
+                            refreshAccessToken?.invoke()?.also { refreshedToken ->
+                                accessTokenStore?.save(refreshedToken)
+                            }
                         }
-                    }
-                } ?: throw error
-            createRequest(request, retryToken)
+                    } ?: throw error
+                createRequest(request, retryToken)
+            }
         }
 
     private suspend fun createRequest(

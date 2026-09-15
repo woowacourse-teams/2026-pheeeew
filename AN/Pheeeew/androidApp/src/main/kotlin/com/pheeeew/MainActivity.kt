@@ -56,7 +56,7 @@ class MainActivity : ComponentActivity() {
                 config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
                 accessTokenStore = accessTokenStore,
                 refreshAccessToken = {
-                    deviceDependencies.ensureRegistered().getOrNull()?.accessToken
+                    deviceDependencies.ensureRegistered().getOrThrow().accessToken
                 },
             )
 
