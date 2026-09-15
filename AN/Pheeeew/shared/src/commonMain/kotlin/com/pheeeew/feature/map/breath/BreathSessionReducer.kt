@@ -124,8 +124,10 @@ class BreathSessionReducer(
             }
         if (activeState.sessionId != event.sessionId) return BreathSessionTransition(state)
         val reachedReleaseGesture =
-            event.upwardDistanceDp >= config.releaseDistanceDp ||
-                event.upwardVelocityDpPerSecond >= config.releaseVelocityDpPerSecond
+            config.isReleaseGesture(
+                upwardDistanceDp = event.upwardDistanceDp,
+                upwardVelocityDpPerSecond = event.upwardVelocityDpPerSecond,
+            )
         if (!reachedReleaseGesture) return BreathSessionTransition(activeState)
         if (activeState.growth < config.minimumReleaseProgress) {
             return BreathSessionTransition(

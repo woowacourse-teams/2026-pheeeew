@@ -359,10 +359,24 @@ fun BreathControl(
                                             with(density) {
                                                 (-flingVelocityY).coerceAtLeast(0f).toDp().value
                                             }
-                                        breathControlState.release(
-                                            upwardDistanceDp = upwardDistanceDp,
-                                            upwardVelocityDpPerSecond = upwardVelocityDpPerSecond,
-                                        )
+                                        if (
+                                            breathConfig.isReleaseGesture(
+                                                upwardDistanceDp = upwardDistanceDp,
+                                                upwardVelocityDpPerSecond = upwardVelocityDpPerSecond,
+                                            )
+                                        ) {
+                                            breathControlState.release(
+                                                upwardDistanceDp = upwardDistanceDp,
+                                                upwardVelocityDpPerSecond = upwardVelocityDpPerSecond,
+                                            )
+                                        } else {
+                                            coroutineScope.launch {
+                                                dragOffsetY.animateTo(
+                                                    0f,
+                                                    spring(dampingRatio = 0.7f, stiffness = 300f),
+                                                )
+                                            }
+                                        }
                                     },
                                     onDragCancel = {
                                         coroutineScope.launch {
