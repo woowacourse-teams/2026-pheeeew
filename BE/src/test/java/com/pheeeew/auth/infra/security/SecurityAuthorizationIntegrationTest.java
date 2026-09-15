@@ -1,5 +1,11 @@
 package com.pheeeew.auth.infra.security;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.HashSet;
+import java.util.Set;
+import static com.pheeeew.appversion.fixture.AppVersionFixture.기본_앱_버전_정책_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
@@ -7,6 +13,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
+import com.pheeeew.appversion.domain.repository.AppVersionRepository;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.auth.fixture.JwtTestKeys;
 import com.pheeeew.auth.infra.jwt.JwtProperties;
@@ -26,6 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
@@ -87,6 +95,9 @@ class SecurityAuthorizationIntegrationTest {
     @Autowired
     private JdbcClient jdbcClient;
 
+    @Autowired
+    private AppVersionRepository appVersionRepository;
+
     private RestTestClient client;
 
     @BeforeEach
@@ -98,6 +109,7 @@ class SecurityAuthorizationIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        appVersionRepository.deleteAll();
         jdbcClient.sql("DELETE FROM sigh_blocks").update();
         jdbcClient.sql("DELETE FROM device_blocks").update();
         sighReportRepository.deleteAll();
@@ -105,6 +117,50 @@ class SecurityAuthorizationIntegrationTest {
         deviceRefreshTokenRepository.deleteAll();
         deviceRepository.deleteAll();
         deviceChallengeRepository.deleteAll();
+    }
+
+    @Test
+    void 토큰_없이_활성_앱_버전을_조회할_수_있다() {
+        // given
+        appVersionRepository.save(기본_앱_버전_정책_빌더().build());
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri("/api/v2/app/version?platform=android").exchange();
+
+        // then
+        result.expectStatus().isOk().expectBody().json("""
+                {"minSupportedVersion":"1.0.0","latestVersion":"1.1.0","storeUrl":"https://example.com/app"}
+                """, JsonCompareMode.STRICT);
+    }
+
+    @Test
+    void 토큰_없이_등록되지_않은_앱_버전을_조회하면_404를_반환한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri("/api/v2/app/version?platform=android").exchange();
+
+        // then
+        result.expectStatus().isNotFound().expectBody().json("""
+                {"code":"APP_VERSION-002","message":"활성 앱 버전 정책을 찾을 수 없습니다."}
+                """, JsonCompareMode.STRICT);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "POST, /api/v2/app/version", "PUT, /api/v2/app/version",
+            "PATCH, /api/v2/app/version", "DELETE, /api/v2/app/version", "GET, /api/v1/app/version"
+    })
+    void 앱_버전_v2_GET_외의_경로와_메서드는_유효한_토큰으로도_접근할_수_없다(String method, String uri) {
+        // given
+        String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.method(HttpMethod.valueOf(method))
+                .uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken).exchange();
+
+        // then
+        result.expectStatus().isForbidden().expectBody().json(권한_없음_응답, JsonCompareMode.STRICT);
     }
 
     @Test
@@ -437,8 +493,9 @@ class SecurityAuthorizationIntegrationTest {
                 .getResponseBody();
         assertThat(응답_본문)
                 .doesNotContain(device.getPublicId().toString())
-                .doesNotContain(device.getId().toString() + ",")
-                .doesNotContain("deviceId");
+                .doesNotContain("device");
+        assertThat(한숨_속성_이름들(응답_본문))
+                .containsExactlyInAnyOrder("createdAt", "memo", "nickname", "liked", "likeCount");
         assertThat(작성자_기기_식별자()).isEqualTo(device.getId());
     }
 
@@ -956,6 +1013,17 @@ class SecurityAuthorizationIntegrationTest {
                 registry.add("pheeeew.jwt.private-key-base64", keys::privateKeyBase64);
                 registry.add("pheeeew.jwt.public-key-base64", keys::publicKeyBase64);
             };
+        }
+    }
+
+    private Set<String> 한숨_속성_이름들(String 응답_본문) {
+        try {
+            JsonNode properties = new ObjectMapper().readTree(응답_본문).get("properties");
+            Set<String> 이름들 = new HashSet<>();
+            properties.fieldNames().forEachRemaining(이름들::add);
+            return 이름들;
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("응답 본문을 해석할 수 없습니다.", exception);
         }
     }
 }

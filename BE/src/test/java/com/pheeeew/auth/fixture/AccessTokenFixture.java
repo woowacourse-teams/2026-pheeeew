@@ -18,7 +18,7 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 public final class AccessTokenFixture {
 
     private static final JwtConfig JWT_CONFIG = new JwtConfig();
-    private static final Duration 기본_유효_시간 = Duration.ofSeconds(30);
+    private static final Duration 기본_유효_시간 = Duration.ofMinutes(30);
     private static final Duration 시계_오차를_넘는_시간 = Duration.ofMinutes(10);
 
     private AccessTokenFixture() {
