@@ -13,11 +13,13 @@ import com.pheeeew.report.domain.repository.SighReportRepository;
 import com.pheeeew.report.exception.SighReportException;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.exception.SighException;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 트랜잭션 애노테이션을 두지 않는다. 근거는 ADR-0004에 있다.
@@ -30,9 +32,23 @@ import org.springframework.stereotype.Service;
 @Service
 public class SighReportService {
 
+    private static final long AUTO_DELETE_REPORT_THRESHOLD = 5L;
+
     private final SighReportRepository sighReportRepository;
     private final SighRepository sighRepository;
     private final DeviceRepository deviceRepository;
+    private final SighReportMetrics sighReportMetrics;
+
+    @Transactional
+    public int deleteReportedOverThreshold() {
+        int deletedCount = sighReportRepository.deleteReportedOverThreshold(
+                AUTO_DELETE_REPORT_THRESHOLD,
+                Instant.now()
+        );
+        sighReportMetrics.recordAutoDeleted(deletedCount);
+
+        return deletedCount;
+    }
 
     public SighReportResult save(Long sighId, UUID devicePublicId, String reason) {
         validateSighExists(sighId);
