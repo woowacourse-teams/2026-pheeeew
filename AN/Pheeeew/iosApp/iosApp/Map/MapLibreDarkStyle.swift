@@ -295,7 +295,7 @@ enum MapLibreDarkStyle {
             graphics.addPath(star.cgPath)
             graphics.clip()
 
-            let coreColor = color(hex: DesignSystemColors.shared.STAR_CORE_HEX)
+            let coreColor = Self.color(hex: DesignSystemColors.shared.STAR_CORE_HEX)
             let colors = [
                 coreColor.withAlphaComponent(1).cgColor,
                 color.withAlphaComponent(0.72).cgColor,

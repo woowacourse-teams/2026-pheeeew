@@ -5,6 +5,7 @@ import com.pheeeew.data.remote.common.dto.ErrorResponseDto
 import com.pheeeew.domain.exception.ApiException
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 
@@ -35,6 +36,7 @@ internal suspend fun HttpResponse.throwIfFailed() {
         }
     val code = error?.code ?: "HTTP_${status.value}"
     val message = error?.message ?: "API 요청에 실패했습니다."
+    val retryAfterSeconds = headers[HttpHeaders.RetryAfter]?.toLongOrNull()
 
     throw when (status) {
         HttpStatusCode.BadRequest -> ApiException.InvalidRequest(code, message)
@@ -42,6 +44,6 @@ internal suspend fun HttpResponse.throwIfFailed() {
         HttpStatusCode.Forbidden -> ApiException.Forbidden(code, message)
         HttpStatusCode.NotFound -> ApiException.NotFound(code, message)
         HttpStatusCode.Conflict -> ApiException.Conflict(code, message)
-        else -> ApiException.Unknown(code, message)
+        else -> ApiException.Unknown(code, message, retryAfterSeconds)
     }
 }

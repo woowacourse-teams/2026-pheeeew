@@ -3,9 +3,11 @@ package com.pheeeew.di
 import com.pheeeew.core.geo.GeodesicSighLocationObfuscator
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createPlatformHttpClient
+import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.remote.sigh.api.KtorSighV1Api
 import com.pheeeew.data.remote.sigh.api.KtorSighV2Api
 import com.pheeeew.data.repository.SighRepositoryImpl
+import com.pheeeew.domain.model.device.AccessToken
 import com.pheeeew.domain.repository.SighRepository
 import com.pheeeew.domain.usecase.CreateSighUseCase
 
@@ -15,12 +17,21 @@ data class SighDependencies(
 )
 
 object SighModule {
-    fun create(config: ApiConfig): SighDependencies {
+    fun create(
+        config: ApiConfig,
+        accessTokenStore: AccessTokenStore? = null,
+        refreshAccessToken: (suspend () -> AccessToken?)? = null,
+    ): SighDependencies {
         val client = createPlatformHttpClient(config)
         val repository =
             SighRepositoryImpl(
                 sighV1Api = KtorSighV1Api(client),
-                sighV2Api = KtorSighV2Api(client),
+                sighV2Api =
+                    KtorSighV2Api(
+                        client = client,
+                        accessTokenStore = accessTokenStore,
+                        refreshAccessToken = refreshAccessToken,
+                    ),
             )
         return SighDependencies(
             repository = repository,
