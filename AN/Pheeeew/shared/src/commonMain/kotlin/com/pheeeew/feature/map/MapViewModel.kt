@@ -665,8 +665,14 @@ class MapViewModel(
         submitMemo(rawMemo = "")
     }
 
-    fun dismissMemo() {
-        if (_uiState.value.sighRelease !is SighReleaseState.EditingMemo) return
+    fun cancelSighRegistration() {
+        val sighRelease = _uiState.value.sighRelease
+        if (
+            sighRelease !is SighReleaseState.EditingMemo &&
+            sighRelease !is SighReleaseState.AwaitingBreath
+        ) {
+            return
+        }
         clearPendingSigh()
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.Idle) }
     }

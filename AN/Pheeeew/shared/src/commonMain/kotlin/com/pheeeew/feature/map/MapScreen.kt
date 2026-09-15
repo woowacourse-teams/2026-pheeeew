@@ -95,7 +95,7 @@ fun MapScreen(
     onBreathCompleted: () -> Unit,
     onSubmitMemo: (String) -> Unit,
     onSkipMemo: () -> Unit,
-    onDismissMemo: () -> Unit,
+    onCancelSighRegistration: () -> Unit,
     onRetrySighCreation: () -> Unit,
     onCancelFailedSighRegistration: () -> Boolean,
     onConsumeFocusRequest: (String) -> Unit,
@@ -137,8 +137,12 @@ fun MapScreen(
     val cancelFailedSighRegistration = {
         if (onCancelFailedSighRegistration()) pendingFlightOrigin = null
     }
-    val isSighInteractionVisible =
-        sighPhase != SighPhase.Idle || isSighSubmitting || isMemoEditing || awaitingBreath != null
+    val cancelSighRegistration = {
+        cancelSignal += 1
+        pendingFlightOrigin = null
+        onCancelSighRegistration()
+    }
+    val isSighInteractionVisible = isSighSubmitting || isMemoEditing || awaitingBreath != null
     val guideStep = firstSighGuideStepFor(uiState.sighRelease, sighPhase)
     val isGuidePromptVisible =
         guideMode &&
@@ -365,10 +369,12 @@ fun MapScreen(
                         Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.8f))
-                            .pointerInput(isGuidePromptVisible) {
+                            .pointerInput(isGuidePromptVisible, isSighSubmitting) {
                                 detectTapGestures(
                                     onTap = {
-                                        if (!isGuidePromptVisible) cancelSignal += 1
+                                        if (!isGuidePromptVisible && !isSighSubmitting) {
+                                            cancelSighRegistration()
+                                        }
                                     },
                                 )
                             },
@@ -399,8 +405,7 @@ fun MapScreen(
                         step = guideStep,
                         controlBoundsInRoot = breathControlBounds,
                         onSkip = {
-                            cancelSignal += 1
-                            pendingFlightOrigin = null
+                            cancelSighRegistration()
                             onGuideSkip()
                         },
                         modifier = Modifier.fillMaxSize(),
@@ -418,7 +423,7 @@ fun MapScreen(
                     ) {
                         BreathControl(
                             enabled = !isFlightInProgress,
-                            startSignal = breathStartSignal,
+                            startSignal = if (awaitingBreath != null) breathStartSignal else 0,
                             onIdleClick = {
                                 if (uiState.sighRelease is SighReleaseState.Idle) {
                                     coroutineScope.launch {
@@ -469,10 +474,7 @@ fun MapScreen(
                 guideMode = guideMode,
                 onSubmit = onSubmitMemo,
                 onSkip = onSkipMemo,
-                onDismiss = {
-                    pendingFlightOrigin = null
-                    onDismissMemo()
-                },
+                onDismiss = cancelSighRegistration,
             )
         }
 
@@ -526,6 +528,10 @@ fun MapScreen(
         }
 
         if (showMicrophonePermissionDialog) {
+            val dismissMicrophonePermissionDialog = {
+                showMicrophonePermissionDialog = false
+                cancelSighRegistration()
+            }
             AppDialog(
                 title = "마이크 권한 설정 안내",
                 body = "한숨을 불려면 마이크 권한이 필요합니다.\n설정에서 마이크 권한을 '허용'으로 변경해주세요.",
@@ -534,8 +540,8 @@ fun MapScreen(
                     showMicrophonePermissionDialog = false
                     onOpenAppSettings()
                 },
-                onDismissRequest = { showMicrophonePermissionDialog = false },
-                onDismissClick = { showMicrophonePermissionDialog = false },
+                onDismissRequest = dismissMicrophonePermissionDialog,
+                onDismissClick = dismissMicrophonePermissionDialog,
                 dismissText = "취소",
             )
         }
@@ -606,7 +612,7 @@ private fun MapScreenPreview() {
             onBreathCompleted = {},
             onSubmitMemo = {},
             onSkipMemo = {},
-            onDismissMemo = {},
+            onCancelSighRegistration = {},
             onRetrySighCreation = {},
             onCancelFailedSighRegistration = { true },
             onConsumeFocusRequest = {},
