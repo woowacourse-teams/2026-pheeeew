@@ -23,13 +23,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * 트랜잭션 애노테이션을 두지 않는다. 근거는 ADR-0004에 있다.
- *
- * <p>같은 기기의 중복 신고는 유니크 제약 위반을 잡아 기존 신고를 재조회하는 방식으로 처리한다.
- * 이 흐름을 하나의 트랜잭션으로 묶으면 flush 실패로 영속성 컨텍스트가 오염되어 뒤이은 재조회가
- * 불가능해진다. {@code SighService}가 같은 이유로 트랜잭션을 두지 않는다.
- */
 @RequiredArgsConstructor
 @Service
 public class SighReportService {
