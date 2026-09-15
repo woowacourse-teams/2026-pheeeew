@@ -3,9 +3,13 @@
 package com.pheeeew.feature.map.sighlist
 
 import com.pheeeew.data.local.device.DeviceIdStorage
+import com.pheeeew.data.remote.block.api.DeviceBlockApi
+import com.pheeeew.data.remote.block.dto.DeviceBlockCreateRequestDto
+import com.pheeeew.data.remote.block.dto.DeviceBlockResponseDto
 import com.pheeeew.data.remote.report.api.SighReportApi
 import com.pheeeew.data.remote.report.dto.SighReportCreateRequestDto
 import com.pheeeew.data.remote.report.dto.SighReportResponseDto
+import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.domain.usecase.ReportSighUseCase
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -112,11 +116,23 @@ class SighModerationViewModelTest {
 
     private fun createViewModel(api: SighReportApi = FakeSighReportApi): SighModerationViewModel =
         SighModerationViewModel(
-            ReportSighUseCase(
-                api = api,
-                deviceIdStorage = FakeDeviceIdStorage,
-            ),
+            blockUser = BlockUserUseCase(FakeDeviceBlockApi),
+            reportSigh =
+                ReportSighUseCase(
+                    api = api,
+                    deviceIdStorage = FakeDeviceIdStorage,
+                ),
         )
+
+    private object FakeDeviceBlockApi : DeviceBlockApi {
+        override suspend fun create(request: DeviceBlockCreateRequestDto): DeviceBlockResponseDto =
+            DeviceBlockResponseDto(
+                blockId = 1L,
+                sighId = request.sighId,
+                nickname = "테스터",
+                createdAt = "2026-09-15T00:00:00Z",
+            )
+    }
 
     private object FakeDeviceIdStorage : DeviceIdStorage {
         override fun getOrCreate(): String = "device-id"

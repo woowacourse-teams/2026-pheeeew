@@ -47,6 +47,7 @@ fun MainViewController() =
             locationDependencies = locationDependencies,
             sighRepository = sighDependencies.repository,
             createSigh = sighDependencies.createSigh,
+            blockUser = sighDependencies.blockUser,
             reportSigh = sighDependencies.reportSigh,
             mapPerformanceLogger = {},
             ensureDeviceRegistered = deviceDependencies.ensureRegistered,

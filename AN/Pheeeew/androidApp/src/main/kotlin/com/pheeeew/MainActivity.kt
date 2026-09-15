@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
                 locationDependencies = locationDependencies,
                 sighRepository = sighDependencies.repository,
                 createSigh = sighDependencies.createSigh,
+                blockUser = sighDependencies.blockUser,
                 reportSigh = sighDependencies.reportSigh,
                 mapPerformanceLogger = { event ->
                     if (BuildConfig.DEBUG) Log.d("Pheeeew.MapPerf", event)

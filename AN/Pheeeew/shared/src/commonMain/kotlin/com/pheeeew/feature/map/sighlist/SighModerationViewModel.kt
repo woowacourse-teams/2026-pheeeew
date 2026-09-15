@@ -3,6 +3,7 @@ package com.pheeeew.feature.map.sighlist
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.domain.exception.ApiException
+import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.domain.usecase.ReportSighUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,7 +12,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SighModerationViewModel(
+    private val blockUser: BlockUserUseCase,
     private val reportSigh: ReportSighUseCase,
+    private val onBlockSucceeded: (Long) -> Unit = {},
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SighModerationUiState())
     val uiState: StateFlow<SighModerationUiState> = _uiState.asStateFlow()
@@ -40,9 +43,19 @@ class SighModerationViewModel(
 
     fun confirmBlock() {
         val target = _uiState.value.blockTarget ?: return
-        _uiState.update { it.copy(blockTarget = null) }
-
-        // TODO: 차단 API가 확정되면 target.sighId와 target.nickname으로 작성자 차단을 요청한다.
+        _uiState.update { it.copy(blockTarget = null, blockErrorMessage = null) }
+        viewModelScope.launch {
+            runCatching { blockUser(target.sighId) }
+                .onSuccess { onBlockSucceeded(target.sighId) }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            blockTarget = target,
+                            blockErrorMessage = error.toBlockErrorMessage(),
+                        )
+                    }
+                }
+        }
     }
 
     fun requestReport() {
@@ -112,5 +125,13 @@ class SighModerationViewModel(
             is ApiException.InvalidRequest -> "신고 내용을 확인해주세요."
             is ApiException.NotFound -> "신고할 한숨을 찾을 수 없습니다."
             else -> "신고에 실패했습니다. 잠시 후 다시 시도해주세요."
+        }
+
+    private fun Throwable.toBlockErrorMessage(): String =
+        when (this) {
+            is ApiException.Conflict -> message
+            is ApiException.Network -> "인터넷 연결 상태를 확인해주세요."
+            is ApiException.NotFound -> "차단할 한숨을 찾을 수 없습니다."
+            else -> "차단에 실패했습니다. 잠시 후 다시 시도해주세요."
         }
 }
