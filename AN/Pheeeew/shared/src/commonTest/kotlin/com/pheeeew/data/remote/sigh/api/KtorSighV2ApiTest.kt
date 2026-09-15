@@ -6,6 +6,7 @@ import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createHttpClient
 import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.remote.sigh.dto.SighCreateV2RequestDto
+import com.pheeeew.domain.exception.ApiException
 import com.pheeeew.domain.model.device.AccessToken
 import com.pheeeew.domain.model.sigh.SighBounds
 import io.ktor.client.engine.mock.MockEngine
@@ -24,6 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -107,6 +109,103 @@ class KtorSighV2ApiTest {
             assertEquals(42, result.id)
             assertEquals("오늘은 조금 지쳤다", result.properties.memo)
             assertEquals("날아가는 고라니", result.properties.nickname)
+            client.close()
+        }
+
+    @Test
+    fun `목록과 상세 조회는 access token을 bearer 헤더로 전달한다`() =
+        runTest {
+            val store = TestAccessTokenStore(AccessToken("access-123"))
+            var requestCount = 0
+            val engine =
+                MockEngine { request ->
+                    assertEquals("Bearer access-123", request.headers[HttpHeaders.Authorization])
+                    requestCount++
+                    if (request.url.encodedPath == "/api/v2/sighs/42") {
+                        respondJson(FEATURE_RESPONSE)
+                    } else {
+                        respondJson(PAGE_RESPONSE)
+                    }
+                }
+            val client = createClient(engine)
+            val api = KtorSighV2Api(client, store)
+
+            api.getFirstPage(
+                SighBounds(
+                    minLongitude = 126.9,
+                    minLatitude = 37.5,
+                    maxLongitude = 127.1,
+                    maxLatitude = 37.6,
+                ),
+            )
+            api.getNextPage("opaque-cursor")
+            api.getById(42L)
+
+            assertEquals(3, requestCount)
+            client.close()
+        }
+
+    @Test
+    fun `상세 조회의 410 응답을 Gone 예외로 변환한다`() =
+        runTest {
+            val engine =
+                MockEngine {
+                    respondJson(
+                        content =
+                            """
+                            {
+                              "code": "SIGH-004",
+                              "message": "한숨의 조회 기간이 지났습니다."
+                            }
+                            """.trimIndent(),
+                        status = HttpStatusCode.Gone,
+                    )
+                }
+            val client = createClient(engine)
+            val api = KtorSighV2Api(client)
+
+            val exception =
+                assertFailsWith<ApiException.Gone> {
+                    api.getById(42L)
+                }
+
+            assertEquals("SIGH-004", exception.code)
+            assertEquals("한숨의 조회 기간이 지났습니다.", exception.message)
+            client.close()
+        }
+
+    @Test
+    fun `상세 조회의 access token 만료 시 refresh 후 한 번 재시도한다`() =
+        runTest {
+            val store = TestAccessTokenStore(AccessToken("expired"))
+            var requestCount = 0
+            var refreshCount = 0
+            val engine =
+                MockEngine { request ->
+                    requestCount++
+                    if (requestCount == 1) {
+                        assertEquals("Bearer expired", request.headers[HttpHeaders.Authorization])
+                        respondJson(
+                            """{"code":"AUTH-001","message":"expired"}""",
+                            HttpStatusCode.Unauthorized,
+                        )
+                    } else {
+                        assertEquals("Bearer refreshed", request.headers[HttpHeaders.Authorization])
+                        respondJson(FEATURE_RESPONSE)
+                    }
+                }
+            val client = createClient(engine)
+            val api =
+                KtorSighV2Api(client, store, refreshAccessToken = {
+                    refreshCount++
+                    AccessToken("refreshed")
+                })
+
+            val result = api.getById(42L)
+
+            assertEquals(42L, result.id)
+            assertEquals(2, requestCount)
+            assertEquals(1, refreshCount)
             client.close()
         }
 

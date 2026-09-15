@@ -26,6 +26,7 @@ data class SighBrowserUiState(
     val isLoadMoreError: Boolean = false,
     val refreshRevision: Long = 0L,
     val errorMessage: String? = null,
+    val noticeMessage: String? = null,
 )
 
 data class MapLocationUiState(
