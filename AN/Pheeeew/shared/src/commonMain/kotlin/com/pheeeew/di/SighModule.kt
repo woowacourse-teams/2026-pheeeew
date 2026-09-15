@@ -45,7 +45,15 @@ object SighModule {
             )
         return SighDependencies(
             repository = repository,
-            reportSigh = ReportSighUseCase(KtorSighReportApi(client), deviceIdStorage),
+            reportSigh =
+                ReportSighUseCase(
+                    KtorSighReportApi(
+                        client = client,
+                        accessTokenStore = accessTokenStore,
+                        refreshAccessToken = refreshAccessToken,
+                    ),
+                    deviceIdStorage,
+                ),
             createSigh =
                 CreateSighUseCase(
                     repository = repository,
