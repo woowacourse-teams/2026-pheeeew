@@ -5,6 +5,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
@@ -22,14 +23,22 @@ fun MapRoute(
     viewModel: MapViewModel,
     moderationViewModel: SighModerationViewModel,
     isActive: Boolean,
-    requestPermissionsAfterOnboarding: Boolean,
+    guideMode: Boolean,
+    onGuideSkip: () -> Unit,
+    onSighRegistrationSucceeded: (SighRegistrationSucceeded) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val moderationUiState by moderationViewModel.uiState.collectAsStateWithLifecycle()
     var startupPermissionsChecked by remember { mutableStateOf(false) }
-    var requestMicrophonePermissionOnLaunch by remember { mutableStateOf(false) }
     val lifeCycleOwner = LocalLifecycleOwner.current
+    val latestOnSighRegistrationSucceeded = rememberUpdatedState(onSighRegistrationSucceeded)
+
+    LaunchedEffect(viewModel) {
+        viewModel.registrationEvents.collect { event ->
+            latestOnSighRegistrationSucceeded.value(event)
+        }
+    }
 
     LaunchedEffect(lifeCycleOwner, isActive) {
         if (!isActive) {
@@ -44,9 +53,6 @@ fun MapRoute(
                 if (!startupPermissionsChecked) {
                     viewModel.ensureLocationPermission(refreshLocation = false)
                     startupPermissionsChecked = true
-                    if (requestPermissionsAfterOnboarding) {
-                        requestMicrophonePermissionOnLaunch = true
-                    }
                     launch { viewModel.refreshLocationPermission() }
                 } else {
                     viewModel.refreshLocationPermission()
@@ -85,7 +91,8 @@ fun MapRoute(
         onSubmitSighReport = moderationViewModel::submitReport,
         onDismissSighReport = moderationViewModel::dismissReport,
         onDismissReportSuccess = moderationViewModel::clearSuccess,
-        onBeginMemoAfterExplosion = viewModel::beginMemoAfterExplosion,
+        onBeginSighRegistration = viewModel::beginSighRegistration,
+        onBreathCompleted = viewModel::completeBreath,
         onSubmitMemo = viewModel::submitMemo,
         onSkipMemo = viewModel::skipMemo,
         onDismissMemo = viewModel::dismissMemo,
@@ -98,10 +105,8 @@ fun MapRoute(
         onMapError = viewModel::onMapError,
         onMapReady = onMapReady,
         isActive = isActive,
-        requestMicrophonePermissionOnLaunch = requestMicrophonePermissionOnLaunch,
-        onMicrophonePermissionLaunchRequestHandled = {
-            requestMicrophonePermissionOnLaunch = false
-        },
+        guideMode = guideMode,
+        onGuideSkip = onGuideSkip,
         modifier = modifier,
     )
 }

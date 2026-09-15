@@ -51,6 +51,10 @@ sealed interface SighReleaseState {
         val draft: PendingSighDraft,
     ) : SighReleaseState
 
+    data class AwaitingBreath(
+        val command: CreateSighCommand,
+    ) : SighReleaseState
+
     data class Submitting(
         val command: CreateSighCommand,
     ) : SighReleaseState

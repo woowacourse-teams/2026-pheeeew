@@ -42,7 +42,9 @@ import kotlinx.coroutines.launch
 fun App(
     appVersion: String,
     hasCompletedOnboarding: Boolean,
+    hasCompletedFirstSighGuide: Boolean,
     onOnboardingCompleted: () -> Unit,
+    onFirstSighGuideCompleted: () -> Unit,
     locationDependencies: LocationDependencies?,
     sighRepository: SighRepository,
     createSigh: CreateSighUseCase,
@@ -52,6 +54,14 @@ fun App(
     AppTheme {
         val coroutineScope = rememberCoroutineScope()
         var screen by remember { mutableStateOf(Screen.Splash) }
+        var firstSighGuideActive by remember { mutableStateOf(!hasCompletedFirstSighGuide) }
+
+        val completeFirstSighGuide = {
+            if (firstSighGuideActive) {
+                firstSighGuideActive = false
+                onFirstSighGuideCompleted()
+            }
+        }
         val mapViewModel: MapViewModel =
             viewModel {
                 MapViewModel(sighRepository, createSigh, locationDependencies, mapPerformanceLogger)
@@ -60,6 +70,8 @@ fun App(
             viewModel { SighModerationViewModel() }
         val mapReadiness = remember { MutableStateFlow(false) }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
+
+        @Suppress("UNUSED_VARIABLE")
         var requestPermissionsAfterOnboarding by remember { mutableStateOf(false) }
         var registrationState by remember { mutableStateOf<DeviceRegistrationState?>(null) }
 
@@ -95,12 +107,14 @@ fun App(
                 onSettingsClick = { screen = Screen.Settings },
                 onMapReady = { mapReadiness.value = true },
                 isActive = screen == Screen.Map,
-                requestPermissionsAfterOnboarding = requestPermissionsAfterOnboarding,
+                guideMode = firstSighGuideActive,
+                onGuideSkip = completeFirstSighGuide,
+                onSighRegistrationSucceeded = { completeFirstSighGuide() },
                 viewModel = mapViewModel,
                 moderationViewModel = sighModerationViewModel,
             )
 
-            if (screen == Screen.Map) {
+            if (screen == Screen.Map && !firstSighGuideActive) {
                 DoubleBackToExitHandler()
             }
 
@@ -152,9 +166,13 @@ fun App(
 
             if (screen == Screen.Onboarding) {
                 OnboardingScreen(
+                    onRequestLocationPermission = {
+                        mapViewModel.requestLocationPermission()
+                    },
+                    onOpenLocationSettings = mapViewModel::openLocationSettings,
                     onFinished = {
                         onOnboardingCompleted()
-                        requestPermissionsAfterOnboarding = true
+                        firstSighGuideActive = true
                         screen = Screen.Map
                     },
                     modifier = overlayModifier,

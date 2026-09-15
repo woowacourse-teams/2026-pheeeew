@@ -25,8 +25,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.resetMain
@@ -371,6 +373,43 @@ class MapViewModelTest {
     }
 
     @Test
+    fun `온보딩 위치 권한 요청은 기존 영구 거부 판정을 거치지 않고 시스템 요청을 호출한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                var requestCount = 0
+                val dependencies =
+                    LocationDependencies(
+                        permissionController =
+                            object : LocationPermissionController {
+                                override suspend fun currentStatus() = LocationPermissionStatus.PermanentlyDenied
+
+                                override suspend fun requestPermission(): LocationPermissionStatus {
+                                    requestCount += 1
+                                    return LocationPermissionStatus.Denied
+                                }
+                            },
+                        permissionSettingsLauncher =
+                            object : LocationPermissionSettingsLauncher {
+                                override suspend fun openAppSettings() = true
+
+                                override suspend fun openLocationSettings() = true
+                            },
+                        repository = FakeLocationRepository(LocationState.Loading),
+                    )
+                val viewModel = createViewModel(locationDependencies = dependencies)
+
+                val status = viewModel.requestLocationPermission()
+
+                assertEquals(1, requestCount)
+                assertEquals(LocationPermissionStatus.Denied, status)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `한숨 등록 성공 시 핀과 포커스 요청을 추가한다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
@@ -389,10 +428,17 @@ class MapViewModelTest {
                         repository = repository,
                         locationDependencies = locationDependencies(LocationState.Available(location)),
                     )
+                val registrationEvent = async { viewModel.registrationEvents.first() }
+                runCurrent()
 
-                viewModel.beginMemoAfterExplosion()
+                viewModel.beginSighRegistration()
                 assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease)
                 viewModel.submitMemo("  오늘은 조금 지쳤다  ")
+                runCurrent()
+                assertIs<SighReleaseState.AwaitingBreath>(viewModel.uiState.value.sighRelease)
+                assertTrue(repository.createdCommands.isEmpty())
+
+                viewModel.completeBreath()
                 runCurrent()
                 assertIs<SighReleaseState.Submitting>(viewModel.uiState.value.sighRelease)
 
@@ -404,6 +450,13 @@ class MapViewModelTest {
                 assertEquals(1L, state.sighs.single().id)
                 assertEquals("1", state.viewport.focusRequest?.id)
                 assertEquals("오늘은 조금 지쳤다", repository.createdCommands.single().memo)
+                assertEquals(
+                    SighRegistrationSucceeded(
+                        requestId = repository.createdCommands.single().requestId,
+                        sighId = 1L,
+                    ),
+                    registrationEvent.await(),
+                )
 
                 viewModel.consumeFocusRequest("other")
                 val unconsumedFocusRequest = viewModel.uiState.value.viewport.focusRequest
@@ -436,8 +489,10 @@ class MapViewModelTest {
                         locationDependencies = locationDependencies(LocationState.Available(location)),
                     )
 
-                viewModel.beginMemoAfterExplosion()
+                viewModel.beginSighRegistration()
                 viewModel.submitMemo("같은 요청")
+                assertIs<SighReleaseState.AwaitingBreath>(viewModel.uiState.value.sighRelease)
+                viewModel.completeBreath()
                 runCurrent()
                 advanceTimeBy(2_000)
                 runCurrent()
@@ -457,7 +512,7 @@ class MapViewModelTest {
         }
 
     @Test
-    fun `메모 건너뛰기는 null payload를 한 번만 제출한다`() =
+    fun `메모 건너뛰기는 null payload를 준비하고 한숨 완료 뒤 한 번만 제출한다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
             Dispatchers.setMain(dispatcher)
@@ -479,9 +534,17 @@ class MapViewModelTest {
                             ),
                     )
 
-                viewModel.beginMemoAfterExplosion()
+                viewModel.beginSighRegistration()
                 viewModel.skipMemo()
                 viewModel.skipMemo()
+                runCurrent()
+
+                val awaiting = assertIs<SighReleaseState.AwaitingBreath>(viewModel.uiState.value.sighRelease)
+                assertEquals(null, awaiting.command.memo)
+                assertTrue(repository.createdCommands.isEmpty())
+
+                viewModel.completeBreath()
+                viewModel.completeBreath()
                 runCurrent()
 
                 assertEquals(1, repository.createdCommands.size)
@@ -516,7 +579,7 @@ class MapViewModelTest {
                             ),
                     )
 
-                viewModel.beginMemoAfterExplosion()
+                viewModel.beginSighRegistration()
                 assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease)
                 viewModel.dismissMemo()
 
@@ -531,7 +594,7 @@ class MapViewModelTest {
     fun `위치가 없으면 한숨 등록을 시작하지 않고 재시도 불가 오류를 표시한다`() {
         val viewModel = createViewModel()
 
-        viewModel.beginMemoAfterExplosion()
+        viewModel.beginSighRegistration()
 
         val error = assertIs<SighReleaseState.Error>(viewModel.uiState.value.sighRelease)
         assertEquals(false, error.canRetry)

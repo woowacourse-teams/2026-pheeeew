@@ -1,5 +1,6 @@
 package com.pheeeew
 
+import android.content.SharedPreferences
 import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
@@ -17,6 +18,7 @@ import com.pheeeew.di.SighModule
 import com.pheeeew.di.createAndroidDeviceRegistrationDependencies
 import com.pheeeew.di.createAndroidDeviceRegistrationWithPlayIntegrityDependencies
 import com.pheeeew.di.createAndroidLocationDependencies
+import com.pheeeew.feature.map.guide.resolveFirstSighGuideCompleted
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,6 +27,9 @@ class MainActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
         )
         super.onCreate(savedInstanceState)
+
+        val firstSighGuidePreferences =
+            resolveFirstSighGuidePreferences(getSharedPreferences(APP_PREFERENCES_NAME, MODE_PRIVATE))
 
         val holder = ViewModelProvider(this)[LocationDependenciesHolder::class.java]
         val locationDependencies =
@@ -63,9 +68,17 @@ class MainActivity : ComponentActivity() {
         setContent {
             App(
                 appVersion = BuildConfig.VERSION_NAME,
-                hasCompletedOnboarding = appPreferences.getBoolean(KEY_ONBOARDING_COMPLETED, false),
+                hasCompletedOnboarding = firstSighGuidePreferences.hasCompletedOnboarding,
+                hasCompletedFirstSighGuide = firstSighGuidePreferences.hasCompletedFirstSighGuide,
                 onOnboardingCompleted = {
-                    appPreferences.edit().putBoolean(KEY_ONBOARDING_COMPLETED, true).apply()
+                    appPreferences
+                        .edit()
+                        .putBoolean(KEY_ONBOARDING_COMPLETED, true)
+                        .putBoolean(KEY_FIRST_SIGH_GUIDE_COMPLETED, false)
+                        .apply()
+                },
+                onFirstSighGuideCompleted = {
+                    appPreferences.edit().putBoolean(KEY_FIRST_SIGH_GUIDE_COMPLETED, true).apply()
                 },
                 locationDependencies = locationDependencies,
                 sighRepository = sighDependencies.repository,
@@ -81,6 +94,28 @@ class MainActivity : ComponentActivity() {
 
 private const val APP_PREFERENCES_NAME = "pheeeew_preferences"
 private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
+private const val KEY_FIRST_SIGH_GUIDE_COMPLETED = "first_sigh_guide_completed_v1"
+
+private data class FirstSighGuidePreferences(
+    val hasCompletedOnboarding: Boolean,
+    val hasCompletedFirstSighGuide: Boolean,
+)
+
+private fun resolveFirstSighGuidePreferences(preferences: SharedPreferences): FirstSighGuidePreferences {
+    val hasCompletedOnboarding = preferences.getBoolean(KEY_ONBOARDING_COMPLETED, false)
+    val storedGuideCompletion =
+        if (preferences.contains(KEY_FIRST_SIGH_GUIDE_COMPLETED)) {
+            preferences.getBoolean(KEY_FIRST_SIGH_GUIDE_COMPLETED, false)
+        } else {
+            null
+        }
+    val hasCompletedFirstSighGuide =
+        resolveFirstSighGuideCompleted(hasCompletedOnboarding, storedGuideCompletion)
+    if (storedGuideCompletion == null && hasCompletedOnboarding) {
+        preferences.edit().putBoolean(KEY_FIRST_SIGH_GUIDE_COMPLETED, true).apply()
+    }
+    return FirstSighGuidePreferences(hasCompletedOnboarding, hasCompletedFirstSighGuide)
+}
 
 class LocationDependenciesHolder : ViewModel() {
     var dependencies: LocationDependencies? = null
