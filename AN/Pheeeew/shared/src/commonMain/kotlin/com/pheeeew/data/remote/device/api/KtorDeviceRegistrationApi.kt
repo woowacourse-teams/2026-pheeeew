@@ -12,10 +12,13 @@ import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 
-class KtorDeviceRegistrationApi(private val client: HttpClient) : DeviceRegistrationApi {
-    override suspend fun getChallenge(): DeviceChallengeResponseDto = executeRequest {
-        client.post("/api/v2/devices/challenge")
-    }
+class KtorDeviceRegistrationApi(
+    private val client: HttpClient,
+) : DeviceRegistrationApi {
+    override suspend fun getChallenge(): DeviceChallengeResponseDto =
+        executeRequest {
+            client.post("/api/v2/devices/challenge")
+        }
 
     override suspend fun register(request: DeviceRegistrationRequestDto): DeviceRegistrationResponseDto =
         executeRequest {

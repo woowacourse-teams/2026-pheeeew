@@ -15,15 +15,18 @@ class AndroidPlayIntegrityAttestationProvider(
     private val integrityManager = IntegrityManagerFactory.create(context.applicationContext)
 
     override suspend fun create(challenge: String): DeviceAttestation {
-        val response = suspendCoroutine { continuation ->
-            integrityManager.requestIntegrityToken(
-                IntegrityTokenRequest.builder()
-                    .setNonce(challenge)
-                    .setCloudProjectNumber(cloudProjectNumber)
-                    .build(),
-            ).addOnSuccessListener(continuation::resume)
-                .addOnFailureListener(continuation::resumeWithException)
-        }
+        val response =
+            suspendCoroutine { continuation ->
+                integrityManager
+                    .requestIntegrityToken(
+                        IntegrityTokenRequest
+                            .builder()
+                            .setNonce(challenge)
+                            .setCloudProjectNumber(cloudProjectNumber)
+                            .build(),
+                    ).addOnSuccessListener(continuation::resume)
+                    .addOnFailureListener(continuation::resumeWithException)
+            }
 
         return DeviceAttestation(
             platform = DevicePlatform.ANDROID,

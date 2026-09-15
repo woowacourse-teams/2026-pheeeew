@@ -8,6 +8,8 @@ import com.pheeeew.data.remote.device.dto.RefreshTokenResponseDto
 
 interface DeviceRegistrationApi {
     suspend fun getChallenge(): DeviceChallengeResponseDto
+
     suspend fun register(request: DeviceRegistrationRequestDto): DeviceRegistrationResponseDto
+
     suspend fun refresh(request: RefreshTokenRequestDto): RefreshTokenResponseDto
 }

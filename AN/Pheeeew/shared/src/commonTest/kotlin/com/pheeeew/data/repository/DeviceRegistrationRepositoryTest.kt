@@ -16,30 +16,32 @@ import com.pheeeew.domain.exception.ApiException
 import com.pheeeew.domain.model.device.AccessToken
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.model.device.RefreshToken
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlinx.coroutines.test.runTest
 
 class DeviceRegistrationRepositoryTest {
     @Test
-    fun `등록 네트워크 실패 시 같은 requestId로 한 번 재시도한다`() = runTest {
-        val api = FakeDeviceRegistrationApi()
-        val repository = DeviceRegistrationRepositoryImpl(
-            api = api,
-            tokenStorage = FakeDeviceTokenStorage(),
-            attestationProvider = FakeDeviceAttestationProvider(),
-            accessTokenStore = FakeAccessTokenStore(),
-        )
+    fun `등록 네트워크 실패 시 같은 requestId로 한 번 재시도한다`() =
+        runTest {
+            val api = FakeDeviceRegistrationApi()
+            val repository =
+                DeviceRegistrationRepositoryImpl(
+                    api = api,
+                    tokenStorage = FakeDeviceTokenStorage(),
+                    attestationProvider = FakeDeviceAttestationProvider(),
+                    accessTokenStore = FakeAccessTokenStore(),
+                )
 
-        repository.register()
+            repository.register()
 
-        assertEquals(2, api.registrationRequests.size)
-        assertEquals(
-            api.registrationRequests[0].requestId,
-            api.registrationRequests[1].requestId,
-        )
-        assertEquals(null, api.registrationRequests[1].attestation)
-    }
+            assertEquals(2, api.registrationRequests.size)
+            assertEquals(
+                api.registrationRequests[0].requestId,
+                api.registrationRequests[1].requestId,
+            )
+            assertEquals(null, api.registrationRequests[1].attestation)
+        }
 
     private class FakeDeviceRegistrationApi : DeviceRegistrationApi {
         val registrationRequests = mutableListOf<DeviceRegistrationRequestDto>()
@@ -54,8 +56,7 @@ class DeviceRegistrationRepositoryTest {
             return DeviceRegistrationResponseDto("access", "refresh", 3600)
         }
 
-        override suspend fun refresh(request: RefreshTokenRequestDto) =
-            RefreshTokenResponseDto("access", 3600)
+        override suspend fun refresh(request: RefreshTokenRequestDto) = RefreshTokenResponseDto("access", 3600)
     }
 
     private class FakeDeviceAttestationProvider : DeviceAttestationProvider {

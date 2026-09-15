@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:filename")
+
 package com.pheeeew.di
 
 import com.pheeeew.core.network.ApiConfig
@@ -12,8 +14,8 @@ import com.pheeeew.data.repository.DeviceRegistrationRepositoryImpl
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.repository.DeviceRegistrationRepository
 import com.pheeeew.domain.usecase.EnsureDeviceRegisteredUseCase
-import kotlin.experimental.ExperimentalNativeApi
 import platform.DeviceCheck.DCAppAttestService
+import kotlin.experimental.ExperimentalNativeApi
 import kotlin.native.Platform
 
 data class IosDeviceRegistrationDependencies(
@@ -34,17 +36,19 @@ fun createIosDeviceRegistrationDependencies(
         } else {
             NoOpDeviceAttestationProvider(DevicePlatform.IOS)
         }
-    val repository = DeviceRegistrationRepositoryImpl(
-        api = KtorDeviceRegistrationApi(createPlatformHttpClient(config)),
-        tokenStorage = tokenStorage,
-        attestationProvider = attestationProvider,
-        accessTokenStore = accessTokenStore,
-    )
+    val repository =
+        DeviceRegistrationRepositoryImpl(
+            api = KtorDeviceRegistrationApi(createPlatformHttpClient(config)),
+            tokenStorage = tokenStorage,
+            attestationProvider = attestationProvider,
+            accessTokenStore = accessTokenStore,
+        )
     return IosDeviceRegistrationDependencies(
         repository = repository,
-        ensureRegistered = EnsureDeviceRegisteredUseCase(
-            repository = repository,
-            forceRegistrationOnce = isDebugBuild,
-        ),
+        ensureRegistered =
+            EnsureDeviceRegisteredUseCase(
+                repository = repository,
+                forceRegistrationOnce = isDebugBuild,
+            ),
     )
 }

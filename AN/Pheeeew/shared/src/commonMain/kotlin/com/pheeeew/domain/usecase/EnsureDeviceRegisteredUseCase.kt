@@ -48,13 +48,12 @@ class EnsureDeviceRegisteredUseCase(
         }
     }
 
-    private suspend fun register(): Result<AuthSession> {
-        return try {
+    private suspend fun register(): Result<AuthSession> =
+        try {
             Result.success(repository.register())
         } catch (error: CancellationException) {
             throw error
         } catch (error: Throwable) {
             Result.failure(error)
         }
-    }
 }

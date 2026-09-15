@@ -8,15 +8,17 @@ import com.pheeeew.domain.model.device.RefreshToken
 class AndroidEncryptedDeviceTokenStorage(
     context: Context,
 ) : DeviceTokenStorage {
-    private val preferences = EncryptedSharedPreferences.create(
-        context,
-        PREFERENCES_NAME,
-        MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build(),
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-    )
+    private val preferences =
+        EncryptedSharedPreferences.create(
+            context,
+            PREFERENCES_NAME,
+            MasterKey
+                .Builder(context)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build(),
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
 
     override suspend fun getRefreshToken(): RefreshToken? =
         preferences.getString(REFRESH_TOKEN_KEY, null)?.let(::RefreshToken)

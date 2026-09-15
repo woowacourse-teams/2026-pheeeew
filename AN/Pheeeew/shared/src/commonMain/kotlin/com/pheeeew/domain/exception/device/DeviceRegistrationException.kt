@@ -7,46 +7,50 @@ sealed class DeviceRegistrationException(
     class InvalidRefreshToken(
         cause: Throwable? = null,
     ) : DeviceRegistrationException(
-        message = "Refresh token is invalid.",
-        cause = cause,
-    )
+            message = "Refresh token is invalid.",
+            cause = cause,
+        )
 
     class DeviceNotFound(
         cause: Throwable? = null,
     ) : DeviceRegistrationException(
-        message = "Registered device was not found.",
-        cause = cause,
-    )
+            message = "Registered device was not found.",
+            cause = cause,
+        )
 
     class Network(
         cause: Throwable? = null,
     ) : DeviceRegistrationException(
-        message = "Network error occurred.",
-        cause = cause,
-    )
+            message = "Network error occurred.",
+            cause = cause,
+        )
 
     class Server(
         cause: Throwable? = null,
     ) : DeviceRegistrationException(
-        message = "Device server error occurred.",
-        cause = cause,
-    )
+            message = "Device server error occurred.",
+            cause = cause,
+        )
 
-    class InvalidChallenge(cause: Throwable? = null) : DeviceRegistrationException(
-        message = "Device challenge is invalid or expired.",
-        cause = cause,
-    )
+    class InvalidChallenge(
+        cause: Throwable? = null,
+    ) : DeviceRegistrationException(
+            message = "Device challenge is invalid or expired.",
+            cause = cause,
+        )
 
-    class AttestationRejected(cause: Throwable? = null) : DeviceRegistrationException(
-        message = "Device attestation was rejected.",
-        cause = cause,
-    )
+    class AttestationRejected(
+        cause: Throwable? = null,
+    ) : DeviceRegistrationException(
+            message = "Device attestation was rejected.",
+            cause = cause,
+        )
 
     class RetryableServer(
         val retryAfterSeconds: Long? = null,
         cause: Throwable? = null,
     ) : DeviceRegistrationException(
-        message = "Device verification is temporarily unavailable.",
-        cause = cause,
-    )
+            message = "Device verification is temporarily unavailable.",
+            cause = cause,
+        )
 }

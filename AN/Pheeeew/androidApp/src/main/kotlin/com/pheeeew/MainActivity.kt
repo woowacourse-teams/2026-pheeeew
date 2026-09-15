@@ -11,11 +11,11 @@ import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.pheeeew.core.network.ApiConfig
+import com.pheeeew.data.local.device.InMemoryAccessTokenStore
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.di.SighModule
 import com.pheeeew.di.createAndroidDeviceRegistrationDependencies
 import com.pheeeew.di.createAndroidDeviceRegistrationWithPlayIntegrityDependencies
-import com.pheeeew.data.local.device.InMemoryAccessTokenStore
 import com.pheeeew.di.createAndroidLocationDependencies
 
 class MainActivity : ComponentActivity() {
@@ -34,6 +34,32 @@ class MainActivity : ComponentActivity() {
             ).also { holder.dependencies = it }
         val sighDependencies = SighModule.create(ApiConfig(baseUrl = BuildConfig.API_BASE_URL))
         val appPreferences = getSharedPreferences(APP_PREFERENCES_NAME, MODE_PRIVATE)
+        val accessTokenStore = InMemoryAccessTokenStore()
+        val deviceDependencies =
+            if (
+                !BuildConfig.DEBUG && BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER > 0L
+            ) {
+                createAndroidDeviceRegistrationWithPlayIntegrityDependencies(
+                    context = this,
+                    config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
+                    cloudProjectNumber = BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
+                    accessTokenStore = accessTokenStore,
+                )
+            } else {
+                createAndroidDeviceRegistrationDependencies(
+                    context = this,
+                    config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
+                    accessTokenStore = accessTokenStore,
+                )
+            }
+        val sighDependencies =
+            SighModule.create(
+                config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
+                accessTokenStore = accessTokenStore,
+                refreshAccessToken = {
+                    deviceDependencies.ensureRegistered().getOrNull()?.accessToken
+                },
+            )
 
         setContent {
             App(

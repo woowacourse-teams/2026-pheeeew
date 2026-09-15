@@ -1,11 +1,11 @@
 package com.pheeeew.data.remote.sigh.api
 
+import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.remote.common.executeRequest
 import com.pheeeew.data.remote.sigh.dto.SighCreateV2RequestDto
 import com.pheeeew.data.remote.sigh.dto.SighFeatureDto
 import com.pheeeew.data.remote.sigh.dto.SighPageResponseDto
 import com.pheeeew.data.remote.sigh.dto.SighV2PropertiesDto
-import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.domain.exception.ApiException
 import com.pheeeew.domain.model.device.AccessToken
 import com.pheeeew.domain.model.sigh.SighBounds
@@ -63,31 +63,33 @@ class KtorSighV2Api(
         } catch (error: ApiException.Unauthorized) {
             if (error.code != "AUTH-001") throw error
             val tokenUsedForRequest = accessTokenStore?.accessToken
-            val retryToken = refreshMutex.withLock {
-                val latestToken = accessTokenStore?.accessToken
-                if (latestToken != null && latestToken != tokenUsedForRequest) {
-                    latestToken
-                } else {
-                    refreshAccessToken?.invoke()?.also { refreshedToken ->
-                        accessTokenStore?.save(refreshedToken)
+            val retryToken =
+                refreshMutex.withLock {
+                    val latestToken = accessTokenStore?.accessToken
+                    if (latestToken != null && latestToken != tokenUsedForRequest) {
+                        latestToken
+                    } else {
+                        refreshAccessToken?.invoke()?.also { refreshedToken ->
+                            accessTokenStore?.save(refreshedToken)
+                        }
                     }
-                }
-            } ?: throw error
+                } ?: throw error
             createRequest(request, retryToken)
         }
 
     private suspend fun createRequest(
         request: SighCreateV2RequestDto,
         accessToken: AccessToken?,
-    ): SighFeatureDto<SighV2PropertiesDto> = executeRequest {
-        client.post(SIGHS_PATH) {
-            accessToken?.let { token ->
-                header("Authorization", "Bearer ${token.value}")
+    ): SighFeatureDto<SighV2PropertiesDto> =
+        executeRequest {
+            client.post(SIGHS_PATH) {
+                accessToken?.let { token ->
+                    header("Authorization", "Bearer ${token.value}")
+                }
+                contentType(ContentType.Application.Json)
+                setBody(request)
             }
-            contentType(ContentType.Application.Json)
-            setBody(request)
         }
-    }
 
     private suspend fun accessTokenForRequest(): AccessToken? {
         val store = accessTokenStore ?: return null

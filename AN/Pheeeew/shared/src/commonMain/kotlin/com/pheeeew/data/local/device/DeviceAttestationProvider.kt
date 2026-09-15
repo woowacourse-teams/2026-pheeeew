@@ -16,6 +16,5 @@ interface DeviceAttestationProvider {
 class NoOpDeviceAttestationProvider(
     private val platform: DevicePlatform,
 ) : DeviceAttestationProvider {
-    override suspend fun create(challenge: String): DeviceAttestation =
-        DeviceAttestation(platform = platform)
+    override suspend fun create(challenge: String): DeviceAttestation = DeviceAttestation(platform = platform)
 }

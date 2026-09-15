@@ -18,17 +18,19 @@ fun MainViewController() =
         val locationDependencies = createIosLocationDependencies()
         val apiConfig = ApiConfig(baseUrl = apiBaseUrl)
         val accessTokenStore = InMemoryAccessTokenStore()
-        val deviceDependencies = createIosDeviceRegistrationDependencies(
-            config = apiConfig,
-            accessTokenStore = accessTokenStore,
-        )
-        val sighDependencies = SighModule.create(
-            config = apiConfig,
-            accessTokenStore = accessTokenStore,
-            refreshAccessToken = {
-                deviceDependencies.ensureRegistered().getOrNull()?.accessToken
-            },
-        )
+        val deviceDependencies =
+            createIosDeviceRegistrationDependencies(
+                config = apiConfig,
+                accessTokenStore = accessTokenStore,
+            )
+        val sighDependencies =
+            SighModule.create(
+                config = apiConfig,
+                accessTokenStore = accessTokenStore,
+                refreshAccessToken = {
+                    deviceDependencies.ensureRegistered().getOrNull()?.accessToken
+                },
+            )
         App(
             appVersion = appVersion,
             hasCompletedOnboarding = userDefaults.boolForKey(KEY_ONBOARDING_COMPLETED),

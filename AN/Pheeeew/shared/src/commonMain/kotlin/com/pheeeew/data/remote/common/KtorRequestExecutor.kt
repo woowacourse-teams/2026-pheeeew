@@ -5,8 +5,8 @@ import com.pheeeew.data.remote.common.dto.ErrorResponseDto
 import com.pheeeew.domain.exception.ApiException
 import io.ktor.client.call.body
 import io.ktor.client.statement.HttpResponse
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import kotlinx.coroutines.CancellationException
 
 internal suspend inline fun <reified T> executeRequest(block: suspend () -> HttpResponse): T =

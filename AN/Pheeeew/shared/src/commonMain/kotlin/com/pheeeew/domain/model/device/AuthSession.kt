@@ -8,8 +8,7 @@ data class AuthSession(
     fun isAccessTokenExpired(
         nowEpochSeconds: Long,
         safetyWindowSeconds: Long = 30,
-    ): Boolean {
-        return nowEpochSeconds + safetyWindowSeconds >=
+    ): Boolean =
+        nowEpochSeconds + safetyWindowSeconds >=
             accessTokenExpiresAtEpochSeconds
-    }
 }

@@ -9,7 +9,10 @@ interface AccessTokenStore {
 
     fun save(accessToken: AccessToken)
 
-    fun save(accessToken: AccessToken, expiresAtEpochSeconds: Long) {
+    fun save(
+        accessToken: AccessToken,
+        expiresAtEpochSeconds: Long,
+    ) {
         save(accessToken)
     }
 
@@ -26,7 +29,10 @@ class InMemoryAccessTokenStore : AccessTokenStore {
         this.accessToken = accessToken
     }
 
-    override fun save(accessToken: AccessToken, expiresAtEpochSeconds: Long) {
+    override fun save(
+        accessToken: AccessToken,
+        expiresAtEpochSeconds: Long,
+    ) {
         this.accessToken = accessToken
         this.accessTokenExpiresAtEpochSeconds = expiresAtEpochSeconds
     }

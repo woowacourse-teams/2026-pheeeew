@@ -3,7 +3,10 @@ package com.pheeeew.data.remote.device.dto
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class DeviceChallengeResponseDto(val challenge: String, val expiresIn: Long)
+data class DeviceChallengeResponseDto(
+    val challenge: String,
+    val expiresIn: Long,
+)
 
 @Serializable
 data class DeviceAttestationDto(
@@ -27,7 +30,12 @@ data class DeviceRegistrationResponseDto(
 )
 
 @Serializable
-data class RefreshTokenRequestDto(val refreshToken: String)
+data class RefreshTokenRequestDto(
+    val refreshToken: String,
+)
 
 @Serializable
-data class RefreshTokenResponseDto(val accessToken: String, val expiresIn: Long)
+data class RefreshTokenResponseDto(
+    val accessToken: String,
+    val expiresIn: Long,
+)
