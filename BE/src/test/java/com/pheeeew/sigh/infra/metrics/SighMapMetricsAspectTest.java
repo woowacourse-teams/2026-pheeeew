@@ -7,6 +7,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.pheeeew.common.config.ClockConfig;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.sigh.application.SighLocationGenerator;
@@ -53,7 +54,10 @@ class SighMapMetricsAspectTest {
         context.registerBean(SighLocationGenerator.class, () -> mock(SighLocationGenerator.class));
         context.registerBean(SighNicknameGenerator.class, () -> mock(SighNicknameGenerator.class));
         context.registerBean(SimpleMeterRegistry.class, () -> registry);
-        context.register(AopAutoConfiguration.class, SighMapMetrics.class, SighMapMetricsAspect.class, SighService.class);
+        context.register(
+                AopAutoConfiguration.class, ClockConfig.class,
+                SighMapMetrics.class, SighMapMetricsAspect.class, SighService.class
+        );
         context.refresh();
         service = context.getBean(SighService.class);
     }

@@ -22,6 +22,7 @@ import com.pheeeew.sigh.domain.repository.projection.SighDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
 import com.pheeeew.sigh.exception.SighException;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -44,6 +45,7 @@ public class SighService {
     private final DeviceRepository deviceRepository;
     private final SighLocationGenerator sighLocationGenerator;
     private final SighNicknameGenerator sighNicknameGenerator;
+    private final Clock clock;
 
     public SighSaveResult save(UUID requestId, double longitude, double latitude) {
         return saveSigh(requestId, longitude, latitude, null, null);
@@ -93,7 +95,7 @@ public class SighService {
     }
 
     public SighListResult findFirstListPage(SighSearchBounds bounds, UUID devicePublicId) {
-        Instant snapshotAt = Instant.now().truncatedTo(ChronoUnit.MICROS);
+        Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         SighListCursor cursor = SighListCursor.initial(bounds, snapshotAt);
 
         return findList(cursor, devicePublicId);

@@ -4,6 +4,7 @@ import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.BDDMockito.given;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -21,7 +22,6 @@ import com.pheeeew.sigh.application.like.SighLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
-import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import com.pheeeew.sigh.infra.metrics.SighMapMetrics;
@@ -30,6 +30,7 @@ import com.pheeeew.support.PostgisDataJpaTest;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -51,6 +52,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +62,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class SighServiceIntegrationTest {
 
+    private static final Instant CURRENT_TIME = Instant.parse("2026-09-01T12:00:00.123456789Z");
     private static final double SEOUL_CITY_HALL_LONGITUDE = 126.9780;
     private static final double SEOUL_CITY_HALL_LATITUDE = 37.5664;
     private static final SighSearchBounds SEOUL_BOUNDS =
@@ -91,10 +94,14 @@ class SighServiceIntegrationTest {
     @Autowired
     private MeterRegistry meterRegistry;
 
+    @MockitoBean(enforceOverride = true)
+    private Clock clock;
+
     private UUID devicePublicId;
 
     @BeforeEach
     void setUp() {
+        given(clock.instant()).willReturn(CURRENT_TIME);
         devicePublicId = deviceRepository.save(기본_기기_빌더().build()).getPublicId();
     }
 
@@ -503,7 +510,7 @@ class SighServiceIntegrationTest {
         // given
         UUID anotherDevicePublicId = deviceRepository.save(기본_기기_빌더().build()).getPublicId();
         List<Long> ids = new ArrayList<>();
-        String createdAt = Instant.now().minusSeconds(60).toString();
+        String createdAt = CURRENT_TIME.minusSeconds(60).toString();
         for (int index = 0; index < 21; index++) {
             ids.add(insertSigh(126.9780, 37.5664, createdAt));
         }
@@ -584,7 +591,7 @@ class SighServiceIntegrationTest {
     @Test
     void 바텀시트_목록은_메모와_닉네임을_포함해_20건씩_최신순으로_조회한다() {
         // given
-        String createdAt = Instant.now().minusSeconds(60).toString();
+        String createdAt = CURRENT_TIME.minusSeconds(60).toString();
         List<Long> ids = new ArrayList<>();
         for (int index = 0; index < 20; index++) {
             ids.add(insertSigh(126.9780, 37.5664, createdAt));
@@ -647,15 +654,14 @@ class SighServiceIntegrationTest {
     }
 
     @Test
-    void 바텀시트_목록은_첫_조회_전에_스냅샷_시각에_등록된_한숨도_제외한다() {
+    void 바텀시트_목록은_조회_시각을_마이크로초로_잘라_스냅샷을_고정하고_경계의_한숨을_제외한다() {
         // given
-        Instant snapshotAt = Instant.parse("2026-09-01T12:00:00Z");
+        Instant snapshotAt = Instant.parse("2026-09-01T12:00:00.123456Z");
         String beforeSnapshot = snapshotAt.minusSeconds(60).toString();
         List<Long> ids = new ArrayList<>();
         for (int index = 0; index < 21; index++) {
             ids.add(insertSigh(126.9780, 37.5664, beforeSnapshot));
         }
-        SighListCursor initialCursor = SighListCursor.initial(SEOUL_BOUNDS, snapshotAt);
         Long 스냅샷_경계_한숨 = insertSigh(
                 126.9780,
                 37.5664,
@@ -663,25 +669,21 @@ class SighServiceIntegrationTest {
         );
 
         // when
-        List<SighListProjection> firstQuery = findListProjections(initialCursor);
-        List<SighListProjection> firstPage = firstQuery.subList(0, 20);
-        SighListProjection lastProjection = firstPage.getLast();
-        SighListCursor nextCursor = initialCursor.next(
-                lastProjection.getCreatedAt(),
-                lastProjection.getId()
-        );
-        List<SighListProjection> secondPage = findListProjections(nextCursor);
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListCursor nextCursor = SighListCursorCodec.decode(firstPage.nextCursor());
+        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         List<Long> expectedFirstPageIds = new ArrayList<>(ids.subList(1, ids.size()));
         expectedFirstPageIds.sort(Comparator.reverseOrder());
 
-        assertThat(firstPage)
-                .extracting(SighListProjection::getId)
+        assertThat(nextCursor.snapshotAt()).isEqualTo(snapshotAt);
+        assertThat(firstPage.items())
+                .extracting(item -> item.sigh().id())
                 .containsExactlyElementsOf(expectedFirstPageIds)
                 .doesNotContain(스냅샷_경계_한숨);
-        assertThat(secondPage)
-                .extracting(SighListProjection::getId)
+        assertThat(secondPage.items())
+                .extracting(item -> item.sigh().id())
                 .containsExactly(ids.getFirst())
                 .doesNotContain(스냅샷_경계_한숨);
     }
@@ -689,7 +691,7 @@ class SighServiceIntegrationTest {
     @Test
     void 첫_페이지_이후에_등록된_한숨은_현재_바텀시트_목록에_포함하지_않는다() {
         // given
-        String createdAt = Instant.now().minusSeconds(60).toString();
+        String createdAt = CURRENT_TIME.minusSeconds(60).toString();
         List<Long> ids = new ArrayList<>();
         for (int index = 0; index < 21; index++) {
             ids.add(insertSigh(126.9780, 37.5664, createdAt));
@@ -890,23 +892,6 @@ class SighServiceIntegrationTest {
         }
 
         throw new AssertionError("500건 조회는 25페이지 안에 끝나야 합니다.");
-    }
-
-    private List<SighListProjection> findListProjections(SighListCursor cursor) {
-        SighSearchBounds bounds = cursor.bounds();
-        return sighRepository.findListWithinBounds(
-                bounds.minLongitude(),
-                bounds.minLatitude(),
-                bounds.maxLongitude(),
-                bounds.maxLatitude(),
-                cursor.snapshotAt(),
-                cursor.lastItemCreatedAt(),
-                cursor.lastId(),
-                null,
-                500,
-                21,
-                deviceRepository.findByPublicId(devicePublicId).orElseThrow().getId()
-        );
     }
 
     private void removeRejectedRequestIdConstraint() {
