@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -289,15 +288,15 @@ fun MapScreen(
             )
         }
 
-        ErrorSnackbar(
+        AppSnackbar(
             message = moderationUiState.successMessage,
             onDismiss = onDismissReportSuccess,
             modifier =
                 Modifier
-                    .align(Alignment.TopCenter)
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
         )
 
         AppSnackbar(
