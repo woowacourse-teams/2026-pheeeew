@@ -40,6 +40,7 @@ public class SighService {
 
     private static final int MAX_FIND_COUNT = 500;
     private static final int LIST_PAGE_SIZE = 20;
+    private static final int QUERY_PERIOD_DAYS = 14;
 
     private final SighRepository sighRepository;
     private final DeviceRepository deviceRepository;
@@ -67,12 +68,15 @@ public class SighService {
     }
 
     public SighMapResult findAllWithinBounds(SighSearchBounds bounds, Optional<UUID> viewerDevicePublicId) {
+        Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         Long blockerDeviceId = findBlockerDeviceId(viewerDevicePublicId);
         List<SighMapProjection> projections = sighRepository.findAllWithinBounds(
                 bounds.minLongitude(),
                 bounds.minLatitude(),
                 bounds.maxLongitude(),
                 bounds.maxLatitude(),
+                findQueryStartAt(queriedAt),
+                queriedAt,
                 blockerDeviceId,
                 MAX_FIND_COUNT + 1
         );
@@ -154,6 +158,14 @@ public class SighService {
         return viewerDevicePublicId
                 .map(this::findDeviceId)
                 .orElse(null);
+    }
+
+    private Instant findQueryStartAt(Instant referenceAt) {
+        return referenceAt.atZone(clock.getZone())
+                .toLocalDate()
+                .minusDays(QUERY_PERIOD_DAYS - 1)
+                .atStartOfDay(clock.getZone())
+                .toInstant();
     }
 
     private SighListResult findList(SighListCursor cursor, UUID devicePublicId) {

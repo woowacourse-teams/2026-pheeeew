@@ -32,6 +32,8 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -45,6 +47,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
@@ -102,6 +106,7 @@ class SighServiceIntegrationTest {
     @BeforeEach
     void setUp() {
         given(clock.instant()).willReturn(CURRENT_TIME);
+        given(clock.getZone()).willReturn(ZoneId.of("Asia/Seoul"));
         devicePublicId = deviceRepository.save(기본_기기_빌더().build()).getPublicId();
     }
 
@@ -375,6 +380,45 @@ class SighServiceIntegrationTest {
                 .isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND);
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "2026-09-14T06:00:00.123456Z, 2026-08-31T15:00:00Z",
+            "2026-09-14T15:00:00Z, 2026-09-01T15:00:00Z"
+    })
+    void 지도는_한국_날짜로_13일_전_자정부터_조회_시각까지_경계를_포함한다(String currentTime, String startTime) {
+        // given
+        Instant queriedAt = Instant.parse(currentTime);
+        Instant startAt = Instant.parse(startTime);
+        given(clock.instant()).willReturn(queriedAt);
+        insertSigh(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
+        Long 시작_경계_한숨 = insertSigh(126.9780, 37.5664, startAt.toString());
+        Long 조회_시각_한숨 = insertSigh(126.9780, 37.5664, queriedAt.toString());
+        insertSigh(126.9780, 37.5664, queriedAt.plus(1, ChronoUnit.MICROS).toString());
+
+        // when
+        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+
+        // then
+        assertThat(result.sighs()).extracting(SighMapItem::id)
+                .containsExactly(조회_시각_한숨, 시작_경계_한숨);
+        assertThat(result.truncated()).isFalse();
+    }
+
+    @Test
+    void 지도_영역에_기간_밖의_한숨만_있으면_빈_결과를_반환한다() {
+        // given
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
+        insertSigh(126.9780, 37.5664, "2026-08-31T14:59:59.999999Z");
+        insertSigh(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
+
+        // when
+        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+
+        // then
+        assertThat(result.sighs()).isEmpty();
+        assertThat(result.truncated()).isFalse();
+    }
+
     @Test
     void 삭제된_한숨은_지도_영역_조회에_나오지_않는다() {
         // given
@@ -475,9 +519,11 @@ class SighServiceIntegrationTest {
     }
 
     @Test
-    void 지도_영역의_한숨이_500건이면_모두_반환하고_잘리지_않았음을_알린다() {
+    void 지도_영역의_기간_내_한숨이_500건이면_기간_밖의_한숨을_제외하고_잘리지_않았음을_알린다() {
         // given
         insertSighs(500, 126.9780, 37.5664);
+        insertSigh(126.9780, 37.5664, "2026-08-18T14:59:59.999999Z");
+        insertSigh(126.9780, 37.5664, CURRENT_TIME.plusSeconds(1).toString());
 
         // when
         SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
