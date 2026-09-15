@@ -95,7 +95,7 @@ fun MapRoute(
         onBreathCompleted = viewModel::completeBreath,
         onSubmitMemo = viewModel::submitMemo,
         onSkipMemo = viewModel::skipMemo,
-        onDismissMemo = viewModel::dismissMemo,
+        onCancelSighRegistration = viewModel::cancelSighRegistration,
         onRetrySighCreation = viewModel::retrySighCreation,
         onCancelFailedSighRegistration = viewModel::cancelFailedSighRegistration,
         onConsumeFocusRequest = viewModel::consumeFocusRequest,

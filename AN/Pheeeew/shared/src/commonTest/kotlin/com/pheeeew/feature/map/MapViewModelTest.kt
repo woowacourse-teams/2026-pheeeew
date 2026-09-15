@@ -681,10 +681,49 @@ class MapViewModelTest {
 
                 viewModel.beginSighRegistration()
                 assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease)
-                viewModel.dismissMemo()
+                viewModel.cancelSighRegistration()
 
                 assertIs<SighReleaseState.Idle>(viewModel.uiState.value.sighRelease)
                 assertTrue(repository.createdCommands.isEmpty())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `한숨 불기 중 취소는 pending 등록을 정리하고 idle로 돌아간다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val viewModel =
+                    createViewModel(
+                        locationDependencies =
+                            locationDependencies(
+                                LocationState.Available(
+                                    CurrentLocation(
+                                        latitude = 37.55,
+                                        longitude = 126.95,
+                                        accuracyMeters = 5f,
+                                        capturedAtMillis = 1L,
+                                    ),
+                                ),
+                            ),
+                    )
+
+                viewModel.beginSighRegistration()
+                val firstDraft =
+                    assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease).draft
+                viewModel.submitMemo("취소할 한숨")
+                assertIs<SighReleaseState.AwaitingBreath>(viewModel.uiState.value.sighRelease)
+
+                viewModel.cancelSighRegistration()
+
+                assertIs<SighReleaseState.Idle>(viewModel.uiState.value.sighRelease)
+                viewModel.beginSighRegistration()
+                val nextDraft =
+                    assertIs<SighReleaseState.EditingMemo>(viewModel.uiState.value.sighRelease).draft
+                assertTrue(firstDraft.requestId != nextDraft.requestId)
             } finally {
                 Dispatchers.resetMain()
             }
