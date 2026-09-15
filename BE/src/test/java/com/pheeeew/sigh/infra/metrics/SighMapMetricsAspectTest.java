@@ -20,6 +20,7 @@ import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighSearchBounds;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
+import com.pheeeew.sigh.domain.repository.query.SighQueryPeriod;
 import com.pheeeew.sigh.exception.SighException;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MockClock;
@@ -84,7 +85,7 @@ class SighMapMetricsAspectTest {
         when(projection.getCreatedAt()).thenReturn(Instant.parse("2026-09-11T00:00:00Z"));
         when(repository.findAllWithinBounds(
                 eq(126.9), eq(37.5), eq(127.1), eq(37.6),
-                any(Instant.class), any(Instant.class), isNull(), eq(501)
+                any(SighQueryPeriod.class), isNull(), eq(501)
         ))
                 .thenAnswer(invocation -> {
                     clock.add(Duration.ofMillis(250));
@@ -99,7 +100,7 @@ class SighMapMetricsAspectTest {
         assertThat(result.truncated()).isEqualTo(truncated);
         verify(repository).findAllWithinBounds(
                 eq(126.9), eq(37.5), eq(127.1), eq(37.6),
-                any(Instant.class), any(Instant.class), isNull(), eq(501)
+                any(SighQueryPeriod.class), isNull(), eq(501)
         );
         Timer query = registry.get("pheeeew.sigh.map.query").timer();
         assertThat(query.count()).isEqualTo(1);
@@ -122,7 +123,7 @@ class SighMapMetricsAspectTest {
         IllegalStateException failure = new IllegalStateException("query failed");
         when(repository.findAllWithinBounds(
                 eq(126.9), eq(37.5), eq(127.1), eq(37.6),
-                any(Instant.class), any(Instant.class), isNull(), eq(501)
+                any(SighQueryPeriod.class), isNull(), eq(501)
         ))
                 .thenAnswer(invocation -> {
                     clock.add(Duration.ofMillis(100));

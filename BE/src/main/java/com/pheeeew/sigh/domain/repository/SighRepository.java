@@ -5,6 +5,7 @@ import com.pheeeew.sigh.domain.repository.projection.GeneratedLocation;
 import com.pheeeew.sigh.domain.repository.projection.SighDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
+import com.pheeeew.sigh.domain.repository.query.SighQueryPeriod;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -74,8 +75,8 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                     FROM sighs sigh
                     CROSS JOIN bounds
                     WHERE sigh.deleted_at IS NULL
-                      AND sigh.created_at >= :startAt
-                      AND sigh.created_at <= :endAt
+                      AND sigh.created_at >= :#{#period.startAt()}
+                      AND sigh.created_at <= :#{#period.endAt()}
                       AND sigh.location && bounds.area
                       AND ST_Intersects(sigh.location, bounds.area)
                       AND (
@@ -106,8 +107,7 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             @Param("minLatitude") double minLatitude,
             @Param("maxLongitude") double maxLongitude,
             @Param("maxLatitude") double maxLatitude,
-            @Param("startAt") Instant startAt,
-            @Param("endAt") Instant endAt,
+            @Param("period") SighQueryPeriod period,
             @Param("blockerDeviceId") Long blockerDeviceId,
             @Param("limit") int limit
     );
