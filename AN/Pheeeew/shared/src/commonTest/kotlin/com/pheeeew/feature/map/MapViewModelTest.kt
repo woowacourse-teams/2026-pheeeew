@@ -709,7 +709,7 @@ class MapViewModelTest {
                                     ),
                                 ),
                             ),
-                )
+                    )
 
                 viewModel.beginSighRegistration()
                 val firstDraft =
