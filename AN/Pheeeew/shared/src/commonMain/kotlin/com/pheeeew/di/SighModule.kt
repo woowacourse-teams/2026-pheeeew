@@ -30,7 +30,12 @@ object SighModule {
         val client = createPlatformHttpClient(config)
         val repository =
             SighRepositoryImpl(
-                sighV1Api = KtorSighV1Api(client),
+                sighV1Api =
+                    KtorSighV1Api(
+                        client = client,
+                        accessTokenStore = accessTokenStore,
+                        refreshAccessToken = refreshAccessToken,
+                    ),
                 sighV2Api =
                     KtorSighV2Api(
                         client = client,
