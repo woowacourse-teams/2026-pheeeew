@@ -24,6 +24,10 @@ public class SighMetrics {
                 .register(registry);
         completeMapResults = registerMapResults(registry, false);
         truncatedMapResults = registerMapResults(registry, true);
+        registerListResults(registry, "first", true);
+        registerListResults(registry, "first", false);
+        registerListResults(registry, "next", true);
+        registerListResults(registry, "next", false);
     }
 
     public Timer.Sample startQuery() {
@@ -43,10 +47,25 @@ public class SighMetrics {
         results.record(returnedCount);
     }
 
+    public void recordListResult(String page, int returnedCount, boolean hasNext) {
+        registry.get("pheeeew.sigh.list.results")
+                .tags("page", page, "has_next", Boolean.toString(hasNext))
+                .summary()
+                .record(returnedCount);
+    }
+
     private DistributionSummary registerMapResults(MeterRegistry registry, boolean truncated) {
         return DistributionSummary.builder("pheeeew.sigh.map.results")
                 .description("Returned map item count per completed service call")
                 .tag("truncated", Boolean.toString(truncated))
+                .register(registry);
+    }
+
+    private void registerListResults(MeterRegistry registry, String page, boolean hasNext) {
+        DistributionSummary.builder("pheeeew.sigh.list.results")
+                .description("Returned list item count per completed service call")
+                .tag("page", page)
+                .tag("has_next", Boolean.toString(hasNext))
                 .register(registry);
     }
 }

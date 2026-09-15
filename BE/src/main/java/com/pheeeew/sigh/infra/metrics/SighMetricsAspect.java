@@ -1,5 +1,6 @@
 package com.pheeeew.sigh.infra.metrics;
 
+import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
@@ -42,5 +43,21 @@ public class SighMetricsAspect {
     )
     public void recordMapResult(SighMapResult result) {
         metrics.recordMapResult(result.sighs().size(), result.truncated());
+    }
+
+    @AfterReturning(
+            pointcut = "execution(* com.pheeeew.sigh.application.SighService.findFirstListPage(..))",
+            returning = "result"
+    )
+    public void recordFirstListResult(SighListResult result) {
+        metrics.recordListResult("first", result.items().size(), result.hasNext());
+    }
+
+    @AfterReturning(
+            pointcut = "execution(* com.pheeeew.sigh.application.SighService.findNextListPage(..))",
+            returning = "result"
+    )
+    public void recordNextListResult(SighListResult result) {
+        metrics.recordListResult("next", result.items().size(), result.hasNext());
     }
 }
