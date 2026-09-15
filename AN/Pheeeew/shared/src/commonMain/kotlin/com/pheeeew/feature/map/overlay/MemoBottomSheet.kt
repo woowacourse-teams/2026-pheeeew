@@ -2,6 +2,7 @@ package com.pheeeew.feature.map.overlay
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -31,7 +32,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -126,11 +126,7 @@ private fun MemoBottomSheet(
                                 .heightIn(min = 120.dp, max = 184.dp)
                                 .background(AppColors.Navy700, RoundedCornerShape(14.dp))
                                 .padding(16.dp),
-                        textStyle =
-                            TextStyle(
-                                color = AppColors.Cream100,
-                                fontSize = AppTheme.typography.dialogBody.fontSize,
-                            ),
+                        textStyle = AppTheme.typography.dialogBody.copy(color = AppColors.Cream100),
                         keyboardOptions =
                             KeyboardOptions(
                                 keyboardType = KeyboardType.Text,
@@ -139,7 +135,7 @@ private fun MemoBottomSheet(
                         keyboardActions = KeyboardActions(onDone = { onSubmit() }),
                         maxLines = 6,
                         decorationBox = { innerTextField ->
-                            Column(modifier = Modifier.fillMaxWidth()) {
+                            Box(modifier = Modifier.fillMaxWidth()) {
                                 if (value.isEmpty()) {
                                     Text(
                                         text = "오늘 어떤 일이 있었나요?",
