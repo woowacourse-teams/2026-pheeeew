@@ -49,7 +49,7 @@ public interface SighV2ControllerApi {
 
                     - 매 요청 시 한국 시간(`Asia/Seoul`) 기준 오늘(0일)부터 13일 전까지 총 14일 범위에서 조회합니다.
                     - 13일 전 자정은 포함하고, 첫 페이지 조회 시각인 스냅샷 시각은 포함하지 않습니다.
-                    - 기간 밖 한숨은 목록에서만 제외하며 상세 조회에는 이 기간 제한을 적용하지 않습니다.
+                    - 기간이 지난 한숨은 목록에서 제외하며, 상세 조회 시 `410 / SIGH-004`를 반환합니다. 데이터는 삭제하지 않습니다.
 
                     ### 다음 페이지
 
@@ -177,6 +177,15 @@ public interface SighV2ControllerApi {
                     - 전체 좋아요가 없으면 `liked`는 `false`, `likeCount`는 `0`입니다.
                     - 조회할 때 위치나 닉네임을 다시 생성하지 않습니다.
                     - 메모가 없는 경우 `memo`는 `null`입니다.
+
+                    ### 조회 기간 만료
+
+                    - 매 요청 시 한국 시간(`Asia/Seoul`) 기준 13일 전 자정부터 조회할 수 있으며, 시작 경계는 포함합니다.
+                    - 삭제되지 않았지만 기간이 지난 한숨은 `410 / SIGH-004`를 반환합니다. 없거나 삭제된 한숨은 기존 `404 / SIGH-002`를 반환합니다.
+                    - 지도나 목록에서 이미 받은 별도 선택 시 이 API로 재조회해야 최신 만료 여부를 확인할 수 있습니다.
+                    - 클라이언트는 `SIGH-004`를 받으면 "별의 힘이 다해서 소멸했습니다"와 같은 안내 후 해당 별을 현재 화면과 목록에서 제거합니다.
+                    - 응답의 `message`가 아닌 `code`로 분기하며, 네트워크 장애나 다른 오류를 소멸로 안내하지 않습니다.
+                    - 만료는 조회 불가를 뜻하며 데이터를 삭제하지 않습니다. 이미 전달된 내용을 서버가 회수하거나 열린 화면을 자동으로 닫지는 않습니다.
                     """
     )
     @ApiResponses({
@@ -231,6 +240,17 @@ public interface SighV2ControllerApi {
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
                                     {"code":"SIGH-002","message":"한숨을 찾을 수 없습니다."}
+                                    """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "410",
+                    description = "조회 기간 만료. 클라이언트는 SIGH-004를 소멸 안내로 처리하고 해당 별을 화면과 목록에서 제거합니다.",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"SIGH-004","message":"한숨의 조회 기간이 지났습니다."}
                                     """)
                     )
             ),

@@ -1,6 +1,7 @@
 package com.pheeeew.sigh.application;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
+import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_EXPIRED;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_INVALID_CURSOR;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_SAVE_FAILED;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
@@ -61,11 +62,17 @@ public class SighService {
 
     @Transactional(readOnly = true)
     public SighDetailResult findById(Long id, UUID devicePublicId) {
+        Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         Long deviceId = findDeviceId(devicePublicId);
-
-        return sighRepository.findById(id, deviceId)
-                .map(SighDetailResult::from)
+        SighDetailProjection projection = sighRepository.findById(id, deviceId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
+
+        SighQueryPeriod period = SighQueryPeriod.of(queriedAt, clock.getZone());
+        if (projection.getSigh().getCreatedAt().isBefore(period.startAt())) {
+            throw new SighException(SIGH_EXPIRED);
+        }
+
+        return SighDetailResult.from(projection);
     }
 
     public SighMapResult findAllWithinBounds(SighSearchBounds bounds, Optional<UUID> viewerDevicePublicId) {

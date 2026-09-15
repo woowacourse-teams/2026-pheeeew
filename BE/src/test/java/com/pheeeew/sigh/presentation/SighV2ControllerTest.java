@@ -491,6 +491,24 @@ class SighV2ControllerTest {
     }
 
     @Test
+    void 기간이_지난_한숨_상세를_조회하면_410과_만료_코드를_반환한다() {
+        // given
+        when(sighService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+                .thenThrow(new SighException(SighErrorCode.SIGH_EXPIRED));
+
+        // when
+        RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(SIGH_ID.toString());
+
+        // then
+        result.expectStatus().isEqualTo(410)
+                .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectBody()
+                .json("""
+                        {"code":"SIGH-004","message":"한숨의 조회 기간이 지났습니다."}
+                        """, JsonCompareMode.STRICT);
+    }
+
+    @Test
     void 토큰의_기기가_등록되어_있지_않으면_단건_조회는_401을_반환한다() {
         // given
         when(sighService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
