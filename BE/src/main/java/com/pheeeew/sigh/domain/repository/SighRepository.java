@@ -145,7 +145,8 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                         FROM sighs sigh
                         CROSS JOIN bounds
                         WHERE sigh.deleted_at IS NULL
-                          AND sigh.created_at < :snapshotAt
+                          AND sigh.created_at >= :#{#period.startAt()}
+                          AND sigh.created_at < :#{#period.endAt()}
                           AND sigh.location && bounds.area
                           AND ST_Intersects(sigh.location, bounds.area)
                           AND (
@@ -189,7 +190,7 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
     )
     List<SighListProjection> findListWithinBounds(
             @Param("bounds") SighSearchBounds bounds,
-            @Param("snapshotAt") Instant snapshotAt,
+            @Param("period") SighQueryPeriod period,
             @Param("lastItemCreatedAt") Instant lastItemCreatedAt,
             @Param("lastId") long lastId,
             @Param("blockerDeviceId") Long blockerDeviceId,

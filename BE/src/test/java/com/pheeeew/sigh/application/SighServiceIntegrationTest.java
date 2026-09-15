@@ -620,12 +620,14 @@ class SighServiceIntegrationTest {
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
     }
 
-    @Test
-    void 기기가_삭제되면_발급된_커서가_있어도_다음_페이지를_조회할_수_없다() {
+    @ParameterizedTest
+    @CsvSource({"2026-09-01T12:00:01Z", "2026-09-15T12:00:00Z"})
+    void 기기가_삭제되면_발급된_커서가_있어도_다음_페이지를_조회할_수_없다(String queryTime) {
         // given
         insertSighs(21, 126.9780, 37.5664);
         SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         deviceRepository.deleteAll();
+        given(clock.instant()).willReturn(Instant.parse(queryTime));
 
         // when / then
         assertThat(firstPage.nextCursor()).isNotBlank();
@@ -734,10 +736,160 @@ class SighServiceIntegrationTest {
                 .doesNotContain(스냅샷_경계_한숨);
     }
 
-    @Test
-    void 첫_페이지_이후에_등록된_한숨은_현재_바텀시트_목록에_포함하지_않는다() {
+    @ParameterizedTest
+    @CsvSource({
+            "2026-09-14T06:00:00.123456Z, 2026-08-31T15:00:00Z",
+            "2026-09-14T15:00:00Z, 2026-09-01T15:00:00Z"
+    })
+    void 목록은_한국_날짜로_13일_전_자정부터_스냅샷_직전까지_페이지로_조회한다(String snapshotTime, String startTime) {
         // given
-        String createdAt = CURRENT_TIME.minusSeconds(60).toString();
+        Instant snapshotAt = Instant.parse(snapshotTime);
+        Instant startAt = Instant.parse(startTime);
+        given(clock.instant()).willReturn(snapshotAt);
+        insertSigh(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
+        Long 시작_경계_한숨 = insertSigh(126.9780, 37.5664, startAt.toString());
+        List<Long> recentIds = new ArrayList<>();
+        for (int index = 0; index < 20; index++) {
+            recentIds.add(insertSigh(126.9780, 37.5664, snapshotAt.minus(1, ChronoUnit.MICROS).toString()));
+        }
+        insertSigh(126.9780, 37.5664, snapshotAt.toString());
+        insertSigh(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
+
+        // when
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+
+        // then
+        recentIds.sort(Comparator.reverseOrder());
+        assertThat(firstPage.items()).extracting(item -> item.sigh().id()).containsExactlyElementsOf(recentIds);
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(secondPage.items()).extracting(item -> item.sigh().id()).containsExactly(시작_경계_한숨);
+        assertThat(secondPage.hasNext()).isFalse();
+        assertThat(secondPage.nextCursor()).isNull();
+    }
+
+    @Test
+    void 목록_영역에_기간_밖의_한숨만_있으면_다음_페이지_없이_빈_결과를_반환한다() {
+        // given
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
+        insertSigh(126.9780, 37.5664, "2026-08-31T14:59:59.999999Z");
+        insertSigh(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
+
+        // when
+        SighListResult result = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+
+        // then
+        assertThat(result.items()).isEmpty();
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.nextCursor()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "2026-09-14T15:00:00Z, 2026-09-01T15:00:00Z",
+            "2026-09-15T15:00:00Z, 2026-09-02T15:00:00Z"
+    })
+    void 한국_날짜가_바뀌면_현재_조회_기간과_기존_스냅샷으로_이어서_조회한다(String queryTime, String startTime) {
+        // given
+        Instant snapshotAt = Instant.parse("2026-09-14T14:59:59.999999Z");
+        Instant startAt = Instant.parse(startTime);
+        given(clock.instant()).willReturn(snapshotAt);
+        insertSigh(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
+        List<Long> boundaryIds = new ArrayList<>();
+        for (int index = 0; index < 21; index++) {
+            boundaryIds.add(insertSigh(126.9780, 37.5664, startAt.toString()));
+        }
+        for (int index = 0; index < 20; index++) {
+            insertSigh(126.9780, 37.5664, "2026-09-14T14:00:00Z");
+        }
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        insertSigh(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
+        given(clock.instant()).willReturn(Instant.parse(queryTime));
+
+        // when
+        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        SighListResult thirdPage = sighService.findNextListPage(secondPage.nextCursor(), devicePublicId);
+
+        // then
+        boundaryIds.sort(Comparator.reverseOrder());
+        assertThat(secondPage.items()).extracting(item -> item.sigh().id())
+                .containsExactlyElementsOf(boundaryIds.subList(0, 20));
+        assertThat(secondPage.hasNext()).isTrue();
+        assertThat(SighListCursorCodec.decode(secondPage.nextCursor()).snapshotAt()).isEqualTo(snapshotAt);
+        assertThat(thirdPage.items()).extracting(item -> item.sigh().id()).containsExactly(boundaryIds.getLast());
+        assertThat(thirdPage.hasNext()).isFalse();
+        assertThat(thirdPage.nextCursor()).isNull();
+    }
+
+    @Test
+    void 자정_이후_남은_한숨이_기간_밖이면_발급된_커서로_빈_결과를_반환한다() {
+        // given
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T14:59:59.999999Z"));
+        insertSigh(126.9780, 37.5664, "2026-08-31T15:00:00Z");
+        for (int index = 0; index < 20; index++) {
+            insertSigh(126.9780, 37.5664, "2026-09-14T14:00:00Z");
+        }
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T15:00:00Z"));
+
+        // when
+        SighListResult result = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+
+        // then
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(result.items()).isEmpty();
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.nextCursor()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "2026-08-31T15:00:00Z",
+            "2026-08-31T14:59:59.999999Z",
+            "-1000000000-01-01T00:00:00Z"
+    })
+    void 스냅샷이_현재_조회_시작_시각_이하이면_빈_결과를_반환한다(String snapshotTime) {
+        // given
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
+        insertSigh(126.9780, 37.5664, "2026-08-31T14:00:00Z");
+        String encodedCursor = SighListCursorCodec.encode(
+                SighListCursor.initial(SEOUL_BOUNDS, Instant.parse(snapshotTime))
+        );
+
+        // when
+        SighListResult result = sighService.findNextListPage(encodedCursor, devicePublicId);
+
+        // then
+        assertThat(result.items()).isEmpty();
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.nextCursor()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "2026-09-14T06:00:00.000001Z",
+            "+1000000000-12-31T23:59:59.999999999Z"
+    })
+    void 스냅샷이_현재보다_미래이면_커서를_거부한다(String snapshotTime) {
+        // given
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
+        String encodedCursor = SighListCursorCodec.encode(
+                SighListCursor.initial(SEOUL_BOUNDS, Instant.parse(snapshotTime))
+        );
+
+        // when / then
+        assertThatThrownBy(() -> sighService.findNextListPage(encodedCursor, devicePublicId))
+                .isInstanceOf(SighException.class)
+                .extracting(exception -> ((SighException) exception).getErrorCode())
+                .isEqualTo(SighErrorCode.SIGH_INVALID_CURSOR);
+    }
+
+    @Test
+    void 한국_날짜가_같으면_시간이_지나도_첫_페이지의_스냅샷으로_이어서_조회한다() {
+        // given
+        Instant snapshotAt = Instant.parse("2026-09-14T15:00:00Z");
+        given(clock.instant()).willReturn(snapshotAt);
+        String createdAt = snapshotAt.minusSeconds(60).toString();
         List<Long> ids = new ArrayList<>();
         for (int index = 0; index < 21; index++) {
             ids.add(insertSigh(126.9780, 37.5664, createdAt));
@@ -747,8 +899,9 @@ class SighServiceIntegrationTest {
         Long 이후에_등록된_한숨 = insertSigh(
                 126.9780,
                 37.5664,
-                cursor.snapshotAt().toString()
+                cursor.snapshotAt().plusSeconds(30).toString()
         );
+        given(clock.instant()).willReturn(Instant.parse("2026-09-15T06:00:00Z"));
 
         // when
         SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
@@ -767,6 +920,8 @@ class SighServiceIntegrationTest {
         // given
         Long oldestId = insertSigh(126.9780, 37.5664, "2026-08-31T10:29:00Z");
         insertSighs(500, 126.9780, 37.5664);
+        Long 기간_이전_한숨 = insertSigh(126.9780, 37.5664, "2026-08-18T14:59:59.999999Z");
+        Long 미래_한숨 = insertSigh(126.9780, 37.5664, CURRENT_TIME.plusSeconds(1).toString());
 
         // when
         List<SighResult> items = findAllListPages(SEOUL_BOUNDS);
@@ -776,7 +931,7 @@ class SighServiceIntegrationTest {
                 .hasSize(500)
                 .extracting(SighResult::id)
                 .isSortedAccordingTo(Comparator.reverseOrder())
-                .doesNotContain(oldestId);
+                .doesNotContain(oldestId, 기간_이전_한숨, 미래_한숨);
     }
 
     @Test

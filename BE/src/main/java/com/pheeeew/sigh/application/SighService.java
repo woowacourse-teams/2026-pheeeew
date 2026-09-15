@@ -1,6 +1,7 @@
 package com.pheeeew.sigh.application;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
+import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_INVALID_CURSOR;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_SAVE_FAILED;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
 
@@ -95,12 +96,20 @@ public class SighService {
     public SighListResult findFirstListPage(SighSearchBounds bounds, UUID devicePublicId) {
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         SighListCursor cursor = SighListCursor.initial(bounds, snapshotAt);
+        SighQueryPeriod period = SighQueryPeriod.of(snapshotAt, clock.getZone());
 
-        return findList(cursor, devicePublicId);
+        return findList(cursor, period, devicePublicId);
     }
 
     public SighListResult findNextListPage(String encodedCursor, UUID devicePublicId) {
-        return findList(SighListCursorCodec.decode(encodedCursor), devicePublicId);
+        SighListCursor cursor = SighListCursorCodec.decode(encodedCursor);
+        Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
+        if (cursor.snapshotAt().isAfter(queriedAt)) {
+            throw new SighException(SIGH_INVALID_CURSOR);
+        }
+        SighQueryPeriod period = SighQueryPeriod.of(queriedAt, clock.getZone());
+
+        return findList(cursor, period, devicePublicId);
     }
 
     private SighSaveResult saveSigh(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
@@ -154,13 +163,18 @@ public class SighService {
                 .orElse(null);
     }
 
-    private SighListResult findList(SighListCursor cursor, UUID devicePublicId) {
+    private SighListResult findList(SighListCursor cursor, SighQueryPeriod currentPeriod, UUID devicePublicId) {
         Long deviceId = findDeviceId(devicePublicId);
 
+        if (!cursor.snapshotAt().isAfter(currentPeriod.startAt())) {
+            return SighListResult.of(List.of(), false, null);
+        }
+
         SighSearchBounds bounds = cursor.bounds();
+        SighQueryPeriod period = SighQueryPeriod.of(currentPeriod.startAt(), cursor.snapshotAt());
         List<SighListProjection> projections = sighRepository.findListWithinBounds(
                 bounds,
-                cursor.snapshotAt(),
+                period,
                 cursor.lastItemCreatedAt(),
                 cursor.lastId(),
                 deviceId,
