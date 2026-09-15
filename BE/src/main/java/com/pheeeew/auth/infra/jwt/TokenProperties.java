@@ -6,12 +6,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "pheeeew.token")
 public record TokenProperties(Duration accessTtl, Duration registrationRetryWindow, Duration challengeTtl) {
 
-    private static final Duration FIXED_ACCESS_TTL = Duration.ofSeconds(30);
+    private static final Duration FIXED_ACCESS_TTL = Duration.ofMinutes(30);
     private static final Duration FIXED_REGISTRATION_RETRY_WINDOW = Duration.ofMinutes(5);
     private static final Duration FIXED_CHALLENGE_TTL = Duration.ofMinutes(5);
 
     public TokenProperties {
-        requireFixedDuration(accessTtl, FIXED_ACCESS_TTL, "access token 만료 시간", "30초");
+        requireFixedDuration(accessTtl, FIXED_ACCESS_TTL, "access token 만료 시간", "30분");
         requireFixedDuration(
                 registrationRetryWindow,
                 FIXED_REGISTRATION_RETRY_WINDOW,

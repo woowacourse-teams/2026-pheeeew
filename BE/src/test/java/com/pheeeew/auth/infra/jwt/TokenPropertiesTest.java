@@ -11,7 +11,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class TokenPropertiesTest {
 
-    private static final Duration 고정된_액세스_토큰_만료 = Duration.ofSeconds(30);
+    private static final Duration 고정된_액세스_토큰_만료 = Duration.ofMinutes(30);
     private static final Duration 고정된_등록_재시도_창 = Duration.ofMinutes(5);
     private static final Duration 고정된_challenge_만료 = Duration.ofMinutes(5);
 
@@ -29,8 +29,8 @@ class TokenPropertiesTest {
 
     @ParameterizedTest
     @NullSource
-    @ValueSource(strings = {"PT29S", "PT31S", "PT30.001S", "PT0S"})
-    void 액세스_토큰_만료가_30초이_아니면_설정을_만들_수_없다(Duration accessTtl) {
+    @ValueSource(strings = {"PT29M", "PT31M", "PT30M1S", "PT0S"})
+    void 액세스_토큰_만료가_30분이_아니면_설정을_만들_수_없다(Duration accessTtl) {
         // given / when / then
         assertThatThrownBy(() -> new TokenProperties(accessTtl, 고정된_등록_재시도_창, 고정된_challenge_만료))
                 .isInstanceOf(IllegalArgumentException.class);
