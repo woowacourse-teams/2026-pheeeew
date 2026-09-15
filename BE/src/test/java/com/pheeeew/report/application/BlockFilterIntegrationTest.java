@@ -2,6 +2,7 @@ package com.pheeeew.report.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -9,18 +10,23 @@ import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.domain.repository.SighBlockRepository;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.application.dto.SighMapItem;
-import com.pheeeew.sigh.application.dto.SighSearchBounds;
 import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.support.PostgisDataJpaTest;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class BlockFilterIntegrationTest {
 
+    private static final Instant CURRENT_TIME = Instant.parse("2026-09-01T12:00:00Z");
     private static final SighSearchBounds SEOUL_BOUNDS =
             SighSearchBounds.of(126.9000, 37.5000, 127.1000, 37.6000);
     private static final double SEOUL_CITY_HALL_LONGITUDE = 126.9780;
@@ -58,6 +65,15 @@ class BlockFilterIntegrationTest {
 
     @Autowired
     private JdbcClient jdbcClient;
+
+    @MockitoBean(enforceOverride = true)
+    private Clock clock;
+
+    @BeforeEach
+    void setUp() {
+        given(clock.instant()).willReturn(CURRENT_TIME);
+        given(clock.getZone()).willReturn(ZoneId.of("Asia/Seoul"));
+    }
 
     @AfterEach
     void tearDown() {

@@ -45,16 +45,25 @@ public interface SighV2ControllerApi {
                     - 날짜변경선을 가로지르는 영역은 `minLongitude`를 `maxLongitude`보다 크게 전달합니다.
                     - 검색 영역의 경계를 포함하며 삭제되지 않은 최신 한숨을 조회합니다.
 
+                    ### 조회 기간
+
+                    - 매 요청 시 한국 시간(`Asia/Seoul`) 기준 오늘(0일)부터 13일 전까지 총 14일 범위에서 조회합니다.
+                    - 13일 전 자정은 포함하고, 첫 페이지 조회 시각인 스냅샷 시각은 포함하지 않습니다.
+                    - 기간이 지난 한숨은 목록에서 제외하며, 상세 조회 시 `410 / SIGH-004`를 반환합니다. 데이터는 삭제하지 않습니다.
+
                     ### 다음 페이지
 
                     - 서버가 직전 응답에서 발급한 `nextCursor`만 수정하지 않고 전달합니다.
                     - 좌표와 `cursor`를 함께 전달하거나 모두 생략하면 조회할 수 없습니다.
                     - 커서에 첫 요청의 검색 영역과 스냅샷이 고정되어 이후 등록된 한숨은 섞이지 않습니다.
+                    - 자정 이후에도 같은 커서로 이어서 조회할 수 있으며, 현재 조회 기간 밖의 한숨은 이후 응답에서 제외합니다.
+                    - 정상 커서라도 현재 조회 기간에 남은 한숨이 없으면 `200`과 빈 `items`, `hasNext: false`, `nextCursor: null`을 반환합니다.
+                    - 형식이 잘못되었거나 스냅샷이 현재보다 미래인 커서는 `400 / SIGH-003`으로 거부합니다.
 
                     ### 조회 결과
 
                     - `createdAt DESC`, `id DESC` 순으로 페이지당 20건을 반환합니다.
-                    - 현재 검색 영역의 최신 500건까지만 페이지로 조회할 수 있습니다.
+                    - 조회 기간과 검색 영역에 해당하는 최신 500건까지만 페이지로 조회할 수 있습니다.
                     - `geometry`는 저장된 최종 표시 위치이며 좌표는 `[longitude, latitude]` 순서입니다.
                     - 메모가 없는 경우 `properties.memo`는 `null`입니다.
                     - 각 항목의 `properties.liked`는 인증된 기기의 좋아요 여부, `properties.likeCount`는 전체 좋아요 수입니다.
@@ -168,6 +177,15 @@ public interface SighV2ControllerApi {
                     - 전체 좋아요가 없으면 `liked`는 `false`, `likeCount`는 `0`입니다.
                     - 조회할 때 위치나 닉네임을 다시 생성하지 않습니다.
                     - 메모가 없는 경우 `memo`는 `null`입니다.
+
+                    ### 조회 기간 만료
+
+                    - 매 요청 시 한국 시간(`Asia/Seoul`) 기준 13일 전 자정부터 조회할 수 있으며, 시작 경계는 포함합니다.
+                    - 삭제되지 않았지만 기간이 지난 한숨은 `410 / SIGH-004`를 반환합니다. 없거나 삭제된 한숨은 기존 `404 / SIGH-002`를 반환합니다.
+                    - 지도나 목록에서 이미 받은 별도 선택 시 이 API로 재조회해야 최신 만료 여부를 확인할 수 있습니다.
+                    - 클라이언트는 `SIGH-004`를 받으면 "별의 힘이 다해서 소멸했습니다"와 같은 안내 후 해당 별을 현재 화면과 목록에서 제거합니다.
+                    - 응답의 `message`가 아닌 `code`로 분기하며, 네트워크 장애나 다른 오류를 소멸로 안내하지 않습니다.
+                    - 만료는 조회 불가를 뜻하며 데이터를 삭제하지 않습니다. 이미 전달된 내용을 서버가 회수하거나 열린 화면을 자동으로 닫지는 않습니다.
                     """
     )
     @ApiResponses({
@@ -222,6 +240,17 @@ public interface SighV2ControllerApi {
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
                                     {"code":"SIGH-002","message":"한숨을 찾을 수 없습니다."}
+                                    """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "410",
+                    description = "조회 기간 만료. 클라이언트는 SIGH-004를 소멸 안내로 처리하고 해당 별을 화면과 목록에서 제거합니다.",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"SIGH-004","message":"한숨의 조회 기간이 지났습니다."}
                                     """)
                     )
             ),

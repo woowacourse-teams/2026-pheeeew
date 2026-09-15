@@ -18,9 +18,9 @@ import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
-import com.pheeeew.sigh.application.dto.SighSearchBounds;
 import com.pheeeew.sigh.application.like.SighLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import java.time.Instant;
@@ -488,6 +488,24 @@ class SighV2ControllerTest {
                         {"code":"SIGH-002","message":"한숨을 찾을 수 없습니다."}
                         """, JsonCompareMode.STRICT);
         verify(sighService).findById(SIGH_ID, DEVICE_PUBLIC_ID);
+    }
+
+    @Test
+    void 기간이_지난_한숨_상세를_조회하면_410과_만료_코드를_반환한다() {
+        // given
+        when(sighService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+                .thenThrow(new SighException(SighErrorCode.SIGH_EXPIRED));
+
+        // when
+        RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(SIGH_ID.toString());
+
+        // then
+        result.expectStatus().isEqualTo(410)
+                .expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectBody()
+                .json("""
+                        {"code":"SIGH-004","message":"한숨의 조회 기간이 지났습니다."}
+                        """, JsonCompareMode.STRICT);
     }
 
     @Test

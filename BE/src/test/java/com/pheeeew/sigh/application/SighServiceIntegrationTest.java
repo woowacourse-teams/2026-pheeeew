@@ -4,6 +4,7 @@ import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.mockito.BDDMockito.given;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -16,12 +17,11 @@ import com.pheeeew.sigh.application.dto.SighMapItem;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
-import com.pheeeew.sigh.application.dto.SighSearchBounds;
 import com.pheeeew.sigh.application.like.SighLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
-import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
+import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import com.pheeeew.sigh.infra.metrics.SighMapMetrics;
@@ -30,7 +30,10 @@ import com.pheeeew.support.PostgisDataJpaTest;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -44,6 +47,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
@@ -51,6 +56,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +66,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class SighServiceIntegrationTest {
 
+    private static final Instant CURRENT_TIME = Instant.parse("2026-09-01T12:00:00.123456789Z");
     private static final double SEOUL_CITY_HALL_LONGITUDE = 126.9780;
     private static final double SEOUL_CITY_HALL_LATITUDE = 37.5664;
     private static final SighSearchBounds SEOUL_BOUNDS =
@@ -91,10 +98,15 @@ class SighServiceIntegrationTest {
     @Autowired
     private MeterRegistry meterRegistry;
 
+    @MockitoBean(enforceOverride = true)
+    private Clock clock;
+
     private UUID devicePublicId;
 
     @BeforeEach
     void setUp() {
+        given(clock.instant()).willReturn(CURRENT_TIME);
+        given(clock.getZone()).willReturn(ZoneId.of("Asia/Seoul"));
         devicePublicId = deviceRepository.save(기본_기기_빌더().build()).getPublicId();
     }
 
@@ -368,6 +380,45 @@ class SighServiceIntegrationTest {
                 .isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND);
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "2026-09-14T06:00:00.123456Z, 2026-08-31T15:00:00Z",
+            "2026-09-14T15:00:00Z, 2026-09-01T15:00:00Z"
+    })
+    void 지도는_한국_날짜로_13일_전_자정부터_조회_시각까지_경계를_포함한다(String currentTime, String startTime) {
+        // given
+        Instant queriedAt = Instant.parse(currentTime);
+        Instant startAt = Instant.parse(startTime);
+        given(clock.instant()).willReturn(queriedAt);
+        insertSigh(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
+        Long 시작_경계_한숨 = insertSigh(126.9780, 37.5664, startAt.toString());
+        Long 조회_시각_한숨 = insertSigh(126.9780, 37.5664, queriedAt.toString());
+        insertSigh(126.9780, 37.5664, queriedAt.plus(1, ChronoUnit.MICROS).toString());
+
+        // when
+        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+
+        // then
+        assertThat(result.sighs()).extracting(SighMapItem::id)
+                .containsExactly(조회_시각_한숨, 시작_경계_한숨);
+        assertThat(result.truncated()).isFalse();
+    }
+
+    @Test
+    void 지도_영역에_기간_밖의_한숨만_있으면_빈_결과를_반환한다() {
+        // given
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
+        insertSigh(126.9780, 37.5664, "2026-08-31T14:59:59.999999Z");
+        insertSigh(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
+
+        // when
+        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+
+        // then
+        assertThat(result.sighs()).isEmpty();
+        assertThat(result.truncated()).isFalse();
+    }
+
     @Test
     void 삭제된_한숨은_지도_영역_조회에_나오지_않는다() {
         // given
@@ -468,9 +519,11 @@ class SighServiceIntegrationTest {
     }
 
     @Test
-    void 지도_영역의_한숨이_500건이면_모두_반환하고_잘리지_않았음을_알린다() {
+    void 지도_영역의_기간_내_한숨이_500건이면_기간_밖의_한숨을_제외하고_잘리지_않았음을_알린다() {
         // given
         insertSighs(500, 126.9780, 37.5664);
+        insertSigh(126.9780, 37.5664, "2026-08-18T14:59:59.999999Z");
+        insertSigh(126.9780, 37.5664, CURRENT_TIME.plusSeconds(1).toString());
 
         // when
         SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
@@ -503,7 +556,7 @@ class SighServiceIntegrationTest {
         // given
         UUID anotherDevicePublicId = deviceRepository.save(기본_기기_빌더().build()).getPublicId();
         List<Long> ids = new ArrayList<>();
-        String createdAt = Instant.now().minusSeconds(60).toString();
+        String createdAt = CURRENT_TIME.minusSeconds(60).toString();
         for (int index = 0; index < 21; index++) {
             ids.add(insertSigh(126.9780, 37.5664, createdAt));
         }
@@ -567,12 +620,14 @@ class SighServiceIntegrationTest {
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
     }
 
-    @Test
-    void 기기가_삭제되면_발급된_커서가_있어도_다음_페이지를_조회할_수_없다() {
+    @ParameterizedTest
+    @CsvSource({"2026-09-01T12:00:01Z", "2026-09-15T12:00:00Z"})
+    void 기기가_삭제되면_발급된_커서가_있어도_다음_페이지를_조회할_수_없다(String queryTime) {
         // given
         insertSighs(21, 126.9780, 37.5664);
         SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         deviceRepository.deleteAll();
+        given(clock.instant()).willReturn(Instant.parse(queryTime));
 
         // when / then
         assertThat(firstPage.nextCursor()).isNotBlank();
@@ -584,7 +639,7 @@ class SighServiceIntegrationTest {
     @Test
     void 바텀시트_목록은_메모와_닉네임을_포함해_20건씩_최신순으로_조회한다() {
         // given
-        String createdAt = Instant.now().minusSeconds(60).toString();
+        String createdAt = CURRENT_TIME.minusSeconds(60).toString();
         List<Long> ids = new ArrayList<>();
         for (int index = 0; index < 20; index++) {
             ids.add(insertSigh(126.9780, 37.5664, createdAt));
@@ -647,15 +702,14 @@ class SighServiceIntegrationTest {
     }
 
     @Test
-    void 바텀시트_목록은_첫_조회_전에_스냅샷_시각에_등록된_한숨도_제외한다() {
+    void 바텀시트_목록은_조회_시각을_마이크로초로_잘라_스냅샷을_고정하고_경계의_한숨을_제외한다() {
         // given
-        Instant snapshotAt = Instant.parse("2026-09-01T12:00:00Z");
+        Instant snapshotAt = Instant.parse("2026-09-01T12:00:00.123456Z");
         String beforeSnapshot = snapshotAt.minusSeconds(60).toString();
         List<Long> ids = new ArrayList<>();
         for (int index = 0; index < 21; index++) {
             ids.add(insertSigh(126.9780, 37.5664, beforeSnapshot));
         }
-        SighListCursor initialCursor = SighListCursor.initial(SEOUL_BOUNDS, snapshotAt);
         Long 스냅샷_경계_한숨 = insertSigh(
                 126.9780,
                 37.5664,
@@ -663,33 +717,179 @@ class SighServiceIntegrationTest {
         );
 
         // when
-        List<SighListProjection> firstQuery = findListProjections(initialCursor);
-        List<SighListProjection> firstPage = firstQuery.subList(0, 20);
-        SighListProjection lastProjection = firstPage.getLast();
-        SighListCursor nextCursor = initialCursor.next(
-                lastProjection.getCreatedAt(),
-                lastProjection.getId()
-        );
-        List<SighListProjection> secondPage = findListProjections(nextCursor);
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListCursor nextCursor = SighListCursorCodec.decode(firstPage.nextCursor());
+        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         List<Long> expectedFirstPageIds = new ArrayList<>(ids.subList(1, ids.size()));
         expectedFirstPageIds.sort(Comparator.reverseOrder());
 
-        assertThat(firstPage)
-                .extracting(SighListProjection::getId)
+        assertThat(nextCursor.snapshotAt()).isEqualTo(snapshotAt);
+        assertThat(firstPage.items())
+                .extracting(item -> item.sigh().id())
                 .containsExactlyElementsOf(expectedFirstPageIds)
                 .doesNotContain(스냅샷_경계_한숨);
-        assertThat(secondPage)
-                .extracting(SighListProjection::getId)
+        assertThat(secondPage.items())
+                .extracting(item -> item.sigh().id())
                 .containsExactly(ids.getFirst())
                 .doesNotContain(스냅샷_경계_한숨);
     }
 
-    @Test
-    void 첫_페이지_이후에_등록된_한숨은_현재_바텀시트_목록에_포함하지_않는다() {
+    @ParameterizedTest
+    @CsvSource({
+            "2026-09-14T06:00:00.123456Z, 2026-08-31T15:00:00Z",
+            "2026-09-14T15:00:00Z, 2026-09-01T15:00:00Z"
+    })
+    void 목록은_한국_날짜로_13일_전_자정부터_스냅샷_직전까지_페이지로_조회한다(String snapshotTime, String startTime) {
         // given
-        String createdAt = Instant.now().minusSeconds(60).toString();
+        Instant snapshotAt = Instant.parse(snapshotTime);
+        Instant startAt = Instant.parse(startTime);
+        given(clock.instant()).willReturn(snapshotAt);
+        insertSigh(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
+        Long 시작_경계_한숨 = insertSigh(126.9780, 37.5664, startAt.toString());
+        List<Long> recentIds = new ArrayList<>();
+        for (int index = 0; index < 20; index++) {
+            recentIds.add(insertSigh(126.9780, 37.5664, snapshotAt.minus(1, ChronoUnit.MICROS).toString()));
+        }
+        insertSigh(126.9780, 37.5664, snapshotAt.toString());
+        insertSigh(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
+
+        // when
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+
+        // then
+        recentIds.sort(Comparator.reverseOrder());
+        assertThat(firstPage.items()).extracting(item -> item.sigh().id()).containsExactlyElementsOf(recentIds);
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(secondPage.items()).extracting(item -> item.sigh().id()).containsExactly(시작_경계_한숨);
+        assertThat(secondPage.hasNext()).isFalse();
+        assertThat(secondPage.nextCursor()).isNull();
+    }
+
+    @Test
+    void 목록_영역에_기간_밖의_한숨만_있으면_다음_페이지_없이_빈_결과를_반환한다() {
+        // given
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
+        insertSigh(126.9780, 37.5664, "2026-08-31T14:59:59.999999Z");
+        insertSigh(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
+
+        // when
+        SighListResult result = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+
+        // then
+        assertThat(result.items()).isEmpty();
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.nextCursor()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "2026-09-14T15:00:00Z, 2026-09-01T15:00:00Z",
+            "2026-09-15T15:00:00Z, 2026-09-02T15:00:00Z"
+    })
+    void 한국_날짜가_바뀌면_현재_조회_기간과_기존_스냅샷으로_이어서_조회한다(String queryTime, String startTime) {
+        // given
+        Instant snapshotAt = Instant.parse("2026-09-14T14:59:59.999999Z");
+        Instant startAt = Instant.parse(startTime);
+        given(clock.instant()).willReturn(snapshotAt);
+        insertSigh(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
+        List<Long> boundaryIds = new ArrayList<>();
+        for (int index = 0; index < 21; index++) {
+            boundaryIds.add(insertSigh(126.9780, 37.5664, startAt.toString()));
+        }
+        for (int index = 0; index < 20; index++) {
+            insertSigh(126.9780, 37.5664, "2026-09-14T14:00:00Z");
+        }
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        insertSigh(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
+        given(clock.instant()).willReturn(Instant.parse(queryTime));
+
+        // when
+        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        SighListResult thirdPage = sighService.findNextListPage(secondPage.nextCursor(), devicePublicId);
+
+        // then
+        boundaryIds.sort(Comparator.reverseOrder());
+        assertThat(secondPage.items()).extracting(item -> item.sigh().id())
+                .containsExactlyElementsOf(boundaryIds.subList(0, 20));
+        assertThat(secondPage.hasNext()).isTrue();
+        assertThat(SighListCursorCodec.decode(secondPage.nextCursor()).snapshotAt()).isEqualTo(snapshotAt);
+        assertThat(thirdPage.items()).extracting(item -> item.sigh().id()).containsExactly(boundaryIds.getLast());
+        assertThat(thirdPage.hasNext()).isFalse();
+        assertThat(thirdPage.nextCursor()).isNull();
+    }
+
+    @Test
+    void 자정_이후_남은_한숨이_기간_밖이면_발급된_커서로_빈_결과를_반환한다() {
+        // given
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T14:59:59.999999Z"));
+        insertSigh(126.9780, 37.5664, "2026-08-31T15:00:00Z");
+        for (int index = 0; index < 20; index++) {
+            insertSigh(126.9780, 37.5664, "2026-09-14T14:00:00Z");
+        }
+        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T15:00:00Z"));
+
+        // when
+        SighListResult result = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+
+        // then
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(result.items()).isEmpty();
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.nextCursor()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "2026-08-31T15:00:00Z",
+            "2026-08-31T14:59:59.999999Z",
+            "-1000000000-01-01T00:00:00Z"
+    })
+    void 스냅샷이_현재_조회_시작_시각_이하이면_빈_결과를_반환한다(String snapshotTime) {
+        // given
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
+        insertSigh(126.9780, 37.5664, "2026-08-31T14:00:00Z");
+        String encodedCursor = SighListCursorCodec.encode(
+                SighListCursor.initial(SEOUL_BOUNDS, Instant.parse(snapshotTime))
+        );
+
+        // when
+        SighListResult result = sighService.findNextListPage(encodedCursor, devicePublicId);
+
+        // then
+        assertThat(result.items()).isEmpty();
+        assertThat(result.hasNext()).isFalse();
+        assertThat(result.nextCursor()).isNull();
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "2026-09-14T06:00:00.000001Z",
+            "+1000000000-12-31T23:59:59.999999999Z"
+    })
+    void 스냅샷이_현재보다_미래이면_커서를_거부한다(String snapshotTime) {
+        // given
+        given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
+        String encodedCursor = SighListCursorCodec.encode(
+                SighListCursor.initial(SEOUL_BOUNDS, Instant.parse(snapshotTime))
+        );
+
+        // when / then
+        assertThatThrownBy(() -> sighService.findNextListPage(encodedCursor, devicePublicId))
+                .isInstanceOf(SighException.class)
+                .extracting(exception -> ((SighException) exception).getErrorCode())
+                .isEqualTo(SighErrorCode.SIGH_INVALID_CURSOR);
+    }
+
+    @Test
+    void 한국_날짜가_같으면_시간이_지나도_첫_페이지의_스냅샷으로_이어서_조회한다() {
+        // given
+        Instant snapshotAt = Instant.parse("2026-09-14T15:00:00Z");
+        given(clock.instant()).willReturn(snapshotAt);
+        String createdAt = snapshotAt.minusSeconds(60).toString();
         List<Long> ids = new ArrayList<>();
         for (int index = 0; index < 21; index++) {
             ids.add(insertSigh(126.9780, 37.5664, createdAt));
@@ -699,8 +899,9 @@ class SighServiceIntegrationTest {
         Long 이후에_등록된_한숨 = insertSigh(
                 126.9780,
                 37.5664,
-                cursor.snapshotAt().toString()
+                cursor.snapshotAt().plusSeconds(30).toString()
         );
+        given(clock.instant()).willReturn(Instant.parse("2026-09-15T06:00:00Z"));
 
         // when
         SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
@@ -719,6 +920,8 @@ class SighServiceIntegrationTest {
         // given
         Long oldestId = insertSigh(126.9780, 37.5664, "2026-08-31T10:29:00Z");
         insertSighs(500, 126.9780, 37.5664);
+        Long 기간_이전_한숨 = insertSigh(126.9780, 37.5664, "2026-08-18T14:59:59.999999Z");
+        Long 미래_한숨 = insertSigh(126.9780, 37.5664, CURRENT_TIME.plusSeconds(1).toString());
 
         // when
         List<SighResult> items = findAllListPages(SEOUL_BOUNDS);
@@ -728,7 +931,7 @@ class SighServiceIntegrationTest {
                 .hasSize(500)
                 .extracting(SighResult::id)
                 .isSortedAccordingTo(Comparator.reverseOrder())
-                .doesNotContain(oldestId);
+                .doesNotContain(oldestId, 기간_이전_한숨, 미래_한숨);
     }
 
     @Test
@@ -890,23 +1093,6 @@ class SighServiceIntegrationTest {
         }
 
         throw new AssertionError("500건 조회는 25페이지 안에 끝나야 합니다.");
-    }
-
-    private List<SighListProjection> findListProjections(SighListCursor cursor) {
-        SighSearchBounds bounds = cursor.bounds();
-        return sighRepository.findListWithinBounds(
-                bounds.minLongitude(),
-                bounds.minLatitude(),
-                bounds.maxLongitude(),
-                bounds.maxLatitude(),
-                cursor.snapshotAt(),
-                cursor.lastItemCreatedAt(),
-                cursor.lastId(),
-                null,
-                500,
-                21,
-                deviceRepository.findByPublicId(devicePublicId).orElseThrow().getId()
-        );
     }
 
     private void removeRejectedRequestIdConstraint() {

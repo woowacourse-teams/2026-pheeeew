@@ -23,7 +23,7 @@ import org.springframework.security.oauth2.jwt.JwtException;
 class JwtTokenCodecTest {
 
     private static final UUID 기기_공개_식별자 = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
-    private static final long 액세스_토큰_만료_초 = 1800L;
+    private static final long 액세스_토큰_만료_초 = 30L;
 
     private final JwtConfig jwtConfig = new JwtConfig();
     private final JwtEncoder jwtEncoder = jwtConfig.jwtEncoder(기본_키_설정());
@@ -31,7 +31,7 @@ class JwtTokenCodecTest {
     private final JwtTokenEncoder jwtTokenEncoder = new JwtTokenEncoder(jwtEncoder);
     private final AccessTokenIssuer accessTokenIssuer = new AccessTokenIssuer(
             jwtTokenEncoder,
-            new TokenProperties(Duration.ofMinutes(30), Duration.ofMinutes(5), Duration.ofMinutes(5))
+            new TokenProperties(Duration.ofSeconds(30), Duration.ofMinutes(5), Duration.ofMinutes(5))
     );
 
     @Test
@@ -60,7 +60,7 @@ class JwtTokenCodecTest {
     }
 
     @Test
-    void 액세스_토큰의_유효_시간은_30분이다() {
+    void 액세스_토큰의_유효_시간은_30초이다() {
         // given
         AccessTokenResult result = accessTokenIssuer.issue(기기_공개_식별자);
 
@@ -107,7 +107,7 @@ class JwtTokenCodecTest {
     void 다른_키로_서명한_토큰은_디코딩할_수_없다() {
         // given
         JwtTokenEncoder otherEncoder = new JwtTokenEncoder(jwtConfig.jwtEncoder(다른_키_설정()));
-        String accessToken = otherEncoder.encodeAccessToken(기기_공개_식별자.toString(), Duration.ofMinutes(30));
+        String accessToken = otherEncoder.encodeAccessToken(기기_공개_식별자.toString(), Duration.ofSeconds(30));
 
         // when / then
         assertThatThrownBy(() -> jwtDecoder.decode(accessToken))
@@ -118,7 +118,7 @@ class JwtTokenCodecTest {
     void 만료된_토큰은_디코딩할_수_없다() {
         // given
         Instant issuedAt = Instant.now().minus(Duration.ofHours(2));
-        String accessToken = 토큰을_발급한다(issuedAt, issuedAt.plus(Duration.ofMinutes(30)), "ACCESS");
+        String accessToken = 토큰을_발급한다(issuedAt, issuedAt.plus(Duration.ofSeconds(30)), "ACCESS");
 
         // when / then
         assertThatThrownBy(() -> jwtDecoder.decode(accessToken))
@@ -129,7 +129,7 @@ class JwtTokenCodecTest {
     void 용도가_액세스가_아닌_토큰은_액세스_토큰으로_쓸_수_없다() {
         // given
         Instant issuedAt = Instant.now();
-        String refreshUseToken = 토큰을_발급한다(issuedAt, issuedAt.plus(Duration.ofMinutes(30)), "REFRESH");
+        String refreshUseToken = 토큰을_발급한다(issuedAt, issuedAt.plus(Duration.ofSeconds(30)), "REFRESH");
 
         // when / then
         assertThatThrownBy(() -> jwtDecoder.decode(refreshUseToken))
