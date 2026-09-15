@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.audio.BreathInputError
 import com.pheeeew.core.designsystem.component.AppDialog
+import com.pheeeew.core.designsystem.component.AppSnackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.permission.LocationPermissionSettingsDialog
@@ -83,6 +84,7 @@ fun MapScreen(
     onRequestSighBlock: () -> Unit,
     onDismissSighBlock: () -> Unit,
     onConfirmSighBlock: () -> Unit,
+    onDismissBlockError: () -> Unit,
     onRequestSighReport: () -> Unit,
     onSighReportReasonSelect: (String) -> Unit,
     onSighReportDescriptionChange: (String) -> Unit,
@@ -335,14 +337,26 @@ fun MapScreen(
             )
         }
 
-        ErrorSnackbar(
+        AppSnackbar(
             message = moderationUiState.successMessage,
             onDismiss = onDismissReportSuccess,
             modifier =
                 Modifier
-                    .align(Alignment.TopCenter)
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        )
+
+        AppSnackbar(
+            message = moderationUiState.blockErrorMessage,
+            onDismiss = onDismissBlockError,
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
         )
 
         if (shouldShowInteractionBackdrop) {
@@ -574,6 +588,7 @@ private fun MapScreenPreview() {
             onRequestSighBlock = {},
             onDismissSighBlock = {},
             onConfirmSighBlock = {},
+            onDismissBlockError = {},
             onRequestSighReport = {},
             onSighReportReasonSelect = {},
             onSighReportDescriptionChange = {},

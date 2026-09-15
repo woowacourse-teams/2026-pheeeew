@@ -4,8 +4,10 @@ package com.pheeeew.data.remote.sigh.api
 
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createHttpClient
+import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.remote.sigh.dto.SighCreateV1RequestDto
 import com.pheeeew.domain.exception.ApiException
+import com.pheeeew.domain.model.device.AccessToken
 import com.pheeeew.domain.model.sigh.SighBounds
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -31,6 +33,7 @@ class KtorSighV1ApiTest {
                 MockEngine { request ->
                     assertEquals(HttpMethod.Get, request.method)
                     assertEquals("/api/v1/sighs", request.url.encodedPath)
+                    assertEquals("Bearer access-123", request.headers[HttpHeaders.Authorization])
 
                     assertEquals(
                         "127.1",
@@ -72,7 +75,7 @@ class KtorSighV1ApiTest {
                     config = ApiConfig("https://api-dev.pheeeew.com"),
                 )
 
-            val api = KtorSighV1Api(client)
+            val api = KtorSighV1Api(client, TestAccessTokenStore(AccessToken("access-123")))
 
             val result =
                 api.getSighs(
@@ -342,4 +345,16 @@ class KtorSighV1ApiTest {
             assertEquals("연결 실패", exception.message)
             client.close()
         }
+
+    private class TestAccessTokenStore(
+        override var accessToken: AccessToken?,
+    ) : AccessTokenStore {
+        override fun save(accessToken: AccessToken) {
+            this.accessToken = accessToken
+        }
+
+        override fun clear() {
+            accessToken = null
+        }
+    }
 }

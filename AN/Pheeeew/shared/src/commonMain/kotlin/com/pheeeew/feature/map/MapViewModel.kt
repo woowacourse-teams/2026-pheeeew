@@ -480,6 +480,22 @@ class MapViewModel(
         }
     }
 
+    fun removeSigh(sighId: Long) {
+        sighMapCache.removeSigh(sighId)
+        locallyRegisteredSighs.remove(sighId)
+        pendingSighDetailId = pendingSighDetailId?.takeUnless { it == sighId }
+        _uiState.update { state ->
+            state.copy(
+                sighs = state.sighs.filterNot { it.id == sighId },
+                sighBrowser =
+                    state.sighBrowser.copy(
+                        items = state.sighBrowser.items.filterNot { it.id == sighId },
+                        selectedSigh = state.sighBrowser.selectedSigh?.takeUnless { it.id == sighId },
+                    ),
+            )
+        }
+    }
+
     private fun loadFirstSighPage(bounds: SighBounds) {
         if (!mapIsForeground || !_uiState.value.sighBrowser.isVisible || !bounds.isValidForQuery()) return
 

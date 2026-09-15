@@ -76,6 +76,12 @@ internal class SighMapCache(
             .toList()
     }
 
+    fun removeSigh(sighId: Long) {
+        cachedRegions.forEach { region ->
+            region.sighs = region.sighs.filterNot { it.id == sighId }
+        }
+    }
+
     internal val regionCount: Int
         get() = cachedRegions.size
 
@@ -96,7 +102,7 @@ internal class SighMapCache(
 
 private data class CachedRegion(
     val queryBounds: SighBounds,
-    val sighs: List<SighPin>,
+    var sighs: List<SighPin>,
     val fetchedAtMillis: Long,
     var lastAccessOrder: Long,
 )

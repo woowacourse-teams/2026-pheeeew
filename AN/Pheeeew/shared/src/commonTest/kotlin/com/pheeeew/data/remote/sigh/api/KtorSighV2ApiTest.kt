@@ -32,10 +32,12 @@ class KtorSighV2ApiTest {
     @Test
     fun `첫 페이지는 지도 영역만 전달한다`() =
         runTest {
+            val store = TestAccessTokenStore(AccessToken("access-123"))
             val engine =
                 MockEngine { request ->
                     assertEquals(HttpMethod.Get, request.method)
                     assertEquals("/api/v2/sighs", request.url.encodedPath)
+                    assertEquals("Bearer access-123", request.headers[HttpHeaders.Authorization])
                     assertEquals("126.9", request.url.parameters["minLongitude"])
                     assertEquals("37.5", request.url.parameters["minLatitude"])
                     assertEquals("127.1", request.url.parameters["maxLongitude"])
@@ -45,7 +47,7 @@ class KtorSighV2ApiTest {
                     respondJson(PAGE_RESPONSE)
                 }
             val client = createClient(engine)
-            val api = KtorSighV2Api(client)
+            val api = KtorSighV2Api(client, store)
 
             val result =
                 api.getFirstPage(
@@ -217,6 +219,48 @@ class KtorSighV2ApiTest {
                 })
 
             api.create(SighCreateV2RequestDto("request-123", 37.5, 126.9))
+
+            assertEquals(2, requestCount)
+            assertEquals(1, refreshCount)
+            client.close()
+        }
+
+    @Test
+    fun `조회 요청도 access token 만료 시 refresh 후 재시도한다`() =
+        runTest {
+            val store = TestAccessTokenStore(AccessToken("expired"))
+            var requestCount = 0
+            var refreshCount = 0
+            val engine =
+                MockEngine { request ->
+                    requestCount++
+                    if (requestCount == 1) {
+                        assertEquals("Bearer expired", request.headers[HttpHeaders.Authorization])
+                        respondJson("""{"code":"AUTH-001","message":"expired"}""", HttpStatusCode.Unauthorized)
+                    } else {
+                        assertEquals("Bearer refreshed", request.headers[HttpHeaders.Authorization])
+                        respondJson(PAGE_RESPONSE)
+                    }
+                }
+            val client = createClient(engine)
+            val api =
+                KtorSighV2Api(
+                    client = client,
+                    accessTokenStore = store,
+                    refreshAccessToken = {
+                        refreshCount++
+                        AccessToken("refreshed")
+                    },
+                )
+
+            api.getFirstPage(
+                SighBounds(
+                    minLongitude = 126.9,
+                    minLatitude = 37.5,
+                    maxLongitude = 127.1,
+                    maxLatitude = 37.6,
+                ),
+            )
 
             assertEquals(2, requestCount)
             assertEquals(1, refreshCount)

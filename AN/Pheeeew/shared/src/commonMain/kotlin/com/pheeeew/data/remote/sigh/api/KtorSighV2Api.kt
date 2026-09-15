@@ -30,21 +30,27 @@ class KtorSighV2Api(
     private val refreshMutex = Mutex()
 
     override suspend fun getFirstPage(bounds: SighBounds): SighPageResponseDto =
-        executeRequest {
-            client.get(SIGHS_PATH) {
-                parameter("minLongitude", bounds.minLongitude)
-                parameter("minLatitude", bounds.minLatitude)
-                parameter("maxLongitude", bounds.maxLongitude)
-                parameter("maxLatitude", bounds.maxLatitude)
+        executeAuthenticatedRequest { accessToken ->
+            executeRequest {
+                client.get(SIGHS_PATH) {
+                    accessToken?.let { header("Authorization", "Bearer ${it.value}") }
+                    parameter("minLongitude", bounds.minLongitude)
+                    parameter("minLatitude", bounds.minLatitude)
+                    parameter("maxLongitude", bounds.maxLongitude)
+                    parameter("maxLatitude", bounds.maxLatitude)
+                }
             }
         }
 
     override suspend fun getNextPage(cursor: String): SighPageResponseDto {
         require(cursor.isNotBlank()) { "커서는 비어 있을 수 없습니다." }
 
-        return executeRequest {
-            client.get(SIGHS_PATH) {
-                parameter("cursor", cursor)
+        return executeAuthenticatedRequest { accessToken ->
+            executeRequest {
+                client.get(SIGHS_PATH) {
+                    accessToken?.let { header("Authorization", "Bearer ${it.value}") }
+                    parameter("cursor", cursor)
+                }
             }
         }
     }
@@ -52,8 +58,12 @@ class KtorSighV2Api(
     override suspend fun getById(id: Long): SighFeatureDto<SighV2PropertiesDto> {
         require(id > 0) { "한숨 식별자는 양수여야 합니다." }
 
-        return executeRequest {
-            client.get("$SIGHS_PATH/$id")
+        return executeAuthenticatedRequest { accessToken ->
+            executeRequest {
+                client.get("$SIGHS_PATH/$id") {
+                    accessToken?.let { header("Authorization", "Bearer ${it.value}") }
+                }
+            }
         }
     }
 
@@ -64,18 +74,31 @@ class KtorSighV2Api(
                 createRequest(request, tokenUsedForRequest)
             } catch (error: ApiException.Unauthorized) {
                 if (error.code != "AUTH-001") throw error
-                val retryToken =
-                    refreshMutex.withLock {
-                        val latestToken = accessTokenStore?.accessToken
-                        if (latestToken != null && latestToken != tokenUsedForRequest) {
-                            latestToken
-                        } else {
-                            refreshAccessToken?.invoke()?.also { refreshedToken ->
-                                accessTokenStore?.save(refreshedToken)
-                            }
-                        }
-                    } ?: throw error
+                val retryToken = refreshToken(tokenUsedForRequest) ?: throw error
                 createRequest(request, retryToken)
+            }
+        }
+
+    private suspend fun <T> executeAuthenticatedRequest(request: suspend (AccessToken?) -> T): T {
+        val tokenUsedForRequest = accessTokenForRequest()
+        return try {
+            request(tokenUsedForRequest)
+        } catch (error: ApiException.Unauthorized) {
+            if (error.code != "AUTH-001") throw error
+            val retryToken = refreshToken(tokenUsedForRequest) ?: throw error
+            request(retryToken)
+        }
+    }
+
+    private suspend fun refreshToken(tokenUsedForRequest: AccessToken?): AccessToken? =
+        refreshMutex.withLock {
+            val latestToken = accessTokenStore?.accessToken
+            if (latestToken != null && latestToken != tokenUsedForRequest) {
+                latestToken
+            } else {
+                refreshAccessToken?.invoke()?.also { refreshedToken ->
+                    accessTokenStore?.save(refreshedToken)
+                }
             }
         }
 
