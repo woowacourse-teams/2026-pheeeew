@@ -74,6 +74,7 @@ fun MapScreen(
     onRequestSighBlock: () -> Unit,
     onDismissSighBlock: () -> Unit,
     onConfirmSighBlock: () -> Unit,
+    onDismissBlockError: () -> Unit,
     onRequestSighReport: () -> Unit,
     onSighReportReasonSelect: (String) -> Unit,
     onSighReportDescriptionChange: (String) -> Unit,
@@ -289,6 +290,16 @@ fun MapScreen(
         ErrorSnackbar(
             message = moderationUiState.successMessage,
             onDismiss = onDismissReportSuccess,
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, top = 8.dp, end = 16.dp),
+        )
+
+        ErrorSnackbar(
+            message = moderationUiState.blockErrorMessage,
+            onDismiss = onDismissBlockError,
             modifier =
                 Modifier
                     .align(Alignment.TopCenter)
@@ -517,6 +528,7 @@ private fun MapScreenPreview() {
             onRequestSighBlock = {},
             onDismissSighBlock = {},
             onConfirmSighBlock = {},
+            onDismissBlockError = {},
             onRequestSighReport = {},
             onSighReportReasonSelect = {},
             onSighReportDescriptionChange = {},

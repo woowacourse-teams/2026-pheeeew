@@ -38,7 +38,7 @@ class SighModerationViewModel(
     }
 
     fun dismissBlock() {
-        _uiState.update { it.copy(blockTarget = null) }
+        _uiState.update { it.copy(blockTarget = null, blockErrorMessage = null) }
     }
 
     fun confirmBlock() {
@@ -50,12 +50,15 @@ class SighModerationViewModel(
                 .onFailure { error ->
                     _uiState.update {
                         it.copy(
-                            blockTarget = target,
                             blockErrorMessage = error.toBlockErrorMessage(),
                         )
                     }
                 }
         }
+    }
+
+    fun clearBlockError() {
+        _uiState.update { it.copy(blockErrorMessage = null) }
     }
 
     fun requestReport() {
@@ -129,9 +132,24 @@ class SighModerationViewModel(
 
     private fun Throwable.toBlockErrorMessage(): String =
         when (this) {
-            is ApiException.Conflict -> message
-            is ApiException.Network -> "인터넷 연결 상태를 확인해주세요."
-            is ApiException.NotFound -> "차단할 한숨을 찾을 수 없습니다."
-            else -> "차단에 실패했습니다. 잠시 후 다시 시도해주세요."
+            is ApiException.Conflict -> {
+                when (code) {
+                    "BLOCK-002" -> "내가 작성한 한숨은 차단할 수 없어요."
+                    "BLOCK-003" -> "작성자 정보를 알 수 없는 한숨은 사용자를 차단할 수 없어요."
+                    else -> "이 사용자는 차단할 수 없어요."
+                }
+            }
+
+            is ApiException.Network -> {
+                "인터넷 연결 상태를 확인해주세요."
+            }
+
+            is ApiException.NotFound -> {
+                "차단할 한숨을 찾을 수 없습니다."
+            }
+
+            else -> {
+                "차단에 실패했습니다. 잠시 후 다시 시도해주세요."
+            }
         }
 }

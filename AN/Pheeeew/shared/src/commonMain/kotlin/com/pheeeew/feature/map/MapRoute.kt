@@ -78,6 +78,7 @@ fun MapRoute(
         onRequestSighBlock = moderationViewModel::requestBlock,
         onDismissSighBlock = moderationViewModel::dismissBlock,
         onConfirmSighBlock = moderationViewModel::confirmBlock,
+        onDismissBlockError = moderationViewModel::clearBlockError,
         onRequestSighReport = moderationViewModel::requestReport,
         onSighReportReasonSelect = moderationViewModel::selectReason,
         onSighReportDescriptionChange = moderationViewModel::updateDescription,

@@ -166,16 +166,9 @@ fun SighBrowserOverlay(
 
         moderationUiState.blockTarget?.let {
             ConfirmDialog(
-                title =
-                    if (moderationUiState.blockErrorMessage == null) {
-                        "해당 사용자를 차단하시겠습니까?"
-                    } else {
-                        "차단에 실패했습니다."
-                    },
-                body =
-                    moderationUiState.blockErrorMessage
-                        ?: "차단 이후 해당 사용자가 올린 한숨은 더 이상 보이지 않으며 다시 해제할 수 없습니다.",
-                confirmText = if (moderationUiState.blockErrorMessage == null) "차단하기" else "다시 시도",
+                title = "해당 사용자를 차단하시겠습니까?",
+                body = "차단 이후 해당 사용자가 올린 한숨은 더 이상 보이지 않으며 다시 해제할 수 없습니다.",
+                confirmText = "차단하기",
                 onConfirmClick = onConfirmBlock,
                 onDismissRequest = onDismissBlock,
                 onDismissClick = onDismissBlock,
