@@ -84,8 +84,7 @@ class SighMapMetricsAspectTest {
         when(projection.getLatitude()).thenReturn(37.55);
         when(projection.getCreatedAt()).thenReturn(Instant.parse("2026-09-11T00:00:00Z"));
         when(repository.findAllWithinBounds(
-                eq(126.9), eq(37.5), eq(127.1), eq(37.6),
-                any(SighQueryPeriod.class), isNull(), eq(501)
+                eq(BOUNDS), any(SighQueryPeriod.class), isNull(), eq(501)
         ))
                 .thenAnswer(invocation -> {
                     clock.add(Duration.ofMillis(250));
@@ -99,8 +98,7 @@ class SighMapMetricsAspectTest {
         assertThat(result.sighs()).hasSize(returned);
         assertThat(result.truncated()).isEqualTo(truncated);
         verify(repository).findAllWithinBounds(
-                eq(126.9), eq(37.5), eq(127.1), eq(37.6),
-                any(SighQueryPeriod.class), isNull(), eq(501)
+                eq(BOUNDS), any(SighQueryPeriod.class), isNull(), eq(501)
         );
         Timer query = registry.get("pheeeew.sigh.map.query").timer();
         assertThat(query.count()).isEqualTo(1);
@@ -122,8 +120,7 @@ class SighMapMetricsAspectTest {
         // given
         IllegalStateException failure = new IllegalStateException("query failed");
         when(repository.findAllWithinBounds(
-                eq(126.9), eq(37.5), eq(127.1), eq(37.6),
-                any(SighQueryPeriod.class), isNull(), eq(501)
+                eq(BOUNDS), any(SighQueryPeriod.class), isNull(), eq(501)
         ))
                 .thenAnswer(invocation -> {
                     clock.add(Duration.ofMillis(100));

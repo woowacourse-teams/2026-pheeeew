@@ -72,13 +72,7 @@ public class SighService {
         SighQueryPeriod period = SighQueryPeriod.of(queriedAt, clock.getZone());
         Long blockerDeviceId = findBlockerDeviceId(viewerDevicePublicId);
         List<SighMapProjection> projections = sighRepository.findAllWithinBounds(
-                bounds.minLongitude(),
-                bounds.minLatitude(),
-                bounds.maxLongitude(),
-                bounds.maxLatitude(),
-                period,
-                blockerDeviceId,
-                MAX_FIND_COUNT + 1
+                bounds, period, blockerDeviceId, MAX_FIND_COUNT + 1
         );
 
         boolean truncated = projections.size() > MAX_FIND_COUNT;
