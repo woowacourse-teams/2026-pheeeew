@@ -7,6 +7,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -35,9 +36,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.StrokeJoin
-import androidx.compose.ui.graphics.drawscope.Fill
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -45,6 +43,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import org.jetbrains.compose.resources.painterResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_hand
 
 @Composable
 fun FirstSighGuideOverlay(
@@ -245,37 +246,9 @@ private fun SwipeUpAnimation(modifier: Modifier = Modifier) {
 
 @Composable
 private fun SwipeFinger(modifier: Modifier = Modifier) {
-    Canvas(modifier.size(width = 48.dp, height = 64.dp)) {
-        val sx = size.width / 48f
-        val sy = size.height / 64f
-
-        fun x(value: Float) = value * sx
-
-        fun y(value: Float) = value * sy
-
-        val hand =
-            Path().apply {
-                moveTo(x(22f), y(3f))
-                cubicTo(x(18f), y(3f), x(16f), y(6f), x(16f), y(11f))
-                lineTo(x(16f), y(33f))
-                lineTo(x(12f), y(28f))
-                cubicTo(x(9f), y(24f), x(4f), y(27f), x(6f), y(32f))
-                lineTo(x(15f), y(49f))
-                cubicTo(x(18f), y(56f), x(24f), y(60f), x(32f), y(60f))
-                cubicTo(x(40f), y(60f), x(44f), y(53f), x(44f), y(45f))
-                lineTo(x(44f), y(30f))
-                cubicTo(x(44f), y(26f), x(40f), y(24f), x(37f), y(27f))
-                lineTo(x(37f), y(25f))
-                cubicTo(x(37f), y(21f), x(32f), y(20f), x(29f), y(23f))
-                lineTo(x(29f), y(11f))
-                cubicTo(x(29f), y(6f), x(26f), y(3f), x(22f), y(3f))
-                close()
-            }
-        drawPath(hand, AppColors.Navy700.copy(alpha = 0.88f), style = Fill)
-        drawPath(
-            hand,
-            AppColors.Blue100,
-            style = Stroke(width = 2.2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round),
-        )
-    }
+    Image(
+        painter = painterResource(Res.drawable.ic_hand),
+        contentDescription = null,
+        modifier = modifier.size(width = 59.dp, height = 80.dp),
+    )
 }
