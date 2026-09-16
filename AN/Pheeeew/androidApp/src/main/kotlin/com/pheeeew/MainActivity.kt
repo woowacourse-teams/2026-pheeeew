@@ -14,6 +14,7 @@ import androidx.lifecycle.ViewModelProvider
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.data.local.device.AndroidDeviceIdStorage
 import com.pheeeew.data.local.device.InMemoryAccessTokenStore
+import com.pheeeew.data.remote.version.createAppVersionApi
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.di.SighModule
 import com.pheeeew.di.createAndroidDeviceRegistrationDependencies
@@ -66,10 +67,14 @@ class MainActivity : ComponentActivity() {
                     deviceDependencies.ensureRegistered().getOrThrow().accessToken
                 },
             )
+        val appVersionApi = createAppVersionApi(ApiConfig(baseUrl = BuildConfig.API_BASE_URL), "android")
+        val connectivityObserver = AndroidConnectivityObserver(this)
 
         setContent {
             App(
                 appVersion = BuildConfig.VERSION_NAME,
+                appVersionApi = appVersionApi,
+                connectivityObserver = connectivityObserver,
                 hasCompletedOnboarding = firstSighGuidePreferences.hasCompletedOnboarding,
                 hasCompletedFirstSighGuide = firstSighGuidePreferences.hasCompletedFirstSighGuide,
                 onOnboardingCompleted = {
