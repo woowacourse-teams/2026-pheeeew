@@ -2,8 +2,10 @@ package com.pheeeew.feature.map.map
 
 import com.pheeeew.feature.map.MapFocusRequest
 import com.pheeeew.feature.map.MapRenderState
+import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 
 /** 카메라/포커스 명령 ID를 소비해 재구성 시 중복 실행을 차단합니다. */
@@ -23,10 +25,11 @@ internal class AndroidMapCamera {
         map: MapLibreMap,
         state: MapRenderState,
         cameraCommand: MapCameraCommand?,
+        viewportHeightPx: Int,
     ) {
         setInitialCenterIfNeeded(map, state)
         consumeFocusRequest(map, state.focusRequest)
-        consumeCameraCommand(map, state, cameraCommand)
+        consumeCameraCommand(map, state, cameraCommand, viewportHeightPx)
     }
 
     private fun setInitialCenterIfNeeded(
@@ -74,6 +77,7 @@ internal class AndroidMapCamera {
         map: MapLibreMap,
         state: MapRenderState,
         cameraCommand: MapCameraCommand?,
+        viewportHeightPx: Int,
     ) {
         cameraCommand ?: return
         if (cameraCommand.id == lastCameraCommandId) return
@@ -104,8 +108,63 @@ internal class AndroidMapCamera {
                     )
                 map.animateCamera(update, CAMERA_ANIMATION_MILLIS)
             }
+
+            is MapCameraCommand.MoveToCoordinate -> {
+                if (!cameraCommand.hasValidCoordinate()) return
+                hasResolvedInitialCenter = true
+                val coordinate = LatLng(cameraCommand.latitude, cameraCommand.longitude)
+                val update =
+                    cameraCommand.verticalPosition
+                        ?.takeIf { it.isFinite() && it in 0.0..0.5 && viewportHeightPx > 0 }
+                        ?.let { verticalPosition ->
+                            val bottomPadding = viewportHeightPx * (1.0 - 2.0 * verticalPosition)
+                            CameraUpdateFactory.newCameraPosition(
+                                CameraPosition
+                                    .Builder(map.cameraPosition)
+                                    .target(coordinate)
+                                    .zoom(cameraCommand.zoom?.takeIf(Double::isFinite) ?: map.cameraPosition.zoom)
+                                    .padding(0.0, 0.0, 0.0, bottomPadding)
+                                    .build(),
+                            )
+                        } ?: cameraCommand.zoom?.takeIf(Double::isFinite)?.let { zoom ->
+                        CameraUpdateFactory.newLatLngZoom(coordinate, zoom)
+                    } ?: CameraUpdateFactory.newLatLng(coordinate)
+                map.animateCamera(update, CAMERA_ANIMATION_MILLIS)
+            }
+
+            is MapCameraCommand.MoveToBounds -> {
+                if (!cameraCommand.hasValidBounds()) return
+                hasResolvedInitialCenter = true
+                val bounds = cameraCommand.bounds
+                map.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
+                map.animateCamera(
+                    CameraUpdateFactory.newLatLngBounds(
+                        LatLngBounds.from(
+                            bounds.maxLatitude,
+                            bounds.maxLongitude,
+                            bounds.minLatitude,
+                            bounds.minLongitude,
+                        ),
+                        0,
+                    ),
+                    CAMERA_ANIMATION_MILLIS,
+                )
+            }
         }
     }
+
+    private fun MapCameraCommand.MoveToCoordinate.hasValidCoordinate(): Boolean =
+        latitude.isFinite() &&
+            longitude.isFinite() &&
+            latitude in -90.0..90.0 &&
+            longitude in -180.0..180.0
+
+    private fun MapCameraCommand.MoveToBounds.hasValidBounds(): Boolean =
+        bounds.minLongitude.isFinite() &&
+            bounds.minLatitude.isFinite() &&
+            bounds.maxLongitude.isFinite() &&
+            bounds.maxLatitude.isFinite() &&
+            bounds.minLatitude <= bounds.maxLatitude
 
     private fun MapFocusRequest.hasValidCoordinate(): Boolean =
         latitude.isFinite() &&

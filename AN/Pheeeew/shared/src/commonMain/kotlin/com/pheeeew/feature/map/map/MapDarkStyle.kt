@@ -12,9 +12,17 @@ internal object MapDarkStyle {
     const val PARK_HEX = DesignSystemColors.MAP_PARK_HEX
     const val WATER_HEX = DesignSystemColors.MAP_WATER_HEX
     const val LABEL_HEX = DesignSystemColors.MAP_LABEL_HEX
+    const val LABEL_HALO_HEX = DesignSystemColors.MAP_LABEL_HALO_HEX
     const val INITIAL_ZOOM = 12.6
-    const val POI_LABEL_MIN_ZOOM = 14.5
+    const val IMPORTANT_POI_MIN_ZOOM = 13.5
+    const val BUILDING_LABEL_MIN_ZOOM = 14.0
+    const val GENERAL_DETAIL_MIN_ZOOM = 15.0
+    const val IMPORTANT_POI_MAX_RANK = 7
+    const val POI_LABEL_SIZE = 12f
+    const val BUILDING_LABEL_SIZE = 11f
+    const val LABEL_HALO_WIDTH = 1.25f
     const val FOCUS_ZOOM = 15.5
+    const val SIGH_DETAIL_ZOOM = 17.0
     const val MINIMUM_ZOOM = 0.0
     const val MAXIMUM_ZOOM = 22.0
 
@@ -22,12 +30,13 @@ internal object MapDarkStyle {
     const val SIGH_LAYER_ID = "sigh-symbol-layer"
     const val SIGH_IMAGE_ID = "sigh-star-dark"
 
+    const val WARM_YELLOW = "#FFD166"
+    const val WARM_GLOW = "#FFB84D"
+    const val IVORY = "#FFF4CC"
+
     const val CURRENT_LOCATION_SOURCE_ID = "current-location-source"
     const val CURRENT_LOCATION_BORDER_LAYER_ID = "current-location-border-layer"
     const val CURRENT_LOCATION_LAYER_ID = "current-location-layer"
 
-    const val WARM_YELLOW = "#FFD166"
-    const val WARM_GLOW = "#FFB84D"
-    const val IVORY = "#FFF4CC"
     const val LOCATION_BLUE = "#2F80ED"
 }

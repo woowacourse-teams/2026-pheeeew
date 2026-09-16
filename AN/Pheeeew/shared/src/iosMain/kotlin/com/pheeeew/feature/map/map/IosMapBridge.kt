@@ -1,5 +1,6 @@
 package com.pheeeew.feature.map.map
 
+import com.pheeeew.feature.map.star.StarVisual
 import platform.UIKit.UIView
 
 /** Swift MapLibre renderer가 Kotlin 상태를 소비하기 위한 최소 브리지 계약입니다. */
@@ -47,6 +48,7 @@ data class IosSighMarker(
     val id: String,
     val latitude: Double,
     val longitude: Double,
+    val visual: StarVisual,
 ) {
     override fun toString(): String = "IosSighMarker(id=$id, coordinate=[redacted])"
 }
@@ -76,6 +78,8 @@ data class IosMapScreenPoint(
 enum class IosMapCameraCommandKind {
     ZoomBy,
     MoveToCurrentLocation,
+    MoveToCoordinate,
+    MoveToBounds,
 }
 
 data class IosMapCameraCommand(
@@ -83,6 +87,13 @@ data class IosMapCameraCommand(
     val kind: IosMapCameraCommandKind,
     val delta: Double,
     val zoom: Double?,
+    val latitude: Double,
+    val longitude: Double,
+    val minLongitude: Double,
+    val minLatitude: Double,
+    val maxLongitude: Double,
+    val maxLatitude: Double,
+    val verticalPosition: Double?,
 )
 
 data class IosMapRenderState(
@@ -91,6 +102,7 @@ data class IosMapRenderState(
     val initialCenter: IosMapCoordinate?,
     val initialCenterIsProvisional: Boolean,
     val focusRequest: IosMapFocusRequest?,
+    val projectionTargets: List<IosMapFocusRequest>,
     val cameraCommand: IosMapCameraCommand?,
 ) {
     override fun toString(): String = "IosMapRenderState([redacted])"

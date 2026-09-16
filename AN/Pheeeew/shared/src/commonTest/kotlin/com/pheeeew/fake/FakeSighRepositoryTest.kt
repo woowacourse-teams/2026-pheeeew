@@ -4,6 +4,8 @@ package com.pheeeew.fake
 
 import com.pheeeew.domain.exception.ApiException
 import com.pheeeew.domain.model.geo.Coordinate
+import com.pheeeew.domain.model.sigh.CreateSighCommand
+import com.pheeeew.domain.model.sigh.Sigh
 import com.pheeeew.domain.model.sigh.SighBounds
 import com.pheeeew.domain.model.sigh.SighPin
 import kotlinx.coroutines.test.runTest
@@ -12,6 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
+import kotlin.time.Instant
 
 class FakeSighRepositoryTest {
     private lateinit var repository: FakeSighRepository
@@ -42,11 +45,11 @@ class FakeSighRepositoryTest {
                             ),
                     ),
                 )
-            repository.setGetSighsSuccess(expected)
+            repository.setGetMapSighsSuccess(expected)
 
-            val actual = repository.getSighs(sighBounds)
+            val actual = repository.getMapSighs(sighBounds)
             assertEquals(expected, actual)
-            assertEquals(1, repository.getSighsCallCount)
+            assertEquals(1, repository.getMapSighsCallCount)
         }
 
     @Test
@@ -57,45 +60,45 @@ class FakeSighRepositoryTest {
                     code = "NETWORK_ERROR",
                     message = "네트워크 오류",
                 )
-            repository.setGetSighsFailure(expectedException)
+            repository.setGetMapSighsFailure(expectedException)
 
             val actualException =
                 assertFailsWith<ApiException.Network> {
-                    repository.getSighs(sighBounds)
+                    repository.getMapSighs(sighBounds)
                 }
 
             assertSame(expectedException, actualException)
-            assertEquals(1, repository.getSighsCallCount)
+            assertEquals(1, repository.getMapSighsCallCount)
         }
 
     @Test
     fun `등록 결과와 전달받은 인자를 기록한다`() =
         runTest {
-            val requestId = "request-123"
             val coordinate =
                 Coordinate(
                     latitude = 37.5665,
                     longitude = 126.9780,
                 )
+            val command = CreateSighCommand(requestId = "request-123", coordinate = coordinate, memo = null)
             val expected =
-                SighPin(
+                Sigh(
                     id = 10L,
                     coordinate = coordinate,
+                    memo = null,
+                    createdAt = Instant.parse("2026-09-01T12:00:00Z"),
                 )
-            repository.setRegisterSighSuccess(expected)
+            repository.setCreateSighSuccess(expected)
 
-            val actual = repository.registerSigh(requestId, coordinate)
+            val actual = repository.create(command)
 
             assertEquals(expected, actual)
-            assertEquals(listOf(requestId), repository.receivedRequestIds)
-            assertEquals(listOf(coordinate), repository.receivedCoordinates)
-            assertEquals(1, repository.registerSighCallCount)
+            assertEquals(listOf(command), repository.receivedCommands)
+            assertEquals(1, repository.createSighCallCount)
         }
 
     @Test
     fun `등록 실패 시에도 인자와 호출 횟수를 기록한다`() =
         runTest {
-            val requestId = "request-456"
             val coordinate =
                 Coordinate(
                     latitude = 35.1796,
@@ -106,43 +109,52 @@ class FakeSighRepositoryTest {
                     code = "DUPLICATED_REQUEST",
                     message = "중복 요청",
                 )
-            repository.setRegisterSighFailure(expectedException)
+            val command = CreateSighCommand(requestId = "request-456", coordinate = coordinate, memo = null)
+            repository.setCreateSighFailure(expectedException)
 
             val actualException =
                 assertFailsWith<ApiException.Conflict> {
-                    repository.registerSigh(requestId, coordinate)
+                    repository.create(command)
                 }
 
             assertSame(expectedException, actualException)
-            assertEquals(listOf(requestId), repository.receivedRequestIds)
-            assertEquals(listOf(coordinate), repository.receivedCoordinates)
-            assertEquals(1, repository.registerSighCallCount)
+            assertEquals(listOf(command), repository.receivedCommands)
+            assertEquals(1, repository.createSighCallCount)
         }
 
     @Test
     fun `조회와 등록 호출 횟수를 누락한다`() =
         runTest {
             val coordinate = Coordinate(37.0, 127.0)
-            val sighPin = SighPin(id = 1L, coordinate = coordinate)
+            val sigh =
+                Sigh(
+                    id = 1L,
+                    coordinate = coordinate,
+                    memo = null,
+                    createdAt = Instant.parse("2026-09-01T12:00:00Z"),
+                )
 
-            repository.setGetSighsSuccess(emptyList())
-            repository.setRegisterSighSuccess(sighPin)
+            repository.setGetMapSighsSuccess(emptyList())
+            repository.setCreateSighSuccess(sigh)
 
             repeat(2) {
-                repository.getSighs(sighBounds)
+                repository.getMapSighs(sighBounds)
             }
             repeat(3) { index ->
-                repository.registerSigh(
-                    requestId = "request-$index",
-                    coordinate = coordinate,
+                repository.create(
+                    CreateSighCommand(
+                        requestId = "request-$index",
+                        coordinate = coordinate,
+                        memo = null,
+                    ),
                 )
             }
 
-            assertEquals(2, repository.getSighsCallCount)
-            assertEquals(3, repository.registerSighCallCount)
+            assertEquals(2, repository.getMapSighsCallCount)
+            assertEquals(3, repository.createSighCallCount)
             assertEquals(
                 listOf("request-0", "request-1", "request-2"),
-                repository.receivedRequestIds,
+                repository.receivedCommands.map { it.requestId },
             )
         }
 
@@ -151,18 +163,14 @@ class FakeSighRepositoryTest {
         runTest {
             val inside = Coordinate(latitude = 37.55, longitude = 127.0)
             val outside = Coordinate(latitude = 35.0, longitude = 129.0)
-            repository.setRegisterSighSuccess(SighPin(id = 1L, coordinate = inside))
-            repository.registerSigh("inside", inside)
-            repository.setRegisterSighSuccess(SighPin(id = 2L, coordinate = outside))
-            repository.registerSigh("outside", outside)
-            repository.setGetSighsSuccess(
+            repository.setGetMapSighsSuccess(
                 listOf(
                     SighPin(id = 1L, coordinate = inside),
                     SighPin(id = 2L, coordinate = outside),
                 ),
             )
 
-            val result = repository.getSighs(sighBounds)
+            val result = repository.getMapSighs(sighBounds)
 
             assertEquals(listOf(inside), result.map { it.coordinate })
         }

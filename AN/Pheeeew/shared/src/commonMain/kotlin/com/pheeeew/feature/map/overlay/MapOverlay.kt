@@ -4,11 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
@@ -17,69 +16,62 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.feature.map.SighReleaseState
+import com.pheeeew.feature.map.sighlist.SighListButton
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_my_location
-import pheeeew.shared.generated.resources.ic_refresh
 import pheeeew.shared.generated.resources.ic_settings
 
 @Composable
 fun MapOverlay(
     onSettingsClick: () -> Unit,
-    onRefreshClick: () -> Unit,
+    isSighListVisible: Boolean,
+    onSighListVisibilityChange: (Boolean) -> Unit,
     onZoomInClick: () -> Unit,
     onZoomOutClick: () -> Unit,
     onMyLocationClick: () -> Unit,
+    errorMessage: String?,
+    controlsEnabled: Boolean,
     modifier: Modifier = Modifier,
-    curLocation: String? = null,
-    errorMessage: String? = null,
-    sighReleaseState: SighReleaseState = SighReleaseState.Idle,
-    onRetrySigh: () -> Unit = {},
-    onCancelSigh: () -> Unit = {},
-    controlsEnabled: Boolean = true,
 ) {
     Column(
         modifier = modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(
+        Box(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             OverlayIconButton(
                 icon = Res.drawable.ic_settings,
                 contentDescription = "설정",
                 onClick = onSettingsClick,
                 enabled = controlsEnabled,
+                modifier = Modifier.align(Alignment.CenterStart),
             )
-            OverlayIconButton(
-                icon = Res.drawable.ic_refresh,
-                contentDescription = "새로고침",
-                onClick = onRefreshClick,
-                enabled = controlsEnabled,
-            )
-        }
-
-        if (errorMessage != null) {
-            MapErrorBanner(
-                message = errorMessage,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                onRetry = (sighReleaseState as? SighReleaseState.Error)?.takeIf { it.canRetry }?.let { onRetrySigh },
-                onNew = (sighReleaseState as? SighReleaseState.Error)?.let { onCancelSigh },
+            SighListButton(
+                checked = isSighListVisible,
+                onCheckedChange = onSighListVisibilityChange,
+                interactionEnabled = controlsEnabled,
+                modifier = Modifier.align(Alignment.Center),
             )
         }
-
-        Spacer(modifier = Modifier.weight(1f))
-
+        Box(
+            modifier = Modifier.height(80.dp),
+        ) {
+            if (errorMessage != null) {
+                MapErrorBanner(
+                    message = errorMessage,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+            }
+        }
         Column(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    // BreathControl의 기본(idle) 버튼 상단(약 103dp)보다 위에 오도록 여백을 둔다.
                     .padding(end = 16.dp, bottom = 120.dp),
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -92,7 +84,7 @@ fun MapOverlay(
                 enabled = controlsEnabled,
             )
         }
-        Spacer(modifier = Modifier.navigationBarsPadding())
+        Spacer(modifier = Modifier.weight(1f))
     }
 }
 
@@ -103,10 +95,13 @@ private fun MapOverlayPreview() {
         Box(modifier = Modifier.fillMaxSize().background(AppTheme.colors.background)) {
             MapOverlay(
                 onSettingsClick = {},
-                onRefreshClick = {},
+                isSighListVisible = false,
+                onSighListVisibilityChange = {},
                 onZoomInClick = {},
                 onZoomOutClick = {},
                 onMyLocationClick = {},
+                errorMessage = null,
+                controlsEnabled = true,
             )
         }
     }
@@ -119,11 +114,13 @@ private fun MapOverlayNetworkErrorPreview() {
         Box(modifier = Modifier.fillMaxSize().background(AppTheme.colors.background)) {
             MapOverlay(
                 onSettingsClick = {},
-                onRefreshClick = {},
+                isSighListVisible = false,
+                onSighListVisibilityChange = {},
                 onZoomInClick = {},
                 onZoomOutClick = {},
                 onMyLocationClick = {},
                 errorMessage = "인터넷 연결 상태를 확인해주세요!",
+                controlsEnabled = true,
             )
         }
     }
@@ -136,11 +133,13 @@ private fun MapOverlayPermissionErrorPreview() {
         Box(modifier = Modifier.fillMaxSize().background(AppTheme.colors.background)) {
             MapOverlay(
                 onSettingsClick = {},
-                onRefreshClick = {},
+                isSighListVisible = false,
+                onSighListVisibilityChange = {},
                 onZoomInClick = {},
                 onZoomOutClick = {},
                 onMyLocationClick = {},
                 errorMessage = "설정에서 위치 권한을 '허용'으로 변경해주세요.",
+                controlsEnabled = true,
             )
         }
     }
@@ -153,11 +152,13 @@ private fun MapOverlayGpsErrorPreview() {
         Box(modifier = Modifier.fillMaxSize().background(AppTheme.colors.background)) {
             MapOverlay(
                 onSettingsClick = {},
-                onRefreshClick = {},
+                isSighListVisible = false,
+                onSighListVisibilityChange = {},
                 onZoomInClick = {},
                 onZoomOutClick = {},
                 onMyLocationClick = {},
                 errorMessage = "GPS 수신이 원활하지 않습니다.",
+                controlsEnabled = true,
             )
         }
     }

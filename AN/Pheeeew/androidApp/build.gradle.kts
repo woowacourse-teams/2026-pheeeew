@@ -13,6 +13,11 @@ kotlin {
 dependencies {
     implementation(project(":shared"))
 
+    androidTestImplementation(libs.androidx.testExt.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.androidx.security.crypto)
+
     implementation(libs.androidx.activity.compose)
 
     implementation(libs.compose.uiToolingPreview)
@@ -55,6 +60,7 @@ android {
                 "API_BASE_URL",
                 "\"https://api-dev.pheeeew.com\"",
             )
+            buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", "87715710427L")
         }
         release {
             isMinifyEnabled = false
@@ -63,6 +69,7 @@ android {
                 "API_BASE_URL",
                 "\"https://api.pheeeew.com\"",
             )
+            buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", "87715710427L")
             proguardFiles(
                 getDefaultProguardFile(
                     "proguard-android-optimize.txt",

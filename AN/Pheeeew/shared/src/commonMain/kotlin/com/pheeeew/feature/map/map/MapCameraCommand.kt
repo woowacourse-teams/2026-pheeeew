@@ -1,5 +1,7 @@
 package com.pheeeew.feature.map.map
 
+import com.pheeeew.domain.model.sigh.SighBounds
+
 sealed interface MapCameraCommand {
     val id: Long
 
@@ -10,6 +12,19 @@ sealed interface MapCameraCommand {
 
     data class MoveToCurrentLocation(
         override val id: Long,
-        val zoom: Double? = null,
+        val zoom: Double?,
+    ) : MapCameraCommand
+
+    data class MoveToCoordinate(
+        override val id: Long,
+        val latitude: Double,
+        val longitude: Double,
+        val zoom: Double?,
+        val verticalPosition: Double? = null,
+    ) : MapCameraCommand
+
+    data class MoveToBounds(
+        override val id: Long,
+        val bounds: SighBounds,
     ) : MapCameraCommand
 }

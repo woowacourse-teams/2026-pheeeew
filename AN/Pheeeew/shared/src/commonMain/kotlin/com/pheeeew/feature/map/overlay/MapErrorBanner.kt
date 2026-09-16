@@ -30,8 +30,6 @@ import pheeeew.shared.generated.resources.ic_error
 fun MapErrorBanner(
     message: String,
     modifier: Modifier = Modifier,
-    onRetry: (() -> Unit)? = null,
-    onNew: (() -> Unit)? = null,
     onClick: (() -> Unit)? = null,
 ) {
     Surface(
@@ -60,31 +58,58 @@ fun MapErrorBanner(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (onRetry != null) {
-                Text(
-                    text = "재시도",
-                    style = AppTheme.typography.menuItem,
-                    modifier = Modifier.padding(start = 8.dp).clickable(onClick = onRetry),
-                )
-            }
-            if (onNew != null) {
-                Text(
-                    text = "새로 하기",
-                    style = AppTheme.typography.menuItem,
-                    modifier = Modifier.padding(start = 8.dp).clickable(onClick = onNew),
-                )
-            }
         }
     }
 }
 
 @Preview
 @Composable
-private fun MapErrorBannerPreview() {
+private fun MapErrorBannerNetworkPreview() {
     AppTheme {
-        Box(modifier = Modifier.background(AppTheme.colors.background).padding(24.dp)) {
+        Box(
+            modifier =
+                Modifier
+                    .background(AppTheme.colors.background)
+                    .padding(24.dp),
+        ) {
             MapErrorBanner(
-                message = "네트워크 연결이 불안정해요. 인터넷 연결을 확인한 후 다시 시도해 주세요.",
+                message = "인터넷 연결을 확인한 후 다시 시도해 주세요.",
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun MapErrorBannerRendererPreview() {
+    AppTheme {
+        Box(
+            modifier =
+                Modifier
+                    .background(AppTheme.colors.background)
+                    .padding(24.dp),
+        ) {
+            MapErrorBanner(
+                message = "지도를 불러오지 못했어요. 잠시 후 재시도해 주세요.",
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+private fun MapErrorBannerWithActionsPreview() {
+    AppTheme {
+        Box(
+            modifier =
+                Modifier
+                    .background(AppTheme.colors.background)
+                    .padding(24.dp),
+        ) {
+            MapErrorBanner(
+                message = "위치 정보를 불러오지 못했어요.",
                 modifier = Modifier.fillMaxWidth(),
             )
         }

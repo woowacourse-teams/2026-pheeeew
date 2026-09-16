@@ -2,6 +2,7 @@ package com.pheeeew.feature.map.map
 
 import android.animation.ValueAnimator
 import android.graphics.Color
+import android.view.Gravity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -12,6 +13,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
@@ -30,6 +33,9 @@ import org.maplibre.android.style.layers.PropertyFactory.iconOpacity
 import org.maplibre.android.style.layers.PropertyFactory.iconSize
 import org.maplibre.android.style.layers.SymbolLayer
 import java.util.ArrayDeque
+import kotlin.math.PI
+import kotlin.math.roundToInt
+import kotlin.math.sin
 
 @Composable
 internal actual fun NativeBreathMap(
@@ -80,7 +86,12 @@ internal actual fun NativeBreathMap(
     }
 
     DisposableEffect(host, lifecycleOwner) {
-        val lifecycleDelegate = AndroidMapLifecycleDelegate(host.mapView)
+        val lifecycleDelegate =
+            AndroidMapLifecycleDelegate(
+                mapView = host.mapView,
+                onPause = host::pauseAnimations,
+                onResume = host::resumeAnimations,
+            )
         lifecycleDelegate.attach(lifecycleOwner)
 
         onDispose {
@@ -123,6 +134,7 @@ private class AndroidBreathMapHost(
     private var lastRenderedFocusId: String? = null
     private var lastPublishedPoints: Map<String, MapScreenPoint>? = null
     private var lastPublishedCameraIdle: Boolean? = null
+    private var statusBarInset = 0
 
     private val mapLoadFailureListener =
         MapView.OnDidFailLoadingMapListener {
@@ -178,10 +190,17 @@ private class AndroidBreathMapHost(
         }
 
     init {
+        ViewCompat.setOnApplyWindowInsetsListener(mapView) { _, insets ->
+            statusBarInset = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            applyCompassMargins()
+            insets
+        }
+        ViewCompat.requestApplyInsets(mapView)
         mapView.addOnDidFailLoadingMapListener(mapLoadFailureListener)
         mapView.getMapAsync { readyMap ->
             if (released) return@getMapAsync
             map = readyMap
+            applyCompassMargins()
             readyMap.setMinZoomPreference(MapDarkStyle.MINIMUM_ZOOM)
             readyMap.setMaxZoomPreference(MapDarkStyle.MAXIMUM_ZOOM)
             readyMap.uiSettings.apply {
@@ -191,7 +210,9 @@ private class AndroidBreathMapHost(
                 isTiltGesturesEnabled = true
                 isLogoEnabled = true
                 isAttributionEnabled = true
-                isCompassEnabled = false
+                isCompassEnabled = true
+                setCompassFadeFacingNorth(true)
+                compassGravity = Gravity.TOP or Gravity.END
             }
             readyMap.addOnMapClickListener(mapClickListener)
             readyMap.addOnCameraMoveStartedListener(cameraMoveStartedListener)
@@ -234,6 +255,7 @@ private class AndroidBreathMapHost(
     fun release() {
         if (released) return
         released = true
+        ViewCompat.setOnApplyWindowInsetsListener(mapView, null)
         mapView.removeOnDidFailLoadingMapListener(mapLoadFailureListener)
         map?.removeOnMapClickListener(mapClickListener)
         map?.removeOnCameraMoveStartedListener(cameraMoveStartedListener)
@@ -245,6 +267,14 @@ private class AndroidBreathMapHost(
         style = null
         latestState = null
         pendingCameraCommands.clear()
+    }
+
+    fun pauseAnimations() {
+        sighPulseAnimator?.pause()
+    }
+
+    fun resumeAnimations() {
+        sighPulseAnimator?.resume()
     }
 
     private fun startSighPulse(style: Style) {
@@ -261,7 +291,7 @@ private class AndroidBreathMapHost(
                     AndroidMapSources.sighLayerIds().forEachIndexed { group, layerId ->
                         val layer = style.getLayerAs<SymbolLayer>(layerId) ?: return@forEachIndexed
                         val phase = (progress + group.toFloat() / AndroidMapSources.PULSE_GROUP_COUNT) % 1f
-                        val wave = ((kotlin.math.sin(phase * 2f * kotlin.math.PI.toFloat()) + 1f) / 2f)
+                        val wave = (sin(phase * 2f * PI.toFloat()) + 1f) / 2f
                         val pulse = wave * wave * (3f - (2f * wave))
                         layer.setProperties(
                             iconSize(0.48f + (pulse * 0.20f)),
@@ -271,6 +301,15 @@ private class AndroidBreathMapHost(
                 }
                 start()
             }
+    }
+
+    private fun applyCompassMargins() {
+        map?.uiSettings?.setCompassMargins(
+            0,
+            statusBarInset + (12f * mapView.resources.displayMetrics.density).roundToInt(),
+            (16f * mapView.resources.displayMetrics.density).roundToInt(),
+            0,
+        )
     }
 
     private fun renderLatestState() {
@@ -296,10 +335,15 @@ private class AndroidBreathMapHost(
             cameraIdle = false
             lastRenderedFocusId = state.focusRequest.id
         }
-        camera.render(currentMap, state, cameraCommand = null)
+        camera.render(currentMap, state, cameraCommand = null, viewportHeightPx = mapView.height)
         while (pendingCameraCommands.isNotEmpty()) {
             cameraIdle = false
-            camera.render(currentMap, state, pendingCameraCommands.removeFirst())
+            camera.render(
+                currentMap,
+                state,
+                pendingCameraCommands.removeFirst(),
+                viewportHeightPx = mapView.height,
+            )
         }
         publishProjection(cameraIdle = cameraIdle)
     }
@@ -310,11 +354,22 @@ private class AndroidBreathMapHost(
         val state = latestState ?: return
         val targets =
             buildList {
-                state.sighMarkers.forEach { add(MapPointTarget(it.id, it.latitude, it.longitude)) }
                 state.focusRequest?.let { focus ->
-                    if (none { it.id == focus.id }) add(MapPointTarget(focus.id, focus.latitude, focus.longitude))
+                    add(MapPointTarget(focus.id, focus.latitude, focus.longitude))
                 }
+                state.projectionTargets.forEach { target ->
+                    add(MapPointTarget(target.id, target.latitude, target.longitude))
+                }
+            }.distinctBy(MapPointTarget::id)
+        if (targets.isEmpty()) {
+            if (lastPublishedPoints?.isNotEmpty() == true) {
+                lastPublishedPoints = emptyMap()
+                lastPublishedCameraIdle = cameraIdle
+                projectionRevision += 1
+                onProjectionChanged(MapProjectionSnapshot(projectionRevision, emptyMap(), cameraIdle))
             }
+            return
+        }
         val points =
             targets.associate { target ->
                 val point = currentMap.projection.toScreenLocation(LatLng(target.latitude, target.longitude))
@@ -336,6 +391,8 @@ private class AndroidBreathMapHost(
 
 private class AndroidMapLifecycleDelegate(
     private val mapView: MapView,
+    private val onPause: () -> Unit,
+    private val onResume: () -> Unit,
 ) {
     private var started = false
     private var resumed = false
@@ -373,12 +430,16 @@ private class AndroidMapLifecycleDelegate(
     private fun resume() {
         if (destroyed || resumed) return
         if (!started) start()
+
         mapView.onResume()
+        onResume()
         resumed = true
     }
 
     private fun pause() {
         if (!resumed) return
+
+        onPause()
         mapView.onPause()
         resumed = false
     }

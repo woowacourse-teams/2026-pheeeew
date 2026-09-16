@@ -18,8 +18,8 @@ private const val CANCEL_ANIMATION_MILLIS = 200
 @Composable
 fun PredictiveBackContent(
     onBack: () -> Unit,
-    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val progress = remember { Animatable(0f) }
     var width by remember { mutableIntStateOf(0) }

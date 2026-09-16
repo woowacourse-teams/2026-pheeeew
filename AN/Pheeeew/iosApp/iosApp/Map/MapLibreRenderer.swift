@@ -12,7 +12,8 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     private var sighSource: MLNShapeSource?
     private var sighLayers: [MLNSymbolStyleLayer] = []
     private var sighPulseDisplayLink: CADisplayLink?
-    private var sighPulseStartedAt = CACurrentMediaTime()
+    private var sighPulseStartedAt: CFTimeInterval = 0
+    private var lastRenderedSighs: [RenderedSigh]?
     private var currentLocationSource: MLNShapeSource?
     private var styleIsReady = false
     private var didApplyProvisionalCamera = false
@@ -21,8 +22,10 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     private var lastReceivedCameraCommandID: Int64?
     private var lastFocusRequestID: String?
     private var pendingCameraCommands: [IosMapCameraCommand] = []
+    private var cameraOperationRevision: UInt64 = 0
+    private var isAwaitingCoordinateMoveNormalization = false
     private var cameraIsIdle = true
-    private var lastPublishedProjectionSignature: String?
+    private var lastPublishedProjection: ProjectionSnapshot?
 
     private static let userCameraReasonMask: UInt =
         (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) |
@@ -40,7 +43,7 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         mapView.allowsZooming = true
         mapView.minimumZoomLevel = MapLibreDarkStyle.minimumZoom
         mapView.maximumZoomLevel = MapLibreDarkStyle.maximumZoom
-        mapView.compassView.isHidden = true
+        mapView.compassView.isHidden = false
 
         let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
         tapRecognizer.cancelsTouchesInView = false
@@ -67,11 +70,15 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         mapView.delegate = nil
         pendingState = nil
         sighSource = nil
-        sighLayers.removeAll()
         sighPulseDisplayLink?.invalidate()
         sighPulseDisplayLink = nil
+        sighLayers.removeAll(keepingCapacity: true)
+        lastRenderedSighs = nil
+
         currentLocationSource = nil
         pendingCameraCommands.removeAll()
+        cameraOperationRevision &+= 1
+        isAwaitingCoordinateMoveNormalization = false
     }
 
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
@@ -102,13 +109,15 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         cameraIsIdle = false
         eventSink.onProjectionChanged(points: projectionPoints(), cameraIdle: false)
         if reason.rawValue & Self.userCameraReasonMask != 0 {
+            cameraOperationRevision &+= 1
+            isAwaitingCoordinateMoveNormalization = false
             didResolveInitialCamera = true
         }
     }
 
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
-        cameraIsIdle = true
-        eventSink.onProjectionChanged(points: projectionPoints(), cameraIdle: true)
+        cameraIsIdle = !isAwaitingCoordinateMoveNormalization
+        eventSink.onProjectionChanged(points: projectionPoints(), cameraIdle: cameraIsIdle)
         let bounds = mapView.visibleCoordinateBounds
         eventSink.onBoundsChanged(
             minLongitude: bounds.sw.longitude,
@@ -120,28 +129,27 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
 
     private func publishProjection(cameraIdle: Bool) {
         guard styleIsReady else { return }
-        let points = projectionPoints()
-        let signature = points.map { "\($0.id):\($0.xPx):\($0.yPx)" }.joined(separator: "|") + ":\(cameraIdle)"
-        if signature == lastPublishedProjectionSignature { return }
-        lastPublishedProjectionSignature = signature
+        let snapshot = ProjectionSnapshot(points: projectionPoints(), cameraIdle: cameraIdle)
+        if snapshot == lastPublishedProjection { return }
+        lastPublishedProjection = snapshot
+        let points = snapshot.points
         eventSink.onProjectionChanged(points: points, cameraIdle: cameraIdle)
     }
 
     private func projectionPoints() -> [IosMapScreenPoint] {
         guard let state = pendingState else { return [] }
+        var targets = state.projectionTargets
+        if let focus = state.focusRequest {
+            targets.append(focus)
+        }
         // MapLibre reports UIKit points, while Compose Canvas coordinates are pixels on iOS.
         // Convert the projected map points before sending them to the Compose animation overlay.
         let screenScale = mapView.window?.screen.scale ?? mapView.contentScaleFactor
-        var targets: [(String, CLLocationCoordinate2D)] = state.sighMarkers.map {
-            ($0.id, CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude))
-        }
-        if let focus = state.focusRequest, !targets.contains(where: { $0.0 == focus.id }) {
-            targets.append((focus.id, CLLocationCoordinate2D(latitude: focus.latitude, longitude: focus.longitude)))
-        }
-        return targets.map { id, coordinate in
+        return targets.map { target in
+            let coordinate = CLLocationCoordinate2D(latitude: target.latitude, longitude: target.longitude)
             let point = mapView.convert(coordinate, toPointTo: mapView)
             return IosMapScreenPoint(
-                id: id,
+                id: target.id,
                 xPx: Double(point.x * screenScale),
                 yPx: Double(point.y * screenScale)
             )
@@ -175,7 +183,15 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     }
 
     private func addRuntimeSourcesAndLayers(to style: MLNStyle) {
-        style.setImage(MapLibreDarkStyle.makeSighStarImage(), forName: MapLibreDarkStyle.sighImageID)
+        let starImages: [(String, UIColor)] = [
+            (MapLibreDarkStyle.starFreshImageID, MapLibreDarkStyle.starFreshColor),
+            (MapLibreDarkStyle.starWarmImageID, MapLibreDarkStyle.starWarmColor),
+            (MapLibreDarkStyle.starDeepImageID, MapLibreDarkStyle.starDeepColor),
+            (MapLibreDarkStyle.starUnknownImageID, MapLibreDarkStyle.starUnknownColor),
+        ]
+        for (imageID, color) in starImages {
+            style.setImage(MapLibreDarkStyle.makeSighStarImage(color: color), forName: imageID)
+        }
 
         let sighSource = MLNShapeSource(
             identifier: MapLibreDarkStyle.sighSourceID,
@@ -192,8 +208,9 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
                 source: sighSource
             )
             sighLayer.predicate = NSPredicate(format: "%K == %d", Self.sighPulseGroupProperty, group)
-            sighLayer.iconImageName = NSExpression(forConstantValue: MapLibreDarkStyle.sighImageID)
+            sighLayer.iconImageName = NSExpression(mglJSONObject: ["get", "starImage"])
             sighLayer.iconScale = NSExpression(forConstantValue: 0.3)
+            sighLayer.iconOpacity = NSExpression(forConstantValue: 1.0)
             sighLayer.iconAllowsOverlap = NSExpression(forConstantValue: true)
             sighLayer.iconIgnoresPlacement = NSExpression(forConstantValue: true)
             style.addLayer(sighLayer)
@@ -238,12 +255,27 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     }
 
     private func updateSighs(_ markers: [IosSighMarker]) {
+        let renderedSighs = markers.map {
+            RenderedSigh(
+                id: $0.id,
+                latitude: $0.latitude,
+                longitude: $0.longitude,
+                imageKey: $0.visual.imageKey,
+                scale: $0.visual.scale,
+                opacity: $0.visual.opacity
+            )
+        }
+        guard renderedSighs != lastRenderedSighs else { return }
+        lastRenderedSighs = renderedSighs
         let features = markers.map { marker -> MLNPointFeature in
             let feature = MLNPointFeature()
             feature.coordinate = CLLocationCoordinate2D(latitude: marker.latitude, longitude: marker.longitude)
             feature.identifier = marker.id as NSString
             feature.attributes = [
                 "id": marker.id,
+                "starImage": marker.visual.imageKey,
+                "starScale": marker.visual.scale,
+                "starOpacity": marker.visual.opacity,
                 Self.sighPulseGroupProperty: Self.pulseGroup(for: marker.id),
             ]
             return feature
@@ -293,6 +325,20 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         return Int(hash % UInt64(sighPulseGroupCount))
     }
 
+    private struct RenderedSigh: Equatable {
+        let id: String
+        let latitude: Double
+        let longitude: Double
+        let imageKey: String
+        let scale: Float
+        let opacity: Float
+    }
+
+    private struct ProjectionSnapshot: Equatable {
+        let points: [IosMapScreenPoint]
+        let cameraIdle: Bool
+    }
+
     private func updateCurrentLocation(_ location: IosCurrentLocation?) {
         guard let location else {
             currentLocationSource?.shape = MLNShapeCollectionFeature(shapes: [])
@@ -332,6 +378,8 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
 
         if let focus = state.focusRequest, focus.id != lastFocusRequestID {
             cameraIsIdle = false
+            cameraOperationRevision &+= 1
+            isAwaitingCoordinateMoveNormalization = false
             lastFocusRequestID = focus.id
             MapLibreCamera.focus(focus, on: mapView)
             didResolveInitialCamera = true
@@ -342,7 +390,27 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
             let command = pendingCameraCommands.removeFirst()
             guard command.id != lastCameraCommandID else { continue }
             lastCameraCommandID = command.id
-            if MapLibreCamera.apply(command, currentLocation: state.currentLocation, to: mapView) {
+            cameraOperationRevision &+= 1
+            isAwaitingCoordinateMoveNormalization = false
+            let operationRevision = cameraOperationRevision
+            if MapLibreCamera.apply(
+                command,
+                currentLocation: state.currentLocation,
+                to: mapView,
+                onCoordinateMoveStarted: { [weak self] in
+                    self?.isAwaitingCoordinateMoveNormalization = true
+                },
+                onCoordinateMoveCompleted: { [weak self] in
+                    guard let self,
+                          self.cameraOperationRevision == operationRevision else { return }
+                    self.cameraOperationRevision &+= 1
+                    self.isAwaitingCoordinateMoveNormalization = false
+                    if !MapLibreCamera.clearTransientPaddingPreservingViewport(on: self.mapView) {
+                        self.cameraIsIdle = true
+                        self.publishProjection(cameraIdle: true)
+                    }
+                }
+            ) {
                 didResolveInitialCamera = true
             }
         }
@@ -374,4 +442,5 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
             )
         }
     }
+
 }

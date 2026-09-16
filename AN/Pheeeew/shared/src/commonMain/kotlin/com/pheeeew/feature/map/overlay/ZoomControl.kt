@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
@@ -27,16 +28,16 @@ import pheeeew.shared.generated.resources.ic_zoom_out
 fun ZoomControl(
     onZoomInClick: () -> Unit,
     onZoomOutClick: () -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
 ) {
     Surface(
         modifier = modifier.width(44.dp),
         shape = RoundedCornerShape(22.dp),
-        color = AppTheme.colors.surface,
-        contentColor = AppTheme.colors.onBackground,
-        border = BorderStroke(1.dp, AppTheme.colors.outline),
-        shadowElevation = 4.dp,
+        color = AppColors.MapControlBackground,
+        contentColor = AppColors.MapControlContent,
+        border = BorderStroke(1.dp, AppColors.MapControlBorder),
+        shadowElevation = 2.dp,
     ) {
         Column {
             Box(
@@ -45,7 +46,7 @@ fun ZoomControl(
             ) {
                 Icon(painter = painterResource(Res.drawable.ic_zoom_in), contentDescription = "확대")
             }
-            HorizontalDivider(color = AppTheme.colors.outline)
+            HorizontalDivider(color = AppColors.MapControlBorder)
             Box(
                 modifier = Modifier.size(44.dp).clickable(enabled = enabled, onClick = onZoomOutClick),
                 contentAlignment = Alignment.Center,
@@ -61,7 +62,7 @@ fun ZoomControl(
 private fun ZoomControlPreview() {
     AppTheme {
         Box(modifier = Modifier.background(AppTheme.colors.background).padding(24.dp)) {
-            ZoomControl(onZoomInClick = {}, onZoomOutClick = {})
+            ZoomControl(onZoomInClick = {}, onZoomOutClick = {}, enabled = true)
         }
     }
 }

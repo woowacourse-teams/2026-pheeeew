@@ -10,54 +10,109 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LocalLifecycleOwner
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.audio.BreathInputError
 import com.pheeeew.core.designsystem.component.AppDialog
+import com.pheeeew.core.designsystem.component.AppSnackbar
+import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.permission.LocationPermissionSettingsDialog
 import com.pheeeew.core.permission.LocationPermissionStatus
-import com.pheeeew.data.repository.FakeSighRepository
-import com.pheeeew.di.LocationDependencies
+import com.pheeeew.core.permission.LocationServicesSettingsDialog
 import com.pheeeew.domain.model.location.LocationState
+import com.pheeeew.domain.model.sigh.SighBounds
+import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.feature.map.animation.SighAnimationCoordinator
 import com.pheeeew.feature.map.animation.StarFlightOverlay
+import com.pheeeew.feature.map.guide.FirstSighGuideOverlay
+import com.pheeeew.feature.map.guide.FirstSighGuideStep
+import com.pheeeew.feature.map.guide.SighSwipeHintOverlay
+import com.pheeeew.feature.map.guide.firstSighGuideStepFor
 import com.pheeeew.feature.map.map.BreathMap
+import com.pheeeew.feature.map.map.MapError
 import com.pheeeew.feature.map.map.MapProjectionSnapshot
 import com.pheeeew.feature.map.overlay.BreathControl
 import com.pheeeew.feature.map.overlay.ErrorSnackbar
 import com.pheeeew.feature.map.overlay.MapOverlay
+import com.pheeeew.feature.map.overlay.MemoEditor
 import com.pheeeew.feature.map.overlay.SighPhase
-import kotlinx.coroutines.awaitCancellation
+import com.pheeeew.feature.map.sighlist.SIGH_BROWSER_EXIT_DURATION_MILLIS
+import com.pheeeew.feature.map.sighlist.SighBrowserOverlay
+import com.pheeeew.feature.map.sighlist.SighModerationUiState
+import com.pheeeew.feature.map.sighlist.SighReportScreen
+import com.pheeeew.feature.map.sighlist.toSighListItemUiModel
+import com.pheeeew.feature.map.star.StarAgePolicy
+import com.pheeeew.feature.map.star.StarVisualPolicy
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 @Composable
 fun MapScreen(
-    locationDependencies: LocationDependencies?,
+    uiState: MapUiState,
+    moderationUiState: SighModerationUiState,
     onSettingsClick: () -> Unit,
+    onZoomInClick: () -> Unit,
+    onZoomOutClick: () -> Unit,
+    onMyLocationClick: () -> Unit,
+    onBoundsChanged: (SighBounds) -> Unit,
+    onSighListVisibilityChange: (Boolean) -> Unit,
+    onSighItemClick: (Long) -> Unit,
+    onSighPinClick: (Long) -> Unit,
+    onDismissSighList: () -> Unit,
+    onDismissSighDetail: () -> Unit,
+    onLoadNextSighPage: () -> Unit,
+    onRefreshSighList: () -> Unit,
+    onDismissSighBrowserNotice: () -> Unit,
+    onOpenSighActionMenu: (Long, String) -> Unit,
+    onDismissSighActionMenu: () -> Unit,
+    onRequestSighBlock: () -> Unit,
+    onDismissSighBlock: () -> Unit,
+    onConfirmSighBlock: () -> Unit,
+    onDismissBlockError: () -> Unit,
+    onRequestSighReport: () -> Unit,
+    onSighReportReasonSelect: (String) -> Unit,
+    onSighReportDescriptionChange: (String) -> Unit,
+    onSubmitSighReport: () -> Unit,
+    onDismissSighReport: () -> Unit,
+    onDismissReportSuccess: () -> Unit,
+    onBeginSighRegistration: () -> Unit,
+    onBreathCompleted: () -> Unit,
+    onSubmitMemo: (String) -> Unit,
+    onSkipMemo: () -> Unit,
+    onCancelSighRegistration: () -> Unit,
+    onRetrySighCreation: () -> Unit,
+    onCancelFailedSighRegistration: () -> Boolean,
+    onConsumeFocusRequest: (String) -> Unit,
+    onEnsureLocationPermission: suspend () -> LocationPermissionStatus,
+    onOpenLocationSettings: () -> Unit,
+    onOpenAppSettings: () -> Unit,
+    onMapError: (MapError) -> Unit,
+    onMapReady: () -> Unit,
+    isActive: Boolean,
+    guideMode: Boolean,
+    onGuideSkip: () -> Unit,
     modifier: Modifier = Modifier,
-    isActive: Boolean = true,
-    viewModel: MapViewModel = viewModel { MapViewModel(FakeSighRepository(), locationDependencies) },
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val successState = uiState as? MapUiState.Success
     var pendingFlightOrigin by remember { mutableStateOf<Offset?>(null) }
+    val coroutineScope = rememberCoroutineScope()
     var projectionSnapshot by remember { mutableStateOf(MapProjectionSnapshot.Empty) }
     var activeFlightId by remember { mutableStateOf<String?>(null) }
     var landedFlightId by remember { mutableStateOf<String?>(null) }
@@ -67,35 +122,173 @@ fun MapScreen(
     var showLocationPermissionDialog by remember { mutableStateOf(false) }
     var showLocationServicesDialog by remember { mutableStateOf(false) }
     var showMicrophonePermissionDialog by remember { mutableStateOf(false) }
-    var startupPermissionsChecked by remember { mutableStateOf(false) }
-    val lifeCycleOwner = LocalLifecycleOwner.current
     var sighPhase by remember { mutableStateOf(SighPhase.Idle) }
+    var breathControlBounds by remember { mutableStateOf(Rect.Zero) }
     var cancelSignal by remember { mutableStateOf(0) }
-    val isSighSubmitting = successState?.sighReleaseState is SighReleaseState.Submitting
-    val isSighInteractionVisible = sighPhase != SighPhase.Idle || isSighSubmitting
-
-    LaunchedEffect(lifeCycleOwner, isActive) {
-        if (!isActive) startupPermissionsChecked = false
-        lifeCycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            if (!isActive) return@repeatOnLifecycle
-            if (!startupPermissionsChecked) {
-                viewModel.ensureLocationPermission()
-                startupPermissionsChecked = true
-                launch { viewModel.refreshLocationPermission() }
-            } else {
-                viewModel.refreshLocationPermission()
+    var breathStartSignal by remember { mutableIntStateOf(0) }
+    var isDefaultSwipeHintDelayElapsed by remember { mutableStateOf(false) }
+    var isBreathReleaseReady by remember { mutableStateOf(false) }
+    var isGuideSwipeHintDelayElapsed by remember { mutableStateOf(false) }
+    var starAgeRevision by remember { mutableIntStateOf(0) }
+    var visualNow by remember { mutableStateOf(Clock.System.now()) }
+    val sighBrowser = uiState.sighBrowser
+    var isSighBrowserComposed by remember { mutableStateOf(sighBrowser.isVisible) }
+    val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
+    val memoDraft = (uiState.sighRelease as? SighReleaseState.EditingMemo)?.draft
+    val isMemoEditing = memoDraft != null
+    val awaitingBreath = uiState.sighRelease as? SighReleaseState.AwaitingBreath
+    var guideBreathControlBottom by
+        remember(awaitingBreath?.command?.requestId) {
+            mutableStateOf(
+                breathControlBounds
+                    .takeIf { it.height > 0f }
+                    ?.bottom,
+            )
+        }
+    val retryableSighError =
+        (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
+    val cancelFailedSighRegistration = {
+        if (onCancelFailedSighRegistration()) pendingFlightOrigin = null
+    }
+    val cancelSighRegistration = {
+        cancelSignal += 1
+        pendingFlightOrigin = null
+        onCancelSighRegistration()
+    }
+    val isSighInteractionVisible = isSighSubmitting || isMemoEditing || awaitingBreath != null
+    val guideStep =
+        firstSighGuideStepFor(
+            releaseState = uiState.sighRelease,
+            phase = sighPhase,
+            isSwipeUpPromptReady = isBreathReleaseReady && isGuideSwipeHintDelayElapsed,
+        )
+    val isGuidePromptVisible =
+        guideMode &&
+            !isMemoEditing &&
+            guideStep != FirstSighGuideStep.Hidden
+    val shouldShowInteractionBackdrop = isSighInteractionVisible || isGuidePromptVisible
+    val currentLocation = (uiState.location.state as? LocationState.Available)?.location
+    val renderedSighs =
+        remember(uiState.sighs, sighBrowser.selectedSigh) {
+            (listOfNotNull(sighBrowser.selectedSigh?.toPin()) + uiState.sighs)
+                .distinctBy(SighPin::id)
+        }
+    val ensureRegistrationLocation: suspend () -> Boolean = {
+        when (onEnsureLocationPermission()) {
+            LocationPermissionStatus.Granted -> {
+                true
             }
-            awaitCancellation()
+
+            LocationPermissionStatus.ServicesDisabled -> {
+                showLocationServicesDialog = true
+                false
+            }
+
+            LocationPermissionStatus.PermanentlyDenied -> {
+                showLocationPermissionDialog = true
+                false
+            }
+
+            LocationPermissionStatus.Denied -> {
+                false
+            }
         }
     }
 
+    LaunchedEffect(sighBrowser.isVisible) {
+        if (sighBrowser.isVisible) {
+            isSighBrowserComposed = true
+        } else {
+            delay(SIGH_BROWSER_EXIT_DURATION_MILLIS)
+            isSighBrowserComposed = false
+        }
+    }
+
+    LaunchedEffect(awaitingBreath?.command?.requestId) {
+        if (awaitingBreath != null) breathStartSignal += 1
+    }
+
+    LaunchedEffect(guideMode, awaitingBreath?.command?.requestId, sighPhase) {
+        isDefaultSwipeHintDelayElapsed = false
+        if (!guideMode && awaitingBreath != null && sighPhase == SighPhase.Quiet) {
+            delay(DEFAULT_SIGH_SWIPE_HINT_DELAY_MILLIS)
+            isDefaultSwipeHintDelayElapsed = true
+        }
+    }
+
+    LaunchedEffect(guideMode, awaitingBreath?.command?.requestId, isBreathReleaseReady) {
+        isGuideSwipeHintDelayElapsed = false
+        if (guideMode && awaitingBreath != null && isBreathReleaseReady) {
+            delay(GUIDE_SWIPE_HINT_DELAY_MILLIS)
+            isGuideSwipeHintDelayElapsed = true
+        }
+    }
+
+    LaunchedEffect(sighBrowser.isVisible) {
+        if (!sighBrowser.isVisible) return@LaunchedEffect
+        while (true) {
+            delay(60_000L)
+            visualNow = Clock.System.now()
+        }
+    }
+
+    LaunchedEffect(isActive) {
+        if (isActive) visualNow = Clock.System.now()
+    }
+
+    val listItems =
+        remember(sighBrowser.items, visualNow) {
+            sighBrowser.items.map { it.toSighListItemUiModel(visualNow) }
+        }
+    val selectedItem =
+        remember(sighBrowser.selectedSigh, visualNow) {
+            sighBrowser.selectedSigh?.toSighListItemUiModel(visualNow)
+        }
+    val selectedProjectionId = sighBrowser.selectedSigh?.let { sigh -> "selected-sigh-${sigh.id}" }
+    val selectedProjectionPoint =
+        selectedProjectionId
+            ?.takeIf { projectionSnapshot.cameraIdle }
+            ?.let(projectionSnapshot.points::get)
+
     val hiddenMarkerId =
-        successState?.focusRequest?.id?.takeIf {
-            pendingFlightOrigin != null && landedFlightId != it
+        sighBrowser.selectedSigh
+            ?.id
+            ?.toString()
+            ?.takeIf { selectedProjectionPoint != null }
+            ?: uiState.viewport.focusRequest?.id?.takeIf {
+                pendingFlightOrigin != null && landedFlightId != it
+            }
+
+    LaunchedEffect(renderedSighs, sighBrowser.items, isActive) {
+        if (!isActive) return@LaunchedEffect
+
+        val agePolicy = StarAgePolicy()
+        while (true) {
+            val nextTransitionAt =
+                (renderedSighs + sighBrowser.items.map { it.toPin() })
+                    .distinctBy(SighPin::id)
+                    .asSequence()
+                    .mapNotNull { sigh -> agePolicy.nextTransitionAt(sigh.createdAt) }
+                    .minOrNull()
+                    ?: return@LaunchedEffect
+            val delayMillis =
+                (nextTransitionAt - Clock.System.now()).inWholeMilliseconds.coerceAtLeast(1L)
+            delay(delayMillis)
+            visualNow = Clock.System.now()
+            starAgeRevision += 1
+        }
+    }
+
+    val sighMarkers =
+        remember(renderedSighs, hiddenMarkerId, visualNow, starAgeRevision) {
+            renderedSighs.toSighMarkers(
+                hiddenMarkerId = hiddenMarkerId,
+                now = visualNow,
+            )
         }
 
-    LaunchedEffect(successState?.focusRequest?.id, projectionSnapshot.revision) {
-        val focus = successState?.focusRequest ?: return@LaunchedEffect
+    LaunchedEffect(uiState.viewport.focusRequest?.id, projectionSnapshot.revision) {
+        val focus = uiState.viewport.focusRequest ?: return@LaunchedEffect
         pendingFlightOrigin ?: return@LaunchedEffect
         val destination = projectionSnapshot.points[focus.id] ?: return@LaunchedEffect
         if (!projectionSnapshot.cameraIdle || activeFlightId == focus.id) return@LaunchedEffect
@@ -103,44 +296,118 @@ fun MapScreen(
         isFlightInProgress = true
     }
 
-    LaunchedEffect(successState?.sighReleaseState) {
-        val error = successState?.sighReleaseState as? SighReleaseState.Error ?: return@LaunchedEffect
+    LaunchedEffect(uiState.sighRelease) {
+        val error = uiState.sighRelease as? SighReleaseState.Error ?: return@LaunchedEffect
         if (!error.canRetry) {
-            pendingFlightOrigin = null
-            viewModel.cancelFailedSighRegistration()
+            cancelFailedSighRegistration()
         }
     }
 
     Box(modifier = modifier.fillMaxSize().background(AppTheme.colors.background)) {
-        if (successState != null) {
-            BreathMap(
-                state = successState.toMapRenderState(hiddenMarkerId),
-                cameraCommand = successState.cameraCommand,
-                onSighClick = {},
-                onBoundsChanged = viewModel::loadSighs,
-                onMapError = {},
-                onProjectionChanged = { projectionSnapshot = it },
-                modifier = Modifier.fillMaxSize(),
-            )
-        }
+        BreathMap(
+            state =
+                MapRenderState(
+                    currentLocation = currentLocation,
+                    locationState = uiState.location.state,
+                    fallbackCenter = DEFAULT_MAP_POINT,
+                    sighMarkers = sighMarkers,
+                    focusRequest = uiState.viewport.focusRequest,
+                    projectionTargets =
+                        listOfNotNull(
+                            sighBrowser.selectedSigh?.let { sigh ->
+                                MapPoint(
+                                    id = "selected-sigh-${sigh.id}",
+                                    latitude = sigh.coordinate.latitude,
+                                    longitude = sigh.coordinate.longitude,
+                                )
+                            },
+                        ),
+                ),
+            cameraCommand = uiState.viewport.cameraCommand,
+            onSighClick = { id -> id.toLongOrNull()?.let(onSighPinClick) },
+            onBoundsChanged = onBoundsChanged,
+            onMapError = onMapError,
+            onMapRecovered = onMapReady,
+            onProjectionChanged = { projectionSnapshot = it },
+            modifier = Modifier.fillMaxSize(),
+        )
 
         MapOverlay(
             onSettingsClick = onSettingsClick,
-            onRefreshClick = viewModel::loadSighs,
-            onZoomInClick = viewModel::onZoomInClick,
-            onZoomOutClick = viewModel::onZoomOutClick,
-            onMyLocationClick = viewModel::onMyLocationClick,
+            isSighListVisible = sighBrowser.isListVisible,
+            onSighListVisibilityChange = onSighListVisibilityChange,
+            onZoomInClick = onZoomInClick,
+            onZoomOutClick = onZoomOutClick,
+            onMyLocationClick = onMyLocationClick,
             errorMessage = uiState.toBannerMessage(),
-            sighReleaseState = successState?.sighReleaseState ?: SighReleaseState.Idle,
-            onRetrySigh = viewModel::retrySighRegistration,
-            onCancelSigh = {
-                pendingFlightOrigin = null
-                viewModel.cancelFailedSighRegistration()
-            },
-            controlsEnabled = sighPhase == SighPhase.Idle && !isSighSubmitting,
+            controlsEnabled =
+                !guideMode &&
+                    sighPhase == SighPhase.Idle &&
+                    uiState.sighRelease is SighReleaseState.Idle,
         )
 
-        if (isSighInteractionVisible) {
+        if (isSighBrowserComposed) {
+            SighBrowserOverlay(
+                visible = sighBrowser.isVisible,
+                listVisible = sighBrowser.isListVisible,
+                items = listItems,
+                selectedItem = selectedItem,
+                selectedItemPositionPx =
+                    selectedProjectionPoint?.let { point -> Offset(point.xPx, point.yPx) },
+                isLoading = sighBrowser.isLoading || sighBrowser.isDetailLoading,
+                isLoadingMore = sighBrowser.isLoadingMore,
+                isLoadMoreError = sighBrowser.isLoadMoreError,
+                refreshRevision = sighBrowser.refreshRevision,
+                canLoadMore = sighBrowser.nextCursor != null,
+                errorMessage = sighBrowser.errorMessage,
+                moderationUiState = moderationUiState,
+                onItemClick = { onSighItemClick(it.id) },
+                onDismissList = onDismissSighList,
+                onDismissDetail = onDismissSighDetail,
+                onLoadMore = onLoadNextSighPage,
+                onRefresh = onRefreshSighList,
+                onOpenActionMenu = { item -> onOpenSighActionMenu(item.id, item.nickname) },
+                onDismissActionMenu = onDismissSighActionMenu,
+                onRequestBlock = onRequestSighBlock,
+                onDismissBlock = onDismissSighBlock,
+                onConfirmBlock = onConfirmSighBlock,
+                onRequestReport = onRequestSighReport,
+            )
+        }
+
+        if (moderationUiState.isReportVisible) {
+            SighReportScreen(
+                uiState = moderationUiState,
+                onReasonSelect = onSighReportReasonSelect,
+                onDescriptionChange = onSighReportDescriptionChange,
+                onSubmit = onSubmitSighReport,
+                onDismiss = onDismissSighReport,
+            )
+        }
+
+        AppSnackbar(
+            message =
+                sighBrowser.noticeMessage
+                    ?: moderationUiState.successMessage
+                    ?: moderationUiState.blockErrorMessage,
+            onDismiss = {
+                if (sighBrowser.noticeMessage != null) {
+                    onDismissSighBrowserNotice()
+                } else if (moderationUiState.successMessage != null) {
+                    onDismissReportSuccess()
+                } else {
+                    onDismissBlockError()
+                }
+            },
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+        )
+
+        if (shouldShowInteractionBackdrop) {
             Box(
                 modifier = Modifier.fillMaxSize(),
             ) {
@@ -149,74 +416,99 @@ fun MapScreen(
                         Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.8f))
-                            .pointerInput(Unit) {
-                                detectTapGestures(onTap = { cancelSignal += 1 })
+                            .pointerInput(isGuidePromptVisible, isSighSubmitting) {
+                                detectTapGestures(
+                                    onTap = {
+                                        if (!isGuidePromptVisible && !isSighSubmitting) {
+                                            cancelSighRegistration()
+                                        }
+                                    },
+                                )
                             },
                 )
-                Text(
-                    text =
-                        if (isSighSubmitting) {
-                            "별을 만드는 중이에요"
-                        } else {
-                            when (sighPhase) {
-                                SighPhase.Listening -> "후– 하고\n한숨을 내쉬어보세요"
-                                SighPhase.Quiet -> "한숨을 날려\n별을 만들어보세요"
-                                SighPhase.NeedsMore -> "한숨을 더 크게 불어주세요"
-                                SighPhase.Bursting -> ""
-                                SighPhase.Idle -> ""
-                            }
+                if (!isGuidePromptVisible) {
+                    Text(
+                        text =
+                            if (isSighSubmitting) {
+                                "별을 만드는 중이에요"
+                            } else if (isMemoEditing) {
+                                ""
+                            } else {
+                                when (sighPhase) {
+                                    SighPhase.Listening -> "후– 하고\n한숨을 내쉬어보세요"
+                                    SighPhase.Quiet -> "한숨을 날려\n별을 만들어보세요"
+                                    SighPhase.NeedsMore -> "한숨을 더 크게 불어주세요"
+                                    SighPhase.Bursting -> ""
+                                    SighPhase.Idle -> ""
+                                }
+                            },
+                        style = AppTheme.typography.screenTitle,
+                        color = AppColors.Cream100,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.align(BiasAlignment(0f, -0.15f)),
+                    )
+                } else {
+                    FirstSighGuideOverlay(
+                        step = guideStep,
+                        controlBoundsInRoot = breathControlBounds,
+                        controlAnchorBottomInRoot = guideBreathControlBottom,
+                        onSkip = {
+                            cancelSighRegistration()
+                            onGuideSkip()
                         },
-                    style = AppTheme.typography.screenTitle,
-                    color = AppColors.Cream100,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.align(BiasAlignment(0f, -0.15f)),
-                )
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
 
-        if (isActive) {
+        if (isActive && !sighBrowser.isVisible) {
             Box(modifier = Modifier.fillMaxWidth().navigationBarsPadding().align(Alignment.BottomCenter)) {
                 if (!isSighSubmitting) {
-                    BreathControl(
-                        enabled =
-                            successState != null &&
-                                successState.sighReleaseState is SighReleaseState.Idle &&
-                                !isFlightInProgress,
-                        onExplosionFinished = { origin ->
-                            pendingFlightOrigin = origin
-                            viewModel.registerSighAfterExplosion()
-                        },
-                        onMicrophoneError = { error ->
-                            if (error == BreathInputError.PermissionDenied) {
-                                showMicrophonePermissionDialog = true
-                            } else {
-                                microphoneError = error
-                            }
-                        },
-                        ensureLocationPermission = {
-                            when (viewModel.ensureLocationPermission()) {
-                                LocationPermissionStatus.Granted -> {
-                                    true
+                    if (
+                        uiState.sighRelease is SighReleaseState.Idle ||
+                        uiState.sighRelease is SighReleaseState.AwaitingBreath
+                    ) {
+                        BreathControl(
+                            enabled = !isFlightInProgress,
+                            startSignal = if (awaitingBreath != null) breathStartSignal else 0,
+                            onIdleClick = {
+                                if (uiState.sighRelease is SighReleaseState.Idle) {
+                                    coroutineScope.launch {
+                                        if (ensureRegistrationLocation()) onBeginSighRegistration()
+                                    }
+                                } else {
+                                    breathStartSignal += 1
                                 }
-
-                                LocationPermissionStatus.ServicesDisabled -> {
-                                    showLocationServicesDialog = true
-                                    false
+                            },
+                            onExplosionFinished = { origin ->
+                                pendingFlightOrigin = origin
+                                onBreathCompleted()
+                            },
+                            onMicrophoneError = { error ->
+                                if (error == BreathInputError.PermissionDenied) {
+                                    showMicrophonePermissionDialog = true
+                                } else {
+                                    microphoneError = error
                                 }
-
-                                LocationPermissionStatus.PermanentlyDenied -> {
-                                    showLocationPermissionDialog = true
-                                    false
+                            },
+                            ensureLocationPermission = ensureRegistrationLocation,
+                            onPhaseChanged = { sighPhase = it },
+                            onReleaseReadinessChanged = { isBreathReleaseReady = it },
+                            cancelSignal = cancelSignal,
+                            onControlBoundsChanged = { bounds ->
+                                breathControlBounds = bounds
+                                if (
+                                    awaitingBreath != null &&
+                                    guideBreathControlBottom == null &&
+                                    bounds.height > 0f
+                                ) {
+                                    guideBreathControlBottom = bounds.bottom
                                 }
-
-                                LocationPermissionStatus.Denied -> {
-                                    false
-                                }
-                            }
-                        },
-                        onPhaseChanged = { sighPhase = it },
-                        cancelSignal = cancelSignal,
-                    )
+                            },
+                            showIdleLabel = !guideMode,
+                        )
+                    }
                 }
                 ErrorSnackbar(
                     message = microphoneError?.toKoreanMessage(),
@@ -226,10 +518,41 @@ fun MapScreen(
             }
         }
 
+        val shouldShowDefaultSwipeHint =
+            !guideMode &&
+                awaitingBreath != null &&
+                sighPhase == SighPhase.Quiet &&
+                isDefaultSwipeHintDelayElapsed
+        val shouldShowSwipeHint =
+            (isGuidePromptVisible && guideStep == FirstSighGuideStep.SwipeUp) ||
+                shouldShowDefaultSwipeHint
+        if (shouldShowSwipeHint) {
+            SighSwipeHintOverlay(
+                controlBoundsInRoot = breathControlBounds,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        memoDraft?.let { draft ->
+            MemoEditor(
+                draft = draft,
+                submitting = false,
+                guideMode = guideMode,
+                onSubmit = onSubmitMemo,
+                onSkip = onSkipMemo,
+                onDismiss = cancelSighRegistration,
+            )
+        }
+
         val activeId = activeFlightId
         val origin = pendingFlightOrigin
         val destination = activeId?.let { projectionSnapshot.points[it] }
-        if (activeId != null && origin != null && destination != null && successState?.focusRequest?.id == activeId) {
+        if (
+            activeId != null &&
+            origin != null &&
+            destination != null &&
+            uiState.viewport.focusRequest?.id == activeId
+        ) {
             StarFlightOverlay(
                 flight = animationCoordinator.start(activeId, origin, Offset(destination.xPx, destination.yPx)),
                 onLanded = { id ->
@@ -237,7 +560,7 @@ fun MapScreen(
                     activeFlightId = null
                     landedFlightId = id
                     isFlightInProgress = false
-                    viewModel.consumeFocusRequest(id)
+                    onConsumeFocusRequest(id)
                 },
                 onCancelled = { id ->
                     if (activeFlightId == id) {
@@ -251,90 +574,125 @@ fun MapScreen(
         }
 
         if (showLocationPermissionDialog) {
-            AppDialog(
-                title = "위치 권한 설정 안내",
-                body = "한숨을 별로 만들려면 위치 권한이 필요합니다.\n설정에서 위치 권한을 '허용'으로 변경해주세요.",
-                confirmText = "설정으로 이동",
-                onConfirmClick = {
+            LocationPermissionSettingsDialog(
+                onOpenSettings = {
                     showLocationPermissionDialog = false
-                    viewModel.openLocationSettings()
+                    onOpenLocationSettings()
                 },
-                onDismissRequest = { showLocationPermissionDialog = false },
-                onDismissClick = { showLocationPermissionDialog = false },
-                dismissText = "취소",
+                onDismiss = { showLocationPermissionDialog = false },
             )
         }
 
         if (showLocationServicesDialog) {
-            AppDialog(
-                title = "위치 서비스 설정 안내",
-                body = "현재 위치를 확인하려면 기기 설정에서 위치 서비스를 켜주세요.",
-                confirmText = "설정으로 이동",
-                onConfirmClick = {
+            LocationServicesSettingsDialog(
+                onOpenSettings = {
                     showLocationServicesDialog = false
-                    viewModel.openLocationSettings()
+                    onOpenLocationSettings()
                 },
-                onDismissRequest = { showLocationServicesDialog = false },
-                onDismissClick = { showLocationServicesDialog = false },
-                dismissText = "취소",
+                onDismiss = { showLocationServicesDialog = false },
             )
         }
 
         if (showMicrophonePermissionDialog) {
+            val dismissMicrophonePermissionDialog = {
+                showMicrophonePermissionDialog = false
+                cancelSighRegistration()
+            }
             AppDialog(
                 title = "마이크 권한 설정 안내",
                 body = "한숨을 불려면 마이크 권한이 필요합니다.\n설정에서 마이크 권한을 '허용'으로 변경해주세요.",
                 confirmText = "설정으로 이동",
                 onConfirmClick = {
                     showMicrophonePermissionDialog = false
-                    viewModel.openAppSettings()
+                    onOpenAppSettings()
                 },
-                onDismissRequest = { showMicrophonePermissionDialog = false },
-                onDismissClick = { showMicrophonePermissionDialog = false },
+                onDismissRequest = dismissMicrophonePermissionDialog,
+                onDismissClick = dismissMicrophonePermissionDialog,
                 dismissText = "취소",
+            )
+        }
+
+        retryableSighError?.let { error ->
+            ConfirmDialog(
+                title = "한숨 등록 실패",
+                body = error.message,
+                confirmText = "다시 시도",
+                onConfirmClick = onRetrySighCreation,
+                onDismissRequest = cancelFailedSighRegistration,
+                onDismissClick = cancelFailedSighRegistration,
             )
         }
     }
 }
 
-private fun MapUiState.toBannerMessage(): String? =
-    when (this) {
-        is MapUiState.Error -> {
-            message
-        }
-
-        is MapUiState.Success -> {
-            when (val release = sighReleaseState) {
-                is SighReleaseState.Error -> release.message
-                else -> refreshErrorMessage ?: (locationState as? LocationState.Unavailable)?.reason?.toKoreanMessage()
-            }
-        }
-
-        MapUiState.Loading -> {
-            null
-        }
-    }
-
-private fun MapUiState.Success.toMapRenderState(hiddenMarkerId: String?): MapRenderState =
-    MapRenderState(
-        currentLocation = (locationState as? LocationState.Available)?.location,
-        locationState = locationState,
-        fallbackCenter = DEFAULT_MAP_POINT,
-        sighMarkers =
-            sighs.filterNot { it.id.toString() == hiddenMarkerId }.map { sighPin ->
-                SighMarker(
-                    id = sighPin.id.toString(),
-                    latitude = sighPin.coordinate.latitude,
-                    longitude = sighPin.coordinate.longitude,
-                )
-            },
-        focusRequest = focusRequest,
-    )
+private fun List<SighPin>.toSighMarkers(
+    hiddenMarkerId: String?,
+    now: Instant,
+): List<SighMarker> =
+    asSequence()
+        .filterNot { it.id.toString() == hiddenMarkerId }
+        .sortedBy { it.id }
+        .map { sighPin ->
+            SighMarker(
+                id = sighPin.id.toString(),
+                latitude = sighPin.coordinate.latitude,
+                longitude = sighPin.coordinate.longitude,
+                visual = StarVisualPolicy.visualFor(StarAgePolicy.stageOf(sighPin.createdAt, now)),
+            )
+        }.toList()
 
 private val DEFAULT_MAP_POINT = MapPoint("default-location", 37.5505, 127.0373)
+private const val DEFAULT_SIGH_SWIPE_HINT_DELAY_MILLIS = 2_000L
+private const val GUIDE_SWIPE_HINT_DELAY_MILLIS = 2_000L
 
 @Preview
 @Composable
 private fun MapScreenPreview() {
-    AppTheme { MapScreen(locationDependencies = null, onSettingsClick = {}) }
+    AppTheme {
+        MapScreen(
+            uiState = MapUiState(),
+            moderationUiState = SighModerationUiState(),
+            onSettingsClick = {},
+            onZoomInClick = {},
+            onZoomOutClick = {},
+            onMyLocationClick = {},
+            onBoundsChanged = {},
+            onSighListVisibilityChange = {},
+            onSighItemClick = {},
+            onSighPinClick = {},
+            onDismissSighList = {},
+            onDismissSighDetail = {},
+            onLoadNextSighPage = {},
+            onRefreshSighList = {},
+            onDismissSighBrowserNotice = {},
+            onOpenSighActionMenu = { _, _ -> },
+            onDismissSighActionMenu = {},
+            onRequestSighBlock = {},
+            onDismissSighBlock = {},
+            onConfirmSighBlock = {},
+            onDismissBlockError = {},
+            onRequestSighReport = {},
+            onSighReportReasonSelect = {},
+            onSighReportDescriptionChange = {},
+            onSubmitSighReport = {},
+            onDismissSighReport = {},
+            onDismissReportSuccess = {},
+            onBeginSighRegistration = {},
+            onBreathCompleted = {},
+            onSubmitMemo = {},
+            onSkipMemo = {},
+            onCancelSighRegistration = {},
+            onRetrySighCreation = {},
+            onCancelFailedSighRegistration = { true },
+            onConsumeFocusRequest = {},
+            onEnsureLocationPermission = { LocationPermissionStatus.Granted },
+            onOpenLocationSettings = {},
+            onOpenAppSettings = {},
+            onMapError = {},
+            onMapReady = {},
+            isActive = true,
+            guideMode = false,
+            onGuideSkip = {},
+        )
+    }
 }
