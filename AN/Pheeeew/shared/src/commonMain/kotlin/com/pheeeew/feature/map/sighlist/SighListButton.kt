@@ -47,7 +47,7 @@ fun SighListButton(
                 width = 1.dp,
                 color = if (checked) AppColors.Blue100 else AppColors.Cream100.copy(alpha = 0.45f),
             ),
-        shadowElevation = 4.dp,
+        shadowElevation = 2.dp,
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),

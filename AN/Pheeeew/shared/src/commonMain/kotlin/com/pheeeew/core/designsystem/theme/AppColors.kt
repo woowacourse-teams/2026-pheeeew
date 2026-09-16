@@ -23,6 +23,11 @@ object AppColors {
     val StarDeep = Color(0xFFF2A05C)
     val StarUnknown = Color(0xFFF4F2EC)
 
+    // Map controls — softened night-map surfaces
+    val MapControlBackground = Color(0xE6171B29)
+    val MapControlBorder = Color(0x80596078)
+    val MapControlContent = Color(0xFFE8E5DE)
+
     // Red — destructive / alert actions
     val Red400 = Color(0xFFE5484D)
 }
