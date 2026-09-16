@@ -59,8 +59,9 @@ public interface DeviceControllerApi {
                     - **`token`을 보내면 서버가 실제로 검증합니다.** 검증에 실패하면 403이고 기기는 등록되지 않습니다.
                     - `ANDROID`는 Play Integrity로, `IOS`는 App Attest로 검증합니다. 검증 수단이 다르므로
                       `challenge`를 소모하는 시점도 다릅니다.
-                    - `ANDROID`는 요청에 담아 보낸 값을 복호화 전 사전 조회에만 쓰고, 복호화한 토큰 안의 challenge를
-                      기준으로 소모합니다. 두 값이 다르면 403이고 challenge는 남습니다.
+                    - `ANDROID`는 요청에 담아 보낸 값과 복호화한 토큰 안의 challenge를 대조한 뒤 소모합니다.
+                      대조는 **base64 로 디코딩한 바이트로** 하므로 패딩(`=`) 유무나 `-_` 대 `+/` 차이는 통과합니다.
+                      바이트가 다르면 403이고 challenge는 남습니다.
                     - `IOS`는 인증서 체인을 검증하기 전에 요청에 담아 보낸 `challenge`를 소모합니다.
                       애플은 서버가 외부에 조회하지 않으므로, 같은 값으로 검증을 반복하는 것을 여기서 막습니다.
                       정확히는 attestation 객체를 해석한 뒤 암호 검증 직전입니다. 형식 오류나 `keyId` 누락으로 떨어지면
@@ -162,7 +163,8 @@ public interface DeviceControllerApi {
                     - 증명 토큰을 기기 등록(`POST /api/v2/devices`) 요청의 `attestation.token`으로 보냅니다.
                     - **받은 `challenge`도 같은 요청의 `attestation.challenge`로 함께 보냅니다.** 플랫폼과 무관하게 필수입니다.
                     - **`ANDROID`** — 받은 `challenge` 문자열을 Play Integrity 요청의 nonce로 그대로 씁니다.
-                      서버는 복호화한 토큰 안의 challenge를 권위 있는 값으로 삼습니다. 두 값이 다르면 403입니다.
+                      서버는 복호화한 토큰 안의 challenge를 권위 있는 값으로 삼되, base64 로 디코딩한 32바이트를
+                      비교합니다. 디코딩한 바이트가 다르면 403입니다.
                     - **`IOS`** — 받은 `challenge` 문자열의 **US-ASCII 바이트를 SHA-256 한 32바이트**를
                       `attestKey(_:clientDataHash:)`의 `clientDataHash`로 넘깁니다.
                       **challenge 문자열 자체를 넘기지 않습니다.** 애플 예제 코드가 원문을 그대로 넘기는 것과 다릅니다.
