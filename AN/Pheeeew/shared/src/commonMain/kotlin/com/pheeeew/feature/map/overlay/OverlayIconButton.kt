@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -24,18 +25,18 @@ fun OverlayIconButton(
     icon: DrawableResource,
     contentDescription: String,
     onClick: () -> Unit,
+    enabled: Boolean,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true,
 ) {
     Surface(
         onClick = onClick,
         modifier = modifier.size(44.dp),
         enabled = enabled,
         shape = CircleShape,
-        color = AppTheme.colors.surface,
-        contentColor = AppTheme.colors.onBackground,
-        border = BorderStroke(1.dp, AppTheme.colors.outline),
-        shadowElevation = 4.dp,
+        color = AppColors.MapControlBackground,
+        contentColor = AppColors.MapControlContent,
+        border = BorderStroke(1.dp, AppColors.MapControlBorder),
+        shadowElevation = 2.dp,
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(painter = painterResource(icon), contentDescription = contentDescription)
@@ -48,7 +49,12 @@ fun OverlayIconButton(
 private fun OverlayIconButtonPreview() {
     AppTheme {
         Box(modifier = Modifier.background(AppTheme.colors.background).padding(24.dp)) {
-            OverlayIconButton(icon = Res.drawable.ic_settings, contentDescription = "설정", onClick = {})
+            OverlayIconButton(
+                icon = Res.drawable.ic_settings,
+                contentDescription = "설정",
+                onClick = {},
+                enabled = true,
+            )
         }
     }
 }

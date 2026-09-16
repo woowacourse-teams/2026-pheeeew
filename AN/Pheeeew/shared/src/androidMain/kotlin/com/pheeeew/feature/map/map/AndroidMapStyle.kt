@@ -37,10 +37,13 @@ internal object AndroidMapStyle {
     private val localizedSourceLayers =
         setOf(
             "aerodrome_label",
+            "mountain_peak",
+            "park",
             "place",
             "transportation_name",
             "water_name",
         )
+    private val explicitlyHiddenSymbolSourceLayers = setOf(POI_SOURCE_LAYER, "housenumber")
 
     fun apply(style: Style) {
         applyBackgroundColor(style)
@@ -85,10 +88,8 @@ internal object AndroidMapStyle {
     private fun hideUnnecessarySymbolLayers(style: Style) {
         style.layers
             .filterIsInstance<SymbolLayer>()
-            .filter { layer ->
-                val sourceLayer = layer.sourceLayer.orEmpty()
-                sourceLayer.isNotEmpty() && sourceLayer !in localizedSourceLayers
-            }.forEach { layer ->
+            .filter { layer -> layer.sourceLayer in explicitlyHiddenSymbolSourceLayers }
+            .forEach { layer ->
                 runCatching { layer.setProperties(visibility(Property.NONE)) }
             }
     }
@@ -102,8 +103,8 @@ internal object AndroidMapStyle {
                     layer.setProperties(
                         textField(localizedNameExpression()),
                         textColor(Color.parseColor(MapDarkStyle.LABEL_HEX)),
-                        textHaloColor(Color.parseColor(MapDarkStyle.LAND_HEX)),
-                        textHaloWidth(1f),
+                        textHaloColor(Color.parseColor(MapDarkStyle.LABEL_HALO_HEX)),
+                        textHaloWidth(MapDarkStyle.LABEL_HALO_WIDTH),
                     )
                 }
             }
@@ -136,22 +137,25 @@ internal object AndroidMapStyle {
                             Expression.has("name_en"),
                             Expression.has("name:en"),
                         ),
-                        Expression.lt(Expression.get("rank"), Expression.literal(7)),
+                        Expression.lt(
+                            Expression.get("rank"),
+                            Expression.literal(MapDarkStyle.IMPORTANT_POI_MAX_RANK),
+                        ),
                     ),
                 ).withProperties(
                     textField(localizedNameExpression()),
                     textFont(arrayOf("Noto Sans Regular")),
-                    textSize(12f),
+                    textSize(MapDarkStyle.POI_LABEL_SIZE),
                     textMaxWidth(9f),
                     textColor(Color.parseColor(MapDarkStyle.LABEL_HEX)),
-                    textHaloColor(Color.parseColor(MapDarkStyle.LAND_HEX)),
-                    textHaloWidth(1f),
+                    textHaloColor(Color.parseColor(MapDarkStyle.LABEL_HALO_HEX)),
+                    textHaloWidth(MapDarkStyle.LABEL_HALO_WIDTH),
                     textAllowOverlap(false),
                     textIgnorePlacement(false),
                     iconAllowOverlap(false),
                     iconIgnorePlacement(false),
                 )
-        labelLayer.minZoom = MapDarkStyle.POI_LABEL_MIN_ZOOM.toFloat()
+        labelLayer.minZoom = MapDarkStyle.IMPORTANT_POI_MIN_ZOOM.toFloat()
         runCatching { style.addLayer(labelLayer) }
     }
 
@@ -165,17 +169,17 @@ internal object AndroidMapStyle {
                 .withProperties(
                     textField(localizedNameExpression()),
                     textFont(arrayOf("Noto Sans Regular")),
-                    textSize(11f),
+                    textSize(MapDarkStyle.BUILDING_LABEL_SIZE),
                     textMaxWidth(8f),
                     textColor(Color.parseColor(MapDarkStyle.LABEL_HEX)),
-                    textHaloColor(Color.parseColor(MapDarkStyle.LAND_HEX)),
-                    textHaloWidth(1f),
+                    textHaloColor(Color.parseColor(MapDarkStyle.LABEL_HALO_HEX)),
+                    textHaloWidth(MapDarkStyle.LABEL_HALO_WIDTH),
                     textAllowOverlap(false),
                     textIgnorePlacement(false),
                     iconAllowOverlap(false),
                     iconIgnorePlacement(false),
                 )
-        labelLayer.minZoom = MapDarkStyle.POI_LABEL_MIN_ZOOM.toFloat()
+        labelLayer.minZoom = MapDarkStyle.BUILDING_LABEL_MIN_ZOOM.toFloat()
         runCatching { style.addLayer(labelLayer) }
     }
 

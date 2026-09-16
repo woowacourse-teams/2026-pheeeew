@@ -11,7 +11,7 @@ data class AppTypography(
     val sectionHeader: TextStyle,
     val menuItem: TextStyle,
     val caption: TextStyle,
-    // System default — formal/trust-critical: dialogs, alerts, buttons
+    // System default — formal/trust-critical: dialogs and alerts
     val dialogTitle: TextStyle,
     val dialogBody: TextStyle,
     val button: TextStyle,

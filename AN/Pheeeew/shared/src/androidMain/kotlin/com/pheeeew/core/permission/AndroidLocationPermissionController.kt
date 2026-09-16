@@ -92,13 +92,8 @@ class AndroidLocationPermissionController(
     override suspend fun requestPermission(): LocationPermissionStatus =
         requestMutex.withLock {
             withContext(Dispatchers.Main.immediate) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
-                    !locationManager.isLocationEnabled
-                ) {
-                    return@withContext LocationPermissionStatus.ServicesDisabled
-                }
                 if (hasLocationPermission()) {
-                    return@withContext LocationPermissionStatus.Granted
+                    return@withContext statusNow()
                 }
                 val launcher = permissionLauncher ?: return@withContext statusNow()
 
@@ -195,7 +190,7 @@ internal fun androidLocationPermissionStatus(
     canExplainDenial: Boolean,
 ): LocationPermissionStatus =
     when {
-        !locationServicesEnabled -> LocationPermissionStatus.ServicesDisabled
+        hasPermission && !locationServicesEnabled -> LocationPermissionStatus.ServicesDisabled
         hasPermission -> LocationPermissionStatus.Granted
         !isActivityAttached -> LocationPermissionStatus.Denied
         wasRequested && !canExplainDenial -> LocationPermissionStatus.PermanentlyDenied

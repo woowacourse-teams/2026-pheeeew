@@ -49,7 +49,9 @@ private class AndroidBreathInput(
     private var strengthCallback: ((Float) -> Unit)? = null
     private var errorCallback: ((BreathInputError) -> Unit)? = null
     private var permissionContinuation: CancellableContinuation<Boolean>? = null
-    private var smoothedStrength = 0f
+
+    @Volatile private var inputGeneration = 0L
+    private val strengthProcessor = BreathStrengthProcessor()
     var permissionRequester: (() -> Unit)? = null
 
     override suspend fun requestPermission(): Boolean {
@@ -85,13 +87,14 @@ private class AndroidBreathInput(
         onStrengthChanged: (Float) -> Unit,
         onError: (BreathInputError) -> Unit,
     ) {
+        val generation = ++inputGeneration
         strengthCallback = onStrengthChanged
         errorCallback = onError
         wantsRecording = true
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
         ) {
-            startRecording()
+            startRecording(generation)
         } else {
             permissionRequester?.invoke() ?: publishError(BreathInputError.PermissionDenied)
         }
@@ -107,11 +110,11 @@ private class AndroidBreathInput(
             wantsRecording = false
             publishError(BreathInputError.PermissionDenied)
         } else if (wantsRecording) {
-            startRecording()
+            startRecording(inputGeneration)
         }
     }
 
-    @Synchronized private fun startRecording() {
+    @Synchronized private fun startRecording(generation: Long) {
         if (recording || !wantsRecording) return
         val sampleRate = 16_000
         val minimumBuffer =
@@ -153,7 +156,7 @@ private class AndroidBreathInput(
             return
         }
         recorder = newRecorder
-        smoothedStrength = 0f
+        strengthProcessor.reset()
         runCatching { newRecorder.startRecording() }.onFailure {
             newRecorder.release()
             recorder = null
@@ -161,13 +164,14 @@ private class AndroidBreathInput(
             return
         }
         recording = true
-        worker = thread(name = "breath-input") { analyze(newRecorder, bufferSize, sampleRate) }
+        worker = thread(name = "breath-input") { analyze(newRecorder, bufferSize, sampleRate, generation) }
     }
 
     private fun analyze(
         source: AudioRecord,
         bufferSize: Int,
         sampleRate: Int,
+        generation: Long,
     ) {
         val samples = ShortArray(bufferSize)
         val dt = 1.0 / sampleRate
@@ -181,6 +185,7 @@ private class AndroidBreathInput(
         var previousBand = 0.0
         while (recording) {
             val count = source.read(samples, 0, samples.size, AudioRecord.READ_BLOCKING)
+            if (generation != inputGeneration) return
             if (count <= 0) continue
             var energy = 0.0
             var lowEnergy = 0.0
@@ -209,12 +214,20 @@ private class AndroidBreathInput(
                     ) / 0.58
                 ).coerceIn(0.0, 1.0).toFloat()
             val texture = ((crossings.toDouble() / count - 0.035) / 0.16).coerceIn(0.0, 1.0).toFloat()
-            smoothedStrength = BreathStrengthScorer.score(amplitude, lowPresence, texture, smoothedStrength)
-            publishStrength(smoothedStrength)
+            val strength =
+                strengthProcessor.process(
+                    BreathSignalMetrics(
+                        amplitude = amplitude,
+                        lowFrequencyPresence = lowPresence,
+                        noisyTexture = texture,
+                    ),
+                )
+            publishStrength(strength, generation)
         }
     }
 
     override fun stop() {
+        inputGeneration += 1L
         wantsRecording = false
         recording = false
         runCatching { recorder?.stop() }
@@ -222,8 +235,6 @@ private class AndroidBreathInput(
         worker = null
         recorder?.release()
         recorder = null
-        smoothedStrength = 0f
-        publishStrength(0f)
     }
 
     fun release() {
@@ -232,7 +243,16 @@ private class AndroidBreathInput(
         errorCallback = null
     }
 
-    private fun publishStrength(value: Float) = mainHandler.post { strengthCallback?.invoke(value.coerceIn(0f, 1f)) }
+    private fun publishStrength(
+        value: Float,
+        generation: Long,
+    ) {
+        mainHandler.post {
+            if (generation == inputGeneration && recording) {
+                strengthCallback?.invoke(value.coerceIn(0f, 1f))
+            }
+        }
+    }
 
     private fun publishError(error: BreathInputError) = mainHandler.post { errorCallback?.invoke(error) }
 }

@@ -6,6 +6,8 @@ import com.pheeeew.domain.model.location.LocationState
 import com.pheeeew.feature.map.MapPoint
 import com.pheeeew.feature.map.MapRenderState
 import com.pheeeew.feature.map.SighMarker
+import com.pheeeew.feature.map.star.StarAgeStage
+import com.pheeeew.feature.map.star.StarVisualPolicy
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -15,9 +17,9 @@ class MapRenderRulesTest {
     fun `markers are deduplicated by server feature id`() {
         val markers =
             listOf(
-                SighMarker("same", 37.5, 127.0),
-                SighMarker("same", 37.6, 127.1),
-                SighMarker("other", 37.7, 127.2),
+                marker("same", 37.5, 127.0),
+                marker("same", 37.6, 127.1),
+                marker("other", 37.7, 127.2),
             )
 
         assertEquals(listOf(markers[0], markers[2]), MapRenderRules.renderableSighMarkers(markers))
@@ -27,9 +29,9 @@ class MapRenderRulesTest {
     fun `invalid coordinates are not rendered`() {
         val markers =
             listOf(
-                SighMarker("valid", 37.5, 127.0),
-                SighMarker("bad-latitude", 91.0, 127.0),
-                SighMarker("bad-longitude", 37.5, Double.NaN),
+                marker("valid", 37.5, 127.0),
+                marker("bad-latitude", 91.0, 127.0),
+                marker("bad-longitude", 37.5, Double.NaN),
             )
 
         assertEquals(listOf(markers.first()), MapRenderRules.renderableSighMarkers(markers))
@@ -98,4 +100,16 @@ class MapRenderRulesTest {
 
         assertNull(MapRenderRules.currentLocation(state))
     }
+
+    private fun marker(
+        id: String,
+        latitude: Double,
+        longitude: Double,
+    ): SighMarker =
+        SighMarker(
+            id = id,
+            latitude = latitude,
+            longitude = longitude,
+            visual = StarVisualPolicy.visualFor(StarAgeStage.Unknown),
+        )
 }

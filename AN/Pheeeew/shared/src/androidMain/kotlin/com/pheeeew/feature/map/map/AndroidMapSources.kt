@@ -8,8 +8,11 @@ import android.graphics.Path
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import com.google.gson.JsonObject
+import com.pheeeew.core.designsystem.DesignSystemColors
 import com.pheeeew.domain.model.location.CurrentLocation
 import com.pheeeew.feature.map.SighMarker
+import com.pheeeew.feature.map.star.StarVisual
+import com.pheeeew.feature.map.star.StarVisualPolicy
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
@@ -22,6 +25,7 @@ import org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap
 import org.maplibre.android.style.layers.PropertyFactory.iconAnchor
 import org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement
 import org.maplibre.android.style.layers.PropertyFactory.iconImage
+import org.maplibre.android.style.layers.PropertyFactory.iconOpacity
 import org.maplibre.android.style.layers.PropertyFactory.iconSize
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
@@ -39,6 +43,9 @@ internal object AndroidMapSources {
 
     private const val FEATURE_KIND_PROPERTY = "location-kind"
     private const val FEATURE_KIND_POINT = "point"
+    private const val STAR_IMAGE_PROPERTY = "star-image"
+    private const val STAR_SCALE_PROPERTY = "star-scale"
+    private const val STAR_OPACITY_PROPERTY = "star-opacity"
     private const val PULSE_GROUP_PROPERTY = "sigh-pulse-group"
     private const val STAR_BITMAP_SIZE = 96
 
@@ -61,6 +68,9 @@ internal object AndroidMapSources {
                 val properties =
                     JsonObject().apply {
                         addProperty(MARKER_ID_PROPERTY, marker.id)
+                        addProperty(STAR_IMAGE_PROPERTY, marker.visual.imageKey)
+                        addProperty(STAR_SCALE_PROPERTY, marker.visual.scale)
+                        addProperty(STAR_OPACITY_PROPERTY, marker.visual.opacity)
                         addProperty(PULSE_GROUP_PROPERTY, pulseGroup(marker.id))
                     }
                 Feature.fromGeometry(
@@ -101,8 +111,10 @@ internal object AndroidMapSources {
     }
 
     private fun installSighLayers(style: Style) {
-        if (style.getImage(MapDarkStyle.SIGH_IMAGE_ID) == null) {
-            style.addImage(MapDarkStyle.SIGH_IMAGE_ID, createSighStarBitmap())
+        StarVisualPolicy.allVisuals.forEach { visual ->
+            if (style.getImage(visual.imageKey) == null) {
+                style.addImage(visual.imageKey, createSighStarBitmap(visual))
+            }
         }
         if (style.getSource(MapDarkStyle.SIGH_SOURCE_ID) == null) {
             style.addSource(
@@ -122,8 +134,9 @@ internal object AndroidMapSources {
                                 Expression.literal(group),
                             ),
                         ).withProperties(
-                            iconImage(MapDarkStyle.SIGH_IMAGE_ID),
+                            iconImage(Expression.get(STAR_IMAGE_PROPERTY)),
                             iconSize(0.58f),
+                            iconOpacity(1f),
                             iconAnchor(Property.ICON_ANCHOR_CENTER),
                             iconAllowOverlap(true),
                             iconIgnorePlacement(true),
@@ -182,10 +195,11 @@ internal object AndroidMapSources {
         }
     }
 
-    private fun createSighStarBitmap(): Bitmap {
+    private fun createSighStarBitmap(visual: StarVisual): Bitmap {
         val bitmap = Bitmap.createBitmap(STAR_BITMAP_SIZE, STAR_BITMAP_SIZE, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val center = STAR_BITMAP_SIZE / 2f
+        val starColor = Color.parseColor(visual.colorHex)
 
         val glowPaint =
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -195,8 +209,8 @@ internal object AndroidMapSources {
                         center,
                         center,
                         intArrayOf(
-                            Color.argb(180, 255, 184, 77),
-                            Color.argb(75, 255, 184, 77),
+                            Color.argb(180, Color.red(starColor), Color.green(starColor), Color.blue(starColor)),
+                            Color.argb(75, Color.red(starColor), Color.green(starColor), Color.blue(starColor)),
                             Color.TRANSPARENT,
                         ),
                         floatArrayOf(0f, 0.52f, 1f),
@@ -213,7 +227,7 @@ internal object AndroidMapSources {
                 innerRadius = 15f,
             ),
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.parseColor(MapDarkStyle.WARM_YELLOW)
+                color = starColor
                 style = Paint.Style.FILL
             },
         )
@@ -225,7 +239,7 @@ internal object AndroidMapSources {
                 innerRadius = 10f,
             ),
             Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                color = Color.parseColor(MapDarkStyle.IVORY)
+                color = Color.parseColor(DesignSystemColors.STAR_CORE_HEX)
                 style = Paint.Style.FILL
             },
         )

@@ -45,4 +45,32 @@ class AndroidLocationPermissionControllerTest {
 
         assertEquals(LocationPermissionStatus.PermanentlyDenied, status)
     }
+
+    @Test
+    fun missingPermissionIsRequestableEvenWhenLocationServicesAreDisabled() {
+        val status =
+            androidLocationPermissionStatus(
+                hasPermission = false,
+                locationServicesEnabled = false,
+                wasRequested = false,
+                isActivityAttached = true,
+                canExplainDenial = false,
+            )
+
+        assertEquals(LocationPermissionStatus.Denied, status)
+    }
+
+    @Test
+    fun grantedPermissionWithDisabledLocationServicesReportsServicesDisabled() {
+        val status =
+            androidLocationPermissionStatus(
+                hasPermission = true,
+                locationServicesEnabled = false,
+                wasRequested = true,
+                isActivityAttached = true,
+                canExplainDenial = false,
+            )
+
+        assertEquals(LocationPermissionStatus.ServicesDisabled, status)
+    }
 }
