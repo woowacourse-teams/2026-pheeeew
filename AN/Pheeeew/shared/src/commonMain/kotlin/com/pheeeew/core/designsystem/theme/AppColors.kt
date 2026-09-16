@@ -21,6 +21,7 @@ object AppColors {
     val StarFresh = Color(0xFFBBD7FF)
     val StarWarm = Color(0xFFF5D98B)
     val StarDeep = Color(0xFFF2A05C)
+    val StarUnknown = Color(0xFFF4F2EC)
 
     // Red — destructive / alert actions
     val Red400 = Color(0xFFE5484D)
