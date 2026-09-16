@@ -3,8 +3,10 @@ package com.pheeeew
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import com.pheeeew.core.network.ApiConfig
+import com.pheeeew.core.network.IosConnectivityObserver
 import com.pheeeew.data.local.device.InMemoryAccessTokenStore
 import com.pheeeew.data.local.device.IosDeviceIdStorage
+import com.pheeeew.data.remote.version.createAppVersionApi
 import com.pheeeew.di.SighModule
 import com.pheeeew.di.createIosDeviceRegistrationDependencies
 import com.pheeeew.di.createIosLocationDependencies
@@ -22,6 +24,8 @@ fun MainViewController() =
         val userDefaults = NSUserDefaults.standardUserDefaults
         val locationDependencies = remember { createIosLocationDependencies() }
         val apiConfig = ApiConfig(baseUrl = apiBaseUrl)
+        val appVersionApi = remember(apiBaseUrl) { createAppVersionApi(apiConfig, "ios") }
+        val connectivityObserver = remember { IosConnectivityObserver() }
         val accessTokenStore = remember { InMemoryAccessTokenStore() }
         val deviceDependencies =
             remember(apiBaseUrl) {
@@ -43,6 +47,8 @@ fun MainViewController() =
             }
         App(
             appVersion = appVersion,
+            appVersionApi = appVersionApi,
+            connectivityObserver = connectivityObserver,
             hasCompletedOnboarding = firstSighGuidePreferences.hasCompletedOnboarding,
             hasCompletedFirstSighGuide = firstSighGuidePreferences.hasCompletedFirstSighGuide,
             onOnboardingCompleted = {
