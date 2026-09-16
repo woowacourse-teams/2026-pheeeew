@@ -79,4 +79,46 @@ class ErrorMessageMapperTest {
 
         assertEquals(null, state.toBannerMessage())
     }
+
+    @Test
+    fun `한숨 목록에 자체 오류가 있으면 지도 조회와 위치 오류를 배너에 표시하지 않는다`() {
+        val state =
+            MapUiState(
+                sighBrowser =
+                    SighBrowserUiState(
+                        isVisible = true,
+                        errorMessage = "목록 오류",
+                    ),
+                errors = MapErrorUiState(refreshMessage = "지도 조회 오류"),
+                location =
+                    MapLocationUiState(
+                        state = LocationState.Unavailable(LocationError.GpsUnavailable),
+                    ),
+            )
+
+        assertEquals(null, state.toBannerMessage())
+        assertEquals(
+            "지도 조회 오류",
+            state.copy(sighBrowser = state.sighBrowser.copy(isVisible = false)).toBannerMessage(),
+        )
+    }
+
+    @Test
+    fun `한숨 목록에 자체 오류가 있어도 지도 렌더링 오류는 배너에 우선 표시한다`() {
+        val state =
+            MapUiState(
+                sighBrowser =
+                    SighBrowserUiState(
+                        isVisible = true,
+                        errorMessage = "목록 오류",
+                    ),
+                errors =
+                    MapErrorUiState(
+                        refreshMessage = "지도 조회 오류",
+                        renderMessage = "지도 렌더링 오류",
+                    ),
+            )
+
+        assertEquals("지도 렌더링 오류", state.toBannerMessage())
+    }
 }
