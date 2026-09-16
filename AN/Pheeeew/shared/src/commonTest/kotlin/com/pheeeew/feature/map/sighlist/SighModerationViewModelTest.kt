@@ -137,12 +137,12 @@ class SighModerationViewModelTest {
         }
 
     @Test
-    fun `본인 한숨 신고가 거절되면 전용 안내 메시지를 표시한다`() =
+    fun `본인 한숨 신고가 충돌로 거절되면 전용 안내 메시지를 표시한다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
             Dispatchers.setMain(dispatcher)
             try {
-                val viewModel = createViewModel(SelfReportForbiddenApi)
+                val viewModel = createViewModel(SelfReportConflictApi)
                 viewModel.openActions(sighId = 42L, nickname = "테스터")
                 viewModel.requestReport()
 
@@ -196,9 +196,9 @@ class SighModerationViewModelTest {
             )
     }
 
-    private object SelfReportForbiddenApi : SighReportApi {
+    private object SelfReportConflictApi : SighReportApi {
         override suspend fun create(request: SighReportCreateRequestDto): SighReportResultDto =
-            throw ApiException.Forbidden("REPORT-002", "본인이 작성한 한숨은 신고할 수 없습니다.")
+            throw ApiException.Conflict("REPORT-002", "자기 한숨은 신고할 수 없습니다.")
     }
 
     private class RecordingSighReportApi(

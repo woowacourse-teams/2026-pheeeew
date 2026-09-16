@@ -145,11 +145,29 @@ class SighModerationViewModel(
 
     private fun Throwable.toReportErrorMessage(): String =
         when (this) {
-            is ApiException.Network -> "인터넷 연결 상태를 확인해주세요."
-            is ApiException.Forbidden -> "본인이 작성한 한숨은 신고할 수 없어요."
-            is ApiException.InvalidRequest -> "신고 내용을 확인해주세요."
-            is ApiException.NotFound -> "신고할 한숨을 찾을 수 없습니다."
-            else -> "신고에 실패했습니다. 잠시 후 다시 시도해주세요."
+            is ApiException.Network -> {
+                "인터넷 연결 상태를 확인해주세요."
+            }
+
+            is ApiException.Conflict -> {
+                if (code == "REPORT-002") {
+                    "본인이 작성한 한숨은 신고할 수 없어요."
+                } else {
+                    "신고에 실패했습니다. 잠시 후 다시 시도해주세요."
+                }
+            }
+
+            is ApiException.InvalidRequest -> {
+                "신고 내용을 확인해주세요."
+            }
+
+            is ApiException.NotFound -> {
+                "신고할 한숨을 찾을 수 없습니다."
+            }
+
+            else -> {
+                "신고에 실패했습니다. 잠시 후 다시 시도해주세요."
+            }
         }
 
     private fun Throwable.toBlockErrorMessage(): String =
