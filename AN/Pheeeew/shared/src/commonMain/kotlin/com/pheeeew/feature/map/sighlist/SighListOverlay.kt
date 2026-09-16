@@ -24,6 +24,8 @@ import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.navigation.PredictiveBackEffect
+import com.pheeeew.feature.map.star.MapPinStar
+import com.pheeeew.feature.map.star.toComposeStarColor
 import kotlin.math.roundToInt
 
 internal const val SIGH_BROWSER_EXIT_DURATION_MILLIS = 220L
@@ -85,8 +87,8 @@ fun SighBrowserOverlay(
             )
 
             selectedItemPositionPx?.let { position ->
-                SighStar(
-                    color = selectedItem.starColor,
+                MapPinStar(
+                    color = selectedItem.starStage.toComposeStarColor(),
                     modifier =
                         Modifier
                             .align(Alignment.TopStart)
