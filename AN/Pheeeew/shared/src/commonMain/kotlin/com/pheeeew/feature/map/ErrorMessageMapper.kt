@@ -41,7 +41,11 @@ internal fun MapUiState.toBannerMessage(): String? =
 
         else -> {
             errors.renderMessage
-                ?: errors.refreshMessage
-                ?: (location.state as? LocationState.Unavailable)?.reason?.toKoreanMessage()
+                ?: if (sighBrowser.isVisible && sighBrowser.errorMessage != null) {
+                    null
+                } else {
+                    errors.refreshMessage
+                        ?: (location.state as? LocationState.Unavailable)?.reason?.toKoreanMessage()
+                }
         }
     }

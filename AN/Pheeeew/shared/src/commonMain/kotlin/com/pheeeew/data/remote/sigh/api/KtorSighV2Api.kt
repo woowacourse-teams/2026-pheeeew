@@ -7,6 +7,7 @@ import com.pheeeew.data.remote.sigh.dto.SighFeatureDto
 import com.pheeeew.data.remote.sigh.dto.SighPageResponseDto
 import com.pheeeew.data.remote.sigh.dto.SighV2PropertiesDto
 import com.pheeeew.domain.exception.ApiException
+import com.pheeeew.domain.exception.device.DeviceRegistrationException
 import com.pheeeew.domain.model.device.AccessToken
 import com.pheeeew.domain.model.sigh.SighBounds
 import io.ktor.client.HttpClient
@@ -96,7 +97,7 @@ class KtorSighV2Api(
             if (latestToken != null && latestToken != tokenUsedForRequest) {
                 latestToken
             } else {
-                refreshAccessToken?.invoke()?.also { refreshedToken ->
+                requestAccessToken()?.also { refreshedToken ->
                     accessTokenStore?.save(refreshedToken)
                 }
             }
@@ -118,18 +119,33 @@ class KtorSighV2Api(
 
     private suspend fun accessTokenForRequest(): AccessToken? {
         val store = accessTokenStore ?: return null
-        val token = store.accessToken ?: return null
-        if (!isRefreshDue(store.accessTokenExpiresAtEpochSeconds)) return token
+        val token = store.accessToken
+        if (token != null && !isRefreshDue(store.accessTokenExpiresAtEpochSeconds)) return token
 
         return refreshMutex.withLock {
             val latestToken = store.accessToken
-            if (!isRefreshDue(store.accessTokenExpiresAtEpochSeconds)) {
+            if (latestToken != null && !isRefreshDue(store.accessTokenExpiresAtEpochSeconds)) {
                 latestToken
             } else {
-                refreshAccessToken?.invoke()?.also(store::save) ?: latestToken
+                requestAccessToken()?.also(store::save) ?: latestToken
             }
         }
     }
+
+    private suspend fun requestAccessToken(): AccessToken? =
+        try {
+            refreshAccessToken?.invoke()
+        } catch (error: DeviceRegistrationException.Network) {
+            throw ApiException.Network(
+                code = DEVICE_REGISTRATION_NETWORK_CODE,
+                message = error.message.orEmpty(),
+            )
+        } catch (_: DeviceRegistrationException) {
+            throw ApiException.Unknown(
+                code = DEVICE_REGISTRATION_FAILURE_CODE,
+                message = DEVICE_REGISTRATION_FAILURE_MESSAGE,
+            )
+        }
 
     private fun isRefreshDue(expiresAtEpochSeconds: Long?): Boolean =
         expiresAtEpochSeconds != null &&
@@ -138,5 +154,9 @@ class KtorSighV2Api(
     private companion object {
         const val SIGHS_PATH = "/api/v2/sighs"
         const val REFRESH_BEFORE_EXPIRY_SECONDS = 60L
+        const val DEVICE_REGISTRATION_NETWORK_CODE = "DEVICE_REGISTRATION_NETWORK"
+        const val DEVICE_REGISTRATION_FAILURE_CODE = "DEVICE_REGISTRATION_FAILED"
+        const val DEVICE_REGISTRATION_FAILURE_MESSAGE =
+            "처리 중에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."
     }
 }

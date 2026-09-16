@@ -8,6 +8,9 @@ import com.pheeeew.domain.model.device.AccessTokenInfo
 import com.pheeeew.domain.model.device.AuthSession
 import com.pheeeew.domain.model.device.RefreshToken
 import com.pheeeew.domain.repository.DeviceRegistrationRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.Test
@@ -108,11 +111,31 @@ class EnsureDeviceRegisteredUseCaseTest {
             }
         }
 
+    @Test
+    fun `동시 호출은 기기 등록을 중복 실행하지 않는다`() =
+        runTest {
+            val repository =
+                FakeDeviceRegistrationRepository(
+                    refreshToken = null,
+                    registerDelayMillis = 10L,
+                )
+            val useCase = EnsureDeviceRegisteredUseCase(repository)
+
+            listOf(1, 2)
+                .map { async { useCase() } }
+                .awaitAll()
+
+            assertEquals(1, repository.registerCallCount)
+            assertEquals(1, repository.refreshCallCount)
+        }
+
     private class FakeDeviceRegistrationRepository(
-        private val refreshToken: RefreshToken?,
+        refreshToken: RefreshToken?,
         private val registerError: Throwable? = null,
         private val refreshError: Throwable? = null,
+        private val registerDelayMillis: Long = 0L,
     ) : DeviceRegistrationRepository {
+        private var refreshToken = refreshToken
         val registration =
             AuthSession(
                 accessToken = AccessToken("registered-access"),
@@ -132,7 +155,9 @@ class EnsureDeviceRegisteredUseCaseTest {
 
         override suspend fun register(): AuthSession {
             registerCallCount++
+            delay(registerDelayMillis)
             registerError?.let { throw it }
+            refreshToken = registration.refreshToken
             return registration
         }
 
