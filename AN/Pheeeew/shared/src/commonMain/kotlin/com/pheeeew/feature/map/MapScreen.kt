@@ -334,7 +334,7 @@ fun MapScreen(
 
         MapOverlay(
             onSettingsClick = onSettingsClick,
-            isSighListVisible = sighBrowser.isVisible,
+            isSighListVisible = sighBrowser.isListVisible,
             onSighListVisibilityChange = onSighListVisibilityChange,
             onZoomInClick = onZoomInClick,
             onZoomOutClick = onZoomOutClick,
@@ -349,6 +349,7 @@ fun MapScreen(
         if (isSighBrowserComposed) {
             SighBrowserOverlay(
                 visible = sighBrowser.isVisible,
+                listVisible = sighBrowser.isListVisible,
                 items = listItems,
                 selectedItem = selectedItem,
                 selectedItemPositionPx =
