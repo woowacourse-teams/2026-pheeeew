@@ -50,6 +50,10 @@ class AndroidEncryptedDeviceTokenStorageTest {
             storage.saveRefreshToken(RefreshToken("new-token"))
 
             assertEquals(RefreshToken("new-token"), storage.getRefreshToken())
+
+            val recreatedStorage = AndroidEncryptedDeviceTokenStorage(context)
+
+            assertEquals(RefreshToken("new-token"), recreatedStorage.getRefreshToken())
         }
 
     private fun createMasterKey(): MasterKey =

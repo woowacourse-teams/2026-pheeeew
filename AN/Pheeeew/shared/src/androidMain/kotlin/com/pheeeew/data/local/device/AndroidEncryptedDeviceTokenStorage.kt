@@ -1,6 +1,7 @@
 package com.pheeeew.data.local.device
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.pheeeew.domain.model.device.RefreshToken
@@ -13,12 +14,18 @@ class AndroidEncryptedDeviceTokenStorage(
 ) : DeviceTokenStorage {
     private val appContext = context.applicationContext
 
-    private val preferences by lazy { createPreferences() }
+    private var cachedPreferences: SharedPreferences? = null
+
+    private val preferences: SharedPreferences
+        get() = cachedPreferences ?: createPreferences().also { cachedPreferences = it }
 
     override suspend fun getRefreshToken(): RefreshToken? =
         try {
             preferences.getString(REFRESH_TOKEN_KEY, null)?.let(::RefreshToken)
         } catch (error: GeneralSecurityException) {
+            resetCorruptedCredentials()
+            null
+        } catch (error: SecurityException) {
             resetCorruptedCredentials()
             null
         } catch (error: IOException) {
@@ -50,6 +57,7 @@ class AndroidEncryptedDeviceTokenStorage(
         )
 
     private fun resetCorruptedCredentials() {
+        cachedPreferences = null
         appContext.deleteSharedPreferences(PREFERENCES_NAME)
         runCatching {
             KeyStore
