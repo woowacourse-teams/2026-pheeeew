@@ -17,6 +17,7 @@ data class MapUiState(
 
 data class SighBrowserUiState(
     val isVisible: Boolean = false,
+    val isListVisible: Boolean = false,
     val items: List<Sigh> = emptyList(),
     val selectedSigh: Sigh? = null,
     val nextCursor: String? = null,

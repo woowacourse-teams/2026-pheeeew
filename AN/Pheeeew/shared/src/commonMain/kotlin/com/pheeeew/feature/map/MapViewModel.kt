@@ -285,6 +285,7 @@ class MapViewModel(
                     sighBrowser =
                         state.sighBrowser.copy(
                             isVisible = false,
+                            isListVisible = false,
                             selectedSigh = null,
                             isLoading = false,
                             isDetailLoading = false,
@@ -299,24 +300,30 @@ class MapViewModel(
 
         _uiState.update { state ->
             state.copy(
-                sighBrowser = state.sighBrowser.copy(isVisible = true, selectedSigh = null),
+                sighBrowser =
+                    state.sighBrowser.copy(
+                        isVisible = true,
+                        isListVisible = true,
+                        selectedSigh = null,
+                    ),
             )
         }
         lastSighBounds?.let { bounds -> loadFirstSighPage(bounds) }
     }
 
     fun openSighFromPin(id: Long) {
-        requestSighDetail(id, openBrowser = true)
+        requestSighDetail(id, openBrowser = true, showList = false)
     }
 
     fun selectSigh(id: Long) {
         if (!_uiState.value.sighBrowser.isVisible) return
-        requestSighDetail(id, openBrowser = false)
+        requestSighDetail(id, openBrowser = false, showList = true)
     }
 
     private fun requestSighDetail(
         id: Long,
         openBrowser: Boolean,
+        showList: Boolean,
     ) {
         val bounds = lastSighBounds ?: return
         if (!mapIsForeground || id in expiredSighIds || id in blockedSighIds) return
@@ -330,6 +337,7 @@ class MapViewModel(
                 sighBrowser =
                     state.sighBrowser.copy(
                         isVisible = state.sighBrowser.isVisible || openBrowser,
+                        isListVisible = showList,
                         selectedSigh = null,
                         isDetailLoading = true,
                         errorMessage = null,
@@ -537,6 +545,10 @@ class MapViewModel(
     }
 
     fun dismissSighDetail() {
+        if (!_uiState.value.sighBrowser.isListVisible) {
+            setSighListVisible(false)
+            return
+        }
         _uiState.update { state ->
             state.copy(sighBrowser = state.sighBrowser.copy(selectedSigh = null))
         }

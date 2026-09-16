@@ -41,6 +41,9 @@ internal fun MapUiState.toBannerMessage(): String? =
 
         else -> {
             errors.renderMessage
+                ?: sighBrowser.errorMessage?.takeIf {
+                    sighBrowser.isVisible && !sighBrowser.isListVisible
+                }
                 ?: if (sighBrowser.isVisible && sighBrowser.errorMessage != null) {
                     null
                 } else {

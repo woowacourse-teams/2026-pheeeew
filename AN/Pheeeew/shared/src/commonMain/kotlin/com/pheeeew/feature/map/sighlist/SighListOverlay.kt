@@ -34,6 +34,7 @@ internal const val SIGH_BROWSER_EXIT_DURATION_MILLIS = 220L
 @Composable
 fun SighBrowserOverlay(
     visible: Boolean,
+    listVisible: Boolean,
     items: List<SighListItemUiModel>,
     selectedItem: SighListItemUiModel?,
     selectedItemPositionPx: Offset?,
@@ -114,7 +115,7 @@ fun SighBrowserOverlay(
         }
 
         AnimatedVisibility(
-            visible = visible,
+            visible = visible && (listVisible || showActionMenu),
             modifier = Modifier.align(Alignment.BottomCenter),
             enter = slideInVertically(animationSpec = tween(260), initialOffsetY = { it }),
             exit =
@@ -124,7 +125,7 @@ fun SighBrowserOverlay(
                 ),
         ) {
             BoxWithConstraints(contentAlignment = Alignment.BottomCenter) {
-                if (!showActionMenu || selectedItem == null) {
+                if (listVisible && (!showActionMenu || selectedItem == null)) {
                     SighListSheet(
                         items = if (selectedItem == null) items else listOf(selectedItem),
                         compact = selectedItem != null,
@@ -193,6 +194,7 @@ private fun SighBrowserListPreview() {
         Box(modifier = Modifier.fillMaxSize().background(AppColors.Navy900)) {
             SighBrowserOverlay(
                 visible = true,
+                listVisible = true,
                 items = emptyList(),
                 selectedItem = null,
                 selectedItemPositionPx = null,
@@ -226,6 +228,7 @@ private fun SighBrowserDetailPreview() {
         Box(modifier = Modifier.fillMaxSize().background(AppColors.Navy900)) {
             SighBrowserOverlay(
                 visible = true,
+                listVisible = true,
                 items = emptyList(),
                 selectedItem = null,
                 selectedItemPositionPx = null,

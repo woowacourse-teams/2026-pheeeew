@@ -87,6 +87,7 @@ class ErrorMessageMapperTest {
                 sighBrowser =
                     SighBrowserUiState(
                         isVisible = true,
+                        isListVisible = true,
                         errorMessage = "목록 오류",
                     ),
                 errors = MapErrorUiState(refreshMessage = "지도 조회 오류"),
@@ -104,12 +105,29 @@ class ErrorMessageMapperTest {
     }
 
     @Test
+    fun `지도 핀 상세 오류는 목록이 없으므로 배너에 표시한다`() {
+        val state =
+            MapUiState(
+                sighBrowser =
+                    SighBrowserUiState(
+                        isVisible = true,
+                        isListVisible = false,
+                        errorMessage = "상세 오류",
+                    ),
+                errors = MapErrorUiState(refreshMessage = "지도 조회 오류"),
+            )
+
+        assertEquals("상세 오류", state.toBannerMessage())
+    }
+
+    @Test
     fun `한숨 목록에 자체 오류가 있어도 지도 렌더링 오류는 배너에 우선 표시한다`() {
         val state =
             MapUiState(
                 sighBrowser =
                     SighBrowserUiState(
                         isVisible = true,
+                        isListVisible = true,
                         errorMessage = "목록 오류",
                     ),
                 errors =
