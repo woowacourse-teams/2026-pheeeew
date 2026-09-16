@@ -356,7 +356,6 @@ fun MapScreen(
             onDismiss = {
                 if (sighBrowser.noticeMessage != null) {
                     onDismissSighBrowserNotice()
-                    onDismissReportSuccess()
                 } else if (moderationUiState.successMessage != null) {
                     onDismissReportSuccess()
                 } else {

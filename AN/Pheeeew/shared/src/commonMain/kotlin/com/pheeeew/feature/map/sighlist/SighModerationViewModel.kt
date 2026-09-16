@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 class SighModerationViewModel(
     private val blockUser: BlockUserUseCase,
     private val reportSigh: ReportSighUseCase,
-    private val onBlockSucceeded: (Long) -> Unit = {},
+    private val onBlockSucceeded: (SighModerationTarget) -> Unit = {},
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SighModerationUiState())
     val uiState: StateFlow<SighModerationUiState> = _uiState.asStateFlow()
@@ -55,7 +55,7 @@ class SighModerationViewModel(
         viewModelScope.launch {
             runCatching { blockUser(target.sighId) }
                 .onSuccess {
-                    onBlockSucceeded(target.sighId)
+                    onBlockSucceeded(target)
                     _uiState.update {
                         it.copy(
                             isBlocking = false,
