@@ -10,7 +10,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 
-class AndroidConnectivityObserver(context: Context) : ConnectivityObserver {
+class AndroidConnectivityObserver(
+    context: Context,
+) : ConnectivityObserver {
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
     override val isConnected: Flow<Boolean> =
@@ -27,7 +29,10 @@ class AndroidConnectivityObserver(context: Context) : ConnectivityObserver {
                         trySend(currentConnectionIsValidated())
                     }
 
-                    override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+                    override fun onCapabilitiesChanged(
+                        network: Network,
+                        capabilities: NetworkCapabilities,
+                    ) {
                         trySend(capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
                     }
 
