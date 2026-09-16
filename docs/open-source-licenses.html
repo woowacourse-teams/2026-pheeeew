@@ -10,7 +10,7 @@
 <body>
 <main>
   <h1>Pheeeew 오픈소스 라이선스</h1>
-  <p class="meta">최종 수정일: 2026년 9월 1일</p>
+  <p class="meta">최종 수정일: 2026년 9월 16일</p>
   <p class="summary">Pheeeew는 다음 오픈소스 소프트웨어와 공개 지도 데이터를 사용합니다. 각 저작권은 해당 저작권자에게 있으며, 각 구성요소는 표시된 라이선스 조건에 따라 제공됩니다.</p>
 
   <h2>앱에 포함된 주요 구성요소</h2>
@@ -27,9 +27,37 @@
       <tr><td><a href="https://www.slf4j.org/">SLF4J API</a> (Ktor를 통해 포함)</td><td>2.0.18</td><td><a href="licenses/slf4j-mit.txt">MIT License</a></td></tr>
       <tr><td><a href="https://github.com/maplibre/maplibre-native">MapLibre Native for Android</a></td><td>13.6.0</td><td><a href="licenses/bsd-2-clause.txt">BSD 2-Clause</a> · <a href="https://github.com/maplibre/maplibre-native/blob/main/LICENSES.core.md">내부 구성요소 고지</a></td></tr>
       <tr><td><a href="https://github.com/maplibre/maplibre-gl-native-distribution">MapLibre Native for iOS</a></td><td>6.29.0</td><td><a href="licenses/bsd-2-clause.txt">BSD 2-Clause</a> · <a href="https://github.com/maplibre/maplibre-native/blob/main/LICENSES.core.md">내부 구성요소 고지</a></td></tr>
+      <tr><td><a href="https://developer.android.com/jetpack/androidx/releases/security">AndroidX Security Crypto</a> (인증 토큰 암호화 저장)</td><td>1.1.0-alpha06</td><td><a href="licenses/apache-2.0.txt">Apache License 2.0</a></td></tr>
       <tr><td><a href="https://github.com/google/fonts/tree/main/ofl/gaegu">Gaegu 글꼴</a></td><td>Light / Regular / Bold</td><td><a href="licenses/ofl-1.1.txt">SIL Open Font License 1.1</a></td></tr>
     </tbody>
   </table>
+
+  <h2>앱에 포함된 비공개 구성요소</h2>
+  <p>아래 구성요소는 오픈소스가 아니며 각 제공자의 약관에 따라 제공됩니다. 배포되는 앱 바이너리에 포함되므로 함께 고지합니다.</p>
+  <table>
+    <thead><tr><th>구성요소</th><th>사용 버전</th><th>용도</th><th>약관</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a href="https://developer.android.com/google/play/integrity">Google Play Integrity API</a><br><code>com.google.android.play:integrity</code></td>
+        <td>1.5.0</td>
+        <td>Android에서 정품 앱과 실제 기기 여부를 확인하는 증명 발급</td>
+        <td><a href="https://developer.android.com/guide/playcore/license">Play Core Software Development Kit Terms of Service</a></td>
+      </tr>
+      <tr>
+        <td><a href="https://developers.google.com/android/guides/setup">Google Play services Location</a><br><code>com.google.android.gms:play-services-location</code></td>
+        <td>21.3.0</td>
+        <td>Android에서 기기 위치 조회</td>
+        <td><a href="https://developers.google.com/terms">Google APIs Terms of Service</a> · <a href="https://developer.android.com/studio/terms">Android SDK License Agreement</a></td>
+      </tr>
+      <tr>
+        <td><a href="https://developer.apple.com/documentation/devicecheck">Apple DeviceCheck (App Attest)</a></td>
+        <td>iOS 시스템 프레임워크</td>
+        <td>iOS에서 정품 앱과 실제 기기 여부를 확인하는 증명 발급</td>
+        <td><a href="https://developer.apple.com/support/terms/apple-developer-program-license-agreement/">Apple Developer Program License Agreement</a></td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="muted">Apple DeviceCheck은 iOS에 내장된 시스템 프레임워크로 별도의 라이브러리를 앱에 포함하지 않습니다. 목록에는 무결성 증명에 사용하는 구성요소를 빠짐없이 밝히기 위해 함께 적었습니다.</p>
 
   <h2>지도 서비스와 데이터</h2>
   <ul>
