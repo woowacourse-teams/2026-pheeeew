@@ -7,16 +7,20 @@ import com.pheeeew.sigh.presentation.dto.SighMapRequest;
 import com.pheeeew.sigh.presentation.dto.SighMapResponse;
 import com.pheeeew.sigh.presentation.dto.SighV1Properties;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Optional;
+import java.util.UUID;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springdoc.core.annotations.ParameterObject;
 
 @Tag(name = "한숨", description = "한숨 등록과 지도 영역 조회 API")
 public interface SighV1ControllerApi {
@@ -34,10 +38,21 @@ public interface SighV1ControllerApi {
 
                     ### 조회 결과
 
+                    - 한국 시간 기준 오늘(0일 전)부터 13일 전까지 총 14일의 한숨을 조회합니다.
+                    - 생성 시각이 13일 전 00:00 이상이고 조회 시각 이하인 한숨만 포함합니다.
                     - DB에 저장된 최종 표시 위치를 최신순으로 최대 500건 반환합니다.
                     - 결과가 500건을 초과하면 `truncated`가 `true`입니다.
                     - 결과가 없으면 `truncated`가 `false`이고 `features`는 빈 배열입니다.
-                    """
+
+                    ### 차단
+
+                    - 이 엔드포인트는 인증 없이도 호출할 수 있습니다.
+                    - `Authorization: Bearer <access token>` 헤더를 함께 보내면 그 기기가 차단한 한숨과 차단한 사용자의 한숨을 제외하고 반환합니다.
+                    - 헤더를 보내지 않으면 차단을 적용하지 않고 전체를 반환합니다.
+                    - 헤더를 보냈는데 토큰이 만료되었거나 잘못되었으면 401을 반환합니다. 이때 결과를 대신 돌려주지 않습니다.
+                    - 작성자 정보가 없는 한숨(이전 버전이나 `POST /api/v1/sighs`로 등록한 한숨)은 사용자 차단의 영향을 받지 않습니다. 개별 차단으로만 가릴 수 있습니다.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses({
             @ApiResponse(
@@ -60,6 +75,20 @@ public interface SighV1ControllerApi {
                     )
             ),
             @ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더를 보냈으나 인증할 수 없음. 헤더를 보내지 않으면 차단을 적용하지 않고 200입니다. "
+                            + "`AUTH-001`은 access token이 없거나 만료된 경우로 `POST /api/v2/devices/tokens`로 갱신한 뒤 재시도합니다. "
+                            + "`DEVICE-004`는 토큰은 유효하지만 그 기기가 서버에 없는 경우로 "
+                            + "**갱신해도 해결되지 않으며 기기를 다시 등록해야 합니다.**",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                    """)
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "500",
                     description = "한숨을 조회하지 못한 서버 오류",
                     content = @Content(
@@ -69,12 +98,19 @@ public interface SighV1ControllerApi {
             )
     })
     ResponseEntity<SighMapResponse> findAllWithinBounds(
+            @Parameter(hidden = true) Optional<UUID> devicePublicId,
             @ParameterObject SighMapRequest request
     );
 
     @Operation(
             summary = "한숨 등록",
+            deprecated = true,
             description = """
+                    ### 폐기 예정
+
+                    - 향후 버전에서 access token 이 필요해집니다.
+                    - 신규 연동은 `POST /api/v2/sighs` 를 사용합니다.
+
                     ### 중복 요청
 
                     - 한 번의 등록 시도마다 새로운 `requestId`를 사용합니다.

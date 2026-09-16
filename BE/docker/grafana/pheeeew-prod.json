@@ -1,13 +1,14 @@
 {
   "id": null,
   "uid": "pheeeew-prod-overview",
-  "title": "Pheeeew 운영 모니터링",
-  "description": "운영 EC2 한 대의 앱 지표와 검토된 HTTP 로그. 수집 주기 60초. EC2 전체·RDS 내부·Cloudflare 외부 가용성은 별도 확인.",
+  "title": "Pheeeew · 운영 모니터링",
+  "description": "운영 앱의 상태, API와 지도 조회 성능, JVM·DB 연결, HTTP 문제 로그를 함께 확인해요. 수집 60초. 실제 지표와 연결된 운영 대시보드예요.",
   "tags": [
     "pheeeew",
-    "production"
+    "production",
+    "observability"
   ],
-  "timezone": "browser",
+  "timezone": "Asia/Seoul",
   "schemaVersion": 39,
   "version": 1,
   "editable": true,
@@ -31,9 +32,25 @@
   },
   "panels": [
     {
+      "id": 100,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "# Pheeeew · 운영 모니터링\n**PRODUCTION**　/　한눈에 상태를 확인하고, 느려진 지점을 아래에서 찾아요.　•　수집·새로고침 1분"
+      }
+    },
+    {
       "id": 1,
       "type": "stat",
-      "title": "앱 지표 수집 상태",
+      "title": "수집 연결",
       "description": "1은 마지막 수집 성공, 0은 실패. 데이터 없음은 아직 연결되지 않았거나 수집·전송이 멈춘 상태일 수 있어요. 외부 URL 가용성 검사가 아니에요.",
       "datasource": {
         "type": "prometheus",
@@ -41,9 +58,9 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 0,
-        "w": 6,
-        "h": 4
+        "y": 3,
+        "w": 4,
+        "h": 5
       },
       "fieldConfig": {
         "defaults": {
@@ -65,13 +82,33 @@
             {
               "type": "value",
               "options": {
+                "1": {
+                  "text": "정상 수집",
+                  "color": "#60D5C2"
+                },
                 "0": {
                   "text": "수집 실패",
-                  "color": "red"
-                },
-                "1": {
-                  "text": "수집 성공",
-                  "color": "green"
+                  "color": "#F7768E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
                 }
               }
             }
@@ -89,8 +126,14 @@
         },
         "colorMode": "value",
         "graphMode": "none",
-        "textMode": "auto",
-        "orientation": "auto"
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
       },
       "targets": [
         {
@@ -111,24 +154,25 @@
     {
       "id": 2,
       "type": "stat",
-      "title": "전체 API 요청 / 초",
-      "description": "앱까지 도달한 /api/ 요청만 포함해요. Actuator 수집 요청은 제외해요.",
+      "title": "API 요청 · 선택 기간",
+      "description": "선택한 시간 범위의 API 요청 수 추정치예요. Counter 증가량을 경계까지 보간하므로 실제 정수 요청 수와 다를 수 있어요. Actuator는 제외해요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
-        "x": 6,
-        "y": 0,
-        "w": 6,
-        "h": 4
+        "x": 4,
+        "y": 3,
+        "w": 4,
+        "h": 5
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "reqps",
+          "unit": "short",
           "noValue": "데이터 없음",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "#7DB5FF"
           },
           "thresholds": {
             "mode": "absolute",
@@ -138,7 +182,30 @@
                 "value": null
               }
             ]
-          }
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
@@ -152,14 +219,20 @@
         },
         "colorMode": "value",
         "graphMode": "none",
-        "textMode": "auto",
-        "orientation": "auto"
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "sum(rate(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/.*\"}[$__rate_interval]))",
-          "legendFormat": "요청/초",
+          "expr": "sum(increase(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/.*\"}[$__range]))",
+          "legendFormat": "추정 요청 수",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
@@ -174,34 +247,65 @@
     {
       "id": 3,
       "type": "stat",
-      "title": "전체 API 5xx 비율",
-      "description": "요청이 있고 5xx가 없으면 0%. 요청 자체가 없으면 계산할 수 없어 데이터 없음으로 표시해요.",
+      "title": "서버 오류율 · 선택 기간",
+      "description": "선택 기간의 API 요청 중 5xx 비율이에요. 요청이 없으면 계산하지 않아요. 1%·5% 색상 경계는 초기 참고 기준이며 확정 SLO가 아니에요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
-        "x": 12,
-        "y": 0,
-        "w": 6,
-        "h": 4
+        "x": 8,
+        "y": 3,
+        "w": 4,
+        "h": 5
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
           "noValue": "데이터 없음",
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#60D5C2",
                 "value": null
+              },
+              {
+                "color": "#F6C76D",
+                "value": 0.01
+              },
+              {
+                "color": "#F7768E",
+                "value": 0.05
               }
             ]
-          }
+          },
+          "decimals": 2,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "표본 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "표본 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
@@ -215,14 +319,119 @@
         },
         "colorMode": "value",
         "graphMode": "none",
-        "textMode": "auto",
-        "orientation": "auto"
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "(sum(rate(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/.*\",status=~\"5..\"}[$__rate_interval])) or (0 * sum(rate(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/.*\"}[$__rate_interval])))) / sum(rate(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/.*\"}[$__rate_interval]))",
+          "expr": "(sum(increase(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/.*\",status=~\"5..\"}[$__range])) or (0 * sum(increase(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/.*\"}[$__range])))) / sum(increase(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/.*\"}[$__range]))",
           "legendFormat": "5xx 비율",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "API p95 · 선택 기간",
+      "description": "선택 기간의 요청 95%가 이 시간 이내에 완료됐다는 추정값이에요. 요청이 적으면 불안정하고 요청이 없으면 계산하지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#60D5C2",
+                "value": null
+              },
+              {
+                "color": "#F6C76D",
+                "value": 0.5
+              },
+              {
+                "color": "#F7768E",
+                "value": 1
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "표본 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "표본 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le) (increase(http_server_requests_seconds_bucket{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/.*\"}[$__range])))",
+          "legendFormat": "p95",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
@@ -237,34 +446,65 @@
     {
       "id": 4,
       "type": "stat",
-      "title": "JVM 힙 사용 비율",
+      "title": "JVM 힙 사용률 · 현재",
       "description": "앱 JVM 힙 사용량 / 유효한 힙 최대 용량. EC2 전체 메모리 사용률이 아니에요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
-        "x": 18,
-        "y": 0,
-        "w": 6,
-        "h": 4
+        "x": 16,
+        "y": 3,
+        "w": 4,
+        "h": 5
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percentunit",
           "noValue": "데이터 없음",
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "#60D5C2",
                 "value": null
+              },
+              {
+                "color": "#F6C76D",
+                "value": 0.75
+              },
+              {
+                "color": "#F7768E",
+                "value": 0.9
               }
             ]
-          }
+          },
+          "decimals": 1,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ]
         },
         "overrides": []
       },
@@ -278,8 +518,14 @@
         },
         "colorMode": "value",
         "graphMode": "none",
-        "textMode": "auto",
-        "orientation": "auto"
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
       },
       "targets": [
         {
@@ -298,17 +544,208 @@
       ]
     },
     {
-      "id": 5,
+      "id": 17,
+      "type": "stat",
+      "title": "DB 연결 대기 · 현재",
+      "description": "앱에서 DB 연결을 기다리는 작업 수예요. 0이 정상적인 상태이며 지속적으로 늘어나면 아래 DB 연결 풀을 확인해요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 3,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#60D5C2",
+                "value": null
+              },
+              {
+                "color": "#F6C76D",
+                "value": 1
+              },
+              {
+                "color": "#F7768E",
+                "value": 5
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ],
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(hikaricp_connections_pending{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\"})",
+          "legendFormat": "대기",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 101,
+      "type": "row",
+      "title": "01  API 흐름  /  요청이 늘었나요, 응답이 느려졌나요?",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 6,
       "type": "timeseries",
-      "title": "API 응답 시간 p95 · p99",
-      "description": "버킷으로 계산한 추정값이에요. 요청이 적으면 불안정하고, 10초를 넘는 지연은 현재 버킷으로 정밀하게 구분할 수 없어요.",
+      "title": "경로별 요청량",
+      "description": "URI 템플릿과 HTTP 메서드별 요청량. 좌표나 개별 ID를 라벨로 추가하지 않아요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "x": 0,
-        "y": 4,
+        "y": 9,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 9,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (method, uri) (rate(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/.*\"}[$__rate_interval]))",
+          "legendFormat": "{{method}} {{uri}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "응답 시간 · p95 / p99",
+      "description": "버킷으로 계산한 추정값이에요. 요청이 적으면 불안정하고, 10초를 넘는 지연은 현재 버킷으로 정밀하게 구분할 수 없어요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 9,
         "w": 12,
         "h": 8
       },
@@ -331,18 +768,59 @@
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 8,
+            "fillOpacity": 9,
             "spanNulls": false,
-            "showPoints": "never"
-          }
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p95"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#60D5C2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "p99"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#A78BFA"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -379,77 +857,22 @@
       ]
     },
     {
-      "id": 6,
-      "type": "timeseries",
-      "title": "경로별 API 요청 / 초",
-      "description": "URI 템플릿과 HTTP 메서드별 요청량. 좌표나 개별 ID를 라벨로 추가하지 않아요.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
+      "id": 102,
+      "type": "row",
+      "title": "02  지도 조회  /  화면 이동에 따른 부하를 살펴봐요",
+      "collapsed": false,
+      "panels": [],
       "gridPos": {
-        "x": 12,
-        "y": 4,
-        "w": 12,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "reqps",
-          "noValue": "데이터 없음",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "custom": {
-            "drawStyle": "line",
-            "lineWidth": 2,
-            "fillOpacity": 8,
-            "spanNulls": false,
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (method, uri) (rate(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/.*\"}[$__rate_interval]))",
-          "legendFormat": "{{method}} {{uri}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "range": true,
-          "instant": false,
-          "interval": "1m"
-        }
-      ]
+        "x": 0,
+        "y": 17,
+        "w": 24,
+        "h": 1
+      }
     },
     {
       "id": 7,
       "type": "timeseries",
-      "title": "지도 API 요청 / 초",
+      "title": "지도 요청량",
       "description": "현재 지도 조회 GET /api/v1/sighs만 측정해요. 화면 이동에 따라 요청이 얼마나 증가하는지 확인해요.",
       "datasource": {
         "type": "prometheus",
@@ -457,7 +880,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 12,
+        "y": 18,
         "w": 12,
         "h": 8
       },
@@ -466,7 +889,8 @@
           "unit": "reqps",
           "noValue": "데이터 없음",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "#7DB5FF"
           },
           "thresholds": {
             "mode": "absolute",
@@ -480,18 +904,28 @@
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 8,
+            "fillOpacity": 9,
             "spanNulls": false,
-            "showPoints": "never"
-          }
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -517,7 +951,7 @@
     {
       "id": 8,
       "type": "timeseries",
-      "title": "지도 API 전체 응답 · DB 조회 p95/p99",
+      "title": "지도 지연 · HTTP와 DB 비교",
       "description": "전체 응답은 HTTP 처리 시간, DB 조회는 Repository 호출 시간이며 실패한 조회도 포함해요. 두 p95를 빼서 나머지 처리 시간을 계산할 수는 없어요. DB 조회 버킷의 마지막 유한 경계는 5초이에요.",
       "datasource": {
         "type": "prometheus",
@@ -525,7 +959,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 12,
+        "y": 18,
         "w": 12,
         "h": 8
       },
@@ -548,18 +982,89 @@
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 8,
+            "fillOpacity": 9,
             "spanNulls": false,
-            "showPoints": "never"
-          }
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "지도 HTTP p95"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#60D5C2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "지도 HTTP p99"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#A78BFA"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "지도 DB p95"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7DB5FF"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "지도 DB p99"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#F6C76D"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -624,7 +1129,7 @@
     {
       "id": 9,
       "type": "timeseries",
-      "title": "지도 평균 반환 개수",
+      "title": "한 번에 반환한 한숨 · 평균",
       "description": "성공적으로 서비스 결과를 만든 호출의 평균 반환 개수. 평균이므로 모든 요청이 같은 개수를 반환했다는 뜻은 아니에요.",
       "datasource": {
         "type": "prometheus",
@@ -632,7 +1137,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 20,
+        "y": 26,
         "w": 12,
         "h": 8
       },
@@ -641,7 +1146,8 @@
           "unit": "short",
           "noValue": "데이터 없음",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "#A78BFA"
           },
           "thresholds": {
             "mode": "absolute",
@@ -655,18 +1161,29 @@
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 8,
+            "fillOpacity": 9,
             "spanNulls": false,
-            "showPoints": "never"
-          }
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0,
+          "max": 500
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -692,7 +1209,7 @@
     {
       "id": 10,
       "type": "timeseries",
-      "title": "지도 결과 잘림 비율",
+      "title": "500개 한도로 잘린 조회 비율",
       "description": "truncated=true인 완료 호출 비율. 500개 한도로 잘린 경우이며 오류 비율이 아니에요. 호출이 없으면 비율을 계산하지 않아요.",
       "datasource": {
         "type": "prometheus",
@@ -700,7 +1217,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 20,
+        "y": 26,
         "w": 12,
         "h": 8
       },
@@ -709,7 +1226,8 @@
           "unit": "percentunit",
           "noValue": "데이터 없음",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "#F6C76D"
           },
           "thresholds": {
             "mode": "absolute",
@@ -723,18 +1241,29 @@
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 8,
+            "fillOpacity": 9,
             "spanNulls": false,
-            "showPoints": "never"
-          }
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -758,6 +1287,19 @@
       ]
     },
     {
+      "id": 103,
+      "type": "row",
+      "title": "03  앱 자원  /  메모리와 DB 연결에 여유가 있나요?",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 34,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
       "id": 11,
       "type": "timeseries",
       "title": "JVM 힙 메모리",
@@ -768,7 +1310,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 28,
+        "y": 35,
         "w": 12,
         "h": 8
       },
@@ -791,18 +1333,74 @@
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 8,
+            "fillOpacity": 9,
             "spanNulls": false,
-            "showPoints": "never"
-          }
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "사용 중"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#60D5C2"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "커밋된 용량"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#A78BFA"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "최대 용량"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#7DB5FF"
+                }
+              }
+            ]
+          }
+        ]
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -855,14 +1453,14 @@
       "id": 12,
       "type": "timeseries",
       "title": "앱 프로세스 CPU",
-      "description": "JVM이 보고하는 프로세스 CPU 비율. EC2 CPU 크레딧이나 RDS CPU 사용률은 포함하지 않아요.",
+      "description": "JVM이 보고하는 프로세스 CPU 비율이에요. 같은 인스턴스의 Cloud 부가 라벨이 달라져 시계열이 나뉘면 시점별 최댓값으로 표시해요. EC2 CPU 크레딧과 RDS CPU는 포함하지 않아요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
       },
       "gridPos": {
         "x": 12,
-        "y": 28,
+        "y": 35,
         "w": 12,
         "h": 8
       },
@@ -871,7 +1469,8 @@
           "unit": "percentunit",
           "noValue": "데이터 없음",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "#A78BFA"
           },
           "thresholds": {
             "mode": "absolute",
@@ -885,18 +1484,29 @@
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 8,
+            "fillOpacity": 9,
             "spanNulls": false,
-            "showPoints": "never"
-          }
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0,
+          "max": 1
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -906,7 +1516,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "process_cpu_usage{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\"}",
+          "expr": "max by (instance) (process_cpu_usage{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\"})",
           "legendFormat": "앱 CPU",
           "datasource": {
             "type": "prometheus",
@@ -922,7 +1532,7 @@
     {
       "id": 13,
       "type": "timeseries",
-      "title": "DB 연결 풀 사용량",
+      "title": "DB 연결 풀 · 사용 / 유휴 / 최대",
       "description": "앱 HikariCP 연결 수이에요. RDS 내부 상태가 아니에요. 사용 중인 연결 수와 한도를 비교하세요.",
       "datasource": {
         "type": "prometheus",
@@ -930,7 +1540,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 36,
+        "y": 43,
         "w": 12,
         "h": 8
       },
@@ -953,18 +1563,28 @@
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 8,
+            "fillOpacity": 9,
             "spanNulls": false,
-            "showPoints": "never"
-          }
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -1016,7 +1636,7 @@
     {
       "id": 14,
       "type": "timeseries",
-      "title": "DB 연결 대기",
+      "title": "DB 연결 대기 추이",
       "description": "연결을 빌리려고 기다리는 스레드 수. 60초 수집 사이의 짧은 대기는 보이지 않을 수 있어요.",
       "datasource": {
         "type": "prometheus",
@@ -1024,7 +1644,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 36,
+        "y": 43,
         "w": 12,
         "h": 8
       },
@@ -1033,7 +1653,8 @@
           "unit": "short",
           "noValue": "데이터 없음",
           "color": {
-            "mode": "palette-classic"
+            "mode": "fixed",
+            "fixedColor": "#F6C76D"
           },
           "thresholds": {
             "mode": "absolute",
@@ -1047,18 +1668,28 @@
           "custom": {
             "drawStyle": "line",
             "lineWidth": 2,
-            "fillOpacity": 8,
+            "fillOpacity": 9,
             "spanNulls": false,
-            "showPoints": "never"
-          }
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
         },
         "overrides": []
       },
       "options": {
         "legend": {
-          "displayMode": "list",
+          "displayMode": "table",
           "placement": "bottom",
-          "showLegend": true
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
         },
         "tooltip": {
           "mode": "multi",
@@ -1082,24 +1713,53 @@
       ]
     },
     {
+      "id": 104,
+      "type": "row",
+      "title": "04  문제 로그  /  오류와 1초 이상 느린 요청을 찾아요",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 51,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 105,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "gridPos": {
+        "x": 0,
+        "y": 52,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**5xx 오류 · 1초 이상 지연**만 표시해요. 로그를 펼치면 `correlationId`와 예외 정보를 볼 수 있어요. 검증용 로그는 제외해요.\n\n로그가 비어 있으면 대상 이벤트가 없을 수 있어요. **빈 값은 0이나 정상 판정이 아니에요.**"
+      }
+    },
+    {
       "id": 15,
       "type": "logs",
-      "title": "최근 HTTP 오류 · 느린 요청 로그",
-      "description": "검토된 두 HTTP 이벤트만 수집해요. 오류·느린 요청이 없으면 비어 있을 수 있어요. correlationId는 JSON 본문에서 찾아요.",
+      "title": "최근 오류와 느린 요청",
+      "description": "검토된 두 HTTP 이벤트만 수집해요. 오류·느린 요청이 없으면 비어 있을 수 있어요. correlationId는 JSON 본문에서 찾아요. verification=true 검증 로그는 제외해요. 상세 내용을 펼쳐 JSON 필드를 확인해요.",
       "datasource": {
         "type": "loki",
         "uid": "${DS_LOKI}"
       },
       "gridPos": {
         "x": 0,
-        "y": 44,
+        "y": 55,
         "w": 24,
-        "h": 10
+        "h": 11
       },
       "targets": [
         {
           "refId": "A",
-          "expr": "{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",event=~\"http_request_failed|http_request_slow\"} | json",
+          "expr": "{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",event=~\"http_request_failed|http_request_slow\"} | json | verification != \"true\"",
           "datasource": {
             "type": "loki",
             "uid": "${DS_LOKI}"
@@ -1113,11 +1773,27 @@
         "showTime": true,
         "showLabels": false,
         "showCommonLabels": false,
-        "wrapLogMessage": true,
+        "wrapLogMessage": false,
         "prettifyLogMessage": true,
         "enableLogDetails": true,
         "sortOrder": "Descending",
         "dedupStrategy": "none"
+      }
+    },
+    {
+      "id": 106,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "gridPos": {
+        "x": 0,
+        "y": 66,
+        "w": 24,
+        "h": 4
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**읽는 법**　p95 / p99는 요청의 95% / 99%가 완료된 시간의 버킷 기반 추정값이에요. 요청이 적으면 크게 흔들릴 수 있어요.\n\n**관측 범위**　운영 앱 한 대의 지표예요. 수집 연결은 외부 URL의 정상 응답을 보장하지 않으며, EC2 전체 메모리·디스크와 RDS 내부 지표는 포함하지 않아요. 색상 경계는 초기 참고 기준이에요."
       }
     }
   ],
@@ -1136,5 +1812,6 @@
       "pluginId": "loki",
       "pluginName": "Loki"
     }
-  ]
+  ],
+  "graphTooltip": 1
 }

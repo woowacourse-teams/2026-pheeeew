@@ -1,5 +1,6 @@
 package com.pheeeew.device.fixture;
 
+import com.pheeeew.device.application.dto.DeviceAttestation;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.DevicePlatform;
 import com.pheeeew.device.domain.DeviceRefreshToken;
@@ -20,6 +21,19 @@ public final class DeviceFixture {
         return Device.builder()
                 .requestId(UUID.randomUUID())
                 .platform(DevicePlatform.ANDROID);
+    }
+
+    public static DeviceAttestation 무결성_증명_없음(DevicePlatform platform) {
+        return DeviceAttestation.of(platform, null, null, null);
+    }
+
+    public static DeviceAttestation 무결성_증명(
+            DevicePlatform platform,
+            String token,
+            String challenge,
+            String keyId
+    ) {
+        return DeviceAttestation.of(platform, token, challenge, keyId);
     }
 
     public static DeviceRefreshToken.DeviceRefreshTokenBuilder 기본_리프레시_토큰_빌더() {

@@ -7,6 +7,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
@@ -46,12 +47,34 @@ public class Sigh extends BaseEntity {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
+    @Column(name = "device_id", updatable = false)
+    private Long deviceId;
+
+    @Column(name = "like_count", nullable = false)
+    private long likeCount;
+
+    @Column(nullable = false)
+    @Version
+    private Long version;
+
     @Builder
-    private Sigh(UUID requestId, Point location, String memo, String nickname) {
+    private Sigh(UUID requestId, Point location, String memo, String nickname, Long deviceId) {
         this.requestId = Objects.requireNonNull(requestId);
         this.location = requireWgs84Point(location);
         this.memo = normalizeMemo(memo);
         this.nickname = requireValidNickname(nickname);
+        this.deviceId = deviceId;
+    }
+
+    public void increaseLikeCount() {
+        this.likeCount++;
+    }
+
+    public void decreaseLikeCount() {
+        if (likeCount == 0) {
+            throw new IllegalStateException("좋아요 수는 0보다 작아질 수 없습니다.");
+        }
+        this.likeCount--;
     }
 
     public void delete() {
@@ -59,10 +82,6 @@ public class Sigh extends BaseEntity {
             return;
         }
         this.deletedAt = Instant.now();
-    }
-
-    public boolean isDeleted() {
-        return deletedAt != null;
     }
 
     public double getLongitude() {

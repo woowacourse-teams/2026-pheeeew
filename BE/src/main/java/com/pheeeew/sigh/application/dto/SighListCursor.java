@@ -1,5 +1,6 @@
 package com.pheeeew.sigh.application.dto;
 
+import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import java.time.Instant;
 import java.util.Objects;
 

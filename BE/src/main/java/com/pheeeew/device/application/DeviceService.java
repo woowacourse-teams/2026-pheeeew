@@ -3,16 +3,16 @@ package com.pheeeew.device.application;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_REGISTRATION_WINDOW_EXPIRED;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_SAVE_FAILED;
 
+import com.pheeeew.auth.infra.jwt.TokenProperties;
 import com.pheeeew.device.application.dto.AccessTokenResult;
+import com.pheeeew.device.application.dto.DeviceAttestation;
 import com.pheeeew.device.application.dto.DeviceSaveResult;
 import com.pheeeew.device.application.token.AccessTokenIssuer;
 import com.pheeeew.device.application.token.IssuedRefreshToken;
 import com.pheeeew.device.application.token.RefreshTokenIssuer;
 import com.pheeeew.device.domain.Device;
-import com.pheeeew.device.domain.DevicePlatform;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.device.infra.jwt.TokenProperties;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -27,16 +27,17 @@ public class DeviceService {
     private final DeviceRepository deviceRepository;
     private final RefreshTokenIssuer refreshTokenIssuer;
     private final AccessTokenIssuer accessTokenIssuer;
+    private final DeviceAttestationVerifier deviceAttestationVerifier;
     private final TokenProperties tokenProperties;
 
-    public DeviceSaveResult save(UUID requestId, DevicePlatform platform) {
+    public DeviceSaveResult save(UUID requestId, DeviceAttestation attestation) {
         Optional<Device> existingDevice = deviceRepository.findByRequestId(requestId);
 
         if (existingDevice.isPresent()) {
             return reissueTokens(existingDevice.get());
         }
 
-        return saveNewDevice(requestId, platform);
+        return saveNewDevice(requestId, attestation);
     }
 
     private DeviceSaveResult reissueTokens(Device device) {
@@ -59,10 +60,12 @@ public class DeviceService {
         return DeviceSaveResult.of(accessToken, issuedRefreshToken.refreshToken(), created);
     }
 
-    private DeviceSaveResult saveNewDevice(UUID requestId, DevicePlatform platform) {
+    private DeviceSaveResult saveNewDevice(UUID requestId, DeviceAttestation attestation) {
+        deviceAttestationVerifier.verify(attestation);
+
         Device device = Device.builder()
                 .requestId(requestId)
-                .platform(platform)
+                .platform(attestation.platform())
                 .build();
 
         try {
