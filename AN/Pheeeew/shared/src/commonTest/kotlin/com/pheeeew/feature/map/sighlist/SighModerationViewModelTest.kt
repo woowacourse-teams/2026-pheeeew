@@ -10,6 +10,7 @@ import com.pheeeew.data.remote.report.api.SighReportApi
 import com.pheeeew.data.remote.report.dto.SighReportCreateRequestDto
 import com.pheeeew.data.remote.report.dto.SighReportResponseDto
 import com.pheeeew.data.remote.report.dto.SighReportResultDto
+import com.pheeeew.domain.exception.ApiException
 import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.domain.usecase.ReportSighUseCase
 import kotlinx.coroutines.Dispatchers
@@ -135,6 +136,28 @@ class SighModerationViewModelTest {
             }
         }
 
+    @Test
+    fun `본인 한숨 신고가 거절되면 전용 안내 메시지를 표시한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val viewModel = createViewModel(SelfReportForbiddenApi)
+                viewModel.openActions(sighId = 42L, nickname = "테스터")
+                viewModel.requestReport()
+
+                viewModel.submitReport()
+                advanceUntilIdle()
+
+                assertEquals(
+                    "본인이 작성한 한숨은 신고할 수 없어요.",
+                    viewModel.uiState.value.errorMessage,
+                )
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun createViewModel(api: SighReportApi = FakeSighReportApi): SighModerationViewModel =
         SighModerationViewModel(
             blockUser = BlockUserUseCase(FakeDeviceBlockApi),
@@ -171,6 +194,11 @@ class SighModerationViewModelTest {
                     ),
                 isNew = true,
             )
+    }
+
+    private object SelfReportForbiddenApi : SighReportApi {
+        override suspend fun create(request: SighReportCreateRequestDto): SighReportResultDto =
+            throw ApiException.Forbidden("REPORT-002", "본인이 작성한 한숨은 신고할 수 없습니다.")
     }
 
     private class RecordingSighReportApi(
