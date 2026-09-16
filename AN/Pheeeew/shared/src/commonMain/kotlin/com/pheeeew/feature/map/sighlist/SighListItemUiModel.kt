@@ -1,8 +1,8 @@
 package com.pheeeew.feature.map.sighlist
 
-import androidx.compose.ui.graphics.Color
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.domain.model.sigh.Sigh
+import com.pheeeew.feature.map.star.StarAgePolicy
+import com.pheeeew.feature.map.star.StarAgeStage
 import kotlin.time.Instant
 
 data class SighListItemUiModel(
@@ -10,7 +10,7 @@ data class SighListItemUiModel(
     val nickname: String,
     val relativeTime: String,
     val memo: String,
-    val starColor: Color,
+    val starStage: StarAgeStage,
 )
 
 internal fun Sigh.toSighListItemUiModel(now: Instant): SighListItemUiModel =
@@ -19,12 +19,7 @@ internal fun Sigh.toSighListItemUiModel(now: Instant): SighListItemUiModel =
         nickname = nickname,
         relativeTime = createdAt.toRelativeTime(now),
         memo = memo?.takeIf(String::isNotBlank) ?: "남긴 메모가 없어요",
-        starColor =
-            when (id.mod(3)) {
-                0 -> AppColors.StarFresh
-                1 -> AppColors.StarWarm
-                else -> AppColors.StarDeep
-            },
+        starStage = StarAgePolicy.stageOf(createdAt, now),
     )
 
 private fun Instant.toRelativeTime(now: Instant): String {

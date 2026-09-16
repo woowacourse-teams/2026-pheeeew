@@ -1,7 +1,6 @@
 package com.pheeeew.feature.map.sighlist
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -38,9 +37,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -51,6 +47,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.feature.map.star.MapPinStar
+import com.pheeeew.feature.map.star.toComposeStarColor
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
@@ -327,7 +325,7 @@ private fun SighListItem(
             horizontalArrangement = Arrangement.spacedBy(13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            SighStar(color = item.starColor, modifier = Modifier.size(26.dp))
+            MapPinStar(color = item.starStage.toComposeStarColor(), modifier = Modifier.size(26.dp))
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -351,26 +349,5 @@ private fun SighListItem(
                 )
             }
         }
-    }
-}
-
-@Composable
-internal fun SighStar(
-    color: Color,
-    modifier: Modifier = Modifier,
-) {
-    Canvas(modifier = modifier) {
-        val center = Offset(size.width / 2f, size.height / 2f)
-        drawCircle(
-            brush =
-                Brush.radialGradient(
-                    listOf(color.copy(alpha = 0.85f), color.copy(alpha = 0f)),
-                    center,
-                    size.minDimension / 2f,
-                ),
-            radius = size.minDimension / 2f,
-            center = center,
-        )
-        drawCircle(color = AppColors.Cream100, radius = size.minDimension * 0.14f, center = center)
     }
 }

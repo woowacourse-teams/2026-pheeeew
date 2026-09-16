@@ -125,7 +125,7 @@ fun MapScreen(
     var cancelSignal by remember { mutableStateOf(0) }
     var breathStartSignal by remember { mutableIntStateOf(0) }
     var starAgeRevision by remember { mutableIntStateOf(0) }
-    var relativeTimeRevision by remember { mutableIntStateOf(0) }
+    var visualNow by remember { mutableStateOf(Clock.System.now()) }
     val sighBrowser = uiState.sighBrowser
     var isSighBrowserComposed by remember { mutableStateOf(sighBrowser.isVisible) }
     val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
@@ -194,18 +194,21 @@ fun MapScreen(
         if (!sighBrowser.isVisible) return@LaunchedEffect
         while (true) {
             delay(60_000L)
-            relativeTimeRevision += 1
+            visualNow = Clock.System.now()
         }
     }
 
+    LaunchedEffect(isActive) {
+        if (isActive) visualNow = Clock.System.now()
+    }
+
     val listItems =
-        remember(sighBrowser.items, relativeTimeRevision) {
-            val now = Clock.System.now()
-            sighBrowser.items.map { it.toSighListItemUiModel(now) }
+        remember(sighBrowser.items, visualNow) {
+            sighBrowser.items.map { it.toSighListItemUiModel(visualNow) }
         }
     val selectedItem =
-        remember(sighBrowser.selectedSigh, relativeTimeRevision) {
-            sighBrowser.selectedSigh?.toSighListItemUiModel(Clock.System.now())
+        remember(sighBrowser.selectedSigh, visualNow) {
+            sighBrowser.selectedSigh?.toSighListItemUiModel(visualNow)
         }
     val selectedProjectionId = sighBrowser.selectedSigh?.let { sigh -> "selected-sigh-${sigh.id}" }
     val selectedProjectionPoint =
@@ -222,13 +225,14 @@ fun MapScreen(
                 pendingFlightOrigin != null && landedFlightId != it
             }
 
-    LaunchedEffect(renderedSighs, isActive) {
+    LaunchedEffect(renderedSighs, sighBrowser.items, isActive) {
         if (!isActive) return@LaunchedEffect
 
         val agePolicy = StarAgePolicy()
         while (true) {
             val nextTransitionAt =
-                renderedSighs
+                (renderedSighs + sighBrowser.items.map { it.toPin() })
+                    .distinctBy(SighPin::id)
                     .asSequence()
                     .mapNotNull { sigh -> agePolicy.nextTransitionAt(sigh.createdAt) }
                     .minOrNull()
@@ -236,16 +240,16 @@ fun MapScreen(
             val delayMillis =
                 (nextTransitionAt - Clock.System.now()).inWholeMilliseconds.coerceAtLeast(1L)
             delay(delayMillis)
+            visualNow = Clock.System.now()
             starAgeRevision += 1
         }
     }
 
     val sighMarkers =
-        remember(renderedSighs, hiddenMarkerId, starAgeRevision) {
-            val now = Clock.System.now()
+        remember(renderedSighs, hiddenMarkerId, visualNow, starAgeRevision) {
             renderedSighs.toSighMarkers(
                 hiddenMarkerId = hiddenMarkerId,
-                now = now,
+                now = visualNow,
             )
         }
 

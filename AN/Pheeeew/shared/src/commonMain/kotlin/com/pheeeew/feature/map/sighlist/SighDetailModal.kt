@@ -27,6 +27,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.feature.map.star.MapPinStar
+import com.pheeeew.feature.map.star.StarAgeStage
+import com.pheeeew.feature.map.star.toComposeStarColor
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_more
@@ -72,7 +75,7 @@ internal fun SighDetailModal(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        SighStar(color = item.starColor, modifier = Modifier.size(40.dp))
+                        MapPinStar(color = item.starStage.toComposeStarColor(), modifier = Modifier.size(40.dp))
                         Column(
                             modifier = Modifier.weight(1f).padding(start = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -121,7 +124,7 @@ private fun SighDetailModalPreview() {
                 nickname = "",
                 relativeTime = "",
                 memo = "",
-                starColor = AppColors.StarFresh,
+                starStage = StarAgeStage.Fresh,
             ),
         onDismiss = {},
         onMoreClick = {},
