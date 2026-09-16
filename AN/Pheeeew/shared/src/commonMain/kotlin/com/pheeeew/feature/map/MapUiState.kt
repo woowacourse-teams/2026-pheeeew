@@ -26,6 +26,7 @@ data class SighBrowserUiState(
     val isLoadMoreError: Boolean = false,
     val refreshRevision: Long = 0L,
     val errorMessage: String? = null,
+    val noticeMessage: String? = null,
 )
 
 data class MapLocationUiState(
@@ -48,6 +49,10 @@ sealed interface SighReleaseState {
 
     data class EditingMemo(
         val draft: PendingSighDraft,
+    ) : SighReleaseState
+
+    data class AwaitingBreath(
+        val command: CreateSighCommand,
     ) : SighReleaseState
 
     data class Submitting(

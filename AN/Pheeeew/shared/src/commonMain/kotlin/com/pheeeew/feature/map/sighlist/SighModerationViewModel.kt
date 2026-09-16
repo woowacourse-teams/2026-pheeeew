@@ -33,6 +33,7 @@ class SighModerationViewModel(
     }
 
     fun requestBlock() {
+        if (_uiState.value.isBlocking) return
         val target = _uiState.value.actionTarget ?: return
         _uiState.update { it.copy(actionTarget = null, blockTarget = target) }
     }
@@ -42,14 +43,29 @@ class SighModerationViewModel(
     }
 
     fun confirmBlock() {
+        if (_uiState.value.isBlocking) return
         val target = _uiState.value.blockTarget ?: return
-        _uiState.update { it.copy(blockTarget = null, blockErrorMessage = null) }
+        _uiState.update {
+            it.copy(
+                blockTarget = null,
+                blockErrorMessage = null,
+                isBlocking = true,
+            )
+        }
         viewModelScope.launch {
             runCatching { blockUser(target.sighId) }
-                .onSuccess { onBlockSucceeded(target.sighId) }
-                .onFailure { error ->
+                .onSuccess {
+                    onBlockSucceeded(target.sighId)
                     _uiState.update {
                         it.copy(
+                            isBlocking = false,
+                            successMessage = "차단되었습니다.",
+                        )
+                    }
+                }.onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isBlocking = false,
                             blockErrorMessage = error.toBlockErrorMessage(),
                         )
                     }

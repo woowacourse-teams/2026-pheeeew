@@ -58,6 +58,7 @@ internal suspend fun HttpResponse.throwIfFailed() {
         HttpStatusCode.Unauthorized -> ApiException.Unauthorized(code, message)
         HttpStatusCode.Forbidden -> ApiException.Forbidden(code, message)
         HttpStatusCode.NotFound -> ApiException.NotFound(code, message)
+        HttpStatusCode.Gone -> ApiException.Gone(code, message)
         HttpStatusCode.Conflict -> ApiException.Conflict(code, message)
         else -> ApiException.Unknown(code, message, retryAfterSeconds)
     }

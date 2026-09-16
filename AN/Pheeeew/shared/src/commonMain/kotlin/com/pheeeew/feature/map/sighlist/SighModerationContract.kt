@@ -25,6 +25,7 @@ data class SighModerationUiState(
     val selectedReason: String? = null,
     val description: String = "",
     val blockErrorMessage: String? = null,
+    val isBlocking: Boolean = false,
     val isSubmitting: Boolean = false,
     val errorMessage: String? = null,
     val successMessage: String? = null,

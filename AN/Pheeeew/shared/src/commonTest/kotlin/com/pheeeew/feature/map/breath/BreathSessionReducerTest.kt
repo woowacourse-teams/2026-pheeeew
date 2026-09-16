@@ -68,6 +68,33 @@ class BreathSessionReducerTest {
     }
 
     @Test
+    fun `release threshold를 넘으면 즉시 quiet 상태가 된다`() {
+        val listening = BreathSessionState.Listening(1L, growth = 0.15f, strength = 0.8f, quietFor = 0.milliseconds)
+
+        val sampled =
+            reducer.reduce(
+                listening,
+                BreathSessionEvent.StrengthSample(1L, strength = 0.8f, elapsed = 100.milliseconds),
+            )
+
+        assertIs<BreathSessionState.Quiet>(sampled.state)
+    }
+
+    @Test
+    fun `release threshold를 넘은 뒤 다시 불어도 quiet 상태를 유지한다`() {
+        val ready = BreathSessionState.Quiet(1L, growth = 0.25f, strength = 0f, quietFor = 700.milliseconds)
+
+        val sampled =
+            reducer.reduce(
+                ready,
+                BreathSessionEvent.StrengthSample(1L, strength = 0.8f, elapsed = 100.milliseconds),
+            )
+
+        assertIs<BreathSessionState.Quiet>(sampled.state)
+        assertTrue(sampled.state.growth > ready.growth)
+    }
+
+    @Test
     fun `callback from an old session is ignored`() {
         val requesting = reducer.reduce(BreathSessionState.Idle(), BreathSessionEvent.StartRequested)
         val state = assertIs<BreathSessionState.RequestingPermission>(requesting.state)

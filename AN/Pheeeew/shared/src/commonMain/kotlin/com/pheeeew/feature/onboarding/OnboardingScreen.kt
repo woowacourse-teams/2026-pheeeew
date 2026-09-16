@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -19,8 +20,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.lerp
@@ -32,19 +36,31 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.audio.rememberBreathInput
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.permission.LocationPermissionStatus
+import com.pheeeew.core.permission.LocationServicesSettingsDialog
+import com.pheeeew.core.permission.PermissionSettingsDialog
+import com.pheeeew.core.permission.PermissionSettingsTarget
 import com.pheeeew.feature.splash.TwinklingStars
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 @Composable
 fun OnboardingScreen(
+    onRequestLocationPermission: suspend () -> LocationPermissionStatus,
+    onOpenLocationSettings: () -> Unit,
+    onOpenAppSettings: () -> Unit,
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pagerState = rememberPagerState(pageCount = { PAGE_COUNT })
     val coroutineScope = rememberCoroutineScope()
+    val breathInput = rememberBreathInput()
+    var isRequestingPermissions by remember { mutableStateOf(false) }
+    var permissionResult by remember { mutableStateOf<OnboardingPermissionResult?>(null) }
     val page = pagerState.currentPage
     val indicatorPosition = pagerState.currentPage + pagerState.currentPageOffsetFraction
 
@@ -71,13 +87,61 @@ fun OnboardingScreen(
             indicatorPosition = indicatorPosition,
             onClick = {
                 if (page == LAST_PAGE_INDEX) {
-                    onFinished()
+                    if (!isRequestingPermissions) {
+                        isRequestingPermissions = true
+                        coroutineScope.launch {
+                            val result =
+                                requestOnboardingPermissions(
+                                    requestLocationPermission = onRequestLocationPermission,
+                                    requestMicrophonePermission = { breathInput.requestPermission() },
+                                )
+                            if (result.allPermissionsGranted) {
+                                onFinished()
+                            } else {
+                                permissionResult = result
+                                isRequestingPermissions = false
+                            }
+                        }
+                    }
                 } else {
                     coroutineScope.launch { pagerState.animateScrollToPage(page + 1) }
                 }
             },
+            enabled = !isRequestingPermissions,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+
+        permissionResult?.let { result ->
+            val deniedPermissions = result.deniedPermissions
+            when {
+                deniedPermissions != null -> {
+                    PermissionSettingsDialog(
+                        target = deniedPermissions,
+                        onOpenSettings = {
+                            permissionResult = null
+                            onOpenAppSettings()
+                        },
+                        onDismiss = {
+                            permissionResult = null
+                            onFinished()
+                        },
+                    )
+                }
+
+                result.locationStatus == LocationPermissionStatus.ServicesDisabled -> {
+                    LocationServicesSettingsDialog(
+                        onOpenSettings = {
+                            permissionResult = null
+                            onOpenLocationSettings()
+                        },
+                        onDismiss = {
+                            permissionResult = null
+                            onFinished()
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -126,11 +190,17 @@ private fun BottomControls(
     page: Int,
     indicatorPosition: Float,
     onClick: () -> Unit,
+    enabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.fillMaxWidth().padding(horizontal = 22.dp).padding(bottom = 28.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 22.dp)
+                .padding(bottom = 28.dp),
     ) {
         PageIndicator(position = indicatorPosition)
         Spacer(Modifier.height(16.dp))
@@ -142,6 +212,7 @@ private fun BottomControls(
                     .height(48.dp)
                     .background(AppColors.Blue100, RoundedCornerShape(24.dp))
                     .clickable(
+                        enabled = enabled,
                         role = Role.Button,
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -186,6 +257,56 @@ private fun PageIndicator(position: Float) {
 private const val PAGE_COUNT = 3
 private const val LAST_PAGE_INDEX = PAGE_COUNT - 1
 
+internal suspend fun requestOnboardingPermissions(
+    requestLocationPermission: suspend () -> LocationPermissionStatus,
+    requestMicrophonePermission: suspend () -> Boolean,
+): OnboardingPermissionResult {
+    val locationStatus = requestLocationPermissionSafely(requestLocationPermission)
+    val microphoneGranted = requestMicrophonePermissionSafely(requestMicrophonePermission)
+    return OnboardingPermissionResult(locationStatus, microphoneGranted)
+}
+
+internal data class OnboardingPermissionResult(
+    val locationStatus: LocationPermissionStatus,
+    val microphoneGranted: Boolean,
+) {
+    val allPermissionsGranted: Boolean
+        get() = locationStatus == LocationPermissionStatus.Granted && microphoneGranted
+
+    val deniedPermissions: PermissionSettingsTarget?
+        get() {
+            val locationDenied =
+                locationStatus == LocationPermissionStatus.Denied ||
+                    locationStatus == LocationPermissionStatus.PermanentlyDenied
+            return when {
+                locationDenied && !microphoneGranted -> PermissionSettingsTarget.LocationAndMicrophone
+                locationDenied -> PermissionSettingsTarget.Location
+                !microphoneGranted -> PermissionSettingsTarget.Microphone
+                else -> null
+            }
+        }
+}
+
+private suspend fun requestLocationPermissionSafely(
+    requestPermission: suspend () -> LocationPermissionStatus,
+): LocationPermissionStatus =
+    try {
+        requestPermission()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Throwable) {
+        LocationPermissionStatus.Denied
+    }
+
+private suspend fun requestMicrophonePermissionSafely(requestPermission: suspend () -> Boolean): Boolean =
+    try {
+        requestPermission()
+    } catch (cancellation: CancellationException) {
+        throw cancellation
+    } catch (_: Throwable) {
+        false
+    }
+
 @Composable
 internal fun OnboardingPagePreview(
     page: Int,
@@ -209,6 +330,11 @@ internal fun OnboardingPagePreview(
 @Composable
 private fun OnboardingScreenPreview() {
     AppTheme {
-        OnboardingScreen(onFinished = {})
+        OnboardingScreen(
+            onRequestLocationPermission = { LocationPermissionStatus.Granted },
+            onOpenLocationSettings = {},
+            onOpenAppSettings = {},
+            onFinished = {},
+        )
     }
 }

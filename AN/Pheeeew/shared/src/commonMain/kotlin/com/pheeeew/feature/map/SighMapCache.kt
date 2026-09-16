@@ -82,6 +82,10 @@ internal class SighMapCache(
         }
     }
 
+    fun remove(id: Long) {
+        removeSigh(id)
+    }
+
     internal val regionCount: Int
         get() = cachedRegions.size
 
