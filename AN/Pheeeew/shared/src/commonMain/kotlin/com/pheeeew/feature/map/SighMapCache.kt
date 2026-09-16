@@ -76,14 +76,18 @@ internal class SighMapCache(
             .toList()
     }
 
-    fun remove(id: Long) {
-        cachedRegions.indices.forEach { index ->
-            val cachedRegion = cachedRegions[index]
-            cachedRegions[index] =
-                cachedRegion.copy(
-                    sighs = cachedRegion.sighs.filterNot { it.id == id },
-                )
+    fun removeSigh(sighId: Long) {
+        cachedRegions.forEach { region ->
+            region.sighs = region.sighs.filterNot { it.id == sighId }
         }
+    }
+
+    fun remove(id: Long) {
+        removeSigh(id)
+    }
+
+    fun clear() {
+        cachedRegions.clear()
     }
 
     internal val regionCount: Int
@@ -106,7 +110,7 @@ internal class SighMapCache(
 
 private data class CachedRegion(
     val queryBounds: SighBounds,
-    val sighs: List<SighPin>,
+    var sighs: List<SighPin>,
     val fetchedAtMillis: Long,
     var lastAccessOrder: Long,
 )

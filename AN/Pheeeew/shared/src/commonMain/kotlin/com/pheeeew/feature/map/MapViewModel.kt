@@ -16,6 +16,7 @@ import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.feature.map.map.MapCameraCommand
 import com.pheeeew.feature.map.map.MapDarkStyle
 import com.pheeeew.feature.map.map.MapError
+import com.pheeeew.feature.map.sighlist.SighModerationTarget
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -53,6 +54,8 @@ class MapViewModel(
     private val sighOperationMutex = Mutex()
     private val locallyRegisteredSighs = mutableMapOf<Long, SighPin>()
     private val expiredSighIds = mutableSetOf<Long>()
+    private val blockedSighIds = mutableSetOf<Long>()
+    private val blockedNicknames = mutableSetOf<String>()
     private val sighMapCache = SighMapCache()
     private var mapIsForeground = false
     private var sighDebounceJob: Job? = null
@@ -205,7 +208,8 @@ class MapViewModel(
             }
 
         sighOperationMutex.withLock {
-            val availableSighs = serverSighs.filterNot { it.id in expiredSighIds }
+            val availableSighs =
+                serverSighs.filterNot { it.id in expiredSighIds || it.id in blockedSighIds }
             sighMapCache.put(queryBounds, availableSighs)
             val serverIds = availableSighs.mapTo(mutableSetOf(), SighPin::id)
             serverIds.forEach(locallyRegisteredSighs::remove)
@@ -250,7 +254,7 @@ class MapViewModel(
     ) {
         val mergedSighs =
             (sighMapCache.visibleSighs(bounds) + locallyRegisteredSighs.values)
-                .filterNot { it.id in expiredSighIds }
+                .filterNot { it.id in expiredSighIds || it.id in blockedSighIds }
                 .distinctBy(SighPin::id)
                 .sortedBy(SighPin::id)
         _uiState.update { state ->
@@ -315,7 +319,7 @@ class MapViewModel(
         openBrowser: Boolean,
     ) {
         val bounds = lastSighBounds ?: return
-        if (!mapIsForeground || id in expiredSighIds) return
+        if (!mapIsForeground || id in expiredSighIds || id in blockedSighIds) return
 
         val requestId = ++latestSighDetailRequestId
         loadSighDetailJob?.cancel()
@@ -339,6 +343,16 @@ class MapViewModel(
                 try {
                     val sigh = sighRepository.getById(id)
                     if (!isCurrentSighDetailRequest(requestId, id)) return@launch
+                    if (isBlocked(sigh)) {
+                        pendingSighDetailId = null
+                        _uiState.update { state ->
+                            state.copy(
+                                sighBrowser =
+                                    state.sighBrowser.copy(isDetailLoading = false),
+                            )
+                        }
+                        return@launch
+                    }
 
                     pendingSighDetailId = null
                     showSighDetail(sigh, bounds)
@@ -490,7 +504,7 @@ class MapViewModel(
                                 current.copy(
                                     items =
                                         (current.items + page.items)
-                                            .filterNot { it.id in expiredSighIds }
+                                            .filterNot(::isBlocked)
                                             .distinctBy(Sigh::id),
                                     nextCursor = page.nextCursor,
                                     isLoadingMore = false,
@@ -528,6 +542,40 @@ class MapViewModel(
         }
     }
 
+    fun removeSigh(target: SighModerationTarget) {
+        blockedSighIds += target.sighId
+        blockedNicknames += target.nickname
+        latestViewportVersion += 1L
+        latestSighListRequestId += 1L
+        latestSighDetailRequestId += 1L
+        pendingViewportIntent = null
+        sighDebounceJob?.cancel()
+        sighDebounceJob = null
+        activeSighRequestJob?.cancel()
+        activeSighRequestJob = null
+        loadSighListJob?.cancel()
+        loadSighListJob = null
+        loadSighDetailJob?.cancel()
+        loadSighDetailJob = null
+        sighMapCache.clear()
+        locallyRegisteredSighs.remove(target.sighId)
+        pendingSighDetailId = pendingSighDetailId?.takeUnless { it == target.sighId }
+        _uiState.update { state ->
+            state.copy(
+                sighs = state.sighs.filterNot { it.id == target.sighId },
+                sighBrowser =
+                    state.sighBrowser.copy(
+                        items = state.sighBrowser.items.filterNot(::isBlocked),
+                        selectedSigh = state.sighBrowser.selectedSigh?.takeUnless(::isBlocked),
+                    ),
+            )
+        }
+        lastSighBounds?.let(::loadSighs)
+    }
+
+    private fun isBlocked(sigh: Sigh): Boolean =
+        sigh.id in expiredSighIds || sigh.id in blockedSighIds || sigh.nickname in blockedNicknames
+
     private fun loadFirstSighPage(bounds: SighBounds) {
         if (!mapIsForeground || !_uiState.value.sighBrowser.isVisible || !bounds.isValidForQuery()) return
 
@@ -564,7 +612,7 @@ class MapViewModel(
                                 state.sighBrowser.copy(
                                     items =
                                         page.items
-                                            .filterNot { it.id in expiredSighIds }
+                                            .filterNot(::isBlocked)
                                             .distinctBy(Sigh::id),
                                     selectedSigh = null,
                                     nextCursor = page.nextCursor,

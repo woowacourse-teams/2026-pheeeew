@@ -22,6 +22,21 @@ internal suspend inline fun <reified T> executeRequest(block: suspend () -> Http
         throw exception.toApiException()
     }
 
+internal suspend inline fun <reified T> executeRequestWithStatus(
+    block: suspend () -> HttpResponse,
+): Pair<HttpStatusCode, T> =
+    try {
+        val response = block()
+        response.throwIfFailed()
+        response.status to response.body()
+    } catch (exception: CancellationException) {
+        throw exception
+    } catch (exception: ApiException) {
+        throw exception
+    } catch (exception: Throwable) {
+        throw exception.toApiException()
+    }
+
 @PublishedApi
 internal suspend fun HttpResponse.throwIfFailed() {
     if (status.value in 200..299) return

@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.pheeeew.core.network.ApiConfig
+import com.pheeeew.data.local.device.AndroidDeviceIdStorage
 import com.pheeeew.data.local.device.InMemoryAccessTokenStore
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.di.SighModule
@@ -59,6 +60,7 @@ class MainActivity : ComponentActivity() {
         val sighDependencies =
             SighModule.create(
                 config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
+                deviceIdStorage = AndroidDeviceIdStorage(this),
                 accessTokenStore = accessTokenStore,
                 refreshAccessToken = {
                     deviceDependencies.ensureRegistered().getOrThrow().accessToken
@@ -83,6 +85,8 @@ class MainActivity : ComponentActivity() {
                 locationDependencies = locationDependencies,
                 sighRepository = sighDependencies.repository,
                 createSigh = sighDependencies.createSigh,
+                blockUser = sighDependencies.blockUser,
+                reportSigh = sighDependencies.reportSigh,
                 mapPerformanceLogger = { event ->
                     if (BuildConfig.DEBUG) Log.d("Pheeeew.MapPerf", event)
                 },

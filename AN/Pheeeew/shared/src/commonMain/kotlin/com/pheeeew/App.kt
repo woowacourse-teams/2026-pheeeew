@@ -20,8 +20,10 @@ import com.pheeeew.core.navigation.PredictiveBackContent
 import com.pheeeew.core.navigation.Screen
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.domain.repository.SighRepository
+import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.domain.usecase.EnsureDeviceRegisteredUseCase
+import com.pheeeew.domain.usecase.ReportSighUseCase
 import com.pheeeew.feature.map.MapPerformanceLogger
 import com.pheeeew.feature.map.MapRoute
 import com.pheeeew.feature.map.MapViewModel
@@ -44,6 +46,8 @@ fun App(
     locationDependencies: LocationDependencies?,
     sighRepository: SighRepository,
     createSigh: CreateSighUseCase,
+    blockUser: BlockUserUseCase,
+    reportSigh: ReportSighUseCase,
     mapPerformanceLogger: MapPerformanceLogger,
     ensureDeviceRegistered: EnsureDeviceRegisteredUseCase? = null,
 ) {
@@ -63,7 +67,13 @@ fun App(
                 MapViewModel(sighRepository, createSigh, locationDependencies, mapPerformanceLogger)
             }
         val sighModerationViewModel: SighModerationViewModel =
-            viewModel { SighModerationViewModel() }
+            viewModel {
+                SighModerationViewModel(
+                    blockUser = blockUser,
+                    reportSigh = reportSigh,
+                    onBlockSucceeded = mapViewModel::removeSigh,
+                )
+            }
         val mapReadiness = remember { MutableStateFlow(false) }
         var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
 
