@@ -33,9 +33,7 @@ class KtorSighV2Api(
         executeAuthenticatedRequest { accessToken ->
             executeRequest {
                 client.get(SIGHS_PATH) {
-                    accessToken?.let { token ->
-                        header("Authorization", "Bearer ${token.value}")
-                    }
+                    accessToken?.let { header("Authorization", "Bearer ${it.value}") }
                     parameter("minLongitude", bounds.minLongitude)
                     parameter("minLatitude", bounds.minLatitude)
                     parameter("maxLongitude", bounds.maxLongitude)
@@ -50,9 +48,7 @@ class KtorSighV2Api(
         return executeAuthenticatedRequest { accessToken ->
             executeRequest {
                 client.get(SIGHS_PATH) {
-                    accessToken?.let { token ->
-                        header("Authorization", "Bearer ${token.value}")
-                    }
+                    accessToken?.let { header("Authorization", "Bearer ${it.value}") }
                     parameter("cursor", cursor)
                 }
             }
@@ -65,17 +61,22 @@ class KtorSighV2Api(
         return executeAuthenticatedRequest { accessToken ->
             executeRequest {
                 client.get("$SIGHS_PATH/$id") {
-                    accessToken?.let { token ->
-                        header("Authorization", "Bearer ${token.value}")
-                    }
+                    accessToken?.let { header("Authorization", "Bearer ${it.value}") }
                 }
             }
         }
     }
 
     override suspend fun create(request: SighCreateV2RequestDto): SighFeatureDto<SighV2PropertiesDto> =
-        executeAuthenticatedRequest { accessToken ->
-            createRequest(request, accessToken)
+        run {
+            val tokenUsedForRequest = accessTokenForRequest()
+            try {
+                createRequest(request, tokenUsedForRequest)
+            } catch (error: ApiException.Unauthorized) {
+                if (error.code != "AUTH-001") throw error
+                val retryToken = refreshToken(tokenUsedForRequest) ?: throw error
+                createRequest(request, retryToken)
+            }
         }
 
     private suspend fun <T> executeAuthenticatedRequest(request: suspend (AccessToken?) -> T): T {
@@ -84,20 +85,22 @@ class KtorSighV2Api(
             request(tokenUsedForRequest)
         } catch (error: ApiException.Unauthorized) {
             if (error.code != "AUTH-001") throw error
-            val retryToken =
-                refreshMutex.withLock {
-                    val latestToken = accessTokenStore?.accessToken
-                    if (latestToken != null && latestToken != tokenUsedForRequest) {
-                        latestToken
-                    } else {
-                        refreshAccessToken?.invoke()?.also { refreshedToken ->
-                            accessTokenStore?.save(refreshedToken)
-                        }
-                    }
-                } ?: throw error
+            val retryToken = refreshToken(tokenUsedForRequest) ?: throw error
             request(retryToken)
         }
     }
+
+    private suspend fun refreshToken(tokenUsedForRequest: AccessToken?): AccessToken? =
+        refreshMutex.withLock {
+            val latestToken = accessTokenStore?.accessToken
+            if (latestToken != null && latestToken != tokenUsedForRequest) {
+                latestToken
+            } else {
+                refreshAccessToken?.invoke()?.also { refreshedToken ->
+                    accessTokenStore?.save(refreshedToken)
+                }
+            }
+        }
 
     private suspend fun createRequest(
         request: SighCreateV2RequestDto,

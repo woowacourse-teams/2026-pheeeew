@@ -28,6 +28,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.audio.BreathInputError
 import com.pheeeew.core.designsystem.component.AppDialog
+import com.pheeeew.core.designsystem.component.AppSnackbar
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
@@ -85,6 +86,7 @@ fun MapScreen(
     onRequestSighBlock: () -> Unit,
     onDismissSighBlock: () -> Unit,
     onConfirmSighBlock: () -> Unit,
+    onDismissBlockError: () -> Unit,
     onRequestSighReport: () -> Unit,
     onSighReportReasonSelect: (String) -> Unit,
     onSighReportDescriptionChange: (String) -> Unit,
@@ -350,21 +352,26 @@ fun MapScreen(
             )
         }
 
-        ErrorSnackbar(
-            message = sighBrowser.noticeMessage ?: moderationUiState.successMessage,
+        AppSnackbar(
+            message =
+                sighBrowser.noticeMessage
+                    ?: moderationUiState.successMessage
+                    ?: moderationUiState.blockErrorMessage,
             onDismiss = {
                 if (sighBrowser.noticeMessage != null) {
                     onDismissSighBrowserNotice()
+                } else if (moderationUiState.successMessage != null) {
                     onDismissReportSuccess()
                 } else {
-                    onDismissReportSuccess()
+                    onDismissBlockError()
                 }
             },
             modifier =
                 Modifier
-                    .align(Alignment.TopCenter)
+                    .align(Alignment.BottomCenter)
                     .fillMaxWidth()
-                    .padding(start = 16.dp, top = 8.dp, end = 16.dp),
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
         )
 
         if (shouldShowInteractionBackdrop) {
@@ -609,6 +616,7 @@ private fun MapScreenPreview() {
             onRequestSighBlock = {},
             onDismissSighBlock = {},
             onConfirmSighBlock = {},
+            onDismissBlockError = {},
             onRequestSighReport = {},
             onSighReportReasonSelect = {},
             onSighReportDescriptionChange = {},
