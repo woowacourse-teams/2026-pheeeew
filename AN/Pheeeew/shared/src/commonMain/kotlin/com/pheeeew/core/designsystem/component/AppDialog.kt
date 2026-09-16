@@ -38,10 +38,17 @@ fun AppDialog(
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
     dismissText: String? = null,
+    dismissOnBackPress: Boolean = true,
+    dismissOnClickOutside: Boolean = true,
 ) {
     Dialog(
         onDismissRequest = onDismissRequest,
-        properties = DialogProperties(usePlatformDefaultWidth = true),
+        properties =
+            DialogProperties(
+                dismissOnBackPress = dismissOnBackPress,
+                dismissOnClickOutside = dismissOnClickOutside,
+                usePlatformDefaultWidth = true,
+            ),
     ) {
         AppDialogContent(
             title = title,
@@ -150,6 +157,21 @@ private fun AppDialogOneButtonPreview() {
             confirmText = "확인",
             onConfirmClick = {},
             onDismissClick = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun RequiredUpdateAppDialogPreview() {
+    AppTheme {
+        AppDialogContent(
+            title = "앱 업데이트가 필요해요",
+            body = "현재 버전은 더 이상 지원되지 않아요. 최신 버전으로 업데이트한 뒤 이용해 주세요.",
+            confirmText = "업데이트",
+            onConfirmClick = {},
+            onDismissClick = {},
+            dismissText = "다시 확인",
         )
     }
 }
