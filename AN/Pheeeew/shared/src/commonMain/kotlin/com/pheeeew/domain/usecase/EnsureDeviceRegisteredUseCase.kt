@@ -3,15 +3,20 @@ package com.pheeeew.domain.usecase
 import com.pheeeew.domain.exception.device.DeviceRegistrationException
 import com.pheeeew.domain.model.device.AuthSession
 import com.pheeeew.domain.repository.DeviceRegistrationRepository
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlin.coroutines.cancellation.CancellationException
 
 class EnsureDeviceRegisteredUseCase(
     private val repository: DeviceRegistrationRepository,
     private val forceRegistrationOnce: Boolean = false,
 ) {
+    private val registrationMutex = Mutex()
     private var didForceRegistration = false
 
-    suspend operator fun invoke(): Result<AuthSession> {
+    suspend operator fun invoke(): Result<AuthSession> = registrationMutex.withLock { ensureRegistered() }
+
+    private suspend fun ensureRegistered(): Result<AuthSession> {
         if (forceRegistrationOnce && !didForceRegistration) {
             didForceRegistration = true
             repository.clearCredentials()

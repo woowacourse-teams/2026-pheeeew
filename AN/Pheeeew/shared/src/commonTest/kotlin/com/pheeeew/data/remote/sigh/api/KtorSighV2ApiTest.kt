@@ -7,6 +7,7 @@ import com.pheeeew.core.network.createHttpClient
 import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.remote.sigh.dto.SighCreateV2RequestDto
 import com.pheeeew.domain.exception.ApiException
+import com.pheeeew.domain.exception.device.DeviceRegistrationException
 import com.pheeeew.domain.model.device.AccessToken
 import com.pheeeew.domain.model.sigh.SighBounds
 import io.ktor.client.engine.mock.MockEngine
@@ -257,6 +258,149 @@ class KtorSighV2ApiTest {
 
             api.create(SighCreateV2RequestDto("request-123", 37.5, 126.9))
 
+            client.close()
+        }
+
+    @Test
+    fun `access token이 없으면 기기 등록 후 원래 요청을 보낸다`() =
+        runTest {
+            val store = TestAccessTokenStore(accessToken = null)
+            var requestCount = 0
+            var registrationCount = 0
+            val engine =
+                MockEngine { request ->
+                    requestCount++
+                    assertEquals("Bearer registered", request.headers[HttpHeaders.Authorization])
+                    respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
+                }
+            val client = createClient(engine)
+            val api =
+                KtorSighV2Api(client, store, refreshAccessToken = {
+                    registrationCount++
+                    AccessToken("registered")
+                })
+
+            api.create(SighCreateV2RequestDto("request-123", 37.5, 126.9))
+
+            assertEquals(1, registrationCount)
+            assertEquals(1, requestCount)
+            client.close()
+        }
+
+    @Test
+    fun `기기 등록의 네트워크 실패는 네트워크 예외로 전달하고 원래 요청을 보내지 않는다`() =
+        runTest {
+            val store = TestAccessTokenStore(accessToken = null)
+            var requestCount = 0
+            val engine =
+                MockEngine {
+                    requestCount++
+                    respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
+                }
+            val client = createClient(engine)
+            val api =
+                KtorSighV2Api(client, store, refreshAccessToken = {
+                    throw DeviceRegistrationException.Network()
+                })
+
+            val exception =
+                assertFailsWith<ApiException.Network> {
+                    api.create(SighCreateV2RequestDto("request-123", 37.5, 126.9))
+                }
+
+            assertEquals("DEVICE_REGISTRATION_NETWORK", exception.code)
+            assertEquals(0, requestCount)
+            client.close()
+        }
+
+    @Test
+    fun `알 수 없는 기기 등록 실패는 일반 오류로 전달하고 원래 요청을 보내지 않는다`() =
+        runTest {
+            val store = TestAccessTokenStore(accessToken = null)
+            var requestCount = 0
+            val engine =
+                MockEngine {
+                    requestCount++
+                    respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
+                }
+            val client = createClient(engine)
+            val api =
+                KtorSighV2Api(client, store, refreshAccessToken = {
+                    throw DeviceRegistrationException.Server()
+                })
+
+            val exception =
+                assertFailsWith<ApiException.Unknown> {
+                    api.create(SighCreateV2RequestDto("request-123", 37.5, 126.9))
+                }
+
+            assertEquals("DEVICE_REGISTRATION_FAILED", exception.code)
+            assertEquals("처리 중에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.", exception.message)
+            assertEquals(0, requestCount)
+            client.close()
+        }
+
+    @Test
+    fun `기기 등록 실패를 캐시하지 않고 다음 요청에서 다시 시도한다`() =
+        runTest {
+            val store = TestAccessTokenStore(accessToken = null)
+            var requestCount = 0
+            var registrationCount = 0
+            val engine =
+                MockEngine { request ->
+                    requestCount++
+                    assertEquals("Bearer registered", request.headers[HttpHeaders.Authorization])
+                    respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
+                }
+            val client = createClient(engine)
+            val api =
+                KtorSighV2Api(client, store, refreshAccessToken = {
+                    registrationCount++
+                    if (registrationCount == 1) {
+                        throw DeviceRegistrationException.Network()
+                    }
+                    AccessToken("registered")
+                })
+
+            assertFailsWith<ApiException.Network> {
+                api.create(SighCreateV2RequestDto("request-1", 37.5, 126.9))
+            }
+            api.create(SighCreateV2RequestDto("request-2", 37.5, 126.9))
+
+            assertEquals(2, registrationCount)
+            assertEquals(1, requestCount)
+            client.close()
+        }
+
+    @Test
+    fun `access token이 없는 동시 요청은 기기 등록을 한 번만 수행한다`() =
+        runTest {
+            val store = TestAccessTokenStore(accessToken = null)
+            var requestCount = 0
+            var registrationCount = 0
+            val engine =
+                MockEngine { request ->
+                    requestCount++
+                    assertEquals("Bearer registered", request.headers[HttpHeaders.Authorization])
+                    respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
+                }
+            val client = createClient(engine)
+            val api =
+                KtorSighV2Api(client, store, refreshAccessToken = {
+                    registrationCount++
+                    delay(10)
+                    AccessToken("registered")
+                })
+
+            listOf(1, 2)
+                .map { id ->
+                    async {
+                        api.create(SighCreateV2RequestDto("request-$id", 37.5, 126.9))
+                    }
+                }.awaitAll()
+
+            assertEquals(1, registrationCount)
+            assertEquals(2, requestCount)
             client.close()
         }
 
