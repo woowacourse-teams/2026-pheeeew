@@ -149,8 +149,8 @@ fun OnboardingScreen(
 internal fun OnboardingTitle(
     text: String,
     textAlign: TextAlign,
-    fontSize: TextUnit = 22.sp,
-    lineHeight: TextUnit = 38.sp,
+    fontSize: TextUnit = 32.sp,
+    lineHeight: TextUnit = 40.sp,
     letterSpacing: TextUnit = 1.7.sp,
     modifier: Modifier = Modifier,
 ) {
@@ -177,9 +177,9 @@ internal fun SupportingText(
         text = text,
         color = AppTheme.colors.onSurfaceVariant,
         fontFamily = FontFamily.Default,
-        fontSize = 11.sp,
+        fontSize = 14.sp,
         fontWeight = FontWeight.Normal,
-        lineHeight = 20.sp,
+        lineHeight = 28.sp,
         textAlign = textAlign,
         modifier = modifier,
     )
