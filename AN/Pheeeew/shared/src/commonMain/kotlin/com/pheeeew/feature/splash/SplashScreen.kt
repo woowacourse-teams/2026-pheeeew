@@ -65,19 +65,21 @@ fun SplashScreen(
         Image(
             painter = painterResource(Res.drawable.logo_pheeeew),
             contentDescription = "Pheeeew",
-            modifier = Modifier
-                .width(220.dp)
-                .align(BiasAlignment(0f, LOGO_VERTICAL_BIAS))
-                .alpha(logoAlpha.value),
+            modifier =
+                Modifier
+                    .width(220.dp)
+                    .align(BiasAlignment(0f, LOGO_VERTICAL_BIAS))
+                    .alpha(logoAlpha.value),
             contentScale = ContentScale.FillWidth,
         )
 
         Text(
             text = splashMessage,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(horizontal = 28.dp, vertical = MESSAGE_BOTTOM_PADDING)
-                .alpha(logoAlpha.value),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 28.dp, vertical = MESSAGE_BOTTOM_PADDING)
+                    .alpha(logoAlpha.value),
             color = AppColors.Cream100,
             fontFamily = AppTheme.typography.menuItem.fontFamily,
             fontSize = 17.sp,
@@ -93,10 +95,11 @@ private const val LOGO_FADE_IN_MILLIS = 2400
 private const val LOGO_VERTICAL_BIAS = -0.15f
 private val MESSAGE_BOTTOM_PADDING = 72.dp
 
-private val SPLASH_MESSAGES = listOf(
-    "별은 태어난 시기에 따라\n파란색, 노란색, 주황색으로 변해요.",
-    "별은 내 주변 어딘가에\n랜덤하게 나타나요.",
-)
+private val SPLASH_MESSAGES =
+    listOf(
+        "별은 태어난 시기에 따라\n파란색, 노란색, 주황색으로 변해요.",
+        "별은 내 주변 어딘가에\n랜덤하게 나타나요.",
+    )
 
 @Preview
 @Composable
