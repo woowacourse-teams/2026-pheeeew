@@ -4,24 +4,30 @@ import android.content.Context
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.pheeeew.domain.model.device.RefreshToken
+import java.io.IOException
+import java.security.GeneralSecurityException
+import java.security.KeyStore
 
 class AndroidEncryptedDeviceTokenStorage(
     context: Context,
 ) : DeviceTokenStorage {
-    private val preferences =
-        EncryptedSharedPreferences.create(
-            context,
-            PREFERENCES_NAME,
-            MasterKey
-                .Builder(context)
-                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-                .build(),
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
-        )
+    private val appContext = context.applicationContext
+
+    private val preferences by lazy { createPreferences() }
 
     override suspend fun getRefreshToken(): RefreshToken? =
-        preferences.getString(REFRESH_TOKEN_KEY, null)?.let(::RefreshToken)
+        try {
+            preferences.getString(REFRESH_TOKEN_KEY, null)?.let(::RefreshToken)
+        } catch (error: GeneralSecurityException) {
+            resetCorruptedCredentials()
+            null
+        } catch (error: IOException) {
+            resetCorruptedCredentials()
+            null
+        } catch (error: ClassCastException) {
+            resetCorruptedCredentials()
+            null
+        }
 
     override suspend fun saveRefreshToken(refreshToken: RefreshToken) {
         preferences.edit().putString(REFRESH_TOKEN_KEY, refreshToken.value).apply()
@@ -29,6 +35,30 @@ class AndroidEncryptedDeviceTokenStorage(
 
     override suspend fun clear() {
         preferences.edit().remove(REFRESH_TOKEN_KEY).apply()
+    }
+
+    private fun createPreferences() =
+        EncryptedSharedPreferences.create(
+            appContext,
+            PREFERENCES_NAME,
+            MasterKey
+                .Builder(appContext)
+                .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
+                .build(),
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM,
+        )
+
+    private fun resetCorruptedCredentials() {
+        appContext.deleteSharedPreferences(PREFERENCES_NAME)
+        runCatching {
+            KeyStore
+                .getInstance("AndroidKeyStore")
+                .apply {
+                    load(null)
+                    deleteEntry(MasterKey.DEFAULT_MASTER_KEY_ALIAS)
+                }
+        }
     }
 
     private companion object {
