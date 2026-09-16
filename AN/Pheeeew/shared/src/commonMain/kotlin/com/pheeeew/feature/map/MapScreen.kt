@@ -214,7 +214,7 @@ fun MapScreen(
                 pendingFlightOrigin != null && landedFlightId != it
             }
 
-    LaunchedEffect(renderedSighs, isActive) {
+    LaunchedEffect(renderedSighs, sighBrowser.items, isActive) {
         if (!isActive) return@LaunchedEffect
 
         val agePolicy = StarAgePolicy()
