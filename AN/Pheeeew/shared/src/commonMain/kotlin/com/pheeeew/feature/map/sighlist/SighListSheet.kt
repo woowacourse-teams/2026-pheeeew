@@ -149,6 +149,12 @@ internal fun SighListSheet(
         } else {
             Modifier.fillMaxHeight()
         }
+    val listBottomPadding =
+        when {
+            compact -> 12.dp
+            sheetLevel == SighListSheetLevel.Middle -> 20.dp + with(density) { middleOffsetPx.toDp() }
+            else -> 20.dp
+        }
     val listState = rememberLazyListState()
     val sheetNestedScrollConnection =
         remember(listState, compact, availableHeightPx) {
@@ -226,12 +232,7 @@ internal fun SighListSheet(
                         if (compact) onCompactBackgroundClick()
                     }
                 },
-        shape =
-            if (!compact && sheetLevel == SighListSheetLevel.Expanded) {
-                RoundedCornerShape(0.dp)
-            } else {
-                RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-            },
+        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
         color = AppColors.Navy800,
         contentColor = AppColors.Cream100,
         shadowElevation = 12.dp,
@@ -301,7 +302,7 @@ internal fun SighListSheet(
                             start = 16.dp,
                             top = 2.dp,
                             end = 16.dp,
-                            bottom = if (compact) 12.dp else 20.dp,
+                            bottom = listBottomPadding,
                         ),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     userScrollEnabled = !compact,
