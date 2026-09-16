@@ -14,6 +14,7 @@ enum class FirstSighGuideStep {
 fun firstSighGuideStepFor(
     releaseState: SighReleaseState,
     phase: SighPhase,
+    isSwipeUpPromptReady: Boolean = phase == SighPhase.Quiet,
 ): FirstSighGuideStep =
     when (releaseState) {
         SighReleaseState.Idle -> {
@@ -26,9 +27,17 @@ fun firstSighGuideStepFor(
 
         is SighReleaseState.AwaitingBreath -> {
             when (phase) {
-                SighPhase.Quiet -> FirstSighGuideStep.SwipeUp
-                SighPhase.Bursting -> FirstSighGuideStep.Hidden
-                else -> FirstSighGuideStep.Blow
+                SighPhase.Bursting -> {
+                    FirstSighGuideStep.Hidden
+                }
+
+                else -> {
+                    if (isSwipeUpPromptReady) {
+                        FirstSighGuideStep.SwipeUp
+                    } else {
+                        FirstSighGuideStep.Blow
+                    }
+                }
             }
         }
 

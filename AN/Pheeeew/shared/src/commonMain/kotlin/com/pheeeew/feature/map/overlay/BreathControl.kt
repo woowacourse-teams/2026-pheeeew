@@ -89,6 +89,7 @@ fun BreathControl(
     onMicrophoneError: (BreathInputError) -> Unit,
     ensureLocationPermission: suspend () -> Boolean,
     onPhaseChanged: (SighPhase) -> Unit,
+    onReleaseReadinessChanged: (Boolean) -> Unit = {},
     cancelSignal: Int,
     onControlBoundsChanged: (Rect) -> Unit = {},
     showIdleLabel: Boolean = true,
@@ -108,6 +109,7 @@ fun BreathControl(
     val latestMicrophoneError = rememberUpdatedState(onMicrophoneError)
     val latestIdleClick = rememberUpdatedState(onIdleClick)
     val latestPhaseChanged = rememberUpdatedState(onPhaseChanged)
+    val latestReleaseReadinessChanged = rememberUpdatedState(onReleaseReadinessChanged)
     val latestEnsureLocationPermission = rememberUpdatedState(ensureLocationPermission)
     val latestControlBoundsChanged = rememberUpdatedState(onControlBoundsChanged)
     val breathControlState =
@@ -225,6 +227,8 @@ fun BreathControl(
             else -> SighPhase.Listening
         }
     LaunchedEffect(phase) { latestPhaseChanged.value(phase) }
+    val isReleaseReady = listening && growth >= breathConfig.minimumReleaseProgress
+    LaunchedEffect(isReleaseReady) { latestReleaseReadinessChanged.value(isReleaseReady) }
 
     // TODO
     val controlDescription =

@@ -36,6 +36,14 @@ class FirstSighGuideStateTest {
             firstSighGuideStepFor(SighReleaseState.AwaitingBreath(command), SighPhase.Quiet),
         )
         assertEquals(
+            FirstSighGuideStep.Blow,
+            firstSighGuideStepFor(
+                SighReleaseState.AwaitingBreath(command),
+                SighPhase.Quiet,
+                isSwipeUpPromptReady = false,
+            ),
+        )
+        assertEquals(
             FirstSighGuideStep.Hidden,
             firstSighGuideStepFor(SighReleaseState.AwaitingBreath(command), SighPhase.Bursting),
         )
