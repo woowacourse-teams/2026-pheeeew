@@ -7,6 +7,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
@@ -122,11 +123,12 @@ fun SighBrowserOverlay(
                     targetOffsetY = { it },
                 ),
         ) {
-            Box(contentAlignment = Alignment.BottomCenter) {
+            BoxWithConstraints(contentAlignment = Alignment.BottomCenter) {
                 if (!showActionMenu || selectedItem == null) {
                     SighListSheet(
                         items = if (selectedItem == null) items else listOf(selectedItem),
                         compact = selectedItem != null,
+                        availableHeightPx = constraints.maxHeight.toFloat(),
                         isLoading = isLoading,
                         isLoadingMore = isLoadingMore,
                         isLoadMoreError = isLoadMoreError,

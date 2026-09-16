@@ -36,16 +36,14 @@ internal fun Onboarding2() {
         NameExamples()
         Spacer(modifier = Modifier.height(40.dp))
         OnboardingTitle(
-            text = "이름은 한숨마다\n새로 붙어요",
+            text = "내쉬는 한숨마다\n별명이 붙어요",
             textAlign = TextAlign.Center,
-            fontSize = 26.sp,
-            lineHeight = 33.sp,
             letterSpacing = 0.sp,
         )
         Spacer(modifier = Modifier.height(50.dp))
 
         SupportingText(
-            text = "한숨을 쉬면\n 새로운 이름이 생성됩니다.",
+            text = "한숨에 마음을 담아봐요",
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(130.dp))

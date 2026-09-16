@@ -42,7 +42,7 @@ import com.pheeeew.feature.map.animation.SighAnimationCoordinator
 import com.pheeeew.feature.map.animation.StarFlightOverlay
 import com.pheeeew.feature.map.guide.FirstSighGuideOverlay
 import com.pheeeew.feature.map.guide.FirstSighGuideStep
-import com.pheeeew.feature.map.guide.FirstSighSwipeOverlay
+import com.pheeeew.feature.map.guide.SighSwipeHintOverlay
 import com.pheeeew.feature.map.guide.firstSighGuideStepFor
 import com.pheeeew.feature.map.map.BreathMap
 import com.pheeeew.feature.map.map.MapError
@@ -126,6 +126,9 @@ fun MapScreen(
     var breathControlBounds by remember { mutableStateOf(Rect.Zero) }
     var cancelSignal by remember { mutableStateOf(0) }
     var breathStartSignal by remember { mutableIntStateOf(0) }
+    var isDefaultSwipeHintDelayElapsed by remember { mutableStateOf(false) }
+    var isBreathReleaseReady by remember { mutableStateOf(false) }
+    var isGuideSwipeHintDelayElapsed by remember { mutableStateOf(false) }
     var starAgeRevision by remember { mutableIntStateOf(0) }
     var visualNow by remember { mutableStateOf(Clock.System.now()) }
     val sighBrowser = uiState.sighBrowser
@@ -134,6 +137,14 @@ fun MapScreen(
     val memoDraft = (uiState.sighRelease as? SighReleaseState.EditingMemo)?.draft
     val isMemoEditing = memoDraft != null
     val awaitingBreath = uiState.sighRelease as? SighReleaseState.AwaitingBreath
+    var guideBreathControlBottom by
+        remember(awaitingBreath?.command?.requestId) {
+            mutableStateOf(
+                breathControlBounds
+                    .takeIf { it.height > 0f }
+                    ?.bottom,
+            )
+        }
     val retryableSighError =
         (uiState.sighRelease as? SighReleaseState.Error)?.takeIf { it.canRetry }
     val cancelFailedSighRegistration = {
@@ -145,7 +156,12 @@ fun MapScreen(
         onCancelSighRegistration()
     }
     val isSighInteractionVisible = isSighSubmitting || isMemoEditing || awaitingBreath != null
-    val guideStep = firstSighGuideStepFor(uiState.sighRelease, sighPhase)
+    val guideStep =
+        firstSighGuideStepFor(
+            releaseState = uiState.sighRelease,
+            phase = sighPhase,
+            isSwipeUpPromptReady = isBreathReleaseReady && isGuideSwipeHintDelayElapsed,
+        )
     val isGuidePromptVisible =
         guideMode &&
             !isMemoEditing &&
@@ -190,6 +206,22 @@ fun MapScreen(
 
     LaunchedEffect(awaitingBreath?.command?.requestId) {
         if (awaitingBreath != null) breathStartSignal += 1
+    }
+
+    LaunchedEffect(guideMode, awaitingBreath?.command?.requestId, sighPhase) {
+        isDefaultSwipeHintDelayElapsed = false
+        if (!guideMode && awaitingBreath != null && sighPhase == SighPhase.Quiet) {
+            delay(DEFAULT_SIGH_SWIPE_HINT_DELAY_MILLIS)
+            isDefaultSwipeHintDelayElapsed = true
+        }
+    }
+
+    LaunchedEffect(guideMode, awaitingBreath?.command?.requestId, isBreathReleaseReady) {
+        isGuideSwipeHintDelayElapsed = false
+        if (guideMode && awaitingBreath != null && isBreathReleaseReady) {
+            delay(GUIDE_SWIPE_HINT_DELAY_MILLIS)
+            isGuideSwipeHintDelayElapsed = true
+        }
     }
 
     LaunchedEffect(sighBrowser.isVisible) {
@@ -418,6 +450,7 @@ fun MapScreen(
                     FirstSighGuideOverlay(
                         step = guideStep,
                         controlBoundsInRoot = breathControlBounds,
+                        controlAnchorBottomInRoot = guideBreathControlBottom,
                         onSkip = {
                             cancelSighRegistration()
                             onGuideSkip()
@@ -460,8 +493,18 @@ fun MapScreen(
                             },
                             ensureLocationPermission = ensureRegistrationLocation,
                             onPhaseChanged = { sighPhase = it },
+                            onReleaseReadinessChanged = { isBreathReleaseReady = it },
                             cancelSignal = cancelSignal,
-                            onControlBoundsChanged = { breathControlBounds = it },
+                            onControlBoundsChanged = { bounds ->
+                                breathControlBounds = bounds
+                                if (
+                                    awaitingBreath != null &&
+                                    guideBreathControlBottom == null &&
+                                    bounds.height > 0f
+                                ) {
+                                    guideBreathControlBottom = bounds.bottom
+                                }
+                            },
                             showIdleLabel = !guideMode,
                         )
                     }
@@ -474,8 +517,16 @@ fun MapScreen(
             }
         }
 
-        if (isGuidePromptVisible && guideStep == FirstSighGuideStep.SwipeUp) {
-            FirstSighSwipeOverlay(
+        val shouldShowDefaultSwipeHint =
+            !guideMode &&
+                awaitingBreath != null &&
+                sighPhase == SighPhase.Quiet &&
+                isDefaultSwipeHintDelayElapsed
+        val shouldShowSwipeHint =
+            (isGuidePromptVisible && guideStep == FirstSighGuideStep.SwipeUp) ||
+                shouldShowDefaultSwipeHint
+        if (shouldShowSwipeHint) {
+            SighSwipeHintOverlay(
                 controlBoundsInRoot = breathControlBounds,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -590,6 +641,8 @@ private fun List<SighPin>.toSighMarkers(
         }.toList()
 
 private val DEFAULT_MAP_POINT = MapPoint("default-location", 37.5505, 127.0373)
+private const val DEFAULT_SIGH_SWIPE_HINT_DELAY_MILLIS = 2_000L
+private const val GUIDE_SWIPE_HINT_DELAY_MILLIS = 2_000L
 
 @Preview
 @Composable

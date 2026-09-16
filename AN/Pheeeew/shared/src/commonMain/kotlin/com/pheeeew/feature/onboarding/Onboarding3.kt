@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.map.star.MapPinStar
 
@@ -28,13 +29,14 @@ internal fun Onboarding3() {
         Spacer(modifier = Modifier.height(40.dp))
 
         OnboardingTitle(
-            text = "혼자 쉰 한숨이 모여\n하늘이 돼요",
+            text = "나의 한숨이 모여\n하늘을 비춰요.",
             textAlign = TextAlign.Center,
+            letterSpacing = 0.sp,
             modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(50.dp))
         SupportingText(
-            text = "주변에 남은 한숨을 별로 보고,\n남긴 한숨을 위로할 수 있어요.",
+            text = "별이 된 한숨을 위로해봐요",
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )

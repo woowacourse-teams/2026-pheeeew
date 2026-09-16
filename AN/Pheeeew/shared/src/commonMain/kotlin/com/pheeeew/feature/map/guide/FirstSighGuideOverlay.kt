@@ -16,7 +16,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -29,12 +31,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -51,6 +49,7 @@ import pheeeew.shared.generated.resources.ic_hand
 fun FirstSighGuideOverlay(
     step: FirstSighGuideStep,
     controlBoundsInRoot: Rect,
+    controlAnchorBottomInRoot: Float? = null,
     onSkip: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -58,15 +57,46 @@ fun FirstSighGuideOverlay(
 
     BoxWithConstraints(modifier = modifier) {
         val density = LocalDensity.current
-        val targetTop =
+        val liveTargetTop =
             if (controlBoundsInRoot.height > 0f) {
                 with(density) { controlBoundsInRoot.top.toDp() }
             } else {
                 maxHeight - 132.dp
             }
-        val swipeGuideSpacing = if (step == FirstSighGuideStep.SwipeUp) 124.dp else 0.dp
+        val maxControlDiameter = (maxWidth * 0.88f).coerceAtMost(360.dp)
+        val navigationBarBottomInset =
+            with(density) { WindowInsets.navigationBars.getBottom(this).toDp() }
+        val fixedControlBottom =
+            controlAnchorBottomInRoot
+                ?.takeIf { it > 0f }
+                ?: controlBoundsInRoot.takeIf { it.height > 0f }?.bottom
+        val targetTop =
+            if (
+                step == FirstSighGuideStep.Blow ||
+                step == FirstSighGuideStep.SwipeUp
+            ) {
+                fixedControlBottom
+                    ?.let { bottom -> with(density) { bottom.toDp() } - maxControlDiameter }
+                    ?: (
+                        maxHeight -
+                            navigationBarBottomInset -
+                            maxControlDiameter -
+                            BREATH_CONTROL_RESTING_BOTTOM_GAP
+                    )
+            } else {
+                liveTargetTop
+            }
+        val bubbleGap =
+            if (
+                step == FirstSighGuideStep.Blow ||
+                step == FirstSighGuideStep.SwipeUp
+            ) {
+                BREATH_GUIDE_BUBBLE_GAP
+            } else {
+                DEFAULT_GUIDE_BUBBLE_GAP
+            }
         val bubbleBottomPadding =
-            (maxHeight - targetTop + 14.dp + swipeGuideSpacing).coerceIn(132.dp, maxHeight - 112.dp)
+            (maxHeight - targetTop + bubbleGap).coerceIn(132.dp, maxHeight - 112.dp)
 
         Text(
             text = "건너뛰기",
@@ -96,12 +126,12 @@ fun FirstSighGuideOverlay(
 }
 
 @Composable
-fun FirstSighSwipeOverlay(
+fun SighSwipeHintOverlay(
     controlBoundsInRoot: Rect,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier) {
-        val transition = rememberInfiniteTransition(label = "firstSighSwipeGuide")
+        val transition = rememberInfiniteTransition(label = "sighSwipeHint")
         val progress =
             transition
                 .animateFloat(
@@ -112,7 +142,7 @@ fun FirstSighSwipeOverlay(
                             animation = tween(durationMillis = 1_250, easing = FastOutSlowInEasing),
                             repeatMode = RepeatMode.Restart,
                         ),
-                    label = "firstSighSwipeProgress",
+                    label = "sighSwipeHintProgress",
                 ).value
         val fingerAlpha =
             when {
@@ -135,12 +165,6 @@ fun FirstSighSwipeOverlay(
             }
         val fingerStartY = targetTop + targetHeight * SWIPE_FINGER_START_FRACTION
 
-        SwipeUpArrow(
-            modifier =
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = (maxHeight - targetTop - 8.dp).coerceAtLeast(54.dp)),
-        )
         SwipeFinger(
             modifier =
                 Modifier
@@ -220,53 +244,6 @@ internal fun FirstSighGuideBubble(
 }
 
 @Composable
-private fun SwipeUpArrow(modifier: Modifier = Modifier) {
-    Canvas(modifier.size(width = 78.dp, height = 126.dp)) {
-        val centerX = size.width / 2f
-        val startY = size.height * 0.72f
-        val endY = size.height * 0.16f
-        drawLine(
-            brush =
-                Brush.verticalGradient(
-                    0f to AppColors.Blue100.copy(alpha = 0.85f),
-                    1f to AppColors.Blue200.copy(alpha = 0.08f),
-                    startY = endY,
-                    endY = startY,
-                ),
-            start = Offset(centerX, startY),
-            end = Offset(centerX, endY),
-            strokeWidth = 3.dp.toPx(),
-            cap = StrokeCap.Round,
-        )
-        drawLine(
-            color = AppColors.Blue100.copy(alpha = 0.9f),
-            start = Offset(centerX, endY),
-            end = Offset(centerX - 8.dp.toPx(), endY + 10.dp.toPx()),
-            strokeWidth = 3.dp.toPx(),
-            cap = StrokeCap.Round,
-        )
-        drawLine(
-            color = AppColors.Blue100.copy(alpha = 0.9f),
-            start = Offset(centerX, endY),
-            end = Offset(centerX + 8.dp.toPx(), endY + 10.dp.toPx()),
-            strokeWidth = 3.dp.toPx(),
-            cap = StrokeCap.Round,
-        )
-        drawCircle(
-            brush =
-                Brush.radialGradient(
-                    0f to AppColors.Blue100.copy(alpha = 0.32f),
-                    1f to Color.Transparent,
-                    center = Offset(centerX, endY),
-                    radius = 24.dp.toPx(),
-                ),
-            radius = 24.dp.toPx(),
-            center = Offset(centerX, endY),
-        )
-    }
-}
-
-@Composable
 private fun SwipeFinger(modifier: Modifier = Modifier) {
     Image(
         painter = painterResource(Res.drawable.ic_hand),
@@ -276,6 +253,9 @@ private fun SwipeFinger(modifier: Modifier = Modifier) {
 }
 
 private const val SWIPE_FINGER_START_FRACTION = 0.375f
+private val BREATH_GUIDE_BUBBLE_GAP = 60.dp
+private val BREATH_CONTROL_RESTING_BOTTOM_GAP = 20.dp
+private val DEFAULT_GUIDE_BUBBLE_GAP = 14.dp
 private val SWIPE_FINGER_WIDTH = 59.dp
 private val SWIPE_FINGER_HEIGHT = 80.dp
 private val SWIPE_FINGER_TRAVEL_DISTANCE = 240.dp

@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -17,6 +19,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -86,113 +89,123 @@ private fun MemoBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = AppColors.Navy800,
+        containerColor = Color.Transparent,
         contentColor = AppColors.Cream100,
         scrimColor = Color.Black.copy(alpha = 0.6f),
+        dragHandle = null,
     ) {
-        BoxWithConstraints(
-            modifier =
-                Modifier
-                    .fillMaxWidth()
-                    .imePadding()
-                    .navigationBarsPadding(),
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(
+            if (guideMode) {
+                FirstSighGuideBubble(step = FirstSighGuideStep.Memo)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            BoxWithConstraints(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .heightIn(max = maxHeight)
-                        .padding(start = 26.dp, top = 4.dp, end = 26.dp, bottom = 24.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                        .background(
+                            color = AppColors.Navy800,
+                            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                        ).imePadding()
+                        .navigationBarsPadding(),
             ) {
-                if (guideMode) {
-                    FirstSighGuideBubble(
-                        step = FirstSighGuideStep.Memo,
-                        modifier = Modifier.align(Alignment.CenterHorizontally),
-                    )
-                }
-                Text(
-                    text = "한숨에 담아 보낼 마음",
-                    style = AppTheme.typography.screenTitle,
-                )
-                Text(
-                    text = "메모는 선택사항이에요",
-                    style = AppTheme.typography.dialogBody,
-                    color = AppColors.Cream100.copy(alpha = 0.7f),
+                BottomSheetDefaults.DragHandle(
+                    modifier = Modifier.align(Alignment.TopCenter),
                 )
                 Column(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .weight(weight = 1f, fill = false)
-                            .verticalScroll(rememberScrollState()),
+                            .heightIn(max = maxHeight)
+                            .padding(start = 26.dp, top = 52.dp, end = 26.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    BasicTextField(
-                        value = value,
-                        onValueChange = onValueChange,
-                        enabled = !submitting,
+                    Text(
+                        text = "한숨에 담아 보낼 마음",
+                        style = AppTheme.typography.screenTitle,
+                    )
+                    Text(
+                        text = "메모는 선택사항이에요",
+                        style = AppTheme.typography.dialogBody,
+                        color = AppColors.Cream100.copy(alpha = 0.7f),
+                    )
+                    Column(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 120.dp, max = 184.dp)
-                                .background(AppColors.Navy700, RoundedCornerShape(14.dp))
-                                .padding(16.dp),
-                        textStyle = AppTheme.typography.dialogBody.copy(color = AppColors.Cream100),
-                        keyboardOptions =
-                            KeyboardOptions(
-                                keyboardType = KeyboardType.Text,
-                                imeAction = ImeAction.Done,
-                            ),
-                        keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                        maxLines = 6,
-                        decorationBox = { innerTextField ->
-                            Box(modifier = Modifier.fillMaxWidth()) {
-                                if (value.isEmpty()) {
-                                    Text(
-                                        text = "오늘 어떤 일이 있었나요?",
-                                        style = AppTheme.typography.dialogBody,
-                                        color = AppColors.Cream100.copy(alpha = 0.4f),
-                                    )
+                                .weight(weight = 1f, fill = false)
+                                .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        BasicTextField(
+                            value = value,
+                            onValueChange = onValueChange,
+                            enabled = !submitting,
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 120.dp, max = 184.dp)
+                                    .background(AppColors.Navy700, RoundedCornerShape(14.dp))
+                                    .padding(16.dp),
+                            textStyle = AppTheme.typography.dialogBody.copy(color = AppColors.Cream100),
+                            keyboardOptions =
+                                KeyboardOptions(
+                                    keyboardType = KeyboardType.Text,
+                                    imeAction = ImeAction.Done,
+                                ),
+                            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
+                            maxLines = 6,
+                            decorationBox = { innerTextField ->
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    if (value.isEmpty()) {
+                                        Text(
+                                            text = "오늘 어떤 일이 있었나요?",
+                                            style = AppTheme.typography.dialogBody,
+                                            color = AppColors.Cream100.copy(alpha = 0.4f),
+                                        )
+                                    }
+                                    innerTextField()
                                 }
-                                innerTextField()
-                            }
-                        },
-                    )
+                            },
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                        ) {
+                            Text(
+                                text = "${value.length}/$MAX_MEMO_LENGTH",
+                                style = AppTheme.typography.caption,
+                                color = AppColors.Cream100.copy(alpha = 0.6f),
+                            )
+                        }
+                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text(
-                            text = "${value.length}/$MAX_MEMO_LENGTH",
-                            style = AppTheme.typography.caption,
-                            color = AppColors.Cream100.copy(alpha = 0.6f),
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Button(
-                        onClick = onSubmit,
-                        enabled = !submitting,
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(25.dp),
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = AppColors.Blue100,
-                                contentColor = AppColors.Navy800,
-                            ),
-                    ) {
-                        Text(text = "다음", style = AppTheme.typography.button)
-                    }
-                    TextButton(onClick = onSkip, enabled = !submitting) {
-                        Text(
-                            text = "건너뛰기",
-                            style = AppTheme.typography.button,
-                            color = AppColors.Cream100.copy(alpha = 0.8f),
-                        )
+                        Button(
+                            onClick = onSubmit,
+                            enabled = !submitting,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(25.dp),
+                            colors =
+                                ButtonDefaults.buttonColors(
+                                    containerColor = AppColors.Blue100,
+                                    contentColor = AppColors.Navy800,
+                                ),
+                        ) {
+                            Text(text = "다음", style = AppTheme.typography.button)
+                        }
+                        TextButton(onClick = onSkip, enabled = !submitting) {
+                            Text(
+                                text = "건너뛰기",
+                                style = AppTheme.typography.button,
+                                color = AppColors.Cream100.copy(alpha = 0.8f),
+                            )
+                        }
                     }
                 }
             }
