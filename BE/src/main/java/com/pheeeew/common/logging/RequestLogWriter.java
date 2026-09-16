@@ -46,7 +46,7 @@ public class RequestLogWriter {
         if (failure != null) {
             event.addKeyValue("errorStack", exceptionLogFormatter.format(failure));
         }
-        event.log("HTTP request failed");
+        event.log("HTTP 요청 처리에 실패했습니다");
     }
 
     private LoggingEventBuilder createRequestEvent(
