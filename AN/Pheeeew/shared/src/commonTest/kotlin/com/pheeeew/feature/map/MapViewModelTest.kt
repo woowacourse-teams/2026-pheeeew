@@ -912,6 +912,7 @@ class MapViewModelTest {
                 viewModel.openSighFromPin(1L)
 
                 assertTrue(viewModel.uiState.value.sighBrowser.isVisible)
+                assertEquals(false, viewModel.uiState.value.sighBrowser.isListVisible)
                 assertTrue(viewModel.uiState.value.sighBrowser.isDetailLoading)
                 assertNull(viewModel.uiState.value.sighBrowser.selectedSigh)
                 runCurrent()
@@ -919,6 +920,12 @@ class MapViewModelTest {
                 assertEquals(listOf(1L), repository.requestedDetailIds)
                 assertEquals(detailSigh, viewModel.uiState.value.sighBrowser.selectedSigh)
                 assertEquals(listOf(detailSigh), viewModel.uiState.value.sighBrowser.items)
+
+                viewModel.dismissSighDetail()
+
+                assertEquals(false, viewModel.uiState.value.sighBrowser.isVisible)
+                assertEquals(false, viewModel.uiState.value.sighBrowser.isListVisible)
+                assertNull(viewModel.uiState.value.sighBrowser.selectedSigh)
                 viewModel.onMapBackground()
             } finally {
                 Dispatchers.resetMain()
@@ -942,6 +949,7 @@ class MapViewModelTest {
 
                 viewModel.openSighFromPin(7L)
                 assertTrue(viewModel.uiState.value.sighBrowser.isVisible)
+                assertEquals(false, viewModel.uiState.value.sighBrowser.isListVisible)
                 assertTrue(viewModel.uiState.value.sighBrowser.isDetailLoading)
                 runCurrent()
 
@@ -978,6 +986,7 @@ class MapViewModelTest {
                 viewModel.loadSighs(firstBounds)
                 viewModel.setSighListVisible(true)
                 runCurrent()
+                assertTrue(viewModel.uiState.value.sighBrowser.isListVisible)
 
                 viewModel.selectSigh(1L)
                 assertTrue(viewModel.uiState.value.sighBrowser.isDetailLoading)
@@ -1009,6 +1018,7 @@ class MapViewModelTest {
                 assertEquals(detailCamera, viewModel.uiState.value.viewport.cameraCommand)
                 assertNull(viewModel.uiState.value.sighBrowser.selectedSigh)
                 assertTrue(viewModel.uiState.value.sighBrowser.isVisible)
+                assertTrue(viewModel.uiState.value.sighBrowser.isListVisible)
 
                 viewModel.setSighListVisible(false)
                 val restoredCamera =
