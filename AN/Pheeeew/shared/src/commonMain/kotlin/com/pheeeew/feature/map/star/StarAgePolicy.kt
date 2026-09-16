@@ -1,8 +1,6 @@
 package com.pheeeew.feature.map.star
 
 import kotlin.time.Clock
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.days
 import kotlin.time.Instant
 
 /**
@@ -27,11 +25,12 @@ class StarAgePolicy(
         )
 
     companion object {
-        /** 생성 후 3일이 되기 전까지는 첫 번째 단계(0~2일)입니다. */
-        private val FRESH_DURATION = 3.days
-
-        /** 생성 후 6일이 되기 전까지는 두 번째 단계(3~5일)입니다. */
-        private val DEEP_DURATION = 6.days
+        private const val SECONDS_PER_DAY = 86_400L
+        private const val SEOUL_OFFSET_SECONDS = 9L * 60L * 60L
+        private const val FRESH_END_DAY = 4L
+        private const val WARM_END_DAY = 9L
+        private const val WARM_TRANSITION_DAY = 5L
+        private const val DEEP_TRANSITION_DAY = 10L
 
         /** 전달받은 현재 시각을 기준으로 별의 생애 단계를 계산합니다. */
         fun stageOf(
@@ -40,9 +39,9 @@ class StarAgePolicy(
         ): StarAgeStage {
             if (createdAt == null) return StarAgeStage.Unknown
 
-            return when (elapsedSince(createdAt, now)) {
-                in Duration.ZERO..<FRESH_DURATION -> StarAgeStage.Fresh
-                in FRESH_DURATION..<DEEP_DURATION -> StarAgeStage.Warm
+            return when (ageInKoreanCalendarDays(createdAt, now)) {
+                in 0L..FRESH_END_DAY -> StarAgeStage.Fresh
+                in (FRESH_END_DAY + 1)..WARM_END_DAY -> StarAgeStage.Warm
                 else -> StarAgeStage.Deep
             }
         }
@@ -52,26 +51,43 @@ class StarAgePolicy(
             createdAt: Instant?,
             now: Instant,
         ): Instant? {
-            val transition =
-                when (stageOf(createdAt, now)) {
-                    StarAgeStage.Fresh -> createdAt?.plus(FRESH_DURATION)
+            val created = createdAt ?: return null
+            val transitionDay =
+                when (stageOf(created, now)) {
+                    StarAgeStage.Fresh -> WARM_TRANSITION_DAY
 
-                    StarAgeStage.Warm -> createdAt?.plus(DEEP_DURATION)
+                    StarAgeStage.Warm -> DEEP_TRANSITION_DAY
 
                     StarAgeStage.Deep,
                     StarAgeStage.Unknown,
-                    -> null
+                    -> return null
                 }
-
-            return transition?.takeIf { it > now }
+            val transition = koreanMidnight(createdKoreanEpochDay = koreanEpochDay(created) + transitionDay)
+            return transition.takeIf { it > now }
         }
 
-        private fun elapsedSince(
+        private fun ageInKoreanCalendarDays(
             createdAt: Instant,
             now: Instant,
-        ): Duration {
-            val elapsed = now - createdAt
-            return if (elapsed < Duration.ZERO) Duration.ZERO else elapsed
+        ): Long = (koreanEpochDay(now) - koreanEpochDay(createdAt)).coerceAtLeast(0L)
+
+        private fun koreanEpochDay(instant: Instant): Long {
+            val shiftedEpochSeconds = instant.epochSeconds + SEOUL_OFFSET_SECONDS
+            return floorDiv(shiftedEpochSeconds, SECONDS_PER_DAY)
+        }
+
+        private fun koreanMidnight(createdKoreanEpochDay: Long): Instant =
+            Instant.fromEpochSeconds(
+                createdKoreanEpochDay * SECONDS_PER_DAY - SEOUL_OFFSET_SECONDS,
+            )
+
+        private fun floorDiv(
+            dividend: Long,
+            divisor: Long,
+        ): Long {
+            val quotient = dividend / divisor
+            val remainder = dividend % divisor
+            return if (remainder < 0) quotient - 1 else quotient
         }
     }
 }

@@ -9,7 +9,7 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 class StarAgePolicyTest {
-    private val now = Instant.parse("2026-09-02T12:00:00Z")
+    private val seoulMidnightOnSeptember16 = Instant.parse("2026-09-15T15:00:00Z")
 
     @Test
     fun `Clock을 주입하면 주입한 현재 시각을 사용한다`() {
@@ -17,73 +17,111 @@ class StarAgePolicyTest {
             StarAgePolicy(
                 clock =
                     object : Clock {
-                        override fun now(): Instant = now
+                        override fun now(): Instant = seoulMidnightOnSeptember16
                     },
             )
 
         assertEquals(
-            StarAgeStage.Warm,
-            policy.stageOf(Instant.parse("2026-08-29T12:00:00Z")),
+            StarAgeStage.Fresh,
+            policy.stageOf(Instant.parse("2026-09-15T15:00:00Z")),
         )
     }
 
-    /** 생성 시각이 없는 데이터가 Unknown으로 분류되는지 확인합니다. */
     @Test
     fun `생성 시각이 없으면 Unknown이다`() {
-        assertEquals(StarAgeStage.Unknown, StarAgePolicy.stageOf(createdAt = null, now = now))
+        assertEquals(StarAgeStage.Unknown, StarAgePolicy.stageOf(createdAt = null, now = seoulMidnightOnSeptember16))
     }
 
-    /** 미래 생성 시각을 Fresh로 보정하고 3일 뒤 전환 시각을 계산하는지 확인합니다. */
     @Test
-    fun `미래 생성 시각은 Fresh로 보정한다`() {
-        val createdAt = Instant.parse("2026-09-02T13:00:00Z")
-
-        assertEquals(StarAgeStage.Fresh, StarAgePolicy.stageOf(createdAt, now))
-        assertEquals(Instant.parse("2026-09-05T13:00:00Z"), StarAgePolicy.nextTransitionAt(createdAt, now))
+    fun `생성 당일은 Fresh이다`() {
+        assertEquals(
+            StarAgeStage.Fresh,
+            StarAgePolicy.stageOf(
+                createdAt = Instant.parse("2026-09-16T03:00:00Z"),
+                now = Instant.parse("2026-09-16T14:59:59Z"),
+            ),
+        )
     }
 
-    /** 생성 후 2일인 별이 Fresh로 분류되는지 확인합니다. */
     @Test
-    fun `생성 후 이틀은 Fresh이다`() {
-        val createdAt = Instant.parse("2026-08-31T11:59:59.999Z")
-
-        assertEquals(StarAgeStage.Fresh, StarAgePolicy.stageOf(createdAt, now))
-        assertEquals(Instant.parse("2026-09-03T11:59:59.999Z"), StarAgePolicy.nextTransitionAt(createdAt, now))
+    fun `한국 날짜 기준 4일째 23시 59분은 Fresh이다`() {
+        assertEquals(
+            StarAgeStage.Fresh,
+            StarAgePolicy.stageOf(
+                createdAt = Instant.parse("2026-09-11T15:00:00Z"),
+                now = Instant.parse("2026-09-16T14:59:59Z"),
+            ),
+        )
     }
 
-    /** 정확히 3일 경계에서 기존 별 색상 단계인 Warm으로 전환되는지 확인합니다. */
     @Test
-    fun `정확히 사흘은 Warm이다`() {
-        val createdAt = Instant.parse("2026-08-30T12:00:00Z")
+    fun `한국 날짜 기준 5일째 자정은 Warm이다`() {
+        val createdAt = Instant.parse("2026-09-16T14:59:00Z")
+        val now = Instant.parse("2026-09-20T15:00:00Z")
 
         assertEquals(StarAgeStage.Warm, StarAgePolicy.stageOf(createdAt, now))
-        assertEquals(Instant.parse("2026-09-05T12:00:00Z"), StarAgePolicy.nextTransitionAt(createdAt, now))
+        assertEquals(Instant.parse("2026-09-25T15:00:00Z"), StarAgePolicy.nextTransitionAt(createdAt, now))
     }
 
-    /** 정확히 6일 경계에서 Deep으로 전환되는지 확인합니다. */
     @Test
-    fun `정확히 엿새는 Deep이다`() {
-        val createdAt = Instant.parse("2026-08-27T12:00:00Z")
+    fun `한국 날짜 기준 9일째 23시 59분은 Warm이다`() {
+        assertEquals(
+            StarAgeStage.Warm,
+            StarAgePolicy.stageOf(
+                createdAt = Instant.parse("2026-09-11T15:00:00Z"),
+                now = Instant.parse("2026-09-20T14:59:59Z"),
+            ),
+        )
+    }
+
+    @Test
+    fun `한국 날짜 기준 10일째 자정은 Deep이다`() {
+        val createdAt = Instant.parse("2026-09-16T03:00:00Z")
+        val now = Instant.parse("2026-09-25T15:00:00Z")
 
         assertEquals(StarAgeStage.Deep, StarAgePolicy.stageOf(createdAt, now))
         assertNull(StarAgePolicy.nextTransitionAt(createdAt, now))
     }
 
-    /** 마지막 단계가 7일 이후에도 유지되는지 확인합니다. */
     @Test
-    fun `일주일이 지나도 Deep을 유지한다`() {
-        val createdAt = Instant.parse("2026-08-20T12:00:00Z")
-
-        assertEquals(StarAgeStage.Deep, StarAgePolicy.stageOf(createdAt, now))
+    fun `14일 이상인 별도 Deep을 유지한다`() {
+        assertEquals(
+            StarAgeStage.Deep,
+            StarAgePolicy.stageOf(
+                createdAt = Instant.parse("2026-09-01T03:00:00Z"),
+                now = Instant.parse("2026-09-16T03:00:00Z"),
+            ),
+        )
     }
 
-    /** 시간이 흐를 때 생애 단계가 역행하지 않는지 확인합니다. */
     @Test
-    fun `시간이 증가할 때 단계가 역행하지 않는다`() {
-        val createdAt = Instant.parse("2026-09-01T12:00:00Z")
-        val later = Instant.parse("2026-09-09T12:00:00Z")
+    fun `한국 날짜가 달라지면 UTC 날짜와 무관하게 경과일을 계산한다`() {
+        assertEquals(
+            StarAgeStage.Fresh,
+            StarAgePolicy.stageOf(
+                createdAt = Instant.parse("2026-09-16T14:30:00Z"),
+                now = Instant.parse("2026-09-17T15:00:00Z"),
+            ),
+        )
+    }
+
+    @Test
+    fun `미래 생성 시각은 Fresh로 보정하고 생성 한국 날짜 기준 전환 시각을 계산한다`() {
+        val createdAt = Instant.parse("2026-09-17T03:00:00Z")
+        val now = Instant.parse("2026-09-16T14:59:59Z")
 
         assertEquals(StarAgeStage.Fresh, StarAgePolicy.stageOf(createdAt, now))
-        assertEquals(StarAgeStage.Deep, StarAgePolicy.stageOf(createdAt, later))
+        assertEquals(Instant.parse("2026-09-21T15:00:00Z"), StarAgePolicy.nextTransitionAt(createdAt, now))
+    }
+
+    @Test
+    fun `Deep과 Unknown은 다음 색상 전환 시각이 없다`() {
+        assertNull(
+            StarAgePolicy.nextTransitionAt(
+                createdAt = Instant.parse("2026-09-01T03:00:00Z"),
+                now = Instant.parse("2026-09-16T03:00:00Z"),
+            ),
+        )
+        assertNull(StarAgePolicy.nextTransitionAt(createdAt = null, now = seoulMidnightOnSeptember16))
     }
 }
