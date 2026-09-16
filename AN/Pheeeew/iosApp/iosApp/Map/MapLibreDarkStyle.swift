@@ -13,9 +13,16 @@ enum MapLibreDarkStyle {
     static let parkColor = color(hex: DesignSystemColors.shared.MAP_PARK_HEX)
     static let waterColor = color(hex: DesignSystemColors.shared.MAP_WATER_HEX)
     static let labelColor = color(hex: DesignSystemColors.shared.MAP_LABEL_HEX)
+    static let labelHaloColor = color(hex: DesignSystemColors.shared.MAP_LABEL_HALO_HEX)
 
     static let initialZoom = 12.6
-    static let poiLabelMinZoom = 14.5
+    static let importantPoiMinZoom = 13.5
+    static let buildingLabelMinZoom = 14.0
+    static let generalDetailMinZoom = 15.0
+    static let importantPoiMaxRank = 7
+    static let poiLabelSize = 12.0
+    static let buildingLabelSize = 11.0
+    static let labelHaloWidth = 1.25
     static let focusZoom = 15.5
     static let minimumZoom = 0.0
     static let maximumZoom = 22.0
@@ -40,10 +47,13 @@ enum MapLibreDarkStyle {
 
     private static let localizedSourceLayers: Set<String> = [
         "aerodrome_label",
+        "mountain_peak",
+        "park",
         "place",
         "transportation_name",
         "water_name",
     ]
+    private static let explicitlyHiddenSymbolSourceLayers: Set<String> = ["poi", "housenumber"]
 
     static let locationBlue = UIColor(red: 47 / 255, green: 128 / 255, blue: 237 / 255, alpha: 1)
 
@@ -65,8 +75,8 @@ enum MapLibreDarkStyle {
         where localizedSourceLayers.contains(layer.sourceLayerIdentifier ?? "") {
             layer.text = localizedName
             layer.textColor = NSExpression(forConstantValue: labelColor)
-            layer.textHaloColor = NSExpression(forConstantValue: landColor)
-            layer.textHaloWidth = NSExpression(forConstantValue: 1.0)
+            layer.textHaloColor = NSExpression(forConstantValue: labelHaloColor)
+            layer.textHaloWidth = NSExpression(forConstantValue: labelHaloWidth)
         }
 
         guard style.layer(withIdentifier: koreanPoiLayerID) == nil,
@@ -83,7 +93,7 @@ enum MapLibreDarkStyle {
 
         let layer = MLNSymbolStyleLayer(identifier: koreanPoiLayerID, source: source)
         layer.sourceLayerIdentifier = "poi"
-        layer.minimumZoomLevel = Float(poiLabelMinZoom)
+        layer.minimumZoomLevel = Float(importantPoiMinZoom)
         let namedPoi = NSCompoundPredicate(orPredicateWithSubpredicates: [
             NSPredicate(format: "%K != NIL", "name:ko"),
             NSPredicate(format: "%K != NIL", "name"),
@@ -92,14 +102,17 @@ enum MapLibreDarkStyle {
         ])
         layer.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [
             namedPoi,
-            NSPredicate(format: "CAST(%K, 'NSNumber') < 7", "rank"),
+            NSPredicate(
+                format: "CAST(%K, 'NSNumber') < \(importantPoiMaxRank)",
+                "rank"
+            ),
         ])
         layer.text = localizedName
         layer.textColor = NSExpression(forConstantValue: labelColor)
-        layer.textHaloColor = NSExpression(forConstantValue: landColor)
-        layer.textHaloWidth = NSExpression(forConstantValue: 1.0)
+        layer.textHaloColor = NSExpression(forConstantValue: labelHaloColor)
+        layer.textHaloWidth = NSExpression(forConstantValue: labelHaloWidth)
         layer.textFontNames = NSExpression(forConstantValue: ["Noto Sans Regular"])
-        layer.textFontSize = NSExpression(forConstantValue: 12)
+        layer.textFontSize = NSExpression(forConstantValue: poiLabelSize)
         layer.textAllowsOverlap = NSExpression(forConstantValue: false)
         layer.iconOpacity = NSExpression(forConstantValue: 0)
         style.addLayer(layer)
@@ -139,7 +152,7 @@ enum MapLibreDarkStyle {
     private static func hideUnnecessarySymbolLayers(in style: MLNStyle) {
         for case let layer as MLNSymbolStyleLayer in style.layers {
             let sourceLayer = layer.sourceLayerIdentifier ?? ""
-            if !sourceLayer.isEmpty && !localizedSourceLayers.contains(sourceLayer) {
+            if explicitlyHiddenSymbolSourceLayers.contains(sourceLayer) {
                 layer.isVisible = false
             }
         }
@@ -160,14 +173,14 @@ enum MapLibreDarkStyle {
         ])
         let layer = MLNSymbolStyleLayer(identifier: koreanBuildingLayerID, source: source)
         layer.sourceLayerIdentifier = "building"
-        layer.minimumZoomLevel = Float(poiLabelMinZoom)
+        layer.minimumZoomLevel = Float(buildingLabelMinZoom)
         layer.predicate = namedBuilding
         layer.text = localizedName
         layer.textColor = NSExpression(forConstantValue: labelColor)
-        layer.textHaloColor = NSExpression(forConstantValue: landColor)
-        layer.textHaloWidth = NSExpression(forConstantValue: 1.0)
+        layer.textHaloColor = NSExpression(forConstantValue: labelHaloColor)
+        layer.textHaloWidth = NSExpression(forConstantValue: labelHaloWidth)
         layer.textFontNames = NSExpression(forConstantValue: ["Noto Sans Regular"])
-        layer.textFontSize = NSExpression(forConstantValue: 11)
+        layer.textFontSize = NSExpression(forConstantValue: buildingLabelSize)
         layer.textAllowsOverlap = NSExpression(forConstantValue: false)
         layer.iconOpacity = NSExpression(forConstantValue: 0)
         style.addLayer(layer)

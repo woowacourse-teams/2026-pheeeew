@@ -12,8 +12,15 @@ internal object MapDarkStyle {
     const val PARK_HEX = DesignSystemColors.MAP_PARK_HEX
     const val WATER_HEX = DesignSystemColors.MAP_WATER_HEX
     const val LABEL_HEX = DesignSystemColors.MAP_LABEL_HEX
+    const val LABEL_HALO_HEX = DesignSystemColors.MAP_LABEL_HALO_HEX
     const val INITIAL_ZOOM = 12.6
-    const val POI_LABEL_MIN_ZOOM = 14.5
+    const val IMPORTANT_POI_MIN_ZOOM = 13.5
+    const val BUILDING_LABEL_MIN_ZOOM = 14.0
+    const val GENERAL_DETAIL_MIN_ZOOM = 15.0
+    const val IMPORTANT_POI_MAX_RANK = 7
+    const val POI_LABEL_SIZE = 12f
+    const val BUILDING_LABEL_SIZE = 11f
+    const val LABEL_HALO_WIDTH = 1.25f
     const val FOCUS_ZOOM = 15.5
     const val SIGH_DETAIL_ZOOM = 17.0
     const val MINIMUM_ZOOM = 0.0
