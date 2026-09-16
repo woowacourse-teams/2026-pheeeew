@@ -38,17 +38,23 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
@@ -85,6 +91,7 @@ internal fun SighListSheet(
     var compactDownwardDrag by remember(compact) { mutableFloatStateOf(0f) }
     var sheetLevel by remember(compact) { mutableStateOf(SighListSheetLevel.Middle) }
     var isDraggingSheet by remember(compact) { mutableStateOf(false) }
+    var isListDraggingSheet by remember(compact) { mutableStateOf(false) }
     var draggedSheetOffsetPx by remember(compact) { mutableFloatStateOf(0f) }
     var totalDragPx by remember(compact) { mutableFloatStateOf(0f) }
 
@@ -108,6 +115,34 @@ internal fun SighListSheet(
     val middleDismissThresholdPx = with(density) { 72.dp.toPx() }
     val expandedDismissThresholdPx =
         with(density) { 180.dp.toPx() }.coerceAtMost(availableHeightPx * 0.34f)
+
+    val finishSheetDrag = {
+        val dismiss =
+            when (sheetLevel) {
+                SighListSheetLevel.Middle -> {
+                    if (totalDragPx <= -expandThresholdPx) {
+                        sheetLevel = SighListSheetLevel.Expanded
+                    }
+                    totalDragPx >= middleDismissThresholdPx
+                }
+
+                SighListSheetLevel.Expanded -> {
+                    if (totalDragPx >= collapseThresholdPx) {
+                        sheetLevel = SighListSheetLevel.Middle
+                    }
+                    totalDragPx >= expandedDismissThresholdPx
+                }
+            }
+
+        if (dismiss) {
+            // 현재 손가락 위치에서 퇴장 애니메이션이 이어지도록 직접 조작 상태를 유지합니다.
+            onDismissList()
+        } else {
+            isDraggingSheet = false
+            totalDragPx = 0f
+        }
+    }
+    val currentFinishSheetDrag = rememberUpdatedState(finishSheetDrag)
     val sheetHeight =
         if (compact) {
             Modifier.heightIn(min = 174.dp, max = 210.dp)
@@ -115,6 +150,50 @@ internal fun SighListSheet(
             Modifier.fillMaxHeight()
         }
     val listState = rememberLazyListState()
+    val sheetNestedScrollConnection =
+        remember(listState, compact, availableHeightPx) {
+            object : NestedScrollConnection {
+                override fun onPreScroll(
+                    available: Offset,
+                    source: NestedScrollSource,
+                ): Offset {
+                    if (compact || source != NestedScrollSource.UserInput) return Offset.Zero
+
+                    val isListAtTop =
+                        listState.firstVisibleItemIndex == 0 &&
+                            listState.firstVisibleItemScrollOffset == 0
+                    val canStartDraggingSheet =
+                        sheetLevel == SighListSheetLevel.Expanded &&
+                            isListAtTop &&
+                            available.y > 0f
+
+                    if (!isListDraggingSheet && !canStartDraggingSheet) return Offset.Zero
+
+                    if (!isListDraggingSheet) {
+                        isListDraggingSheet = true
+                        isDraggingSheet = true
+                        draggedSheetOffsetPx = 0f
+                        totalDragPx = 0f
+                    }
+
+                    val previousOffsetPx = draggedSheetOffsetPx
+                    val nextOffsetPx =
+                        (previousOffsetPx + available.y).coerceIn(0f, availableHeightPx)
+                    val consumedY = nextOffsetPx - previousOffsetPx
+                    draggedSheetOffsetPx = nextOffsetPx
+                    totalDragPx += consumedY
+                    return Offset(x = 0f, y = consumedY)
+                }
+
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    if (!isListDraggingSheet) return Velocity.Zero
+
+                    isListDraggingSheet = false
+                    currentFinishSheetDrag.value()
+                    return Velocity(x = 0f, y = available.y)
+                }
+            }
+        }
 
     LaunchedEffect(listState, items.size, compact, canLoadMore, isLoadingMore) {
         if (compact || !canLoadMore || isLoadingMore) return@LaunchedEffect
@@ -180,6 +259,7 @@ internal fun SighListSheet(
                     if (compact) {
                         compactDownwardDrag = 0f
                     } else {
+                        isListDraggingSheet = false
                         isDraggingSheet = true
                         draggedSheetOffsetPx = animatedSheetOffsetPx
                         totalDragPx = 0f
@@ -199,30 +279,7 @@ internal fun SighListSheet(
                         if (compactDownwardDrag >= middleDismissThresholdPx) onDismissList()
                         compactDownwardDrag = 0f
                     } else {
-                        val dismiss =
-                            when (sheetLevel) {
-                                SighListSheetLevel.Middle -> {
-                                    if (totalDragPx <= -expandThresholdPx) {
-                                        sheetLevel = SighListSheetLevel.Expanded
-                                    }
-                                    totalDragPx >= middleDismissThresholdPx
-                                }
-
-                                SighListSheetLevel.Expanded -> {
-                                    if (totalDragPx >= collapseThresholdPx) {
-                                        sheetLevel = SighListSheetLevel.Middle
-                                    }
-                                    totalDragPx >= expandedDismissThresholdPx
-                                }
-                            }
-
-                        if (dismiss) {
-                            // 현재 손가락 위치에서 퇴장 애니메이션이 이어지도록 직접 조작 상태를 유지합니다.
-                            onDismissList()
-                        } else {
-                            isDraggingSheet = false
-                            totalDragPx = 0f
-                        }
+                        finishSheetDrag()
                     }
                 },
                 onDragCancelled = {
@@ -238,7 +295,7 @@ internal fun SighListSheet(
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().nestedScroll(sheetNestedScrollConnection),
                     contentPadding =
                         PaddingValues(
                             start = 16.dp,
