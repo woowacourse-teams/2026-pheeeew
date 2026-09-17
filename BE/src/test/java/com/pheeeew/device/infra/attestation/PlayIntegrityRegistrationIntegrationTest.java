@@ -73,6 +73,10 @@ class PlayIntegrityRegistrationIntegrationTest {
     private static final String 발급되지_않은_challenge = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
     private static final String 만료된_challenge = "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
     private static final String 토큰이_담은_다른_nonce = "CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
+    private static final String 우리가_발급한_표기 = "YXfXi6oB-gbHx5cPYRPh5chXa5BxFk4_80GbfMynO9g";
+    private static final String 표준_알파벳_표기 = "YXfXi6oB+gbHx5cPYRPh5chXa5BxFk4/80GbfMynO9g";
+    private static final String 패딩을_붙인_표기 = "YXfXi6oB-gbHx5cPYRPh5chXa5BxFk4_80GbfMynO9g=";
+    private static final String 표준_알파벳에_패딩까지_붙인_표기 = "YXfXi6oB+gbHx5cPYRPh5chXa5BxFk4/80GbfMynO9g=";
     private static final int 동시_요청_수 = 6;
 
     @Autowired
@@ -349,6 +353,42 @@ class PlayIntegrityRegistrationIntegrationTest {
         // then
         증명을_확인할_수_없다(throwable);
         assertThat(소모_시각(발급.challenge())).isNull();
+        assertThat(거절_카운터("CHALLENGE_MISMATCH")).isOne();
+        assertThat(deviceRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {표준_알파벳_표기, 패딩을_붙인_표기, 표준_알파벳에_패딩까지_붙인_표기})
+    void 토큰이_담은_nonce_가_표기만_다르고_같은_바이트면_등록하고_challenge_를_소모한다(String 토큰이_담은_nonce) {
+        // given
+        쓸_수_있는_challenge_를_저장한다(우리가_발급한_표기);
+        가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답(토큰이_담은_nonce));
+
+        // when
+        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), 증명을_담은_요청(우리가_발급한_표기));
+
+        // then
+        assertThat(result.created()).isTrue();
+        assertThat(소모_시각(우리가_발급한_표기)).isNotNull();
+        assertThat(거절_카운터("CHALLENGE_MISMATCH")).isZero();
+        assertThat(거절_카운터("CHALLENGE_INVALID")).isZero();
+        assertThat(카운터("pheeeew.device.attestation.accepted")).isOne();
+    }
+
+    @Test
+    void 토큰이_담은_nonce_가_base64_가_아니면_거절하고_challenge_를_남긴다() {
+        // given
+        쓸_수_있는_challenge_를_저장한다(우리가_발급한_표기);
+        가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답("!! base64 가 아닌 값 !!"));
+
+        // when
+        Throwable throwable = catchThrowable(() -> deviceService.save(
+                UUID.randomUUID(), 증명을_담은_요청(우리가_발급한_표기)
+        ));
+
+        // then
+        증명을_확인할_수_없다(throwable);
+        assertThat(소모_시각(우리가_발급한_표기)).isNull();
         assertThat(거절_카운터("CHALLENGE_MISMATCH")).isOne();
         assertThat(deviceRepository.count()).isZero();
     }
@@ -660,6 +700,13 @@ class PlayIntegrityRegistrationIntegrationTest {
 
     private DeviceAttestation 증명을_담은_요청(String challenge) {
         return DeviceAttestation.of(DevicePlatform.ANDROID, JWE_무결성_토큰, challenge, null);
+    }
+
+    private void 쓸_수_있는_challenge_를_저장한다(String challenge) {
+        deviceChallengeRepository.save(DeviceChallenge.builder()
+                .challenge(challenge)
+                .expiresAt(Instant.now().plus(Duration.ofMinutes(5)))
+                .build());
     }
 
     private void 만료된_challenge_를_저장한다() {

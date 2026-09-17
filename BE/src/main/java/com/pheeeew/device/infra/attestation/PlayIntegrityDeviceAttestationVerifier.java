@@ -9,6 +9,8 @@ import com.pheeeew.device.application.DeviceAttestationVerifier;
 import com.pheeeew.device.application.DeviceChallengeService;
 import com.pheeeew.device.application.dto.DeviceAttestation;
 import com.pheeeew.device.exception.DeviceException;
+import java.security.MessageDigest;
+import java.util.Base64;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -70,7 +72,7 @@ public class PlayIntegrityDeviceAttestationVerifier implements DeviceAttestation
         requireDeviceIntegrity(payload);
         requireMatchingChallenge(payload, challenge);
 
-        consumeChallenge(payload);
+        consumeChallenge(challenge);
         playIntegrityMetrics.recordAccepted();
     }
 
@@ -174,14 +176,35 @@ public class PlayIntegrityDeviceAttestationVerifier implements DeviceAttestation
     }
 
     private void requireMatchingChallenge(PlayIntegrityPayload payload, String challenge) {
-        if (!challenge.equals(payload.challenge())) {
+        if (!matchesChallenge(challenge, payload.challenge())) {
             throw rejected(PlayIntegrityRejection.CHALLENGE_MISMATCH);
         }
     }
 
-    private void consumeChallenge(PlayIntegrityPayload payload) {
+    private boolean matchesChallenge(String issuedChallenge, String decodedChallenge) {
+        if (issuedChallenge.equals(decodedChallenge)) {
+            return true;
+        }
+
+        byte[] issuedBytes = base64Bytes(issuedChallenge);
+
+        return issuedBytes.length > 0 && MessageDigest.isEqual(issuedBytes, base64Bytes(decodedChallenge));
+    }
+
+    private byte[] base64Bytes(String challenge) {
+        String urlSafe = challenge.replace('+', '-')
+                .replace('/', '_')
+                .replace("=", "");
         try {
-            deviceChallengeService.consume(payload.challenge());
+            return Base64.getUrlDecoder().decode(urlSafe);
+        } catch (IllegalArgumentException exception) {
+            return new byte[0];
+        }
+    }
+
+    private void consumeChallenge(String challenge) {
+        try {
+            deviceChallengeService.consume(challenge);
         } catch (DeviceException exception) {
             playIntegrityMetrics.recordRejected(PlayIntegrityRejection.CHALLENGE_INVALID);
             throw exception;
