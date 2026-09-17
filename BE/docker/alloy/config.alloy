@@ -22,7 +22,7 @@ prometheus.relabel "app" {
 
 	rule {
 		source_labels = ["__name__"]
-		regex         = "up|scrape_duration_seconds|scrape_samples_scraped|http_server_requests_seconds_(count|sum|bucket|max)|pheeeew_sigh_map_(query_seconds_(count|sum|bucket|max)|results_(count|sum|max))|jvm_memory_(used|committed|max)_bytes|jvm_gc_pause_seconds_(count|sum|max)|jvm_threads_live_threads|process_(cpu_usage|uptime_seconds)|system_cpu_usage|hikaricp_connections(_(active|idle|pending|max|min|timeout_total|acquire_seconds_(count|sum|max)))?"
+		regex         = "up|scrape_duration_seconds|scrape_samples_scraped|http_server_requests_seconds_(count|sum|bucket|max)|pheeeew_app_version_checks_total|pheeeew_sigh_(map|list)_(query_seconds_(count|sum|bucket|max)|results_(count|sum|max))|pheeeew_activity_(dau|mau|last_aggregated_seconds|collection_started_seconds|record_failures_total|aggregation_failures_total)|jvm_memory_(used|committed|max)_bytes|jvm_gc_pause_seconds_(count|sum|max)|jvm_threads_live_threads|process_(cpu_usage|uptime_seconds)|system_cpu_usage|hikaricp_connections(_(active|idle|pending|max|min|timeout_total|acquire_seconds_(count|sum|max)))?"
 		action        = "keep"
 	}
 }
@@ -80,17 +80,35 @@ loki.process "http_requests" {
 	stage.labels {
 		values = {logger = "", event = "", level = ""}
 	}
-	// Library/container logs have not been reviewed for personal data.
+	// 개인정보 검토를 마친 클래스와 해당 이벤트의 조합만 전송한다.
 	stage.match {
-		selector            = "{job=\"pheeeew-api\", logger!=\"com.pheeeew.common.logging.RequestLogWriter\"}"
+		selector            = "{job=\"pheeeew-api\", logger!~\"com[.]pheeeew[.](common[.]logging[.]RequestLogWriter|activity[.]infra[.](DeviceActivityRecorder|DeviceActivityAggregationScheduler))\"}"
 		action              = "drop"
 		drop_counter_reason = "unreviewed_logger"
 	}
 
 	stage.match {
-		selector            = "{job=\"pheeeew-api\", event!~\"http_request_failed|http_request_slow\"}"
+		selector            = "{job=\"pheeeew-api\", logger=\"com.pheeeew.common.logging.RequestLogWriter\", event!~\"http_request_failed|http_request_slow\"}"
 		action              = "drop"
 		drop_counter_reason = "unreviewed_event"
+	}
+
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", logger=\"com.pheeeew.activity.infra.DeviceActivityRecorder\", event!=\"device_activity_record_failed\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_event"
+	}
+
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", logger=\"com.pheeeew.activity.infra.DeviceActivityAggregationScheduler\", event!=\"device_activity_aggregation_failed\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_event"
+	}
+
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", logger=~\"com[.]pheeeew[.]activity[.]infra[.](DeviceActivityRecorder|DeviceActivityAggregationScheduler)\", level!=\"ERROR\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_level"
 	}
 
 	stage.timestamp {
