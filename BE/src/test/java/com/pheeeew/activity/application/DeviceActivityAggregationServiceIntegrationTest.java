@@ -1,13 +1,20 @@
 package com.pheeeew.activity.application;
 
+import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import com.pheeeew.activity.application.dto.DeviceActivityCount;
+import com.pheeeew.activity.application.dto.DeviceActivitySnapshot;
 import com.pheeeew.activity.domain.DeviceActivityAggregationState;
 import com.pheeeew.activity.domain.DeviceActivitySummary;
 import com.pheeeew.activity.domain.repository.DeviceActivityAggregationStateRepository;
 import com.pheeeew.activity.domain.repository.DeviceActivitySummaryRepository;
+import com.pheeeew.activity.domain.repository.DeviceDailyActivityRepository;
+import com.pheeeew.device.domain.Device;
+import com.pheeeew.device.domain.DevicePlatform;
+import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -44,9 +51,17 @@ class DeviceActivityAggregationServiceIntegrationTest {
     @Autowired
     private DeviceActivitySummaryRepository summaryRepository;
     @Autowired
+    private DeviceDailyActivityService activityService;
+    @Autowired
+    private DeviceDailyActivityRepository activityRepository;
+    @Autowired
+    private DeviceRepository deviceRepository;
+    @Autowired
     private JdbcClient jdbcClient;
     @MockitoBean
     private Clock clock;
+
+    private final List<Long> createdDeviceIds = new ArrayList<>();
 
     @BeforeEach
     void setUp() {
@@ -57,6 +72,8 @@ class DeviceActivityAggregationServiceIntegrationTest {
     void tearDown() {
         summaryRepository.deleteAllInBatch();
         stateRepository.deleteAllInBatch();
+        activityRepository.deleteAllInBatch();
+        deviceRepository.deleteAllByIdInBatch(createdDeviceIds);
     }
 
     @Test
@@ -198,5 +215,89 @@ class DeviceActivityAggregationServiceIntegrationTest {
         }
         assertThat(service.finalizeNextDate()).isTrue();
         assertThat(summaryRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void 현재_집계를_반환하고_KST_자정부터_새_날짜의_DAU로_갱신한다() {
+        // given
+        service.initialize();
+        Device device = deviceRepository.save(기본_기기_빌더().platform(DevicePlatform.ANDROID).build());
+        createdDeviceIds.add(device.getId());
+        activityService.save(device.getPublicId(), STARTED_AT);
+        when(clock.instant()).thenReturn(Instant.parse("2026-09-17T14:59:59Z"));
+
+        // when
+        DeviceActivitySnapshot beforeMidnight = service.update();
+
+        // then
+        assertThat(beforeMidnight.activityDate()).isEqualTo(LocalDate.of(2026, 9, 17));
+        assertThat(beforeMidnight.aggregatedAt()).isEqualTo(Instant.parse("2026-09-17T14:59:59Z"));
+        assertThat(beforeMidnight.collectionStartedAt()).isEqualTo(STARTED_AT);
+        assertThat(beforeMidnight.counts()).containsExactly(
+                DeviceActivityCount.of(DevicePlatform.ANDROID, 1, 1),
+                DeviceActivityCount.of(DevicePlatform.IOS, 0, 0));
+        assertThat(stateRepository.findById(1L).orElseThrow().getLastAggregatedAt())
+                .isEqualTo(beforeMidnight.aggregatedAt());
+
+        // when / then
+        Instant midnight = Instant.parse("2026-09-17T15:00:00Z");
+        when(clock.instant()).thenReturn(midnight);
+        DeviceActivitySnapshot afterMidnight = service.update();
+        assertThat(afterMidnight.activityDate()).isEqualTo(LocalDate.of(2026, 9, 18));
+        assertThat(afterMidnight.aggregatedAt()).isEqualTo(midnight);
+        assertThat(afterMidnight.counts()).containsExactly(
+                DeviceActivityCount.of(DevicePlatform.ANDROID, 0, 1),
+                DeviceActivityCount.of(DevicePlatform.IOS, 0, 0));
+        DeviceActivityAggregationState state = stateRepository.findById(1L).orElseThrow();
+        assertThat(state.getLastAggregatedAt()).isEqualTo(midnight);
+        assertThat(state.getLastFinalizedDate()).isNull();
+        assertThat(summaryRepository.count()).isZero();
+    }
+
+    @Test
+    void 활동이_없어도_정상_집계는_0과_성공_시각을_반환한다() {
+        // given
+        service.initialize();
+
+        // when
+        DeviceActivitySnapshot snapshot = service.update();
+
+        // then
+        assertThat(snapshot.counts()).containsExactly(
+                DeviceActivityCount.of(DevicePlatform.ANDROID, 0, 0),
+                DeviceActivityCount.of(DevicePlatform.IOS, 0, 0));
+        assertThat(stateRepository.findById(1L).orElseThrow().getLastAggregatedAt()).isEqualTo(STARTED_AT);
+    }
+
+    @Test
+    void 성공_시각_저장이_실패하면_결과를_반환하지_않고_이전_성공_시각을_유지한다() {
+        // given
+        service.initialize();
+        service.update();
+        Instant nextAttempt = STARTED_AT.plusSeconds(300);
+        when(clock.instant()).thenReturn(nextAttempt);
+        jdbcClient.sql("""
+                ALTER TABLE device_activity_aggregation_states ADD CONSTRAINT ck_test_update_failure
+                CHECK (last_aggregated_at = TIMESTAMPTZ '2026-09-17 03:00:00+00')
+                """).update();
+        try {
+            // when / then
+            assertThatThrownBy(service::update).isInstanceOf(DataIntegrityViolationException.class);
+            assertThat(stateRepository.findById(1L).orElseThrow().getLastAggregatedAt()).isEqualTo(STARTED_AT);
+        } finally {
+            jdbcClient.sql("ALTER TABLE device_activity_aggregation_states DROP CONSTRAINT ck_test_update_failure")
+                    .update();
+        }
+        assertThat(service.update().aggregatedAt()).isEqualTo(nextAttempt);
+        assertThat(stateRepository.findById(1L).orElseThrow().getLastAggregatedAt()).isEqualTo(nextAttempt);
+    }
+
+    @Test
+    void 수집_시작_상태가_없으면_현재_집계도_실패한다() {
+        // given / when / then
+        assertThatThrownBy(service::update)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("활동 집계 상태가 초기화되지 않았습니다.");
+        assertThat(stateRepository.count()).isZero();
     }
 }

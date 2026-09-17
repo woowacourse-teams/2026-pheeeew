@@ -8,6 +8,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.Objects;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -48,5 +49,9 @@ public class DeviceActivityAggregationState extends BaseEntity {
             throw new IllegalArgumentException("최종 집계는 수집 시작일부터 날짜 순서대로 완료해야 합니다.");
         }
         this.lastFinalizedDate = activityDate;
+    }
+
+    public void completeAggregation(Instant aggregatedAt) {
+        this.lastAggregatedAt = Objects.requireNonNull(aggregatedAt);
     }
 }

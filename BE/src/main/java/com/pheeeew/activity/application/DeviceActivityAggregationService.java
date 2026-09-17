@@ -1,10 +1,14 @@
 package com.pheeeew.activity.application;
 
+import com.pheeeew.activity.application.dto.DeviceActivityCount;
+import com.pheeeew.activity.application.dto.DeviceActivitySnapshot;
 import com.pheeeew.activity.domain.DeviceActivityAggregationState;
 import com.pheeeew.activity.domain.repository.DeviceActivityAggregationStateRepository;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +21,7 @@ public class DeviceActivityAggregationService {
 
     private final DeviceActivityAggregationStateRepository stateRepository;
     private final DeviceActivitySummaryService summaryService;
+    private final DeviceDailyActivityService activityService;
     private final Clock clock;
 
     @Transactional(timeout = 3)
@@ -40,5 +45,20 @@ public class DeviceActivityAggregationService {
         summaryService.save(activityDate);
         state.completeFinalization(activityDate);
         return true;
+    }
+
+    @Transactional(timeout = 3)
+    public DeviceActivitySnapshot update() {
+        DeviceActivityAggregationState state = stateRepository.findById(1L)
+                .orElseThrow(() -> new IllegalStateException("활동 집계 상태가 초기화되지 않았습니다."));
+
+        // 자정을 지나더라도 집계 기준일과 시각이 어긋나지 않도록 같은 시각을 사용한다.
+        Instant aggregatedAt = clock.instant();
+        LocalDate activityDate = aggregatedAt.atZone(ACTIVITY_ZONE).toLocalDate();
+        List<DeviceActivityCount> counts = activityService.findCounts(activityDate);
+
+        // 조회 실패 시 성공 시각을 갱신하지 않으며, 저장까지 성공해야 호출자에게 결과가 전달된다.
+        state.completeAggregation(aggregatedAt);
+        return DeviceActivitySnapshot.of(activityDate, aggregatedAt, state.getCreatedAt(), counts);
     }
 }
