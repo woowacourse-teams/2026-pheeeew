@@ -14,6 +14,7 @@ kotlin {
 }
 dependencies {
     implementation(project(":shared"))
+    implementation("androidx.lifecycle:lifecycle-process:2.10.0")
 
     androidTestImplementation(libs.androidx.testExt.junit)
     androidTestImplementation(libs.androidx.test.runner)
