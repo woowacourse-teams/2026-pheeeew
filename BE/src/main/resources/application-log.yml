@@ -1,0 +1,46 @@
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %5p [%thread] %logger{36} [correlationId=%X{correlationId:-}] %msg %kvp%n%wEx"
+  level:
+    # 멱등 저장 경로에서 유니크 제약 위반은 설계된 흐름이다(ADR-0004).
+    # 기본 WARN 은 위반한 키 값을 그대로 출력해 기기 식별자가 로그에 남는다.
+    org.hibernate.orm.jdbc.error: ERROR
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+logging:
+  level:
+    com.pheeeew: DEBUG
+    org.hibernate.SQL: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+
+logging:
+  structured:
+    format:
+      console: logstash
+      file: logstash
+    json:
+      add:
+        application: ${spring.application.name}
+        environment: prod
+  file:
+    name: logs/application.json
+  logback:
+    rollingpolicy:
+      file-name-pattern: logs/application.%d{yyyy-MM-dd}.%i.json
+      max-file-size: 10MB
+      max-history: 7
+      total-size-cap: 100MB
+      clean-history-on-start: true
+  level:
+    # SQL 오류 원문에는 값이 포함될 수 있어 HTTP 실패 로그의 예외 종류·위치로 진단한다.
+    org.hibernate.orm.jdbc.error: "OFF"

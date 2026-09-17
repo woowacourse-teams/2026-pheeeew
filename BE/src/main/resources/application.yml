@@ -3,6 +3,8 @@ spring:
     name: pheeeew
   profiles:
     default: local
+  config:
+    import: classpath:application-log.yml
   jpa:
     open-in-view: false
     hibernate:
@@ -13,13 +15,45 @@ spring:
     init:
       mode: never
 
-logging:
-  level:
-    # 멱등 저장 경로에서 유니크 제약 위반은 설계된 흐름이다(ADR-0004).
-    # 기본 WARN 은 위반한 키 값을 그대로 출력해 기기 식별자가 로그에 남는다.
-    org.hibernate.orm.jdbc.error: ERROR
+pheeeew:
+  jwt:
+    private-key-base64: ${JWT_PRIVATE_KEY_BASE64}
+    public-key-base64: ${JWT_PUBLIC_KEY_BASE64}
+  token:
+    access-ttl: PT30M
+    registration-retry-window: PT5M
+    challenge-ttl: PT5M
+  play-integrity:
+    android-package-name: com.pheeeew
+    service-account-base64: ${PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64:}
+    cloud-project-number: ${PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER:}
+    # 무결성 증명 강제 스위치. 앱(#261) 배포가 끝난 뒤에만 켠다.
+    # 켠 상태를 되돌릴 수 없게 만들려면 PlayIntegrityProperties.ENFORCEMENT_LOCKED 를 함께 true 로 바꾼다.
+    require-attestation: false
+    # 개발, QA 우회 스위치. 에뮬레이터와 디버그 빌드는 Play Integrity 판정에서 떨어지므로 그때만 켠다.
+    # 기본값은 검증 활성이고, prod 프로필에서는 PlayIntegrityProductionGuard 가 부팅을 막는다.
+    skip-verification: ${PLAY_INTEGRITY_SKIP_VERIFICATION:false}
+    # 프로젝트 단위 구글 호출 일일 예산. 구글 무료 티어 10,000건보다 낮게 두어 여유를 남긴다.
+    # UTC 자정 기준 고정 창이라 구글의 창과 어긋나도 두 창에 걸쳐 최대 2배까지만 나가므로 5,000을 넘기지 않는다.
+    daily-call-budget: ${PLAY_INTEGRITY_DAILY_CALL_BUDGET:3000}
+
+  app-attest:
+    # App ID 는 {Team ID}.{Bundle ID} 다. 예전에 만든 App ID 는 prefix 가 Team ID 와 다를 수 있고,
+    # 그때는 Team ID 가 아니라 App ID prefix 를 넣어야 한다.
+    team-id: Z6V4SXKRL6
+    bundle-id: com.itda.pheeeew
+    # 실기기 개발 빌드는 DEVELOPMENT, TestFlight 와 App Store 빌드는 PRODUCTION 이다.
+    # 둘은 배타적이라 한쪽만 통과한다. 개발 프로필이 DEVELOPMENT 로 재정의한다.
+    environment: PRODUCTION
+    # 무결성 증명 강제 스위치. 안드로이드와 따로 둔다. iOS 앱 배포가 끝난 뒤에만 켠다.
+    # 켠 상태를 되돌릴 수 없게 만들려면 AppAttestProperties.ENFORCEMENT_LOCKED 를 함께 true 로 바꾼다.
+    require-attestation: false
 
 management:
+  prometheus:
+    metrics:
+      export:
+        enabled: false
   endpoints:
     web:
       discovery:

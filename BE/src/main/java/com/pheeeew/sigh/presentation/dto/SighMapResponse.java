@@ -1,6 +1,6 @@
 package com.pheeeew.sigh.presentation.dto;
 
-import com.pheeeew.sigh.application.SighMapResult;
+import com.pheeeew.sigh.application.dto.SighMapResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
@@ -19,9 +19,7 @@ public record SighMapResponse(
     public static SighMapResponse from(SighMapResult result) {
         List<SighFeature<SighV1Properties>> features = result.sighs().stream()
                 .map(sigh -> SighFeature.of(
-                        sigh.id(),
-                        sigh.longitude(),
-                        sigh.latitude(),
+                        sigh,
                         SighV1Properties.from(sigh.createdAt())
                 ))
                 .toList();

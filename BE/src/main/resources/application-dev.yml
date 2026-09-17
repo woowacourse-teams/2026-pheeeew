@@ -7,8 +7,8 @@ spring:
 server:
   forward-headers-strategy: native
 
-logging:
-  level:
-    com.pheeeew: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.orm.jdbc.bind: TRACE
+pheeeew:
+  app-attest:
+    # 개발 서버는 Xcode 실기기 개발 빌드로 테스트한다.
+    # TestFlight 빌드로 바꾸면 PRODUCTION 으로 고쳐야 한다.
+    environment: DEVELOPMENT
