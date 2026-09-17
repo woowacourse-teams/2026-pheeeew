@@ -1,10 +1,13 @@
 package com.pheeeew.activity.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import com.pheeeew.activity.domain.DeviceActivityAggregationState;
+import com.pheeeew.activity.domain.DeviceActivitySummary;
 import com.pheeeew.activity.domain.repository.DeviceActivityAggregationStateRepository;
+import com.pheeeew.activity.domain.repository.DeviceActivitySummaryRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.sql.Timestamp;
 import java.time.Clock;
@@ -21,13 +24,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
-@Import(DeviceActivityAggregationService.class)
+@Import({DeviceActivityAggregationService.class, DeviceActivitySummaryService.class, DeviceDailyActivityService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class DeviceActivityAggregationServiceIntegrationTest {
 
@@ -37,6 +41,8 @@ class DeviceActivityAggregationServiceIntegrationTest {
     private DeviceActivityAggregationService service;
     @Autowired
     private DeviceActivityAggregationStateRepository stateRepository;
+    @Autowired
+    private DeviceActivitySummaryRepository summaryRepository;
     @Autowired
     private JdbcClient jdbcClient;
     @MockitoBean
@@ -49,6 +55,7 @@ class DeviceActivityAggregationServiceIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        summaryRepository.deleteAllInBatch();
         stateRepository.deleteAllInBatch();
     }
 
@@ -119,5 +126,77 @@ class DeviceActivityAggregationServiceIntegrationTest {
             assertThat(state.getId()).isEqualTo(1L);
             assertThat(state.getCreatedAt()).isEqualTo(STARTED_AT);
         });
+    }
+
+    @Test
+    void 수집_시작_상태가_없으면_처리_완료로_판단하지_않고_실패한다() {
+        // given / when / then
+        assertThatThrownBy(service::finalizeNextDate)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("활동 집계 상태가 초기화되지 않았습니다.");
+        assertThat(summaryRepository.count()).isZero();
+    }
+
+    @Test
+    void KST_날짜가_끝나면_두_플랫폼_집계와_완료_날짜를_함께_저장한다() {
+        // given
+        when(clock.instant()).thenReturn(Instant.parse("2026-09-16T15:00:00Z"));
+        service.initialize();
+        when(clock.instant()).thenReturn(Instant.parse("2026-09-17T14:59:59Z"));
+
+        // when / then
+        assertThat(service.finalizeNextDate()).isFalse();
+        assertThat(summaryRepository.count()).isZero();
+        when(clock.instant()).thenReturn(Instant.parse("2026-09-17T15:00:00Z"));
+        assertThat(service.finalizeNextDate()).isTrue();
+        assertThat(summaryRepository.findAll()).extracting(DeviceActivitySummary::getActivityDate)
+                .containsExactly(LocalDate.of(2026, 9, 17), LocalDate.of(2026, 9, 17));
+        DeviceActivityAggregationState state = stateRepository.findById(1L).orElseThrow();
+        assertThat(state.getLastFinalizedDate()).isEqualTo(LocalDate.of(2026, 9, 17));
+        assertThat(state.getLastAggregatedAt()).isNull();
+        assertThat(service.finalizeNextDate()).isFalse();
+    }
+
+    @Test
+    void 누락된_날짜는_수집_시작일부터_어제까지_하루씩_이어_처리한다() {
+        // given
+        service.initialize();
+        when(clock.instant()).thenReturn(STARTED_AT.plusSeconds(3 * 86_400));
+
+        // when
+        for (int index = 0; index < 3; index++) {
+            assertThat(service.finalizeNextDate()).isTrue();
+            assertThat(stateRepository.findById(1L).orElseThrow().getLastFinalizedDate())
+                    .isEqualTo(LocalDate.of(2026, 9, 17).plusDays(index));
+        }
+
+        // then
+        assertThat(service.finalizeNextDate()).isFalse();
+        assertThat(summaryRepository.findAll()).extracting(DeviceActivitySummary::getActivityDate)
+                .containsExactlyInAnyOrder(LocalDate.of(2026, 9, 17), LocalDate.of(2026, 9, 17),
+                        LocalDate.of(2026, 9, 18), LocalDate.of(2026, 9, 18),
+                        LocalDate.of(2026, 9, 19), LocalDate.of(2026, 9, 19));
+    }
+
+    @Test
+    void 완료_날짜_갱신이_실패하면_두_플랫폼_집계도_롤백하고_재시도할_수_있다() {
+        // given
+        service.initialize();
+        when(clock.instant()).thenReturn(STARTED_AT.plusSeconds(86_400));
+        jdbcClient.sql("""
+                ALTER TABLE device_activity_aggregation_states ADD CONSTRAINT ck_test_finalize_failure
+                CHECK (last_finalized_date IS NULL)
+                """).update();
+        try {
+            // when / then
+            assertThatThrownBy(service::finalizeNextDate).isInstanceOf(DataIntegrityViolationException.class);
+            assertThat(summaryRepository.count()).isZero();
+            assertThat(stateRepository.findById(1L).orElseThrow().getLastFinalizedDate()).isNull();
+        } finally {
+            jdbcClient.sql("ALTER TABLE device_activity_aggregation_states DROP CONSTRAINT ck_test_finalize_failure")
+                    .update();
+        }
+        assertThat(service.finalizeNextDate()).isTrue();
+        assertThat(summaryRepository.count()).isEqualTo(2);
     }
 }

@@ -7,6 +7,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -15,6 +16,8 @@ import lombok.Getter;
 @Table(name = "device_activity_aggregation_states")
 @Entity
 public class DeviceActivityAggregationState extends BaseEntity {
+
+    private static final ZoneId ACTIVITY_ZONE = ZoneId.of("Asia/Seoul");
 
     @Id
     @Column(nullable = false, updatable = false)
@@ -31,5 +34,19 @@ public class DeviceActivityAggregationState extends BaseEntity {
     @Builder
     protected DeviceActivityAggregationState() {
         this.id = 1L;
+    }
+
+    public LocalDate nextFinalizationDate() {
+        if (lastFinalizedDate == null) {
+            return getCreatedAt().atZone(ACTIVITY_ZONE).toLocalDate();
+        }
+        return lastFinalizedDate.plusDays(1);
+    }
+
+    public void completeFinalization(LocalDate activityDate) {
+        if (!nextFinalizationDate().equals(activityDate)) {
+            throw new IllegalArgumentException("최종 집계는 수집 시작일부터 날짜 순서대로 완료해야 합니다.");
+        }
+        this.lastFinalizedDate = activityDate;
     }
 }
