@@ -2542,6 +2542,206 @@
           "interval": "1m"
         }
       ]
+    },
+    {
+      "id": 26,
+      "type": "stat",
+      "title": "마지막 집계 성공 · 기준 시각",
+      "description": "마지막으로 성공한 당일 집계 실행의 기준 시각이에요. DB 커밋 완료 시각이나 Alloy 수집 시각이 아니에요. 집계 실패 시 이전 성공 시각을 유지해요. 조회 종료 시점과 비교해 집계 갱신이 멈췄는지 확인해요. 대시보드 기본 시간대는 Asia/Seoul(KST)이에요. 데이터 없음과 NaN은 집계 전·확인 필요로 표시해요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 105,
+        "w": 12,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso",
+          "noValue": "집계 전·확인 필요",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#7DB5FF"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(pheeeew_activity_last_aggregated_seconds{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\"}) * 1000",
+          "legendFormat": "마지막 집계 성공 · 기준 시각",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "type": "stat",
+      "title": "활동 수집 시작 시각",
+      "description": "DB에 저장된 최초 활동 수집 시작 시각이에요. 서버 재시작 시각이 아니며 재시작 후에도 유지해요. 이 시각부터 30일이 지나기 전의 MAU는 수집된 기간만 반영해요. 지표는 첫 집계 성공 후부터 제공해요. 대시보드 기본 시간대는 Asia/Seoul(KST)이에요. 데이터 없음과 NaN은 집계 전·확인 필요로 표시해요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 105,
+        "w": 12,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso",
+          "noValue": "집계 전·확인 필요",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#7DB5FF"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 22,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min(pheeeew_activity_collection_started_seconds{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\"}) * 1000",
+          "legendFormat": "활동 수집 시작 시각",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 110,
+      "type": "text",
+      "title": "",
+      "transparent": true,
+      "gridPos": {
+        "x": 0,
+        "y": 110,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "**집계 상태**　기본 집계 간격은 5분, 지표 수집 간격은 60초예요. 마지막 집계 기준 시각이 조회 종료 시점보다 계속 뒤처지면 갱신 상태를 확인해요. 날짜가 표시된다는 사실만으로 정상 집계를 뜻하지 않아요.\n\n**MAU 수집 초기**　수집 시작 후 30일 전에는 수집된 기간만 반영해요. 30일 경과가 활동 기록의 누락 없음을 보장하지는 않아요."
+      }
     }
   ],
   "__inputs": [
