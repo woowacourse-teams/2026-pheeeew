@@ -23,6 +23,7 @@ play-services-location = "21.3.0"
 play-integrity = "1.5.0"
 
 [libraries]
+posthog = { module = "com.posthog:posthog-kmp", version = "0.5.1" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-testJunit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 junit = { module = "junit:junit", version.ref = "junit" }
