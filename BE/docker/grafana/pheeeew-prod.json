@@ -2160,6 +2160,163 @@
           "interval": "1m"
         }
       ]
+    },
+    {
+      "id": 22,
+      "type": "timeseries",
+      "title": "V2 목록 DB 조회 · 평균 시간",
+      "description": "첫 페이지와 다음 페이지의 findListWithinBounds Repository 호출 평균 시간이에요. 실패한 호출도 포함하며 좋아요 조회 등 서비스의 다른 처리 시간은 포함하지 않아요. 호출이 없으면 평균을 계산하지 않아요. 현재 목록 DB 지표에는 히스토그램이 없어 p95·p99를 제공하지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 88,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 9,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(pheeeew_sigh_list_query_seconds_sum{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\"}[$__rate_interval])) / sum(rate(pheeeew_sigh_list_query_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\"}[$__rate_interval]))",
+          "legendFormat": "목록 DB 평균",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 23,
+      "type": "timeseries",
+      "title": "V2 목록 반환 개수 · 페이지별 평균",
+      "description": "정상적으로 서비스 결과를 만든 호출의 평균 반환 개수예요. first는 첫 페이지, next는 다음 페이지이며 has_next는 다음 페이지 존재 여부예요. 호출이 없으면 평균을 계산하지 않고 실제 빈 목록 반환은 0개로 반영해요. DB 조회용 추가 1개는 반환 개수에 포함하지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 88,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 9,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0,
+          "max": 20
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (page, has_next) (rate(pheeeew_sigh_list_results_sum{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\"}[$__rate_interval])) / sum by (page, has_next) (rate(pheeeew_sigh_list_results_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\"}[$__rate_interval]))",
+          "legendFormat": "{{page}} · hasNext={{has_next}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
     }
   ],
   "__inputs": [
