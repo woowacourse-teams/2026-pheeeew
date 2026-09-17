@@ -1795,6 +1795,189 @@
         "mode": "markdown",
         "content": "**읽는 법**　p95 / p99는 요청의 95% / 99%가 완료된 시간의 버킷 기반 추정값이에요. 요청이 적으면 크게 흔들릴 수 있어요.\n\n**관측 범위**　운영 앱 한 대의 지표예요. 수집 연결은 외부 URL의 정상 응답을 보장하지 않으며, EC2 전체 메모리·디스크와 RDS 내부 지표는 포함하지 않아요. 색상 경계는 초기 참고 기준이에요."
       }
+    },
+    {
+      "id": 107,
+      "type": "row",
+      "title": "05  앱 플랫폼  /  Android와 iOS의 버전 확인 호출을 비교해요",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 70,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 18,
+      "type": "stat",
+      "title": "플랫폼별 버전 확인 · 선택 기간",
+      "description": "GET /api/v2/app/version의 2xx 응답 횟수 추정치예요. 같은 기기의 반복 호출도 포함하므로 사용자 수나 DAU·MAU가 아니에요. Counter 증가량을 보간하므로 정수 요청 수와 다를 수 있어요. 표본 부족·수집 중단은 0으로 채우지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 71,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (platform) (increase(pheeeew_app_version_checks_total{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=~\"android|ios\"}[$__range]))",
+          "legendFormat": "{{platform}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "type": "timeseries",
+      "title": "플랫폼별 버전 확인 · 호출량 추이",
+      "description": "플랫폼별 버전 확인 성공 요청/초예요. 앱 실행·재시도 방식에 따라 호출 횟수가 달라질 수 있어요. 사용자 수 비교는 DAU·MAU를 함께 확인해요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 71,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 9,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (platform) (rate(pheeeew_app_version_checks_total{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=~\"android|ios\"}[$__rate_interval]))",
+          "legendFormat": "{{platform}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
     }
   ],
   "__inputs": [
