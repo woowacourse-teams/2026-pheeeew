@@ -3,6 +3,7 @@ package com.pheeeew.common.config;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.device.application.DeviceChallengeService;
 import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.application.DeviceTokenService;
@@ -12,6 +13,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.ComponentScan.Filter;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
@@ -20,7 +23,10 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter;
 
 @AutoConfigureRestTestClient
-@WebMvcTest(DeviceController.class)
+@WebMvcTest(
+        controllers = DeviceController.class,
+        excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
+)
 @Import(MessageConverterConfig.class)
 class MessageConverterConfigTest {
 
