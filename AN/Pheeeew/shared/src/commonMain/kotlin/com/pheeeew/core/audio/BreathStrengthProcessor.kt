@@ -10,6 +10,7 @@ class BreathStrengthProcessor {
                 amplitude = metrics.amplitude,
                 lowFrequencyPresence = metrics.lowFrequencyPresence,
                 noisyTexture = metrics.noisyTexture,
+                speechBandPresence = metrics.speechBandPresence,
                 previousSmoothedStrength = smoothedStrength,
             )
         return smoothedStrength

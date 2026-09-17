@@ -213,6 +213,9 @@ private class AndroidBreathInput(
                             ) - 0.12
                     ) / 0.58
                 ).coerceIn(0.0, 1.0).toFloat()
+            val speechPresence =
+                ((energy - lowEnergy) / count / (energy / count).coerceAtLeast(1e-12))
+                    .coerceIn(0.0, 1.0).toFloat()
             val texture = ((crossings.toDouble() / count - 0.035) / 0.16).coerceIn(0.0, 1.0).toFloat()
             val strength =
                 strengthProcessor.process(
@@ -220,6 +223,7 @@ private class AndroidBreathInput(
                         amplitude = amplitude,
                         lowFrequencyPresence = lowPresence,
                         noisyTexture = texture,
+                        speechBandPresence = speechPresence,
                     ),
                 )
             publishStrength(strength, generation)

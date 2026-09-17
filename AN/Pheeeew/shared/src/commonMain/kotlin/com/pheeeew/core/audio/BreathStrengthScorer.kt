@@ -6,14 +6,17 @@ object BreathStrengthScorer {
         lowFrequencyPresence: Float,
         noisyTexture: Float,
         previousSmoothedStrength: Float,
+        speechBandPresence: Float = 0f,
     ): Float {
         val audible = amplitude >= 0.08f
         val raw =
             if (audible) {
-                amplitude.coerceIn(0f, 1f) * (
-                    0.25f + lowFrequencyPresence.coerceIn(0f, 1f) * 0.50f +
-                        noisyTexture.coerceIn(0f, 1f) * 0.25f
-                )
+                (
+                    amplitude.coerceIn(0f, 1f) * (
+                        0.25f + lowFrequencyPresence.coerceIn(0f, 1f) * 0.50f +
+                            noisyTexture.coerceIn(0f, 1f) * 0.25f
+                    ) - speechBandPresence.coerceIn(0f, 1f) * 0.20f
+                ).coerceAtLeast(0f)
             } else {
                 0f
             }

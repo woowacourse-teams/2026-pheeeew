@@ -21,6 +21,13 @@ class BreathStrengthScorerTest {
     }
 
     @Test
+    fun `말소리 대역이 강하면 점수를 감점한다`() {
+        val breathLike = BreathStrengthScorer.score(0.8f, 0.8f, 0.8f, speechBandPresence = 0f, previousSmoothedStrength = 0f)
+        val speechLike = BreathStrengthScorer.score(0.8f, 0.8f, 0.8f, speechBandPresence = 1f, previousSmoothedStrength = 0f)
+        assertTrue(speechLike < breathLike)
+    }
+
+    @Test
     fun `무음은 이전 강도도 즉시 초기화한다`() {
         assertEquals(0f, BreathStrengthScorer.score(0.01f, 1f, 1f, 0.8f))
     }
