@@ -1978,6 +1978,188 @@
           "interval": "1m"
         }
       ]
+    },
+    {
+      "id": 108,
+      "type": "row",
+      "title": "06  V2 한숨 API  /  목록·상세·등록·좋아요를 살펴봐요",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 79,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "V2 한숨 요청량 · 경로와 상태 코드",
+      "description": "메서드·경로 템플릿·상태 코드별 요청/초예요. 목록·상세·등록·좋아요 요청을 포함해요. 같은 경로의 GET과 POST를 구분하고 4xx·5xx도 별도로 보여줘요. 경로가 매핑되지 않은 UNKNOWN·NOT_FOUND 요청은 제외해요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 80,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 9,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (method, uri, status) (rate(http_server_requests_seconds_count{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/v2/sighs(/.*)?\"}[$__rate_interval]))",
+          "legendFormat": "{{method}} {{uri}} · {{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "V2 한숨 응답 시간 · 경로별 p95 / p99",
+      "description": "성공·실패 응답을 함께 집계한 HTTP 처리 시간이에요. 메서드·경로별 버킷 기반 추정값이며 DB 조회 시간과는 달라요. 저트래픽에서는 값이 불안정하고 표본이 없으면 지연을 계산하지 않아요. 현재 버킷으로 10초 초과 지연을 정밀하게 구분할 수 없어요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 80,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 9,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, method, uri) (rate(http_server_requests_seconds_bucket{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/v2/sighs(/.*)?\"}[$__rate_interval])))",
+          "legendFormat": "{{method}} {{uri}} · p95",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.99, sum by (le, method, uri) (rate(http_server_requests_seconds_bucket{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",uri=~\"/api/v2/sighs(/.*)?\"}[$__rate_interval])))",
+          "legendFormat": "{{method}} {{uri}} · p99",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
     }
   ],
   "__inputs": [
