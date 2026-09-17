@@ -31,7 +31,7 @@ fun createIosDeviceRegistrationDependencies(
     val tokenStorage = IosKeychainDeviceTokenStorage()
     val isDebugBuild = Platform.isDebugBinary
     val attestationProvider: DeviceAttestationProvider =
-        if (DCAppAttestService.sharedService.isSupported()) {
+        if (!isDebugBuild && DCAppAttestService.sharedService.isSupported()) {
             IosAppAttestProvider(tokenStorage)
         } else {
             NoOpDeviceAttestationProvider(DevicePlatform.IOS)
