@@ -1,12 +1,14 @@
 package com.pheeeew.activity.infra;
 
+import java.time.Clock;
 import java.util.concurrent.ThreadPoolExecutor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Configuration
-public class DeviceActivityAsyncConfig {
+public class DeviceActivityConfig {
 
     @Bean(defaultCandidate = false)
     public ThreadPoolTaskExecutor deviceActivityExecutor() {
@@ -25,5 +27,11 @@ public class DeviceActivityAsyncConfig {
         executor.setAwaitTerminationSeconds(5);
 
         return executor;
+    }
+
+    @Bean
+    @Profile("prod")
+    public DeviceActivityFilter deviceActivityFilter(DeviceActivityRecorder recorder, Clock clock) {
+        return new DeviceActivityFilter(recorder, clock);
     }
 }

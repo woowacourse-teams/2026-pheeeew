@@ -36,7 +36,7 @@ class DeviceActivityRecorderTest {
     private final DeviceDailyActivityService service = mock(DeviceDailyActivityService.class);
     private final Clock clock = mock(Clock.class);
     private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
-    private final ThreadPoolTaskExecutor executor = new DeviceActivityAsyncConfig().deviceActivityExecutor();
+    private final ThreadPoolTaskExecutor executor = new DeviceActivityConfig().deviceActivityExecutor();
     private final DeviceActivityRecorder recorder = new DeviceActivityRecorder(service, executor, registry, clock);
     private final Logger logger = (Logger) LoggerFactory.getLogger(DeviceActivityRecorder.class);
     private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
