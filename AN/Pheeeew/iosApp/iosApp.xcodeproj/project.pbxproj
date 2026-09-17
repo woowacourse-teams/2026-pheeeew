@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B10101010101010101010101 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = B30303030303030303030303; };
 		64E63F4A3CF10CB4773C55F8 /* PostHog linkage in Frameworks */ = {isa = PBXBuildFile; productRef = 42CE4090DE15678DF75AB3F4; };
 		A10101010101010101010101 /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = A30303030303030303030303 /* MapLibre */; };
 /* End PBXBuildFile section */
@@ -47,6 +48,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10101010101010101010101 /* MapLibre in Frameworks */,
+				B10101010101010101010101 /* Sentry in Frameworks */,
 				64E63F4A3CF10CB4773C55F8 /* PostHog linkage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -93,6 +95,7 @@
 			name = iosApp;
 			packageProductDependencies = (
 				A30303030303030303030303 /* MapLibre */,
+				B30303030303030303030303 /* Sentry */,
 				42CE4090DE15678DF75AB3F4 /* KotlinMultiplatformLinkedPackage */,
 			);
 			productName = iosApp;
@@ -125,6 +128,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A20202020202020202020202 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */,
+				B20202020202020202020202 /* Sentry */,
 				D8E30D8A61E2C4922BFFBEFE /* KotlinMultiplatformLinkedPackage */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -405,9 +409,11 @@
 				version = 6.29.0;
 			};
 		};
+		B20202020202020202020202 = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/getsentry/sentry-cocoa"; requirement = {kind = exactVersion; version = 8.58.2; }; };
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		B30303030303030303030303 = {isa = XCSwiftPackageProductDependency; package = B20202020202020202020202; productName = Sentry; };
 		42CE4090DE15678DF75AB3F4 = {isa = XCSwiftPackageProductDependency; productName = KotlinMultiplatformLinkedPackage; };
 		A30303030303030303030303 /* MapLibre */ = {
 			isa = XCSwiftPackageProductDependency;

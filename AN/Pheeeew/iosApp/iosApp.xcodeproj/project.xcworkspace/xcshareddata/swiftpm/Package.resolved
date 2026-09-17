@@ -1,4 +1,5 @@
 {
+  "originHash": "0aedd79941b86ceca31ac20b8b46261ec7d98993edebda9b8896af82de0e3c54",
   "pins": [
     {
       "identity": "maplibre-gl-native-distribution",
@@ -16,6 +17,15 @@
       "state": {
         "revision": "8497f6ea218b14c348a353f2bafbb26069e9da2c",
         "version": "3.64.1"
+      }
+    },
+    {
+      "identity": "sentry-cocoa",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/getsentry/sentry-cocoa",
+      "state": {
+        "revision": "cf44aa8cb4147f39e698c1f28be0b6b2c89f79d2",
+        "version": "8.58.2"
       }
     }
   ],

@@ -62,6 +62,7 @@ kotlin {
             implementation(libs.ktor.client.darwin)
         }
         commonMain.dependencies {
+            implementation(libs.sentry)
             implementation(libs.posthog)
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
