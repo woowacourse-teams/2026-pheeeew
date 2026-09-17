@@ -30,6 +30,7 @@ fun ConfirmDialog(
     onDismissRequest: () -> Unit,
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
+    dismissText: String = "취소",
 ) {
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -42,6 +43,7 @@ fun ConfirmDialog(
             onConfirmClick = onConfirmClick,
             onDismissClick = onDismissClick,
             modifier = modifier,
+            dismissText = dismissText,
         )
     }
 }
@@ -54,6 +56,7 @@ private fun ConfirmDialogContent(
     onConfirmClick: () -> Unit,
     onDismissClick: () -> Unit,
     modifier: Modifier = Modifier,
+    dismissText: String = "취소",
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
@@ -81,7 +84,7 @@ private fun ConfirmDialogContent(
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(
-                        text = "취소",
+                        text = dismissText,
                         style = AppTheme.typography.button,
                         color = AppTheme.colors.onSurfaceVariant,
                     )
@@ -109,6 +112,21 @@ private fun ConfirmDialogOneButtonPreview() {
             title = "인터넷 연결 확인",
             body = "네트워크 연결이 원활하지 않습니다. Wi-Fi 또는 모바일\n데이터 연결 상태를 확인한 후 다시 시도해주세요.",
             confirmText = "확인",
+            onConfirmClick = {},
+            onDismissClick = {},
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun SuggestedUpdateDialogPreview() {
+    AppTheme {
+        ConfirmDialogContent(
+            title = "새로운 버전이 나왔어요",
+            body = "최신 버전으로 업데이트하면 더 나은 앱을 이용할 수 있어요.",
+            confirmText = "업데이트",
+            dismissText = "나중에",
             onConfirmClick = {},
             onDismissClick = {},
         )
