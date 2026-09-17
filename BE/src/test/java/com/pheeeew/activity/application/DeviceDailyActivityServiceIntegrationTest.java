@@ -4,6 +4,7 @@ import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.pheeeew.activity.application.dto.DeviceActivityCount;
 import com.pheeeew.activity.domain.DeviceDailyActivity;
 import com.pheeeew.activity.domain.repository.DeviceDailyActivityRepository;
 import com.pheeeew.device.domain.Device;
@@ -12,6 +13,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -176,6 +178,66 @@ class DeviceDailyActivityServiceIntegrationTest {
         } finally {
             jdbcClient.sql("ALTER TABLE device_daily_activities DROP CONSTRAINT ck_test_activity_failure").update();
         }
+    }
+
+    @Test
+    void 플랫폼별로_기준일과_최근_30일의_고유_기기를_집계한다() {
+        // given
+        Device android = 기기를_저장한다(DevicePlatform.ANDROID);
+        Device androidAtStart = 기기를_저장한다(DevicePlatform.ANDROID);
+        Device ios = 기기를_저장한다(DevicePlatform.IOS);
+        Device iosYesterday = 기기를_저장한다(DevicePlatform.IOS);
+        Device outsideWindow = 기기를_저장한다(DevicePlatform.ANDROID);
+        service.save(android.getPublicId(), OCCURRED_AT);
+        service.save(android.getPublicId(), OCCURRED_AT.plusSeconds(60));
+        service.save(android.getPublicId(), OCCURRED_AT.minus(1, ChronoUnit.DAYS));
+        service.save(android.getPublicId(), OCCURRED_AT.minus(29, ChronoUnit.DAYS));
+        service.save(androidAtStart.getPublicId(), OCCURRED_AT.minus(29, ChronoUnit.DAYS));
+        service.save(ios.getPublicId(), OCCURRED_AT);
+        service.save(iosYesterday.getPublicId(), OCCURRED_AT.minusNanos(1));
+        service.save(outsideWindow.getPublicId(), OCCURRED_AT.minus(29, ChronoUnit.DAYS).minusNanos(1));
+        service.save(outsideWindow.getPublicId(), OCCURRED_AT.plus(1, ChronoUnit.DAYS));
+
+        // when
+        List<DeviceActivityCount> counts = service.findCounts(LocalDate.of(2026, 9, 16));
+
+        // then
+        assertThat(counts).containsExactlyInAnyOrder(
+                DeviceActivityCount.of(DevicePlatform.ANDROID, 1, 2),
+                DeviceActivityCount.of(DevicePlatform.IOS, 1, 2)
+        );
+    }
+
+    @Test
+    void 기준일_활동이_없어도_최근_활동은_MAU에_남고_없는_플랫폼은_0이다() {
+        // given
+        Device device = 기기를_저장한다(DevicePlatform.ANDROID);
+        service.save(device.getPublicId(), OCCURRED_AT.minusNanos(1));
+
+        // when
+        List<DeviceActivityCount> counts = service.findCounts(LocalDate.of(2026, 9, 16));
+
+        // then
+        assertThat(counts).containsExactlyInAnyOrder(
+                DeviceActivityCount.of(DevicePlatform.ANDROID, 0, 1),
+                DeviceActivityCount.of(DevicePlatform.IOS, 0, 0)
+        );
+    }
+
+    @Test
+    void 활동이_없으면_등록된_기기가_있어도_두_플랫폼의_집계는_0이다() {
+        // given
+        기기를_저장한다(DevicePlatform.ANDROID);
+        기기를_저장한다(DevicePlatform.IOS);
+
+        // when
+        List<DeviceActivityCount> counts = service.findCounts(LocalDate.of(2026, 9, 16));
+
+        // then
+        assertThat(counts).containsExactlyInAnyOrder(
+                DeviceActivityCount.of(DevicePlatform.ANDROID, 0, 0),
+                DeviceActivityCount.of(DevicePlatform.IOS, 0, 0)
+        );
     }
 
     private Device 기기를_저장한다(DevicePlatform platform) {
