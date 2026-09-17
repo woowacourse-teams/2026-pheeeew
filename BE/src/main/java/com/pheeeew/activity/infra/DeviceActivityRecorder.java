@@ -1,5 +1,6 @@
 package com.pheeeew.activity.infra;
 
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.pheeeew.activity.application.DeviceDailyActivityService;
 import com.pheeeew.common.logging.ExceptionLogFormatter;
 import io.micrometer.core.instrument.Counter;
@@ -23,6 +24,7 @@ public class DeviceActivityRecorder {
     private final Clock clock;
     private final Counter saveFailures;
     private final Counter rejectedTasks;
+    private final DeviceActivityCache activityCache = new DeviceActivityCache(10_000, Caffeine.newBuilder());
     private final ExceptionLogFormatter exceptionLogFormatter = new ExceptionLogFormatter();
     private final AtomicReference<Instant> nextLogAt = new AtomicReference<>(Instant.MIN);
 
@@ -40,15 +42,21 @@ public class DeviceActivityRecorder {
     }
 
     public void record(UUID devicePublicId, Instant occurredAt) {
+        DeviceActivityCache.ActivityMarker marker = activityCache.acquire(devicePublicId, occurredAt, clock.instant());
+        if (marker == null) {
+            return;
+        }
         try {
             executor.execute(() -> {
                 try {
                     activityService.save(devicePublicId, occurredAt);
                 } catch (RuntimeException failure) {
+                    activityCache.release(marker);
                     recordFailure(saveFailures, "save_failed", failure);
                 }
             });
         } catch (RejectedExecutionException failure) {
+            activityCache.release(marker);
             recordFailure(rejectedTasks, "queue_rejected", failure);
         }
     }

@@ -2,6 +2,8 @@ package com.pheeeew.activity.infra;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -61,20 +63,24 @@ class DeviceActivityRecorderTest {
         Thread caller = Thread.currentThread();
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch completed = new CountDownLatch(257);
         doAnswer(invocation -> {
             assertThat(Thread.currentThread()).isNotSameAs(caller);
             started.countDown();
             assertThat(release.await(5, TimeUnit.SECONDS)).isTrue();
+            completed.countDown();
             return null;
-        }).when(service).save(DEVICE_ID, OCCURRED_AT);
+        }).when(service).save(any(UUID.class), eq(OCCURRED_AT));
+        UUID rejectedDeviceId = UUID.randomUUID();
         try {
             // when
             recorder.record(DEVICE_ID, OCCURRED_AT);
             assertThat(started.await(5, TimeUnit.SECONDS)).isTrue();
+            recorder.record(DEVICE_ID, OCCURRED_AT); // 저장 중인 같은 활동은 대기열을 차지하지 않는다.
             for (int index = 0; index < 256; index++) {
-                recorder.record(DEVICE_ID, OCCURRED_AT);
+                recorder.record(UUID.randomUUID(), OCCURRED_AT);
             }
-            assertThatCode(() -> recorder.record(DEVICE_ID, OCCURRED_AT)).doesNotThrowAnyException();
+            assertThatCode(() -> recorder.record(rejectedDeviceId, OCCURRED_AT)).doesNotThrowAnyException();
 
             // then
             assertThat(failures("queue_rejected")).isOne();
@@ -84,9 +90,13 @@ class DeviceActivityRecorderTest {
         } finally {
             release.countDown();
         }
-        executor.getThreadPoolExecutor().shutdown();
-        assertThat(executor.getThreadPoolExecutor().awaitTermination(5, TimeUnit.SECONDS)).isTrue();
-        verify(service, times(257)).save(DEVICE_ID, OCCURRED_AT);
+        assertThat(completed.await(5, TimeUnit.SECONDS)).isTrue();
+        recorder.record(DEVICE_ID, OCCURRED_AT); // 저장 완료된 활동도 다시 제출하지 않는다.
+        recorder.record(rejectedDeviceId, OCCURRED_AT); // 거절됐던 활동은 다시 제출할 수 있다.
+        awaitIdle();
+        verify(service, times(258)).save(any(UUID.class), eq(OCCURRED_AT));
+        verify(service).save(DEVICE_ID, OCCURRED_AT);
+        verify(service).save(rejectedDeviceId, OCCURRED_AT);
     }
 
     @Test
@@ -98,6 +108,7 @@ class DeviceActivityRecorderTest {
 
         // when
         recorder.record(DEVICE_ID, OCCURRED_AT);
+        awaitIdle();
         recorder.record(DEVICE_ID, OCCURRED_AT);
         awaitIdle();
 
