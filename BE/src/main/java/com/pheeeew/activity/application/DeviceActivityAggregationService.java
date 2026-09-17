@@ -9,6 +9,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,9 +26,9 @@ public class DeviceActivityAggregationService {
     private final Clock clock;
 
     @Transactional(timeout = 3)
-    public void initialize() {
+    public void initialize(Instant startedAt) {
         // 재시작 후 다시 초기화해도 최초 수집 시작 시각과 진행 상태를 유지한다.
-        stateRepository.saveIfAbsent(clock.instant());
+        stateRepository.saveIfAbsent(Objects.requireNonNull(startedAt));
     }
 
     @Transactional(timeout = 3)

@@ -78,8 +78,11 @@ class DeviceActivityAggregationServiceIntegrationTest {
 
     @Test
     void 처음_초기화하면_수집_시작_시각을_저장하고_집계_성공_상태는_비워_둔다() {
-        // given / when
-        service.initialize();
+        // given: 초기화가 늦어져도 전달받은 실제 수집 시작 시각을 사용한다.
+        when(clock.instant()).thenReturn(STARTED_AT.plusSeconds(86_400));
+
+        // when
+        service.initialize(STARTED_AT);
 
         // then
         assertThat(stateRepository.findAll()).singleElement().satisfies(state -> {
@@ -94,7 +97,7 @@ class DeviceActivityAggregationServiceIntegrationTest {
     @Test
     void 다시_초기화해도_최초_시각과_기존_집계_진행_상태는_유지한다() {
         // given
-        service.initialize();
+        service.initialize(clock.instant());
         Instant aggregatedAt = STARTED_AT.plusSeconds(86_400);
         LocalDate finalizedDate = LocalDate.of(2026, 9, 17);
         jdbcClient.sql("""
@@ -107,7 +110,7 @@ class DeviceActivityAggregationServiceIntegrationTest {
         when(clock.instant()).thenReturn(STARTED_AT.plusSeconds(172_800));
 
         // when
-        service.initialize();
+        service.initialize(clock.instant());
 
         // then
         DeviceActivityAggregationState state = stateRepository.findById(1L).orElseThrow();
@@ -127,7 +130,7 @@ class DeviceActivityAggregationServiceIntegrationTest {
                 results.add(executor.submit(() -> {
                     ready.countDown();
                     assertThat(ready.await(5, TimeUnit.SECONDS)).isTrue();
-                    service.initialize();
+                    service.initialize(clock.instant());
                     return null;
                 }));
             }
@@ -158,7 +161,7 @@ class DeviceActivityAggregationServiceIntegrationTest {
     void KST_날짜가_끝나면_두_플랫폼_집계와_완료_날짜를_함께_저장한다() {
         // given
         when(clock.instant()).thenReturn(Instant.parse("2026-09-16T15:00:00Z"));
-        service.initialize();
+        service.initialize(clock.instant());
         when(clock.instant()).thenReturn(Instant.parse("2026-09-17T14:59:59Z"));
 
         // when / then
@@ -177,7 +180,7 @@ class DeviceActivityAggregationServiceIntegrationTest {
     @Test
     void 누락된_날짜는_수집_시작일부터_어제까지_하루씩_이어_처리한다() {
         // given
-        service.initialize();
+        service.initialize(clock.instant());
         when(clock.instant()).thenReturn(STARTED_AT.plusSeconds(3 * 86_400));
 
         // when
@@ -198,7 +201,7 @@ class DeviceActivityAggregationServiceIntegrationTest {
     @Test
     void 완료_날짜_갱신이_실패하면_두_플랫폼_집계도_롤백하고_재시도할_수_있다() {
         // given
-        service.initialize();
+        service.initialize(clock.instant());
         when(clock.instant()).thenReturn(STARTED_AT.plusSeconds(86_400));
         jdbcClient.sql("""
                 ALTER TABLE device_activity_aggregation_states ADD CONSTRAINT ck_test_finalize_failure
@@ -220,7 +223,7 @@ class DeviceActivityAggregationServiceIntegrationTest {
     @Test
     void 현재_집계를_반환하고_KST_자정부터_새_날짜의_DAU로_갱신한다() {
         // given
-        service.initialize();
+        service.initialize(clock.instant());
         Device device = deviceRepository.save(기본_기기_빌더().platform(DevicePlatform.ANDROID).build());
         createdDeviceIds.add(device.getId());
         activityService.save(device.getPublicId(), STARTED_AT);
@@ -257,7 +260,7 @@ class DeviceActivityAggregationServiceIntegrationTest {
     @Test
     void 활동이_없어도_정상_집계는_0과_성공_시각을_반환한다() {
         // given
-        service.initialize();
+        service.initialize(clock.instant());
 
         // when
         DeviceActivitySnapshot snapshot = service.update();
@@ -272,7 +275,7 @@ class DeviceActivityAggregationServiceIntegrationTest {
     @Test
     void 성공_시각_저장이_실패하면_결과를_반환하지_않고_이전_성공_시각을_유지한다() {
         // given
-        service.initialize();
+        service.initialize(clock.instant());
         service.update();
         Instant nextAttempt = STARTED_AT.plusSeconds(300);
         when(clock.instant()).thenReturn(nextAttempt);
