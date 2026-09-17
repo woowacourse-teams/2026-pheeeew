@@ -1,6 +1,6 @@
 # 운영 Alloy 연결
 
-운영 EC2 한 대에서 앱과 별도 Alloy 컨테이너를 실행해요. 앱 지표는 60초마다 읽고, 검토된 HTTP 오류·느린 요청 로그만 Grafana Cloud로 전송해요. 별도 Prometheus 서버나 EC2는 만들지 않아요.
+운영 EC2 한 대에서 앱과 별도 Alloy 컨테이너를 실행해요. 앱 지표는 60초마다 읽고, 검토된 HTTP 오류·느린 요청과 기기 활동 기록·집계 오류 로그를 Grafana Cloud로 전송해요. 별도 Prometheus 서버나 EC2는 만들지 않아요.
 
 ## 파일과 연결
 
@@ -70,15 +70,25 @@
    {job="pheeeew-api",environment="prod"} | json
    ```
 
-   오류나 1초 이상 걸린 HTTP 요청이 없다면 로그 결과가 비어 있는 것이 정상이에요. 확인하려고 운영 서버에 의도적으로 오류·부하를 만들지는 않아요.
+   HTTP 오류·1초 이상 걸린 요청과 기기 활동 기록·집계 오류가 없다면 로그 결과가 비어 있는 것이 정상이에요. 확인하려고 운영 서버에 의도적으로 오류·부하를 만들지는 않아요.
 
 ## 수집 범위와 자원
 
-- 지표: HTTP 요청 시간·횟수, 지도 조회 시간·결과, JVM 메모리·GC·스레드, 앱 프로세스 CPU·가동 시간, DB 커넥션 풀, 수집 상태. `config.alloy`의 이름 허용 목록 밖 지표는 보내지 않아요.
-- 로그: `RequestLogWriter`의 `http_request_failed`, `http_request_slow` 이벤트만 전송해요. 다른 logger, 다른 event, 잘못된 JSON은 제외해요. `correlationId`와 오류 위치 등은 JSON 본문에 유지하며 라벨로 승격하지 않아요.
+- 지표: HTTP 요청 시간·횟수, 지도·V2 목록 조회 시간·결과, 플랫폼별 앱 버전 확인 횟수와 DAU·MAU, 활동 수집 시작·마지막 집계 성공 시각과 기록·집계 실패 횟수, JVM 메모리·GC·스레드, 앱 프로세스 CPU·가동 시간, DB 커넥션 풀, 수집 상태. `config.alloy`의 이름 허용 목록 밖 지표는 보내지 않아요.
+- 로그: 아래 클래스와 이벤트 조합만 전송해요. 다른 logger, 다른 event, 잘못된 JSON은 제외해요. `correlationId`와 오류 위치 등은 JSON 본문에 유지하며 라벨로 승격하지 않아요.
 - 앱에서 제공하는 JVM·프로세스 지표가 중심이에요. EC2 전체 메모리·디스크, CPU 크레딧, RDS 내부 상태, nginx·Cloudflare 로그, traces·profiles는 이번 수집 범위에 없어요. HTTP 지표 또한 앱에 도달한 요청만 반영해요.
 - Alloy 메모리 상한은 256MiB, Go 메모리 목표는 192MiB, CPU 상한은 0.25 CPU예요. 실제 사용량이나 운영 EC2의 여유를 보장하는 값은 아니에요. 최초 배포 전 `free -h`, `df -h`, `docker stats --no-stream`으로 확인하고 배포 후에도 실제 부하에서 관찰해요.
 - Alloy 버전은 `v1.19.2`로 고정했어요. ARM64 이미지를 사용한 로컬 실행을 검증해요. 호스트 포트를 추가로 공개하지 않으며 관리 HTTP는 컨테이너의 `127.0.0.1:12345`에서만 받아요.
+
+| 로그 클래스 | 허용 이벤트 | 수준 |
+| --- | --- | --- |
+| `com.pheeeew.common.logging.RequestLogWriter` | `http_request_failed`, `http_request_slow` | 기존 HTTP 로그 정책 유지 |
+| `com.pheeeew.activity.infra.DeviceActivityRecorder` | `device_activity_record_failed` | `ERROR`만 허용 |
+| `com.pheeeew.activity.infra.DeviceActivityAggregationScheduler` | `device_activity_aggregation_failed` | `ERROR`만 허용 |
+
+활성 기기는 앱에서 기본 5분 간격으로 집계하고 Alloy는 마지막 성공 결과를 60초마다 읽어요. 초기 집계 전이나 KST 날짜가 바뀐 뒤 오늘 집계가 성공하기 전에는 활성 기기 수가 `NaN`이므로 0명으로 해석하지 않아요. 집계 시각 지표는 epoch 초 단위이며 갱신 지연을 판단할 때 사용해요.
+
+V2 목록 조회 시간은 현재 횟수·합계·최댓값을 제공해요. 허용 목록에 `_bucket`이 있어도 앱에서 히스토그램을 생성하지 않으면 이 지표로 p95·p99를 계산할 수 없어요. 활동 원본은 앱 DB에 보관하며 자동 삭제하지 않아요. 아래 Alloy WAL·로그 파일 보관 설정과는 별개예요.
 
 ## 재시작과 보관 한계
 
@@ -113,6 +123,14 @@ SSH를 위한 Cloudflare 터널은 그대로 사용해요. 수집은 `Alloy → 
 외부 전송은 `Alloy → Grafana Cloud HTTPS(443)` 방향이에요. EC2의 DNS와 outbound HTTPS 연결은 필요하며, outbound를 제한했다면 실제 두 전송 호스트에 대한 허용을 확인해요. SSH용 Cloudflare 서비스 토큰을 Grafana 인증에 사용하지 않아요. 기존 인바운드·터널 설정은 변경하지 않아요.
 
 ## 검증 범위
+
+허용 목록을 수정한 뒤에는 BE 디렉터리에서 다음 검증을 실행해요. Python 3와 Docker가 필요하며 Compose에 고정된 Alloy 이미지를 사용해요.
+
+```bash
+python3 docker/alloy/verify.py
+```
+
+2026-09-17 검증은 전체 Alloy 설정 문법, 지표 이름 허용·차단, 실제 Loki 파이프라인의 로그 허용·차단과 최종 라벨을 확인해요. logger와 event의 잘못된 조합, 필수 필드 누락, 활동 로그의 잘못된 수준, 잘못된 JSON도 검사해요. 가짜 로그와 자격 증명만 사용하고 컨테이너 외부 네트워크를 차단해요. 지표 이름 검사는 정규식 검사이며 실제 scrape·remote write나 Cloud 수신을 검증하지 않아요.
 
 2026-09-11, ARM64의 Alloy v1.19.2와 격리된 Docker 가짜 앱·수신 서버로 아래를 확인했어요. 실제 토큰과 Grafana Cloud는 사용하지 않았어요.
 
