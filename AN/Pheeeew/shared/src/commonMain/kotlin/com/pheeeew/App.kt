@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.PredictiveBackContent
 import com.pheeeew.core.navigation.Screen
@@ -50,10 +51,12 @@ fun App(
     reportSigh: ReportSighUseCase,
     mapPerformanceLogger: MapPerformanceLogger,
     ensureDeviceRegistered: EnsureDeviceRegisteredUseCase? = null,
+    monitoring: Monitoring? = null,
 ) {
     AppTheme {
         val coroutineScope = rememberCoroutineScope()
         var screen by remember { mutableStateOf(Screen.Splash) }
+        LaunchedEffect(screen) { monitoring?.setScreen(screen.name.lowercase()) }
         var firstSighGuideActive by remember { mutableStateOf(!hasCompletedFirstSighGuide) }
 
         val completeFirstSighGuide = {
@@ -64,7 +67,7 @@ fun App(
         }
         val mapViewModel: MapViewModel =
             viewModel {
-                MapViewModel(sighRepository, createSigh, locationDependencies, mapPerformanceLogger)
+                MapViewModel(sighRepository, createSigh, locationDependencies, mapPerformanceLogger, monitoring)
             }
         val sighModerationViewModel: SighModerationViewModel =
             viewModel {

@@ -94,6 +94,9 @@ fun MapScreen(
     onDismissSighReport: () -> Unit,
     onDismissReportSuccess: () -> Unit,
     onBeginSighRegistration: () -> Unit,
+    onAcceptSighStart: (Boolean) -> Boolean = { true },
+    onRejectSighStart: () -> Unit = {},
+    onInterruptSighStart: () -> Unit = {},
     onBreathCompleted: () -> Unit,
     onSubmitMemo: (String) -> Unit,
     onSkipMemo: () -> Unit,
@@ -474,8 +477,23 @@ fun MapScreen(
                             startSignal = if (awaitingBreath != null) breathStartSignal else 0,
                             onIdleClick = {
                                 if (uiState.sighRelease is SighReleaseState.Idle) {
-                                    coroutineScope.launch {
-                                        if (ensureRegistrationLocation()) onBeginSighRegistration()
+                                    if (onAcceptSighStart(guideMode)) {
+                                        coroutineScope.launch {
+                                            var began = false
+                                            var interrupted = false
+                                            try {
+                                                if (ensureRegistrationLocation()) {
+                                                    onBeginSighRegistration()
+                                                    began = true
+                                                }
+                                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                                interrupted = true
+                                                onInterruptSighStart()
+                                                throw cancelled
+                                            } finally {
+                                                if (!began && !interrupted) onRejectSighStart()
+                                            }
+                                        }
                                     }
                                 } else {
                                     breathStartSignal += 1

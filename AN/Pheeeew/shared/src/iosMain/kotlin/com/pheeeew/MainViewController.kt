@@ -2,6 +2,7 @@ package com.pheeeew
 
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
+import com.pheeeew.core.monitoring.IosMonitoring
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.data.local.device.InMemoryAccessTokenStore
 import com.pheeeew.data.local.device.IosDeviceIdStorage
@@ -43,6 +44,7 @@ fun MainViewController() =
             }
         App(
             appVersion = appVersion,
+            monitoring = IosMonitoring.instance,
             hasCompletedOnboarding = firstSighGuidePreferences.hasCompletedOnboarding,
             hasCompletedFirstSighGuide = firstSighGuidePreferences.hasCompletedFirstSighGuide,
             onOnboardingCompleted = {

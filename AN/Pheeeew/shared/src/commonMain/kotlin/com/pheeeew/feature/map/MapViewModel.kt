@@ -2,6 +2,7 @@ package com.pheeeew.feature.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.domain.exception.ApiException
@@ -46,6 +47,7 @@ class MapViewModel(
     private val createSigh: CreateSighUseCase,
     private val locationDependencies: LocationDependencies?,
     private val mapPerformanceLogger: MapPerformanceLogger,
+    private val monitoring: Monitoring? = null,
 ) : ViewModel() {
     private var nextCameraCommandId = 0L
     private var pendingRegistration: CreateSighCommand? = null
@@ -672,12 +674,33 @@ class MapViewModel(
         }
     }
 
+    private var sighStartPending = false
+
+    fun acceptSighStart(guideMode: Boolean): Boolean {
+        if (sighStartPending || _uiState.value.sighRelease !is SighReleaseState.Idle) return false
+        sighStartPending = true
+        monitoring?.beginAttempt(guideMode)
+        return true
+    }
+
+    fun rejectSighStart() {
+        sighStartPending = false
+        monitoring?.startFailed("location_unavailable")
+    }
+
+    fun interruptSighStart() {
+        sighStartPending = false
+        monitoring?.endAttempt("interrupted", "unknown")
+    }
+
     fun beginSighRegistration() {
+        sighStartPending = false
         val current = _uiState.value
         if (current.sighRelease !is SighReleaseState.Idle) return
         val location = (current.location.state as? LocationState.Available)?.location
 
         if (location == null) {
+            rejectSighStart()
             val message =
                 (current.location.state as? LocationState.Unavailable)?.reason?.toKoreanMessage()
                     ?: "GPS 수신이 원활하지 않습니다."
@@ -694,6 +717,7 @@ class MapViewModel(
                     requestId = Uuid.random().toString(),
                     coordinate = location.coordinate,
                 ).also { pendingMemoDraft = it }
+        monitoring?.memoEditing()
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.EditingMemo(draft)) }
     }
 
@@ -716,6 +740,7 @@ class MapViewModel(
                         coordinate = state.draft.coordinate,
                         memo = memo,
                     ).also { pendingRegistration = it }
+        monitoring?.memoFinished()
         _uiState.update { current ->
             current.copy(sighRelease = SighReleaseState.AwaitingBreath(command))
         }
@@ -733,6 +758,7 @@ class MapViewModel(
         ) {
             return
         }
+        monitoring?.endAttempt()
         clearPendingSigh()
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.Idle) }
     }
@@ -751,6 +777,7 @@ class MapViewModel(
 
     private fun submit(command: CreateSighCommand) {
         val submittingStartedAt = TimeSource.Monotonic.markNow()
+        val monitoringOrigin = monitoring?.beginSave()
         _uiState.update { state ->
             state.copy(
                 sighRelease = SighReleaseState.Submitting(command),
@@ -759,6 +786,7 @@ class MapViewModel(
         viewModelScope.launch {
             try {
                 val sighPin = createSigh(command).toPin()
+                monitoring?.saveResult(monitoringOrigin, true, submittingStartedAt.elapsedNow().inWholeMilliseconds)
                 waitForMinimumSubmittingDuration(submittingStartedAt)
 
                 sighOperationMutex.withLock {
@@ -790,6 +818,13 @@ class MapViewModel(
                     }
                 }
             } catch (e: ApiException) {
+                monitoring?.saveResult(
+                    monitoringOrigin,
+                    false,
+                    submittingStartedAt.elapsedNow().inWholeMilliseconds,
+                    e.code,
+                )
+                monitoring?.report(e, monitoringOrigin)
                 waitForMinimumSubmittingDuration(submittingStartedAt)
                 _uiState.update { state ->
                     state.copy(
@@ -813,6 +848,7 @@ class MapViewModel(
 
     fun cancelFailedSighRegistration(): Boolean {
         if (_uiState.value.sighRelease !is SighReleaseState.Error) return false
+        monitoring?.endAttempt()
         clearPendingSigh()
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.Idle) }
         return true

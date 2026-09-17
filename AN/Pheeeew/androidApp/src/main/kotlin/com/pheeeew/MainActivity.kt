@@ -70,6 +70,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             App(
                 appVersion = BuildConfig.VERSION_NAME,
+                monitoring = (application as PheeeewApplication).monitoring,
                 hasCompletedOnboarding = firstSighGuidePreferences.hasCompletedOnboarding,
                 hasCompletedFirstSighGuide = firstSighGuidePreferences.hasCompletedFirstSighGuide,
                 onOnboardingCompleted = {
