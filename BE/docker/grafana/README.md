@@ -19,7 +19,7 @@ Grafana가 패널별 쿼리로 Cloud에 저장된 데이터를 읽어요
 | 설정 | 역할 |
 | --- | --- |
 | `title`, `uid` | 대시보드 이름과 고유 식별자예요 |
-| `panels` | 데이터 패널 27개와 구역 제목·안내 11개로 구성된 목록이에요 |
+| `panels` | 데이터 패널 29개와 구역 제목·안내 11개로 구성된 목록이에요 |
 | `datasource`, `targets[].expr` | 어떤 저장소에서 어떤 쿼리로 데이터를 읽을지 정해요 |
 | `gridPos`, `fieldConfig` | 패널의 위치·크기, 초·바이트·백분율 같은 표시 단위를 정해요 |
 | `time`, `refresh` | 처음 볼 시간 범위와 화면을 새로 조회할 주기를 정해요 |
@@ -111,6 +111,20 @@ DAU·MAU 아래에 두 시각을 함께 표시해요. 기본 시간대는 대시
 - **활동 수집 시작 시각:** DB에 저장한 최초 수집 시작 시각이며 서버 재시작 후에도 유지해요. 첫 집계 성공 전에는 두 시각 모두 `집계 전·확인 필요`로 표시해요. 수집 시작 후 30일 경과 여부는 MAU 해석을 위한 정보이며 활동 기록 누락이나 집계 장애가 없었다는 보장은 아니에요.
 
 앱 지표는 epoch 초 단위이고 패널은 1,000을 곱해 날짜 표시용 밀리초로 변환해요. 데이터가 없을 때 0이나 현재 시각으로 대신 채우지 않아요. [Grafana 날짜 표시 단위 안내](https://grafana.com/docs/grafana-cloud/visualizations/panels-visualizations/configure-standard-options/)
+
+### 활동 기록·집계 실패
+
+같은 구역에서 선택 기간의 실패 횟수와 활동 오류 로그를 함께 확인해요. 횟수는 Counter 증가량의 추정치이며 반올림해 표시해요. 계산할 표본이 없으면 0으로 채우지 않아요.
+
+| 표시 | 지표와 범위 |
+| --- | --- |
+| 활동 저장 실패 | `pheeeew_activity_record_failures_total{reason="save_failed"}`: 비동기 DB 저장 실패 |
+| 작업 큐 등록 거절 | `pheeeew_activity_record_failures_total{reason="queue_rejected"}`: 실행기가 활동 기록 작업을 받지 못함 |
+| 집계 실패 | `pheeeew_activity_aggregation_failures_total`: 초기화·당일 집계·과거 날짜 확정 중 실패 |
+
+실패 횟수는 누락된 고유 기기 수가 아니에요. 같은 기기의 후속 요청이나 다음 집계 실행에서 성공할 수 있어요. 과거 날짜 확정만 실패한 경우 오늘 DAU·MAU와 마지막 집계 시각은 이미 갱신됐을 수 있어요.
+
+로그 패널은 `device_activity_record_failed`, `device_activity_aggregation_failed`의 `ERROR`만 조회하고 `verification=true` 합성 검증 로그는 제외해요. 한국어 오류 메시지와 `reason`, 예외 원문을 제거한 `errorStack`을 펼쳐 확인해요. 기록 오류는 두 원인을 합쳐 1분에 최대 1건만 남기지만 실패 Counter는 매번 증가하므로 **실패 횟수와 로그 건수는 다를 수 있어요.** 로그가 비었다는 사실만으로 정상이라고 판단하지 않아요.
 
 ## 최초 알림 세 가지
 

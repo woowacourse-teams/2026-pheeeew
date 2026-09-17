@@ -2742,6 +2742,163 @@
         "mode": "markdown",
         "content": "**집계 상태**　기본 집계 간격은 5분, 지표 수집 간격은 60초예요. 마지막 집계 기준 시각이 조회 종료 시점보다 계속 뒤처지면 갱신 상태를 확인해요. 날짜가 표시된다는 사실만으로 정상 집계를 뜻하지 않아요.\n\n**MAU 수집 초기**　수집 시작 후 30일 전에는 수집된 기간만 반영해요. 30일 경과가 활동 기록의 누락 없음을 보장하지는 않아요."
       }
+    },
+    {
+      "id": 28,
+      "type": "stat",
+      "title": "활동 기록·집계 실패 · 선택 기간",
+      "description": "선택 기간의 실패 Counter 증가량 추정치예요. 저장 실패, 큐 등록 거절, 집계 실패를 구분해요. 집계 실패는 초기화·당일 집계·과거 날짜 확정 실패를 포함해요. 재시도도 포함하며 누락된 고유 기기 수가 아니에요. 기록 오류 로그는 1분에 최대 1건으로 제한되므로 로그 건수와 일치하지 않을 수 있어요. 표본이 없으면 0으로 채우지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 113,
+        "w": 24,
+        "h": 6
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(increase(pheeeew_activity_record_failures_total{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",reason=\"save_failed\"}[$__range]))",
+          "legendFormat": "활동 저장 실패",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(increase(pheeeew_activity_record_failures_total{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",reason=\"queue_rejected\"}[$__range]))",
+          "legendFormat": "작업 큐 등록 거절",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        },
+        {
+          "refId": "C",
+          "expr": "sum(increase(pheeeew_activity_aggregation_failures_total{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\"}[$__range]))",
+          "legendFormat": "집계 실패",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "type": "logs",
+      "title": "활동 기록·집계 오류 로그",
+      "description": "활동 기록·집계의 ERROR 이벤트만 표시해요. verification=true 합성 검증 로그는 제외해요. 한국어 오류 메시지와 reason·errorStack을 펼쳐 확인해요. 오류가 없거나 로그 제한·수집 문제로 비어 있을 수 있으므로 실패 횟수와 집계 시각을 함께 확인해요.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 119,
+        "w": 24,
+        "h": 11
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",level=\"ERROR\",event=~\"device_activity_record_failed|device_activity_aggregation_failed\"} | json | verification != \"true\"",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "queryType": "range",
+          "editorMode": "code",
+          "maxLines": 100
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": false,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      }
     }
   ],
   "__inputs": [
