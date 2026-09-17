@@ -52,6 +52,12 @@ fun createAndroidMonitoring(
                     event.message = null
                     event.serverName = null
                     event.extras = null
+                    event.contexts.device?.apply {
+                        id = null
+                        name = null
+                    }
+                    event.contexts.app?.deviceAppHash = null
+                    event.removeTag("app.device")
                     event.exceptions?.forEach { it.value = null }
                     event.user =
                         event.user?.let {

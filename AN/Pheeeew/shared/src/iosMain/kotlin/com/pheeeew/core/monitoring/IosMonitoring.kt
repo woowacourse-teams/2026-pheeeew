@@ -102,6 +102,34 @@ object IosMonitoring {
                             request = null
                             message = null
                             extra = null
+                            user = user?.userId?.let { cocoapods.Sentry.SentryUser(userId = it) }
+                            context =
+                                context?.mapValues { (key, fields) ->
+                                    if (key != "device" && key != "app") {
+                                        fields
+                                    } else {
+                                        (fields as? Map<*, *>)
+                                            // Rebuilding native dictionaries changes CFBoolean values to
+                                            // numbers. Omit these optional fields instead of sending invalid data.
+                                            ?.filterKeys { field ->
+                                                val excluded =
+                                                    if (key == "device") {
+                                                        setOf(
+                                                            "id",
+                                                            "name",
+                                                            "simulator",
+                                                            "charging",
+                                                            "online",
+                                                            "low_memory",
+                                                        )
+                                                    } else {
+                                                        setOf("device_app_hash", "in_foreground", "split_apks")
+                                                    }
+                                                field !in excluded
+                                            } ?: fields
+                                    }
+                                }
+                            tags = tags?.filterKeys { it != "app.device" }
                             exceptions?.forEach { exception ->
                                 (exception as? cocoapods.Sentry.SentryException)?.value =
                                     "[redacted]"
