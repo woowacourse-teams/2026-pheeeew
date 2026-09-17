@@ -11,8 +11,8 @@ object BreathStrengthScorer {
         val raw =
             if (audible) {
                 amplitude.coerceIn(0f, 1f) * (
-                    0.72f + lowFrequencyPresence.coerceIn(0f, 1f) * 0.20f +
-                        noisyTexture.coerceIn(0f, 1f) * 0.08f
+                    0.25f + lowFrequencyPresence.coerceIn(0f, 1f) * 0.50f +
+                        noisyTexture.coerceIn(0f, 1f) * 0.25f
                 )
             } else {
                 0f
