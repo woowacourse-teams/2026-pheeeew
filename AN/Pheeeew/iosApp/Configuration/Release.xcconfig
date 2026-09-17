@@ -3,3 +3,8 @@
 SLASH = /
 API_BASE_URL = https:$(SLASH)/api.pheeeew.com
 APP_ATTEST_ENVIRONMENT = production
+
+// Release must explicitly choose true or false in local/CI configuration.
+MONITORING_ENABLED =
+#include? "Monitoring.local.xcconfig"
+MONITORING_ENVIRONMENT = prod
