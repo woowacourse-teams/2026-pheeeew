@@ -48,6 +48,570 @@
       }
     },
     {
+      "id": 24,
+      "type": "stat",
+      "title": "DAU · 전체",
+      "description": "조회 종료 시점의 KST 날짜 00시부터 마지막 집계 시점까지 활동한 고유 기기 계정 수예요. 조회만 한 기기도 포함하며 실제 사람 수와는 달라요. Android·iOS 합계를 표시해요. 선택 기간의 합계가 아니라 조회 종료 시점에 수집된 마지막 집계값이며 기본 5분 간격으로 갱신돼요. 당일 집계 실패 시 이전 성공값이 유지될 수 있어요. 집계 전·KST 날짜 전환 후 미집계는 0으로 표시하지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 3,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "집계 전·확인 필요",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#7DB5FF"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(pheeeew_activity_dau{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=~\"android|ios\"})",
+          "legendFormat": "전체",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "stat",
+      "title": "DAU · Android",
+      "description": "조회 종료 시점의 KST 날짜 00시부터 마지막 집계 시점까지 활동한 고유 기기 계정 수예요. 조회만 한 기기도 포함하며 실제 사람 수와는 달라요. Android 기기만 표시해요. 선택 기간의 합계가 아니라 조회 종료 시점에 수집된 마지막 집계값이며 기본 5분 간격으로 갱신돼요. 당일 집계 실패 시 이전 성공값이 유지될 수 있어요. 집계 전·KST 날짜 전환 후 미집계는 0으로 표시하지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 3,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "집계 전·확인 필요",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#60D5C2"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(pheeeew_activity_dau{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=\"android\"})",
+          "legendFormat": "Android",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "type": "stat",
+      "title": "DAU · iOS",
+      "description": "조회 종료 시점의 KST 날짜 00시부터 마지막 집계 시점까지 활동한 고유 기기 계정 수예요. 조회만 한 기기도 포함하며 실제 사람 수와는 달라요. iOS 기기만 표시해요. 선택 기간의 합계가 아니라 조회 종료 시점에 수집된 마지막 집계값이며 기본 5분 간격으로 갱신돼요. 당일 집계 실패 시 이전 성공값이 유지될 수 있어요. 집계 전·KST 날짜 전환 후 미집계는 0으로 표시하지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 3,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "집계 전·확인 필요",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#F2C96D"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(pheeeew_activity_dau{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=\"ios\"})",
+          "legendFormat": "iOS",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 25,
+      "type": "stat",
+      "title": "MAU · 전체",
+      "description": "조회 종료 시점의 KST 날짜를 포함한 최근 30일 동안 활동한 고유 기기 계정 수예요. 조회만 한 기기도 포함하며 실제 사람 수와는 달라요. Android·iOS 합계를 표시해요. 선택 기간의 합계가 아니라 조회 종료 시점에 수집된 마지막 집계값이며 기본 5분 간격으로 갱신돼요. 당일 집계 실패 시 이전 성공값이 유지될 수 있어요. 집계 전·KST 날짜 전환 후 미집계는 0으로 표시하지 않아요. 수집 시작 후 30일 전에는 수집된 기간만 반영한 값이에요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 3,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "집계 전·확인 필요",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#7DB5FF"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(pheeeew_activity_mau{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=~\"android|ios\"})",
+          "legendFormat": "전체",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "type": "stat",
+      "title": "MAU · Android",
+      "description": "조회 종료 시점의 KST 날짜를 포함한 최근 30일 동안 활동한 고유 기기 계정 수예요. 조회만 한 기기도 포함하며 실제 사람 수와는 달라요. Android 기기만 표시해요. 선택 기간의 합계가 아니라 조회 종료 시점에 수집된 마지막 집계값이며 기본 5분 간격으로 갱신돼요. 당일 집계 실패 시 이전 성공값이 유지될 수 있어요. 집계 전·KST 날짜 전환 후 미집계는 0으로 표시하지 않아요. 수집 시작 후 30일 전에는 수집된 기간만 반영한 값이에요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 3,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "집계 전·확인 필요",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#60D5C2"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(pheeeew_activity_mau{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=\"android\"})",
+          "legendFormat": "Android",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "type": "stat",
+      "title": "MAU · iOS",
+      "description": "조회 종료 시점의 KST 날짜를 포함한 최근 30일 동안 활동한 고유 기기 계정 수예요. 조회만 한 기기도 포함하며 실제 사람 수와는 달라요. iOS 기기만 표시해요. 선택 기간의 합계가 아니라 조회 종료 시점에 수집된 마지막 집계값이며 기본 5분 간격으로 갱신돼요. 당일 집계 실패 시 이전 성공값이 유지될 수 있어요. 집계 전·KST 날짜 전환 후 미집계는 0으로 표시하지 않아요. 수집 시작 후 30일 전에는 수집된 기간만 반영한 값이에요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 3,
+        "w": 4,
+        "h": 5
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "집계 전·확인 필요",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#F2C96D"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 0,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "집계 전·확인 필요",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 34,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(pheeeew_activity_mau{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=\"ios\"})",
+          "legendFormat": "iOS",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
       "id": 1,
       "type": "stat",
       "title": "수집 연결",
@@ -58,7 +622,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 3,
+        "y": 8,
         "w": 4,
         "h": 5
       },
@@ -162,7 +726,7 @@
       },
       "gridPos": {
         "x": 4,
-        "y": 3,
+        "y": 8,
         "w": 4,
         "h": 5
       },
@@ -255,7 +819,7 @@
       },
       "gridPos": {
         "x": 8,
-        "y": 3,
+        "y": 8,
         "w": 4,
         "h": 5
       },
@@ -355,7 +919,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 3,
+        "y": 8,
         "w": 4,
         "h": 5
       },
@@ -454,7 +1018,7 @@
       },
       "gridPos": {
         "x": 16,
-        "y": 3,
+        "y": 8,
         "w": 4,
         "h": 5
       },
@@ -554,7 +1118,7 @@
       },
       "gridPos": {
         "x": 20,
-        "y": 3,
+        "y": 8,
         "w": 4,
         "h": 5
       },
@@ -651,7 +1215,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 8,
+        "y": 13,
         "w": 24,
         "h": 1
       }
@@ -667,7 +1231,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 9,
+        "y": 14,
         "w": 12,
         "h": 8
       },
@@ -745,7 +1309,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 9,
+        "y": 14,
         "w": 12,
         "h": 8
       },
@@ -864,7 +1428,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 17,
+        "y": 22,
         "w": 24,
         "h": 1
       }
@@ -880,7 +1444,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 18,
+        "y": 23,
         "w": 12,
         "h": 8
       },
@@ -959,7 +1523,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 18,
+        "y": 23,
         "w": 12,
         "h": 8
       },
@@ -1137,7 +1701,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 26,
+        "y": 31,
         "w": 12,
         "h": 8
       },
@@ -1217,7 +1781,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 26,
+        "y": 31,
         "w": 12,
         "h": 8
       },
@@ -1294,7 +1858,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 34,
+        "y": 39,
         "w": 24,
         "h": 1
       }
@@ -1310,7 +1874,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 35,
+        "y": 40,
         "w": 12,
         "h": 8
       },
@@ -1460,7 +2024,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 35,
+        "y": 40,
         "w": 12,
         "h": 8
       },
@@ -1540,7 +2104,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 43,
+        "y": 48,
         "w": 12,
         "h": 8
       },
@@ -1644,7 +2208,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 43,
+        "y": 48,
         "w": 12,
         "h": 8
       },
@@ -1720,7 +2284,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 51,
+        "y": 56,
         "w": 24,
         "h": 1
       }
@@ -1732,7 +2296,7 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 52,
+        "y": 57,
         "w": 24,
         "h": 3
       },
@@ -1752,7 +2316,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 55,
+        "y": 60,
         "w": 24,
         "h": 11
       },
@@ -1787,7 +2351,7 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 66,
+        "y": 71,
         "w": 24,
         "h": 4
       },
@@ -1804,7 +2368,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 70,
+        "y": 75,
         "w": 24,
         "h": 1
       }
@@ -1820,7 +2384,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 71,
+        "y": 76,
         "w": 12,
         "h": 8
       },
@@ -1912,7 +2476,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 71,
+        "y": 76,
         "w": 12,
         "h": 8
       },
@@ -1987,7 +2551,7 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 79,
+        "y": 84,
         "w": 24,
         "h": 1
       }
@@ -2003,7 +2567,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 80,
+        "y": 85,
         "w": 12,
         "h": 8
       },
@@ -2081,7 +2645,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 80,
+        "y": 85,
         "w": 12,
         "h": 8
       },
@@ -2172,7 +2736,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 88,
+        "y": 93,
         "w": 12,
         "h": 8
       },
@@ -2250,7 +2814,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 88,
+        "y": 93,
         "w": 12,
         "h": 8
       },
@@ -2326,222 +2890,10 @@
       "panels": [],
       "gridPos": {
         "x": 0,
-        "y": 96,
+        "y": 101,
         "w": 24,
         "h": 1
       }
-    },
-    {
-      "id": 24,
-      "type": "stat",
-      "title": "DAU · KST 일간 활성 기기",
-      "description": "조회 종료 시점의 KST 날짜 00시부터 마지막 집계 시점까지 활동한 고유 기기 계정 수예요. 조회만 한 기기도 포함하며 실제 사람 수와는 달라요. Android·iOS별 값과 두 플랫폼 합계를 표시해요. 선택 기간의 합계가 아니라 조회 종료 시점에 수집된 마지막 집계값이며 기본 5분 간격으로 갱신돼요. 당일 집계 실패 시 이전 성공값이 유지될 수 있어요. 집계 전·KST 날짜 전환 후 미집계는 0으로 표시하지 않아요.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 97,
-        "w": 12,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "집계 전·확인 필요",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "decimals": 0,
-          "mappings": [
-            {
-              "type": "special",
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "집계 전·확인 필요",
-                  "color": "#8E8E9E"
-                }
-              }
-            },
-            {
-              "type": "special",
-              "options": {
-                "match": "nan",
-                "result": {
-                  "text": "집계 전·확인 필요",
-                  "color": "#8E8E9E"
-                }
-              }
-            }
-          ],
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value_and_name",
-        "orientation": "auto",
-        "wideLayout": true,
-        "text": {
-          "valueSize": 34,
-          "titleSize": 13
-        },
-        "justifyMode": "center"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (platform) (pheeeew_activity_dau{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=~\"android|ios\"})",
-          "legendFormat": "{{platform}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "range": false,
-          "instant": true,
-          "interval": "1m"
-        },
-        {
-          "refId": "B",
-          "expr": "sum(pheeeew_activity_dau{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=~\"android|ios\"})",
-          "legendFormat": "전체",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "range": false,
-          "instant": true,
-          "interval": "1m"
-        }
-      ]
-    },
-    {
-      "id": 25,
-      "type": "stat",
-      "title": "MAU · 최근 30일 활성 기기",
-      "description": "조회 종료 시점의 KST 날짜를 포함한 최근 30일 동안 활동한 고유 기기 계정 수예요. 조회만 한 기기도 포함하며 실제 사람 수와는 달라요. Android·iOS별 값과 두 플랫폼 합계를 표시해요. 선택 기간의 합계가 아니라 조회 종료 시점에 수집된 마지막 집계값이며 기본 5분 간격으로 갱신돼요. 당일 집계 실패 시 이전 성공값이 유지될 수 있어요. 집계 전·KST 날짜 전환 후 미집계는 0으로 표시하지 않아요. 수집 시작 후 30일 전에는 수집된 기간만 반영한 값이에요.",
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 97,
-        "w": 12,
-        "h": 8
-      },
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "noValue": "집계 전·확인 필요",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "decimals": 0,
-          "mappings": [
-            {
-              "type": "special",
-              "options": {
-                "match": "null",
-                "result": {
-                  "text": "집계 전·확인 필요",
-                  "color": "#8E8E9E"
-                }
-              }
-            },
-            {
-              "type": "special",
-              "options": {
-                "match": "nan",
-                "result": {
-                  "text": "집계 전·확인 필요",
-                  "color": "#8E8E9E"
-                }
-              }
-            }
-          ],
-          "min": 0
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "last"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "textMode": "value_and_name",
-        "orientation": "auto",
-        "wideLayout": true,
-        "text": {
-          "valueSize": 34,
-          "titleSize": 13
-        },
-        "justifyMode": "center"
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "expr": "sum by (platform) (pheeeew_activity_mau{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=~\"android|ios\"})",
-          "legendFormat": "{{platform}}",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "range": false,
-          "instant": true,
-          "interval": "1m"
-        },
-        {
-          "refId": "B",
-          "expr": "sum(pheeeew_activity_mau{job=\"pheeeew-api\",environment=\"prod\",instance=\"pheeeew-prod\",platform=~\"android|ios\"})",
-          "legendFormat": "전체",
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "editorMode": "code",
-          "range": false,
-          "instant": true,
-          "interval": "1m"
-        }
-      ]
     },
     {
       "id": 26,
@@ -2554,7 +2906,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 105,
+        "y": 102,
         "w": 12,
         "h": 5
       },
@@ -2646,7 +2998,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 105,
+        "y": 102,
         "w": 12,
         "h": 5
       },
@@ -2734,7 +3086,7 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 110,
+        "y": 107,
         "w": 24,
         "h": 3
       },
@@ -2754,7 +3106,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 113,
+        "y": 110,
         "w": 24,
         "h": 6
       },
@@ -2872,7 +3224,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 119,
+        "y": 116,
         "w": 24,
         "h": 11
       },
