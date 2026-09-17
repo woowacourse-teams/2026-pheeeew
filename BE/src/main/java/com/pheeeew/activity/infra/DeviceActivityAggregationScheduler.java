@@ -22,6 +22,8 @@ public class DeviceActivityAggregationScheduler {
     private final Instant collectionStartedAt;
     private final Counter failures;
     private final ExceptionLogFormatter exceptionLogFormatter = new ExceptionLogFormatter();
+    // 단일 스케줄러의 순차 실행 안에서 초기화 성공 여부를 관리한다.
+    private boolean initialized;
 
     public DeviceActivityAggregationScheduler(
             DeviceActivityAggregationService aggregationService,
@@ -41,9 +43,16 @@ public class DeviceActivityAggregationScheduler {
     public void update() {
         try {
             // 초기화도 스케줄러 안에서 수행하여 실패가 애플리케이션 기동을 막지 않도록 한다.
-            aggregationService.initialize(collectionStartedAt);
+            if (!initialized) {
+                aggregationService.initialize(collectionStartedAt);
+                initialized = true;
+            }
+
             // 서비스 트랜잭션이 성공적으로 끝난 결과만 지표에 반영한다.
             metrics.update(aggregationService.update());
+
+            // 밀린 집계가 많아도 한 실행에서는 가장 오래된 미완료 날짜 하루만 처리한다.
+            aggregationService.finalizeNextDate();
         } catch (RuntimeException failure) {
             failures.increment();
             // SQL 값이나 기기 식별자가 포함될 수 있는 예외 원문은 남기지 않는다.

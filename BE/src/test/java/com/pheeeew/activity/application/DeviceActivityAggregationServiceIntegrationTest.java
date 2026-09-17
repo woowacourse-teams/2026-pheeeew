@@ -12,10 +12,13 @@ import com.pheeeew.activity.domain.DeviceActivitySummary;
 import com.pheeeew.activity.domain.repository.DeviceActivityAggregationStateRepository;
 import com.pheeeew.activity.domain.repository.DeviceActivitySummaryRepository;
 import com.pheeeew.activity.domain.repository.DeviceDailyActivityRepository;
+import com.pheeeew.activity.infra.DeviceActivityAggregationScheduler;
+import com.pheeeew.activity.infra.metrics.DeviceActivityMetrics;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.DevicePlatform;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Instant;
@@ -302,5 +305,52 @@ class DeviceActivityAggregationServiceIntegrationTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("활동 집계 상태가 초기화되지 않았습니다.");
         assertThat(stateRepository.count()).isZero();
+    }
+
+    @Test
+    void 스케줄러의_최종_집계가_실패해도_오늘_집계는_커밋되고_실패한_날짜부터_재시도한다() {
+        // given
+        service.initialize(STARTED_AT);
+        Instant today = STARTED_AT.plusSeconds(86_400);
+        when(clock.instant()).thenReturn(today);
+        var registry = new SimpleMeterRegistry();
+        try {
+            var metrics = new DeviceActivityMetrics(registry, clock);
+            var scheduler = new DeviceActivityAggregationScheduler(service, metrics, registry, clock);
+            jdbcClient.sql("""
+                    ALTER TABLE device_activity_aggregation_states ADD CONSTRAINT ck_test_scheduler_finalize_failure
+                    CHECK (last_finalized_date IS NULL)
+                    """).update();
+            try {
+                // when
+                scheduler.update();
+
+                // then: 현재 집계의 커밋과 지표는 유지하고, 과거 집계와 완료 날짜만 롤백한다.
+                DeviceActivityAggregationState state = stateRepository.findById(1L).orElseThrow();
+                assertThat(state.getLastAggregatedAt()).isEqualTo(today);
+                assertThat(state.getLastFinalizedDate()).isNull();
+                assertThat(summaryRepository.count()).isZero();
+                assertThat(registry.get("pheeeew.activity.last.aggregated").gauge().value())
+                        .isEqualTo(today.getEpochSecond());
+                assertThat(registry.get("pheeeew.activity.aggregation.failures").counter().count()).isOne();
+            } finally {
+                jdbcClient.sql("""
+                        ALTER TABLE device_activity_aggregation_states DROP CONSTRAINT ck_test_scheduler_finalize_failure
+                        """).update();
+            }
+
+            // when / then: 다음 주기에 실패했던 날짜의 두 플랫폼 집계와 완료 상태를 함께 저장한다.
+            Instant retriedAt = today.plusSeconds(300);
+            when(clock.instant()).thenReturn(retriedAt);
+            scheduler.update();
+            DeviceActivityAggregationState state = stateRepository.findById(1L).orElseThrow();
+            assertThat(state.getLastAggregatedAt()).isEqualTo(retriedAt);
+            assertThat(state.getLastFinalizedDate()).isEqualTo(LocalDate.of(2026, 9, 17));
+            assertThat(summaryRepository.findAll()).extracting(DeviceActivitySummary::getActivityDate)
+                    .containsExactly(LocalDate.of(2026, 9, 17), LocalDate.of(2026, 9, 17));
+            assertThat(registry.get("pheeeew.activity.aggregation.failures").counter().count()).isOne();
+        } finally {
+            registry.close();
+        }
     }
 }

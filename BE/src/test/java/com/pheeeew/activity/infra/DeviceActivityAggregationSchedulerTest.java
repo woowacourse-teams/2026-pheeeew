@@ -2,7 +2,9 @@ package com.pheeeew.activity.infra;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -65,6 +67,7 @@ class DeviceActivityAggregationSchedulerTest {
         // when / then
         assertThatCode(scheduler::update).doesNotThrowAnyException();
         verify(service, never()).update();
+        verify(service, never()).finalizeNextDate();
         assertThat(활성_기기_수()).isNaN();
         assertThat(마지막_집계_시각()).isNaN();
         assertThat(실패_수()).isOne();
@@ -87,6 +90,11 @@ class DeviceActivityAggregationSchedulerTest {
         assertThat(registry.get("pheeeew.activity.collection.started").gauge().value())
                 .isEqualTo(STARTED_AT.getEpochSecond());
         assertThat(실패_수()).isOne();
+
+        // when / then: 초기화에 성공한 이후 실행에서는 초기화를 다시 호출하지 않는다.
+        scheduler.update();
+        verify(service, times(2)).initialize(STARTED_AT);
+        verify(service, times(2)).update();
     }
 
     @Test
@@ -104,13 +112,77 @@ class DeviceActivityAggregationSchedulerTest {
         assertThat(활성_기기_수()).isEqualTo(2);
         assertThat(마지막_집계_시각()).isEqualTo(earlier.getEpochSecond());
         assertThat(실패_수()).isOne();
+        verify(service, never()).finalizeNextDate();
 
         // when / then
         scheduler.update();
         assertThat(활성_기기_수()).isEqualTo(3);
         assertThat(마지막_집계_시각()).isEqualTo(retriedAt.getEpochSecond());
         assertThat(실패_수()).isOne();
-        verify(service, times(2)).initialize(STARTED_AT);
+        verify(service).initialize(STARTED_AT);
+    }
+
+    @Test
+    void 오늘_지표를_반영한_뒤_미완료_날짜는_한_번만_처리한다() {
+        // given
+        when(service.update()).thenReturn(집계_결과(STARTED_AT, 2));
+        doAnswer(invocation -> {
+            assertThat(활성_기기_수()).isEqualTo(2);
+            assertThat(마지막_집계_시각()).isEqualTo(STARTED_AT.getEpochSecond());
+            return true;
+        }).when(service).finalizeNextDate();
+
+        // when
+        scheduler.update();
+
+        // then
+        var order = inOrder(service);
+        order.verify(service).initialize(STARTED_AT);
+        order.verify(service).update();
+        order.verify(service).finalizeNextDate();
+        order.verifyNoMoreInteractions();
+        assertThat(실패_수()).isZero();
+    }
+
+    @Test
+    void 과거_집계가_실패해도_오늘_지표는_유지하고_다음_주기에_재시도한다() {
+        // given
+        when(service.update()).thenReturn(집계_결과(STARTED_AT, 2));
+        when(service.finalizeNextDate()).thenThrow(new IllegalStateException("finalization failed"))
+                .thenReturn(true);
+
+        // when / then
+        assertThatCode(scheduler::update).doesNotThrowAnyException();
+        assertThat(활성_기기_수()).isEqualTo(2);
+        assertThat(마지막_집계_시각()).isEqualTo(STARTED_AT.getEpochSecond());
+        assertThat(실패_수()).isOne();
+
+        // when / then
+        scheduler.update();
+        verify(service, times(2)).finalizeNextDate();
+        verify(service).initialize(STARTED_AT);
+        assertThat(실패_수()).isOne();
+    }
+
+    @Test
+    void 재시작으로_새_스케줄러가_생기면_다시_한_번_초기화한다() {
+        // given
+        when(service.update()).thenReturn(집계_결과(STARTED_AT, 2));
+        scheduler.update();
+        scheduler.update();
+        Instant restartedAt = STARTED_AT.plusSeconds(30);
+        when(clock.instant()).thenReturn(restartedAt);
+        var restartedScheduler = new DeviceActivityAggregationScheduler(service, metrics, registry, clock);
+
+        // when
+        restartedScheduler.update();
+        restartedScheduler.update();
+
+        // then
+        verify(service).initialize(STARTED_AT);
+        verify(service).initialize(restartedAt);
+        verify(service, times(4)).update();
+        assertThat(실패_수()).isZero();
     }
 
     private DeviceActivitySnapshot 집계_결과(Instant aggregatedAt, long count) {
