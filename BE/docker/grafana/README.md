@@ -1,6 +1,6 @@
 # Pheeeew 운영 대시보드와 알림
 
-`pheeeew-prod.json`은 Grafana Cloud로 가져올 대시보드예요. JSON에는 토큰이나 특정 계정의 데이터 소스 ID가 없어요. 알림은 아래 기준으로 Grafana Cloud 화면에 설정했어요. 이 파일을 배포한다고 Cloud 대시보드나 알림이 자동 생성되지는 않아요.
+`pheeeew-prod.json`은 Grafana Cloud로 가져올 대시보드예요. JSON에는 토큰이나 특정 계정의 데이터 소스 ID가 없어요. 기존 알림 세 가지는 Grafana Cloud 화면에 설정했으며, 아래 V2 목록 지연 알림은 추가 적용 예정이에요. 이 파일을 배포한다고 Cloud 대시보드나 알림이 자동 생성되지는 않아요.
 
 ## JSON 파일의 역할
 
@@ -182,6 +182,45 @@ DAU·MAU 아래에 두 시각을 함께 표시해요. 기본 시간대는 대시
 
 규칙이 Firing이어도 수신 경로가 없으면 팀이 알아채지 못할 수 있어요. Contact point를 변경할 때는 Test 기능으로 발송하고 수신자가 실제 도착을 확인해요. 운영 API에 오류를 일으켜 테스트할 필요는 없어요. Contact point 테스트는 메시지 전달 경로 검사이며 실제 지표의 조건 충족부터 Pending·Firing 전이까지 검증하는 것은 아니에요.
 
+## 추가 예정: V2 목록 응답 지연 알림
+
+**아래 규칙은 로컬 쿼리 검증만 완료한 적용 후보이며 Cloud에는 아직 등록하지 않았어요.** 기존 V1 지도 지연 알림을 유지하면서 `GET /api/v2/sighs` 전용 규칙을 추가해요. 첫 페이지와 다음 페이지의 성공·실패 HTTP 응답을 함께 집계하며 상세·작성·좋아요 요청은 포함하지 않아요.
+
+| 항목 | 초기 설정 |
+| --- | --- |
+| 규칙 이름 | `Pheeeew V2 목록 응답 지연` |
+| 조건 | 최근 5분 HTTP p95 > 1초이고 추정 요청 수 >= 100회 |
+| 평가 | `Pheeeew` 폴더, `pheeeew-prod` 그룹, 1분 간격 |
+| Pending / Keep firing for | 5분 / 0초 |
+| 데이터 없음 / 평가 오류 | No Data = Normal / Error = Alerting |
+| 라벨 / 수신처 | `service=pheeeew`, `environment=prod`, `severity=warning` / `pheeeew-prod-email` |
+| 대시보드 연결 | UID `pheeeew-prod-overview`, 패널 `21` |
+
+### V2 목록 지연 쿼리
+
+기존 운영 Prometheus 데이터 소스에서 아래 쿼리 A를 Instant로 실행하고 `Last > 0.5`를 조건으로 설정해요. 대시보드 변수는 사용하지 않아요.
+
+```promql
+(
+  histogram_quantile(0.95,
+    sum by (le) (rate(http_server_requests_seconds_bucket{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri="/api/v2/sighs",method="GET"}[5m]))
+  ) > bool 1
+  and
+  sum(increase(http_server_requests_seconds_count{job="pheeeew-api",environment="prod",instance="pheeeew-prod",uri="/api/v2/sighs",method="GET"}[5m])) >= 100
+) or vector(0)
+```
+
+이 기준은 기존 V1 지도 알림과 비교하기 위한 초기값이며 확정된 SLO가 아니에요. p95가 정확히 1초이면 조건 미충족이고, 추정 요청 수가 정확히 100회이면 요청 수 조건은 충족해요. 두 조건이 모두 충족된 상태가 Pending 5분 동안 이어져야 알림 상태로 전환해요. 조회 구간 5분과 Pending 5분은 서로 다른 설정이에요. [Grafana 알림 평가 안내](https://grafana.com/docs/grafana/latest/alerting/fundamentals/alert-rule-evaluation/)
+
+**최근 5분 요청 수가 100회 미만이면 지연이 커도 이 규칙은 울리지 않아요.** 요청량이 적을 때 흔들리는 p95로 반복 알림이 발생하는 것을 줄이기 위한 조건이에요. 저트래픽의 지연은 V2 요청량·HTTP p95/p99·목록 DB 평균 시간과 느린 요청 로그를 함께 확인해요. 지표가 없으면 이 쿼리는 0을 반환하므로 수집 중단은 기존 수집 중단 알림으로 확인해요.
+
+### 배포 후 적용과 확인
+
+1. 운영 배포 후 V2 목록 요청의 count·bucket 수신을 확인하고 쿼리 미리보기를 실행해요. 요청이 적어서 결과가 0인 상태를 지연이 없다는 증거로 해석하지 않아요.
+2. 위 설정으로 별도 Grafana-managed 규칙을 등록해요. 기존 세 규칙과 수신처 설정은 유지해요.
+3. 실제 규칙의 평가 결과·수신처 연결을 확인하고 적용 날짜와 상태를 이 문서에 남겨요. 로컬 `promtool` 검증은 Grafana Cloud의 상태 전이와 이메일 도착 검증을 대신하지 않아요.
+4. 정상 운영 24~48시간의 V2 요청량·p95와 비교해 최소 요청 수와 지연 기준을 조정해요. 운영에 의도적인 오류나 부하를 만들지는 않아요.
+
 ## 알림이 오면 확인할 순서
 
 | 증상 | 첫 확인 | 다음 확인 |
@@ -190,6 +229,7 @@ DAU·MAU 아래에 두 시각을 함께 표시해요. 기본 시간대는 대시
 | API 5xx 증가 | 최근 배포 시각과 오류가 늘어난 경로 | HTTP 오류 로그의 correlationId·예외 종류·위치 확인 |
 | 지도 응답 지연 | 지도 요청량, HTTP와 Repository 지연의 동반 상승 | Hikari 대기·앱 CPU·힙 확인. DB 지연이면 쿼리·실행 계획을 별도 조사 |
 | 지도 결과 잘림 증가 | 요청한 지도 범위와 평균 반환 개수 | 확대 수준·결과 한도 정책 검토. 오류로 단정하지 않음 |
+| V2 목록 응답 지연 (추가 적용 후) | V2 목록 요청량·HTTP p95/p99·느린 요청 로그 | 목록 DB 평균 시간과 Hikari 대기·CPU·힙 확인. 첫/다음 페이지 결과와 함께 병목 조사 |
 
 서버 상태 확인은 기존 Cloudflare SSH를 사용해요.
 
@@ -218,6 +258,12 @@ CPU는 같은 인스턴스의 시계열에 Cloud 부가 라벨이 추가되어�
 Cloud 대시보드와 로그 전송, 알림 규칙 등록·정상 평가·이메일 수신처 연결·테스트 메일 도착을 확인했어요. 24~48시간 운영 기준값 측정은 남아 있어요.
 
 ## 검증 기록
+
+### V2 목록 지연 알림의 로컬 검증
+
+2026-09-17, Prometheus v3.14.0의 `promtool check rules`와 `test rules`로 쿼리를 검증했어요. 지연·요청 수 경계, 정상 지연, 무요청, 지표 없음, 다른 API·환경·인스턴스 제외의 7개 시나리오를 통과했어요. 같은 쿼리에 `> 0.5`, `for: 5m`을 적용해 대기 중 미발화·지속 시 발화·조건 해소 시 복구의 3개 시점도 확인했어요.
+
+가짜 지표와 외부 네트워크를 차단한 컨테이너만 사용했어요. 이는 Prometheus의 규칙 평가 검증이며 Grafana-managed 규칙 등록, No Data·Error 정책, Cloud 상태 전이와 이메일 전달은 배포 후 확인해야 해요.
 
 ### 초기 구성의 로컬 검증
 
