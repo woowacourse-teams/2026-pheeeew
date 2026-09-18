@@ -46,6 +46,7 @@ fun SighBrowserOverlay(
     errorMessage: String?,
     moderationUiState: SighModerationUiState,
     onItemClick: (SighListItemUiModel) -> Unit,
+    onLikeClick: (Long, Boolean) -> Unit = { _, _ -> },
     onDismissList: () -> Unit,
     onDismissDetail: () -> Unit,
     onLoadMore: () -> Unit,
@@ -85,6 +86,7 @@ fun SighBrowserOverlay(
                 item = selectedItem,
                 onDismiss = onDismissDetail,
                 onMoreClick = { onOpenActionMenu(selectedItem) },
+                onLikeClick = { liked -> onLikeClick(selectedItem.id, liked) },
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -142,6 +144,7 @@ fun SighBrowserOverlay(
                             } else {
                                 { _: SighListItemUiModel -> onDismissDetail() }
                             },
+                        onLikeClick = onLikeClick,
                         onDismissList = onDismissList,
                         onCompactBackgroundClick = onDismissDetail,
                         onLoadMore = onLoadMore,
