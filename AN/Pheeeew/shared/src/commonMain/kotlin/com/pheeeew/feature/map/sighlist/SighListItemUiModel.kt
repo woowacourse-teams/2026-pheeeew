@@ -11,6 +11,8 @@ data class SighListItemUiModel(
     val relativeTime: String,
     val memo: String,
     val starStage: StarAgeStage,
+    val liked: Boolean = false,
+    val likeCount: Long = 0L,
 )
 
 internal fun Sigh.toSighListItemUiModel(now: Instant): SighListItemUiModel =
@@ -20,6 +22,8 @@ internal fun Sigh.toSighListItemUiModel(now: Instant): SighListItemUiModel =
         relativeTime = createdAt.toRelativeTime(now),
         memo = memo?.takeIf(String::isNotBlank) ?: "남긴 메모가 없어요",
         starStage = StarAgePolicy.stageOf(createdAt, now),
+        liked = liked,
+        likeCount = likeCount,
     )
 
 private fun Instant.toRelativeTime(now: Instant): String {
