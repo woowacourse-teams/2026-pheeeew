@@ -75,6 +75,7 @@ fun MapScreen(
     onBoundsChanged: (SighBounds) -> Unit,
     onSighListVisibilityChange: (Boolean) -> Unit,
     onSighItemClick: (Long) -> Unit,
+    onSighLikeClick: (Long, Boolean) -> Unit = { _, _ -> },
     onSighPinClick: (Long) -> Unit,
     onDismissSighList: () -> Unit,
     onDismissSighDetail: () -> Unit,
@@ -355,6 +356,7 @@ fun MapScreen(
                 selectedItemPositionPx =
                     selectedProjectionPoint?.let { point -> Offset(point.xPx, point.yPx) },
                 isLoading = sighBrowser.isLoading || sighBrowser.isDetailLoading,
+                isDetailLoading = sighBrowser.isDetailLoading,
                 isLoadingMore = sighBrowser.isLoadingMore,
                 isLoadMoreError = sighBrowser.isLoadMoreError,
                 refreshRevision = sighBrowser.refreshRevision,
@@ -362,6 +364,7 @@ fun MapScreen(
                 errorMessage = sighBrowser.errorMessage,
                 moderationUiState = moderationUiState,
                 onItemClick = { onSighItemClick(it.id) },
+                onLikeClick = onSighLikeClick,
                 onDismissList = onDismissSighList,
                 onDismissDetail = onDismissSighDetail,
                 onLoadMore = onLoadNextSighPage,

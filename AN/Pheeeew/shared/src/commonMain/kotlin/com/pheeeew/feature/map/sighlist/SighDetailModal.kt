@@ -2,17 +2,20 @@ package com.pheeeew.feature.map.sighlist
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -21,10 +24,12 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.map.star.MapPinStar
@@ -32,6 +37,8 @@ import com.pheeeew.feature.map.star.StarAgeStage
 import com.pheeeew.feature.map.star.toComposeStarColor
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_favorite
+import pheeeew.shared.generated.resources.ic_favorite_border
 import pheeeew.shared.generated.resources.ic_more
 
 @Composable
@@ -39,6 +46,7 @@ internal fun SighDetailModal(
     item: SighListItemUiModel,
     onDismiss: () -> Unit,
     onMoreClick: () -> Unit,
+    onLikeClick: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier) {
@@ -109,6 +117,44 @@ internal fun SighDetailModal(
                     color = AppColors.Cream100,
                     modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).clickable(onClick = onDismiss),
                 )
+
+                Row(
+                    modifier = Modifier.align(Alignment.BottomStart),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .clickable(
+                                    onClick = {
+                                        onLikeClick(!item.liked)
+                                    },
+                                ).clip(RoundedCornerShape(20.dp))
+                                .background(AppColors.Cream100.copy(alpha = 0.1f))
+                                .border(
+                                    width = 1.dp,
+                                    color = AppColors.Cream100.copy(alpha = 0.2f),
+                                    shape = RoundedCornerShape(20.dp),
+                                ).padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            painter =
+                                painterResource(
+                                    if (item.liked) Res.drawable.ic_favorite else Res.drawable.ic_favorite_border,
+                                ),
+                            contentDescription = if (item.liked) "좋아요 취소" else "좋아요",
+                            tint = if (item.liked) AppColors.Pink100 else AppTheme.colors.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = item.likeCount.toString(),
+                            fontSize = 11.sp,
+                            color = if (item.liked) AppColors.Pink100 else AppTheme.colors.onSurfaceVariant,
+                        )
+                    }
+                }
             }
         }
     }
@@ -120,11 +166,12 @@ private fun SighDetailModalPreview() {
     SighDetailModal(
         item =
             SighListItemUiModel(
-                id = 0L,
-                nickname = "",
-                relativeTime = "",
-                memo = "",
+                id = 1L,
+                nickname = "노래하는 고라니",
+                relativeTime = "12분 전",
+                memo = "아 개힘들다링 동동동동",
                 starStage = StarAgeStage.Fresh,
+                likeCount = 12L,
             ),
         onDismiss = {},
         onMoreClick = {},

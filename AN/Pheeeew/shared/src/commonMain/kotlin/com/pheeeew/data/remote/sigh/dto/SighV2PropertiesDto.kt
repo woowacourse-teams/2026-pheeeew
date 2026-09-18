@@ -7,4 +7,6 @@ data class SighV2PropertiesDto(
     val createdAt: String,
     val memo: String? = null,
     val nickname: String,
+    val liked: Boolean = false,
+    val likeCount: Long = 0L,
 )

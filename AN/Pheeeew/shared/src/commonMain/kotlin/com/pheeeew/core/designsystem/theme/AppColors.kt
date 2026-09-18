@@ -12,6 +12,7 @@ object AppColors {
 
     val Cream100 = Color(0xFFF5F2EA)
     val Tan200 = Color(0xFFF0D9B5)
+    val Pink100 = Color(0xFFE5A6B8)
 
     // Periwinkle — cool accents
     val Blue100 = Color(0xFFC8D4EE)

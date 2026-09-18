@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -54,15 +55,20 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.map.star.MapPinStar
+import com.pheeeew.feature.map.star.StarAgeStage
 import com.pheeeew.feature.map.star.toComposeStarColor
 import kotlinx.coroutines.flow.distinctUntilChanged
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_favorite
+import pheeeew.shared.generated.resources.ic_favorite_border
 import pheeeew.shared.generated.resources.ic_refresh
 
 private enum class SighListSheetLevel {
@@ -82,6 +88,7 @@ internal fun SighListSheet(
     canLoadMore: Boolean,
     errorMessage: String?,
     onItemClick: (SighListItemUiModel) -> Unit,
+    onLikeClick: (Long, Boolean) -> Unit = { _, _ -> },
     onDismissList: () -> Unit,
     onCompactBackgroundClick: () -> Unit,
     onLoadMore: () -> Unit,
@@ -342,6 +349,7 @@ internal fun SighListSheet(
                             SighListItem(
                                 item = item,
                                 onClick = { onItemClick(item) },
+                                onLikeClick = { liked -> onLikeClick(item.id, liked) },
                                 modifier = Modifier.fillMaxWidth(),
                             )
                         }
@@ -485,15 +493,27 @@ private fun SighListHeader(
 private fun SighListItem(
     item: SighListItemUiModel,
     onClick: () -> Unit,
+    onLikeClick: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isEmptyMemo = !item.hasMemo
+
     Surface(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
-        color = AppColors.Navy700,
+        color = if (isEmptyMemo) AppColors.Navy800 else AppColors.Blue100.copy(alpha = 0.1f),
         contentColor = AppColors.Cream100,
-        border = BorderStroke(1.dp, AppTheme.colors.outline),
+        border =
+            BorderStroke(
+                width = 1.dp,
+                color =
+                    if (isEmptyMemo) {
+                        AppColors.Cream100.copy(alpha = 0.12f)
+                    } else {
+                        AppTheme.colors.outline
+                    },
+            ),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
@@ -519,8 +539,98 @@ private fun SighListItem(
                 Text(
                     text = item.memo,
                     style = AppTheme.typography.menuItem,
+                    color =
+                        if (isEmptyMemo) {
+                            AppColors.Cream100.copy(alpha = 0.42f)
+                        } else {
+                            AppColors.Cream100
+                        },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Column(
+                modifier =
+                    Modifier
+                        .clickable(
+                            onClick = {
+                                onLikeClick(!item.liked)
+                            },
+                        ).padding(horizontal = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    painter =
+                        painterResource(
+                            if (item.liked) Res.drawable.ic_favorite else Res.drawable.ic_favorite_border,
+                        ),
+                    contentDescription = if (item.liked) "좋아요 취소" else "좋아요",
+                    tint = if (item.liked) AppColors.Pink100 else AppTheme.colors.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = item.likeCount.toString(),
+                    fontSize = 11.sp,
+                    color = if (item.liked) AppColors.Pink100 else AppTheme.colors.onSurfaceVariant,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+@Preview
+private fun SighListItemPreview() {
+    AppTheme {
+        Surface(color = AppColors.Navy900) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                SighListItem(
+                    item =
+                        SighListItemUiModel(
+                            id = 1L,
+                            nickname = "노래하는 고라니",
+                            relativeTime = "12분 전",
+                            memo = "아 개힘들다링 동동동동",
+                            starStage = StarAgeStage.Fresh,
+                            likeCount = 12L,
+                        ),
+                    onClick = {},
+                    onLikeClick = {},
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SighListItem(
+                    item =
+                        SighListItemUiModel(
+                            id = 2L,
+                            nickname = "잠꾸러기 수달",
+                            relativeTime = "3시간 전",
+                            memo = "월요일이 왜 또 왔지",
+                            starStage = StarAgeStage.Fresh,
+                            liked = true,
+                            likeCount = 128L,
+                        ),
+                    onClick = {},
+                    onLikeClick = {},
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SighListItem(
+                    item =
+                        SighListItemUiModel(
+                            id = 3L,
+                            nickname = "졸린 수달",
+                            relativeTime = "5시간 전",
+                            memo = EMPTY_SIGH_MEMO,
+                            hasMemo = false,
+                            starStage = StarAgeStage.Fresh,
+                            likeCount = 3L,
+                        ),
+                    onClick = {},
+                    onLikeClick = {},
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
         }

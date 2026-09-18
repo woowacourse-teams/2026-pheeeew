@@ -10,6 +10,7 @@ import com.pheeeew.domain.model.location.LocationState
 import com.pheeeew.domain.model.sigh.CreateSighCommand
 import com.pheeeew.domain.model.sigh.Sigh
 import com.pheeeew.domain.model.sigh.SighBounds
+import com.pheeeew.domain.model.sigh.SighLikeState
 import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.domain.repository.SighRepository
 import com.pheeeew.domain.usecase.CreateSighUseCase
@@ -72,6 +73,7 @@ class MapViewModel(
     private var latestSighListRequestId = 0L
     private var latestSighDetailRequestId = 0L
     private var myLocationJob: Job? = null
+    private val sighLikeJobs = mutableMapOf<Long, Job>()
 
     private val _uiState =
         MutableStateFlow<MapUiState>(
@@ -475,6 +477,79 @@ class MapViewModel(
             return
         }
         lastSighBounds?.let { bounds -> loadFirstSighPage(bounds) }
+    }
+
+    fun updateSighLike(
+        id: Long,
+        liked: Boolean,
+    ) {
+        val browser = _uiState.value.sighBrowser
+        if (!mapIsForeground || !browser.isVisible || sighLikeJobs.containsKey(id)) return
+
+        val current =
+            browser.items.firstOrNull { it.id == id }
+                ?: browser.selectedSigh?.takeIf { it.id == id }
+                ?: return
+        if (current.liked == liked) return
+
+        val previous = SighLikeState(liked = current.liked, likeCount = current.likeCount)
+        val optimisticCount =
+            (current.likeCount + if (liked) 1L else -1L).coerceAtLeast(0L)
+        updateSighLikeState(id, SighLikeState(liked = liked, likeCount = optimisticCount))
+
+        val job =
+            viewModelScope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    val result = sighRepository.updateLike(id, liked)
+                    updateSighLikeState(id, result)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (exception: ApiException) {
+                    updateSighLikeState(id, previous)
+                    _uiState.update { state ->
+                        state.copy(
+                            sighBrowser =
+                                state.sighBrowser.copy(
+                                    noticeMessage = exception.toUserMessage(),
+                                ),
+                        )
+                    }
+                } finally {
+                    sighLikeJobs.remove(id)
+                }
+            }
+        sighLikeJobs[id] = job
+        job.start()
+    }
+
+    private fun updateSighLikeState(
+        id: Long,
+        like: SighLikeState,
+    ) {
+        _uiState.update { state ->
+            val browser = state.sighBrowser
+            state.copy(
+                sighBrowser =
+                    browser.copy(
+                        items =
+                            browser.items.map { item ->
+                                if (item.id == id) {
+                                    item.copy(liked = like.liked, likeCount = like.likeCount)
+                                } else {
+                                    item
+                                }
+                            },
+                        selectedSigh =
+                            browser.selectedSigh?.let { selected ->
+                                if (selected.id == id) {
+                                    selected.copy(liked = like.liked, likeCount = like.likeCount)
+                                } else {
+                                    selected
+                                }
+                            },
+                    ),
+            )
+        }
     }
 
     fun loadNextSighPage() {
@@ -985,6 +1060,8 @@ class MapViewModel(
         loadSighListJob = null
         loadSighDetailJob?.cancel()
         loadSighDetailJob = null
+        sighLikeJobs.values.forEach(Job::cancel)
+        sighLikeJobs.clear()
         pendingSighDetailId = null
         detailCameraMovePending = false
         restoringSighDetailBounds = null
