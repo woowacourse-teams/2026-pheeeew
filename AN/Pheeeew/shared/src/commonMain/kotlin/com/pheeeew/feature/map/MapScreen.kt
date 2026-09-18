@@ -356,6 +356,7 @@ fun MapScreen(
                 selectedItemPositionPx =
                     selectedProjectionPoint?.let { point -> Offset(point.xPx, point.yPx) },
                 isLoading = sighBrowser.isLoading || sighBrowser.isDetailLoading,
+                isDetailLoading = sighBrowser.isDetailLoading,
                 isLoadingMore = sighBrowser.isLoadingMore,
                 isLoadMoreError = sighBrowser.isLoadMoreError,
                 refreshRevision = sighBrowser.refreshRevision,
