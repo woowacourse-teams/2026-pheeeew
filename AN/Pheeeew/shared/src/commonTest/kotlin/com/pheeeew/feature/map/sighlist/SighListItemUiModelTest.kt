@@ -65,6 +65,14 @@ class SighListItemUiModelTest {
         assertEquals("30분 전", item.relativeTime)
     }
 
+    @Test
+    fun `메모가 없으면 빈 메모 표시와 상태를 사용한다`() {
+        val item = createSigh(id = 1L, createdAt = now, memo = " ").toSighListItemUiModel(now)
+
+        assertEquals(EMPTY_SIGH_MEMO, item.memo)
+        assertEquals(false, item.hasMemo)
+    }
+
     private fun createSigh(
         id: Long,
         createdAt: Instant,

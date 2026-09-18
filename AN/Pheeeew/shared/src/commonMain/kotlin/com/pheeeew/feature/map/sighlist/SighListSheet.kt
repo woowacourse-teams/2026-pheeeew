@@ -496,13 +496,24 @@ private fun SighListItem(
     onLikeClick: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isEmptyMemo = !item.hasMemo
+
     Surface(
         onClick = onClick,
         modifier = modifier,
         shape = RoundedCornerShape(14.dp),
-        color = AppColors.Navy700,
+        color = if (isEmptyMemo) AppColors.Navy800 else AppColors.Blue100.copy(alpha = 0.1f),
         contentColor = AppColors.Cream100,
-        border = BorderStroke(1.dp, AppTheme.colors.outline),
+        border =
+            BorderStroke(
+                width = 1.dp,
+                color =
+                    if (isEmptyMemo) {
+                        AppColors.Cream100.copy(alpha = 0.12f)
+                    } else {
+                        AppTheme.colors.outline
+                    },
+            ),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
@@ -528,6 +539,12 @@ private fun SighListItem(
                 Text(
                     text = item.memo,
                     style = AppTheme.typography.menuItem,
+                    color =
+                        if (isEmptyMemo) {
+                            AppColors.Cream100.copy(alpha = 0.42f)
+                        } else {
+                            AppColors.Cream100
+                        },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -595,6 +612,21 @@ private fun SighListItemPreview() {
                             starStage = StarAgeStage.Fresh,
                             liked = true,
                             likeCount = 128L,
+                        ),
+                    onClick = {},
+                    onLikeClick = {},
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                SighListItem(
+                    item =
+                        SighListItemUiModel(
+                            id = 3L,
+                            nickname = "졸린 수달",
+                            relativeTime = "5시간 전",
+                            memo = EMPTY_SIGH_MEMO,
+                            hasMemo = false,
+                            starStage = StarAgeStage.Fresh,
+                            likeCount = 3L,
                         ),
                     onClick = {},
                     onLikeClick = {},

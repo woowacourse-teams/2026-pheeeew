@@ -5,26 +5,33 @@ import com.pheeeew.feature.map.star.StarAgePolicy
 import com.pheeeew.feature.map.star.StarAgeStage
 import kotlin.time.Instant
 
+internal const val EMPTY_SIGH_MEMO = "남긴 메모가 없습니다"
+
 data class SighListItemUiModel(
     val id: Long,
     val nickname: String,
     val relativeTime: String,
     val memo: String,
+    val hasMemo: Boolean = true,
     val starStage: StarAgeStage,
     val liked: Boolean = false,
     val likeCount: Long = 0L,
 )
 
-internal fun Sigh.toSighListItemUiModel(now: Instant): SighListItemUiModel =
-    SighListItemUiModel(
+internal fun Sigh.toSighListItemUiModel(now: Instant): SighListItemUiModel {
+    val normalizedMemo = memo?.takeIf(String::isNotBlank)
+
+    return SighListItemUiModel(
         id = id,
         nickname = nickname,
         relativeTime = createdAt.toRelativeTime(now),
-        memo = memo?.takeIf(String::isNotBlank) ?: "남긴 메모가 없어요",
+        memo = normalizedMemo ?: EMPTY_SIGH_MEMO,
+        hasMemo = normalizedMemo != null,
         starStage = StarAgePolicy.stageOf(createdAt, now),
         liked = liked,
         likeCount = likeCount,
     )
+}
 
 private fun Instant.toRelativeTime(now: Instant): String {
     val elapsed = (now - this).coerceAtLeast(kotlin.time.Duration.ZERO)
