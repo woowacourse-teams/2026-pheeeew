@@ -7,7 +7,6 @@ import com.pheeeew.core.monitoring.tracker.SighAttemptTracker
 import com.pheeeew.core.monitoring.tracker.VisitTracker
 import kotlinx.serialization.json.Json
 import kotlin.time.Clock
-import kotlin.time.Instant
 import kotlin.time.TimeSource
 import kotlin.uuid.Uuid
 
@@ -98,8 +97,6 @@ class Monitoring(
         SaveCoordinator(
             saveTracker = saveTracker,
             runtime = runtime,
-            formatTime = ::iso,
-            formatDay = ::day,
         )
     private val mapVisitCoordinator =
         MapVisitCoordinator(
@@ -383,7 +380,3 @@ private fun monotonicClock(): () -> Long {
     val start = TimeSource.Monotonic.markNow()
     return { start.elapsedNow().inWholeMilliseconds }
 }
-
-private fun iso(time: Long) = Instant.fromEpochMilliseconds(time).toString()
-
-private fun day(time: Long) = iso(time + 9 * 60 * 60 * 1000).take(10)

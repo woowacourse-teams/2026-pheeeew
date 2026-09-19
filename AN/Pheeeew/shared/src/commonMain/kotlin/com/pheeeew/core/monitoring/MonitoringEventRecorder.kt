@@ -29,7 +29,7 @@ internal class MonitoringEventRecorder(
                     "event_schema_version" to 1,
                     "measurement_config_version" to "v1",
                     "anonymous_id" to anonymousId(),
-                    "occurred_at" to iso(time),
+                    "occurred_at" to MonitoringTime.iso(time),
                     "process_id" to processId,
                     "event_sequence" to nextSequence(),
                     "screen" to origin.screen,
@@ -105,11 +105,6 @@ internal class MonitoringEventRecorder(
         const val MAX_LOGICAL_KEYS = 4096
     }
 }
-
-private fun iso(time: Long): String =
-    kotlin.time.Instant
-        .fromEpochMilliseconds(time)
-        .toString()
 
 private fun primitive(value: Any): JsonPrimitive =
     when (value) {

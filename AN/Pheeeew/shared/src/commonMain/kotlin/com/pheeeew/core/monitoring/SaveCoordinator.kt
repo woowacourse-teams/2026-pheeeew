@@ -6,8 +6,6 @@ import com.pheeeew.core.monitoring.tracker.SaveTracker
 internal class SaveCoordinator(
     private val saveTracker: SaveTracker,
     private val runtime: MonitoringRuntime,
-    private val formatTime: (Long) -> String,
-    private val formatDay: (Long) -> String,
 ) {
     fun beginSave(): MonitoringSnapshot? {
         if (!runtime.usable()) return null
@@ -62,8 +60,8 @@ internal class SaveCoordinator(
                     MonitoringEventNames.FIRST_SIGH_SAVED,
                     origin,
                     mapOf(
-                        "first_saved_at" to formatTime(firstSaved),
-                        "cohort_date" to formatDay(firstSaved),
+                        "first_saved_at" to MonitoringTime.iso(firstSaved),
+                        "cohort_date" to MonitoringTime.seoulDay(firstSaved),
                         "first_save_history" to "known",
                     ),
                     "first_save",

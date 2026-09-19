@@ -8,8 +8,6 @@ import io.sentry.kotlin.multiplatform.Sentry
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
@@ -60,23 +58,7 @@ object IosMonitoring {
                 check(directory.setResourceValue(true, NSURLIsExcludedFromBackupKey, null))
                 checkNotNull(directory.URLByAppendingPathComponent("${config.environment}.json")!!.path)
             }.getOrNull()
-        val store =
-            object : MonitoringStore {
-                override fun read(): String? {
-                    val filePath = checkNotNull(path)
-                    if (!manager.fileExistsAtPath(filePath)) return null
-                    return checkNotNull(NSString.stringWithContentsOfFile(filePath, NSUTF8StringEncoding, null))
-                }
-
-                override fun write(value: String) {
-                    check(
-                        NSString
-                            .create(
-                                string = value,
-                            ).writeToFile(checkNotNull(path), true, NSUTF8StringEncoding, null),
-                    )
-                }
-            }
+        val store = IosMonitoringStore(manager, path)
         val transport = SdkMonitoringTransport()
         val defaults = NSUserDefaults.standardUserDefaults
         val knownNew =
@@ -142,12 +124,27 @@ object IosMonitoring {
                 transport.enabled = true
             }
         }
-        CoroutineScope(SupervisorJob() + Dispatchers.Main).launch {
-            while (true) {
-                delay(1000)
-                monitoring.tick()
-            }
-        }
+        MonitoringTicker(CoroutineScope(SupervisorJob() + Dispatchers.Main), monitoring::tick).start()
         return monitoring
+    }
+}
+
+/** Persists monitoring state in Application Support and keeps it excluded from backups. */
+private class IosMonitoringStore(
+    private val manager: NSFileManager,
+    private val path: String?,
+) : MonitoringStore {
+    override fun read(): String? {
+        val filePath = checkNotNull(path)
+        if (!manager.fileExistsAtPath(filePath)) return null
+        return checkNotNull(NSString.stringWithContentsOfFile(filePath, NSUTF8StringEncoding, null))
+    }
+
+    override fun write(value: String) {
+        check(
+            NSString
+                .create(string = value)
+                .writeToFile(checkNotNull(path), true, NSUTF8StringEncoding, null),
+        )
     }
 }

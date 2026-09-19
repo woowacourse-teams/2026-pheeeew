@@ -7,18 +7,18 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.MonitoringConfig
+import com.pheeeew.core.monitoring.MonitoringTicker
 import com.pheeeew.core.monitoring.createAndroidMonitoring
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 class PheeeewApplication :
     Application(),
     DefaultLifecycleObserver {
     lateinit var monitoring: Monitoring
         private set
+    private lateinit var monitoringTicker: MonitoringTicker
 
     override fun onCreate() {
         super<Application>.onCreate()
@@ -38,12 +38,11 @@ class PheeeewApplication :
                 ),
             )
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
-        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).launch {
-            while (true) {
-                delay(1000)
-                monitoring.tick()
-            }
-        }
+        monitoringTicker =
+            MonitoringTicker(
+                CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate),
+                monitoring::tick,
+            ).also { it.start() }
     }
 
     override fun onStart(owner: LifecycleOwner) {
@@ -52,5 +51,10 @@ class PheeeewApplication :
 
     override fun onStop(owner: LifecycleOwner) {
         monitoring.background()
+    }
+
+    override fun onTerminate() {
+        monitoringTicker.stop()
+        super.onTerminate()
     }
 }

@@ -11,16 +11,7 @@ fun createAndroidMonitoring(
     config: MonitoringConfig,
 ): Monitoring {
     val file = File(application.noBackupFilesDir, "monitoring-${config.environment}.json")
-    val store =
-        object : MonitoringStore {
-            override fun read(): String? = if (file.exists()) file.readText() else null
-
-            override fun write(value: String) {
-                val temp = File(file.parentFile, "${file.name}.tmp")
-                temp.writeText(value)
-                check(temp.renameTo(file))
-            }
-        }
+    val store = AndroidMonitoringStore(file)
     val transport = SdkMonitoringTransport()
     val packageInfo = application.packageManager.getPackageInfo(application.packageName, 0)
     val knownNew =
@@ -74,4 +65,17 @@ fun createAndroidMonitoring(
         }
     }
     return monitoring
+}
+
+/** Persists monitoring state in Android's no-backup area, isolated by environment. */
+private class AndroidMonitoringStore(
+    private val file: File,
+) : MonitoringStore {
+    override fun read(): String? = if (file.exists()) file.readText() else null
+
+    override fun write(value: String) {
+        val temp = File(file.parentFile, "${file.name}.tmp")
+        temp.writeText(value)
+        check(temp.renameTo(file))
+    }
 }

@@ -2,7 +2,6 @@ package com.pheeeew.core.monitoring
 
 import com.pheeeew.core.monitoring.tracker.SaveTracker
 import com.pheeeew.core.monitoring.tracker.VisitTracker
-import kotlin.time.Instant
 
 /** Coordinates visit lifecycle events while leaving event persistence in Monitoring's recorder. */
 internal class MonitoringLifecycleCoordinator(
@@ -35,7 +34,7 @@ internal class MonitoringLifecycleCoordinator(
                     mapOf(
                         "reason" to "process_interrupted",
                         "end_time_quality" to "inferred",
-                        "last_observed_at" to isoTime(snapshot.lastObserved),
+                        "last_observed_at" to MonitoringTime.iso(snapshot.lastObserved),
                     ),
                     "visit_end:${oldVisit.sessionId}",
                 )
@@ -55,7 +54,7 @@ internal class MonitoringLifecycleCoordinator(
                     mapOf(
                         "reason" to "background",
                         "end_time_quality" to "inferred",
-                        "last_observed_at" to isoTime(snapshot.lastObserved),
+                        "last_observed_at" to MonitoringTime.iso(snapshot.lastObserved),
                     ),
                     "visit_end:$endedVisitId",
                 )
@@ -77,7 +76,7 @@ internal class MonitoringLifecycleCoordinator(
                     runtime.emit(
                         MonitoringEventNames.APP_FIRST_OPENED,
                         origin,
-                        mapOf("first_opened_at" to isoTime(runtime.currentState().firstOpened!!)),
+                        mapOf("first_opened_at" to MonitoringTime.iso(runtime.currentState().firstOpened!!)),
                         "first_open",
                     )
                 }
@@ -114,7 +113,7 @@ internal class MonitoringLifecycleCoordinator(
 
     fun tick() {
         if (visitTracker.isForeground) {
-            val date = seoulDay(runtime.now())
+            val date = MonitoringTime.seoulDay(runtime.now())
             val snapshot = runtime.currentState()
             // Avoid writing the storage every frame/second. Heartbeat only bounds inferred ends.
             if (date !in snapshot.activeDays || runtime.now() - snapshot.lastObserved >= HEARTBEAT_MS) {
@@ -132,7 +131,7 @@ internal class MonitoringLifecycleCoordinator(
         MonitoringSnapshot(visitTracker.currentVisitId!!, screen = runtime.screen(), state = runtime.phase())
 
     private fun activeDay() {
-        val date = seoulDay(runtime.now())
+        val date = MonitoringTime.seoulDay(runtime.now())
         val snapshot = runtime.currentState()
         if (date !in snapshot.activeDays) {
             runtime.replaceState(runtime.currentState().copy(activeDays = (snapshot.activeDays + date).takeLast(MAX_LOGICAL_KEYS)))
@@ -145,10 +144,3 @@ internal class MonitoringLifecycleCoordinator(
         const val MAX_LOGICAL_KEYS = 4096
     }
 }
-
-private fun isoTime(time: Long) =
-    Instant
-        .fromEpochMilliseconds(time)
-        .toString()
-
-private fun seoulDay(time: Long) = isoTime(time + 9 * 60 * 60 * 1000).take(10)
