@@ -62,7 +62,7 @@ class Monitoring(
             attempt = { attempt },
             activeSave = { activeSave },
             change = { block -> change(block) },
-            emit = { name, origin, fields, logicalKey -> emit(name, origin, fields, logicalKey) },
+            emit = { definition, origin, fields, logicalKey -> emit(definition, origin, fields, logicalKey) },
             endRecord = { origin, outcome, reason, quality -> endRecord(origin, outcome, reason, quality) },
             observe = { observe() },
             updateContext = { updateContext() },
@@ -346,11 +346,11 @@ class Monitoring(
     }
 
     private fun emit(
-        name: String,
+        definition: MonitoringEventDefinition,
         origin: MonitoringSnapshot,
         fields: Map<String, Any>,
         logicalKey: String? = null,
-    ) = recorder.record(name, origin, fields, logicalKey)
+    ) = recorder.record(definition, origin, fields, logicalKey)
 
     private inline fun change(block: () -> Unit) {
         if (!usable) return

@@ -100,7 +100,7 @@ internal class SighAttemptCoordinator(
         }
 
     private fun completeMemo(
-        event: String,
+        event: MonitoringEventDefinition,
         fields: Map<String, Any> = emptyMap(),
     ) = runtime.change {
         val origin = runtime.attempt() ?: return@change

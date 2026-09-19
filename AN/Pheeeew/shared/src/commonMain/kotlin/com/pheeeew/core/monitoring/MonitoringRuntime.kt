@@ -20,7 +20,7 @@ internal class MonitoringRuntime(
     val attempt: () -> MonitoringSnapshot?,
     val activeSave: () -> MonitoringSnapshot?,
     val change: (() -> Unit) -> Unit,
-    val emit: (String, MonitoringSnapshot, Map<String, Any>, String?) -> Unit,
+    val emit: (MonitoringEventDefinition, MonitoringSnapshot, Map<String, Any>, String?) -> Unit,
     val endRecord: (MonitoringSnapshot, String, String, String) -> Unit,
     val observe: () -> Unit,
     val updateContext: () -> Unit,

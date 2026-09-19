@@ -14,7 +14,7 @@ internal class MonitoringEventRecorder(
     private val anonymousId: () -> String,
 ) {
     fun record(
-        name: String,
+        definition: MonitoringEventDefinition,
         origin: MonitoringSnapshot,
         fields: Map<String, Any>,
         logicalKey: String?,
@@ -23,7 +23,7 @@ internal class MonitoringEventRecorder(
         if (logicalKey != null && logicalKey in current.logicalKeys) return
         val time = now()
         val properties =
-            fields + origin.properties() +
+            MonitoringValueSanitizer.fields(fields) + origin.properties() +
                 mapOf(
                     "event_id" to id(),
                     "event_schema_version" to 1,
@@ -49,15 +49,20 @@ internal class MonitoringEventRecorder(
                             "returning"
                         },
                 )
-        val event = MonitoringEvent(name, time, JsonObject(properties.mapValues { (_, value) -> primitive(value) }))
+        val missing = definition.requiredProperties - properties.keys
+        if (missing.isNotEmpty()) {
+            stateStore.replace(current.copy(droppedEvents = current.droppedEvents + 1))
+            return
+        }
+        val event = MonitoringEvent(definition.value, time, JsonObject(properties.mapValues { (_, value) -> primitive(value) }))
         // Keep state changes and the pending event in the same durable record before handoff.
         val pending = (current.pending + event).toMutableList()
         if (pending.size > MAX_PENDING) {
             // Preserve installation-first facts while dropping the oldest ordinary event.
             val discard =
                 pending.indexOfFirst {
-                    it.name != MonitoringEventNames.APP_FIRST_OPENED &&
-                        it.name != MonitoringEventNames.FIRST_SIGH_SAVED
+                    it.name != MonitoringEventNames.APP_FIRST_OPENED.value &&
+                        it.name != MonitoringEventNames.FIRST_SIGH_SAVED.value
                 }
             pending.removeAt(discard)
         }
