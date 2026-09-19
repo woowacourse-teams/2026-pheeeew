@@ -46,6 +46,7 @@ private class AndroidBreathInput(
     @Volatile private var recording = false
     private var recorder: AudioRecord? = null
     private var worker: Thread? = null
+    private var readyCallback: (() -> Unit)? = null
     private var strengthCallback: ((Float) -> Unit)? = null
     private var errorCallback: ((BreathInputError) -> Unit)? = null
     private var permissionContinuation: CancellableContinuation<Boolean>? = null
@@ -84,10 +85,12 @@ private class AndroidBreathInput(
     }
 
     override fun start(
+        onReady: () -> Unit,
         onStrengthChanged: (Float) -> Unit,
         onError: (BreathInputError) -> Unit,
     ) {
         val generation = ++inputGeneration
+        readyCallback = onReady
         strengthCallback = onStrengthChanged
         errorCallback = onError
         wantsRecording = true
@@ -164,6 +167,7 @@ private class AndroidBreathInput(
             return
         }
         recording = true
+        publishReady(generation)
         worker = thread(name = "breath-input") { analyze(newRecorder, bufferSize, sampleRate, generation) }
     }
 
@@ -239,6 +243,7 @@ private class AndroidBreathInput(
 
     fun release() {
         stop()
+        readyCallback = null
         strengthCallback = null
         errorCallback = null
     }
@@ -251,6 +256,12 @@ private class AndroidBreathInput(
             if (generation == inputGeneration && recording) {
                 strengthCallback?.invoke(value.coerceIn(0f, 1f))
             }
+        }
+    }
+
+    private fun publishReady(generation: Long) {
+        mainHandler.post {
+            if (generation == inputGeneration && recording) readyCallback?.invoke()
         }
     }
 

@@ -85,6 +85,10 @@ sealed interface BreathSessionEvent {
         val elapsed: Duration,
     ) : BreathSessionEvent
 
+    data class InputReady(
+        val sessionId: Long,
+    ) : BreathSessionEvent
+
     data class ReleaseRequested(
         val sessionId: Long,
         val upwardDistanceDp: Float,

@@ -6,6 +6,7 @@ interface BreathInput {
     suspend fun requestPermission(): Boolean
 
     fun start(
+        onReady: () -> Unit,
         onStrengthChanged: (Float) -> Unit,
         onError: (BreathInputError) -> Unit,
     )

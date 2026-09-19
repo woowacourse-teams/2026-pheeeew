@@ -19,6 +19,9 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.ZERO
 import kotlin.time.TimeSource
 
+private typealias StrengthObserver = (strength: Float, activeThreshold: Float, isActive: Boolean) -> Unit
+private typealias InputStoppedObserver = (finalGrowth: Float, reason: String, interrupted: Boolean) -> Unit
+
 /**
  * 한숨 입력의 세션 수명과 side effect를 Compose UI에서 분리한 state holder입니다.
  *
@@ -30,6 +33,13 @@ class BreathControlState(
     private val scope: CoroutineScope,
     private val ensureLocationPermission: suspend () -> Boolean,
     private val reducer: BreathSessionReducer = BreathSessionReducer(),
+    private val onMicrophonePermissionResult: (Boolean) -> Unit = {},
+    private val onInputStartRequested: () -> Unit = {},
+    private val onInputReady: () -> Unit = {},
+    private val onStrengthEvaluated: StrengthObserver = { _, _, _ -> },
+    private val onBreathSample: (active: Boolean, elapsedMs: Long, growth: Float) -> Unit = { _, _, _ -> },
+    private val onInputStopped: InputStoppedObserver = { _, _, _ -> },
+    private val onInputFailed: (BreathInputError) -> Unit = {},
 ) {
     private data class MeasuredStrength(
         val sessionId: Long,
@@ -48,6 +58,8 @@ class BreathControlState(
     private var permissionJob: Job? = null
     private var locationPermissionJob: Job? = null
     private var lastSampleAt: Duration? = null
+    private var readySessionId: Long? = null
+    private var pendingPreReadySample: MeasuredStrength? = null
     private val sampleTimeOrigin = TimeSource.Monotonic.markNow()
 
     private val eventJob =
@@ -109,6 +121,9 @@ class BreathControlState(
         permissionJob?.cancel()
         locationPermissionJob?.cancel()
         lastSampleAt = null
+        _session.value.takeIf { it.isInputActive() }?.let {
+            onInputStopped(it.growth, "dispose", true)
+        }
         breathInput.stop()
         eventJob.cancel()
     }
@@ -120,22 +135,78 @@ class BreathControlState(
     private fun handle(sample: MeasuredStrength) {
         val currentState = _session.value
         if (sample.sessionId != currentState.sessionId || !currentState.isInputActive()) return
+        if (readySessionId != sample.sessionId) {
+            pendingPreReadySample = sample
+            return
+        }
 
         val previousSampleAt = lastSampleAt ?: sample.at
         lastSampleAt = sample.at
+        val sampleElapsed = (sample.at - previousSampleAt).coerceAtLeast(ZERO)
+        val strength = sample.strength.coerceIn(0f, 1f)
+        val activeThreshold = reducer.activeThreshold(currentState) ?: return
+        val isActive = strength >= activeThreshold
+        onStrengthEvaluated(strength, activeThreshold, isActive)
         handle(
             BreathSessionEvent.StrengthSample(
                 sessionId = sample.sessionId,
-                strength = sample.strength,
-                elapsed = (sample.at - previousSampleAt).coerceAtLeast(ZERO),
+                strength = strength,
+                elapsed = sampleElapsed,
             ),
         )
+        onBreathSample(isActive, sampleElapsed.inWholeMilliseconds, _session.value.growth)
     }
 
     private fun handle(event: BreathSessionEvent) {
+        val currentState = _session.value
+        when (event) {
+            is BreathSessionEvent.PermissionResult -> {
+                if (currentState is BreathSessionState.RequestingPermission &&
+                    currentState.sessionId == event.sessionId
+                ) {
+                    onMicrophonePermissionResult(event.granted)
+                }
+            }
+
+            is BreathSessionEvent.InputReady -> {
+                if (currentState.sessionId == event.sessionId && currentState.isInputActive()) {
+                    readySessionId = event.sessionId
+                    onInputReady()
+                }
+            }
+
+            is BreathSessionEvent.InputFailed -> {
+                if (currentState.sessionId == event.sessionId && currentState !is BreathSessionState.Idle) {
+                    onInputFailed(event.error)
+                }
+            }
+
+            else -> {}
+        }
         val transition = reducer.reduce(_session.value, event)
+        if (transition.effects.any { it is BreathSessionEffect.StopInput }) {
+            val reason =
+                when (event) {
+                    is BreathSessionEvent.ReleaseRequested -> "release"
+                    BreathSessionEvent.CancelRequested -> "user_cancel"
+                    BreathSessionEvent.LifecycleStopped -> "background"
+                    is BreathSessionEvent.InputFailed -> "input_failed"
+                    else -> "unknown"
+                }
+            onInputStopped(
+                currentState.growth,
+                reason,
+                reason in setOf("background", "input_failed", "unknown"),
+            )
+        }
         _session.value = transition.state
         transition.effects.forEach(::execute)
+        if (event is BreathSessionEvent.InputReady && readySessionId == event.sessionId) {
+            pendingPreReadySample
+                ?.takeIf { it.sessionId == event.sessionId }
+                ?.also { pendingPreReadySample = null }
+                ?.let(::handle)
+        }
     }
 
     private fun execute(effect: BreathSessionEffect) {
@@ -175,8 +246,14 @@ class BreathControlState(
             // Drop samples that were queued before this session started.
         }
         lastSampleAt = sampleTimeOrigin.elapsedNow()
+        readySessionId = null
+        pendingPreReadySample = null
+        onInputStartRequested()
         runCatching {
             breathInput.start(
+                onReady = {
+                    controlEvents.trySend(BreathSessionEvent.InputReady(sessionId))
+                },
                 onStrengthChanged = { strength ->
                     strengthSamples.trySend(
                         MeasuredStrength(
@@ -199,6 +276,8 @@ class BreathControlState(
         permissionJob?.cancel()
         locationPermissionJob?.cancel()
         lastSampleAt = null
+        readySessionId = null
+        pendingPreReadySample = null
         while (strengthSamples.tryReceive().isSuccess) {
             // Drop samples from the stopped session.
         }
