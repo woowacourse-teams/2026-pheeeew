@@ -24,4 +24,21 @@ class BreathAmplitudeNormalizerTest {
 
         assertTrue(normalizer.normalize(0.2f) > 0.15f)
     }
+
+    @Test
+    fun `calibration is fixed after the bounded startup window`() {
+        val normalizer =
+            BreathAmplitudeNormalizer(
+                calibrationSamples = 3,
+                maxCalibrationFrames = 2,
+            )
+
+        normalizer.normalize(0.9f)
+        normalizer.normalize(0.9f)
+        val beforeLateQuietSample = normalizer.normalize(0.9f)
+        normalizer.normalize(0.1f)
+        val afterLateQuietSample = normalizer.normalize(0.9f)
+
+        assertEquals(beforeLateQuietSample, afterLateQuietSample)
+    }
 }

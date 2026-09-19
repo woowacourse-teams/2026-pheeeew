@@ -222,6 +222,7 @@ private class AndroidBreathInput(
         var low500 = 0.0
         var low2000 = 0.0
         var previousBand = 0.0
+        var wasMotionSuppressed = false
         while (recording) {
             val count = source.read(samples, 0, samples.size, AudioRecord.READ_BLOCKING)
             if (generation != inputGeneration) return
@@ -260,14 +261,22 @@ private class AndroidBreathInput(
             val texture = ((crossings.toDouble() / count - 0.035) / 0.16).coerceIn(0.0, 1.0).toFloat()
             val motionSuppressed = System.nanoTime() < motionSuppressionUntilNanos
             val strength =
-                strengthProcessor.process(
-                    BreathSignalMetrics(
-                        amplitude = if (motionSuppressed) 0f else amplitude,
-                        lowFrequencyPresence = lowPresence,
-                        noisyTexture = texture,
-                        speechBandPresence = speechPresence,
-                    ),
-                )
+                if (motionSuppressed) {
+                    if (!wasMotionSuppressed) {
+                        strengthProcessor.reset()
+                    }
+                    0f
+                } else {
+                    strengthProcessor.process(
+                        BreathSignalMetrics(
+                            amplitude = amplitude,
+                            lowFrequencyPresence = lowPresence,
+                            noisyTexture = texture,
+                            speechBandPresence = speechPresence,
+                        ),
+                    )
+                }
+            wasMotionSuppressed = motionSuppressed
             Log.i(
                 BREATH_LOG_TAG,
                 String.format(
