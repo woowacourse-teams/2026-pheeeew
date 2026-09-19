@@ -72,6 +72,7 @@ fun MapRoute(
         onZoomOutClick = viewModel::onZoomOutClick,
         onMyLocationClick = viewModel::onMyLocationClick,
         onBoundsChanged = viewModel::loadSighs,
+        onCameraStateChanged = viewModel::onCameraStateChanged,
         onSighListVisibilityChange = viewModel::setSighListVisible,
         onSighItemClick = viewModel::selectSigh,
         onSighLikeClick = viewModel::updateSighLike,

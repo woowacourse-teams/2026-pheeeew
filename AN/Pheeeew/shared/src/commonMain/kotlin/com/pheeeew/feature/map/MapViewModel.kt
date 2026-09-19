@@ -15,6 +15,7 @@ import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.domain.repository.SighRepository
 import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.feature.map.map.MapCameraCommand
+import com.pheeeew.feature.map.map.MapCameraState
 import com.pheeeew.feature.map.map.MapDarkStyle
 import com.pheeeew.feature.map.map.MapError
 import com.pheeeew.feature.map.sighlist.SighModerationTarget
@@ -67,7 +68,9 @@ class MapViewModel(
     private var lastSighBounds: SighBounds? = null
     private var latestViewportIntent: ViewportIntent? = null
     private var latestViewportVersion = 0L
+    private var latestCameraState: MapCameraState? = null
     private var cameraBeforeSighDetailBounds: SighBounds? = null
+    private var cameraBeforeSighDetailState: MapCameraState? = null
     private var detailCameraMovePending = false
     private var restoringSighDetailBounds: SighBounds? = null
     private var latestSighListRequestId = 0L
@@ -395,6 +398,7 @@ class MapViewModel(
     ) {
         if (cameraBeforeSighDetailBounds == null) {
             cameraBeforeSighDetailBounds = bounds
+            cameraBeforeSighDetailState = latestCameraState
         }
         detailCameraMovePending = true
         sendCameraCommand { commandId ->
@@ -735,16 +739,36 @@ class MapViewModel(
 
     private fun restoreCameraBeforeSighDetail() {
         val bounds = cameraBeforeSighDetailBounds ?: return
+        val camera = cameraBeforeSighDetailState
         cameraBeforeSighDetailBounds = null
+        cameraBeforeSighDetailState = null
         lastSighBounds = bounds
         detailCameraMovePending = false
         restoringSighDetailBounds = bounds
         sendCameraCommand { commandId ->
-            MapCameraCommand.MoveToBounds(
+            camera?.let { savedCamera ->
+                MapCameraCommand.MoveToCameraState(
+                    id = commandId,
+                    camera = savedCamera,
+                )
+            } ?: MapCameraCommand.MoveToBounds(
                 id = commandId,
                 bounds = bounds,
             )
         }
+    }
+
+    fun onCameraStateChanged(camera: MapCameraState) {
+        if (
+            camera.latitude !in -90.0..90.0 ||
+            camera.longitude !in -180.0..180.0 ||
+            !camera.latitude.isFinite() ||
+            !camera.longitude.isFinite() ||
+            !camera.zoom.isFinite()
+        ) {
+            return
+        }
+        latestCameraState = camera
     }
 
     fun beginSighRegistration() {

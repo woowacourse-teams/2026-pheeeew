@@ -27,4 +27,9 @@ sealed interface MapCameraCommand {
         override val id: Long,
         val bounds: SighBounds,
     ) : MapCameraCommand
+
+    data class MoveToCameraState(
+        override val id: Long,
+        val camera: MapCameraState,
+    ) : MapCameraCommand
 }
