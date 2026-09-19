@@ -22,6 +22,7 @@ import com.pheeeew.domain.service.SighLocationObfuscator
 import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.feature.map.map.MapCameraCommand
 import com.pheeeew.feature.map.map.MapCameraState
+import com.pheeeew.feature.map.sighlist.SighModerationTarget
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -1271,6 +1272,36 @@ class MapViewModelTest {
 
                 assertNull(viewModel.uiState.value.sighBrowser.pendingSighPin)
                 assertFalse(viewModel.uiState.value.sighBrowser.isVisible)
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `차단된 상세 응답은 조회 중인 핀을 제거한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val existingSigh = sigh(id = 1L)
+                val repository =
+                    RecordingSighRepository(
+                        mapSighs = listOf(SighPin(existingSigh.id, existingSigh.coordinate)),
+                        detailSighs = mapOf(existingSigh.id to existingSigh),
+                    )
+                val viewModel = createViewModel(repository)
+                viewModel.onMapForeground()
+                viewModel.loadSighs(firstBounds)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                runCurrent()
+
+                viewModel.removeSigh(SighModerationTarget(sighId = 99L, nickname = existingSigh.nickname))
+                viewModel.openSighFromPin(existingSigh.id)
+                runCurrent()
+
+                assertNull(viewModel.uiState.value.sighBrowser.pendingSighPin)
+                assertFalse(viewModel.uiState.value.sighBrowser.isDetailLoading)
                 viewModel.onMapBackground()
             } finally {
                 Dispatchers.resetMain()
