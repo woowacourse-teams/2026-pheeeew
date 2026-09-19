@@ -124,6 +124,31 @@ enum MapLibreCamera {
                 animated: true
             )
             return true
+        case .movetocamerastate:
+            guard command.latitude.isFinite,
+                  command.longitude.isFinite,
+                  command.zoom?.doubleValue.isFinite == true,
+                  (-90.0...90.0).contains(command.latitude),
+                  (-180.0...180.0).contains(command.longitude) else { return false }
+            let camera = mapView.camera
+            camera.centerCoordinate = CLLocationCoordinate2D(
+                latitude: command.latitude,
+                longitude: command.longitude
+            )
+            camera.altitude = MLNAltitudeForZoomLevel(
+                command.zoom!.doubleValue,
+                camera.pitch,
+                command.latitude,
+                mapView.frame.size
+            )
+            mapView.setCamera(
+                camera,
+                withDuration: cameraAnimationDuration,
+                animationTimingFunction: nil,
+                edgePadding: .zero,
+                completionHandler: nil
+            )
+            return true
         default:
             return false
         }

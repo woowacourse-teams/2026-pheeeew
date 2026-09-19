@@ -45,6 +45,7 @@ import com.pheeeew.feature.map.guide.FirstSighGuideStep
 import com.pheeeew.feature.map.guide.SighSwipeHintOverlay
 import com.pheeeew.feature.map.guide.firstSighGuideStepFor
 import com.pheeeew.feature.map.map.BreathMap
+import com.pheeeew.feature.map.map.MapCameraState
 import com.pheeeew.feature.map.map.MapError
 import com.pheeeew.feature.map.map.MapProjectionSnapshot
 import com.pheeeew.feature.map.overlay.BreathControl
@@ -73,6 +74,7 @@ fun MapScreen(
     onZoomOutClick: () -> Unit,
     onMyLocationClick: () -> Unit,
     onBoundsChanged: (SighBounds) -> Unit,
+    onCameraStateChanged: (MapCameraState) -> Unit,
     onSighListVisibilityChange: (Boolean) -> Unit,
     onSighItemClick: (Long) -> Unit,
     onSighLikeClick: (Long, Boolean) -> Unit = { _, _ -> },
@@ -327,6 +329,7 @@ fun MapScreen(
             cameraCommand = uiState.viewport.cameraCommand,
             onSighClick = { id -> id.toLongOrNull()?.let(onSighPinClick) },
             onBoundsChanged = onBoundsChanged,
+            onCameraStateChanged = onCameraStateChanged,
             onMapError = onMapError,
             onMapRecovered = onMapReady,
             onProjectionChanged = { projectionSnapshot = it },
@@ -659,6 +662,7 @@ private fun MapScreenPreview() {
             onZoomOutClick = {},
             onMyLocationClick = {},
             onBoundsChanged = {},
+            onCameraStateChanged = {},
             onSighListVisibilityChange = {},
             onSighItemClick = {},
             onSighPinClick = {},

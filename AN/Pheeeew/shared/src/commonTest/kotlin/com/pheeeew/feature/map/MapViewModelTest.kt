@@ -21,6 +21,7 @@ import com.pheeeew.domain.repository.SighRepository
 import com.pheeeew.domain.service.SighLocationObfuscator
 import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.feature.map.map.MapCameraCommand
+import com.pheeeew.feature.map.map.MapCameraState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -908,6 +909,8 @@ class MapViewModelTest {
                 viewModel.setSighListVisible(true)
                 runCurrent()
                 viewModel.setSighListVisible(false)
+                val cameraBeforeDetail = MapCameraState(latitude = 37.55, longitude = 126.95, zoom = 12.6)
+                viewModel.onCameraStateChanged(cameraBeforeDetail)
 
                 viewModel.openSighFromPin(1L)
 
@@ -926,6 +929,11 @@ class MapViewModelTest {
                 assertEquals(false, viewModel.uiState.value.sighBrowser.isVisible)
                 assertEquals(false, viewModel.uiState.value.sighBrowser.isListVisible)
                 assertNull(viewModel.uiState.value.sighBrowser.selectedSigh)
+                val restoredCamera =
+                    assertIs<MapCameraCommand.MoveToCameraState>(
+                        viewModel.uiState.value.viewport.cameraCommand,
+                    )
+                assertEquals(cameraBeforeDetail, restoredCamera.camera)
                 viewModel.onMapBackground()
             } finally {
                 Dispatchers.resetMain()
