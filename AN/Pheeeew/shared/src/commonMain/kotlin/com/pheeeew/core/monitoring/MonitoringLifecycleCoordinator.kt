@@ -8,22 +8,11 @@ import kotlin.time.Instant
 internal class MonitoringLifecycleCoordinator(
     private val visitTracker: VisitTracker,
     private val saveTracker: SaveTracker,
-    private val now: () -> Long,
-    private val currentState: () -> MonitoringState,
-    private val replaceState: (MonitoringState) -> Unit,
-    private val screen: () -> String,
-    private val phase: () -> String,
-    private val attempt: () -> MonitoringSnapshot?,
-    private val activeSave: () -> MonitoringSnapshot?,
-    private val change: (() -> Unit) -> Unit,
-    private val emit: (String, MonitoringSnapshot, Map<String, Any>, String?) -> Unit,
-    private val endRecord: (MonitoringSnapshot, String, String, String) -> Unit,
-    private val observe: () -> Unit,
-    private val updateContext: () -> Unit,
+    private val runtime: MonitoringRuntime,
 ) {
-    fun foreground(onFlush: () -> Unit) {
-        change {
-            val snapshot = currentState()
+    fun foreground() {
+        runtime.change {
+            val snapshot = runtime.currentState()
             val transition = visitTracker.enterForeground(snapshot.visitId) ?: return@change
             transition.interruptedVisitId?.let { interruptedVisitId ->
                 val oldVisit =
@@ -33,14 +22,14 @@ internal class MonitoringLifecycleCoordinator(
                         state = snapshot.lastStage,
                     )
                 snapshot.attempt?.let {
-                    endRecord(
+                    runtime.endRecord(
                         it,
                         if (snapshot.savePending) "unknown" else "interrupted",
                         "process_interrupted",
                         "inferred",
                     )
                 }
-                emit(
+                runtime.emit(
                     MonitoringEventNames.APP_VISIT_ENDED,
                     oldVisit,
                     mapOf(
@@ -52,17 +41,17 @@ internal class MonitoringLifecycleCoordinator(
                 )
             }
             transition.endedVisitId?.let { endedVisitId ->
-                attempt()?.let {
-                    endRecord(
+                runtime.attempt()?.let {
+                    runtime.endRecord(
                         it,
-                        if (activeSave() != null) "unknown" else "interrupted",
+                        if (runtime.activeSave() != null) "unknown" else "interrupted",
                         "background",
                         "inferred",
                     )
                 }
-                emit(
+                runtime.emit(
                     MonitoringEventNames.APP_VISIT_ENDED,
-                    MonitoringSnapshot(endedVisitId, screen = screen(), state = phase()),
+                    MonitoringSnapshot(endedVisitId, screen = runtime.screen(), state = runtime.phase()),
                     mapOf(
                         "reason" to "background",
                         "end_time_quality" to "inferred",
@@ -76,23 +65,23 @@ internal class MonitoringLifecycleCoordinator(
             if (transition.startsNewVisit) {
                 val currentVisitId = visitTracker.ensureVisit()
                 val first = snapshot.knownNew && snapshot.firstOpened == null
-                replaceState(
-                    currentState().copy(
+                runtime.replaceState(
+                    runtime.currentState().copy(
                         visitId = currentVisitId,
-                        firstVisitId = if (first) currentVisitId else currentState().firstVisitId,
+                        firstVisitId = if (first) currentVisitId else runtime.currentState().firstVisitId,
                     ),
                 )
                 val origin = visitSnapshot()
                 if (first) {
-                    replaceState(currentState().copy(firstOpened = now()))
-                    emit(
+                    runtime.replaceState(runtime.currentState().copy(firstOpened = runtime.now()))
+                    runtime.emit(
                         MonitoringEventNames.APP_FIRST_OPENED,
                         origin,
-                        mapOf("first_opened_at" to isoTime(currentState().firstOpened!!)),
+                        mapOf("first_opened_at" to isoTime(runtime.currentState().firstOpened!!)),
                         "first_open",
                     )
                 }
-                emit(
+                runtime.emit(
                     MonitoringEventNames.APP_VISIT_STARTED,
                     origin,
                     mapOf(
@@ -103,51 +92,51 @@ internal class MonitoringLifecycleCoordinator(
                 )
             }
             activeDay()
-            observe()
-            updateContext()
+            runtime.observe()
+            runtime.updateContext()
         }
         // Also retry SDK-persisted batches that could not finish before the previous suspension.
-        onFlush()
+        runtime.flush()
     }
 
-    fun background(onFlush: () -> Unit) {
-        change {
+    fun background() {
+        runtime.change {
             if (!visitTracker.isForeground) return@change
-            val fields = attempt()?.sighAttemptId?.let { mapOf("active_sigh_attempt_id" to it) }.orEmpty()
-            emit(MonitoringEventNames.APP_BACKGROUNDED, visitSnapshot(), fields, null)
-            observe()
+            val fields = runtime.attempt()?.sighAttemptId?.let { mapOf("active_sigh_attempt_id" to it) }.orEmpty()
+            runtime.emit(MonitoringEventNames.APP_BACKGROUNDED, visitSnapshot(), fields, null)
+            runtime.observe()
             visitTracker.leaveForeground()
             saveTracker.markBackgrounded()
-            updateContext()
+            runtime.updateContext()
         }
-        onFlush()
+        runtime.flush()
     }
 
-    fun tick(onDrain: () -> Unit) {
+    fun tick() {
         if (visitTracker.isForeground) {
-            val date = seoulDay(now())
-            val snapshot = currentState()
+            val date = seoulDay(runtime.now())
+            val snapshot = runtime.currentState()
             // Avoid writing the storage every frame/second. Heartbeat only bounds inferred ends.
-            if (date !in snapshot.activeDays || now() - snapshot.lastObserved >= HEARTBEAT_MS) {
-                change {
+            if (date !in snapshot.activeDays || runtime.now() - snapshot.lastObserved >= HEARTBEAT_MS) {
+                runtime.change {
                     activeDay()
-                    observe()
+                    runtime.observe()
                 }
                 return
             }
         }
-        onDrain()
+        runtime.drain()
     }
 
     fun visitSnapshot(): MonitoringSnapshot =
-        MonitoringSnapshot(visitTracker.currentVisitId!!, screen = screen(), state = phase())
+        MonitoringSnapshot(visitTracker.currentVisitId!!, screen = runtime.screen(), state = runtime.phase())
 
     private fun activeDay() {
-        val date = seoulDay(now())
-        val snapshot = currentState()
+        val date = seoulDay(runtime.now())
+        val snapshot = runtime.currentState()
         if (date !in snapshot.activeDays) {
-            replaceState(currentState().copy(activeDays = (snapshot.activeDays + date).takeLast(MAX_LOGICAL_KEYS)))
-            emit(MonitoringEventNames.APP_ACTIVE_DAY, visitSnapshot(), mapOf("activity_date" to date), "day:$date")
+            runtime.replaceState(runtime.currentState().copy(activeDays = (snapshot.activeDays + date).takeLast(MAX_LOGICAL_KEYS)))
+            runtime.emit(MonitoringEventNames.APP_ACTIVE_DAY, visitSnapshot(), mapOf("activity_date" to date), "day:$date")
         }
     }
 

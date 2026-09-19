@@ -8,19 +8,7 @@ import com.pheeeew.core.monitoring.tracker.SighAttemptTracker
 internal class BreathCaptureCoordinator(
     private val captureTracker: BreathCaptureTracker,
     private val attemptTracker: SighAttemptTracker,
-    private val attempt: () -> MonitoringSnapshot?,
-    private val currentState: () -> MonitoringState,
-    private val usable: () -> Boolean,
-    private val screen: () -> String,
-    private val phase: () -> String,
-    private val setPhase: (String) -> Unit,
-    private val elapsed: () -> Long,
-    private val id: () -> String,
-    private val change: (() -> Unit) -> Unit,
-    private val emit: (String, MonitoringSnapshot, Map<String, Any>, String?) -> Unit,
-    private val observe: () -> Unit,
-    private val updateContext: () -> Unit,
-    private val flush: () -> Unit,
+    private val runtime: MonitoringRuntime,
 ) {
     private var tapIndex = 0
     private var swipeIndex = 0
@@ -42,12 +30,12 @@ internal class BreathCaptureCoordinator(
     }
 
     fun beginCapture(): MonitoringSnapshot? {
-        val origin = attempt() ?: return null
-        if (!usable()) return null
-        change {
-            val started = captureTracker.begin(origin, screen(), elapsed())
-            setPhase("listening")
-            emit(
+        val origin = runtime.attempt() ?: return null
+        if (!runtime.usable()) return null
+        runtime.change {
+            val started = captureTracker.begin(origin, runtime.screen(), runtime.elapsed())
+            runtime.setPhase("listening")
+            runtime.emit(
                 MonitoringEventNames.MIC_START_REQUESTED,
                 started.origin,
                 mapOf(
@@ -56,19 +44,19 @@ internal class BreathCaptureCoordinator(
                 ),
                 "mic_start:${started.origin.captureId}",
             )
-            observe()
+            runtime.observe()
         }
         return captureTracker.activeCapture()
     }
 
     fun microphoneReady() =
-        change {
+        runtime.change {
             val active = captureTracker.activeCapture() ?: return@change
             val key = "mic_ready:${active.captureId}"
-            if (key in currentState().logicalKeys) return@change
-            val ready = captureTracker.markReady(screen(), elapsed()) ?: return@change
+            if (key in runtime.currentState().logicalKeys) return@change
+            val ready = captureTracker.markReady(runtime.screen(), runtime.elapsed()) ?: return@change
             val origin = ready.origin
-            emit(
+            runtime.emit(
                 MonitoringEventNames.MIC_READY,
                 origin,
                 buildMap {
@@ -80,16 +68,16 @@ internal class BreathCaptureCoordinator(
                 },
                 key,
             )
-            observe()
-            updateContext()
+            runtime.observe()
+            runtime.updateContext()
         }
 
     fun baseSizeChanged() =
-        change {
+        runtime.change {
             val origin = captureTracker.activeCapture() ?: return@change
-            emit(
+            runtime.emit(
                 MonitoringEventNames.BASE_SIZE_CHANGED,
-                origin.copy(screen = screen(), state = "listening"),
+                origin.copy(screen = runtime.screen(), state = "listening"),
                 mapOf("cause" to "input_activation", "measurement" to "target_state"),
                 "base_size:${origin.captureId}",
             )
@@ -99,14 +87,14 @@ internal class BreathCaptureCoordinator(
         strength: Float,
         activeThreshold: Float,
     ) {
-        val origin = captureTracker.detectingCapture(screen()) ?: return
+        val origin = captureTracker.detectingCapture(runtime.screen()) ?: return
         val key = "first_sound:${origin.captureId}"
-        if (!usable() || key in currentState().logicalKeys) return
-        change {
-            val detectedAt = elapsed()
-            emit(
+        if (!runtime.usable() || key in runtime.currentState().logicalKeys) return
+        runtime.change {
+            val detectedAt = runtime.elapsed()
+            runtime.emit(
                 MonitoringEventNames.SOUND_FIRST_DETECTED,
-                origin.copy(screen = screen(), state = "detecting"),
+                origin.copy(screen = runtime.screen(), state = "detecting"),
                 buildMap {
                     put("strength", strength.coerceIn(0f, 1f))
                     put("active_threshold", activeThreshold.coerceIn(0f, 1f))
@@ -119,7 +107,7 @@ internal class BreathCaptureCoordinator(
                 },
                 key,
             )
-            observe()
+            runtime.observe()
         }
     }
 
@@ -128,21 +116,21 @@ internal class BreathCaptureCoordinator(
         sampleElapsedMs: Long,
         growth: Float,
     ) {
-        if (!usable()) return
+        if (!runtime.usable()) return
         val update = captureTracker.recordSample(active, sampleElapsedMs, growth) ?: return
         val origin = captureTracker.activeCapture() ?: return
         if (update.growthStarted) {
             val key = "growth_started:${origin.captureId}"
-            if (key !in currentState().logicalKeys) {
-                change {
-                    emit(
+            if (key !in runtime.currentState().logicalKeys) {
+                runtime.change {
+                    runtime.emit(
                         MonitoringEventNames.SOUND_GROWTH_STARTED,
-                        origin.copy(screen = screen(), state = "detecting"),
+                        origin.copy(screen = runtime.screen(), state = "detecting"),
                         buildMap {
                             put("growth_before", update.growthBefore)
                             put("growth_after", update.growthAfter)
                             update.readyAtElapsed?.let {
-                                put("ready_to_growth_ms", (elapsed() - it).coerceAtLeast(0L))
+                                put("ready_to_growth_ms", (runtime.elapsed() - it).coerceAtLeast(0L))
                             }
                         },
                         key,
@@ -151,18 +139,18 @@ internal class BreathCaptureCoordinator(
             }
         }
         update.closedSegments.forEach { segment ->
-            change { emitBreathSegment(origin, segment) }
+        runtime.change { emitBreathSegment(origin, segment) }
         }
     }
 
     fun releaseReady(
         growth: Float,
         minimumReleaseProgress: Float,
-    ) = change {
+    ) = runtime.change {
         val origin = captureTracker.activeCapture() ?: return@change
-        emit(
+        runtime.emit(
             MonitoringEventNames.SIGH_RELEASE_READY,
-            origin.copy(screen = screen(), state = "release_ready"),
+            origin.copy(screen = runtime.screen(), state = "release_ready"),
             mapOf(
                 "growth" to growth.coerceIn(0f, 1f),
                 "minimum_release_progress" to minimumReleaseProgress.coerceIn(0f, 1f),
@@ -175,12 +163,12 @@ internal class BreathCaptureCoordinator(
         controlPhase: String,
         growth: Float,
         inputActive: Boolean,
-    ) = change {
-        val origin = captureTracker.activeCapture() ?: attempt() ?: return@change
+    ) = runtime.change {
+        val origin = captureTracker.activeCapture() ?: runtime.attempt() ?: return@change
         tapIndex += 1
-        emit(
+        runtime.emit(
             MonitoringEventNames.SIGH_CONTROL_TAPPED,
-            origin.copy(screen = screen(), state = controlPhase),
+            origin.copy(screen = runtime.screen(), state = controlPhase),
             mapOf(
                 "tap_index" to tapIndex,
                 "phase" to controlPhase,
@@ -197,13 +185,13 @@ internal class BreathCaptureCoordinator(
         growth: Float,
         success: Boolean,
         reason: String,
-    ) = change {
+    ) = runtime.change {
         val origin = captureTracker.activeCapture() ?: return@change
-        val gestureId = id()
+        val gestureId = runtime.id()
         swipeIndex += 1
-        emit(
+        runtime.emit(
             MonitoringEventNames.SIGH_SWIPE_ATTEMPTED,
-            origin.copy(screen = screen(), state = phase()),
+            origin.copy(screen = runtime.screen(), state = runtime.phase()),
             mapOf(
                 "gesture_id" to gestureId,
                 "swipe_index" to swipeIndex,
@@ -217,10 +205,10 @@ internal class BreathCaptureCoordinator(
         )
         if (success) {
             releasedCapture = origin
-            releaseStartedElapsed = elapsed()
-            emit(
+            releaseStartedElapsed = runtime.elapsed()
+            runtime.emit(
                 MonitoringEventNames.SIGH_RELEASE_SUCCEEDED,
-                origin.copy(screen = screen(), state = "releasing"),
+                origin.copy(screen = runtime.screen(), state = "releasing"),
                 mapOf(
                     "gesture_id" to gestureId,
                     "growth_before_release" to growth.coerceIn(0f, 1f),
@@ -231,24 +219,24 @@ internal class BreathCaptureCoordinator(
     }
 
     fun gestureCancelled(reason: String) =
-        change {
+        runtime.change {
             val origin = captureTracker.activeCapture() ?: return@change
-            emit(
+            runtime.emit(
                 MonitoringEventNames.SIGH_GESTURE_CANCELLED,
-                origin.copy(screen = screen(), state = phase()),
-                mapOf("gesture_id" to id(), "reason" to reason),
+                origin.copy(screen = runtime.screen(), state = runtime.phase()),
+                mapOf("gesture_id" to runtime.id(), "reason" to reason),
                 null,
             )
         }
 
     fun releaseAnimationFinished() =
-        change {
+        runtime.change {
             val origin = releasedCapture ?: return@change
             val startedAt = releaseStartedElapsed ?: return@change
-            emit(
+            runtime.emit(
                 MonitoringEventNames.SIGH_RELEASE_ANIMATION_FINISHED,
-                origin.copy(screen = screen(), state = "released"),
-                mapOf("release_to_animation_end_ms" to (elapsed() - startedAt).coerceAtLeast(0L)),
+                origin.copy(screen = runtime.screen(), state = "released"),
+                mapOf("release_to_animation_end_ms" to (runtime.elapsed() - startedAt).coerceAtLeast(0L)),
                 "release_animation:${origin.captureId}",
             )
             releasedCapture = null
@@ -261,8 +249,8 @@ internal class BreathCaptureCoordinator(
         interrupted: Boolean,
     ) {
         val shouldFlush = stopReason == "background" && captureTracker.activeCapture() != null
-        change { finishCapture(finalGrowth, stopReason, interrupted) }
-        if (shouldFlush) flush()
+        runtime.change { finishCapture(finalGrowth, stopReason, interrupted) }
+        if (shouldFlush) runtime.flush()
     }
 
     fun finishForAttempt(
@@ -272,18 +260,18 @@ internal class BreathCaptureCoordinator(
     ) = finishCapture(finalGrowth, stopReason, interrupted)
 
     fun microphoneFailed(error: String) =
-        change {
-            val origin = captureTracker.activeCapture() ?: attempt() ?: return@change
-            emit(
+        runtime.change {
+            val origin = captureTracker.activeCapture() ?: runtime.attempt() ?: return@change
+            runtime.emit(
                 MonitoringEventNames.MIC_FAILED,
-                origin.copy(screen = screen(), state = phase()),
+                origin.copy(screen = runtime.screen(), state = runtime.phase()),
                 mapOf(
                     "stage" to if (captureTracker.readyAtElapsed() == null) "start" else "read",
                     "reason" to error,
                 ),
                 null,
             )
-            observe()
+            runtime.observe()
         }
 
     private fun finishCapture(
@@ -293,23 +281,23 @@ internal class BreathCaptureCoordinator(
     ) {
         val origin = captureTracker.activeCapture() ?: return
         val key = "breath_summary:${origin.captureId}"
-        if (key in currentState().logicalKeys) return
+        if (key in runtime.currentState().logicalKeys) return
         val finished = captureTracker.finish(stopReason) ?: return
         finished.closedSegments.forEach { segment ->
             emitBreathSegment(origin, segment)
         }
-        emit(
+        runtime.emit(
             MonitoringEventNames.MIC_STOPPED,
-            origin.copy(screen = screen(), state = "stopped"),
+            origin.copy(screen = runtime.screen(), state = "stopped"),
             mapOf(
                 "reason" to stopReason,
                 "ready_observed" to finished.readyObserved,
             ),
             "mic_stopped:${origin.captureId}",
         )
-        emit(
+        runtime.emit(
             MonitoringEventNames.BREATH_SUMMARY,
-            origin.copy(screen = screen(), state = "stopped"),
+            origin.copy(screen = runtime.screen(), state = "stopped"),
             mapOf(
                 "segment_count" to finished.segmentCount,
                 "final_growth" to finalGrowth.coerceIn(0f, 1f),
@@ -323,17 +311,17 @@ internal class BreathCaptureCoordinator(
             key,
         )
         captureTracker.clear()
-        observe()
-        updateContext()
+        runtime.observe()
+        runtime.updateContext()
     }
 
     private fun emitBreathSegment(
         origin: MonitoringSnapshot,
         segment: ClosedBreathSegment,
     ) {
-        emit(
+        runtime.emit(
             MonitoringEventNames.BREATH_SEGMENT_ENDED,
-            origin.copy(screen = screen(), state = "detecting"),
+            origin.copy(screen = runtime.screen(), state = "detecting"),
             buildMap {
                 put("segment_index", segment.index)
                 put("span_ms", segment.spanMs)

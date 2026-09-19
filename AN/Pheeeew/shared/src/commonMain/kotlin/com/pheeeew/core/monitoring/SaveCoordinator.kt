@@ -5,36 +5,20 @@ import com.pheeeew.core.monitoring.tracker.SaveTracker
 /** Coordinates save requests, API timing, and the delayed save result UI. */
 internal class SaveCoordinator(
     private val saveTracker: SaveTracker,
-    private val usable: () -> Boolean,
-    private val attempt: () -> MonitoringSnapshot?,
-    private val activeSave: () -> MonitoringSnapshot?,
-    private val screen: () -> String,
-    private val phase: () -> String,
-    private val setPhase: (String) -> Unit,
-    private val currentState: () -> MonitoringState,
-    private val replaceState: (MonitoringState) -> Unit,
-    private val now: () -> Long,
-    private val elapsed: () -> Long,
-    private val id: () -> String,
+    private val runtime: MonitoringRuntime,
     private val formatTime: (Long) -> String,
     private val formatDay: (Long) -> String,
-    private val change: (() -> Unit) -> Unit,
-    private val emit: (String, MonitoringSnapshot, Map<String, Any>, String?) -> Unit,
-    private val endRecord: (MonitoringSnapshot, String, String, String) -> Unit,
-    private val clearAttempt: () -> Unit,
-    private val observe: () -> Unit,
-    private val updateContext: () -> Unit,
 ) {
     fun beginSave(): MonitoringSnapshot? {
-        if (!usable()) return null
-        val origin = attempt() ?: return null
+        if (!runtime.usable()) return null
+        val origin = runtime.attempt() ?: return null
         saveTracker.activeSave?.let { return it }
-        change {
-            setPhase("submitting")
-            val saving = saveTracker.begin(origin, screen(), phase())
-            replaceState(currentState().copy(savePending = true))
-            observe()
-            emit(
+        runtime.change {
+            runtime.setPhase("submitting")
+            val saving = saveTracker.begin(origin, runtime.screen(), runtime.phase())
+            runtime.replaceState(runtime.currentState().copy(savePending = true))
+            runtime.observe()
+            runtime.emit(
                 MonitoringEventNames.SAVE_STARTED,
                 saving,
                 mapOf(
@@ -44,7 +28,7 @@ internal class SaveCoordinator(
                 ),
                 "save_start:${saving.saveAttemptId}",
             )
-            updateContext()
+            runtime.updateContext()
         }
         return saveTracker.activeSave
     }
@@ -54,10 +38,10 @@ internal class SaveCoordinator(
         success: Boolean,
         durationMs: Long,
         errorCode: String?,
-    ) = change {
+    ) = runtime.change {
         if (origin?.saveAttemptId == null || origin.sighAttemptId == null) return@change
         val key = "save_result:${origin.saveAttemptId}"
-        if (key in currentState().logicalKeys) return@change
+        if (key in runtime.currentState().logicalKeys) return@change
         val fields =
             buildMap<String, Any> {
                 put("outcome", if (success) "success" else "failure")
@@ -66,15 +50,15 @@ internal class SaveCoordinator(
                 if (!success) put("reason", "unknown")
                 errorCode?.let { put("error_code", it) }
             }
-        emit(MonitoringEventNames.SAVE_RESULT, origin, fields, key)
+        runtime.emit(MonitoringEventNames.SAVE_RESULT, origin, fields, key)
         saveTracker.markResult(origin.saveAttemptId)
         if (success) {
             saveTracker.promotePendingToSavedStar()
-            val state = currentState()
+            val state = runtime.currentState()
             if (state.knownNew && state.firstSaved == null) {
-                val firstSaved = now()
-                replaceState(state.copy(firstSaved = firstSaved))
-                emit(
+                val firstSaved = runtime.now()
+                runtime.replaceState(state.copy(firstSaved = firstSaved))
+                runtime.emit(
                     MonitoringEventNames.FIRST_SIGH_SAVED,
                     origin,
                     mapOf(
@@ -87,13 +71,13 @@ internal class SaveCoordinator(
             }
             // If this attempt already ended as unknown, save_result is authoritative. Do not
             // emit a second terminal event; the analytics query joins the later result.
-            endRecord(origin.copy(state = "save_result"), "saved", "none", "observed")
-            if (attempt()?.sighAttemptId == origin.sighAttemptId) clearAttempt()
-        } else if (activeSave()?.saveAttemptId == origin.saveAttemptId) {
+            runtime.endRecord(origin.copy(state = "save_result"), "saved", "none", "observed")
+            if (runtime.attempt()?.sighAttemptId == origin.sighAttemptId) runtime.clearAttempt()
+        } else if (runtime.activeSave()?.saveAttemptId == origin.saveAttemptId) {
             saveTracker.clearActive()
-            replaceState(currentState().copy(savePending = false))
-            setPhase("save_error")
-            updateContext()
+            runtime.replaceState(runtime.currentState().copy(savePending = false))
+            runtime.setPhase("save_error")
+            runtime.updateContext()
         }
     }
 
@@ -101,18 +85,18 @@ internal class SaveCoordinator(
         origin: MonitoringSnapshot?,
         waitMs: Long,
     ) {
-        if (!usable() || origin?.saveAttemptId == null) return
+        if (!runtime.usable() || origin?.saveAttemptId == null) return
         saveTracker.setMinDisplayWait(origin.saveAttemptId, waitMs)
     }
 
     fun saveUiResultShown(outcome: String) =
-        change {
+        runtime.change {
             val observation = saveTracker.pendingSaveUi ?: return@change
             val resultAt = observation.resultAt ?: return@change
-            val shownAt = elapsed()
-            emit(
+            val shownAt = runtime.elapsed()
+            runtime.emit(
                 MonitoringEventNames.SAVE_UI_RESULT_SHOWN,
-                observation.origin.copy(screen = screen(), state = "save_ui_result"),
+                observation.origin.copy(screen = runtime.screen(), state = "save_ui_result"),
                 mapOf(
                     "outcome" to outcome,
                     "save_feedback_elapsed_ms" to (shownAt - observation.startedAt).coerceAtLeast(0L),
@@ -133,13 +117,13 @@ internal class SaveCoordinator(
         statusCode: Int?,
         errorCode: String?,
         correlationId: String?,
-    ) = change {
-        val origin = activeSave() ?: saveTracker.pendingSaveUi?.origin ?: return@change
-        emit(
+    ) = runtime.change {
+        val origin = runtime.activeSave() ?: saveTracker.pendingSaveUi?.origin ?: return@change
+        runtime.emit(
             MonitoringEventNames.API_REQUEST_FINISHED,
-            origin.copy(screen = screen(), state = phase()),
+            origin.copy(screen = runtime.screen(), state = runtime.phase()),
             buildMap {
-                put("http_attempt_id", id())
+                put("http_attempt_id", runtime.id())
                 put("route_template", routeTemplate)
                 put("method", method)
                 put("http_duration_ms", durationMs.coerceAtLeast(0L))

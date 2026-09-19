@@ -7,86 +7,71 @@ import com.pheeeew.core.monitoring.tracker.VisitTracker
 internal class SighAttemptCoordinator(
     private val visitTracker: VisitTracker,
     private val attemptTracker: SighAttemptTracker,
-    private val usable: () -> Boolean,
     private val isForeground: () -> Boolean,
-    private val screen: () -> String,
-    private val phase: () -> String,
-    private val setPhase: (String) -> Unit,
-    private val attempt: () -> MonitoringSnapshot?,
-    private val currentState: () -> MonitoringState,
-    private val replaceState: (MonitoringState) -> Unit,
-    private val elapsed: () -> Long,
-    private val id: () -> String,
-    private val change: (() -> Unit) -> Unit,
-    private val emit: (String, MonitoringSnapshot, Map<String, Any>, String?) -> Unit,
-    private val endRecord: (MonitoringSnapshot, String, String, String) -> Unit,
-    private val resetForAttempt: () -> Unit,
-    private val clearAttempt: () -> Unit,
-    private val observe: () -> Unit,
-    private val updateContext: () -> Unit,
+    private val runtime: MonitoringRuntime,
 ) {
     fun beginAttempt(guideMode: Boolean): Boolean {
-        if (!usable() || !isForeground() || attempt() != null) return false
-        change {
-            setPhase("starting")
-            resetForAttempt()
-            val newAttempt = attemptTracker.begin(visitTracker.currentVisitId!!, screen(), phase())
-            replaceState(currentState().copy(attempt = newAttempt, savePending = false))
-            emit(
+        if (!runtime.usable() || !isForeground() || runtime.attempt() != null) return false
+        runtime.change {
+            runtime.setPhase("starting")
+            runtime.resetForAttempt()
+            val newAttempt = attemptTracker.begin(visitTracker.currentVisitId!!, runtime.screen(), runtime.phase())
+            runtime.replaceState(runtime.currentState().copy(attempt = newAttempt, savePending = false))
+            runtime.emit(
                 MonitoringEventNames.SIGH_STARTED,
                 newAttempt,
                 mapOf("entry_point" to "main_button", "guide_mode" to guideMode),
                 "start:${newAttempt.sighAttemptId}",
             )
-            updateContext()
+            runtime.updateContext()
         }
         return true
     }
 
     fun startFailed(reason: String) =
-        change {
-            attempt()?.let {
-                emit(
+        runtime.change {
+            runtime.attempt()?.let {
+                runtime.emit(
                     MonitoringEventNames.SIGH_START_FAILED,
                     it,
                     mapOf("reason" to reason),
                     "start_failure:${it.sighAttemptId}",
                 )
-                endRecord(it, "start_failed", reason, "observed")
+                runtime.endRecord(it, "start_failed", reason, "observed")
             }
-            clearAttempt()
+            runtime.clearAttempt()
         }
 
     fun memoEditing() =
-        change {
-            setPhase("editing_memo")
+        runtime.change {
+            runtime.setPhase("editing_memo")
             attemptTracker.markMemoEditing()
-            observe()
+            runtime.observe()
         }
 
     fun memoShown() =
-        change {
-            val origin = attempt() ?: return@change
+        runtime.change {
+            val origin = runtime.attempt() ?: return@change
             attemptTracker.markMemoShown()
-            emit(
+            runtime.emit(
                 MonitoringEventNames.MEMO_SHOWN,
-                origin.copy(screen = screen(), state = phase()),
+                origin.copy(screen = runtime.screen(), state = runtime.phase()),
                 emptyMap(),
                 "memo_shown:${origin.sighAttemptId}",
             )
-            observe()
+            runtime.observe()
         }
 
     fun memoValidationFailed() =
-        change {
-            val origin = attempt() ?: return@change
-            emit(
+        runtime.change {
+            val origin = runtime.attempt() ?: return@change
+            runtime.emit(
                 MonitoringEventNames.MEMO_VALIDATION_FAILED,
-                origin.copy(screen = screen(), state = phase()),
+                origin.copy(screen = runtime.screen(), state = runtime.phase()),
                 mapOf("reason" to "invalid_memo"),
                 null,
             )
-            observe()
+            runtime.observe()
         }
 
     fun memoCompleted(memoPresent: Boolean) =
@@ -98,38 +83,38 @@ internal class SighAttemptCoordinator(
     fun memoSkipped() = completeMemo(MonitoringEventNames.MEMO_SKIPPED)
 
     fun microphonePermissionResult(granted: Boolean) =
-        change {
-            val origin = attempt() ?: return@change
-            emit(
+        runtime.change {
+            val origin = runtime.attempt() ?: return@change
+            runtime.emit(
                 MonitoringEventNames.PERMISSION_RESULT,
-                origin.copy(screen = screen(), state = phase()),
+                origin.copy(screen = runtime.screen(), state = runtime.phase()),
                 mapOf(
-                    "permission_check_id" to id(),
+                    "permission_check_id" to runtime.id(),
                     "permission" to "microphone",
                     "status" to if (granted) "granted" else "denied",
                     "context" to "capture_start",
                 ),
                 null,
             )
-            observe()
+            runtime.observe()
         }
 
     private fun completeMemo(
         event: String,
         fields: Map<String, Any> = emptyMap(),
-    ) = change {
-        val origin = attempt() ?: return@change
+    ) = runtime.change {
+        val origin = runtime.attempt() ?: return@change
         val resolutionKey = "memo_resolution:${origin.sighAttemptId}"
-        if (resolutionKey in currentState().logicalKeys) return@change
-        val startedAt = attemptTracker.memoShownAt ?: attemptTracker.memoEditingAt ?: elapsed()
-        setPhase("awaiting_breath")
-        emit(
+        if (resolutionKey in runtime.currentState().logicalKeys) return@change
+        val startedAt = attemptTracker.memoShownAt ?: attemptTracker.memoEditingAt ?: runtime.elapsed()
+        runtime.setPhase("awaiting_breath")
+        runtime.emit(
             event,
-            origin.copy(screen = screen(), state = phase()),
-            fields + mapOf("memo_elapsed_ms" to (elapsed() - startedAt).coerceAtLeast(0)),
+            origin.copy(screen = runtime.screen(), state = runtime.phase()),
+            fields + mapOf("memo_elapsed_ms" to (runtime.elapsed() - startedAt).coerceAtLeast(0)),
             resolutionKey,
         )
         attemptTracker.markMemoResolved()
-        observe()
+        runtime.observe()
     }
 }

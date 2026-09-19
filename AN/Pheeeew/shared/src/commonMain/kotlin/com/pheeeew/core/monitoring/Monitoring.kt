@@ -47,99 +47,62 @@ class Monitoring(
     private var phase = "idle"
     private var usable =
         config.configured && stateStore.readable &&
-            state.environment == config.environment && state.version == 1
-    private val breathCoordinator =
-        BreathCaptureCoordinator(
-            captureTracker = captureTracker,
-            attemptTracker = attemptTracker,
-            attempt = { attempt },
+        state.environment == config.environment && state.version == 1
+    private val runtime =
+        MonitoringRuntime(
+            now = now,
+            elapsed = elapsed,
+            id = id,
             currentState = { state },
+            replaceState = { state = it },
             usable = { usable },
             screen = { screen },
             phase = { phase },
             setPhase = { phase = it },
-            elapsed = elapsed,
-            id = id,
+            attempt = { attempt },
+            activeSave = { activeSave },
             change = { block -> change(block) },
             emit = { name, origin, fields, logicalKey -> emit(name, origin, fields, logicalKey) },
+            endRecord = { origin, outcome, reason, quality -> endRecord(origin, outcome, reason, quality) },
             observe = { observe() },
             updateContext = { updateContext() },
+            clearAttempt = { clearAttempt() },
+            resetForAttempt = { resetForAttempt() },
             flush = { flush() },
+            drain = { drain() },
+        )
+    private val breathCoordinator =
+        BreathCaptureCoordinator(
+            captureTracker = captureTracker,
+            attemptTracker = attemptTracker,
+            runtime = runtime,
         )
     private val lifecycleCoordinator =
         MonitoringLifecycleCoordinator(
             visitTracker = visitTracker,
             saveTracker = saveTracker,
-            now = now,
-            currentState = { state },
-            replaceState = { state = it },
-            screen = { screen },
-            phase = { phase },
-            attempt = { attempt },
-            activeSave = { activeSave },
-            change = { block -> change(block) },
-            emit = { name, origin, fields, logicalKey -> emit(name, origin, fields, logicalKey) },
-            endRecord = { origin, outcome, reason, quality -> endRecord(origin, outcome, reason, quality) },
-            observe = { observe() },
-            updateContext = { updateContext() },
+            runtime = runtime,
         )
     private val attemptCoordinator =
         SighAttemptCoordinator(
             visitTracker = visitTracker,
             attemptTracker = attemptTracker,
-            usable = { usable },
             isForeground = { visitTracker.isForeground },
-            screen = { screen },
-            phase = { phase },
-            setPhase = { phase = it },
-            attempt = { attempt },
-            currentState = { state },
-            replaceState = { state = it },
-            elapsed = elapsed,
-            id = id,
-            change = { block -> change(block) },
-            emit = { name, origin, fields, logicalKey -> emit(name, origin, fields, logicalKey) },
-            endRecord = { origin, outcome, reason, quality -> endRecord(origin, outcome, reason, quality) },
-            resetForAttempt = {
-                saveTracker.resetForAttempt()
-                breathCoordinator.resetForAttempt()
-            },
-            clearAttempt = { clearAttempt() },
-            observe = { observe() },
-            updateContext = { updateContext() },
+            runtime = runtime,
         )
     private val saveCoordinator =
         SaveCoordinator(
             saveTracker = saveTracker,
-            usable = { usable },
-            attempt = { attempt },
-            activeSave = { activeSave },
-            screen = { screen },
-            phase = { phase },
-            setPhase = { phase = it },
-            currentState = { state },
-            replaceState = { state = it },
-            now = now,
-            elapsed = elapsed,
-            id = id,
+            runtime = runtime,
             formatTime = ::iso,
             formatDay = ::day,
-            change = { block -> change(block) },
-            emit = { name, origin, fields, logicalKey -> emit(name, origin, fields, logicalKey) },
-            endRecord = { origin, outcome, reason, quality -> endRecord(origin, outcome, reason, quality) },
-            clearAttempt = { clearAttempt() },
-            observe = { observe() },
-            updateContext = { updateContext() },
         )
     private val mapVisitCoordinator =
         MapVisitCoordinator(
             visitTracker = visitTracker,
             mapVisitTracker = mapVisitTracker,
             saveTracker = saveTracker,
-            elapsed = elapsed,
-            change = { block -> change(block) },
-            emit = { name, origin, fields, logicalKey -> emit(name, origin, fields, logicalKey) },
-            updateContext = { updateContext() },
+            runtime = runtime,
         )
 
     val anonymousId: String get() = state.anonymousId
@@ -163,12 +126,12 @@ class Monitoring(
 
     fun foreground() {
         if (!usable) return
-        lifecycleCoordinator.foreground(::flush)
+        lifecycleCoordinator.foreground()
     }
 
     fun background() {
         if (!usable) return
-        lifecycleCoordinator.background(::flush)
+        lifecycleCoordinator.background()
     }
 
     /** Flushes events accepted by the analytics SDK without changing monitoring state. */
@@ -180,7 +143,7 @@ class Monitoring(
 
     fun tick() {
         if (!usable) return
-        lifecycleCoordinator.tick(::drain)
+        lifecycleCoordinator.tick()
     }
 
     fun beginAttempt(guideMode: Boolean): Boolean = attemptCoordinator.beginAttempt(guideMode)
@@ -359,6 +322,11 @@ class Monitoring(
         state = state.copy(attempt = null, savePending = false)
         phase = "idle"
         updateContext()
+    }
+
+    private fun resetForAttempt() {
+        saveTracker.resetForAttempt()
+        breathCoordinator.resetForAttempt()
     }
 
     private fun updateContext() {
