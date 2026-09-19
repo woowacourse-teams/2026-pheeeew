@@ -3,7 +3,7 @@ package com.pheeeew.core.monitoring.transport
 import com.pheeeew.core.monitoring.MonitoringEvent
 import com.pheeeew.core.monitoring.MonitoringSnapshot
 
-interface MonitoringTransport {
+internal interface MonitoringTransport {
     /** True means accepted by the SDK, not acknowledged by the remote server. */
     fun track(event: MonitoringEvent): Boolean
 

@@ -170,6 +170,23 @@ class MonitoringTest {
     }
 
     @Test
+    fun handleFromAnotherMonitoringInstanceIsIgnored() {
+        val firstFixture = Fixture()
+        val first = firstFixture.create()
+        first.foreground()
+        first.beginAttempt(false)
+        val foreignHandle = first.beginSave()!!
+
+        val secondFixture = Fixture()
+        val second = secondFixture.create()
+        second.foreground()
+        second.beginAttempt(false)
+        second.saveResult(foreignHandle, true, 100)
+
+        assertEquals(0, secondFixture.events("save_result").size)
+    }
+
+    @Test
     fun pendingSaveAtVisitEndIsUnknownAndLateSuccessDoesNotDuplicateEnd() {
         val f = Fixture()
         val m = f.create()

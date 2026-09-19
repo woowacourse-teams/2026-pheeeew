@@ -11,7 +11,7 @@ import kotlin.time.TimeSource
 import kotlin.uuid.Uuid
 
 // 외부에 공개하는 진입점
-class Monitoring(
+class Monitoring internal constructor(
     private val config: MonitoringConfig,
     private val store: MonitoringStore,
     private val transport: MonitoringTransport,
@@ -30,6 +30,7 @@ class Monitoring(
         get() = stateStore.state
         set(value) = stateStore.replace(value)
     private val processId = id()
+    private val handleOwner = Any()
     private val recorder by lazy {
         MonitoringEventRecorder(
             config = config,
@@ -163,7 +164,7 @@ class Monitoring(
 
     fun microphonePermissionResult(granted: Boolean) = attemptCoordinator.microphonePermissionResult(granted)
 
-    fun beginCapture(): MonitoringSnapshot? = breathCoordinator.beginCapture()
+    fun beginCapture(): MonitoringHandle? = breathCoordinator.beginCapture()?.let(::handle)
 
     fun microphoneReady() = breathCoordinator.microphoneReady()
 
@@ -217,19 +218,19 @@ class Monitoring(
 
     fun microphoneFailed(error: String) = breathCoordinator.microphoneFailed(error)
 
-    fun beginSave(): MonitoringSnapshot? = saveCoordinator.beginSave()
+    fun beginSave(): MonitoringHandle? = saveCoordinator.beginSave()?.let(::handle)
 
     fun saveResult(
-        origin: MonitoringSnapshot?,
+        origin: MonitoringHandle?,
         success: Boolean,
         durationMs: Long,
         errorCode: String? = null,
-    ) = saveCoordinator.saveResult(origin, success, durationMs, errorCode)
+    ) = saveCoordinator.saveResult(resolve(origin), success, durationMs, errorCode)
 
     fun saveWaitFinished(
-        origin: MonitoringSnapshot?,
+        origin: MonitoringHandle?,
         waitMs: Long,
-    ) = saveCoordinator.saveWaitFinished(origin, waitMs)
+    ) = saveCoordinator.saveWaitFinished(resolve(origin), waitMs)
 
     fun saveUiResultShown(outcome: String) = saveCoordinator.saveUiResultShown(outcome)
 
@@ -288,14 +289,21 @@ class Monitoring(
 
     fun report(
         error: Throwable,
-        origin: MonitoringSnapshot? = snapshot(),
+        origin: MonitoringHandle? = currentHandle(),
     ) {
-        if (usable) runCatching { transport.report(error, origin) }
+        if (usable) runCatching { transport.report(error, resolve(origin)) }
     }
 
-    fun snapshot(): MonitoringSnapshot? =
+    fun currentHandle(): MonitoringHandle? = snapshot()?.let(::handle)
+
+    internal fun snapshot(): MonitoringSnapshot? =
         activeSave ?: captureTracker.activeCapture() ?: attempt ?: activeSelection ?: activeMapVisit
             ?: visitTracker.currentVisitId?.let { visitSnapshot() }
+
+    private fun handle(snapshot: MonitoringSnapshot) = MonitoringHandle(handleOwner, snapshot)
+
+    private fun resolve(handle: MonitoringHandle?): MonitoringSnapshot? =
+        handle?.takeIf { it.ownerToken === handleOwner }?.snapshot
 
     private fun endRecord(
         origin: MonitoringSnapshot,

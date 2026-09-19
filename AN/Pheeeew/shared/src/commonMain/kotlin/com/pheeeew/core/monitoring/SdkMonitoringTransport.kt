@@ -3,7 +3,7 @@ package com.pheeeew.core.monitoring
 import com.pheeeew.core.monitoring.transport.CompositeMonitoringTransport
 
 /** Compatibility façade used by platform startup code. */
-class SdkMonitoringTransport : MonitoringTransport {
+internal class SdkMonitoringTransport : MonitoringTransport {
     private val delegate = CompositeMonitoringTransport()
 
     var enabled: Boolean
@@ -30,7 +30,7 @@ class SdkMonitoringTransport : MonitoringTransport {
     }
 }
 
-object NoOpMonitoringTransport : MonitoringTransport {
+internal object NoOpMonitoringTransport : MonitoringTransport {
     override fun track(event: MonitoringEvent): Boolean = false
 
     override fun context(snapshot: MonitoringSnapshot?) = Unit

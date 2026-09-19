@@ -30,7 +30,7 @@ struct iOSApp: App {
                             let monitoring = IosMonitoring.shared.instance
                             monitoring.report(
                                 error: KotlinIllegalStateException(message: "Development monitoring smoke test"),
-                                origin: monitoring.snapshot()
+                                origin: monitoring.currentHandle()
                             )
                         }
                     }

@@ -5,7 +5,7 @@ import kotlinx.serialization.json.JsonObject
 
 // Event, Snapshot, Store, Transport
 @Serializable
-data class MonitoringSnapshot(
+internal data class MonitoringSnapshot(
     val sessionId: String,
     val sighAttemptId: String? = null,
     val saveAttemptId: String? = null,
@@ -26,6 +26,28 @@ data class MonitoringSnapshot(
             mapVisitId?.let { put("map_visit_id", it) }
             selectionId?.let { put("selection_id", it) }
         }
+}
+
+/**
+ * Opaque operation handle exposed to app code. The snapshot stays inside the monitoring module;
+ * the owner token prevents a handle from being reused by another Monitoring instance.
+ */
+class MonitoringHandle internal constructor(
+    internal val ownerToken: Any,
+    internal val snapshot: MonitoringSnapshot,
+) {
+    internal val sessionId: String get() = snapshot.sessionId
+    internal val sighAttemptId: String? get() = snapshot.sighAttemptId
+    internal val saveAttemptId: String? get() = snapshot.saveAttemptId
+    internal val captureId: String? get() = snapshot.captureId
+    internal val captureIndex: Int? get() = snapshot.captureIndex
+    internal val screen: String get() = snapshot.screen
+    internal val state: String get() = snapshot.state
+
+    override fun equals(other: Any?): Boolean =
+        other is MonitoringHandle && ownerToken === other.ownerToken && snapshot == other.snapshot
+
+    override fun hashCode(): Int = 31 * ownerToken.hashCode() + snapshot.hashCode()
 }
 
 @Serializable
@@ -62,16 +84,16 @@ internal object MonitoringStateMigrator {
 }
 
 @Serializable
-data class MonitoringEvent(
+internal data class MonitoringEvent(
     val name: String,
     val timestamp: Long,
     val properties: JsonObject,
 )
 
-interface MonitoringStore {
+internal interface MonitoringStore {
     fun read(): String?
 
     fun write(value: String)
 }
 
-typealias MonitoringTransport = com.pheeeew.core.monitoring.transport.MonitoringTransport
+internal typealias MonitoringTransport = com.pheeeew.core.monitoring.transport.MonitoringTransport
