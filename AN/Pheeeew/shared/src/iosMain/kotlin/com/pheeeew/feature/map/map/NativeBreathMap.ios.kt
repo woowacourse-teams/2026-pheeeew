@@ -20,6 +20,7 @@ internal actual fun NativeBreathMap(
     onMapError: (MapError) -> Unit,
     onMapRecovered: () -> Unit,
     onProjectionChanged: (MapProjectionSnapshot) -> Unit,
+    onVisibleSighsChanged: (List<String>) -> Unit,
     modifier: Modifier,
 ) {
     val currentOnSighClick by rememberUpdatedState(onSighClick)
@@ -27,6 +28,7 @@ internal actual fun NativeBreathMap(
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val currentOnProjectionChanged by rememberUpdatedState(onProjectionChanged)
+    val currentOnVisibleSighsChanged by rememberUpdatedState(onVisibleSighsChanged)
     val eventSink =
         remember {
             object : IosMapEventSink {
@@ -70,6 +72,8 @@ internal actual fun NativeBreathMap(
                         ),
                     )
                 }
+
+                override fun onVisibleSighsChanged(ids: List<String>) = currentOnVisibleSighsChanged(ids)
             }
         }
 
@@ -103,6 +107,21 @@ private fun MapRenderState.toIosRenderState(cameraCommand: MapCameraCommand?): I
                     latitude = marker.latitude,
                     longitude = marker.longitude,
                     visual = marker.visual,
+                )
+            },
+        districtBoundaries =
+            SeoulDistrictPolygonPreview.districts.map { district ->
+                IosDistrictBoundary(
+                    code = district.code,
+                    name = district.name,
+                    coordinates =
+                        district.coordinates.map { coordinate ->
+                            IosMapCoordinate(
+                                latitude = coordinate.latitude,
+                                longitude = coordinate.longitude,
+                            )
+                        },
+                    selected = district.code == SeoulDistrictPolygonPreview.SELECTED_DISTRICT_CODE,
                 )
             },
         currentLocation =

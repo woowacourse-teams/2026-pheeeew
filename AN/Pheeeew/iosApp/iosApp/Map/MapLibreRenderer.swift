@@ -26,6 +26,7 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     private var isAwaitingCoordinateMoveNormalization = false
     private var cameraIsIdle = true
     private var lastPublishedProjection: ProjectionSnapshot?
+    private var lastVisibleSighIDs: [String]?
 
     private static let userCameraReasonMask: UInt =
         (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4) |
@@ -64,6 +65,7 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         updateCurrentLocation(state.currentLocation)
         applyCameraState(state)
         publishProjection(cameraIdle: cameraIsIdle)
+        DispatchQueue.main.async { [weak self] in self?.publishVisibleSighs() }
     }
 
     func releaseResources() {
@@ -118,6 +120,7 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
         cameraIsIdle = !isAwaitingCoordinateMoveNormalization
         eventSink.onProjectionChanged(points: projectionPoints(), cameraIdle: cameraIsIdle)
+        publishVisibleSighs()
         let bounds = mapView.visibleCoordinateBounds
         eventSink.onBoundsChanged(
             minLongitude: bounds.sw.longitude,
@@ -156,6 +159,21 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         }
     }
 
+    private func publishVisibleSighs() {
+        guard styleIsReady, !mapView.bounds.isEmpty else { return }
+        let ids = Array(Set(mapView.visibleFeatures(
+            in: mapView.bounds,
+            styleLayerIdentifiers: Set(Self.sighLayerIDs),
+            predicate: nil
+        ).compactMap { feature -> String? in
+            if let id = feature.attribute(forKey: "id") as? String { return id }
+            return feature.identifier as? String
+        })).sorted()
+        guard ids != lastVisibleSighIDs else { return }
+        lastVisibleSighIDs = ids
+        eventSink.onVisibleSighsChanged(ids: ids)
+    }
+
     func gestureRecognizer(
         _ gestureRecognizer: UIGestureRecognizer,
         shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
@@ -174,6 +192,7 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
             predicate: nil
         )
         guard let feature = features.first else { return }
+        publishVisibleSighs()
 
         if let id = feature.attribute(forKey: "id") as? String {
             eventSink.onSighClick(id: id)

@@ -2,6 +2,7 @@ package com.pheeeew.feature.map.map
 
 import android.animation.ValueAnimator
 import android.graphics.Color
+import android.graphics.RectF
 import android.view.Gravity
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
@@ -46,6 +47,7 @@ internal actual fun NativeBreathMap(
     onMapError: (MapError) -> Unit,
     onMapRecovered: () -> Unit,
     onProjectionChanged: (MapProjectionSnapshot) -> Unit,
+    onVisibleSighsChanged: (List<String>) -> Unit,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
@@ -55,6 +57,7 @@ internal actual fun NativeBreathMap(
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val currentOnProjectionChanged by rememberUpdatedState(onProjectionChanged)
+    val currentOnVisibleSighsChanged by rememberUpdatedState(onVisibleSighsChanged)
 
     val hostResult =
         remember(context, lifecycleOwner) {
@@ -72,6 +75,7 @@ internal actual fun NativeBreathMap(
                     onMapError = { error -> currentOnMapError(error) },
                     onMapRecovered = { currentOnMapRecovered() },
                     onProjectionChanged = { snapshot -> currentOnProjectionChanged(snapshot) },
+                    onVisibleSighsChanged = { ids -> currentOnVisibleSighsChanged(ids) },
                 )
             }
         }
@@ -116,6 +120,7 @@ private class AndroidBreathMapHost(
     private val onMapError: (MapError) -> Unit,
     private val onMapRecovered: () -> Unit,
     private val onProjectionChanged: (MapProjectionSnapshot) -> Unit,
+    private val onVisibleSighsChanged: (List<String>) -> Unit,
 ) {
     private val camera = AndroidMapCamera()
     private var map: MapLibreMap? = null
@@ -135,6 +140,7 @@ private class AndroidBreathMapHost(
     private var lastPublishedPoints: Map<String, MapScreenPoint>? = null
     private var lastPublishedCameraIdle: Boolean? = null
     private var statusBarInset = 0
+    private var lastVisibleSighIds: List<String>? = null
 
     private val mapLoadFailureListener =
         MapView.OnDidFailLoadingMapListener {
@@ -158,6 +164,7 @@ private class AndroidBreathMapHost(
             if (markerId.isNullOrBlank()) {
                 false
             } else {
+                publishVisibleSighs()
                 onSighClick(markerId)
                 true
             }
@@ -178,6 +185,7 @@ private class AndroidBreathMapHost(
         MapLibreMap.OnCameraIdleListener {
             cameraIdle = true
             publishProjection(cameraIdle = true)
+            publishVisibleSighs()
             val bounds = map?.projection?.visibleRegion?.latLngBounds ?: return@OnCameraIdleListener
             onBoundsChanged(
                 SighBounds.fromViewport(
@@ -322,6 +330,7 @@ private class AndroidBreathMapHost(
         if (markers != renderedMarkers) {
             AndroidMapSources.updateSighs(currentStyle, markers)
             renderedMarkers = markers
+            mapView.post { publishVisibleSighs() }
         }
 
         val currentLocation = MapRenderRules.currentLocation(state)
@@ -346,6 +355,27 @@ private class AndroidBreathMapHost(
             )
         }
         publishProjection(cameraIdle = cameraIdle)
+    }
+
+    private fun publishVisibleSighs() {
+        if (released || mapView.width <= 0 || mapView.height <= 0) return
+        val currentMap = map ?: return
+        val features =
+            currentMap.queryRenderedFeatures(
+                RectF(0f, 0f, mapView.width.toFloat(), mapView.height.toFloat()),
+                *AndroidMapSources.sighLayerIds(),
+            )
+        val ids =
+            features
+                .mapNotNull { feature ->
+                    feature
+                        .getStringProperty(AndroidMapSources.MARKER_ID_PROPERTY)
+                        ?.takeIf(String::isNotBlank)
+                }.distinct()
+                .sorted()
+        if (ids == lastVisibleSighIds) return
+        lastVisibleSighIds = ids
+        onVisibleSighsChanged(ids)
     }
 
     private fun publishProjection(cameraIdle: Boolean) {

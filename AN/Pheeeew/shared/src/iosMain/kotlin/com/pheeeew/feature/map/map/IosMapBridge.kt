@@ -35,6 +35,8 @@ interface IosMapEventSink {
         points: List<IosMapScreenPoint>,
         cameraIdle: Boolean,
     )
+
+    fun onVisibleSighsChanged(ids: List<String>)
 }
 
 data class IosMapCoordinate(
@@ -43,6 +45,13 @@ data class IosMapCoordinate(
 ) {
     override fun toString(): String = "IosMapCoordinate([redacted])"
 }
+
+data class IosDistrictBoundary(
+    val code: String,
+    val name: String,
+    val coordinates: List<IosMapCoordinate>,
+    val selected: Boolean,
+)
 
 data class IosSighMarker(
     val id: String,
@@ -98,6 +107,7 @@ data class IosMapCameraCommand(
 
 data class IosMapRenderState(
     val sighMarkers: List<IosSighMarker>,
+    val districtBoundaries: List<IosDistrictBoundary>,
     val currentLocation: IosCurrentLocation?,
     val initialCenter: IosMapCoordinate?,
     val initialCenterIsProvisional: Boolean,
