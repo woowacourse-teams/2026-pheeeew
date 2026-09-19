@@ -456,7 +456,6 @@ fun MapScreen(
                         controlBoundsInRoot = breathControlBounds,
                         controlAnchorBottomInRoot = guideBreathControlBottom,
                         onSkip = {
-                            cancelSighRegistration()
                             onGuideSkip()
                         },
                         modifier = Modifier.fillMaxSize(),

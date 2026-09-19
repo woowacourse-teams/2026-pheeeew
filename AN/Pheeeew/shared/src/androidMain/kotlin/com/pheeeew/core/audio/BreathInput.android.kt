@@ -3,11 +3,16 @@ package com.pheeeew.core.audio
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -18,6 +23,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.suspendCancellableCoroutine
+import java.util.Locale
 import kotlin.concurrent.thread
 import kotlin.coroutines.resume
 import kotlin.math.PI
@@ -46,6 +52,9 @@ private class AndroidBreathInput(
     @Volatile private var recording = false
     private var recorder: AudioRecord? = null
     private var worker: Thread? = null
+    private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
+
+    @Volatile private var motionSuppressionUntilNanos = 0L
     private var strengthCallback: ((Float) -> Unit)? = null
     private var errorCallback: ((BreathInputError) -> Unit)? = null
     private var permissionContinuation: CancellableContinuation<Boolean>? = null
@@ -164,7 +173,37 @@ private class AndroidBreathInput(
             return
         }
         recording = true
+        registerMotionSensor()
         worker = thread(name = "breath-input") { analyze(newRecorder, bufferSize, sampleRate, generation) }
+    }
+
+    private val motionListener =
+        object : SensorEventListener {
+            override fun onSensorChanged(event: SensorEvent) {
+                if (event.sensor.type != Sensor.TYPE_ACCELEROMETER) return
+                val magnitude =
+                    sqrt(
+                        (
+                            event.values[0] * event.values[0] +
+                                event.values[1] * event.values[1] +
+                                event.values[2] * event.values[2]
+                        ).toDouble(),
+                    )
+                if (kotlin.math.abs(magnitude - 9.81) > MOTION_THRESHOLD) {
+                    motionSuppressionUntilNanos =
+                        System.nanoTime() + MOTION_SUPPRESSION_NANOS
+                }
+            }
+
+            override fun onAccuracyChanged(
+                sensor: Sensor?,
+                accuracy: Int,
+            ) = Unit
+        }
+
+    private fun registerMotionSensor() {
+        val accelerometer = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
+        sensorManager.registerListener(motionListener, accelerometer, SensorManager.SENSOR_DELAY_GAME)
     }
 
     private fun analyze(
@@ -183,6 +222,7 @@ private class AndroidBreathInput(
         var low500 = 0.0
         var low2000 = 0.0
         var previousBand = 0.0
+        var wasMotionSuppressed = false
         while (recording) {
             val count = source.read(samples, 0, samples.size, AudioRecord.READ_BLOCKING)
             if (generation != inputGeneration) return
@@ -203,7 +243,8 @@ private class AndroidBreathInput(
                 previousBand = low2000
             }
             val rms = sqrt((energy / count).coerceAtLeast(1e-12))
-            val amplitude = ((20.0 * ln(rms) / ln(10.0) + 48.0) / 40.0).coerceIn(0.0, 1.0).toFloat()
+            val dbfs = 20.0 * ln(rms) / ln(10.0)
+            val amplitude = ((dbfs + 48.0) / 40.0).coerceIn(0.0, 1.0).toFloat()
             val lowPresence =
                 (
                     (
@@ -213,15 +254,44 @@ private class AndroidBreathInput(
                             ) - 0.12
                     ) / 0.58
                 ).coerceIn(0.0, 1.0).toFloat()
+            val speechPresence =
+                ((energy - lowEnergy) / count / (energy / count).coerceAtLeast(1e-12))
+                    .coerceIn(0.0, 1.0)
+                    .toFloat()
             val texture = ((crossings.toDouble() / count - 0.035) / 0.16).coerceIn(0.0, 1.0).toFloat()
+            val motionSuppressed = System.nanoTime() < motionSuppressionUntilNanos
             val strength =
-                strengthProcessor.process(
-                    BreathSignalMetrics(
-                        amplitude = amplitude,
-                        lowFrequencyPresence = lowPresence,
-                        noisyTexture = texture,
-                    ),
-                )
+                if (motionSuppressed) {
+                    if (!wasMotionSuppressed) {
+                        strengthProcessor.reset()
+                    }
+                    0f
+                } else {
+                    strengthProcessor.process(
+                        BreathSignalMetrics(
+                            amplitude = amplitude,
+                            lowFrequencyPresence = lowPresence,
+                            noisyTexture = texture,
+                            speechBandPresence = speechPresence,
+                        ),
+                    )
+                }
+            wasMotionSuppressed = motionSuppressed
+            Log.i(
+                BREATH_LOG_TAG,
+                String.format(
+                    Locale.US,
+                    "dbfs=%6.1f rawAmp=%.3f normAmp=%.3f low=%.3f speech=%.3f texture=%.3f motionSuppressed=%s strength=%.3f",
+                    dbfs,
+                    amplitude,
+                    strengthProcessor.lastNormalizedAmplitude,
+                    lowPresence,
+                    speechPresence,
+                    texture,
+                    motionSuppressed,
+                    strength,
+                ),
+            )
             publishStrength(strength, generation)
         }
     }
@@ -230,6 +300,8 @@ private class AndroidBreathInput(
         inputGeneration += 1L
         wantsRecording = false
         recording = false
+        sensorManager?.unregisterListener(motionListener)
+        motionSuppressionUntilNanos = 0L
         runCatching { recorder?.stop() }
         worker?.interrupt()
         worker = null
@@ -255,4 +327,10 @@ private class AndroidBreathInput(
     }
 
     private fun publishError(error: BreathInputError) = mainHandler.post { errorCallback?.invoke(error) }
+
+    private companion object {
+        const val BREATH_LOG_TAG = "BreathDetection"
+        const val MOTION_THRESHOLD = 2.5
+        const val MOTION_SUPPRESSION_NANOS = 700_000_000L
+    }
 }
