@@ -1,10 +1,10 @@
 package com.pheeeew.core.monitoring
 
-import com.pheeeew.core.monitoring.transport.SdkMonitoringTransport as SdkMonitoringTransportDelegate
+import com.pheeeew.core.monitoring.transport.CompositeMonitoringTransport
 
 /** Compatibility façade used by platform startup code. */
 class SdkMonitoringTransport : MonitoringTransport {
-    private val delegate = SdkMonitoringTransportDelegate()
+    private val delegate = CompositeMonitoringTransport()
 
     var enabled: Boolean
         get() = delegate.enabled

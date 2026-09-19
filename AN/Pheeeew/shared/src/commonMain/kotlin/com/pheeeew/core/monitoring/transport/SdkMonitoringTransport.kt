@@ -4,7 +4,7 @@ import com.pheeeew.core.monitoring.MonitoringEvent
 import com.pheeeew.core.monitoring.MonitoringSnapshot
 
 /** Coordinates SDK-specific transports without knowing monitoring flow or event semantics. */
-internal class SdkMonitoringTransport {
+internal class CompositeMonitoringTransport {
     private val postHog = PostHogTransport()
     private val sentry = SentryTransport()
 
