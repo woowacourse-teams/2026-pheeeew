@@ -372,7 +372,10 @@ class MapViewModel(
                         _uiState.update { state ->
                             state.copy(
                                 sighBrowser =
-                                    state.sighBrowser.copy(isDetailLoading = false),
+                                    state.sighBrowser.copy(
+                                        isDetailLoading = false,
+                                        pendingSighPin = null,
+                                    ),
                             )
                         }
                         return@launch
