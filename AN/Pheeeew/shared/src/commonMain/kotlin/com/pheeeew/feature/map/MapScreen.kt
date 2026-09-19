@@ -172,8 +172,8 @@ fun MapScreen(
     val shouldShowInteractionBackdrop = isSighInteractionVisible || isGuidePromptVisible
     val currentLocation = (uiState.location.state as? LocationState.Available)?.location
     val renderedSighs =
-        remember(uiState.sighs, sighBrowser.selectedSigh) {
-            (listOfNotNull(sighBrowser.selectedSigh?.toPin()) + uiState.sighs)
+        remember(uiState.sighs, sighBrowser.selectedSigh, sighBrowser.pendingSighPin) {
+            (listOfNotNull(sighBrowser.selectedSigh?.toPin(), sighBrowser.pendingSighPin) + uiState.sighs)
                 .distinctBy(SighPin::id)
         }
     val ensureRegistrationLocation: suspend () -> Boolean = {

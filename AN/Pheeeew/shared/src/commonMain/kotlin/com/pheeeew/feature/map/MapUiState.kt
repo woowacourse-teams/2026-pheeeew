@@ -20,6 +20,7 @@ data class SighBrowserUiState(
     val isListVisible: Boolean = false,
     val items: List<Sigh> = emptyList(),
     val selectedSigh: Sigh? = null,
+    val pendingSighPin: SighPin? = null,
     val nextCursor: String? = null,
     val isLoading: Boolean = false,
     val isDetailLoading: Boolean = false,

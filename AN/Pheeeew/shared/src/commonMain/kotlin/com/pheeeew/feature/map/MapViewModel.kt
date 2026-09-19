@@ -292,6 +292,7 @@ class MapViewModel(
                             isVisible = false,
                             isListVisible = false,
                             selectedSigh = null,
+                            pendingSighPin = null,
                             isLoading = false,
                             isDetailLoading = false,
                             isLoadingMore = false,
@@ -338,12 +339,22 @@ class MapViewModel(
         pendingSighDetailId = id
 
         _uiState.update { state ->
+            val pendingSighPin =
+                if (openBrowser) {
+                    state.sighs.firstOrNull { it.id == id }
+                        ?: state.sighBrowser.items
+                            .firstOrNull { it.id == id }
+                            ?.toPin()
+                } else {
+                    null
+                }
             state.copy(
                 sighBrowser =
                     state.sighBrowser.copy(
                         isVisible = state.sighBrowser.isVisible || openBrowser,
                         isListVisible = showList,
                         selectedSigh = null,
+                        pendingSighPin = pendingSighPin,
                         isDetailLoading = true,
                         errorMessage = null,
                         noticeMessage = null,
@@ -424,6 +435,7 @@ class MapViewModel(
                     state.sighBrowser.copy(
                         items = updatedItems,
                         selectedSigh = sigh,
+                        pendingSighPin = null,
                         isDetailLoading = false,
                         errorMessage = null,
                     ),
@@ -445,6 +457,7 @@ class MapViewModel(
                         state.sighBrowser.copy(
                             items = state.sighBrowser.items.filterNot { it.id == id },
                             selectedSigh = state.sighBrowser.selectedSigh?.takeUnless { it.id == id },
+                            pendingSighPin = state.sighBrowser.pendingSighPin?.takeUnless { it.id == id },
                             isDetailLoading = false,
                             errorMessage = null,
                             noticeMessage = SIGH_EXPIRED_MESSAGE,
@@ -658,6 +671,10 @@ class MapViewModel(
                     state.sighBrowser.copy(
                         items = state.sighBrowser.items.filterNot(::isBlocked),
                         selectedSigh = state.sighBrowser.selectedSigh?.takeUnless(::isBlocked),
+                        pendingSighPin =
+                            state.sighBrowser.pendingSighPin?.takeUnless {
+                                it.id in expiredSighIds || it.id in blockedSighIds
+                            },
                     ),
             )
         }
