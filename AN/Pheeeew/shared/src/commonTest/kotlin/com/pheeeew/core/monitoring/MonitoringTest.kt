@@ -58,6 +58,28 @@ class MonitoringTest {
     }
 
     @Test
+    fun backgroundFlushesEventsAcceptedByTheSdk() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+
+        m.background()
+
+        assertEquals(2, f.transport.flushes)
+        assertEquals(1, f.events("app_backgrounded").size)
+    }
+
+    @Test
+    fun foregroundFlushesSdkEventsLeftFromAnEarlierSuspension() {
+        val f = Fixture()
+        val m = f.create()
+
+        m.foreground()
+
+        assertEquals(1, f.transport.flushes)
+    }
+
+    @Test
     fun midnightUsesSeoulDateAndBackgroundIsNotActivity() {
         val f = Fixture()
         f.wall = Instant.parse("2026-09-17T14:59:59Z").toEpochMilliseconds()
@@ -188,6 +210,257 @@ class MonitoringTest {
         assertEquals(2, f.events("sigh_started").size)
         assertEquals(2, f.events("sigh_attempt_ended").size)
         assertTrue(f.events("save_started").isEmpty())
+    }
+
+    @Test
+    fun memoCompletionStartsAtVisibleSheetAndDoesNotCollectContent() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+        m.beginAttempt(false)
+        m.memoEditing()
+        f.advance(250)
+        m.memoShown()
+        m.memoShown()
+        f.advance(750)
+        m.memoCompleted(memoPresent = true)
+
+        assertEquals(1, f.events("memo_shown").size)
+        val completed = f.events("memo_completed").single()
+        assertEquals("true", completed.field("memo_present"))
+        assertEquals("750", completed.field("memo_elapsed_ms"))
+        assertEquals("awaiting_breath", completed.field("state"))
+        assertNull(completed.field("memo"))
+    }
+
+    @Test
+    fun memoSkipAndCompletionAreMutuallyExclusive() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+        m.beginAttempt(false)
+        m.memoEditing()
+        m.memoShown()
+        f.advance(100)
+        m.memoSkipped()
+        m.memoCompleted(memoPresent = false)
+
+        assertEquals("100", f.events("memo_skipped").single().field("memo_elapsed_ms"))
+        assertTrue(f.events("memo_completed").isEmpty())
+    }
+
+    @Test
+    fun everyMemoValidationFailureIsRecordedWithoutMemoContent() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+        m.beginAttempt(false)
+        m.memoEditing()
+        m.memoValidationFailed()
+        m.memoValidationFailed()
+
+        assertEquals(2, f.events("memo_validation_failed").size)
+        assertTrue(f.events("memo_validation_failed").all { it.field("reason") == "invalid_memo" })
+        assertTrue(f.events("memo_validation_failed").all { it.field("memo") == null })
+    }
+
+    @Test
+    fun microphoneTimingAndFirstDetectionUseOneCapture() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+        m.beginAttempt(false)
+        m.memoEditing()
+        f.advance(100)
+        m.memoCompleted(memoPresent = false)
+        m.microphonePermissionResult(granted = true)
+        val capture = m.beginCapture()!!
+        f.advance(50)
+        m.microphoneReady()
+        f.advance(100)
+        m.soundFirstDetected(strength = 0.8f, activeThreshold = 0.18f)
+        m.soundFirstDetected(strength = 0.9f, activeThreshold = 0.12f)
+
+        assertEquals("granted", f.events("permission_result").single().field("status"))
+        assertEquals(capture.captureId, f.events("mic_start_requested").single().field("capture_id"))
+        assertEquals("1", f.events("mic_start_requested").single().field("capture_index"))
+        assertEquals("50", f.events("mic_ready").single().field("start_to_ready_ms"))
+        assertEquals("50", f.events("mic_ready").single().field("memo_to_ready_ms"))
+        val detected = f.events("sound_first_detected").single()
+        assertEquals("250", detected.field("tap_to_detection_ms"))
+        assertEquals("100", detected.field("mic_ready_to_detection_ms"))
+        assertEquals("0.8", detected.field("strength"))
+        assertEquals("0.18", detected.field("active_threshold"))
+    }
+
+    @Test
+    fun microphoneFailureRecordsWhetherInputWasReady() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+        m.beginAttempt(false)
+        m.beginCapture()
+        m.microphoneFailed("start_failed")
+        m.microphoneReady()
+        m.microphoneFailed("microphone_unavailable")
+
+        assertEquals(listOf("start", "read"), f.events("mic_failed").map { it.field("stage") })
+    }
+
+    @Test
+    fun shortSilentGapIsMergedAndLongGapStartsANewSegment() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+        m.beginAttempt(false)
+        m.beginCapture()
+        m.microphoneReady()
+
+        m.breathSample(active = true, sampleElapsedMs = 0, growth = 0f)
+        m.breathSample(active = true, sampleElapsedMs = 100, growth = 0.1f)
+        m.breathSample(active = false, sampleElapsedMs = 100, growth = 0.1f)
+        m.breathSample(active = true, sampleElapsedMs = 50, growth = 0.2f)
+        m.breathSample(active = false, sampleElapsedMs = 200, growth = 0.2f)
+        m.breathSample(active = true, sampleElapsedMs = 50, growth = 0.3f)
+        m.breathSample(active = true, sampleElapsedMs = 100, growth = 0.4f)
+        m.endCapture(finalGrowth = 0.6f, stopReason = "release", interrupted = false)
+
+        val segments = f.events("breath_segment_ended")
+        assertEquals(2, segments.size)
+        assertEquals("250", segments[0].field("span_ms"))
+        assertEquals("100", segments[0].field("active_ms"))
+        assertNull(segments[0].field("gap_before_ms"))
+        assertEquals("250", segments[1].field("gap_before_ms"))
+        assertEquals("100", segments[1].field("span_ms"))
+        assertEquals("release", segments[1].field("end_reason"))
+
+        val summary = f.events("breath_summary").single()
+        assertEquals("2", summary.field("segment_count"))
+        assertEquals("0.6", summary.field("final_growth"))
+        assertEquals("true", summary.field("detected"))
+        assertEquals("complete", summary.field("observation_quality"))
+        assertEquals("release", summary.field("stop_reason"))
+        assertEquals("true", f.events("mic_stopped").single().field("ready_observed"))
+    }
+
+    @Test
+    fun longSampleGapMarksSummaryPartialWithoutInventingActiveTime() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+        m.beginAttempt(false)
+        m.beginCapture()
+        m.microphoneReady()
+
+        m.breathSample(active = true, sampleElapsedMs = 0, growth = 0f)
+        m.breathSample(active = true, sampleElapsedMs = 100, growth = 0.1f)
+        m.breathSample(active = true, sampleElapsedMs = 600, growth = 0.2f)
+        m.endCapture(finalGrowth = 0.3f, stopReason = "background", interrupted = true)
+        m.endCapture(finalGrowth = 0.3f, stopReason = "background", interrupted = true)
+
+        val segments = f.events("breath_segment_ended")
+        assertEquals(2, segments.size)
+        assertEquals("observation_gap", segments.first().field("end_reason"))
+        assertEquals("100", segments.first().field("active_ms"))
+        assertEquals("0", segments.last().field("active_ms"))
+        assertEquals("partial", f.events("breath_summary").single().field("observation_quality"))
+        assertEquals(1, f.events("mic_stopped").size)
+        assertEquals(2, f.transport.flushes)
+    }
+
+    @Test
+    fun attemptCancellationClosesCaptureBeforeClearingIt() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+        m.beginAttempt(false)
+        m.beginCapture()
+        m.microphoneReady()
+        m.breathSample(active = true, sampleElapsedMs = 0, growth = 0.4f)
+
+        m.endAttempt()
+        m.endCapture(finalGrowth = 0.9f, stopReason = "user_cancel", interrupted = false)
+
+        val summary = f.events("breath_summary").single()
+        assertEquals("0.4", summary.field("final_growth"))
+        assertEquals("user_cancel", summary.field("stop_reason"))
+        assertEquals(1, f.events("mic_stopped").size)
+    }
+
+    @Test
+    fun growthReleaseAndAnimationStayLinkedAfterMicrophoneStops() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+        m.beginAttempt(false)
+        val capture = m.beginCapture()!!
+        m.microphoneReady()
+        f.advance(120)
+        m.breathSample(active = true, sampleElapsedMs = 16, growth = 0.2f)
+        m.releaseReady(growth = 0.8f, minimumReleaseProgress = 0.75f)
+        m.controlTapped("ready", growth = 0.8f, inputActive = true)
+        m.swipeAttempted(80f, 500f, 0.8f, success = true, reason = "released")
+        m.endCapture(finalGrowth = 0.8f, stopReason = "release", interrupted = false)
+        f.advance(300)
+        m.releaseAnimationFinished()
+
+        assertEquals(capture.captureId, f.events("sound_growth_started").single().field("capture_id"))
+        assertEquals("1", f.events("sigh_control_tapped").single().field("tap_index"))
+        assertEquals("success", f.events("sigh_swipe_attempted").single().field("outcome"))
+        assertEquals("300", f.events("sigh_release_animation_finished").single().field("release_to_animation_end_ms"))
+    }
+
+    @Test
+    fun saveApiUiAndRenderedStarKeepTheOriginalSaveIds() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+        m.beginAttempt(false)
+        val save = m.beginSave()!!
+        f.advance(250)
+        m.apiRequestFinished("/api/v2/sighs", "POST", 250, success = true, statusCode = 201)
+        m.saveResult(save, success = true, durationMs = 250)
+        m.saveWaitFinished(save, 1750)
+        f.advance(1750)
+        m.saveUiResultShown("success")
+        m.mapVisitStarted("foreground")
+        f.advance(100)
+        m.savedStarVisible()
+
+        val api = f.events("api_request_finished").single()
+        val ui = f.events("save_ui_result_shown").single()
+        val star = f.events("sigh_saved_star_visible").single()
+        assertEquals(save.saveAttemptId, api.field("save_attempt_id"))
+        assertEquals(save.saveAttemptId, ui.field("save_attempt_id"))
+        assertEquals(save.saveAttemptId, star.field("save_attempt_id"))
+        assertEquals("2000", ui.field("save_feedback_elapsed_ms"))
+        assertEquals("2100", star.field("save_to_star_visible_ms"))
+        assertTrue(star.field("map_visit_id") != null)
+    }
+
+    @Test
+    fun mapExposureAndSelectionsAreScopedToOneMapVisit() {
+        val f = Fixture()
+        val m = f.create()
+        m.foreground()
+        m.mapVisitStarted("foreground")
+        m.mapStarsVisible(3)
+        m.mapStarsVisible(5)
+        m.starSelected("map")
+        val firstSelection = f.events("star_selected").single().field("selection_id")
+        m.starSelected("list")
+        m.starDetailShown()
+        m.mapVisitEnded("screen_hidden")
+
+        assertEquals(1, f.events("map_stars_visible").size)
+        assertEquals("3", f.events("map_stars_visible").single().field("visible_star_count"))
+        assertEquals(firstSelection, f.events("star_detail_failed").single().field("selection_id"))
+        assertEquals("superseded", f.events("star_detail_failed").single().field("reason"))
+        assertEquals("list", f.events("star_detail_shown").single().field("entry_source"))
+        assertEquals(
+            f.events("map_visit_started").single().field("map_visit_id"),
+            f.events("map_visit_ended").single().field("map_visit_id"),
+        )
     }
 
     @Test
@@ -350,6 +623,7 @@ class MonitoringTest {
     private class Transport : MonitoringTransport {
         var accept = true
         var throws = false
+        var flushes = 0
         var afterAccept: () -> Unit = {}
         val events = mutableListOf<MonitoringEvent>()
         val offers = mutableListOf<MonitoringEvent>()
@@ -373,6 +647,11 @@ class MonitoringTest {
             snapshot: MonitoringSnapshot?,
         ) {
             check(!throws)
+        }
+
+        override fun flush() {
+            check(!throws)
+            flushes += 1
         }
     }
 

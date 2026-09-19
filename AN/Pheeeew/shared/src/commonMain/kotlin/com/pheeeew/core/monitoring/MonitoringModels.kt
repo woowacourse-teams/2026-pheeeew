@@ -3,25 +3,7 @@ package com.pheeeew.core.monitoring
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 
-// No generated toString: configuration contains connection credentials.
-class MonitoringConfig(
-    val environment: String,
-    val platform: String,
-    val appVersion: String,
-    val buildNumber: String,
-    val osVersion: String,
-    val enabled: Boolean,
-    val posthogToken: String,
-    val posthogHost: String,
-    val sentryDsn: String,
-    val deviceClass: String = "unknown",
-) {
-    val configured: Boolean get() =
-        enabled && environment in setOf("dev", "prod") && posthogToken.isNotBlank() &&
-            posthogHost.startsWith("https://") &&
-            sentryDsn.startsWith("https://")
-}
-
+// Event, Snapshot, Store, Transport
 @Serializable
 data class MonitoringSnapshot(
     val sessionId: String,
@@ -29,6 +11,8 @@ data class MonitoringSnapshot(
     val saveAttemptId: String? = null,
     val captureId: String? = null,
     val captureIndex: Int? = null,
+    val mapVisitId: String? = null,
+    val selectionId: String? = null,
     val screen: String = "unknown",
     val state: String = "unknown",
 ) {
@@ -38,6 +22,9 @@ data class MonitoringSnapshot(
             sighAttemptId?.let { put("sigh_attempt_id", it) }
             saveAttemptId?.let { put("save_attempt_id", it) }
             captureId?.let { put("capture_id", it) }
+            captureIndex?.let { put("capture_index", it.toString()) }
+            mapVisitId?.let { put("map_visit_id", it) }
+            selectionId?.let { put("selection_id", it) }
         }
 }
 
@@ -75,14 +62,4 @@ interface MonitoringStore {
     fun write(value: String)
 }
 
-interface MonitoringTransport {
-    /** True means accepted by the SDK, not acknowledged by the remote server. */
-    fun track(event: MonitoringEvent): Boolean
-
-    fun context(snapshot: MonitoringSnapshot?)
-
-    fun report(
-        error: Throwable,
-        snapshot: MonitoringSnapshot?,
-    )
-}
+typealias MonitoringTransport = com.pheeeew.core.monitoring.transport.MonitoringTransport
