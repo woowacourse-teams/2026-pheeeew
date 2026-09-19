@@ -39,6 +39,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -1265,6 +1266,11 @@ class MapViewModelTest {
                         .map(SighPin::id),
                 )
                 assertNotNull(browser.errorMessage)
+
+                viewModel.dismissSighDetail()
+
+                assertNull(viewModel.uiState.value.sighBrowser.pendingSighPin)
+                assertFalse(viewModel.uiState.value.sighBrowser.isVisible)
                 viewModel.onMapBackground()
             } finally {
                 Dispatchers.resetMain()
