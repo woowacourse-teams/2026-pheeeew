@@ -314,7 +314,7 @@ fun BreathControl(
                             val bounds = coordinates.boundsInRoot()
                             origin = bounds.center
                             latestControlBoundsChanged.value(bounds)
-                        }.pointerInput(enabled, listening, burst) {
+                        }.pointerInput(enabled, listening, isReleaseReady, burst) {
                             if (!listening) {
                                 detectTapGestures(onTap = {
                                     if (!enabled || burst) return@detectTapGestures
@@ -340,6 +340,7 @@ fun BreathControl(
                                     },
                                     onDrag = { change, dragAmount ->
                                         change.consume()
+                                        if (!isReleaseReady) return@detectDragGestures
                                         if (dragStartTimeMillis < 0L) {
                                             dragStartTimeMillis = change.uptimeMillis
                                         }
