@@ -1231,6 +1231,47 @@ class MapViewModelTest {
         }
 
     @Test
+    fun `지도 핀 상세 조회 실패 시 조회 중인 핀을 유지한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val existingSigh = sigh(id = 1L)
+                val repository =
+                    RecordingSighRepository(
+                        mapSighs = listOf(SighPin(existingSigh.id, existingSigh.coordinate)),
+                        detailFailures =
+                            mapOf(
+                                1L to ApiException.Network("NETWORK-001", "연결 실패"),
+                            ),
+                    )
+                val viewModel = createViewModel(repository)
+                viewModel.onMapForeground()
+                viewModel.loadSighs(firstBounds)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                runCurrent()
+
+                viewModel.openSighFromPin(1L)
+                runCurrent()
+
+                val browser = viewModel.uiState.value.sighBrowser
+                assertEquals(
+                    SighPin(existingSigh.id, existingSigh.coordinate),
+                    browser.pendingSighPin,
+                )
+                assertEquals(
+                    listOf(1L),
+                    viewModel.uiState.value.sighs
+                        .map(SighPin::id),
+                )
+                assertNotNull(browser.errorMessage)
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `SIGH-004가 아닌 410 오류는 메시지가 같아도 별을 제거하지 않는다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
