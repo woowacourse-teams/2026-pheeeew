@@ -64,13 +64,6 @@ internal class SighAttemptCoordinator(
             observe()
         }
 
-    /** Temporary compatibility path for callers migrated in the next UI commit. */
-    fun memoFinished() =
-        change {
-            setPhase("awaiting_breath")
-            observe()
-        }
-
     fun memoShown() =
         change {
             val origin = attempt() ?: return@change

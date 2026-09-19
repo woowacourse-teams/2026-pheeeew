@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -98,6 +99,10 @@ fun MapScreen(
     onRejectSighStart: () -> Unit = {},
     onInterruptSighStart: () -> Unit = {},
     onBreathCompleted: () -> Unit,
+    breathMonitoringListener: BreathMonitoringListener = NoOpBreathMonitoringListener,
+    saveMonitoringListener: SaveMonitoringListener = NoOpSaveMonitoringListener,
+    mapMonitoringListener: MapMonitoringListener = NoOpMapMonitoringListener,
+    onMemoShown: () -> Unit = {},
     onSubmitMemo: (String) -> Unit,
     onSkipMemo: () -> Unit,
     onCancelSighRegistration: () -> Unit,
@@ -134,6 +139,8 @@ fun MapScreen(
     var isGuideSwipeHintDelayElapsed by remember { mutableStateOf(false) }
     var starAgeRevision by remember { mutableIntStateOf(0) }
     var visualNow by remember { mutableStateOf(Clock.System.now()) }
+    var saveUiPending by remember { mutableStateOf(false) }
+    var visibleSighIds by remember { mutableStateOf(emptyList<String>()) }
     val sighBrowser = uiState.sighBrowser
     var isSighBrowserComposed by remember { mutableStateOf(sighBrowser.isVisible) }
     val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
@@ -306,6 +313,37 @@ fun MapScreen(
         }
     }
 
+    LaunchedEffect(isSighSubmitting, retryableSighError) {
+        if (isSighSubmitting) {
+            saveUiPending = true
+        } else if (saveUiPending) {
+            withFrameNanos { }
+            saveMonitoringListener.onSaveUiResultShown(if (retryableSighError != null) "failure" else "success")
+            saveUiPending = false
+        }
+    }
+
+    LaunchedEffect(visibleSighIds, isActive, sighBrowser.isVisible) {
+        if (isActive && !sighBrowser.isVisible && visibleSighIds.isNotEmpty()) {
+            mapMonitoringListener.onVisibleSighsChanged(visibleSighIds)
+        }
+    }
+
+    LaunchedEffect(landedFlightId, visibleSighIds, isActive, sighBrowser.isVisible) {
+        val landedId = landedFlightId ?: return@LaunchedEffect
+        if (isActive && !sighBrowser.isVisible && landedId in visibleSighIds) {
+            withFrameNanos { }
+            saveMonitoringListener.onSavedStarVisible()
+        }
+    }
+
+    LaunchedEffect(sighBrowser.selectedSigh?.id, sighBrowser.isVisible) {
+        if (sighBrowser.isVisible && sighBrowser.selectedSigh != null) {
+            withFrameNanos { }
+            mapMonitoringListener.onStarDetailShown()
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize().background(AppTheme.colors.background)) {
         BreathMap(
             state =
@@ -332,6 +370,12 @@ fun MapScreen(
             onMapError = onMapError,
             onMapRecovered = onMapReady,
             onProjectionChanged = { projectionSnapshot = it },
+            onVisibleSighsChanged = { ids ->
+                visibleSighIds = ids
+                if (isActive && !sighBrowser.isVisible && ids.isNotEmpty()) {
+                    mapMonitoringListener.onVisibleSighsChanged(ids)
+                }
+            },
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -510,6 +554,19 @@ fun MapScreen(
                                     microphoneError = error
                                 }
                             },
+                            onMicrophoneInputFailed = breathMonitoringListener::onMicrophoneFailed,
+                            onMicrophonePermissionResult = breathMonitoringListener::onMicrophonePermissionResult,
+                            onMicrophoneStartRequested = breathMonitoringListener::onMicrophoneStartRequested,
+                            onMicrophoneReady = breathMonitoringListener::onMicrophoneReady,
+                            onSoundDetected = breathMonitoringListener::onSoundDetected,
+                            onBreathSample = breathMonitoringListener::onBreathSample,
+                            onMicrophoneStopped = breathMonitoringListener::onMicrophoneStopped,
+                            onBaseSizeChanged = breathMonitoringListener::onBaseSizeChanged,
+                            onReleaseReady = breathMonitoringListener::onReleaseReady,
+                            onControlTapped = breathMonitoringListener::onControlTapped,
+                            onSwipeAttempted = breathMonitoringListener::onSwipeAttempted,
+                            onGestureCancelled = breathMonitoringListener::onGestureCancelled,
+                            onReleaseAnimationFinished = breathMonitoringListener::onReleaseAnimationFinished,
                             ensureLocationPermission = ensureRegistrationLocation,
                             onPhaseChanged = { sighPhase = it },
                             onReleaseReadinessChanged = { isBreathReleaseReady = it },
@@ -556,6 +613,7 @@ fun MapScreen(
                 draft = draft,
                 submitting = false,
                 guideMode = guideMode,
+                onShown = onMemoShown,
                 onSubmit = onSubmitMemo,
                 onSkip = onSkipMemo,
                 onDismiss = cancelSighRegistration,

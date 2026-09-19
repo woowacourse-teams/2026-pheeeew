@@ -189,8 +189,6 @@ class Monitoring(
 
     fun memoEditing() = attemptCoordinator.memoEditing()
 
-    fun memoFinished() = attemptCoordinator.memoFinished()
-
     fun memoShown() = attemptCoordinator.memoShown()
 
     fun memoValidationFailed() = attemptCoordinator.memoValidationFailed()

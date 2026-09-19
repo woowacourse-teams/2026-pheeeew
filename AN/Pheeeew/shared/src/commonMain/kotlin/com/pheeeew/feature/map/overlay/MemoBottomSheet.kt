@@ -29,10 +29,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -45,6 +47,7 @@ import com.pheeeew.feature.map.MAX_MEMO_LENGTH
 import com.pheeeew.feature.map.PendingSighDraft
 import com.pheeeew.feature.map.guide.FirstSighGuideBubble
 import com.pheeeew.feature.map.guide.FirstSighGuideStep
+import kotlinx.coroutines.flow.first
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,6 +55,7 @@ fun MemoEditor(
     draft: PendingSighDraft,
     submitting: Boolean,
     guideMode: Boolean,
+    onShown: () -> Unit,
     onSubmit: (String) -> Unit,
     onSkip: () -> Unit,
     onDismiss: () -> Unit,
@@ -64,6 +68,7 @@ fun MemoEditor(
         },
         submitting = submitting,
         guideMode = guideMode,
+        onShown = onShown,
         onSubmit = { onSubmit(value) },
         onSkip = onSkip,
         onDismiss = onDismiss,
@@ -77,6 +82,7 @@ private fun MemoBottomSheet(
     onValueChange: (String) -> Unit,
     submitting: Boolean,
     guideMode: Boolean,
+    onShown: () -> Unit,
     onSubmit: () -> Unit,
     onSkip: () -> Unit,
     onDismiss: () -> Unit,
@@ -86,6 +92,11 @@ private fun MemoBottomSheet(
             skipPartiallyExpanded = true,
             confirmValueChange = { value -> value != SheetValue.Hidden || !submitting },
         )
+    LaunchedEffect(sheetState) {
+        snapshotFlow { sheetState.currentValue }
+            .first { it != SheetValue.Hidden }
+        onShown()
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,

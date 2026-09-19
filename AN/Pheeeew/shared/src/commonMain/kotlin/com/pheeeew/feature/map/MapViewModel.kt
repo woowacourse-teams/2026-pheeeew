@@ -2,6 +2,7 @@ package com.pheeeew.feature.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.audio.BreathInputError
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.di.LocationDependencies
@@ -48,7 +49,10 @@ class MapViewModel(
     private val locationDependencies: LocationDependencies?,
     private val mapPerformanceLogger: MapPerformanceLogger,
     private val monitoring: Monitoring? = null,
-) : ViewModel() {
+) : ViewModel(),
+    BreathMonitoringListener,
+    SaveMonitoringListener,
+    MapMonitoringListener {
     private var nextCameraCommandId = 0L
     private var pendingRegistration: CreateSighCommand? = null
     private var pendingMemoDraft: PendingSighDraft? = null
@@ -60,6 +64,7 @@ class MapViewModel(
     private val blockedNicknames = mutableSetOf<String>()
     private val sighMapCache = SighMapCache()
     private var mapIsForeground = false
+    private var latestVisibleSighIds: List<String> = emptyList()
     private var sighDebounceJob: Job? = null
     private var activeSighRequestJob: Job? = null
     private var pendingViewportIntent: ViewportIntent? = null
@@ -274,6 +279,9 @@ class MapViewModel(
 
     fun setSighListVisible(visible: Boolean) {
         if (!visible) {
+            if (_uiState.value.sighBrowser.isDetailLoading) {
+                monitoring?.starDetailFailed("user_cancel")
+            }
             restoreCameraBeforeSighDetail()
             latestSighListRequestId += 1L
             latestSighDetailRequestId += 1L
@@ -314,11 +322,16 @@ class MapViewModel(
     }
 
     fun openSighFromPin(id: Long) {
+        monitoring?.starSelected("map")
         requestSighDetail(id, openBrowser = true, showList = false)
     }
 
     fun selectSigh(id: Long) {
-        if (!_uiState.value.sighBrowser.isVisible) return
+        monitoring?.starSelected("list")
+        if (!_uiState.value.sighBrowser.isVisible) {
+            monitoring?.starDetailFailed("browser_hidden")
+            return
+        }
         requestSighDetail(id, openBrowser = false, showList = true)
     }
 
@@ -327,8 +340,23 @@ class MapViewModel(
         openBrowser: Boolean,
         showList: Boolean,
     ) {
-        val bounds = lastSighBounds ?: return
-        if (!mapIsForeground || id in expiredSighIds || id in blockedSighIds) return
+        val bounds =
+            lastSighBounds ?: run {
+                monitoring?.starDetailFailed("map_not_ready")
+                return
+            }
+        if (!mapIsForeground) {
+            monitoring?.starDetailFailed("background")
+            return
+        }
+        if (id in expiredSighIds) {
+            monitoring?.starDetailFailed("expired")
+            return
+        }
+        if (id in blockedSighIds) {
+            monitoring?.starDetailFailed("blocked")
+            return
+        }
 
         val requestId = ++latestSighDetailRequestId
         loadSighDetailJob?.cancel()
@@ -354,6 +382,7 @@ class MapViewModel(
                     val sigh = sighRepository.getById(id)
                     if (!isCurrentSighDetailRequest(requestId, id)) return@launch
                     if (isBlocked(sigh)) {
+                        monitoring?.starDetailFailed("blocked")
                         pendingSighDetailId = null
                         _uiState.update { state ->
                             state.copy(
@@ -372,8 +401,10 @@ class MapViewModel(
                     if (!isCurrentSighDetailRequest(requestId, id)) return@launch
 
                     if (exception.code == SIGH_EXPIRED_CODE) {
+                        monitoring?.starDetailFailed("expired", exception.code)
                         handleExpiredSigh(id)
                     } else {
+                        monitoring?.starDetailFailed("api_error", exception.code)
                         handleSighDetailFailure(exception)
                     }
                 }
@@ -547,6 +578,9 @@ class MapViewModel(
     }
 
     fun dismissSighDetail() {
+        if (_uiState.value.sighBrowser.isDetailLoading) {
+            monitoring?.starDetailFailed("user_cancel")
+        }
         if (!_uiState.value.sighBrowser.isListVisible) {
             setSighListVisible(false)
             return
@@ -722,11 +756,109 @@ class MapViewModel(
     }
 
     fun submitMemo(rawMemo: String) {
+        completeMemo(rawMemo = rawMemo, skipped = false)
+    }
+
+    fun skipMemo() {
+        completeMemo(rawMemo = "", skipped = true)
+    }
+
+    fun onMemoShown() {
+        monitoring?.memoShown()
+    }
+
+    override fun onMicrophonePermissionResult(granted: Boolean) {
+        monitoring?.microphonePermissionResult(granted)
+    }
+
+    override fun onMicrophoneStartRequested() {
+        monitoring?.beginCapture()
+    }
+
+    override fun onMicrophoneReady() {
+        monitoring?.microphoneReady()
+    }
+
+    override fun onSoundDetected(
+        strength: Float,
+        activeThreshold: Float,
+    ) {
+        monitoring?.soundFirstDetected(strength, activeThreshold)
+    }
+
+    override fun onBreathSample(
+        active: Boolean,
+        elapsedMs: Long,
+        growth: Float,
+    ) {
+        monitoring?.breathSample(active, elapsedMs, growth)
+    }
+
+    override fun onMicrophoneStopped(
+        finalGrowth: Float,
+        reason: String,
+        interrupted: Boolean,
+    ) {
+        monitoring?.endCapture(finalGrowth, reason, interrupted)
+    }
+
+    override fun onBaseSizeChanged() {
+        monitoring?.baseSizeChanged()
+    }
+
+    override fun onReleaseReady(
+        growth: Float,
+        minimumReleaseProgress: Float,
+    ) {
+        monitoring?.releaseReady(growth, minimumReleaseProgress)
+    }
+
+    override fun onControlTapped(
+        phase: String,
+        growth: Float,
+        inputActive: Boolean,
+    ) {
+        monitoring?.controlTapped(phase, growth, inputActive)
+    }
+
+    override fun onSwipeAttempted(
+        upwardDistanceDp: Float,
+        upwardVelocityDpPerSecond: Float,
+        growth: Float,
+        success: Boolean,
+        reason: String,
+    ) {
+        monitoring?.swipeAttempted(
+            upwardDistanceDp,
+            upwardVelocityDpPerSecond,
+            growth,
+            success,
+            reason,
+        )
+    }
+
+    override fun onGestureCancelled(reason: String) {
+        monitoring?.gestureCancelled(reason)
+    }
+
+    override fun onReleaseAnimationFinished() {
+        monitoring?.releaseAnimationFinished()
+    }
+
+    override fun onMicrophoneFailed(error: BreathInputError) {
+        monitoring?.microphoneFailed(error.name.toSnakeCase())
+    }
+
+    private fun completeMemo(
+        rawMemo: String,
+        skipped: Boolean,
+    ) {
         val state = _uiState.value.sighRelease as? SighReleaseState.EditingMemo ?: return
         val memo =
             try {
                 MemoPolicy.normalize(rawMemo)
             } catch (e: IllegalArgumentException) {
+                monitoring?.memoValidationFailed()
                 _uiState.update { current ->
                     current.copy(sighRelease = SighReleaseState.Error(e.message.orEmpty(), canRetry = false))
                 }
@@ -740,14 +872,14 @@ class MapViewModel(
                         coordinate = state.draft.coordinate,
                         memo = memo,
                     ).also { pendingRegistration = it }
-        monitoring?.memoFinished()
         _uiState.update { current ->
             current.copy(sighRelease = SighReleaseState.AwaitingBreath(command))
         }
-    }
-
-    fun skipMemo() {
-        submitMemo(rawMemo = "")
+        if (skipped) {
+            monitoring?.memoSkipped()
+        } else {
+            monitoring?.memoCompleted(memoPresent = memo?.isNotEmpty() == true)
+        }
     }
 
     fun cancelSighRegistration() {
@@ -787,7 +919,8 @@ class MapViewModel(
             try {
                 val sighPin = createSigh(command).toPin()
                 monitoring?.saveResult(monitoringOrigin, true, submittingStartedAt.elapsedNow().inWholeMilliseconds)
-                waitForMinimumSubmittingDuration(submittingStartedAt)
+                val waitMs = waitForMinimumSubmittingDuration(submittingStartedAt)
+                monitoring?.saveWaitFinished(monitoringOrigin, waitMs)
 
                 sighOperationMutex.withLock {
                     locallyRegisteredSighs[sighPin.id] = sighPin
@@ -825,7 +958,8 @@ class MapViewModel(
                     e.code,
                 )
                 monitoring?.report(e, monitoringOrigin)
-                waitForMinimumSubmittingDuration(submittingStartedAt)
+                val waitMs = waitForMinimumSubmittingDuration(submittingStartedAt)
+                monitoring?.saveWaitFinished(monitoringOrigin, waitMs)
                 _uiState.update { state ->
                     state.copy(
                         sighRelease =
@@ -840,10 +974,16 @@ class MapViewModel(
         }
     }
 
-    private suspend fun waitForMinimumSubmittingDuration(startedAt: TimeMark) {
+    private suspend fun waitForMinimumSubmittingDuration(startedAt: TimeMark): Long {
+        val waitStartedAt = TimeSource.Monotonic.markNow()
         val remainingMillis =
             MIN_SIGH_SUBMITTING_DURATION_MILLIS - startedAt.elapsedNow().inWholeMilliseconds
         if (remainingMillis > 0) delay(remainingMillis)
+        return waitStartedAt.elapsedNow().inWholeMilliseconds
+    }
+
+    override fun onSaveUiResultShown(outcome: String) {
+        monitoring?.saveUiResultShown(outcome)
     }
 
     fun cancelFailedSighRegistration(): Boolean {
@@ -1012,6 +1152,28 @@ class MapViewModel(
         lastSighBounds?.let(::loadSighs)
     }
 
+    fun onMapShown(entryReason: String) {
+        monitoring?.mapVisitStarted(entryReason)
+        monitoring?.mapStarsVisible(latestVisibleSighIds.size)
+    }
+
+    fun onMapHidden(reason: String) {
+        monitoring?.mapVisitEnded(reason)
+    }
+
+    override fun onVisibleSighsChanged(ids: List<String>) {
+        latestVisibleSighIds = ids
+        monitoring?.mapStarsVisible(ids.size)
+    }
+
+    override fun onSavedStarVisible() {
+        monitoring?.savedStarVisible()
+    }
+
+    override fun onStarDetailShown() {
+        monitoring?.starDetailShown()
+    }
+
     fun onMapBackground() {
         mapIsForeground = false
         sighDebounceJob?.cancel()
@@ -1049,6 +1211,12 @@ class MapViewModel(
         }
     }
 }
+
+private fun String.toSnakeCase(): String =
+    fold(StringBuilder()) { result, character ->
+        if (character.isUpperCase() && result.isNotEmpty()) result.append('_')
+        result.append(character.lowercaseChar())
+    }.toString()
 
 private data class ViewportIntent(
     val version: Long,
