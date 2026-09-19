@@ -66,6 +66,7 @@ class MainActivity : ComponentActivity() {
                 refreshAccessToken = {
                     deviceDependencies.ensureRegistered().getOrThrow().accessToken
                 },
+                monitoring = (application as PheeeewApplication).monitoring,
             )
         val appVersionApi = createAppVersionApi(ApiConfig(baseUrl = BuildConfig.API_BASE_URL), "android")
         val connectivityObserver = AndroidConnectivityObserver(this)

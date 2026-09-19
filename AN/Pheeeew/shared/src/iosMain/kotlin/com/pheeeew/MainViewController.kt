@@ -44,6 +44,7 @@ fun MainViewController() =
                     refreshAccessToken = {
                         deviceDependencies.ensureRegistered().getOrThrow().accessToken
                     },
+                    monitoring = IosMonitoring.instance,
                 )
             }
         App(

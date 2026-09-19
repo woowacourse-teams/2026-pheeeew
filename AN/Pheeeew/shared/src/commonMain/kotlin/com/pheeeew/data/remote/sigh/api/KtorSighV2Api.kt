@@ -1,5 +1,6 @@
 package com.pheeeew.data.remote.sigh.api
 
+import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.remote.common.executeRequest
 import com.pheeeew.data.remote.sigh.dto.SighCreateV2RequestDto
@@ -21,12 +22,14 @@ import io.ktor.http.contentType
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlin.time.Clock
+import kotlin.time.TimeSource
 
 class KtorSighV2Api(
     private val client: HttpClient,
     private val accessTokenStore: AccessTokenStore? = null,
     private val nowEpochSeconds: () -> Long = { Clock.System.now().epochSeconds },
     private val refreshAccessToken: (suspend () -> AccessToken?)? = null,
+    private val monitoring: Monitoring? = null,
 ) : SighV2Api {
     private val refreshMutex = Mutex()
 
@@ -106,16 +109,42 @@ class KtorSighV2Api(
     private suspend fun createRequest(
         request: SighCreateV2RequestDto,
         accessToken: AccessToken?,
-    ): SighFeatureDto<SighV2PropertiesDto> =
-        executeRequest {
-            client.post(SIGHS_PATH) {
-                accessToken?.let { token ->
-                    header("Authorization", "Bearer ${token.value}")
-                }
-                contentType(ContentType.Application.Json)
-                setBody(request)
+    ): SighFeatureDto<SighV2PropertiesDto> {
+        val startedAt = TimeSource.Monotonic.markNow()
+        var response: io.ktor.client.statement.HttpResponse? = null
+        return try {
+            executeRequest<SighFeatureDto<SighV2PropertiesDto>> {
+                client
+                    .post(SIGHS_PATH) {
+                        accessToken?.let { token ->
+                            header("Authorization", "Bearer ${token.value}")
+                        }
+                        contentType(ContentType.Application.Json)
+                        setBody(request)
+                    }.also { response = it }
+            }.also {
+                monitoring?.apiRequestFinished(
+                    routeTemplate = SIGHS_PATH,
+                    method = "POST",
+                    durationMs = startedAt.elapsedNow().inWholeMilliseconds,
+                    success = true,
+                    statusCode = response?.status?.value,
+                    correlationId = response?.headers?.get(CORRELATION_ID_HEADER),
+                )
             }
+        } catch (error: Throwable) {
+            monitoring?.apiRequestFinished(
+                routeTemplate = SIGHS_PATH,
+                method = "POST",
+                durationMs = startedAt.elapsedNow().inWholeMilliseconds,
+                success = false,
+                statusCode = response?.status?.value,
+                errorCode = (error as? ApiException)?.code,
+                correlationId = response?.headers?.get(CORRELATION_ID_HEADER),
+            )
+            throw error
         }
+    }
 
     private suspend fun accessTokenForRequest(): AccessToken? {
         val store = accessTokenStore ?: return null
@@ -153,6 +182,7 @@ class KtorSighV2Api(
 
     private companion object {
         const val SIGHS_PATH = "/api/v2/sighs"
+        const val CORRELATION_ID_HEADER = "X-Correlation-ID"
         const val REFRESH_BEFORE_EXPIRY_SECONDS = 60L
         const val DEVICE_REGISTRATION_NETWORK_CODE = "DEVICE_REGISTRATION_NETWORK"
         const val DEVICE_REGISTRATION_FAILURE_CODE = "DEVICE_REGISTRATION_FAILED"
