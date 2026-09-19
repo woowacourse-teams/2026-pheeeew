@@ -32,7 +32,7 @@ data class MonitoringSnapshot(
 internal data class MonitoringState(
     val anonymousId: String,
     val environment: String,
-    val version: Int = 1,
+    val version: Int = MonitoringStateMigrator.CURRENT_VERSION,
     val visitId: String? = null,
     val firstVisitId: String? = null,
     val lastObserved: Long = 0,
@@ -48,6 +48,18 @@ internal data class MonitoringState(
     val logicalKeys: List<String> = emptyList(),
     val droppedEvents: Long = 0,
 )
+
+/** Converts durable state between schema versions before it is used by the monitoring runtime. */
+internal object MonitoringStateMigrator {
+    const val CURRENT_VERSION = 2
+
+    fun migrate(state: MonitoringState): MonitoringState =
+        when (state.version) {
+            1 -> state.copy(version = CURRENT_VERSION)
+            CURRENT_VERSION -> state
+            else -> error("Unsupported monitoring state version: ${state.version}")
+        }
+}
 
 @Serializable
 data class MonitoringEvent(

@@ -16,9 +16,10 @@ internal class MonitoringStateStore(
         runCatching {
             loaded.getOrNull()?.let { json.decodeFromString<MonitoringState>(it) }
         }
+    private val migrated = decoded.mapCatching { it?.let(MonitoringStateMigrator::migrate) }
 
     var state: MonitoringState =
-        decoded.getOrNull()
+        migrated.getOrNull()
             ?: MonitoringState(
                 anonymousId = id(),
                 knownNew = newInstallation && loaded.isSuccess && loaded.getOrNull() == null,
@@ -27,7 +28,7 @@ internal class MonitoringStateStore(
         private set
 
     val readable: Boolean
-        get() = loaded.isSuccess && decoded.isSuccess
+        get() = loaded.isSuccess && migrated.isSuccess
 
     fun replace(next: MonitoringState) {
         state = next

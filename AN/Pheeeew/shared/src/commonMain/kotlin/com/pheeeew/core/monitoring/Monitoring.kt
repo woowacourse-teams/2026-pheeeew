@@ -21,7 +21,11 @@ class Monitoring(
     private val id: () -> String = { Uuid.random().toString() },
     newInstallation: Boolean = false,
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json =
+        Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+        }
     private val stateStore = MonitoringStateStore(store, json, config, id, newInstallation)
     private var state: MonitoringState
         get() = stateStore.state
@@ -47,7 +51,7 @@ class Monitoring(
     private var phase = "idle"
     private var usable =
         config.configured && stateStore.readable &&
-        state.environment == config.environment && state.version == 1
+            state.environment == config.environment && state.version == MonitoringStateMigrator.CURRENT_VERSION
     private val runtime =
         MonitoringRuntime(
             now = now,
