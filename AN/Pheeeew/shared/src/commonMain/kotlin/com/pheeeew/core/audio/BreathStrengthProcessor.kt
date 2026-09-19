@@ -5,8 +5,12 @@ class BreathStrengthProcessor {
     private var smoothedStrength = 0f
     private val amplitudeNormalizer = BreathAmplitudeNormalizer()
 
+    internal var lastNormalizedAmplitude: Float = 0f
+        private set
+
     fun process(metrics: BreathSignalMetrics): Float {
-        val normalizedMetrics = metrics.copy(amplitude = amplitudeNormalizer.normalize(metrics.amplitude))
+        lastNormalizedAmplitude = amplitudeNormalizer.normalize(metrics.amplitude)
+        val normalizedMetrics = metrics.copy(amplitude = lastNormalizedAmplitude)
         smoothedStrength =
             BreathStrengthScorer.score(
                 amplitude = normalizedMetrics.amplitude,
@@ -20,6 +24,7 @@ class BreathStrengthProcessor {
 
     fun reset() {
         smoothedStrength = 0f
+        lastNormalizedAmplitude = 0f
         amplitudeNormalizer.reset()
     }
 }
