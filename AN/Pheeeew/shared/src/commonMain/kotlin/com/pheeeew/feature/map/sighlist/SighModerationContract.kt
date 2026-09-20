@@ -5,12 +5,12 @@ internal const val DEFAULT_SIGH_REPORT_REASON = "기타"
 
 internal val sighReportReasons =
     listOf(
+        DEFAULT_SIGH_REPORT_REASON,
         "명예훼손 및 사생활 침해",
         "사이버 괴롭힘",
         "자해/극단적 선택/폭력",
         "개인정보 노출",
         "사기/상업성 광고",
-        DEFAULT_SIGH_REPORT_REASON,
     )
 
 data class SighModerationTarget(
