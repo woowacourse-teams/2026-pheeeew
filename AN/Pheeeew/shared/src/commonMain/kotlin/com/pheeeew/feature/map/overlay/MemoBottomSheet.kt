@@ -1,5 +1,6 @@
 package com.pheeeew.feature.map.overlay
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldDecorator
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
@@ -50,7 +56,7 @@ import com.pheeeew.feature.map.guide.FirstSighGuideBubble
 import com.pheeeew.feature.map.guide.FirstSighGuideStep
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 fun MemoEditor(
     draft: PendingSighDraft,
     submitting: Boolean,
@@ -59,20 +65,21 @@ fun MemoEditor(
     onSkip: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var value by rememberSaveable(draft.requestId) { mutableStateOf("") }
+    val value =
+        rememberSaveable(
+            draft.requestId,
+            saver = TextFieldState.Saver,
+        ) { TextFieldState() }
     var showDiscardDialog by rememberSaveable(draft.requestId) { mutableStateOf(false) }
 
     MemoBottomSheet(
         value = value,
-        onValueChange = { nextValue ->
-            if (nextValue.length <= MAX_MEMO_LENGTH) value = nextValue
-        },
         submitting = submitting,
         guideMode = guideMode,
-        onSubmit = { onSubmit(value) },
+        onSubmit = { onSubmit(value.text.toString()) },
         onSkip = onSkip,
         onDismiss = {
-            if (value.isEmpty()) {
+            if (value.text.isEmpty()) {
                 onDismiss()
             } else {
                 showDiscardDialog = true
@@ -97,10 +104,9 @@ fun MemoEditor(
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 private fun MemoBottomSheet(
-    value: String,
-    onValueChange: (String) -> Unit,
+    value: TextFieldState,
     submitting: Boolean,
     guideMode: Boolean,
     onSubmit: () -> Unit,
@@ -185,9 +191,9 @@ private fun MemoBottomSheet(
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         BasicTextField(
-                            value = value,
-                            onValueChange = onValueChange,
+                            state = value,
                             enabled = !submitting,
+                            inputTransformation = InputTransformation.maxLength(MAX_MEMO_LENGTH),
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
@@ -200,26 +206,27 @@ private fun MemoBottomSheet(
                                     keyboardType = KeyboardType.Text,
                                     imeAction = ImeAction.Default,
                                 ),
-                            maxLines = 6,
-                            decorationBox = { innerTextField ->
-                                Box(modifier = Modifier.fillMaxWidth()) {
-                                    if (value.isEmpty()) {
-                                        Text(
-                                            text = "오늘 어떤 일이 있었나요?",
-                                            style = AppTheme.typography.dialogBody,
-                                            color = AppColors.Cream100.copy(alpha = 0.4f),
-                                        )
+                            lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 6),
+                            decorator =
+                                TextFieldDecorator { innerTextField ->
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        if (value.text.isEmpty()) {
+                                            Text(
+                                                text = "오늘 어떤 일이 있었나요?",
+                                                style = AppTheme.typography.dialogBody,
+                                                color = AppColors.Cream100.copy(alpha = 0.4f),
+                                            )
+                                        }
+                                        innerTextField()
                                     }
-                                    innerTextField()
-                                }
-                            },
+                                },
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End,
                         ) {
                             Text(
-                                text = "${value.length}/$MAX_MEMO_LENGTH",
+                                text = "${value.text.length}/$MAX_MEMO_LENGTH",
                                 style = AppTheme.typography.caption,
                                 color = AppColors.Cream100.copy(alpha = 0.6f),
                             )
