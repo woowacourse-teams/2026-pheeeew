@@ -467,7 +467,7 @@ private fun SighListHeader(
         )
         Box(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 4.dp, bottom = 4.dp)) {
             Text(
-                text = "근처 한숨",
+                text = "한숨 목록",
                 modifier = Modifier.align(Alignment.CenterStart),
                 style = AppTheme.typography.sectionHeader,
             )
