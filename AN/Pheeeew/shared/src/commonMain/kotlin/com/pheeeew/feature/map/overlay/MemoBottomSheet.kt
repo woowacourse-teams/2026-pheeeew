@@ -1,7 +1,7 @@
 package com.pheeeew.feature.map.overlay
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -19,8 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.InputTransformation
-import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldDecorator
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.text.input.TextFieldState
 import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.foundation.verticalScroll
@@ -35,10 +35,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -207,18 +207,19 @@ private fun MemoBottomSheet(
                                     imeAction = ImeAction.Default,
                                 ),
                             lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 6),
-                            decorator = TextFieldDecorator { innerTextField ->
-                                Box(modifier = Modifier.fillMaxWidth()) {
-                                    if (value.text.isEmpty()) {
-                                        Text(
-                                            text = "오늘 어떤 일이 있었나요?",
-                                            style = AppTheme.typography.dialogBody,
-                                            color = AppColors.Cream100.copy(alpha = 0.4f),
-                                        )
+                            decorator =
+                                TextFieldDecorator { innerTextField ->
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        if (value.text.isEmpty()) {
+                                            Text(
+                                                text = "오늘 어떤 일이 있었나요?",
+                                                style = AppTheme.typography.dialogBody,
+                                                color = AppColors.Cream100.copy(alpha = 0.4f),
+                                            )
+                                        }
+                                        innerTextField()
                                     }
-                                    innerTextField()
-                                }
-                            },
+                                },
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
