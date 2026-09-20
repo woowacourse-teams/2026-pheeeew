@@ -153,7 +153,11 @@ fun App(
                 SighModerationViewModel(
                     blockUser = blockUser,
                     reportSigh = reportSigh,
-                    onBlockSucceeded = mapViewModel::removeSigh,
+                    onBlockSucceeded = { target ->
+                        mapViewModel.removeSigh(target)
+                        mapViewModel.dismissSighDetail()
+                    },
+                    onReportSucceeded = mapViewModel::dismissSighDetail,
                 )
             }
         val mapReadiness = remember { MutableStateFlow(false) }
