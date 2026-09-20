@@ -1,6 +1,8 @@
 package com.pheeeew.feature.map.sighlist
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -18,6 +21,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,6 +54,8 @@ internal fun SighDetailModal(
     onLikeClick: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    val memoScrollState = rememberScrollState()
+
     Box(modifier = modifier) {
         Box(
             modifier =
@@ -105,11 +112,30 @@ internal fun SighDetailModal(
                             modifier = Modifier.size(24.dp).align(Alignment.Top).clickable(onClick = onMoreClick),
                         )
                     }
-                    Text(
-                        text = item.memo,
-                        style = AppTheme.typography.menuItem,
-                        modifier = Modifier.padding(top = 16.dp, end = 8.dp),
-                    )
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp, end = 8.dp)
+                                .heightIn(max = 144.dp),
+                    ) {
+                        Text(
+                            text = item.memo,
+                            style = AppTheme.typography.menuItem.copy(lineHeight = 24.sp),
+                            modifier = Modifier.fillMaxWidth().verticalScroll(memoScrollState),
+                        )
+                        if (memoScrollState.maxValue > 0) {
+                            SighDetailScrollbar(
+                                scrollState = memoScrollState,
+                                modifier =
+                                    Modifier
+                                        .align(Alignment.CenterEnd)
+                                        .fillMaxHeight()
+                                        .width(4.dp)
+                                        .padding(vertical = 2.dp),
+                            )
+                        }
+                    }
                 }
                 Text(
                     text = "닫기",
@@ -157,6 +183,44 @@ internal fun SighDetailModal(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun SighDetailScrollbar(
+    scrollState: ScrollState,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier = modifier) {
+        val maxScroll = scrollState.maxValue
+        if (maxScroll <= 0 || size.height <= 0f) return@Canvas
+
+        val trackCornerRadius = size.width / 2f
+        drawRoundRect(
+            color = AppColors.Cream100.copy(alpha = 0.16f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackCornerRadius),
+        )
+
+        val minThumbHeight = 20.dp.toPx()
+        val contentHeight = size.height + maxScroll
+        val thumbHeight =
+            (size.height * size.height / contentHeight)
+                .coerceAtLeast(minThumbHeight)
+                .coerceAtMost(size.height)
+        val scrollRange = size.height - thumbHeight
+        val thumbTop =
+            if (scrollRange == 0f) {
+                0f
+            } else {
+                (scrollState.value.toFloat() / maxScroll * scrollRange).coerceIn(0f, scrollRange)
+            }
+
+        drawRoundRect(
+            color = AppColors.Cream100.copy(alpha = 0.72f),
+            topLeft = androidx.compose.ui.geometry.Offset(0f, thumbTop),
+            size = androidx.compose.ui.geometry.Size(size.width, thumbHeight),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(trackCornerRadius),
+        )
     }
 }
 
