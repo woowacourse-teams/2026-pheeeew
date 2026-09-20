@@ -123,6 +123,7 @@ fun MapScreen(
     var showLocationPermissionDialog by remember { mutableStateOf(false) }
     var showLocationServicesDialog by remember { mutableStateOf(false) }
     var showMicrophonePermissionDialog by remember { mutableStateOf(false) }
+    var showSighCancelConfirmation by remember { mutableStateOf(false) }
     var sighPhase by remember { mutableStateOf(SighPhase.Idle) }
     var breathControlBounds by remember { mutableStateOf(Rect.Zero) }
     var cancelSignal by remember { mutableStateOf(0) }
@@ -155,6 +156,13 @@ fun MapScreen(
         cancelSignal += 1
         pendingFlightOrigin = null
         onCancelSighRegistration()
+    }
+    val requestCancelSighRegistration = {
+        if (awaitingBreath != null) {
+            showSighCancelConfirmation = true
+        } else {
+            cancelSighRegistration()
+        }
     }
     val isSighInteractionVisible = isSighSubmitting || isMemoEditing || awaitingBreath != null
     val guideStep =
@@ -419,11 +427,15 @@ fun MapScreen(
                         Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.8f))
-                            .pointerInput(isGuidePromptVisible, isSighSubmitting) {
+                            .pointerInput(
+                                isGuidePromptVisible,
+                                isSighSubmitting,
+                                awaitingBreath?.command?.requestId,
+                            ) {
                                 detectTapGestures(
                                     onTap = {
                                         if (!isGuidePromptVisible && !isSighSubmitting) {
-                                            cancelSighRegistration()
+                                            requestCancelSighRegistration()
                                         }
                                     },
                                 )
@@ -623,6 +635,20 @@ fun MapScreen(
                 onConfirmClick = onRetrySighCreation,
                 onDismissRequest = cancelFailedSighRegistration,
                 onDismissClick = cancelFailedSighRegistration,
+            )
+        }
+
+        if (showSighCancelConfirmation) {
+            ConfirmDialog(
+                title = "작성중인 내용이 있습니다.",
+                body = "지금까지 작성하던 내용이 저장되지 않습니다. 나가시겠습니까?",
+                confirmText = "나가기",
+                onConfirmClick = {
+                    showSighCancelConfirmation = false
+                    cancelSighRegistration()
+                },
+                onDismissRequest = { showSighCancelConfirmation = false },
+                onDismissClick = { showSighCancelConfirmation = false },
             )
         }
     }
