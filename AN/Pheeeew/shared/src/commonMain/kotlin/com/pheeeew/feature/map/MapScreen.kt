@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -255,6 +256,10 @@ fun MapScreen(
         remember(sighBrowser.selectedSigh, visualNow) {
             sighBrowser.selectedSigh?.toSighListItemUiModel(visualNow)
         }
+    val moderationSnackbarMessage =
+        moderationUiState.successMessage ?: moderationUiState.blockErrorMessage
+    val browserNoticeMessage =
+        sighBrowser.noticeMessage.takeUnless { moderationSnackbarMessage != null }
     val selectedProjectionId = sighBrowser.selectedSigh?.let { sigh -> "selected-sigh-${sigh.id}" }
     val selectedProjectionPoint =
         selectedProjectionId
@@ -400,19 +405,25 @@ fun MapScreen(
         }
 
         AppSnackbar(
-            message =
-                sighBrowser.noticeMessage
-                    ?: moderationUiState.successMessage
-                    ?: moderationUiState.blockErrorMessage,
+            message = moderationSnackbarMessage,
             onDismiss = {
-                if (sighBrowser.noticeMessage != null) {
-                    onDismissSighBrowserNotice()
-                } else if (moderationUiState.successMessage != null) {
+                if (moderationUiState.successMessage != null) {
                     onDismissReportSuccess()
                 } else {
                     onDismissBlockError()
                 }
             },
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(start = 16.dp, top = 16.dp, end = 16.dp),
+        )
+
+        AppSnackbar(
+            message = browserNoticeMessage,
+            onDismiss = onDismissSighBrowserNotice,
             modifier =
                 Modifier
                     .align(Alignment.BottomCenter)
