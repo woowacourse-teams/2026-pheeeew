@@ -10,6 +10,8 @@ object AppColors {
     val Navy800 = Color(0xFF0E1328)
     val Navy700 = Color(0xFF1A2044)
 
+    val Navy600 = Color(0xFF303965)
+
     val Cream100 = Color(0xFFF5F2EA)
     val Tan200 = Color(0xFFF0D9B5)
     val Pink100 = Color(0xFFE5A6B8)

@@ -5,6 +5,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -23,9 +24,10 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -44,7 +46,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -101,6 +105,11 @@ internal fun SighListSheet(
     var isListDraggingSheet by remember(compact) { mutableStateOf(false) }
     var draggedSheetOffsetPx by remember(compact) { mutableFloatStateOf(0f) }
     var totalDragPx by remember(compact) { mutableFloatStateOf(0f) }
+    var showMemoOnly by remember(compact) { mutableStateOf(true) }
+    val displayedItems =
+        remember(items, showMemoOnly) {
+            if (showMemoOnly) items.filter { it.hasMemo } else items
+        }
 
     val middleOffsetPx = availableHeightPx * 0.55f
     val settledSheetOffsetPx =
@@ -162,7 +171,7 @@ internal fun SighListSheet(
             sheetLevel == SighListSheetLevel.Middle -> 20.dp + with(density) { middleOffsetPx.toDp() }
             else -> 20.dp
         }
-    val listState = rememberLazyListState()
+    val listState = remember(showMemoOnly) { LazyListState() }
     val sheetNestedScrollConnection =
         remember(listState, compact, availableHeightPx) {
             object : NestedScrollConnection {
@@ -208,17 +217,22 @@ internal fun SighListSheet(
             }
         }
 
-    LaunchedEffect(listState, items.size, compact, canLoadMore, isLoadingMore) {
+    LaunchedEffect(listState, displayedItems.size, compact, canLoadMore, isLoadingMore) {
         if (compact || !canLoadMore || isLoadingMore) return@LaunchedEffect
         snapshotFlow {
             val lastVisibleIndex =
                 listState.layoutInfo.visibleItemsInfo
                     .lastOrNull()
                     ?.index ?: -1
-            items.isNotEmpty() && lastVisibleIndex >= items.lastIndex - 2
+            displayedItems.isNotEmpty() && lastVisibleIndex >= displayedItems.lastIndex - 2
         }.distinctUntilChanged().collect { shouldLoadMore ->
             if (shouldLoadMore) onLoadMore()
         }
+    }
+
+    LaunchedEffect(showMemoOnly, displayedItems.size, canLoadMore, isLoadingMore) {
+        if (!showMemoOnly || displayedItems.isNotEmpty() || !canLoadMore || isLoadingMore) return@LaunchedEffect
+        onLoadMore()
     }
 
     LaunchedEffect(refreshRevision) {
@@ -260,6 +274,8 @@ internal fun SighListSheet(
             SighListHeader(
                 compact = compact,
                 isRefreshing = isLoading,
+                showMemoOnly = showMemoOnly,
+                onToggleMemoFilter = { showMemoOnly = !showMemoOnly },
                 onRefresh = onRefresh,
                 onDismissList = onDismissList,
                 onCompactBackgroundClick = onCompactBackgroundClick,
@@ -314,7 +330,7 @@ internal fun SighListSheet(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     userScrollEnabled = !compact,
                 ) {
-                    if (isLoading && items.isEmpty()) {
+                    if (isLoading && displayedItems.isEmpty()) {
                         item(key = "sigh-list-loading") {
                             Box(
                                 modifier = Modifier.fillMaxWidth().height(160.dp),
@@ -327,25 +343,25 @@ internal fun SighListSheet(
                                 )
                             }
                         }
-                    } else if (errorMessage != null && items.isEmpty()) {
+                    } else if (errorMessage != null && displayedItems.isEmpty()) {
                         item(key = "sigh-list-error") {
                             SighListError(message = errorMessage, onRetry = onRefresh)
                         }
-                    } else if (items.isEmpty()) {
+                    } else if (displayedItems.isEmpty()) {
                         item(key = "empty-sigh-list") {
                             Box(
                                 modifier = Modifier.fillMaxWidth().height(160.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
-                                    text = "아직 근처에 머무는 한숨이 없어요",
+                                    text = if (showMemoOnly) "메모가 있는 한숨이 없어요" else "아직 기록된 한숨이 없어요",
                                     style = AppTheme.typography.menuItem,
                                     color = AppTheme.colors.onSurfaceVariant,
                                 )
                             }
                         }
                     } else {
-                        items(items, key = { it.id }) { item ->
+                        items(displayedItems, key = { it.id }) { item ->
                             SighListItem(
                                 item = item,
                                 onClick = { onItemClick(item) },
@@ -377,7 +393,7 @@ internal fun SighListSheet(
                     }
                 }
 
-                if (isLoading && items.isNotEmpty()) {
+                if (isLoading && displayedItems.isNotEmpty()) {
                     Box(
                         modifier =
                             Modifier
@@ -423,6 +439,8 @@ private fun SighListError(
 private fun SighListHeader(
     compact: Boolean,
     isRefreshing: Boolean,
+    showMemoOnly: Boolean,
+    onToggleMemoFilter: () -> Unit,
     onRefresh: () -> Unit,
     onDismissList: () -> Unit,
     onCompactBackgroundClick: () -> Unit,
@@ -466,23 +484,41 @@ private fun SighListHeader(
                     },
         )
         Box(modifier = Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 4.dp, bottom = 4.dp)) {
-            Text(
-                text = "한숨 목록",
+            Row(
                 modifier = Modifier.align(Alignment.CenterStart),
-                style = AppTheme.typography.sectionHeader,
-            )
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = "한숨 목록",
+                    style = AppTheme.typography.sectionHeader,
+                )
+                if (!compact) {
+                    IconButton(
+                        onClick = onRefresh,
+                        enabled = !isRefreshing,
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_refresh),
+                            contentDescription = "현재 지도 영역의 한숨 새로고침",
+                            tint = AppColors.Cream100,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+            }
             if (!compact) {
-                IconButton(
-                    onClick = onRefresh,
-                    enabled = !isRefreshing,
-                    modifier = Modifier.align(Alignment.CenterEnd),
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.CenterEnd)
+                            .clickable(onClick = onToggleMemoFilter)
+                            .padding(8.dp)
+                            .clip(RoundedCornerShape(100.dp))
+                            .border(border = BorderStroke(1.dp, AppColors.Navy600), shape = RoundedCornerShape(100.dp))
+                            .background(if (showMemoOnly) Color.Transparent else AppColors.Cream100.copy(alpha = 0.2f))
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_refresh),
-                        contentDescription = "현재 지도 영역의 한숨 새로고침",
-                        tint = AppColors.Cream100,
-                        modifier = Modifier.size(22.dp),
-                    )
+                    Text(text = "전체 보기", fontSize = 14.sp)
                 }
             }
         }
@@ -633,6 +669,62 @@ private fun SighListItemPreview() {
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+        }
+    }
+}
+
+@Composable
+@Preview
+private fun SighListPreview() {
+    AppTheme {
+        Box(
+            modifier = Modifier.fillMaxSize().background(AppColors.Navy900),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            SighListSheet(
+                items =
+                    listOf(
+                        SighListItemUiModel(
+                            id = 1L,
+                            nickname = "노래하는 고라니",
+                            relativeTime = "12분 전",
+                            memo = "아 개힘들다링 동동동동",
+                            starStage = StarAgeStage.Fresh,
+                            likeCount = 12L,
+                        ),
+                        SighListItemUiModel(
+                            id = 2L,
+                            nickname = "잠꾸러기 수달",
+                            relativeTime = "3시간 전",
+                            memo = "월요일이 왜 또 왔지",
+                            starStage = StarAgeStage.Fresh,
+                            liked = true,
+                            likeCount = 128L,
+                        ),
+                        SighListItemUiModel(
+                            id = 3L,
+                            nickname = "졸린 수달",
+                            relativeTime = "5시간 전",
+                            memo = EMPTY_SIGH_MEMO,
+                            hasMemo = false,
+                            starStage = StarAgeStage.Fresh,
+                            likeCount = 3L,
+                        ),
+                    ),
+                compact = false,
+                availableHeightPx = 800f,
+                isLoading = false,
+                isLoadingMore = false,
+                isLoadMoreError = false,
+                refreshRevision = 0L,
+                canLoadMore = false,
+                errorMessage = null,
+                onItemClick = {},
+                onDismissList = {},
+                onCompactBackgroundClick = {},
+                onLoadMore = {},
+                onRefresh = {},
+            )
         }
     }
 }
