@@ -5,6 +5,8 @@ import com.pheeeew.data.local.device.AccessTokenStore
 import com.pheeeew.data.remote.common.executeRequest
 import com.pheeeew.data.remote.sigh.dto.SighCreateV2RequestDto
 import com.pheeeew.data.remote.sigh.dto.SighFeatureDto
+import com.pheeeew.data.remote.sigh.dto.SighLikeRequestDto
+import com.pheeeew.data.remote.sigh.dto.SighLikeResponseDto
 import com.pheeeew.data.remote.sigh.dto.SighPageResponseDto
 import com.pheeeew.data.remote.sigh.dto.SighV2PropertiesDto
 import com.pheeeew.domain.exception.ApiException
@@ -82,6 +84,23 @@ class KtorSighV2Api(
                 createRequest(request, retryToken)
             }
         }
+
+    override suspend fun updateLike(
+        id: Long,
+        liked: Boolean,
+    ): SighLikeResponseDto {
+        require(id > 0) { "한숨 식별자는 양수여야 합니다." }
+
+        return executeAuthenticatedRequest { accessToken ->
+            executeRequest {
+                client.post("$SIGHS_PATH/$id/likes") {
+                    accessToken?.let { header("Authorization", "Bearer ${it.value}") }
+                    contentType(ContentType.Application.Json)
+                    setBody(SighLikeRequestDto(liked = liked))
+                }
+            }
+        }
+    }
 
     private suspend fun <T> executeAuthenticatedRequest(request: suspend (AccessToken?) -> T): T {
         val tokenUsedForRequest = accessTokenForRequest()

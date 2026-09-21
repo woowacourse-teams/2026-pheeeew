@@ -15,6 +15,7 @@ class SighModerationViewModel(
     private val blockUser: BlockUserUseCase,
     private val reportSigh: ReportSighUseCase,
     private val onBlockSucceeded: (SighModerationTarget) -> Unit = {},
+    private val onReportSucceeded: () -> Unit = {},
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(SighModerationUiState())
     val uiState: StateFlow<SighModerationUiState> = _uiState.asStateFlow()
@@ -116,6 +117,7 @@ class SighModerationViewModel(
         viewModelScope.launch {
             runCatching { reportSigh(target.sighId, reason) }
                 .onSuccess { result ->
+                    onReportSucceeded()
                     _uiState.update {
                         it.copy(
                             reportTarget = null,

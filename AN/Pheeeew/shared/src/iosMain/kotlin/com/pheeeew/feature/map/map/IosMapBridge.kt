@@ -25,6 +25,12 @@ interface IosMapEventSink {
         maxLatitude: Double,
     )
 
+    fun onCameraStateChanged(
+        latitude: Double,
+        longitude: Double,
+        zoom: Double,
+    )
+
     fun onRendererUnavailable()
 
     fun onStyleLoadFailed()
@@ -45,13 +51,6 @@ data class IosMapCoordinate(
 ) {
     override fun toString(): String = "IosMapCoordinate([redacted])"
 }
-
-data class IosDistrictBoundary(
-    val code: String,
-    val name: String,
-    val coordinates: List<IosMapCoordinate>,
-    val selected: Boolean,
-)
 
 data class IosSighMarker(
     val id: String,
@@ -89,6 +88,7 @@ enum class IosMapCameraCommandKind {
     MoveToCurrentLocation,
     MoveToCoordinate,
     MoveToBounds,
+    MoveToCameraState,
 }
 
 data class IosMapCameraCommand(
@@ -107,7 +107,6 @@ data class IosMapCameraCommand(
 
 data class IosMapRenderState(
     val sighMarkers: List<IosSighMarker>,
-    val districtBoundaries: List<IosDistrictBoundary>,
     val currentLocation: IosCurrentLocation?,
     val initialCenter: IosMapCoordinate?,
     val initialCenterIsProvisional: Boolean,

@@ -17,6 +17,7 @@ internal actual fun NativeBreathMap(
     cameraCommand: MapCameraCommand?,
     onSighClick: (String) -> Unit,
     onBoundsChanged: (SighBounds) -> Unit,
+    onCameraStateChanged: (MapCameraState) -> Unit,
     onMapError: (MapError) -> Unit,
     onMapRecovered: () -> Unit,
     onProjectionChanged: (MapProjectionSnapshot) -> Unit,
@@ -25,6 +26,7 @@ internal actual fun NativeBreathMap(
 ) {
     val currentOnSighClick by rememberUpdatedState(onSighClick)
     val currentOnBoundsChanged by rememberUpdatedState(onBoundsChanged)
+    val currentOnCameraStateChanged by rememberUpdatedState(onCameraStateChanged)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val currentOnProjectionChanged by rememberUpdatedState(onProjectionChanged)
@@ -47,6 +49,12 @@ internal actual fun NativeBreathMap(
                         north = maxLatitude,
                     ),
                 )
+
+                override fun onCameraStateChanged(
+                    latitude: Double,
+                    longitude: Double,
+                    zoom: Double,
+                ) = currentOnCameraStateChanged(MapCameraState(latitude, longitude, zoom))
 
                 override fun onRendererUnavailable() = currentOnMapError(MapError.RendererUnavailable)
 
@@ -107,21 +115,6 @@ private fun MapRenderState.toIosRenderState(cameraCommand: MapCameraCommand?): I
                     latitude = marker.latitude,
                     longitude = marker.longitude,
                     visual = marker.visual,
-                )
-            },
-        districtBoundaries =
-            SeoulDistrictPolygonPreview.districts.map { district ->
-                IosDistrictBoundary(
-                    code = district.code,
-                    name = district.name,
-                    coordinates =
-                        district.coordinates.map { coordinate ->
-                            IosMapCoordinate(
-                                latitude = coordinate.latitude,
-                                longitude = coordinate.longitude,
-                            )
-                        },
-                    selected = district.code == SeoulDistrictPolygonPreview.SELECTED_DISTRICT_CODE,
                 )
             },
         currentLocation =
@@ -212,6 +205,22 @@ private fun MapCameraCommand.toIosCameraCommand(): IosMapCameraCommand =
                 minLatitude = bounds.minLatitude,
                 maxLongitude = bounds.maxLongitude,
                 maxLatitude = bounds.maxLatitude,
+                verticalPosition = null,
+            )
+        }
+
+        is MapCameraCommand.MoveToCameraState -> {
+            IosMapCameraCommand(
+                id = id,
+                kind = IosMapCameraCommandKind.MoveToCameraState,
+                delta = 0.0,
+                zoom = camera.zoom,
+                latitude = camera.latitude,
+                longitude = camera.longitude,
+                minLongitude = 0.0,
+                minLatitude = 0.0,
+                maxLongitude = 0.0,
+                maxLatitude = 0.0,
                 verticalPosition = null,
             )
         }

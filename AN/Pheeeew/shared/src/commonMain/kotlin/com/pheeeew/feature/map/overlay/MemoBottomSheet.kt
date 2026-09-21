@@ -1,5 +1,6 @@
 package com.pheeeew.feature.map.overlay
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,14 +17,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.InputTransformation
+import androidx.compose.foundation.text.input.TextFieldDecorator
+import androidx.compose.foundation.text.input.TextFieldLineLimits
+import androidx.compose.foundation.text.input.TextFieldState
+import androidx.compose.foundation.text.input.maxLength
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -32,6 +38,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -41,8 +48,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.navigation.PredictiveBackEffect
 import com.pheeeew.feature.map.MAX_MEMO_LENGTH
 import com.pheeeew.feature.map.PendingSighDraft
 import com.pheeeew.feature.map.guide.FirstSighGuideBubble
@@ -50,7 +59,7 @@ import com.pheeeew.feature.map.guide.FirstSighGuideStep
 import kotlinx.coroutines.flow.first
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 fun MemoEditor(
     draft: PendingSighDraft,
     submitting: Boolean,
@@ -60,37 +69,70 @@ fun MemoEditor(
     onSkip: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var value by rememberSaveable(draft.requestId) { mutableStateOf("") }
+    val value =
+        rememberSaveable(
+            draft.requestId,
+            saver = TextFieldState.Saver,
+        ) { TextFieldState() }
+    var showDiscardDialog by rememberSaveable(draft.requestId) { mutableStateOf(false) }
+
     MemoBottomSheet(
         value = value,
-        onValueChange = { nextValue ->
-            if (nextValue.length <= MAX_MEMO_LENGTH) value = nextValue
-        },
         submitting = submitting,
         guideMode = guideMode,
         onShown = onShown,
-        onSubmit = { onSubmit(value) },
+        onSubmit = { onSubmit(value.text.toString()) },
         onSkip = onSkip,
-        onDismiss = onDismiss,
+        onDismiss = {
+            if (value.text.isEmpty()) {
+                onDismiss()
+            } else {
+                showDiscardDialog = true
+            }
+        },
+        dismissConfirmationVisible = showDiscardDialog,
     )
+
+    if (showDiscardDialog) {
+        ConfirmDialog(
+            title = "작성중인 내용이 있습니다.",
+            body = "지금까지 작성하던 내용이 저장되지 않습니다. 나가시겠습니까?",
+            confirmText = "나가기",
+            onConfirmClick = {
+                showDiscardDialog = false
+                onDismiss()
+            },
+            onDismissRequest = { showDiscardDialog = false },
+            onDismissClick = { showDiscardDialog = false },
+        )
+    }
 }
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 private fun MemoBottomSheet(
-    value: String,
-    onValueChange: (String) -> Unit,
+    value: TextFieldState,
     submitting: Boolean,
     guideMode: Boolean,
     onShown: () -> Unit,
     onSubmit: () -> Unit,
     onSkip: () -> Unit,
     onDismiss: () -> Unit,
+    dismissConfirmationVisible: Boolean,
 ) {
+    val latestOnDismiss = rememberUpdatedState(onDismiss)
+    val latestSubmitting = rememberUpdatedState(submitting)
     val sheetState =
         rememberModalBottomSheetState(
             skipPartiallyExpanded = true,
-            confirmValueChange = { value -> value != SheetValue.Hidden || !submitting },
+            confirmValueChange = { value ->
+                if (value == SheetValue.Hidden && !latestSubmitting.value) {
+                    latestOnDismiss.value()
+                    false
+                } else {
+                    value != SheetValue.Hidden || !latestSubmitting.value
+                }
+            },
         )
     LaunchedEffect(sheetState) {
         snapshotFlow { sheetState.currentValue }
@@ -99,12 +141,20 @@ private fun MemoBottomSheet(
     }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        properties = ModalBottomSheetProperties(shouldDismissOnBackPress = false),
         sheetState = sheetState,
         containerColor = Color.Transparent,
         contentColor = AppColors.Cream100,
         scrimColor = Color.Black.copy(alpha = 0.6f),
         dragHandle = null,
     ) {
+        if (!dismissConfirmationVisible) {
+            PredictiveBackEffect(
+                onProgress = {},
+                onCompleted = { latestOnDismiss.value() },
+                onCancelled = {},
+            )
+        }
         Column(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -152,9 +202,9 @@ private fun MemoBottomSheet(
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
                         BasicTextField(
-                            value = value,
-                            onValueChange = onValueChange,
+                            state = value,
                             enabled = !submitting,
+                            inputTransformation = InputTransformation.maxLength(MAX_MEMO_LENGTH),
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
@@ -165,29 +215,29 @@ private fun MemoBottomSheet(
                             keyboardOptions =
                                 KeyboardOptions(
                                     keyboardType = KeyboardType.Text,
-                                    imeAction = ImeAction.Done,
+                                    imeAction = ImeAction.Default,
                                 ),
-                            keyboardActions = KeyboardActions(onDone = { onSubmit() }),
-                            maxLines = 6,
-                            decorationBox = { innerTextField ->
-                                Box(modifier = Modifier.fillMaxWidth()) {
-                                    if (value.isEmpty()) {
-                                        Text(
-                                            text = "오늘 어떤 일이 있었나요?",
-                                            style = AppTheme.typography.dialogBody,
-                                            color = AppColors.Cream100.copy(alpha = 0.4f),
-                                        )
+                            lineLimits = TextFieldLineLimits.MultiLine(maxHeightInLines = 6),
+                            decorator =
+                                TextFieldDecorator { innerTextField ->
+                                    Box(modifier = Modifier.fillMaxWidth()) {
+                                        if (value.text.isEmpty()) {
+                                            Text(
+                                                text = "오늘 어떤 일이 있었나요?",
+                                                style = AppTheme.typography.dialogBody,
+                                                color = AppColors.Cream100.copy(alpha = 0.4f),
+                                            )
+                                        }
+                                        innerTextField()
                                     }
-                                    innerTextField()
-                                }
-                            },
+                                },
                         )
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.End,
                         ) {
                             Text(
-                                text = "${value.length}/$MAX_MEMO_LENGTH",
+                                text = "${value.text.length}/$MAX_MEMO_LENGTH",
                                 style = AppTheme.typography.caption,
                                 color = AppColors.Cream100.copy(alpha = 0.6f),
                             )

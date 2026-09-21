@@ -61,6 +61,7 @@ object IosBreathBridge {
         amplitude: Double,
         lowFrequencyPresence: Double,
         noisyTexture: Double,
+        speechBandPresence: Double,
     ) {
         val strength =
             strengthProcessor.process(
@@ -68,6 +69,7 @@ object IosBreathBridge {
                     amplitude = amplitude.toFloat(),
                     lowFrequencyPresence = lowFrequencyPresence.toFloat(),
                     noisyTexture = noisyTexture.toFloat(),
+                    speechBandPresence = speechBandPresence.toFloat(),
                 ),
             )
         strengthHandler?.invoke(strength)

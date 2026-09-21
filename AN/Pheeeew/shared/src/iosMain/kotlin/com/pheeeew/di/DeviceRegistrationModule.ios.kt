@@ -34,6 +34,9 @@ fun createIosDeviceRegistrationDependencies(
         if (!isDebugBuild && DCAppAttestService.sharedService.isSupported()) {
             IosAppAttestProvider(tokenStorage)
         } else {
+            // Personal development teams cannot sign the App Attest entitlement.
+            // Debug builds use the same fallback as unsupported devices; production
+            // builds keep the real App Attest flow.
             NoOpDeviceAttestationProvider(DevicePlatform.IOS)
         }
     val repository =

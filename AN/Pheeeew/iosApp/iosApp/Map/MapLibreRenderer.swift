@@ -121,6 +121,11 @@ final class MapLibreRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerD
         cameraIsIdle = !isAwaitingCoordinateMoveNormalization
         eventSink.onProjectionChanged(points: projectionPoints(), cameraIdle: cameraIsIdle)
         publishVisibleSighs()
+        eventSink.onCameraStateChanged(
+            latitude: mapView.centerCoordinate.latitude,
+            longitude: mapView.centerCoordinate.longitude,
+            zoom: mapView.zoomLevel
+        )
         let bounds = mapView.visibleCoordinateBounds
         eventSink.onBoundsChanged(
             minLongitude: bounds.sw.longitude,

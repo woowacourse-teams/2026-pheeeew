@@ -35,6 +35,8 @@ fun SighFeatureDto<SighV2PropertiesDto>.toSigh(): Sigh {
         memo = properties.memo,
         nickname = properties.nickname,
         createdAt = Instant.parse(properties.createdAt),
+        liked = properties.liked,
+        likeCount = properties.likeCount,
     )
 }
 

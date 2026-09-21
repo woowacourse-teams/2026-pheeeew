@@ -44,6 +44,7 @@ internal actual fun NativeBreathMap(
     cameraCommand: MapCameraCommand?,
     onSighClick: (String) -> Unit,
     onBoundsChanged: (SighBounds) -> Unit,
+    onCameraStateChanged: (MapCameraState) -> Unit,
     onMapError: (MapError) -> Unit,
     onMapRecovered: () -> Unit,
     onProjectionChanged: (MapProjectionSnapshot) -> Unit,
@@ -54,6 +55,7 @@ internal actual fun NativeBreathMap(
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnSighClick by rememberUpdatedState(onSighClick)
     val currentOnBoundsChanged by rememberUpdatedState(onBoundsChanged)
+    val currentOnCameraStateChanged by rememberUpdatedState(onCameraStateChanged)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val currentOnProjectionChanged by rememberUpdatedState(onProjectionChanged)
@@ -72,6 +74,7 @@ internal actual fun NativeBreathMap(
                         },
                     onSighClick = { id -> currentOnSighClick(id) },
                     onBoundsChanged = { bounds -> currentOnBoundsChanged(bounds) },
+                    onCameraStateChanged = { camera -> currentOnCameraStateChanged(camera) },
                     onMapError = { error -> currentOnMapError(error) },
                     onMapRecovered = { currentOnMapRecovered() },
                     onProjectionChanged = { snapshot -> currentOnProjectionChanged(snapshot) },
@@ -117,6 +120,7 @@ private class AndroidBreathMapHost(
     val mapView: MapView,
     private val onSighClick: (String) -> Unit,
     private val onBoundsChanged: (SighBounds) -> Unit,
+    private val onCameraStateChanged: (MapCameraState) -> Unit,
     private val onMapError: (MapError) -> Unit,
     private val onMapRecovered: () -> Unit,
     private val onProjectionChanged: (MapProjectionSnapshot) -> Unit,
@@ -187,6 +191,15 @@ private class AndroidBreathMapHost(
             publishProjection(cameraIdle = true)
             publishVisibleSighs()
             val bounds = map?.projection?.visibleRegion?.latLngBounds ?: return@OnCameraIdleListener
+            val position = map?.cameraPosition ?: return@OnCameraIdleListener
+            val target = position.target ?: return@OnCameraIdleListener
+            onCameraStateChanged(
+                MapCameraState(
+                    latitude = target.latitude,
+                    longitude = target.longitude,
+                    zoom = position.zoom,
+                ),
+            )
             onBoundsChanged(
                 SighBounds.fromViewport(
                     west = bounds.longitudeWest,

@@ -5,4 +5,5 @@ data class BreathSignalMetrics(
     val amplitude: Float,
     val lowFrequencyPresence: Float,
     val noisyTexture: Float,
+    val speechBandPresence: Float = 0f,
 )
