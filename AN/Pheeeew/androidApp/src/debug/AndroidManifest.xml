@@ -2,7 +2,7 @@
     <application>
         <activity
             android:name=".MonitoringSmokeTestActivity"
-            android:exported="true"
+            android:exported="false"
             android:theme="@style/AppTheme" />
     </application>
 </manifest>

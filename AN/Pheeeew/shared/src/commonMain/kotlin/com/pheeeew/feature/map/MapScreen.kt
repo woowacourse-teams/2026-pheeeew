@@ -389,9 +389,6 @@ fun MapScreen(
             onProjectionChanged = { projectionSnapshot = it },
             onVisibleSighsChanged = { ids ->
                 visibleSighIds = ids
-                if (isActive && !sighBrowser.isVisible && ids.isNotEmpty()) {
-                    mapMonitoringListener.onVisibleSighsChanged(ids)
-                }
             },
             modifier = Modifier.fillMaxSize(),
         )

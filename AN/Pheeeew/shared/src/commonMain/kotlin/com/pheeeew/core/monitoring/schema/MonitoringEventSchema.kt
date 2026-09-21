@@ -28,6 +28,14 @@ internal object MonitoringValueSanitizer {
                     .takeIf(String::isNotEmpty)
             }
 
+            is Float -> {
+                value.takeIf { it.isFinite() }
+            }
+
+            is Double -> {
+                value.takeIf { it.isFinite() }
+            }
+
             is Boolean, is Number -> {
                 value
             }

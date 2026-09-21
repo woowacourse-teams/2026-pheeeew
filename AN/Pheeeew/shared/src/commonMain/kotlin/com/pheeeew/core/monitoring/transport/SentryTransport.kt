@@ -35,6 +35,14 @@ internal class SentryTransport {
 
     private companion object {
         val MONITORING_TAGS =
-            listOf("session_id", "sigh_attempt_id", "save_attempt_id", "capture_id", "capture_index")
+            listOf(
+                "session_id",
+                "sigh_attempt_id",
+                "save_attempt_id",
+                "capture_id",
+                "capture_index",
+                "map_visit_id",
+                "selection_id",
+            )
     }
 }

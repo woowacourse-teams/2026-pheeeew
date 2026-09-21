@@ -49,7 +49,7 @@ fun createAndroidMonitoring(
                     }
                     event.contexts.app?.deviceAppHash = null
                     event.removeTag("app.device")
-                    event.exceptions?.forEach { it.value = null }
+                    event.exceptions?.forEach { it.value = "[redacted]" }
                     event.user =
                         event.user?.let {
                             io.sentry.protocol

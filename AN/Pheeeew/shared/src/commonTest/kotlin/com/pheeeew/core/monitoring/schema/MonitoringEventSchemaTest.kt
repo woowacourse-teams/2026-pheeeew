@@ -26,4 +26,20 @@ class MonitoringEventSchemaTest {
         assertFalse(reason.any(Char::isISOControl))
         assertEquals(128, reason.length)
     }
+
+    @Test
+    fun sanitizerDropsNonFiniteNumbers() {
+        val sanitized =
+            MonitoringValueSanitizer.fields(
+                mapOf(
+                    "nan" to Float.NaN,
+                    "infinity" to Double.POSITIVE_INFINITY,
+                    "valid" to 1.5,
+                ),
+            )
+
+        assertFalse("nan" in sanitized)
+        assertFalse("infinity" in sanitized)
+        assertEquals(1.5, sanitized["valid"])
+    }
 }

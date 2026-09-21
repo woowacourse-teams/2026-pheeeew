@@ -266,6 +266,8 @@ fun BreathControl(
             growth > 0f && quietForMillis >= breathConfig.quietDelay.inWholeMilliseconds -> SighPhase.Quiet
             else -> SighPhase.Listening
         }
+    val latestSessionPhase = rememberUpdatedState(phase)
+    val latestGrowth = rememberUpdatedState(growth)
     LaunchedEffect(phase) { latestPhaseChanged.value(phase) }
     val isReleaseReady = listening && growth >= breathConfig.minimumReleaseProgress
     LaunchedEffect(listening, sessionState.sessionId) {
@@ -360,13 +362,13 @@ fun BreathControl(
                             val bounds = coordinates.boundsInRoot()
                             origin = bounds.center
                             latestControlBoundsChanged.value(bounds)
-                        }.pointerInput(listening, burst, phase, growth) {
+                        }.pointerInput(listening, burst) {
                             if (listening && !burst) {
                                 detectTapGestures(
                                     onTap = {
                                         latestControlTapped.value(
-                                            phase.name.lowercase(),
-                                            growth,
+                                            latestSessionPhase.value.name.lowercase(),
+                                            latestGrowth.value,
                                             true,
                                         )
                                     },
