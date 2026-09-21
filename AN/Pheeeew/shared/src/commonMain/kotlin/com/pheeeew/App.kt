@@ -22,6 +22,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.PredictiveBackContent
 import com.pheeeew.core.navigation.Screen
@@ -68,12 +69,14 @@ fun App(
     reportSigh: ReportSighUseCase,
     mapPerformanceLogger: MapPerformanceLogger,
     ensureDeviceRegistered: EnsureDeviceRegisteredUseCase? = null,
+    monitoring: Monitoring? = null,
 ) {
     AppTheme {
         val coroutineScope = rememberCoroutineScope()
         val uriHandler = LocalUriHandler.current
         val lifecycleOwner = LocalLifecycleOwner.current
         var screen by remember { mutableStateOf(Screen.Splash) }
+        LaunchedEffect(screen) { monitoring?.setScreen(screen.name.lowercase()) }
         var splashFinished by remember { mutableStateOf(false) }
         var versionCheckAttempt by remember { mutableStateOf(0) }
         var versionGate by remember { mutableStateOf<AppVersionGate>(AppVersionGate.Checking) }
@@ -146,7 +149,7 @@ fun App(
         }
         val mapViewModel: MapViewModel =
             viewModel {
-                MapViewModel(sighRepository, createSigh, locationDependencies, mapPerformanceLogger)
+                MapViewModel(sighRepository, createSigh, locationDependencies, mapPerformanceLogger, monitoring)
             }
         val sighModerationViewModel: SighModerationViewModel =
             viewModel {

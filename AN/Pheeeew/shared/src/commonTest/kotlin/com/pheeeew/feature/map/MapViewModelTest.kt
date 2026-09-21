@@ -1517,6 +1517,23 @@ class MapViewModelTest {
             }
         }
 
+    @Test
+    fun `분석기가 없어도 시작 가능하며 중복 탭과 중단 후 재시도를 구분한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val model = createViewModel()
+                assertTrue(model.acceptSighStart(false))
+                kotlin.test.assertFalse(model.acceptSighStart(false))
+                model.interruptSighStart()
+                assertTrue(model.acceptSighStart(false))
+                model.rejectSighStart()
+                assertTrue(model.acceptSighStart(false))
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun locationDependencies(initialState: LocationState): LocationDependencies {
         val locationRepository = FakeLocationRepository(initialState)
         return LocationDependencies(

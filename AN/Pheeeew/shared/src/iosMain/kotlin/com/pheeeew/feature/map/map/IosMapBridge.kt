@@ -41,6 +41,8 @@ interface IosMapEventSink {
         points: List<IosMapScreenPoint>,
         cameraIdle: Boolean,
     )
+
+    fun onVisibleSighsChanged(ids: List<String>)
 }
 
 data class IosMapCoordinate(

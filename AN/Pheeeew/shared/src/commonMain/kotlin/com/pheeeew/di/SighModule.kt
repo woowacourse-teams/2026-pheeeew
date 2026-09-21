@@ -1,6 +1,7 @@
 package com.pheeeew.di
 
 import com.pheeeew.core.geo.GeodesicSighLocationObfuscator
+import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createPlatformHttpClient
 import com.pheeeew.data.local.device.AccessTokenStore
@@ -29,6 +30,7 @@ object SighModule {
         deviceIdStorage: DeviceIdStorage,
         accessTokenStore: AccessTokenStore? = null,
         refreshAccessToken: (suspend () -> AccessToken?)? = null,
+        monitoring: Monitoring? = null,
     ): SighDependencies {
         val client = createPlatformHttpClient(config)
         val repository =
@@ -44,6 +46,7 @@ object SighModule {
                         client = client,
                         accessTokenStore = accessTokenStore,
                         refreshAccessToken = refreshAccessToken,
+                        monitoring = monitoring,
                     ),
             )
         return SighDependencies(

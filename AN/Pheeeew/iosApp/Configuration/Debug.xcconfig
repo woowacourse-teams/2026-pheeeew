@@ -3,3 +3,7 @@
 SLASH = /
 API_BASE_URL = https:$(SLASH)/api-dev.pheeeew.com
 APP_ATTEST_ENVIRONMENT = development
+
+MONITORING_ENABLED = false
+#include? "Monitoring.local.xcconfig"
+MONITORING_ENVIRONMENT = dev

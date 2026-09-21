@@ -15,6 +15,7 @@ fun BreathMap(
     onMapError: (MapError) -> Unit,
     onMapRecovered: () -> Unit,
     onProjectionChanged: (MapProjectionSnapshot) -> Unit,
+    onVisibleSighsChanged: (List<String>) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     NativeBreathMap(
@@ -26,6 +27,7 @@ fun BreathMap(
         onMapError = onMapError,
         onMapRecovered = onMapRecovered,
         onProjectionChanged = onProjectionChanged,
+        onVisibleSighsChanged = onVisibleSighsChanged,
         modifier = modifier,
     )
 }

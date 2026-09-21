@@ -58,6 +58,7 @@ final class BreathAudioDetector {
             tapInstalled = true
             engine.prepare()
             try engine.start()
+            IosBreathBridge.shared.updateReady()
         } catch {
             stop()
             IosBreathBridge.shared.updateError(errorName: "StartFailed")
