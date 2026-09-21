@@ -101,7 +101,12 @@ internal class MonitoringLifecycleCoordinator(
     fun background() {
         runtime.change {
             if (!visitTracker.isForeground) return@change
-            val fields = runtime.attempt()?.sighAttemptId?.let { mapOf("active_sigh_attempt_id" to it) }.orEmpty()
+            val fields =
+                runtime
+                    .attempt()
+                    ?.sighAttemptId
+                    ?.let { mapOf("active_sigh_attempt_id" to it) }
+                    .orEmpty()
             runtime.emit(MonitoringEventNames.APP_BACKGROUNDED, visitSnapshot(), fields, null)
             runtime.observe()
             visitTracker.leaveForeground()
@@ -134,8 +139,15 @@ internal class MonitoringLifecycleCoordinator(
         val date = MonitoringTime.seoulDay(runtime.now())
         val snapshot = runtime.currentState()
         if (date !in snapshot.activeDays) {
-            runtime.replaceState(runtime.currentState().copy(activeDays = (snapshot.activeDays + date).takeLast(MAX_LOGICAL_KEYS)))
-            runtime.emit(MonitoringEventNames.APP_ACTIVE_DAY, visitSnapshot(), mapOf("activity_date" to date), "day:$date")
+            runtime.replaceState(
+                runtime.currentState().copy(activeDays = (snapshot.activeDays + date).takeLast(MAX_LOGICAL_KEYS)),
+            )
+            runtime.emit(
+                MonitoringEventNames.APP_ACTIVE_DAY,
+                visitSnapshot(),
+                mapOf("activity_date" to date),
+                "day:$date",
+            )
         }
     }
 

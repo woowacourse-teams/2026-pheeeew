@@ -139,7 +139,7 @@ internal class BreathCaptureCoordinator(
             }
         }
         update.closedSegments.forEach { segment ->
-        runtime.change { emitBreathSegment(origin, segment) }
+            runtime.change { emitBreathSegment(origin, segment) }
         }
     }
 

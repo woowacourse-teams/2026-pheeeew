@@ -54,7 +54,16 @@ internal class MonitoringEventRecorder(
             stateStore.replace(current.copy(droppedEvents = current.droppedEvents + 1))
             return
         }
-        val event = MonitoringEvent(definition.value, time, JsonObject(properties.mapValues { (_, value) -> primitive(value) }))
+        val event =
+            MonitoringEvent(
+                definition.value,
+                time,
+                JsonObject(
+                    properties.mapValues { (_, value) ->
+                        primitive(value)
+                    },
+                ),
+            )
         // Keep state changes and the pending event in the same durable record before handoff.
         val pending = (current.pending + event).toMutableList()
         if (pending.size > MAX_PENDING) {

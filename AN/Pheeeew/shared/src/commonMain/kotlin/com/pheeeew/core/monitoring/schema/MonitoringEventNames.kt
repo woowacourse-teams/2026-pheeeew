@@ -21,21 +21,43 @@ object MonitoringEventNames {
     val SOUND_FIRST_DETECTED = MonitoringEventDefinition("sound_first_detected", setOf("strength", "active_threshold"))
     val BASE_SIZE_CHANGED = MonitoringEventDefinition("base_size_changed", setOf("cause", "measurement"))
     val SOUND_GROWTH_STARTED = MonitoringEventDefinition("sound_growth_started", setOf("growth_before", "growth_after"))
-    val BREATH_SEGMENT_ENDED = MonitoringEventDefinition("breath_segment_ended", setOf("segment_index", "span_ms", "active_ms", "end_reason"))
-    val BREATH_SUMMARY = MonitoringEventDefinition("breath_summary", setOf("segment_count", "final_growth", "detected", "observation_quality", "stop_reason"))
-    val SIGH_RELEASE_READY = MonitoringEventDefinition("sigh_release_ready", setOf("growth", "minimum_release_progress"))
-    val SIGH_CONTROL_TAPPED = MonitoringEventDefinition("sigh_control_tapped", setOf("tap_index", "phase", "growth", "input_active"))
-    val SIGH_SWIPE_ATTEMPTED = MonitoringEventDefinition("sigh_swipe_attempted", setOf("gesture_id", "swipe_index", "outcome", "reason"))
+    val BREATH_SEGMENT_ENDED =
+        MonitoringEventDefinition("breath_segment_ended", setOf("segment_index", "span_ms", "active_ms", "end_reason"))
+    val BREATH_SUMMARY =
+        MonitoringEventDefinition(
+            "breath_summary",
+            setOf("segment_count", "final_growth", "detected", "observation_quality", "stop_reason"),
+        )
+    val SIGH_RELEASE_READY =
+        MonitoringEventDefinition("sigh_release_ready", setOf("growth", "minimum_release_progress"))
+    val SIGH_CONTROL_TAPPED =
+        MonitoringEventDefinition("sigh_control_tapped", setOf("tap_index", "phase", "growth", "input_active"))
+    val SIGH_SWIPE_ATTEMPTED =
+        MonitoringEventDefinition("sigh_swipe_attempted", setOf("gesture_id", "swipe_index", "outcome", "reason"))
     val SIGH_GESTURE_CANCELLED = MonitoringEventDefinition("sigh_gesture_cancelled", setOf("gesture_id", "reason"))
-    val SIGH_RELEASE_SUCCEEDED = MonitoringEventDefinition("sigh_release_succeeded", setOf("gesture_id", "growth_before_release"))
-    val SIGH_RELEASE_ANIMATION_FINISHED = MonitoringEventDefinition("sigh_release_animation_finished", setOf("release_to_animation_end_ms"))
-    val SIGH_ATTEMPT_ENDED = MonitoringEventDefinition("sigh_attempt_ended", setOf("outcome", "reason", "last_stage", "end_time_quality"))
-    val SAVE_STARTED = MonitoringEventDefinition("save_started", setOf("save_index", "trigger", "min_display_duration_ms"))
+    val SIGH_RELEASE_SUCCEEDED =
+        MonitoringEventDefinition("sigh_release_succeeded", setOf("gesture_id", "growth_before_release"))
+    val SIGH_RELEASE_ANIMATION_FINISHED =
+        MonitoringEventDefinition("sigh_release_animation_finished", setOf("release_to_animation_end_ms"))
+    val SIGH_ATTEMPT_ENDED =
+        MonitoringEventDefinition("sigh_attempt_ended", setOf("outcome", "reason", "last_stage", "end_time_quality"))
+    val SAVE_STARTED =
+        MonitoringEventDefinition("save_started", setOf("save_index", "trigger", "min_display_duration_ms"))
     val SAVE_RESULT = MonitoringEventDefinition("save_result", setOf("outcome", "creation_kind"))
-    val SAVE_UI_RESULT_SHOWN = MonitoringEventDefinition("save_ui_result_shown", setOf("outcome", "save_feedback_elapsed_ms", "min_display_wait_ms", "post_result_to_ui_ms"))
-    val API_REQUEST_FINISHED = MonitoringEventDefinition("api_request_finished", setOf("http_attempt_id", "route_template", "method", "http_duration_ms", "outcome"))
-    val FIRST_SIGH_SAVED = MonitoringEventDefinition("first_sigh_saved", setOf("first_saved_at", "cohort_date", "first_save_history"))
-    val SIGH_SAVED_STAR_VISIBLE = MonitoringEventDefinition("sigh_saved_star_visible", setOf("save_to_star_visible_ms", "foreground_continuous"))
+    val SAVE_UI_RESULT_SHOWN =
+        MonitoringEventDefinition(
+            "save_ui_result_shown",
+            setOf("outcome", "save_feedback_elapsed_ms", "min_display_wait_ms", "post_result_to_ui_ms"),
+        )
+    val API_REQUEST_FINISHED =
+        MonitoringEventDefinition(
+            "api_request_finished",
+            setOf("http_attempt_id", "route_template", "method", "http_duration_ms", "outcome"),
+        )
+    val FIRST_SIGH_SAVED =
+        MonitoringEventDefinition("first_sigh_saved", setOf("first_saved_at", "cohort_date", "first_save_history"))
+    val SIGH_SAVED_STAR_VISIBLE =
+        MonitoringEventDefinition("sigh_saved_star_visible", setOf("save_to_star_visible_ms", "foreground_continuous"))
     val MAP_VISIT_STARTED = MonitoringEventDefinition("map_visit_started", setOf("entry_reason"))
     val MAP_STARS_VISIBLE = MonitoringEventDefinition("map_stars_visible", setOf("visible_star_count"))
     val STAR_SELECTED = MonitoringEventDefinition("star_selected", setOf("entry_source"))

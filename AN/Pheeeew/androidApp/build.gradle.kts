@@ -1,6 +1,6 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.net.URI
 import java.util.Properties
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -27,13 +27,22 @@ dependencies {
     debugImplementation(libs.compose.uiTooling)
 }
 
-val monitoringProperties = Properties().apply {
-    val local = rootProject.file("monitoring.local.properties")
-    if (local.exists()) local.inputStream().use { load(it) }
-}
+val monitoringProperties =
+    Properties().apply {
+        val local = rootProject.file("monitoring.local.properties")
+        if (local.exists()) local.inputStream().use { load(it) }
+    }
+
 fun monitoringValue(key: String): String =
     providers.environmentVariable(key).orNull ?: monitoringProperties.getProperty(key, "").trim()
-fun quotedConfig(value: String): String = "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\r", "\\r").replace("\n", "\\n") + "\""
+
+fun quotedConfig(value: String): String =
+    "\"" +
+        value
+            .replace("\\", "\\\\")
+            .replace("\"", "\\\"")
+            .replace("\r", "\\r")
+            .replace("\n", "\\n") + "\""
 
 android {
     namespace = "com.pheeeew"
@@ -107,8 +116,9 @@ android {
 
 // Fail before packaging an enabled production build with missing collection settings.
 val validateReleaseMonitoring by tasks.registering {
-    val settings = listOf("POSTHOG_PROJECT_TOKEN", "POSTHOG_HOST", "SENTRY_DSN", "MONITORING_ENABLED")
-        .associateWith(::monitoringValue)
+    val settings =
+        listOf("POSTHOG_PROJECT_TOKEN", "POSTHOG_HOST", "SENTRY_DSN", "MONITORING_ENABLED")
+            .associateWith(::monitoringValue)
     inputs.properties(settings)
     doLast {
         val values = inputs.properties
@@ -117,7 +127,12 @@ val validateReleaseMonitoring by tasks.registering {
         if (enabled == "true") {
             listOf("POSTHOG_PROJECT_TOKEN", "POSTHOG_HOST", "SENTRY_DSN").forEach { key ->
                 val value = values[key] as String
-                check(value.isNotBlank() && value.none { it == '\n' || it == '\r' }) { "Missing or invalid release monitoring setting: $key" }
+                check(
+                    value.isNotBlank() &&
+                        value.none {
+                            it == '\n' || it == '\r'
+                        },
+                ) { "Missing or invalid release monitoring setting: $key" }
             }
             listOf("POSTHOG_HOST", "SENTRY_DSN").forEach { key ->
                 val uri = runCatching { URI(values[key] as String) }.getOrNull()

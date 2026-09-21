@@ -14,18 +14,26 @@ internal object MonitoringValueSanitizer {
     private const val MAX_STRING_LENGTH = 128
 
     fun fields(fields: Map<String, Any>): Map<String, Any> =
-        fields.mapNotNull { (key, value) ->
-            sanitize(value)?.let { key to it }
-        }.toMap()
+        fields
+            .mapNotNull { (key, value) ->
+                sanitize(value)?.let { key to it }
+            }.toMap()
 
     private fun sanitize(value: Any): Any? =
         when (value) {
-            is String ->
+            is String -> {
                 value
                     .filterNot(Char::isISOControl)
                     .take(MAX_STRING_LENGTH)
                     .takeIf(String::isNotEmpty)
-            is Boolean, is Number -> value
-            else -> null
+            }
+
+            is Boolean, is Number -> {
+                value
+            }
+
+            else -> {
+                null
+            }
         }
 }
