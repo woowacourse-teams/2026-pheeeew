@@ -2,6 +2,8 @@ package com.pheeeew.feature.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.audio.BreathInputError
+import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.di.LocationDependencies
 import com.pheeeew.domain.exception.ApiException
@@ -10,10 +12,12 @@ import com.pheeeew.domain.model.location.LocationState
 import com.pheeeew.domain.model.sigh.CreateSighCommand
 import com.pheeeew.domain.model.sigh.Sigh
 import com.pheeeew.domain.model.sigh.SighBounds
+import com.pheeeew.domain.model.sigh.SighLikeState
 import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.domain.repository.SighRepository
 import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.feature.map.map.MapCameraCommand
+import com.pheeeew.feature.map.map.MapCameraState
 import com.pheeeew.feature.map.map.MapDarkStyle
 import com.pheeeew.feature.map.map.MapError
 import com.pheeeew.feature.map.sighlist.SighModerationTarget
@@ -46,7 +50,11 @@ class MapViewModel(
     private val createSigh: CreateSighUseCase,
     private val locationDependencies: LocationDependencies?,
     private val mapPerformanceLogger: MapPerformanceLogger,
-) : ViewModel() {
+    private val monitoring: Monitoring? = null,
+) : ViewModel(),
+    BreathMonitoringListener,
+    SaveMonitoringListener,
+    MapMonitoringListener {
     private var nextCameraCommandId = 0L
     private var pendingRegistration: CreateSighCommand? = null
     private var pendingMemoDraft: PendingSighDraft? = null
@@ -58,6 +66,7 @@ class MapViewModel(
     private val blockedNicknames = mutableSetOf<String>()
     private val sighMapCache = SighMapCache()
     private var mapIsForeground = false
+    private var latestVisibleSighIds: List<String> = emptyList()
     private var sighDebounceJob: Job? = null
     private var activeSighRequestJob: Job? = null
     private var pendingViewportIntent: ViewportIntent? = null
@@ -66,12 +75,15 @@ class MapViewModel(
     private var lastSighBounds: SighBounds? = null
     private var latestViewportIntent: ViewportIntent? = null
     private var latestViewportVersion = 0L
+    private var latestCameraState: MapCameraState? = null
     private var cameraBeforeSighDetailBounds: SighBounds? = null
+    private var cameraBeforeSighDetailState: MapCameraState? = null
     private var detailCameraMovePending = false
     private var restoringSighDetailBounds: SighBounds? = null
     private var latestSighListRequestId = 0L
     private var latestSighDetailRequestId = 0L
     private var myLocationJob: Job? = null
+    private val sighLikeJobs = mutableMapOf<Long, Job>()
 
     private val _uiState =
         MutableStateFlow<MapUiState>(
@@ -272,6 +284,9 @@ class MapViewModel(
 
     fun setSighListVisible(visible: Boolean) {
         if (!visible) {
+            if (_uiState.value.sighBrowser.isDetailLoading) {
+                monitoring?.starDetailFailed("user_cancel")
+            }
             restoreCameraBeforeSighDetail()
             latestSighListRequestId += 1L
             latestSighDetailRequestId += 1L
@@ -287,6 +302,7 @@ class MapViewModel(
                             isVisible = false,
                             isListVisible = false,
                             selectedSigh = null,
+                            pendingSighPin = null,
                             isLoading = false,
                             isDetailLoading = false,
                             isLoadingMore = false,
@@ -312,11 +328,16 @@ class MapViewModel(
     }
 
     fun openSighFromPin(id: Long) {
+        monitoring?.starSelected("map")
         requestSighDetail(id, openBrowser = true, showList = false)
     }
 
     fun selectSigh(id: Long) {
-        if (!_uiState.value.sighBrowser.isVisible) return
+        monitoring?.starSelected("list")
+        if (!_uiState.value.sighBrowser.isVisible) {
+            monitoring?.starDetailFailed("browser_hidden")
+            return
+        }
         requestSighDetail(id, openBrowser = false, showList = true)
     }
 
@@ -325,20 +346,45 @@ class MapViewModel(
         openBrowser: Boolean,
         showList: Boolean,
     ) {
-        val bounds = lastSighBounds ?: return
-        if (!mapIsForeground || id in expiredSighIds || id in blockedSighIds) return
+        val bounds =
+            lastSighBounds ?: run {
+                monitoring?.starDetailFailed("map_not_ready")
+                return
+            }
+        if (!mapIsForeground) {
+            monitoring?.starDetailFailed("background")
+            return
+        }
+        if (id in expiredSighIds) {
+            monitoring?.starDetailFailed("expired")
+            return
+        }
+        if (id in blockedSighIds) {
+            monitoring?.starDetailFailed("blocked")
+            return
+        }
 
         val requestId = ++latestSighDetailRequestId
         loadSighDetailJob?.cancel()
         pendingSighDetailId = id
 
         _uiState.update { state ->
+            val pendingSighPin =
+                if (openBrowser) {
+                    state.sighs.firstOrNull { it.id == id }
+                        ?: state.sighBrowser.items
+                            .firstOrNull { it.id == id }
+                            ?.toPin()
+                } else {
+                    null
+                }
             state.copy(
                 sighBrowser =
                     state.sighBrowser.copy(
                         isVisible = state.sighBrowser.isVisible || openBrowser,
                         isListVisible = showList,
                         selectedSigh = null,
+                        pendingSighPin = pendingSighPin,
                         isDetailLoading = true,
                         errorMessage = null,
                         noticeMessage = null,
@@ -352,11 +398,15 @@ class MapViewModel(
                     val sigh = sighRepository.getById(id)
                     if (!isCurrentSighDetailRequest(requestId, id)) return@launch
                     if (isBlocked(sigh)) {
+                        monitoring?.starDetailFailed("blocked")
                         pendingSighDetailId = null
                         _uiState.update { state ->
                             state.copy(
                                 sighBrowser =
-                                    state.sighBrowser.copy(isDetailLoading = false),
+                                    state.sighBrowser.copy(
+                                        isDetailLoading = false,
+                                        pendingSighPin = null,
+                                    ),
                             )
                         }
                         return@launch
@@ -370,8 +420,10 @@ class MapViewModel(
                     if (!isCurrentSighDetailRequest(requestId, id)) return@launch
 
                     if (exception.code == SIGH_EXPIRED_CODE) {
+                        monitoring?.starDetailFailed("expired", exception.code)
                         handleExpiredSigh(id)
                     } else {
+                        monitoring?.starDetailFailed("api_error", exception.code)
                         handleSighDetailFailure(exception)
                     }
                 }
@@ -393,6 +445,7 @@ class MapViewModel(
     ) {
         if (cameraBeforeSighDetailBounds == null) {
             cameraBeforeSighDetailBounds = bounds
+            cameraBeforeSighDetailState = latestCameraState
         }
         detailCameraMovePending = true
         sendCameraCommand { commandId ->
@@ -418,6 +471,7 @@ class MapViewModel(
                     state.sighBrowser.copy(
                         items = updatedItems,
                         selectedSigh = sigh,
+                        pendingSighPin = null,
                         isDetailLoading = false,
                         errorMessage = null,
                     ),
@@ -439,6 +493,7 @@ class MapViewModel(
                         state.sighBrowser.copy(
                             items = state.sighBrowser.items.filterNot { it.id == id },
                             selectedSigh = state.sighBrowser.selectedSigh?.takeUnless { it.id == id },
+                            pendingSighPin = state.sighBrowser.pendingSighPin?.takeUnless { it.id == id },
                             isDetailLoading = false,
                             errorMessage = null,
                             noticeMessage = SIGH_EXPIRED_MESSAGE,
@@ -475,6 +530,79 @@ class MapViewModel(
             return
         }
         lastSighBounds?.let { bounds -> loadFirstSighPage(bounds) }
+    }
+
+    fun updateSighLike(
+        id: Long,
+        liked: Boolean,
+    ) {
+        val browser = _uiState.value.sighBrowser
+        if (!mapIsForeground || !browser.isVisible || sighLikeJobs.containsKey(id)) return
+
+        val current =
+            browser.items.firstOrNull { it.id == id }
+                ?: browser.selectedSigh?.takeIf { it.id == id }
+                ?: return
+        if (current.liked == liked) return
+
+        val previous = SighLikeState(liked = current.liked, likeCount = current.likeCount)
+        val optimisticCount =
+            (current.likeCount + if (liked) 1L else -1L).coerceAtLeast(0L)
+        updateSighLikeState(id, SighLikeState(liked = liked, likeCount = optimisticCount))
+
+        val job =
+            viewModelScope.launch(start = CoroutineStart.LAZY) {
+                try {
+                    val result = sighRepository.updateLike(id, liked)
+                    updateSighLikeState(id, result)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (exception: ApiException) {
+                    updateSighLikeState(id, previous)
+                    _uiState.update { state ->
+                        state.copy(
+                            sighBrowser =
+                                state.sighBrowser.copy(
+                                    noticeMessage = exception.toUserMessage(),
+                                ),
+                        )
+                    }
+                } finally {
+                    sighLikeJobs.remove(id)
+                }
+            }
+        sighLikeJobs[id] = job
+        job.start()
+    }
+
+    private fun updateSighLikeState(
+        id: Long,
+        like: SighLikeState,
+    ) {
+        _uiState.update { state ->
+            val browser = state.sighBrowser
+            state.copy(
+                sighBrowser =
+                    browser.copy(
+                        items =
+                            browser.items.map { item ->
+                                if (item.id == id) {
+                                    item.copy(liked = like.liked, likeCount = like.likeCount)
+                                } else {
+                                    item
+                                }
+                            },
+                        selectedSigh =
+                            browser.selectedSigh?.let { selected ->
+                                if (selected.id == id) {
+                                    selected.copy(liked = like.liked, likeCount = like.likeCount)
+                                } else {
+                                    selected
+                                }
+                            },
+                    ),
+            )
+        }
     }
 
     fun loadNextSighPage() {
@@ -545,6 +673,9 @@ class MapViewModel(
     }
 
     fun dismissSighDetail() {
+        if (_uiState.value.sighBrowser.isDetailLoading) {
+            monitoring?.starDetailFailed("user_cancel")
+        }
         if (!_uiState.value.sighBrowser.isListVisible) {
             setSighListVisible(false)
             return
@@ -579,6 +710,10 @@ class MapViewModel(
                     state.sighBrowser.copy(
                         items = state.sighBrowser.items.filterNot(::isBlocked),
                         selectedSigh = state.sighBrowser.selectedSigh?.takeUnless(::isBlocked),
+                        pendingSighPin =
+                            state.sighBrowser.pendingSighPin?.takeUnless {
+                                it.id in expiredSighIds || it.id in blockedSighIds
+                            },
                     ),
             )
         }
@@ -660,24 +795,65 @@ class MapViewModel(
 
     private fun restoreCameraBeforeSighDetail() {
         val bounds = cameraBeforeSighDetailBounds ?: return
+        val camera = cameraBeforeSighDetailState
         cameraBeforeSighDetailBounds = null
+        cameraBeforeSighDetailState = null
         lastSighBounds = bounds
         detailCameraMovePending = false
         restoringSighDetailBounds = bounds
         sendCameraCommand { commandId ->
-            MapCameraCommand.MoveToBounds(
+            camera?.let { savedCamera ->
+                MapCameraCommand.MoveToCameraState(
+                    id = commandId,
+                    camera = savedCamera,
+                )
+            } ?: MapCameraCommand.MoveToBounds(
                 id = commandId,
                 bounds = bounds,
             )
         }
     }
 
+    private var sighStartPending = false
+
+    fun acceptSighStart(guideMode: Boolean): Boolean {
+        if (sighStartPending || _uiState.value.sighRelease !is SighReleaseState.Idle) return false
+        sighStartPending = true
+        monitoring?.beginAttempt(guideMode)
+        return true
+    }
+
+    fun rejectSighStart() {
+        sighStartPending = false
+        monitoring?.startFailed("location_unavailable")
+    }
+
+    fun interruptSighStart() {
+        sighStartPending = false
+        monitoring?.endAttempt("interrupted", "unknown")
+    }
+
+    fun onCameraStateChanged(camera: MapCameraState) {
+        if (
+            camera.latitude !in -90.0..90.0 ||
+            camera.longitude !in -180.0..180.0 ||
+            !camera.latitude.isFinite() ||
+            !camera.longitude.isFinite() ||
+            !camera.zoom.isFinite()
+        ) {
+            return
+        }
+        latestCameraState = camera
+    }
+
     fun beginSighRegistration() {
+        sighStartPending = false
         val current = _uiState.value
         if (current.sighRelease !is SighReleaseState.Idle) return
         val location = (current.location.state as? LocationState.Available)?.location
 
         if (location == null) {
+            rejectSighStart()
             val message =
                 (current.location.state as? LocationState.Unavailable)?.reason?.toKoreanMessage()
                     ?: "GPS 수신이 원활하지 않습니다."
@@ -694,15 +870,114 @@ class MapViewModel(
                     requestId = Uuid.random().toString(),
                     coordinate = location.coordinate,
                 ).also { pendingMemoDraft = it }
+        monitoring?.memoEditing()
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.EditingMemo(draft)) }
     }
 
     fun submitMemo(rawMemo: String) {
+        completeMemo(rawMemo = rawMemo, skipped = false)
+    }
+
+    fun skipMemo() {
+        completeMemo(rawMemo = "", skipped = true)
+    }
+
+    fun onMemoShown() {
+        monitoring?.memoShown()
+    }
+
+    override fun onMicrophonePermissionResult(granted: Boolean) {
+        monitoring?.microphonePermissionResult(granted)
+    }
+
+    override fun onMicrophoneStartRequested() {
+        monitoring?.beginCapture()
+    }
+
+    override fun onMicrophoneReady() {
+        monitoring?.microphoneReady()
+    }
+
+    override fun onSoundDetected(
+        strength: Float,
+        activeThreshold: Float,
+    ) {
+        monitoring?.soundFirstDetected(strength, activeThreshold)
+    }
+
+    override fun onBreathSample(
+        active: Boolean,
+        elapsedMs: Long,
+        growth: Float,
+    ) {
+        monitoring?.breathSample(active, elapsedMs, growth)
+    }
+
+    override fun onMicrophoneStopped(
+        finalGrowth: Float,
+        reason: String,
+        interrupted: Boolean,
+    ) {
+        monitoring?.endCapture(finalGrowth, reason, interrupted)
+    }
+
+    override fun onBaseSizeChanged() {
+        monitoring?.baseSizeChanged()
+    }
+
+    override fun onReleaseReady(
+        growth: Float,
+        minimumReleaseProgress: Float,
+    ) {
+        monitoring?.releaseReady(growth, minimumReleaseProgress)
+    }
+
+    override fun onControlTapped(
+        phase: String,
+        growth: Float,
+        inputActive: Boolean,
+    ) {
+        monitoring?.controlTapped(phase, growth, inputActive)
+    }
+
+    override fun onSwipeAttempted(
+        upwardDistanceDp: Float,
+        upwardVelocityDpPerSecond: Float,
+        growth: Float,
+        success: Boolean,
+        reason: String,
+    ) {
+        monitoring?.swipeAttempted(
+            upwardDistanceDp,
+            upwardVelocityDpPerSecond,
+            growth,
+            success,
+            reason,
+        )
+    }
+
+    override fun onGestureCancelled(reason: String) {
+        monitoring?.gestureCancelled(reason)
+    }
+
+    override fun onReleaseAnimationFinished() {
+        monitoring?.releaseAnimationFinished()
+    }
+
+    override fun onMicrophoneFailed(error: BreathInputError) {
+        monitoring?.microphoneFailed(error.name.toSnakeCase())
+    }
+
+    private fun completeMemo(
+        rawMemo: String,
+        skipped: Boolean,
+    ) {
         val state = _uiState.value.sighRelease as? SighReleaseState.EditingMemo ?: return
         val memo =
             try {
                 MemoPolicy.normalize(rawMemo)
             } catch (e: IllegalArgumentException) {
+                monitoring?.memoValidationFailed()
                 _uiState.update { current ->
                     current.copy(sighRelease = SighReleaseState.Error(e.message.orEmpty(), canRetry = false))
                 }
@@ -719,10 +994,11 @@ class MapViewModel(
         _uiState.update { current ->
             current.copy(sighRelease = SighReleaseState.AwaitingBreath(command))
         }
-    }
-
-    fun skipMemo() {
-        submitMemo(rawMemo = "")
+        if (skipped) {
+            monitoring?.memoSkipped()
+        } else {
+            monitoring?.memoCompleted(memoPresent = memo?.isNotEmpty() == true)
+        }
     }
 
     fun cancelSighRegistration() {
@@ -733,6 +1009,7 @@ class MapViewModel(
         ) {
             return
         }
+        monitoring?.endAttempt()
         clearPendingSigh()
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.Idle) }
     }
@@ -751,6 +1028,7 @@ class MapViewModel(
 
     private fun submit(command: CreateSighCommand) {
         val submittingStartedAt = TimeSource.Monotonic.markNow()
+        val monitoringOrigin = monitoring?.beginSave()
         _uiState.update { state ->
             state.copy(
                 sighRelease = SighReleaseState.Submitting(command),
@@ -759,7 +1037,9 @@ class MapViewModel(
         viewModelScope.launch {
             try {
                 val sighPin = createSigh(command).toPin()
-                waitForMinimumSubmittingDuration(submittingStartedAt)
+                monitoring?.saveResult(monitoringOrigin, true, submittingStartedAt.elapsedNow().inWholeMilliseconds)
+                val waitMs = waitForMinimumSubmittingDuration(submittingStartedAt)
+                monitoring?.saveWaitFinished(monitoringOrigin, waitMs)
 
                 sighOperationMutex.withLock {
                     locallyRegisteredSighs[sighPin.id] = sighPin
@@ -790,7 +1070,15 @@ class MapViewModel(
                     }
                 }
             } catch (e: ApiException) {
-                waitForMinimumSubmittingDuration(submittingStartedAt)
+                monitoring?.saveResult(
+                    monitoringOrigin,
+                    false,
+                    submittingStartedAt.elapsedNow().inWholeMilliseconds,
+                    e.code,
+                )
+                monitoring?.report(e, monitoringOrigin)
+                val waitMs = waitForMinimumSubmittingDuration(submittingStartedAt)
+                monitoring?.saveWaitFinished(monitoringOrigin, waitMs)
                 _uiState.update { state ->
                     state.copy(
                         sighRelease =
@@ -805,14 +1093,21 @@ class MapViewModel(
         }
     }
 
-    private suspend fun waitForMinimumSubmittingDuration(startedAt: TimeMark) {
+    private suspend fun waitForMinimumSubmittingDuration(startedAt: TimeMark): Long {
+        val waitStartedAt = TimeSource.Monotonic.markNow()
         val remainingMillis =
             MIN_SIGH_SUBMITTING_DURATION_MILLIS - startedAt.elapsedNow().inWholeMilliseconds
         if (remainingMillis > 0) delay(remainingMillis)
+        return waitStartedAt.elapsedNow().inWholeMilliseconds
+    }
+
+    override fun onSaveUiResultShown(outcome: String) {
+        monitoring?.saveUiResultShown(outcome)
     }
 
     fun cancelFailedSighRegistration(): Boolean {
         if (_uiState.value.sighRelease !is SighReleaseState.Error) return false
+        monitoring?.endAttempt()
         clearPendingSigh()
         _uiState.update { state -> state.copy(sighRelease = SighReleaseState.Idle) }
         return true
@@ -976,6 +1271,28 @@ class MapViewModel(
         lastSighBounds?.let(::loadSighs)
     }
 
+    fun onMapShown(entryReason: String) {
+        monitoring?.mapVisitStarted(entryReason)
+        monitoring?.mapStarsVisible(latestVisibleSighIds.size)
+    }
+
+    fun onMapHidden(reason: String) {
+        monitoring?.mapVisitEnded(reason)
+    }
+
+    override fun onVisibleSighsChanged(ids: List<String>) {
+        latestVisibleSighIds = ids
+        monitoring?.mapStarsVisible(ids.size)
+    }
+
+    override fun onSavedStarVisible() {
+        monitoring?.savedStarVisible()
+    }
+
+    override fun onStarDetailShown() {
+        monitoring?.starDetailShown()
+    }
+
     fun onMapBackground() {
         mapIsForeground = false
         sighDebounceJob?.cancel()
@@ -985,6 +1302,8 @@ class MapViewModel(
         loadSighListJob = null
         loadSighDetailJob?.cancel()
         loadSighDetailJob = null
+        sighLikeJobs.values.forEach(Job::cancel)
+        sighLikeJobs.clear()
         pendingSighDetailId = null
         detailCameraMovePending = false
         restoringSighDetailBounds = null
@@ -1013,6 +1332,12 @@ class MapViewModel(
         }
     }
 }
+
+private fun String.toSnakeCase(): String =
+    fold(StringBuilder()) { result, character ->
+        if (character.isUpperCase() && result.isNotEmpty()) result.append('_')
+        result.append(character.lowercaseChar())
+    }.toString()
 
 private data class ViewportIntent(
     val version: Long,

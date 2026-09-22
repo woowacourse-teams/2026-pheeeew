@@ -2,6 +2,7 @@ package com.pheeeew
 
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
+import com.pheeeew.core.monitoring.IosMonitoring
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.IosConnectivityObserver
 import com.pheeeew.data.local.device.InMemoryAccessTokenStore
@@ -43,10 +44,12 @@ fun MainViewController() =
                     refreshAccessToken = {
                         deviceDependencies.ensureRegistered().getOrThrow().accessToken
                     },
+                    monitoring = IosMonitoring.instance,
                 )
             }
         App(
             appVersion = appVersion,
+            monitoring = IosMonitoring.instance,
             appVersionApi = appVersionApi,
             connectivityObserver = connectivityObserver,
             hasCompletedOnboarding = firstSighGuidePreferences.hasCompletedOnboarding,

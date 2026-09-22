@@ -66,6 +66,7 @@ class MainActivity : ComponentActivity() {
                 refreshAccessToken = {
                     deviceDependencies.ensureRegistered().getOrThrow().accessToken
                 },
+                monitoring = (application as PheeeewApplication).monitoring,
             )
         val appVersionApi = createAppVersionApi(ApiConfig(baseUrl = BuildConfig.API_BASE_URL), "android")
         val connectivityObserver = AndroidConnectivityObserver(this)
@@ -73,6 +74,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             App(
                 appVersion = BuildConfig.VERSION_NAME,
+                monitoring = (application as PheeeewApplication).monitoring,
                 appVersionApi = appVersionApi,
                 connectivityObserver = connectivityObserver,
                 hasCompletedOnboarding = firstSighGuidePreferences.hasCompletedOnboarding,

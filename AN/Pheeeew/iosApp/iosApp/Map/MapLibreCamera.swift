@@ -124,6 +124,25 @@ enum MapLibreCamera {
                 animated: true
             )
             return true
+        case .movetocamerastate:
+            guard command.latitude.isFinite,
+                  command.longitude.isFinite,
+                  command.zoom?.doubleValue.isFinite == true,
+                  (-90.0...90.0).contains(command.latitude),
+                  (-180.0...180.0).contains(command.longitude) else { return false }
+            let coordinate = CLLocationCoordinate2D(
+                latitude: command.latitude,
+                longitude: command.longitude
+            )
+            // Restore the zoom through MapLibre's direct zoom API. Reconstructing an
+            // MLNMapCamera via altitude is affected by the current content/edge insets,
+            // which causes zoom drift after repeated detail transitions on iOS.
+            mapView.setCenter(
+                coordinate,
+                zoomLevel: command.zoom!.doubleValue,
+                animated: true
+            )
+            return true
         default:
             return false
         }

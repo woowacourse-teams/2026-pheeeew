@@ -58,6 +58,7 @@ final class BreathAudioDetector {
             tapInstalled = true
             engine.prepare()
             try engine.start()
+            IosBreathBridge.shared.updateReady()
         } catch {
             stop()
             IosBreathBridge.shared.updateError(errorName: "StartFailed")
@@ -89,13 +90,15 @@ final class BreathAudioDetector {
         let relevant = max(energy / Double(count), 1e-12)
         let amplitude = min(max((20.0 * log10(sqrt(relevant)) + 48.0) / 40.0, 0), 1)
         let lowPresence = min(max((lowEnergy / Double(count) / relevant - 0.12) / 0.58, 0), 1)
+        let speechPresence = min(max((energy - lowEnergy) / Double(count) / relevant, 0), 1)
         let texture = min(max((Double(crossings) / Double(count) - 0.035) / 0.16, 0), 1)
         DispatchQueue.main.async { [weak self] in
             guard let self, self.wantsRecording, self.sessionGeneration == generation else { return }
             IosBreathBridge.shared.updateMetrics(
                 amplitude: amplitude,
                 lowFrequencyPresence: lowPresence,
-                noisyTexture: texture
+                noisyTexture: texture,
+                speechBandPresence: speechPresence
             )
         }
     }

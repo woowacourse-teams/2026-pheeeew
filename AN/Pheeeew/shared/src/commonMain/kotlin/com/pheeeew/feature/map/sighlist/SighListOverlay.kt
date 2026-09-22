@@ -39,6 +39,7 @@ fun SighBrowserOverlay(
     selectedItem: SighListItemUiModel?,
     selectedItemPositionPx: Offset?,
     isLoading: Boolean,
+    isDetailLoading: Boolean = false,
     isLoadingMore: Boolean,
     isLoadMoreError: Boolean,
     refreshRevision: Long,
@@ -46,6 +47,7 @@ fun SighBrowserOverlay(
     errorMessage: String?,
     moderationUiState: SighModerationUiState,
     onItemClick: (SighListItemUiModel) -> Unit,
+    onLikeClick: (Long, Boolean) -> Unit = { _, _ -> },
     onDismissList: () -> Unit,
     onDismissDetail: () -> Unit,
     onLoadMore: () -> Unit,
@@ -85,6 +87,7 @@ fun SighBrowserOverlay(
                 item = selectedItem,
                 onDismiss = onDismissDetail,
                 onMoreClick = { onOpenActionMenu(selectedItem) },
+                onLikeClick = { liked -> onLikeClick(selectedItem.id, liked) },
                 modifier = Modifier.fillMaxSize(),
             )
 
@@ -115,7 +118,12 @@ fun SighBrowserOverlay(
         }
 
         AnimatedVisibility(
-            visible = visible && (listVisible || showActionMenu),
+            visible =
+                visible &&
+                    (
+                        showActionMenu ||
+                            (listVisible && selectedItem == null && !isDetailLoading)
+                    ),
             modifier = Modifier.align(Alignment.BottomCenter),
             enter = slideInVertically(animationSpec = tween(260), initialOffsetY = { it }),
             exit =
@@ -125,10 +133,10 @@ fun SighBrowserOverlay(
                 ),
         ) {
             BoxWithConstraints(contentAlignment = Alignment.BottomCenter) {
-                if (listVisible && (!showActionMenu || selectedItem == null)) {
+                if (listVisible && selectedItem == null && !isDetailLoading) {
                     SighListSheet(
-                        items = if (selectedItem == null) items else listOf(selectedItem),
-                        compact = selectedItem != null,
+                        items = items,
+                        compact = false,
                         availableHeightPx = constraints.maxHeight.toFloat(),
                         isLoading = isLoading,
                         isLoadingMore = isLoadingMore,
@@ -136,12 +144,8 @@ fun SighBrowserOverlay(
                         refreshRevision = refreshRevision,
                         canLoadMore = canLoadMore,
                         errorMessage = errorMessage,
-                        onItemClick =
-                            if (selectedItem == null) {
-                                onItemClick
-                            } else {
-                                { _: SighListItemUiModel -> onDismissDetail() }
-                            },
+                        onItemClick = onItemClick,
+                        onLikeClick = onLikeClick,
                         onDismissList = onDismissList,
                         onCompactBackgroundClick = onDismissDetail,
                         onLoadMore = onLoadMore,

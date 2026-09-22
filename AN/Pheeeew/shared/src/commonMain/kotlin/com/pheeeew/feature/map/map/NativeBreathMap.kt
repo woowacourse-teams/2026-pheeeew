@@ -11,8 +11,10 @@ internal expect fun NativeBreathMap(
     cameraCommand: MapCameraCommand?,
     onSighClick: (String) -> Unit,
     onBoundsChanged: (SighBounds) -> Unit,
+    onCameraStateChanged: (MapCameraState) -> Unit,
     onMapError: (MapError) -> Unit,
     onMapRecovered: () -> Unit,
     onProjectionChanged: (MapProjectionSnapshot) -> Unit,
+    onVisibleSighsChanged: (List<String>) -> Unit,
     modifier: Modifier,
 )

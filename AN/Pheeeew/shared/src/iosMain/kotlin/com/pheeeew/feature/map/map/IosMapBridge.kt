@@ -25,6 +25,12 @@ interface IosMapEventSink {
         maxLatitude: Double,
     )
 
+    fun onCameraStateChanged(
+        latitude: Double,
+        longitude: Double,
+        zoom: Double,
+    )
+
     fun onRendererUnavailable()
 
     fun onStyleLoadFailed()
@@ -35,6 +41,8 @@ interface IosMapEventSink {
         points: List<IosMapScreenPoint>,
         cameraIdle: Boolean,
     )
+
+    fun onVisibleSighsChanged(ids: List<String>)
 }
 
 data class IosMapCoordinate(
@@ -80,6 +88,7 @@ enum class IosMapCameraCommandKind {
     MoveToCurrentLocation,
     MoveToCoordinate,
     MoveToBounds,
+    MoveToCameraState,
 }
 
 data class IosMapCameraCommand(

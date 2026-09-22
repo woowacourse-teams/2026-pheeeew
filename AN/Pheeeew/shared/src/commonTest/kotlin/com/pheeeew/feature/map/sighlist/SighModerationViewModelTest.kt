@@ -29,6 +29,11 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class SighModerationViewModelTest {
     @Test
+    fun `신고 카테고리에서 기타가 첫 번째로 표시된다`() {
+        assertEquals(DEFAULT_SIGH_REPORT_REASON, sighReportReasons.first())
+    }
+
+    @Test
     fun `액션 메뉴에서 차단 확인 상태로 전환한다`() {
         val viewModel = createViewModel()
 
@@ -117,6 +122,29 @@ class SighModerationViewModelTest {
         }
 
     @Test
+    fun `신고가 성공하면 상세 이전 화면으로 복귀한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                var reportSucceeded = false
+                val viewModel =
+                    createViewModel(
+                        onReportSucceeded = { reportSucceeded = true },
+                    )
+                viewModel.openActions(sighId = 42L, nickname = "테스터")
+                viewModel.requestReport()
+
+                viewModel.submitReport()
+                advanceUntilIdle()
+
+                assertTrue(reportSucceeded)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `중복 신고 응답이면 이미 신고한 메시지를 표시한다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
@@ -158,7 +186,10 @@ class SighModerationViewModelTest {
             }
         }
 
-    private fun createViewModel(api: SighReportApi = FakeSighReportApi): SighModerationViewModel =
+    private fun createViewModel(
+        api: SighReportApi = FakeSighReportApi,
+        onReportSucceeded: () -> Unit = {},
+    ): SighModerationViewModel =
         SighModerationViewModel(
             blockUser = BlockUserUseCase(FakeDeviceBlockApi),
             reportSigh =
@@ -166,6 +197,7 @@ class SighModerationViewModelTest {
                     api = api,
                     deviceIdStorage = FakeDeviceIdStorage,
                 ),
+            onReportSucceeded = onReportSucceeded,
         )
 
     private object FakeDeviceBlockApi : DeviceBlockApi {

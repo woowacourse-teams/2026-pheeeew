@@ -18,3 +18,6 @@ captures
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
 iosApp/Configuration/TeamID.xcconfig
+
+monitoring.local.properties
+iosApp/Configuration/Monitoring.local.xcconfig
