@@ -17,8 +17,8 @@ class ArchiveValidationTest(unittest.TestCase):
         self.archive = Path(self.temp.name)
         self.app = self.archive / 'Products/Applications/Pheeeew.app'
         self.app.mkdir(parents=True)
-        self.info = {'CFBundleExecutable': 'Pheeeew', 'CFBundleShortVersionString': '1.1.0',
-                     'CFBundleVersion': '2', 'MONITORING_ENVIRONMENT': 'prod'}
+        self.info = {'CFBundleExecutable': 'Pheeeew', 'CFBundleShortVersionString': '1.1.1',
+                     'CFBundleVersion': '3', 'MONITORING_ENVIRONMENT': 'prod'}
         self.write_info()
         file = self.archive / 'dSYMs/Pheeeew.app.dSYM/Contents/Resources/DWARF/Pheeeew'
         file.parent.mkdir(parents=True)
@@ -29,7 +29,7 @@ class ArchiveValidationTest(unittest.TestCase):
 
     def test_matching_symbols_accept_archive(self):
         with patch.object(symbols, 'debug_ids', return_value={'APP-UUID'}):
-            self.assertEqual(symbols.validate_archive(self.archive)[2:], ('1.1.0', '2'))
+            self.assertEqual(symbols.validate_archive(self.archive)[2:], ('1.1.1', '3'))
 
     def test_wrong_build_symbols_rejected(self):
         with patch.object(symbols, 'debug_ids', side_effect=[{'APP-UUID'}, {'OLD-UUID'}]):
