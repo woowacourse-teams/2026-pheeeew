@@ -4,11 +4,13 @@ import com.pheeeew.data.remote.sigh.api.SighV1Api
 import com.pheeeew.data.remote.sigh.api.SighV2Api
 import com.pheeeew.data.remote.sigh.dto.SighCreateV2RequestDto
 import com.pheeeew.data.remote.sigh.dto.toSigh
+import com.pheeeew.data.remote.sigh.dto.toSighLikeState
 import com.pheeeew.data.remote.sigh.dto.toSighPage
 import com.pheeeew.data.remote.sigh.dto.toSighPin
 import com.pheeeew.domain.model.sigh.CreateSighCommand
 import com.pheeeew.domain.model.sigh.Sigh
 import com.pheeeew.domain.model.sigh.SighBounds
+import com.pheeeew.domain.model.sigh.SighLikeState
 import com.pheeeew.domain.model.sigh.SighPage
 import com.pheeeew.domain.model.sigh.SighPin
 import com.pheeeew.domain.repository.SighRepository
@@ -51,4 +53,12 @@ class SighRepositoryImpl(
             .create(request)
             .toSigh()
     }
+
+    override suspend fun updateLike(
+        id: Long,
+        liked: Boolean,
+    ): SighLikeState =
+        sighV2Api
+            .updateLike(id, liked)
+            .toSighLikeState()
 }

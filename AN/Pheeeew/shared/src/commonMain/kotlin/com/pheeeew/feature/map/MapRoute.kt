@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -32,6 +33,7 @@ fun MapRoute(
     val moderationUiState by moderationViewModel.uiState.collectAsStateWithLifecycle()
     var startupPermissionsChecked by remember { mutableStateOf(false) }
     val lifeCycleOwner = LocalLifecycleOwner.current
+    val latestIsActive = rememberUpdatedState(isActive)
     val latestOnSighRegistrationSucceeded = rememberUpdatedState(onSighRegistrationSucceeded)
 
     LaunchedEffect(viewModel) {
@@ -42,12 +44,15 @@ fun MapRoute(
 
     LaunchedEffect(lifeCycleOwner, isActive) {
         if (!isActive) {
+            viewModel.onMapHidden("screen_hidden")
             viewModel.onMapBackground()
             return@LaunchedEffect
         }
 
         lifeCycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             viewModel.onMapForeground()
+            withFrameNanos { }
+            viewModel.onMapShown("foreground")
 
             try {
                 if (!startupPermissionsChecked) {
@@ -59,6 +64,7 @@ fun MapRoute(
                 }
                 awaitCancellation()
             } finally {
+                viewModel.onMapHidden(if (latestIsActive.value) "background" else "screen_hidden")
                 viewModel.onMapBackground()
             }
         }
@@ -72,8 +78,10 @@ fun MapRoute(
         onZoomOutClick = viewModel::onZoomOutClick,
         onMyLocationClick = viewModel::onMyLocationClick,
         onBoundsChanged = viewModel::loadSighs,
+        onCameraStateChanged = viewModel::onCameraStateChanged,
         onSighListVisibilityChange = viewModel::setSighListVisible,
         onSighItemClick = viewModel::selectSigh,
+        onSighLikeClick = viewModel::updateSighLike,
         onSighPinClick = viewModel::openSighFromPin,
         onDismissSighList = { viewModel.setSighListVisible(false) },
         onDismissSighDetail = viewModel::dismissSighDetail,
@@ -93,7 +101,14 @@ fun MapRoute(
         onDismissSighReport = moderationViewModel::dismissReport,
         onDismissReportSuccess = moderationViewModel::clearSuccess,
         onBeginSighRegistration = viewModel::beginSighRegistration,
+        onAcceptSighStart = viewModel::acceptSighStart,
+        onRejectSighStart = viewModel::rejectSighStart,
+        onInterruptSighStart = viewModel::interruptSighStart,
         onBreathCompleted = viewModel::completeBreath,
+        breathMonitoringListener = viewModel,
+        saveMonitoringListener = viewModel,
+        mapMonitoringListener = viewModel,
+        onMemoShown = viewModel::onMemoShown,
         onSubmitMemo = viewModel::submitMemo,
         onSkipMemo = viewModel::skipMemo,
         onCancelSighRegistration = viewModel::cancelSighRegistration,

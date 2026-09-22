@@ -22,6 +22,7 @@ class BreathSessionReducer(
             is BreathSessionEvent.PermissionResult -> permissionResult(state, event)
             is BreathSessionEvent.LocationPermissionResult -> locationPermissionResult(state, event)
             is BreathSessionEvent.StrengthSample -> strengthSample(state, event)
+            is BreathSessionEvent.InputReady -> BreathSessionTransition(state)
             is BreathSessionEvent.ReleaseRequested -> release(state, event)
             BreathSessionEvent.CancelRequested -> stop(state)
             BreathSessionEvent.LifecycleStopped -> stop(state)
@@ -88,12 +89,7 @@ class BreathSessionReducer(
 
         val elapsed = event.elapsed.coerceIn(ZERO, config.maxSampleElapsed)
         val strength = event.strength.coerceIn(0f, 1f)
-        val activeThreshold =
-            if (activeState.growth > 0f) {
-                config.sustainThreshold
-            } else {
-                config.activationThreshold
-            }
+        val activeThreshold = activeThreshold(activeState)!!
         val isActive = strength >= activeThreshold
         val growth =
             if (isActive) {
@@ -110,6 +106,16 @@ class BreathSessionReducer(
             }
         return BreathSessionTransition(nextState)
     }
+
+    fun activeThreshold(state: BreathSessionState): Float? =
+        when (state) {
+            is BreathSessionState.Listening,
+            is BreathSessionState.NeedsMore,
+            is BreathSessionState.Quiet,
+            -> if (state.growth > 0f) config.sustainThreshold else config.activationThreshold
+
+            else -> null
+        }
 
     private fun release(
         state: BreathSessionState,

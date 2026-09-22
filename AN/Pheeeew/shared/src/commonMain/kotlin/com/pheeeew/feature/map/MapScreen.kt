@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -16,6 +17,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
@@ -45,6 +47,7 @@ import com.pheeeew.feature.map.guide.FirstSighGuideStep
 import com.pheeeew.feature.map.guide.SighSwipeHintOverlay
 import com.pheeeew.feature.map.guide.firstSighGuideStepFor
 import com.pheeeew.feature.map.map.BreathMap
+import com.pheeeew.feature.map.map.MapCameraState
 import com.pheeeew.feature.map.map.MapError
 import com.pheeeew.feature.map.map.MapProjectionSnapshot
 import com.pheeeew.feature.map.overlay.BreathControl
@@ -73,8 +76,10 @@ fun MapScreen(
     onZoomOutClick: () -> Unit,
     onMyLocationClick: () -> Unit,
     onBoundsChanged: (SighBounds) -> Unit,
+    onCameraStateChanged: (MapCameraState) -> Unit,
     onSighListVisibilityChange: (Boolean) -> Unit,
     onSighItemClick: (Long) -> Unit,
+    onSighLikeClick: (Long, Boolean) -> Unit = { _, _ -> },
     onSighPinClick: (Long) -> Unit,
     onDismissSighList: () -> Unit,
     onDismissSighDetail: () -> Unit,
@@ -94,7 +99,14 @@ fun MapScreen(
     onDismissSighReport: () -> Unit,
     onDismissReportSuccess: () -> Unit,
     onBeginSighRegistration: () -> Unit,
+    onAcceptSighStart: (Boolean) -> Boolean = { true },
+    onRejectSighStart: () -> Unit = {},
+    onInterruptSighStart: () -> Unit = {},
     onBreathCompleted: () -> Unit,
+    breathMonitoringListener: BreathMonitoringListener = NoOpBreathMonitoringListener,
+    saveMonitoringListener: SaveMonitoringListener = NoOpSaveMonitoringListener,
+    mapMonitoringListener: MapMonitoringListener = NoOpMapMonitoringListener,
+    onMemoShown: () -> Unit = {},
     onSubmitMemo: (String) -> Unit,
     onSkipMemo: () -> Unit,
     onCancelSighRegistration: () -> Unit,
@@ -122,6 +134,7 @@ fun MapScreen(
     var showLocationPermissionDialog by remember { mutableStateOf(false) }
     var showLocationServicesDialog by remember { mutableStateOf(false) }
     var showMicrophonePermissionDialog by remember { mutableStateOf(false) }
+    var showSighCancelConfirmation by remember { mutableStateOf(false) }
     var sighPhase by remember { mutableStateOf(SighPhase.Idle) }
     var breathControlBounds by remember { mutableStateOf(Rect.Zero) }
     var cancelSignal by remember { mutableStateOf(0) }
@@ -131,6 +144,8 @@ fun MapScreen(
     var isGuideSwipeHintDelayElapsed by remember { mutableStateOf(false) }
     var starAgeRevision by remember { mutableIntStateOf(0) }
     var visualNow by remember { mutableStateOf(Clock.System.now()) }
+    var saveUiPending by remember { mutableStateOf(false) }
+    var visibleSighIds by remember { mutableStateOf(emptyList<String>()) }
     val sighBrowser = uiState.sighBrowser
     var isSighBrowserComposed by remember { mutableStateOf(sighBrowser.isVisible) }
     val isSighSubmitting = uiState.sighRelease is SighReleaseState.Submitting
@@ -155,6 +170,13 @@ fun MapScreen(
         pendingFlightOrigin = null
         onCancelSighRegistration()
     }
+    val requestCancelSighRegistration = {
+        if (awaitingBreath != null) {
+            showSighCancelConfirmation = true
+        } else {
+            cancelSighRegistration()
+        }
+    }
     val isSighInteractionVisible = isSighSubmitting || isMemoEditing || awaitingBreath != null
     val guideStep =
         firstSighGuideStepFor(
@@ -169,8 +191,8 @@ fun MapScreen(
     val shouldShowInteractionBackdrop = isSighInteractionVisible || isGuidePromptVisible
     val currentLocation = (uiState.location.state as? LocationState.Available)?.location
     val renderedSighs =
-        remember(uiState.sighs, sighBrowser.selectedSigh) {
-            (listOfNotNull(sighBrowser.selectedSigh?.toPin()) + uiState.sighs)
+        remember(uiState.sighs, sighBrowser.selectedSigh, sighBrowser.pendingSighPin) {
+            (listOfNotNull(sighBrowser.selectedSigh?.toPin(), sighBrowser.pendingSighPin) + uiState.sighs)
                 .distinctBy(SighPin::id)
         }
     val ensureRegistrationLocation: suspend () -> Boolean = {
@@ -244,6 +266,10 @@ fun MapScreen(
         remember(sighBrowser.selectedSigh, visualNow) {
             sighBrowser.selectedSigh?.toSighListItemUiModel(visualNow)
         }
+    val moderationSnackbarMessage =
+        moderationUiState.successMessage ?: moderationUiState.blockErrorMessage
+    val browserNoticeMessage =
+        sighBrowser.noticeMessage.takeUnless { moderationSnackbarMessage != null }
     val selectedProjectionId = sighBrowser.selectedSigh?.let { sigh -> "selected-sigh-${sigh.id}" }
     val selectedProjectionPoint =
         selectedProjectionId
@@ -303,6 +329,37 @@ fun MapScreen(
         }
     }
 
+    LaunchedEffect(isSighSubmitting, retryableSighError) {
+        if (isSighSubmitting) {
+            saveUiPending = true
+        } else if (saveUiPending) {
+            withFrameNanos { }
+            saveMonitoringListener.onSaveUiResultShown(if (retryableSighError != null) "failure" else "success")
+            saveUiPending = false
+        }
+    }
+
+    LaunchedEffect(visibleSighIds, isActive, sighBrowser.isVisible) {
+        if (isActive && !sighBrowser.isVisible && visibleSighIds.isNotEmpty()) {
+            mapMonitoringListener.onVisibleSighsChanged(visibleSighIds)
+        }
+    }
+
+    LaunchedEffect(landedFlightId, visibleSighIds, isActive, sighBrowser.isVisible) {
+        val landedId = landedFlightId ?: return@LaunchedEffect
+        if (isActive && !sighBrowser.isVisible && landedId in visibleSighIds) {
+            withFrameNanos { }
+            saveMonitoringListener.onSavedStarVisible()
+        }
+    }
+
+    LaunchedEffect(sighBrowser.selectedSigh?.id, sighBrowser.isVisible) {
+        if (sighBrowser.isVisible && sighBrowser.selectedSigh != null) {
+            withFrameNanos { }
+            mapMonitoringListener.onStarDetailShown()
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize().background(AppTheme.colors.background)) {
         BreathMap(
             state =
@@ -326,9 +383,13 @@ fun MapScreen(
             cameraCommand = uiState.viewport.cameraCommand,
             onSighClick = { id -> id.toLongOrNull()?.let(onSighPinClick) },
             onBoundsChanged = onBoundsChanged,
+            onCameraStateChanged = onCameraStateChanged,
             onMapError = onMapError,
             onMapRecovered = onMapReady,
             onProjectionChanged = { projectionSnapshot = it },
+            onVisibleSighsChanged = { ids ->
+                visibleSighIds = ids
+            },
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -355,6 +416,7 @@ fun MapScreen(
                 selectedItemPositionPx =
                     selectedProjectionPoint?.let { point -> Offset(point.xPx, point.yPx) },
                 isLoading = sighBrowser.isLoading || sighBrowser.isDetailLoading,
+                isDetailLoading = sighBrowser.isDetailLoading,
                 isLoadingMore = sighBrowser.isLoadingMore,
                 isLoadMoreError = sighBrowser.isLoadMoreError,
                 refreshRevision = sighBrowser.refreshRevision,
@@ -362,6 +424,7 @@ fun MapScreen(
                 errorMessage = sighBrowser.errorMessage,
                 moderationUiState = moderationUiState,
                 onItemClick = { onSighItemClick(it.id) },
+                onLikeClick = onSighLikeClick,
                 onDismissList = onDismissSighList,
                 onDismissDetail = onDismissSighDetail,
                 onLoadMore = onLoadNextSighPage,
@@ -386,19 +449,25 @@ fun MapScreen(
         }
 
         AppSnackbar(
-            message =
-                sighBrowser.noticeMessage
-                    ?: moderationUiState.successMessage
-                    ?: moderationUiState.blockErrorMessage,
+            message = moderationSnackbarMessage,
             onDismiss = {
-                if (sighBrowser.noticeMessage != null) {
-                    onDismissSighBrowserNotice()
-                } else if (moderationUiState.successMessage != null) {
+                if (moderationUiState.successMessage != null) {
                     onDismissReportSuccess()
                 } else {
                     onDismissBlockError()
                 }
             },
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(start = 16.dp, top = 16.dp, end = 16.dp),
+        )
+
+        AppSnackbar(
+            message = browserNoticeMessage,
+            onDismiss = onDismissSighBrowserNotice,
             modifier =
                 Modifier
                     .align(Alignment.BottomCenter)
@@ -416,11 +485,15 @@ fun MapScreen(
                         Modifier
                             .fillMaxSize()
                             .background(Color.Black.copy(alpha = 0.8f))
-                            .pointerInput(isGuidePromptVisible, isSighSubmitting) {
+                            .pointerInput(
+                                isGuidePromptVisible,
+                                isSighSubmitting,
+                                awaitingBreath?.command?.requestId,
+                            ) {
                                 detectTapGestures(
                                     onTap = {
                                         if (!isGuidePromptVisible && !isSighSubmitting) {
-                                            cancelSighRegistration()
+                                            requestCancelSighRegistration()
                                         }
                                     },
                                 )
@@ -453,7 +526,6 @@ fun MapScreen(
                         controlBoundsInRoot = breathControlBounds,
                         controlAnchorBottomInRoot = guideBreathControlBottom,
                         onSkip = {
-                            cancelSighRegistration()
                             onGuideSkip()
                         },
                         modifier = Modifier.fillMaxSize(),
@@ -474,8 +546,23 @@ fun MapScreen(
                             startSignal = if (awaitingBreath != null) breathStartSignal else 0,
                             onIdleClick = {
                                 if (uiState.sighRelease is SighReleaseState.Idle) {
-                                    coroutineScope.launch {
-                                        if (ensureRegistrationLocation()) onBeginSighRegistration()
+                                    if (onAcceptSighStart(guideMode)) {
+                                        coroutineScope.launch {
+                                            var began = false
+                                            var interrupted = false
+                                            try {
+                                                if (ensureRegistrationLocation()) {
+                                                    onBeginSighRegistration()
+                                                    began = true
+                                                }
+                                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                                interrupted = true
+                                                onInterruptSighStart()
+                                                throw cancelled
+                                            } finally {
+                                                if (!began && !interrupted) onRejectSighStart()
+                                            }
+                                        }
                                     }
                                 } else {
                                     breathStartSignal += 1
@@ -492,6 +579,19 @@ fun MapScreen(
                                     microphoneError = error
                                 }
                             },
+                            onMicrophoneInputFailed = breathMonitoringListener::onMicrophoneFailed,
+                            onMicrophonePermissionResult = breathMonitoringListener::onMicrophonePermissionResult,
+                            onMicrophoneStartRequested = breathMonitoringListener::onMicrophoneStartRequested,
+                            onMicrophoneReady = breathMonitoringListener::onMicrophoneReady,
+                            onSoundDetected = breathMonitoringListener::onSoundDetected,
+                            onBreathSample = breathMonitoringListener::onBreathSample,
+                            onMicrophoneStopped = breathMonitoringListener::onMicrophoneStopped,
+                            onBaseSizeChanged = breathMonitoringListener::onBaseSizeChanged,
+                            onReleaseReady = breathMonitoringListener::onReleaseReady,
+                            onControlTapped = breathMonitoringListener::onControlTapped,
+                            onSwipeAttempted = breathMonitoringListener::onSwipeAttempted,
+                            onGestureCancelled = breathMonitoringListener::onGestureCancelled,
+                            onReleaseAnimationFinished = breathMonitoringListener::onReleaseAnimationFinished,
                             ensureLocationPermission = ensureRegistrationLocation,
                             onPhaseChanged = { sighPhase = it },
                             onReleaseReadinessChanged = { isBreathReleaseReady = it },
@@ -538,6 +638,7 @@ fun MapScreen(
                 draft = draft,
                 submitting = false,
                 guideMode = guideMode,
+                onShown = onMemoShown,
                 onSubmit = onSubmitMemo,
                 onSkip = onSkipMemo,
                 onDismiss = cancelSighRegistration,
@@ -622,6 +723,20 @@ fun MapScreen(
                 onDismissClick = cancelFailedSighRegistration,
             )
         }
+
+        if (showSighCancelConfirmation) {
+            ConfirmDialog(
+                title = "작성중인 내용이 있습니다.",
+                body = "지금까지 작성하던 내용이 저장되지 않습니다. 나가시겠습니까?",
+                confirmText = "나가기",
+                onConfirmClick = {
+                    showSighCancelConfirmation = false
+                    cancelSighRegistration()
+                },
+                onDismissRequest = { showSighCancelConfirmation = false },
+                onDismissClick = { showSighCancelConfirmation = false },
+            )
+        }
     }
 }
 
@@ -657,6 +772,7 @@ private fun MapScreenPreview() {
             onZoomOutClick = {},
             onMyLocationClick = {},
             onBoundsChanged = {},
+            onCameraStateChanged = {},
             onSighListVisibilityChange = {},
             onSighItemClick = {},
             onSighPinClick = {},

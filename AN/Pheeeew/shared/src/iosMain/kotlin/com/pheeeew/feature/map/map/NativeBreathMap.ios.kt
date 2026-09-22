@@ -17,16 +17,20 @@ internal actual fun NativeBreathMap(
     cameraCommand: MapCameraCommand?,
     onSighClick: (String) -> Unit,
     onBoundsChanged: (SighBounds) -> Unit,
+    onCameraStateChanged: (MapCameraState) -> Unit,
     onMapError: (MapError) -> Unit,
     onMapRecovered: () -> Unit,
     onProjectionChanged: (MapProjectionSnapshot) -> Unit,
+    onVisibleSighsChanged: (List<String>) -> Unit,
     modifier: Modifier,
 ) {
     val currentOnSighClick by rememberUpdatedState(onSighClick)
     val currentOnBoundsChanged by rememberUpdatedState(onBoundsChanged)
+    val currentOnCameraStateChanged by rememberUpdatedState(onCameraStateChanged)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val currentOnProjectionChanged by rememberUpdatedState(onProjectionChanged)
+    val currentOnVisibleSighsChanged by rememberUpdatedState(onVisibleSighsChanged)
     val eventSink =
         remember {
             object : IosMapEventSink {
@@ -45,6 +49,12 @@ internal actual fun NativeBreathMap(
                         north = maxLatitude,
                     ),
                 )
+
+                override fun onCameraStateChanged(
+                    latitude: Double,
+                    longitude: Double,
+                    zoom: Double,
+                ) = currentOnCameraStateChanged(MapCameraState(latitude, longitude, zoom))
 
                 override fun onRendererUnavailable() = currentOnMapError(MapError.RendererUnavailable)
 
@@ -70,6 +80,8 @@ internal actual fun NativeBreathMap(
                         ),
                     )
                 }
+
+                override fun onVisibleSighsChanged(ids: List<String>) = currentOnVisibleSighsChanged(ids)
             }
         }
 
@@ -193,6 +205,22 @@ private fun MapCameraCommand.toIosCameraCommand(): IosMapCameraCommand =
                 minLatitude = bounds.minLatitude,
                 maxLongitude = bounds.maxLongitude,
                 maxLatitude = bounds.maxLatitude,
+                verticalPosition = null,
+            )
+        }
+
+        is MapCameraCommand.MoveToCameraState -> {
+            IosMapCameraCommand(
+                id = id,
+                kind = IosMapCameraCommandKind.MoveToCameraState,
+                delta = 0.0,
+                zoom = camera.zoom,
+                latitude = camera.latitude,
+                longitude = camera.longitude,
+                minLongitude = 0.0,
+                minLatitude = 0.0,
+                maxLongitude = 0.0,
+                maxLatitude = 0.0,
                 verticalPosition = null,
             )
         }

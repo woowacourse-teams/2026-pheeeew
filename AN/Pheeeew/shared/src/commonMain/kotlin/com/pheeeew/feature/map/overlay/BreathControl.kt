@@ -87,6 +87,19 @@ fun BreathControl(
     onIdleClick: () -> Unit,
     onExplosionFinished: (originInRoot: Offset) -> Unit,
     onMicrophoneError: (BreathInputError) -> Unit,
+    onMicrophoneInputFailed: (BreathInputError) -> Unit = {},
+    onMicrophonePermissionResult: (Boolean) -> Unit = {},
+    onMicrophoneStartRequested: () -> Unit = {},
+    onMicrophoneReady: () -> Unit = {},
+    onSoundDetected: (Float, Float) -> Unit = { _, _ -> },
+    onBreathSample: (Boolean, Long, Float) -> Unit = { _, _, _ -> },
+    onMicrophoneStopped: (Float, String, Boolean) -> Unit = { _, _, _ -> },
+    onBaseSizeChanged: () -> Unit = {},
+    onReleaseReady: (Float, Float) -> Unit = { _, _ -> },
+    onControlTapped: (String, Float, Boolean) -> Unit = { _, _, _ -> },
+    onSwipeAttempted: (Float, Float, Float, Boolean, String) -> Unit = { _, _, _, _, _ -> },
+    onGestureCancelled: (String) -> Unit = {},
+    onReleaseAnimationFinished: () -> Unit = {},
     ensureLocationPermission: suspend () -> Boolean,
     onPhaseChanged: (SighPhase) -> Unit,
     onReleaseReadinessChanged: (Boolean) -> Unit = {},
@@ -107,6 +120,19 @@ fun BreathControl(
     val density = LocalDensity.current
     val latestExplosionFinished = rememberUpdatedState(onExplosionFinished)
     val latestMicrophoneError = rememberUpdatedState(onMicrophoneError)
+    val latestMicrophoneInputFailed = rememberUpdatedState(onMicrophoneInputFailed)
+    val latestMicrophonePermissionResult = rememberUpdatedState(onMicrophonePermissionResult)
+    val latestMicrophoneStartRequested = rememberUpdatedState(onMicrophoneStartRequested)
+    val latestMicrophoneReady = rememberUpdatedState(onMicrophoneReady)
+    val latestSoundDetected = rememberUpdatedState(onSoundDetected)
+    val latestBreathSample = rememberUpdatedState(onBreathSample)
+    val latestMicrophoneStopped = rememberUpdatedState(onMicrophoneStopped)
+    val latestBaseSizeChanged = rememberUpdatedState(onBaseSizeChanged)
+    val latestReleaseReady = rememberUpdatedState(onReleaseReady)
+    val latestControlTapped = rememberUpdatedState(onControlTapped)
+    val latestSwipeAttempted = rememberUpdatedState(onSwipeAttempted)
+    val latestGestureCancelled = rememberUpdatedState(onGestureCancelled)
+    val latestReleaseAnimationFinished = rememberUpdatedState(onReleaseAnimationFinished)
     val latestIdleClick = rememberUpdatedState(onIdleClick)
     val latestPhaseChanged = rememberUpdatedState(onPhaseChanged)
     val latestReleaseReadinessChanged = rememberUpdatedState(onReleaseReadinessChanged)
@@ -119,6 +145,19 @@ fun BreathControl(
                 scope = coroutineScope,
                 ensureLocationPermission = { latestEnsureLocationPermission.value() },
                 reducer = BreathSessionReducer(breathConfig),
+                onMicrophonePermissionResult = { latestMicrophonePermissionResult.value(it) },
+                onInputStartRequested = { latestMicrophoneStartRequested.value() },
+                onInputReady = { latestMicrophoneReady.value() },
+                onStrengthEvaluated = { strength, threshold, isActive ->
+                    if (isActive) latestSoundDetected.value(strength, threshold)
+                },
+                onBreathSample = { active, elapsedMs, growth ->
+                    latestBreathSample.value(active, elapsedMs, growth)
+                },
+                onInputStopped = { growth, reason, interrupted ->
+                    latestMicrophoneStopped.value(growth, reason, interrupted)
+                },
+                onInputFailed = { latestMicrophoneInputFailed.value(it) },
             )
         }
     val sessionState by breathControlState.session.collectAsState()
@@ -192,6 +231,7 @@ fun BreathControl(
             .filter { it == BreathSessionState.Idle(sessionId) }
             .first()
         latestExplosionFinished.value(burstOrigin)
+        latestReleaseAnimationFinished.value()
         burstProgress = 0f
         dragOffsetY.snapTo(0f)
     }
@@ -226,9 +266,17 @@ fun BreathControl(
             growth > 0f && quietForMillis >= breathConfig.quietDelay.inWholeMilliseconds -> SighPhase.Quiet
             else -> SighPhase.Listening
         }
+    val latestSessionPhase = rememberUpdatedState(phase)
+    val latestGrowth = rememberUpdatedState(growth)
     LaunchedEffect(phase) { latestPhaseChanged.value(phase) }
     val isReleaseReady = listening && growth >= breathConfig.minimumReleaseProgress
-    LaunchedEffect(isReleaseReady) { latestReleaseReadinessChanged.value(isReleaseReady) }
+    LaunchedEffect(listening, sessionState.sessionId) {
+        if (listening) latestBaseSizeChanged.value()
+    }
+    LaunchedEffect(isReleaseReady) {
+        latestReleaseReadinessChanged.value(isReleaseReady)
+        if (isReleaseReady) latestReleaseReady.value(growth, breathConfig.minimumReleaseProgress)
+    }
 
     // TODO
     val controlDescription =
@@ -314,7 +362,19 @@ fun BreathControl(
                             val bounds = coordinates.boundsInRoot()
                             origin = bounds.center
                             latestControlBoundsChanged.value(bounds)
-                        }.pointerInput(enabled, listening, burst) {
+                        }.pointerInput(listening, burst) {
+                            if (listening && !burst) {
+                                detectTapGestures(
+                                    onTap = {
+                                        latestControlTapped.value(
+                                            latestSessionPhase.value.name.lowercase(),
+                                            latestGrowth.value,
+                                            true,
+                                        )
+                                    },
+                                )
+                            }
+                        }.pointerInput(enabled, listening, isReleaseReady, burst) {
                             if (!listening) {
                                 detectTapGestures(onTap = {
                                     if (!enabled || burst) return@detectTapGestures
@@ -333,13 +393,16 @@ fun BreathControl(
                                 var dragStartTimeMillis = -1L
                                 var lastDragTimeMillis = 0L
                                 var rawTraveledY = 0f
+                                var dragStarted = false
                                 detectDragGestures(
                                     onDragStart = {
+                                        dragStarted = true
                                         dragStartTimeMillis = -1L
                                         rawTraveledY = 0f
                                     },
                                     onDrag = { change, dragAmount ->
                                         change.consume()
+                                        if (!isReleaseReady) return@detectDragGestures
                                         if (dragStartTimeMillis < 0L) {
                                             dragStartTimeMillis = change.uptimeMillis
                                         }
@@ -363,12 +426,29 @@ fun BreathControl(
                                             with(density) {
                                                 (-flingVelocityY).coerceAtLeast(0f).toDp().value
                                             }
-                                        if (
+                                        val isUpwardGesture = upwardDistanceDp > 0f || upwardVelocityDpPerSecond > 0f
+                                        val reachedReleaseGesture =
                                             breathConfig.isReleaseGesture(
                                                 upwardDistanceDp = upwardDistanceDp,
                                                 upwardVelocityDpPerSecond = upwardVelocityDpPerSecond,
                                             )
-                                        ) {
+                                        if (isUpwardGesture) {
+                                            val success =
+                                                reachedReleaseGesture &&
+                                                    growth >= breathConfig.minimumReleaseProgress
+                                            latestSwipeAttempted.value(
+                                                upwardDistanceDp,
+                                                upwardVelocityDpPerSecond,
+                                                growth,
+                                                success,
+                                                when {
+                                                    success -> "release_succeeded"
+                                                    reachedReleaseGesture -> "insufficient_growth"
+                                                    else -> "gesture_too_short"
+                                                },
+                                            )
+                                        }
+                                        if (reachedReleaseGesture) {
                                             breathControlState.release(
                                                 upwardDistanceDp = upwardDistanceDp,
                                                 upwardVelocityDpPerSecond = upwardVelocityDpPerSecond,
@@ -383,6 +463,7 @@ fun BreathControl(
                                         }
                                     },
                                     onDragCancel = {
+                                        if (dragStarted) latestGestureCancelled.value("system_cancelled")
                                         coroutineScope.launch {
                                             dragOffsetY.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = 300f))
                                         }

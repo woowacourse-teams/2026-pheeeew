@@ -116,6 +116,68 @@ class KtorSighV2ApiTest {
         }
 
     @Test
+    fun `좋아요 상태 변경은 원하는 상태를 body와 경로에 전달하고 결과를 반환한다`() =
+        runTest {
+            val store = TestAccessTokenStore(AccessToken("access-123"))
+            val engine =
+                MockEngine { request: HttpRequestData ->
+                    assertEquals(HttpMethod.Post, request.method)
+                    assertEquals("/api/v2/sighs/42/likes", request.url.encodedPath)
+                    assertEquals("Bearer access-123", request.headers[HttpHeaders.Authorization])
+                    assertEquals(ContentType.Application.Json, request.body.contentType)
+                    assertTrue(
+                        request.body
+                            .toByteArray()
+                            .decodeToString()
+                            .contains("\"liked\":true"),
+                    )
+
+                    respondJson("""{"liked":true,"likeCount":12}""")
+                }
+            val client = createClient(engine)
+            val api = KtorSighV2Api(client, store)
+
+            val result = api.updateLike(42L, liked = true)
+
+            assertTrue(result.liked)
+            assertEquals(12L, result.likeCount)
+            client.close()
+        }
+
+    @Test
+    fun `좋아요 요청도 access token 만료 시 refresh 후 재시도한다`() =
+        runTest {
+            val store = TestAccessTokenStore(AccessToken("expired"))
+            var requestCount = 0
+            var refreshCount = 0
+            val engine =
+                MockEngine { request ->
+                    requestCount++
+                    if (requestCount == 1) {
+                        assertEquals("Bearer expired", request.headers[HttpHeaders.Authorization])
+                        respondJson("""{"code":"AUTH-001","message":"expired"}""", HttpStatusCode.Unauthorized)
+                    } else {
+                        assertEquals("Bearer refreshed", request.headers[HttpHeaders.Authorization])
+                        respondJson("""{"liked":false,"likeCount":11}""")
+                    }
+                }
+            val client = createClient(engine)
+            val api =
+                KtorSighV2Api(client, store, refreshAccessToken = {
+                    refreshCount++
+                    AccessToken("refreshed")
+                })
+
+            val result = api.updateLike(42L, liked = false)
+
+            assertFalse(result.liked)
+            assertEquals(11L, result.likeCount)
+            assertEquals(2, requestCount)
+            assertEquals(1, refreshCount)
+            client.close()
+        }
+
+    @Test
     fun `목록과 상세 조회는 access token을 bearer 헤더로 전달한다`() =
         runTest {
             val store = TestAccessTokenStore(AccessToken("access-123"))

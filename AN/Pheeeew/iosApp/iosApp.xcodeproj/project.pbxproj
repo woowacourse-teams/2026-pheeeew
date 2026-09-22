@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		B10101010101010101010101 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = B30303030303030303030303; };
+		64E63F4A3CF10CB4773C55F8 /* PostHog linkage in Frameworks */ = {isa = PBXBuildFile; productRef = 42CE4090DE15678DF75AB3F4; };
 		A10101010101010101010101 /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = A30303030303030303030303 /* MapLibre */; };
 /* End PBXBuildFile section */
 
@@ -46,6 +48,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				A10101010101010101010101 /* MapLibre in Frameworks */,
+				B10101010101010101010101 /* Sentry in Frameworks */,
+				64E63F4A3CF10CB4773C55F8 /* PostHog linkage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -91,6 +95,8 @@
 			name = iosApp;
 			packageProductDependencies = (
 				A30303030303030303030303 /* MapLibre */,
+				B30303030303030303030303 /* Sentry */,
+				42CE4090DE15678DF75AB3F4 /* KotlinMultiplatformLinkedPackage */,
 			);
 			productName = iosApp;
 			productReference = 5647273F7E2BAA66C229B92E /* Pheeeew.app */;
@@ -122,6 +128,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A20202020202020202020202 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */,
+				B20202020202020202020202 /* Sentry */,
+				D8E30D8A61E2C4922BFFBEFE /* KotlinMultiplatformLinkedPackage */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F93A3DCF112B44FD4AE0D285 /* Products */;
@@ -161,7 +169,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "python3 \"$SRCROOT/../scripts/validate-monitoring-build.py\" || exit 1\nif [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -341,11 +349,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = iosApp/Pheeeew.entitlements;
+				CODE_SIGN_ENTITLEMENTS = iosApp/Pheeeew.Debug.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
+				DEVELOPMENT_TEAM = WKN466N42M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iosApp/Info.plist;
@@ -362,7 +371,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.itda.pheeeew;
+				PRODUCT_BUNDLE_IDENTIFIER = com.pheeeew;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
@@ -392,6 +401,10 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		D8E30D8A61E2C4922BFFBEFE = {isa = XCLocalSwiftPackageReference; relativePath = KotlinMultiplatformLinkedPackage; };
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		A20202020202020202020202 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -401,9 +414,12 @@
 				version = 6.29.0;
 			};
 		};
+		B20202020202020202020202 = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/getsentry/sentry-cocoa"; requirement = {kind = exactVersion; version = 8.58.2; }; };
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		B30303030303030303030303 = {isa = XCSwiftPackageProductDependency; package = B20202020202020202020202; productName = Sentry; };
+		42CE4090DE15678DF75AB3F4 = {isa = XCSwiftPackageProductDependency; productName = KotlinMultiplatformLinkedPackage; };
 		A30303030303030303030303 /* MapLibre */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A20202020202020202020202 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */;

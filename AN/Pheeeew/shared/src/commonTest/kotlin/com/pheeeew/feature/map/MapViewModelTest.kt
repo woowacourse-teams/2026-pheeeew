@@ -21,6 +21,8 @@ import com.pheeeew.domain.repository.SighRepository
 import com.pheeeew.domain.service.SighLocationObfuscator
 import com.pheeeew.domain.usecase.CreateSighUseCase
 import com.pheeeew.feature.map.map.MapCameraCommand
+import com.pheeeew.feature.map.map.MapCameraState
+import com.pheeeew.feature.map.sighlist.SighModerationTarget
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -38,6 +40,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -908,6 +911,8 @@ class MapViewModelTest {
                 viewModel.setSighListVisible(true)
                 runCurrent()
                 viewModel.setSighListVisible(false)
+                val cameraBeforeDetail = MapCameraState(latitude = 37.55, longitude = 126.95, zoom = 12.6)
+                viewModel.onCameraStateChanged(cameraBeforeDetail)
 
                 viewModel.openSighFromPin(1L)
 
@@ -926,6 +931,11 @@ class MapViewModelTest {
                 assertEquals(false, viewModel.uiState.value.sighBrowser.isVisible)
                 assertEquals(false, viewModel.uiState.value.sighBrowser.isListVisible)
                 assertNull(viewModel.uiState.value.sighBrowser.selectedSigh)
+                val restoredCamera =
+                    assertIs<MapCameraCommand.MoveToCameraState>(
+                        viewModel.uiState.value.viewport.cameraCommand,
+                    )
+                assertEquals(cameraBeforeDetail, restoredCamera.camera)
                 viewModel.onMapBackground()
             } finally {
                 Dispatchers.resetMain()
@@ -1223,6 +1233,82 @@ class MapViewModelTest {
         }
 
     @Test
+    fun `지도 핀 상세 조회 실패 시 조회 중인 핀을 유지한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val existingSigh = sigh(id = 1L)
+                val repository =
+                    RecordingSighRepository(
+                        mapSighs = listOf(SighPin(existingSigh.id, existingSigh.coordinate)),
+                        detailFailures =
+                            mapOf(
+                                1L to ApiException.Network("NETWORK-001", "연결 실패"),
+                            ),
+                    )
+                val viewModel = createViewModel(repository)
+                viewModel.onMapForeground()
+                viewModel.loadSighs(firstBounds)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                runCurrent()
+
+                viewModel.openSighFromPin(1L)
+                runCurrent()
+
+                val browser = viewModel.uiState.value.sighBrowser
+                assertEquals(
+                    SighPin(existingSigh.id, existingSigh.coordinate),
+                    browser.pendingSighPin,
+                )
+                assertEquals(
+                    listOf(1L),
+                    viewModel.uiState.value.sighs
+                        .map(SighPin::id),
+                )
+                assertNotNull(browser.errorMessage)
+
+                viewModel.dismissSighDetail()
+
+                assertNull(viewModel.uiState.value.sighBrowser.pendingSighPin)
+                assertFalse(viewModel.uiState.value.sighBrowser.isVisible)
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `차단된 상세 응답은 조회 중인 핀을 제거한다`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            Dispatchers.setMain(dispatcher)
+            try {
+                val existingSigh = sigh(id = 1L)
+                val repository =
+                    RecordingSighRepository(
+                        mapSighs = listOf(SighPin(existingSigh.id, existingSigh.coordinate)),
+                        detailSighs = mapOf(existingSigh.id to existingSigh),
+                    )
+                val viewModel = createViewModel(repository)
+                viewModel.onMapForeground()
+                viewModel.loadSighs(firstBounds)
+                advanceTimeBy(MAP_SIGH_QUERY_DEBOUNCE_MILLIS)
+                runCurrent()
+
+                viewModel.removeSigh(SighModerationTarget(sighId = 99L, nickname = existingSigh.nickname))
+                viewModel.openSighFromPin(existingSigh.id)
+                runCurrent()
+
+                assertNull(viewModel.uiState.value.sighBrowser.pendingSighPin)
+                assertFalse(viewModel.uiState.value.sighBrowser.isDetailLoading)
+                viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `SIGH-004가 아닌 410 오류는 메시지가 같아도 별을 제거하지 않는다`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
@@ -1426,6 +1512,23 @@ class MapViewModelTest {
                 assertNull(viewModel.uiState.value.sighBrowser.selectedSigh)
                 assertNull(viewModel.uiState.value.viewport.cameraCommand)
                 viewModel.onMapBackground()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `분석기가 없어도 시작 가능하며 중복 탭과 중단 후 재시도를 구분한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val model = createViewModel()
+                assertTrue(model.acceptSighStart(false))
+                kotlin.test.assertFalse(model.acceptSighStart(false))
+                model.interruptSighStart()
+                assertTrue(model.acceptSighStart(false))
+                model.rejectSighStart()
+                assertTrue(model.acceptSighStart(false))
             } finally {
                 Dispatchers.resetMain()
             }

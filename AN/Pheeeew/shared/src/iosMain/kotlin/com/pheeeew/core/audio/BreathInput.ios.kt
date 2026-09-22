@@ -10,6 +10,7 @@ object IosBreathBridge {
     private var startHandler: (() -> Unit)? = null
     private var stopHandler: (() -> Unit)? = null
     private var permissionHandler: (((Boolean) -> Unit) -> Unit)? = null
+    private var readyHandler: (() -> Unit)? = null
     private var strengthHandler: ((Float) -> Unit)? = null
     private var errorHandler: ((BreathInputError) -> Unit)? = null
     private val strengthProcessor = BreathStrengthProcessor()
@@ -25,10 +26,12 @@ object IosBreathBridge {
     }
 
     internal fun start(
+        onReady: () -> Unit,
         onStrengthChanged: (Float) -> Unit,
         onError: (BreathInputError) -> Unit,
     ) {
         strengthProcessor.reset()
+        readyHandler = onReady
         strengthHandler = onStrengthChanged
         errorHandler = onError
         startHandler?.invoke() ?: errorHandler?.invoke(BreathInputError.MicrophoneUnavailable)
@@ -47,12 +50,18 @@ object IosBreathBridge {
         strengthHandler = null
         errorHandler =
             null
+        readyHandler = null
+    }
+
+    fun updateReady() {
+        readyHandler?.invoke()
     }
 
     fun updateMetrics(
         amplitude: Double,
         lowFrequencyPresence: Double,
         noisyTexture: Double,
+        speechBandPresence: Double,
     ) {
         val strength =
             strengthProcessor.process(
@@ -60,6 +69,7 @@ object IosBreathBridge {
                     amplitude = amplitude.toFloat(),
                     lowFrequencyPresence = lowFrequencyPresence.toFloat(),
                     noisyTexture = noisyTexture.toFloat(),
+                    speechBandPresence = speechBandPresence.toFloat(),
                 ),
             )
         strengthHandler?.invoke(strength)
@@ -83,9 +93,10 @@ private class IosBreathInput : BreathInput {
     override suspend fun requestPermission(): Boolean = IosBreathBridge.requestPermission()
 
     override fun start(
+        onReady: () -> Unit,
         onStrengthChanged: (Float) -> Unit,
         onError: (BreathInputError) -> Unit,
-    ) = IosBreathBridge.start(onStrengthChanged, onError)
+    ) = IosBreathBridge.start(onReady, onStrengthChanged, onError)
 
     override fun stop() = IosBreathBridge.stop()
 }

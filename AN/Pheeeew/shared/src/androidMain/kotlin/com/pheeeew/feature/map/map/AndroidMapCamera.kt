@@ -150,6 +150,23 @@ internal class AndroidMapCamera {
                     CAMERA_ANIMATION_MILLIS,
                 )
             }
+
+            is MapCameraCommand.MoveToCameraState -> {
+                val camera = cameraCommand.camera
+                if (!camera.isValid()) return
+                hasResolvedInitialCenter = true
+                map.animateCamera(
+                    CameraUpdateFactory.newCameraPosition(
+                        CameraPosition
+                            .Builder()
+                            .target(LatLng(camera.latitude, camera.longitude))
+                            .zoom(camera.zoom)
+                            .padding(0.0, 0.0, 0.0, 0.0)
+                            .build(),
+                    ),
+                    CAMERA_ANIMATION_MILLIS,
+                )
+            }
         }
     }
 
@@ -165,6 +182,13 @@ internal class AndroidMapCamera {
             bounds.maxLongitude.isFinite() &&
             bounds.maxLatitude.isFinite() &&
             bounds.minLatitude <= bounds.maxLatitude
+
+    private fun MapCameraState.isValid(): Boolean =
+        latitude.isFinite() &&
+            longitude.isFinite() &&
+            zoom.isFinite() &&
+            latitude in -90.0..90.0 &&
+            longitude in -180.0..180.0
 
     private fun MapFocusRequest.hasValidCoordinate(): Boolean =
         latitude.isFinite() &&
