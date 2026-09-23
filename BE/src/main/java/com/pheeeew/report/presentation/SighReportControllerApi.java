@@ -1,8 +1,8 @@
 package com.pheeeew.report.presentation;
 
 import com.pheeeew.common.exception.ErrorResponse;
-import com.pheeeew.report.presentation.dto.SighReportCreateRequest;
-import com.pheeeew.report.presentation.dto.SighReportResponse;
+import com.pheeeew.report.presentation.dto.EmotionReportCreateRequest;
+import com.pheeeew.report.presentation.dto.EmotionReportResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -49,12 +49,12 @@ public interface SighReportControllerApi {
             @ApiResponse(
                     responseCode = "201",
                     description = "신고 최초 등록 성공",
-                    content = @Content(schema = @Schema(implementation = SighReportResponse.class))
+                    content = @Content(schema = @Schema(implementation = EmotionReportResponse.class))
             ),
             @ApiResponse(
                     responseCode = "200",
                     description = "이미 신고한 한숨이라 최초 신고를 반환",
-                    content = @Content(schema = @Schema(implementation = SighReportResponse.class))
+                    content = @Content(schema = @Schema(implementation = EmotionReportResponse.class))
             ),
             @ApiResponse(
                     responseCode = "400",
@@ -102,8 +102,8 @@ public interface SighReportControllerApi {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
-    ResponseEntity<SighReportResponse> save(
+    ResponseEntity<EmotionReportResponse> save(
             @Parameter(hidden = true) UUID devicePublicId,
-            SighReportCreateRequest request
+            EmotionReportCreateRequest request
     );
 }

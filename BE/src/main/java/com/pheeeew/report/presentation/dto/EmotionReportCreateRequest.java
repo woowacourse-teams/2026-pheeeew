@@ -6,7 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
-public record SighReportCreateRequest(
+@Schema(name = "SighReportCreateRequest")
+public record EmotionReportCreateRequest(
         @NotNull(message = "신고할 한숨 식별자는 필수입니다.")
         @Positive(message = "한숨 식별자는 양수여야 합니다.")
         @Schema(description = "신고할 한숨 ID", minimum = "1", example = "42")

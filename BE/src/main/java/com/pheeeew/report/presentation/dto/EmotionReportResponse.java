@@ -4,7 +4,8 @@ import com.pheeeew.report.application.dto.EmotionReportResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
-public record SighReportResponse(
+@Schema(name = "SighReportResponse")
+public record EmotionReportResponse(
         @Schema(description = "신고 ID", example = "7")
         Long id,
 
@@ -18,8 +19,8 @@ public record SighReportResponse(
         Instant createdAt
 ) {
 
-    public static SighReportResponse from(EmotionReportResult result) {
-        return new SighReportResponse(
+    public static EmotionReportResponse from(EmotionReportResult result) {
+        return new EmotionReportResponse(
                 result.id(),
                 result.emotionId(),
                 result.reason(),

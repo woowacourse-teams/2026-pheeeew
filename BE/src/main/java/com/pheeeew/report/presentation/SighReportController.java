@@ -3,8 +3,8 @@ package com.pheeeew.report.presentation;
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.report.application.dto.EmotionReportResult;
-import com.pheeeew.report.presentation.dto.SighReportCreateRequest;
-import com.pheeeew.report.presentation.dto.SighReportResponse;
+import com.pheeeew.report.presentation.dto.EmotionReportCreateRequest;
+import com.pheeeew.report.presentation.dto.EmotionReportResponse;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -24,9 +24,9 @@ public class SighReportController implements SighReportControllerApi {
 
     @Override
     @PostMapping
-    public ResponseEntity<SighReportResponse> save(
+    public ResponseEntity<EmotionReportResponse> save(
             @CurrentDevice UUID devicePublicId,
-            @Valid @RequestBody SighReportCreateRequest request
+            @Valid @RequestBody EmotionReportCreateRequest request
     ) {
         EmotionReportResult result = emotionReportService.save(request.sighId(), devicePublicId, request.reason());
 
@@ -36,6 +36,6 @@ public class SighReportController implements SighReportControllerApi {
         }
 
         return ResponseEntity.status(status)
-                .body(SighReportResponse.from(result));
+                .body(EmotionReportResponse.from(result));
     }
 }
