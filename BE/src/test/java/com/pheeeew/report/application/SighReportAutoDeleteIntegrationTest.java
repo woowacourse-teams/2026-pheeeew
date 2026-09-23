@@ -11,7 +11,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.SighReport;
 import com.pheeeew.report.domain.repository.SighReportRepository;
 import com.pheeeew.report.exception.SighReportErrorCode;
-import com.pheeeew.report.exception.SighReportException;
+import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -162,8 +162,8 @@ class SighReportAutoDeleteIntegrationTest {
         );
 
         // then
-        assertThat(throwable).isInstanceOf(SighReportException.class);
-        assertThat(((SighReportException) throwable).getErrorCode())
+        assertThat(throwable).isInstanceOf(EmotionReportException.class);
+        assertThat(((EmotionReportException) throwable).getErrorCode())
                 .isEqualTo(SighReportErrorCode.SIGH_REPORT_SELF_NOT_ALLOWED);
         assertThat(sighReportRepository.count()).isZero();
     }

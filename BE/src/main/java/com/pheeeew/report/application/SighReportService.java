@@ -11,7 +11,7 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.report.application.dto.SighReportResult;
 import com.pheeeew.report.domain.SighReport;
 import com.pheeeew.report.domain.repository.SighReportRepository;
-import com.pheeeew.report.exception.SighReportException;
+import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.exception.SighException;
@@ -66,7 +66,7 @@ public class SighReportService {
 
     private void validateNotSelf(Sigh sigh, Long reporterDeviceId) {
         if (reporterDeviceId.equals(sigh.getDeviceId())) {
-            throw new SighReportException(SIGH_REPORT_SELF_NOT_ALLOWED);
+            throw new EmotionReportException(SIGH_REPORT_SELF_NOT_ALLOWED);
         }
     }
 
@@ -97,6 +97,6 @@ public class SighReportService {
     ) {
         return sighReportRepository.findBySighIdAndReporterDeviceId(sighId, reporterDeviceId)
                 .map(report -> SighReportResult.of(report, false))
-                .orElseThrow(() -> new SighReportException(SIGH_REPORT_SAVE_FAILED, cause));
+                .orElseThrow(() -> new EmotionReportException(SIGH_REPORT_SAVE_FAILED, cause));
     }
 }

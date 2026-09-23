@@ -19,7 +19,7 @@ import com.pheeeew.report.application.dto.SighReportResult;
 import com.pheeeew.report.domain.SighReport;
 import com.pheeeew.report.domain.repository.SighReportRepository;
 import com.pheeeew.report.exception.SighReportErrorCode;
-import com.pheeeew.report.exception.SighReportException;
+import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
@@ -286,10 +286,10 @@ class SighReportServiceIntegrationTest {
 
             // then
             assertThat(throwable)
-                    .isInstanceOf(SighReportException.class)
+                    .isInstanceOf(EmotionReportException.class)
                     .hasMessage("신고를 저장하지 못했습니다.")
                     .hasCauseInstanceOf(DataIntegrityViolationException.class);
-            assertThat(((SighReportException) throwable).getErrorCode())
+            assertThat(((EmotionReportException) throwable).getErrorCode())
                     .isEqualTo(SighReportErrorCode.SIGH_REPORT_SAVE_FAILED);
         } finally {
             removeRejectedReasonConstraint();

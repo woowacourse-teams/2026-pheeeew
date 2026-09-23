@@ -14,7 +14,7 @@ import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.report.application.SighReportService;
 import com.pheeeew.report.application.dto.SighReportResult;
 import com.pheeeew.report.exception.SighReportErrorCode;
-import com.pheeeew.report.exception.SighReportException;
+import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import java.time.Instant;
@@ -177,7 +177,7 @@ class SighReportControllerTest {
     void 신고_도메인_예외는_정의된_상태와_코드로_반환한다() {
         // given
         when(sighReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
-                .thenThrow(new SighReportException(
+                .thenThrow(new EmotionReportException(
                         SighReportErrorCode.SIGH_REPORT_SAVE_FAILED,
                         new IllegalStateException()
                 ));
