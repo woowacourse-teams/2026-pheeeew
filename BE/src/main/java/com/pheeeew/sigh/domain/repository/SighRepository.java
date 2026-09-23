@@ -25,7 +25,7 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
      * 비어 멱등 복구가 실패한다(ADR-0004, ADR-0005).
      */
     @Query("""
-            SELECT s AS sigh, CASE WHEN sighLike.id IS NOT NULL THEN true ELSE false END AS liked
+            SELECT s AS emotion, CASE WHEN sighLike.id IS NOT NULL THEN true ELSE false END AS liked
             FROM Sigh s
             LEFT JOIN SighLike sighLike ON sighLike.sighId = s.id AND sighLike.deviceId = :deviceId
             WHERE s.requestId = :requestId
@@ -38,7 +38,7 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
     Optional<Sigh> findByIdAndDeletedAtIsNull(Long id);
 
     @Query("""
-            SELECT s AS sigh, CASE WHEN sighLike.id IS NOT NULL THEN true ELSE false END AS liked
+            SELECT s AS emotion, CASE WHEN sighLike.id IS NOT NULL THEN true ELSE false END AS liked
             FROM Sigh s
             LEFT JOIN SighLike sighLike ON sighLike.sighId = s.id AND sighLike.deviceId = :deviceId
             WHERE s.id = :id AND s.deletedAt IS NULL

@@ -68,7 +68,7 @@ public class SighService {
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
 
         EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
-        if (projection.getSigh().getCreatedAt().isBefore(period.startAt())) {
+        if (projection.getEmotion().getCreatedAt().isBefore(period.startAt())) {
             throw new SighException(SIGH_EXPIRED);
         }
 

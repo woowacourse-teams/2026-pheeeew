@@ -4,7 +4,7 @@ import com.pheeeew.sigh.domain.Sigh;
 
 public interface EmotionDetailProjection {
 
-    Sigh getSigh();
+    Sigh getEmotion();
 
     boolean getLiked();
 }
