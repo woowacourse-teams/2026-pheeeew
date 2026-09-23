@@ -103,7 +103,7 @@ class SighReportServiceIntegrationTest {
         // then
         assertThat(result.created()).isTrue();
         assertThat(result.id()).isPositive();
-        assertThat(result.sighId()).isEqualTo(sighId);
+        assertThat(result.emotionId()).isEqualTo(sighId);
         assertThat(result.reason()).isEqualTo("광고성 게시물입니다");
         assertThat(result.createdAt()).isNotNull();
 

@@ -21,7 +21,7 @@ public record SighReportResponse(
     public static SighReportResponse from(EmotionReportResult result) {
         return new SighReportResponse(
                 result.id(),
-                result.sighId(),
+                result.emotionId(),
                 result.reason(),
                 result.createdAt()
         );
