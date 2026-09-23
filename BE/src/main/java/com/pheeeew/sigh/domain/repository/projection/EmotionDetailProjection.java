@@ -2,7 +2,7 @@ package com.pheeeew.sigh.domain.repository.projection;
 
 import com.pheeeew.sigh.domain.Sigh;
 
-public interface SighDetailProjection {
+public interface EmotionDetailProjection {
 
     Sigh getSigh();
 

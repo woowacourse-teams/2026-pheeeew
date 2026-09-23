@@ -19,7 +19,7 @@ import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
-import com.pheeeew.sigh.domain.repository.projection.SighDetailProjection;
+import com.pheeeew.sigh.domain.repository.projection.EmotionDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
@@ -64,7 +64,7 @@ public class SighService {
     public SighDetailResult findById(Long id, UUID devicePublicId) {
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         Long deviceId = findDeviceId(devicePublicId);
-        SighDetailProjection projection = sighRepository.findById(id, deviceId)
+        EmotionDetailProjection projection = sighRepository.findById(id, deviceId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
 
         EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
@@ -120,7 +120,7 @@ public class SighService {
     }
 
     private SighSaveResult saveSigh(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
-        Optional<SighDetailProjection> existingSigh = sighRepository.findByRequestId(requestId, deviceId);
+        Optional<EmotionDetailProjection> existingSigh = sighRepository.findByRequestId(requestId, deviceId);
 
         if (existingSigh.isPresent()) {
             return createSaveResult(existingSigh.get());
@@ -129,7 +129,7 @@ public class SighService {
         return saveNewSigh(requestId, longitude, latitude, memo, deviceId);
     }
 
-    private SighSaveResult createSaveResult(SighDetailProjection projection) {
+    private SighSaveResult createSaveResult(EmotionDetailProjection projection) {
         SighDetailResult detail = SighDetailResult.from(projection);
         return SighSaveResult.of(detail.sigh(), false, detail.like());
     }

@@ -2,7 +2,7 @@ package com.pheeeew.sigh.domain.repository;
 
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.projection.GeneratedLocation;
-import com.pheeeew.sigh.domain.repository.projection.SighDetailProjection;
+import com.pheeeew.sigh.domain.repository.projection.EmotionDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
@@ -30,7 +30,7 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             LEFT JOIN SighLike sighLike ON sighLike.sighId = s.id AND sighLike.deviceId = :deviceId
             WHERE s.requestId = :requestId
             """)
-    Optional<SighDetailProjection> findByRequestId(
+    Optional<EmotionDetailProjection> findByRequestId(
             @Param("requestId") UUID requestId,
             @Param("deviceId") Long deviceId
     );
@@ -43,7 +43,7 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
             LEFT JOIN SighLike sighLike ON sighLike.sighId = s.id AND sighLike.deviceId = :deviceId
             WHERE s.id = :id AND s.deletedAt IS NULL
             """)
-    Optional<SighDetailProjection> findById(@Param("id") Long id, @Param("deviceId") Long deviceId);
+    Optional<EmotionDetailProjection> findById(@Param("id") Long id, @Param("deviceId") Long deviceId);
 
     @Query(
             value = """
