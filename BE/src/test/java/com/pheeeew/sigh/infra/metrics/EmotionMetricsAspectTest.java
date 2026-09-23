@@ -17,7 +17,7 @@ import com.pheeeew.sigh.application.EmotionListCursorCodec;
 import com.pheeeew.sigh.application.EmotionLocationGenerator;
 import com.pheeeew.sigh.application.EmotionNicknameGenerator;
 import com.pheeeew.sigh.application.SighService;
-import com.pheeeew.sigh.application.dto.SighListCursor;
+import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.domain.repository.SighRepository;
@@ -282,7 +282,7 @@ class EmotionMetricsAspectTest {
     void 조회_기간이_지난_커서의_빈_목록도_정상_반환이면_한_번_기록한다() {
         // given
         UUID devicePublicId = 등록된_기기_식별자();
-        SighListCursor cursor = SighListCursor.initial(BOUNDS, SNAPSHOT_AT.minus(Duration.ofDays(30)));
+        EmotionListCursor cursor = EmotionListCursor.initial(BOUNDS, SNAPSHOT_AT.minus(Duration.ofDays(30)));
 
         // when
         SighListResult result = service.findNextListPage(EmotionListCursorCodec.encode(cursor), devicePublicId);
@@ -306,7 +306,7 @@ class EmotionMetricsAspectTest {
         if ("first".equals(page)) {
             return service.findFirstListPage(BOUNDS, devicePublicId);
         }
-        SighListCursor cursor = SighListCursor.of(BOUNDS, SNAPSHOT_AT, SNAPSHOT_AT.minusSeconds(1), 42L);
+        EmotionListCursor cursor = EmotionListCursor.of(BOUNDS, SNAPSHOT_AT, SNAPSHOT_AT.minusSeconds(1), 42L);
         return service.findNextListPage(EmotionListCursorCodec.encode(cursor), devicePublicId);
     }
 

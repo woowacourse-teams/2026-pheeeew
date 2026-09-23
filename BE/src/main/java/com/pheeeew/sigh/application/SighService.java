@@ -10,7 +10,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.dto.SighDetailResult;
-import com.pheeeew.sigh.application.dto.SighListCursor;
+import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighMapItem;
 import com.pheeeew.sigh.application.dto.SighMapResult;
@@ -102,14 +102,14 @@ public class SighService {
 
     public SighListResult findFirstListPage(SighSearchBounds bounds, UUID devicePublicId) {
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
-        SighListCursor cursor = SighListCursor.initial(bounds, snapshotAt);
+        EmotionListCursor cursor = EmotionListCursor.initial(bounds, snapshotAt);
         EmotionQueryPeriod period = EmotionQueryPeriod.of(snapshotAt, clock.getZone());
 
         return findList(cursor, period, devicePublicId);
     }
 
     public SighListResult findNextListPage(String encodedCursor, UUID devicePublicId) {
-        SighListCursor cursor = EmotionListCursorCodec.decode(encodedCursor);
+        EmotionListCursor cursor = EmotionListCursorCodec.decode(encodedCursor);
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         if (cursor.snapshotAt().isAfter(queriedAt)) {
             throw new SighException(SIGH_INVALID_CURSOR);
@@ -170,7 +170,7 @@ public class SighService {
                 .orElse(null);
     }
 
-    private SighListResult findList(SighListCursor cursor, EmotionQueryPeriod currentPeriod, UUID devicePublicId) {
+    private SighListResult findList(EmotionListCursor cursor, EmotionQueryPeriod currentPeriod, UUID devicePublicId) {
         Long deviceId = findDeviceId(devicePublicId);
 
         if (!cursor.snapshotAt().isAfter(currentPeriod.startAt())) {
@@ -204,7 +204,7 @@ public class SighService {
     }
 
     private String createNextCursor(
-            SighListCursor cursor,
+            EmotionListCursor cursor,
             List<EmotionListProjection> projections,
             boolean hasNext
     ) {
@@ -213,7 +213,7 @@ public class SighService {
         }
 
         EmotionListProjection lastProjection = projections.getLast();
-        SighListCursor nextCursor = cursor.next(
+        EmotionListCursor nextCursor = cursor.next(
                 lastProjection.getCreatedAt(),
                 lastProjection.getId()
         );
