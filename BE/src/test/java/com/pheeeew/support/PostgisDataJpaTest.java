@@ -22,7 +22,7 @@ import com.pheeeew.report.application.SighReportMetrics;
 import com.pheeeew.report.application.SighReportService;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.infra.KoreanEmotionNicknameGenerator;
-import com.pheeeew.sigh.infra.PostgisSighLocationGenerator;
+import com.pheeeew.sigh.infra.PostgisEmotionLocationGenerator;
 import com.pheeeew.sigh.infra.EmotionLocationConfig;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -70,7 +70,7 @@ import org.springframework.test.context.ActiveProfiles;
         SighBlockService.class,
         DeviceBlockService.class,
         KoreanEmotionNicknameGenerator.class,
-        PostgisSighLocationGenerator.class,
+        PostgisEmotionLocationGenerator.class,
         EmotionLocationConfig.class
 })
 public @interface PostgisDataJpaTest {

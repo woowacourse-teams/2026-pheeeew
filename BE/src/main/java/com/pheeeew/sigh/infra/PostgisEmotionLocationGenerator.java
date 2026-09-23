@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 @RequiredArgsConstructor
 @Component
-public class PostgisSighLocationGenerator implements EmotionLocationGenerator {
+public class PostgisEmotionLocationGenerator implements EmotionLocationGenerator {
 
     private static final int WGS84_SRID = 4326;
     private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory(new PrecisionModel(), WGS84_SRID);

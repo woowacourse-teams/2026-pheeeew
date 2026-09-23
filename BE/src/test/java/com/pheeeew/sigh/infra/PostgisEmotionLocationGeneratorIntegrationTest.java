@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 @PostgisDataJpaTest
-class PostgisSighLocationGeneratorIntegrationTest {
+class PostgisEmotionLocationGeneratorIntegrationTest {
 
     private static final int WGS84_SRID = 4326;
     private static final double RADIUS_METERS = 300.0;
@@ -58,7 +58,7 @@ class PostgisSighLocationGeneratorIntegrationTest {
         // given
         SecureRandom random = mock(SecureRandom.class);
         when(random.nextDouble()).thenReturn(radialUniform, angularUniform);
-        EmotionLocationGenerator generator = new PostgisSighLocationGenerator(sighRepository, random);
+        EmotionLocationGenerator generator = new PostgisEmotionLocationGenerator(sighRepository, random);
 
         // when
         Point location = generator.generate(SEOUL_CITY_HALL_LONGITUDE, SEOUL_CITY_HALL_LATITUDE);
