@@ -4,7 +4,8 @@ import com.pheeeew.report.application.dto.BlockResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
-public record SighBlockResponse(
+@Schema(name = "SighBlockResponse")
+public record EmotionBlockResponse(
         @Schema(
                 description = "차단한 한숨 ID입니다. 해제할 때 `DELETE /api/v2/blocks/sighs/{sighId}` 의 경로 변수로 사용합니다.",
                 example = "42"
@@ -28,8 +29,8 @@ public record SighBlockResponse(
         Instant createdAt
 ) {
 
-    public static SighBlockResponse from(BlockResult result) {
-        return new SighBlockResponse(
+    public static EmotionBlockResponse from(BlockResult result) {
+        return new EmotionBlockResponse(
                 result.emotionId(),
                 result.nickname(),
                 result.memo(),

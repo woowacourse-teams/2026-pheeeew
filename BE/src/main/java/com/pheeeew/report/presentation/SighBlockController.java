@@ -6,7 +6,7 @@ import com.pheeeew.report.application.EmotionBlockService;
 import com.pheeeew.report.application.dto.BlockListResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.presentation.dto.BlockCreateRequest;
-import com.pheeeew.report.presentation.dto.SighBlockResponse;
+import com.pheeeew.report.presentation.dto.EmotionBlockResponse;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -31,7 +31,7 @@ public class SighBlockController implements SighBlockControllerApi {
 
     @Override
     @PostMapping
-    public ResponseEntity<SighBlockResponse> save(
+    public ResponseEntity<EmotionBlockResponse> save(
             @CurrentDevice UUID devicePublicId,
             @Valid @RequestBody BlockCreateRequest request
     ) {
@@ -43,19 +43,19 @@ public class SighBlockController implements SighBlockControllerApi {
         }
 
         return ResponseEntity.status(status)
-                .body(SighBlockResponse.from(result.block()));
+                .body(EmotionBlockResponse.from(result.block()));
     }
 
     @Override
     @GetMapping
-    public CursorResponse<SighBlockResponse> findAll(
+    public CursorResponse<EmotionBlockResponse> findAll(
             @CurrentDevice UUID devicePublicId,
             @RequestParam(required = false) String cursor
     ) {
         BlockListResult result = emotionBlockService.findAll(devicePublicId, cursor);
 
-        List<SighBlockResponse> items = result.items().stream()
-                .map(SighBlockResponse::from)
+        List<EmotionBlockResponse> items = result.items().stream()
+                .map(EmotionBlockResponse::from)
                 .toList();
 
         return CursorResponse.of(items, result.hasNext(), result.nextCursor());

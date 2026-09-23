@@ -3,7 +3,7 @@ package com.pheeeew.report.presentation;
 import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.report.presentation.dto.BlockCreateRequest;
-import com.pheeeew.report.presentation.dto.SighBlockResponse;
+import com.pheeeew.report.presentation.dto.EmotionBlockResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -59,7 +59,7 @@ public interface SighBlockControllerApi {
                     description = "한숨 차단 최초 등록 성공",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = SighBlockResponse.class)
+                            schema = @Schema(implementation = EmotionBlockResponse.class)
                     )
             ),
             @ApiResponse(
@@ -67,7 +67,7 @@ public interface SighBlockControllerApi {
                     description = "이미 차단한 한숨이라 최초 차단을 반환",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = SighBlockResponse.class)
+                            schema = @Schema(implementation = EmotionBlockResponse.class)
                     )
             ),
             @ApiResponse(
@@ -112,7 +112,7 @@ public interface SighBlockControllerApi {
                     )
             )
     })
-    ResponseEntity<SighBlockResponse> save(
+    ResponseEntity<EmotionBlockResponse> save(
             @Parameter(hidden = true) UUID devicePublicId,
             BlockCreateRequest request
     );
@@ -192,7 +192,7 @@ public interface SighBlockControllerApi {
                     )
             )
     })
-    CursorResponse<SighBlockResponse> findAll(
+    CursorResponse<EmotionBlockResponse> findAll(
             @Parameter(hidden = true) UUID devicePublicId,
 
             @Parameter(
