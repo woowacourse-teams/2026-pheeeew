@@ -23,7 +23,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "한숨", description = "한숨 등록과 지도 영역 조회 API")
-public interface SighV1ControllerApi {
+public interface EmotionV1ControllerApi {
 
     @Operation(
             summary = "지도 영역 내 한숨 조회",

@@ -49,10 +49,10 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @Import({SecurityConfig.class, AuthenticationErrorHandler.class, AuthWebMvcConfig.class,
         CurrentDeviceArgumentResolver.class, GlobalExceptionHandler.class})
 @WebMvcTest(
-        controllers = SighV2Controller.class,
+        controllers = EmotionV2Controller.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
 )
-class SighV2LikeControllerTest {
+class EmotionV2LikeControllerTest {
 
     private static final UUID DEVICE_PUBLIC_ID = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
     private static final String LIKES_URI = "/api/v2/sighs/42/likes";

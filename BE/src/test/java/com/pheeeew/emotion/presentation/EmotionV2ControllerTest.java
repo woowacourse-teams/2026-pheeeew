@@ -53,10 +53,10 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @Import({SecurityConfig.class, AuthenticationErrorHandler.class, AuthWebMvcConfig.class,
         CurrentDeviceArgumentResolver.class, GlobalExceptionHandler.class})
 @WebMvcTest(
-        controllers = SighV2Controller.class,
+        controllers = EmotionV2Controller.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
 )
-class SighV2ControllerTest {
+class EmotionV2ControllerTest {
 
     private static final MediaType GEO_JSON = MediaType.parseMediaType("application/geo+json");
     private static final Long SIGH_ID = 42L;
@@ -76,7 +76,7 @@ class SighV2ControllerTest {
     private JwtDecoder jwtDecoder;
 
     @Autowired
-    SighV2ControllerTest(RestTestClient client) {
+    EmotionV2ControllerTest(RestTestClient client) {
         this.client = client.mutate().defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer access-token").build();
     }
 

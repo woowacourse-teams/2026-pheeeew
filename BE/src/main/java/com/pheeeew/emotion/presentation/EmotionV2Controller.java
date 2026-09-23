@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/v2/sighs")
 @RestController
-public class SighV2Controller implements SighV2ControllerApi {
+public class EmotionV2Controller implements EmotionV2ControllerApi {
 
     private static final MediaType GEO_JSON = MediaType.parseMediaType("application/geo+json");
 

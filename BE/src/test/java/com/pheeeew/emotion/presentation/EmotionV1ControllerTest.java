@@ -43,10 +43,10 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @AutoConfigureRestTestClient
 @Import(GlobalExceptionHandler.class)
 @WebMvcTest(
-        controllers = SighV1Controller.class,
+        controllers = EmotionV1Controller.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
 )
-class SighV1ControllerTest {
+class EmotionV1ControllerTest {
 
     private static final MediaType GEO_JSON = MediaType.parseMediaType("application/geo+json");
     private static final UUID REQUEST_ID = UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b");
@@ -62,7 +62,7 @@ class SighV1ControllerTest {
     private EmotionService emotionService;
 
     @Autowired
-    SighV1ControllerTest(RestTestClient client) {
+    EmotionV1ControllerTest(RestTestClient client) {
         this.client = client;
     }
 

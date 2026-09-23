@@ -28,7 +28,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "한숨 v2", description = "메모와 익명 닉네임을 포함한 한숨 등록, 목록·상세 조회 및 좋아요 API")
-public interface SighV2ControllerApi {
+public interface EmotionV2ControllerApi {
 
     @Operation(
             summary = "지도 바텀시트용 한숨 목록 조회",
