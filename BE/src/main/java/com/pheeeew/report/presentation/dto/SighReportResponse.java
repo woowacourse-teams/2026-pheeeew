@@ -1,6 +1,6 @@
 package com.pheeeew.report.presentation.dto;
 
-import com.pheeeew.report.application.dto.SighReportResult;
+import com.pheeeew.report.application.dto.EmotionReportResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
@@ -18,7 +18,7 @@ public record SighReportResponse(
         Instant createdAt
 ) {
 
-    public static SighReportResponse from(SighReportResult result) {
+    public static SighReportResponse from(EmotionReportResult result) {
         return new SighReportResponse(
                 result.id(),
                 result.sighId(),

@@ -8,7 +8,7 @@ import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.report.application.dto.SighReportResult;
+import com.pheeeew.report.application.dto.EmotionReportResult;
 import com.pheeeew.report.domain.SighReport;
 import com.pheeeew.report.domain.repository.SighReportRepository;
 import com.pheeeew.report.exception.EmotionReportException;
@@ -45,7 +45,7 @@ public class SighReportService {
         return deletedCount;
     }
 
-    public SighReportResult save(Long sighId, UUID devicePublicId, String reason) {
+    public EmotionReportResult save(Long sighId, UUID devicePublicId, String reason) {
         Sigh sigh = findSigh(sighId);
         Long reporterDeviceId = findReporterDeviceId(devicePublicId);
         validateNotSelf(sigh, reporterDeviceId);
@@ -53,7 +53,7 @@ public class SighReportService {
         Optional<SighReport> existingReport = sighReportRepository.findBySighIdAndReporterDeviceId(sighId, reporterDeviceId);
 
         if (existingReport.isPresent()) {
-            return SighReportResult.of(existingReport.get(), false);
+            return EmotionReportResult.of(existingReport.get(), false);
         }
 
         return saveNewReport(sighId, reporterDeviceId, reason);
@@ -76,7 +76,7 @@ public class SighReportService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
     }
 
-    private SighReportResult saveNewReport(Long sighId, Long reporterDeviceId, String reason) {
+    private EmotionReportResult saveNewReport(Long sighId, Long reporterDeviceId, String reason) {
         SighReport report = SighReport.builder()
                 .sighId(sighId)
                 .reporterDeviceId(reporterDeviceId)
@@ -84,19 +84,19 @@ public class SighReportService {
                 .build();
 
         try {
-            return SighReportResult.of(sighReportRepository.saveAndFlush(report), true);
+            return EmotionReportResult.of(sighReportRepository.saveAndFlush(report), true);
         } catch (DataIntegrityViolationException cause) {
             return findExistingReport(sighId, reporterDeviceId, cause);
         }
     }
 
-    private SighReportResult findExistingReport(
+    private EmotionReportResult findExistingReport(
             Long sighId,
             Long reporterDeviceId,
             DataIntegrityViolationException cause
     ) {
         return sighReportRepository.findBySighIdAndReporterDeviceId(sighId, reporterDeviceId)
-                .map(report -> SighReportResult.of(report, false))
+                .map(report -> EmotionReportResult.of(report, false))
                 .orElseThrow(() -> new EmotionReportException(EMOTION_REPORT_SAVE_FAILED, cause));
     }
 }

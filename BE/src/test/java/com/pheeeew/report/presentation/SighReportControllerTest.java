@@ -12,7 +12,7 @@ import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.report.application.SighReportService;
-import com.pheeeew.report.application.dto.SighReportResult;
+import com.pheeeew.report.application.dto.EmotionReportResult;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.exception.SighErrorCode;
@@ -75,7 +75,7 @@ class SighReportControllerTest {
     void 한숨을_최초로_신고하면_201과_신고_정보를_반환한다() {
         // given
         when(sighReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
-                .thenReturn(SighReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), true));
+                .thenReturn(EmotionReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), true));
 
         // when
         RestTestClient.ResponseSpec result = 신고한다(기본_신고_본문());
@@ -93,7 +93,7 @@ class SighReportControllerTest {
         // given
         String 다시_보낸_사유 = "나중에 바꾼 사유입니다";
         when(sighReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 다시_보낸_사유))
-                .thenReturn(SighReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), false));
+                .thenReturn(EmotionReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), false));
 
         // when
         RestTestClient.ResponseSpec result = 신고한다("""
@@ -112,7 +112,7 @@ class SighReportControllerTest {
         // given
         UUID 사칭하려는_기기 = UUID.fromString("00000000-0000-4000-8000-000000009999");
         when(sighReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
-                .thenReturn(SighReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), true));
+                .thenReturn(EmotionReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), true));
 
         // when
         RestTestClient.ResponseSpec result = 신고한다("""

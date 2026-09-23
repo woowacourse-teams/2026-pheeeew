@@ -2,7 +2,7 @@ package com.pheeeew.report.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.report.application.SighReportService;
-import com.pheeeew.report.application.dto.SighReportResult;
+import com.pheeeew.report.application.dto.EmotionReportResult;
 import com.pheeeew.report.presentation.dto.SighReportCreateRequest;
 import com.pheeeew.report.presentation.dto.SighReportResponse;
 import jakarta.validation.Valid;
@@ -28,7 +28,7 @@ public class SighReportController implements SighReportControllerApi {
             @CurrentDevice UUID devicePublicId,
             @Valid @RequestBody SighReportCreateRequest request
     ) {
-        SighReportResult result = sighReportService.save(request.sighId(), devicePublicId, request.reason());
+        EmotionReportResult result = sighReportService.save(request.sighId(), devicePublicId, request.reason());
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {

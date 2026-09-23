@@ -15,7 +15,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.report.application.dto.SighReportResult;
+import com.pheeeew.report.application.dto.EmotionReportResult;
 import com.pheeeew.report.domain.SighReport;
 import com.pheeeew.report.domain.repository.SighReportRepository;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
@@ -98,7 +98,7 @@ class SighReportServiceIntegrationTest {
         Device device = insertDevice();
 
         // when
-        SighReportResult result = sighReportService.save(sighId, device.getPublicId(), "  광고성 게시물입니다  ");
+        EmotionReportResult result = sighReportService.save(sighId, device.getPublicId(), "  광고성 게시물입니다  ");
 
         // then
         assertThat(result.created()).isTrue();
@@ -118,10 +118,10 @@ class SighReportServiceIntegrationTest {
         // given
         Long sighId = insertSigh();
         Device device = insertDevice();
-        SighReportResult first = sighReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult first = sighReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
 
         // when
-        SighReportResult retried = sighReportService.save(sighId, device.getPublicId(), "나중에 바꾼 사유입니다");
+        EmotionReportResult retried = sighReportService.save(sighId, device.getPublicId(), "나중에 바꾼 사유입니다");
 
         // then
         assertThat(retried.created()).isFalse();
@@ -136,10 +136,10 @@ class SighReportServiceIntegrationTest {
         Long sighId = insertSigh();
         Device device = insertDevice();
         Device otherDevice = insertDevice();
-        SighReportResult first = sighReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult first = sighReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
 
         // when
-        SighReportResult second = sighReportService.save(sighId, otherDevice.getPublicId(), 기본_신고_사유());
+        EmotionReportResult second = sighReportService.save(sighId, otherDevice.getPublicId(), 기본_신고_사유());
 
         // then
         assertThat(second.created()).isTrue();
@@ -153,10 +153,10 @@ class SighReportServiceIntegrationTest {
         Long sighId = insertSigh();
         Long otherSighId = insertSigh();
         Device device = insertDevice();
-        SighReportResult first = sighReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult first = sighReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
 
         // when
-        SighReportResult second = sighReportService.save(otherSighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult second = sighReportService.save(otherSighId, device.getPublicId(), 기본_신고_사유());
 
         // then
         assertThat(second.created()).isTrue();
@@ -174,7 +174,7 @@ class SighReportServiceIntegrationTest {
         CountDownLatch start = new CountDownLatch(1);
 
         // when
-        List<SighReportResult> results = executeConcurrently(
+        List<EmotionReportResult> results = executeConcurrently(
                 requestCount,
                 sighId,
                 device.getPublicId(),
@@ -184,9 +184,9 @@ class SighReportServiceIntegrationTest {
 
         // then
         assertThat(results)
-                .extracting(SighReportResult::id)
+                .extracting(EmotionReportResult::id)
                 .containsOnly(results.getFirst().id());
-        assertThat(results).filteredOn(SighReportResult::created).hasSize(1);
+        assertThat(results).filteredOn(EmotionReportResult::created).hasSize(1);
         assertThat(sighReportRepository.count()).isOne();
     }
 
@@ -319,7 +319,7 @@ class SighReportServiceIntegrationTest {
         return deviceRepository.saveAndFlush(기본_기기_빌더().build());
     }
 
-    private List<SighReportResult> executeConcurrently(
+    private List<EmotionReportResult> executeConcurrently(
             int requestCount,
             Long sighId,
             UUID devicePublicId,
@@ -327,7 +327,7 @@ class SighReportServiceIntegrationTest {
             CountDownLatch start
     ) throws Exception {
         try (ExecutorService executorService = Executors.newFixedThreadPool(requestCount)) {
-            List<Future<SighReportResult>> futures = new ArrayList<>();
+            List<Future<EmotionReportResult>> futures = new ArrayList<>();
             for (int index = 0; index < requestCount; index++) {
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
@@ -340,8 +340,8 @@ class SighReportServiceIntegrationTest {
             start.countDown();
             assertThat(allRequestsReady).isTrue();
 
-            List<SighReportResult> results = new ArrayList<>();
-            for (Future<SighReportResult> future : futures) {
+            List<EmotionReportResult> results = new ArrayList<>();
+            for (Future<EmotionReportResult> future : futures) {
                 results.add(future.get(10, TimeUnit.SECONDS));
             }
             return results;
