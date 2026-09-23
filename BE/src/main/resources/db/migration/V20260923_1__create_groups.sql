@@ -11,10 +11,11 @@ CREATE TABLE groups
     CONSTRAINT uk_groups_public_id
         UNIQUE (public_id),
     CONSTRAINT uk_groups_invite_code
-        UNIQUE (invite_code),
-    CONSTRAINT uk_groups_name
-        UNIQUE (name)
+        UNIQUE (invite_code)
 );
+
+CREATE UNIQUE INDEX uk_groups_name_active
+    ON groups (name) WHERE deleted_at IS NULL;
 
 CREATE TABLE group_stamps
 (

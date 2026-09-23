@@ -51,4 +51,21 @@ public class Group extends BaseEntity {
         this.description = description;
         this.inviteCode = Objects.requireNonNull(inviteCode);
     }
+
+    public void rename(String name, String description) {
+        this.name = Objects.requireNonNull(name);
+        this.description = description;
+    }
+
+    public void reissueInviteCode(String inviteCode) {
+        this.inviteCode = Objects.requireNonNull(inviteCode);
+    }
+
+    public void delete(Instant deletedAt) {
+        this.deletedAt = Objects.requireNonNull(deletedAt);
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
 }
