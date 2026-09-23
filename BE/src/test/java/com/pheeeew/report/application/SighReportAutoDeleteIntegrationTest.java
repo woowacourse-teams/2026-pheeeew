@@ -35,7 +35,7 @@ class SighReportAutoDeleteIntegrationTest {
     private static final int 자동_삭제_임계값 = 5;
 
     @Autowired
-    private SighReportService sighReportService;
+    private EmotionReportService emotionReportService;
 
     @Autowired
     private SighReportRepository sighReportRepository;
@@ -64,7 +64,7 @@ class SighReportAutoDeleteIntegrationTest {
         서로_다른_기기로_신고한다(sighId, 신고_수);
 
         // when
-        int 삭제_수 = sighReportService.deleteReportedOverThreshold();
+        int 삭제_수 = emotionReportService.deleteReportedOverThreshold();
 
         // then
         assertThat(삭제_수).isZero();
@@ -79,7 +79,7 @@ class SighReportAutoDeleteIntegrationTest {
         서로_다른_기기로_신고한다(sighId, 신고_수);
 
         // when
-        int 삭제_수 = sighReportService.deleteReportedOverThreshold();
+        int 삭제_수 = emotionReportService.deleteReportedOverThreshold();
 
         // then
         assertThat(삭제_수).isOne();
@@ -93,7 +93,7 @@ class SighReportAutoDeleteIntegrationTest {
         서로_다른_기기로_신고한다(sighId, 자동_삭제_임계값);
 
         // when
-        sighReportService.deleteReportedOverThreshold();
+        emotionReportService.deleteReportedOverThreshold();
 
         // then
         assertThat(sighReportRepository.count()).isEqualTo(자동_삭제_임계값);
@@ -104,11 +104,11 @@ class SighReportAutoDeleteIntegrationTest {
         // given
         Long sighId = 한숨을_저장한다();
         서로_다른_기기로_신고한다(sighId, 자동_삭제_임계값);
-        sighReportService.deleteReportedOverThreshold();
+        emotionReportService.deleteReportedOverThreshold();
         Instant 첫_삭제_시각 = 삭제_시각(sighId);
 
         // when
-        int 두_번째_삭제_수 = sighReportService.deleteReportedOverThreshold();
+        int 두_번째_삭제_수 = emotionReportService.deleteReportedOverThreshold();
 
         // then
         assertThat(두_번째_삭제_수).isZero();
@@ -124,7 +124,7 @@ class SighReportAutoDeleteIntegrationTest {
         서로_다른_기기로_신고한다(남을_한숨, 자동_삭제_임계값 - 1);
 
         // when
-        int 삭제_수 = sighReportService.deleteReportedOverThreshold();
+        int 삭제_수 = emotionReportService.deleteReportedOverThreshold();
 
         // then
         assertThat(삭제_수).isOne();
@@ -143,7 +143,7 @@ class SighReportAutoDeleteIntegrationTest {
         }
 
         // when
-        int 삭제_수 = sighReportService.deleteReportedOverThreshold();
+        int 삭제_수 = emotionReportService.deleteReportedOverThreshold();
 
         // then
         assertThat(삭제_수).isEqualTo(3);
@@ -158,7 +158,7 @@ class SighReportAutoDeleteIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(
-                () -> sighReportService.save(sighId, 작성자.getPublicId(), "테스트 신고")
+                () -> emotionReportService.save(sighId, 작성자.getPublicId(), "테스트 신고")
         );
 
         // then
@@ -176,7 +176,7 @@ class SighReportAutoDeleteIntegrationTest {
         Long sighId = 작성자가_쓴_한숨을_저장한다(작성자.getId());
 
         // when
-        sighReportService.save(sighId, 신고자.getPublicId(), "테스트 신고");
+        emotionReportService.save(sighId, 신고자.getPublicId(), "테스트 신고");
 
         // then
         assertThat(sighReportRepository.count()).isOne();
@@ -189,7 +189,7 @@ class SighReportAutoDeleteIntegrationTest {
         Long sighId = 한숨을_저장한다();
 
         // when
-        sighReportService.save(sighId, 신고자.getPublicId(), "테스트 신고");
+        emotionReportService.save(sighId, 신고자.getPublicId(), "테스트 신고");
 
         // then
         assertThat(sighReportRepository.count()).isOne();

@@ -43,7 +43,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-class SighReportServiceIntegrationTest {
+class EmotionReportServiceIntegrationTest {
 
     private static final double SEOUL_CITY_HALL_LONGITUDE = 126.9780;
     private static final double SEOUL_CITY_HALL_LATITUDE = 37.5664;
@@ -52,7 +52,7 @@ class SighReportServiceIntegrationTest {
     private static final String REJECTED_REASON = "저장이 거부되는 사유";
 
     @Autowired
-    private SighReportService sighReportService;
+    private EmotionReportService emotionReportService;
 
     @Autowired
     private SighReportRepository sighReportRepository;
@@ -78,7 +78,7 @@ class SighReportServiceIntegrationTest {
         // given
         Long sighId = insertSigh();
         Device device = insertDevice();
-        sighReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
+        emotionReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
 
         // when
         jdbcClient.sql("UPDATE sighs SET deleted_at = NOW() WHERE id = :id")
@@ -98,7 +98,7 @@ class SighReportServiceIntegrationTest {
         Device device = insertDevice();
 
         // when
-        EmotionReportResult result = sighReportService.save(sighId, device.getPublicId(), "  광고성 게시물입니다  ");
+        EmotionReportResult result = emotionReportService.save(sighId, device.getPublicId(), "  광고성 게시물입니다  ");
 
         // then
         assertThat(result.created()).isTrue();
@@ -118,10 +118,10 @@ class SighReportServiceIntegrationTest {
         // given
         Long sighId = insertSigh();
         Device device = insertDevice();
-        EmotionReportResult first = sighReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult first = emotionReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
 
         // when
-        EmotionReportResult retried = sighReportService.save(sighId, device.getPublicId(), "나중에 바꾼 사유입니다");
+        EmotionReportResult retried = emotionReportService.save(sighId, device.getPublicId(), "나중에 바꾼 사유입니다");
 
         // then
         assertThat(retried.created()).isFalse();
@@ -136,10 +136,10 @@ class SighReportServiceIntegrationTest {
         Long sighId = insertSigh();
         Device device = insertDevice();
         Device otherDevice = insertDevice();
-        EmotionReportResult first = sighReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult first = emotionReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
 
         // when
-        EmotionReportResult second = sighReportService.save(sighId, otherDevice.getPublicId(), 기본_신고_사유());
+        EmotionReportResult second = emotionReportService.save(sighId, otherDevice.getPublicId(), 기본_신고_사유());
 
         // then
         assertThat(second.created()).isTrue();
@@ -153,10 +153,10 @@ class SighReportServiceIntegrationTest {
         Long sighId = insertSigh();
         Long otherSighId = insertSigh();
         Device device = insertDevice();
-        EmotionReportResult first = sighReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult first = emotionReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
 
         // when
-        EmotionReportResult second = sighReportService.save(otherSighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult second = emotionReportService.save(otherSighId, device.getPublicId(), 기본_신고_사유());
 
         // then
         assertThat(second.created()).isTrue();
@@ -197,7 +197,7 @@ class SighReportServiceIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(
-                () -> sighReportService.save(NOT_EXISTING_SIGH_ID, device.getPublicId(), 기본_신고_사유())
+                () -> emotionReportService.save(NOT_EXISTING_SIGH_ID, device.getPublicId(), 기본_신고_사유())
         );
 
         // then
@@ -216,7 +216,7 @@ class SighReportServiceIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(
-                () -> sighReportService.save(sighId, 없는_기기_공개_식별자(), 기본_신고_사유())
+                () -> emotionReportService.save(sighId, 없는_기기_공개_식별자(), 기본_신고_사유())
         );
 
         // then
@@ -281,7 +281,7 @@ class SighReportServiceIntegrationTest {
         try {
             // when
             Throwable throwable = catchThrowable(
-                    () -> sighReportService.save(sighId, device.getPublicId(), REJECTED_REASON)
+                    () -> emotionReportService.save(sighId, device.getPublicId(), REJECTED_REASON)
             );
 
             // then
@@ -332,7 +332,7 @@ class SighReportServiceIntegrationTest {
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
                     start.await();
-                    return sighReportService.save(sighId, devicePublicId, 기본_신고_사유());
+                    return emotionReportService.save(sighId, devicePublicId, 기본_신고_사유());
                 }));
             }
 

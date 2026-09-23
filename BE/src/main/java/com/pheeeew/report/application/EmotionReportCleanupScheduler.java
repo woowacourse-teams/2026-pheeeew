@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class EmotionReportCleanupScheduler {
 
-    private final SighReportService emotionReportService;
+    private final EmotionReportService emotionReportService;
 
     @Scheduled(fixedDelayString = "PT1H", initialDelayString = "PT1H")
     public void deleteReportedOverThreshold() {

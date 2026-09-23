@@ -1,7 +1,7 @@
 package com.pheeeew.report.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
-import com.pheeeew.report.application.SighReportService;
+import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.report.application.dto.EmotionReportResult;
 import com.pheeeew.report.presentation.dto.SighReportCreateRequest;
 import com.pheeeew.report.presentation.dto.SighReportResponse;
@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class SighReportController implements SighReportControllerApi {
 
-    private final SighReportService sighReportService;
+    private final EmotionReportService emotionReportService;
 
     @Override
     @PostMapping
@@ -28,7 +28,7 @@ public class SighReportController implements SighReportControllerApi {
             @CurrentDevice UUID devicePublicId,
             @Valid @RequestBody SighReportCreateRequest request
     ) {
-        EmotionReportResult result = sighReportService.save(request.sighId(), devicePublicId, request.reason());
+        EmotionReportResult result = emotionReportService.save(request.sighId(), devicePublicId, request.reason());
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {

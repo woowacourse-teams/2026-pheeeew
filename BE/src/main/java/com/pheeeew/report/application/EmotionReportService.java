@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
-public class SighReportService {
+public class EmotionReportService {
 
     private static final long AUTO_DELETE_REPORT_THRESHOLD = 5L;
 

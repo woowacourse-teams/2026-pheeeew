@@ -11,7 +11,7 @@ import static org.mockito.Mockito.when;
 import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
-import com.pheeeew.report.application.SighReportService;
+import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.report.application.dto.EmotionReportResult;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
@@ -53,7 +53,7 @@ class SighReportControllerTest {
     private final RestTestClient client;
 
     @MockitoBean
-    private SighReportService sighReportService;
+    private EmotionReportService emotionReportService;
 
     @Autowired
     SighReportControllerTest(RestTestClient client) {
@@ -74,7 +74,7 @@ class SighReportControllerTest {
     @Test
     void 한숨을_최초로_신고하면_201과_신고_정보를_반환한다() {
         // given
-        when(sighReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
+        when(emotionReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenReturn(EmotionReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), true));
 
         // when
@@ -85,14 +85,14 @@ class SighReportControllerTest {
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
                 .expectBody()
                 .json(기본_신고_응답(), JsonCompareMode.STRICT);
-        verify(sighReportService).save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유());
+        verify(emotionReportService).save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유());
     }
 
     @Test
     void 이미_신고한_한숨을_다시_신고하면_200과_최초_신고를_반환한다() {
         // given
         String 다시_보낸_사유 = "나중에 바꾼 사유입니다";
-        when(sighReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 다시_보낸_사유))
+        when(emotionReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 다시_보낸_사유))
                 .thenReturn(EmotionReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), false));
 
         // when
@@ -104,14 +104,14 @@ class SighReportControllerTest {
         result.expectStatus().isOk()
                 .expectBody()
                 .json(기본_신고_응답(), JsonCompareMode.STRICT);
-        verify(sighReportService).save(SIGH_ID, 신고자_기기_공개_식별자(), 다시_보낸_사유);
+        verify(emotionReportService).save(SIGH_ID, 신고자_기기_공개_식별자(), 다시_보낸_사유);
     }
 
     @Test
     void 요청_본문에_담긴_기기_식별자는_무시하고_인증된_기기를_신고자로_쓴다() {
         // given
         UUID 사칭하려는_기기 = UUID.fromString("00000000-0000-4000-8000-000000009999");
-        when(sighReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
+        when(emotionReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenReturn(EmotionReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), true));
 
         // when
@@ -121,7 +121,7 @@ class SighReportControllerTest {
 
         // then
         result.expectStatus().isCreated();
-        verify(sighReportService).save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유());
+        verify(emotionReportService).save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유());
     }
 
     @Test
@@ -134,7 +134,7 @@ class SighReportControllerTest {
 
         // then
         오류를_검증한다(result, 500, "COMMON-002", "서버 내부 오류가 발생했습니다.");
-        verifyNoInteractions(sighReportService);
+        verifyNoInteractions(emotionReportService);
     }
 
     @ParameterizedTest
@@ -145,7 +145,7 @@ class SighReportControllerTest {
 
         // then
         오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
-        verifyNoInteractions(sighReportService);
+        verifyNoInteractions(emotionReportService);
     }
 
     @Test
@@ -157,13 +157,13 @@ class SighReportControllerTest {
 
         // then
         오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
-        verifyNoInteractions(sighReportService);
+        verifyNoInteractions(emotionReportService);
     }
 
     @Test
     void 신고할_한숨이_없으면_404를_반환한다() {
         // given
-        when(sighReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
+        when(emotionReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenThrow(new SighException(SighErrorCode.SIGH_NOT_FOUND));
 
         // when
@@ -176,7 +176,7 @@ class SighReportControllerTest {
     @Test
     void 신고_도메인_예외는_정의된_상태와_코드로_반환한다() {
         // given
-        when(sighReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
+        when(emotionReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenThrow(new EmotionReportException(
                         EmotionReportErrorCode.EMOTION_REPORT_SAVE_FAILED,
                         new IllegalStateException()
