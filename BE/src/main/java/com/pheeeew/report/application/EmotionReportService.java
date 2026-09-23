@@ -13,7 +13,7 @@ import com.pheeeew.report.domain.SighReport;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.domain.Sigh;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.exception.SighException;
 import java.time.Instant;
 import java.util.Optional;
@@ -30,7 +30,7 @@ public class EmotionReportService {
     private static final long AUTO_DELETE_REPORT_THRESHOLD = 5L;
 
     private final EmotionReportRepository emotionReportRepository;
-    private final SighRepository emotionRepository;
+    private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
     private final EmotionReportMetrics emotionReportMetrics;
 

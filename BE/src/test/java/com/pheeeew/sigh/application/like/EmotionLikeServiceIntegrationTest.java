@@ -14,7 +14,7 @@ import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.SighLike;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -45,7 +45,7 @@ class EmotionLikeServiceIntegrationTest {
     private EmotionLikeRepository emotionLikeRepository;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @Autowired
     private DeviceRepository deviceRepository;
@@ -62,13 +62,13 @@ class EmotionLikeServiceIntegrationTest {
     @BeforeEach
     void setUp() {
         device = deviceRepository.save(기본_기기_빌더().build());
-        sigh = sighRepository.save(기본_한숨_빌더().build());
+        sigh = emotionRepository.save(기본_한숨_빌더().build());
     }
 
     @AfterEach
     void tearDown() {
         emotionLikeRepository.deleteAllInBatch();
-        sighRepository.deleteAllInBatch();
+        emotionRepository.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
     }
 
@@ -102,7 +102,7 @@ class EmotionLikeServiceIntegrationTest {
     void 좋아요를_취소해도_다른_기기나_다른_한숨의_좋아요는_유지한다() {
         // given
         Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
-        Sigh anotherSigh = sighRepository.save(기본_한숨_빌더().build());
+        Sigh anotherSigh = emotionRepository.save(기본_한숨_빌더().build());
         saveLike(sigh.getId(), device.getId());
         SighLike anotherDeviceLike = saveLike(sigh.getId(), anotherDevice.getId());
         SighLike anotherSighLike = saveLike(anotherSigh.getId(), device.getId());
@@ -132,9 +132,9 @@ class EmotionLikeServiceIntegrationTest {
         assertThatThrownBy(() -> emotionLikeService.update(Long.MAX_VALUE, device.getPublicId(), liked))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
-        Sigh latestSigh = sighRepository.findById(sigh.getId()).orElseThrow();
+        Sigh latestSigh = emotionRepository.findById(sigh.getId()).orElseThrow();
         latestSigh.delete();
-        sighRepository.saveAndFlush(latestSigh);
+        emotionRepository.saveAndFlush(latestSigh);
         assertThatThrownBy(() -> emotionLikeService.update(sigh.getId(), device.getPublicId(), liked))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
@@ -177,7 +177,7 @@ class EmotionLikeServiceIntegrationTest {
         // when
         assertThatThrownBy(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             // 바깥 트랜잭션이 읽은 버전을 유지한 채 다른 기기의 변경을 먼저 커밋한다.
-            sighRepository.findById(sigh.getId()).orElseThrow();
+            emotionRepository.findById(sigh.getId()).orElseThrow();
             anotherTransaction.executeWithoutResult(anotherStatus ->
                     emotionLikeService.update(sigh.getId(), anotherDevice.getPublicId(), true));
             emotionLikeService.update(sigh.getId(), device.getPublicId(), desiredLiked);
@@ -202,12 +202,12 @@ class EmotionLikeServiceIntegrationTest {
                 .single();
 
         assertThat(likeRowCount).isEqualTo(expected);
-        assertThat(sighRepository.findById(sighId).orElseThrow().getLikeCount()).isEqualTo(expected);
+        assertThat(emotionRepository.findById(sighId).orElseThrow().getLikeCount()).isEqualTo(expected);
     }
 
     private SighLike saveLike(Long sighId, Long deviceId) {
         return new TransactionTemplate(transactionManager).execute(status -> {
-            sighRepository.findById(sighId).orElseThrow().increaseLikeCount();
+            emotionRepository.findById(sighId).orElseThrow().increaseLikeCount();
             return emotionLikeRepository.save(기본_좋아요_빌더()
                     .sighId(sighId)
                     .deviceId(deviceId)

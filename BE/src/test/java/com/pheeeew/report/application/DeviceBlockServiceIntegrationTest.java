@@ -17,7 +17,7 @@ import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.exception.BlockErrorCode;
 import com.pheeeew.report.exception.BlockException;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -56,7 +56,7 @@ class DeviceBlockServiceIntegrationTest {
     private DeviceBlockRepository deviceBlockRepository;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @Autowired
     private DeviceRepository deviceRepository;
@@ -67,7 +67,7 @@ class DeviceBlockServiceIntegrationTest {
     @AfterEach
     void tearDown() {
         deviceBlockRepository.deleteAll();
-        sighRepository.deleteAll();
+        emotionRepository.deleteAll();
         deviceRepository.deleteAll();
         등록_순번 = 0;
     }

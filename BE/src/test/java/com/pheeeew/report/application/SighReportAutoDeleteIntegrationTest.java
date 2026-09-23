@@ -13,7 +13,7 @@ import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.domain.Sigh;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -41,7 +41,7 @@ class SighReportAutoDeleteIntegrationTest {
     private EmotionReportRepository emotionReportRepository;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @Autowired
     private DeviceRepository deviceRepository;
@@ -52,7 +52,7 @@ class SighReportAutoDeleteIntegrationTest {
     @AfterEach
     void tearDown() {
         emotionReportRepository.deleteAllInBatch();
-        sighRepository.deleteAllInBatch();
+        emotionRepository.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
     }
 
@@ -196,7 +196,7 @@ class SighReportAutoDeleteIntegrationTest {
     }
 
     private Long 작성자가_쓴_한숨을_저장한다(Long deviceId) {
-        Sigh sigh = sighRepository.saveAndFlush(
+        Sigh sigh = emotionRepository.saveAndFlush(
                 기기가_있는_한숨_빌더(deviceId).requestId(UUID.randomUUID()).build()
         );
 
@@ -204,7 +204,7 @@ class SighReportAutoDeleteIntegrationTest {
     }
 
     private Long 한숨을_저장한다() {
-        Sigh sigh = sighRepository.saveAndFlush(기본_한숨_빌더().requestId(UUID.randomUUID()).build());
+        Sigh sigh = emotionRepository.saveAndFlush(기본_한숨_빌더().requestId(UUID.randomUUID()).build());
 
         return sigh.getId();
     }

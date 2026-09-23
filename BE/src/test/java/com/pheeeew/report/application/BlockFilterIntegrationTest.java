@@ -10,7 +10,7 @@ import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.application.dto.SighMapItem;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Clock;
@@ -52,7 +52,7 @@ class BlockFilterIntegrationTest {
     private DeviceBlockService deviceBlockService;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @Autowired
     private EmotionBlockRepository emotionBlockRepository;
@@ -79,7 +79,7 @@ class BlockFilterIntegrationTest {
     void tearDown() {
         emotionBlockRepository.deleteAll();
         deviceBlockRepository.deleteAll();
-        sighRepository.deleteAll();
+        emotionRepository.deleteAll();
         deviceRepository.deleteAll();
         등록_순번 = 0;
     }

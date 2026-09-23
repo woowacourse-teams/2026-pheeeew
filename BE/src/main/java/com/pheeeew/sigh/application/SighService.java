@@ -18,7 +18,7 @@ import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.projection.EmotionDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
@@ -44,7 +44,7 @@ public class SighService {
     private static final int MAX_FIND_COUNT = 500;
     private static final int LIST_PAGE_SIZE = 20;
 
-    private final SighRepository emotionRepository;
+    private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
     private final EmotionLocationGenerator emotionLocationGenerator;
     private final EmotionNicknameGenerator emotionNicknameGenerator;

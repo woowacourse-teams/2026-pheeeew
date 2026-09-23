@@ -20,7 +20,7 @@ import com.pheeeew.report.domain.SighReport;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -58,7 +58,7 @@ class EmotionReportServiceIntegrationTest {
     private EmotionReportRepository emotionReportRepository;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @Autowired
     private DeviceRepository deviceRepository;
@@ -69,7 +69,7 @@ class EmotionReportServiceIntegrationTest {
     @AfterEach
     void tearDown() {
         emotionReportRepository.deleteAll();
-        sighRepository.deleteAll();
+        emotionRepository.deleteAll();
         deviceRepository.deleteAll();
     }
 

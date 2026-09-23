@@ -20,7 +20,7 @@ import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
@@ -84,7 +84,7 @@ class SighServiceIntegrationTest {
     private SighService sighService;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @Autowired
     private DeviceRepository deviceRepository;
@@ -116,7 +116,7 @@ class SighServiceIntegrationTest {
         jdbcClient.sql("DELETE FROM device_blocks").update();
         jdbcClient.sql("DELETE FROM sigh_reports").update();
         jdbcClient.sql("DELETE FROM sigh_likes").update();
-        sighRepository.deleteAll();
+        emotionRepository.deleteAll();
         deviceRepository.deleteAll();
     }
 
@@ -138,14 +138,14 @@ class SighServiceIntegrationTest {
         assertThat(result.sigh().createdAt()).isNotNull();
         assertThat(result.sigh().createdAt().getNano() % 1_000).isZero();
 
-        Sigh saved = sighRepository.findById(result.sigh().id()).orElseThrow();
+        Sigh saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
         assertThat(saved.getCreatedAt()).isEqualTo(result.sigh().createdAt());
         assertThat(saved.getUpdatedAt()).isNotNull();
         assertThat(saved.getMemo()).isNull();
         assertThat(saved.getNickname())
                 .isNotBlank()
                 .hasSizeLessThanOrEqualTo(50);
-        assertThat(sighRepository.count()).isOne();
+        assertThat(emotionRepository.count()).isOne();
     }
 
     @Test
@@ -157,18 +157,18 @@ class SighServiceIntegrationTest {
                 SEOUL_CITY_HALL_LATITUDE
         );
         Long sighId = created.sigh().id();
-        Sigh first = sighRepository.findById(sighId).orElseThrow();
-        Sigh second = sighRepository.findById(sighId).orElseThrow();
+        Sigh first = emotionRepository.findById(sighId).orElseThrow();
+        Sigh second = emotionRepository.findById(sighId).orElseThrow();
         first.increaseLikeCount();
-        sighRepository.saveAndFlush(first);
+        emotionRepository.saveAndFlush(first);
 
         // when
         second.increaseLikeCount();
-        Throwable throwable = catchThrowable(() -> sighRepository.saveAndFlush(second));
+        Throwable throwable = catchThrowable(() -> emotionRepository.saveAndFlush(second));
 
         // then
         assertThat(throwable).isInstanceOf(ObjectOptimisticLockingFailureException.class);
-        assertThat(sighRepository.findById(sighId).orElseThrow().getLikeCount()).isOne();
+        assertThat(emotionRepository.findById(sighId).orElseThrow().getLikeCount()).isOne();
     }
 
     @Test
@@ -186,7 +186,7 @@ class SighServiceIntegrationTest {
         );
 
         // then
-        Sigh saved = sighRepository.findById(result.sigh().id()).orElseThrow();
+        Sigh saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
         assertThat(result.created()).isTrue();
         assertThat(result.sigh().memo()).isEqualTo("오늘은 힘들었다");
         assertThat(result.sigh().nickname()).isEqualTo(saved.getNickname());
@@ -209,7 +209,7 @@ class SighServiceIntegrationTest {
         );
 
         // then
-        Sigh saved = sighRepository.findById(result.sigh().id()).orElseThrow();
+        Sigh saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
         assertThat(result.created()).isTrue();
         assertThat(saved.getDeviceId()).isEqualTo(device.getId());
     }
@@ -227,7 +227,7 @@ class SighServiceIntegrationTest {
         );
 
         // then
-        Sigh saved = sighRepository.findById(result.sigh().id()).orElseThrow();
+        Sigh saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
         assertThat(saved.getDeviceId()).isNull();
     }
 
@@ -255,11 +255,11 @@ class SighServiceIntegrationTest {
         );
 
         // then
-        Sigh saved = sighRepository.findById(first.sigh().id()).orElseThrow();
+        Sigh saved = emotionRepository.findById(first.sigh().id()).orElseThrow();
         assertThat(retried.created()).isFalse();
         assertThat(retried.sigh().id()).isEqualTo(first.sigh().id());
         assertThat(saved.getDeviceId()).isEqualTo(최초_기기.getId());
-        assertThat(sighRepository.count()).isOne();
+        assertThat(emotionRepository.count()).isOne();
     }
 
     @Test
@@ -280,7 +280,7 @@ class SighServiceIntegrationTest {
         assertThat(throwable).isInstanceOf(DeviceException.class);
         assertThat(((DeviceException) throwable).getErrorCode())
                 .isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND);
-        assertThat(sighRepository.count()).isZero();
+        assertThat(emotionRepository.count()).isZero();
     }
 
     @Test
@@ -301,7 +301,7 @@ class SighServiceIntegrationTest {
         assertThat(retried.sigh().id()).isEqualTo(first.sigh().id());
         assertThat(retried.sigh().longitude()).isEqualTo(first.sigh().longitude());
         assertThat(retried.sigh().latitude()).isEqualTo(first.sigh().latitude());
-        assertThat(sighRepository.count()).isOne();
+        assertThat(emotionRepository.count()).isOne();
     }
 
     @Test
@@ -329,7 +329,7 @@ class SighServiceIntegrationTest {
         assertThat(retried.created()).isFalse();
         assertThat(retried.sigh().memo()).isEqualTo("최초 메모");
         assertThat(retried.sigh().nickname()).isEqualTo(first.sigh().nickname());
-        assertThat(sighRepository.count()).isOne();
+        assertThat(emotionRepository.count()).isOne();
     }
 
     @Test
@@ -355,7 +355,7 @@ class SighServiceIntegrationTest {
                 .containsOnly(results.getFirst().sigh().latitude());
         assertThat(results).filteredOn(SighSaveResult::created).hasSize(1);
         assertThat(results).extracting(SighSaveResult::like).containsOnly(SighLikeResult.of(false, 0));
-        assertThat(sighRepository.count()).isOne();
+        assertThat(emotionRepository.count()).isOne();
     }
 
     @Test

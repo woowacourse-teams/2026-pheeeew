@@ -17,7 +17,7 @@ import com.pheeeew.sigh.application.like.EmotionLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -53,7 +53,7 @@ class SighServiceDetailIntegrationTest {
     private EmotionLikeService emotionLikeService;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @Autowired
     private EmotionLikeRepository emotionLikeRepository;
@@ -75,14 +75,14 @@ class SighServiceDetailIntegrationTest {
         given(clock.instant()).willReturn(CURRENT_TIME);
         given(clock.getZone()).willReturn(ZoneId.of("Asia/Seoul"));
         device = deviceRepository.save(기본_기기_빌더().build());
-        sigh = sighRepository.save(기본_한숨_빌더().memo("오늘은 힘들었다").build());
+        sigh = emotionRepository.save(기본_한숨_빌더().memo("오늘은 힘들었다").build());
         updateCreatedAt(CURRENT_TIME.minusSeconds(60));
     }
 
     @AfterEach
     void tearDown() {
         emotionLikeRepository.deleteAll();
-        sighRepository.deleteAll();
+        emotionRepository.deleteAll();
         deviceRepository.deleteAll();
     }
 
@@ -91,11 +91,11 @@ class SighServiceDetailIntegrationTest {
         // given
         Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
         Device unlikedDevice = deviceRepository.save(기본_기기_빌더().build());
-        Sigh anotherSigh = sighRepository.save(기본_한숨_빌더().build());
+        Sigh anotherSigh = emotionRepository.save(기본_한숨_빌더().build());
         emotionLikeService.update(sigh.getId(), device.getPublicId(), true);
         emotionLikeService.update(sigh.getId(), anotherDevice.getPublicId(), true);
         emotionLikeService.update(anotherSigh.getId(), unlikedDevice.getPublicId(), true);
-        SighResult expectedSigh = SighResult.from(sighRepository.findById(sigh.getId()).orElseThrow());
+        SighResult expectedSigh = SighResult.from(emotionRepository.findById(sigh.getId()).orElseThrow());
 
         // when
         SighDetailResult liked = sighService.findById(sigh.getId(), device.getPublicId());
@@ -167,7 +167,7 @@ class SighServiceDetailIntegrationTest {
         assertThatThrownBy(() -> sighService.findById(sigh.getId(), device.getPublicId()))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_EXPIRED));
-        Sigh savedSigh = sighRepository.findById(sigh.getId()).orElseThrow();
+        Sigh savedSigh = emotionRepository.findById(sigh.getId()).orElseThrow();
         assertThat(savedSigh.getCreatedAt()).isEqualTo(createdAt);
         assertThat(savedSigh.getDeletedAt()).isNull();
     }
@@ -180,9 +180,9 @@ class SighServiceDetailIntegrationTest {
             updateCreatedAt(CURRENT_TIME.minus(14, ChronoUnit.DAYS));
         }
         emotionLikeService.update(sigh.getId(), device.getPublicId(), true);
-        Sigh deletedSigh = sighRepository.findById(sigh.getId()).orElseThrow();
+        Sigh deletedSigh = emotionRepository.findById(sigh.getId()).orElseThrow();
         deletedSigh.delete();
-        sighRepository.saveAndFlush(deletedSigh);
+        emotionRepository.saveAndFlush(deletedSigh);
 
         // when / then
         assertSighNotFound(Long.MAX_VALUE, device.getPublicId());
@@ -213,10 +213,10 @@ class SighServiceDetailIntegrationTest {
         }
         Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
         emotionLikeService.update(sigh.getId(), device.getPublicId(), true);
-        Sigh savedSigh = sighRepository.findById(sigh.getId()).orElseThrow();
+        Sigh savedSigh = emotionRepository.findById(sigh.getId()).orElseThrow();
         if (deleted) {
             savedSigh.delete();
-            sighRepository.saveAndFlush(savedSigh);
+            emotionRepository.saveAndFlush(savedSigh);
         }
         SighResult expectedSigh = SighResult.from(savedSigh);
 
@@ -231,7 +231,7 @@ class SighServiceDetailIntegrationTest {
         assertThat(unliked.sigh()).isEqualTo(expectedSigh);
         assertThat(liked.like()).isEqualTo(SighLikeResult.of(true, 1));
         assertThat(unliked.like()).isEqualTo(SighLikeResult.of(false, 1));
-        assertThat(sighRepository.count()).isOne();
+        assertThat(emotionRepository.count()).isOne();
     }
 
     @Test
@@ -256,7 +256,7 @@ class SighServiceDetailIntegrationTest {
         // then
         assertThat(result.created()).isTrue();
         assertThat(result.like()).isEqualTo(SighLikeResult.of(false, 0));
-        assertThat(sighRepository.findById(result.sigh().id()).orElseThrow().getLikeCount()).isZero();
+        assertThat(emotionRepository.findById(result.sigh().id()).orElseThrow().getLikeCount()).isZero();
     }
 
     private void updateCreatedAt(Instant createdAt) {

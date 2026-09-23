@@ -1,7 +1,7 @@
 package com.pheeeew.sigh.infra;
 
 import com.pheeeew.sigh.application.EmotionLocationGenerator;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.projection.GeneratedLocation;
 import java.security.SecureRandom;
 import lombok.RequiredArgsConstructor;
@@ -18,13 +18,13 @@ public class PostgisEmotionLocationGenerator implements EmotionLocationGenerator
     private static final int WGS84_SRID = 4326;
     private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory(new PrecisionModel(), WGS84_SRID);
 
-    private final SighRepository sighRepository;
+    private final EmotionRepository emotionRepository;
     private final SecureRandom random;
 
     @Override
     public Point generate(double longitude, double latitude) {
         var offset = EmotionLocationOffsetCalculator.calculate(random.nextDouble(), random.nextDouble());
-        GeneratedLocation location = sighRepository.findGeneratedLocation(
+        GeneratedLocation location = emotionRepository.findGeneratedLocation(
                 longitude, latitude, offset.eastingMeters(), offset.northingMeters()
         );
 

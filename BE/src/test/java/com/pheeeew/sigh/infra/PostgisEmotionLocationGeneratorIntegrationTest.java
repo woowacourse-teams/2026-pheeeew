@@ -6,7 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.pheeeew.sigh.application.EmotionLocationGenerator;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.security.SecureRandom;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,7 +31,7 @@ class PostgisEmotionLocationGeneratorIntegrationTest {
     private JdbcClient jdbcClient;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @ParameterizedTest
     @CsvSource({"126.9780, 37.5664", "129.0756, 35.1796", "126.5312, 33.4996"})
@@ -58,7 +58,7 @@ class PostgisEmotionLocationGeneratorIntegrationTest {
         // given
         SecureRandom random = mock(SecureRandom.class);
         when(random.nextDouble()).thenReturn(radialUniform, angularUniform);
-        EmotionLocationGenerator generator = new PostgisEmotionLocationGenerator(sighRepository, random);
+        EmotionLocationGenerator generator = new PostgisEmotionLocationGenerator(emotionRepository, random);
 
         // when
         Point location = generator.generate(SEOUL_CITY_HALL_LONGITUDE, SEOUL_CITY_HALL_LATITUDE);

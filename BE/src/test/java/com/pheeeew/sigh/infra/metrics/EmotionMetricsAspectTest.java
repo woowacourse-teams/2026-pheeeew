@@ -20,7 +20,7 @@ import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighMapResult;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
@@ -61,13 +61,13 @@ class EmotionMetricsAspectTest {
 
     private final MockClock clock = new MockClock();
     private final SimpleMeterRegistry registry = new SimpleMeterRegistry(SimpleConfig.DEFAULT, clock);
-    private final SighRepository repository = mock(SighRepository.class);
+    private final EmotionRepository repository = mock(EmotionRepository.class);
     private final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
     private SighService service;
 
     @BeforeEach
     void setUp() {
-        context.registerBean(SighRepository.class, () -> repository);
+        context.registerBean(EmotionRepository.class, () -> repository);
         context.registerBean(DeviceRepository.class, () -> mock(DeviceRepository.class));
         context.registerBean(EmotionLocationGenerator.class, () -> mock(EmotionLocationGenerator.class));
         context.registerBean(EmotionNicknameGenerator.class, () -> mock(EmotionNicknameGenerator.class));
@@ -161,7 +161,7 @@ class EmotionMetricsAspectTest {
                 .thenReturn(Optional.of(device));
 
         // when / then
-        context.getBean(SighRepository.class).count();
+        context.getBean(EmotionRepository.class).count();
         assertThatThrownBy(() -> service.findById(1L, device.getPublicId()))
                 .isInstanceOf(SighException.class);
         verify(repository).findById(1L, device.getId());
@@ -183,7 +183,7 @@ class EmotionMetricsAspectTest {
                 });
 
         // when
-        List<EmotionListProjection> result = context.getBean(SighRepository.class).findListWithinBounds(
+        List<EmotionListProjection> result = context.getBean(EmotionRepository.class).findListWithinBounds(
                 BOUNDS, PERIOD, SNAPSHOT_AT, Long.MAX_VALUE, 1L, 500, 21, 1L
         );
         clock.add(Duration.ofMillis(50));
@@ -212,7 +212,7 @@ class EmotionMetricsAspectTest {
                 });
 
         // when / then
-        assertThatThrownBy(() -> context.getBean(SighRepository.class).findListWithinBounds(
+        assertThatThrownBy(() -> context.getBean(EmotionRepository.class).findListWithinBounds(
                 BOUNDS, PERIOD, SNAPSHOT_AT, Long.MAX_VALUE, 1L, 500, 21, 1L
         )).isSameAs(failure);
         Timer query = registry.get("pheeeew.sigh.list.query").timer();

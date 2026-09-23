@@ -17,7 +17,7 @@ public class EmotionMetricsAspect {
 
     private final EmotionMetrics metrics;
 
-    @Around("execution(* com.pheeeew.sigh.domain.repository.SighRepository.findAllWithinBounds(..))")
+    @Around("execution(* com.pheeeew.sigh.domain.repository.EmotionRepository.findAllWithinBounds(..))")
     public Object recordMapQuery(ProceedingJoinPoint joinPoint) throws Throwable {
         Timer.Sample sample = metrics.startQuery();
         try {
@@ -27,7 +27,7 @@ public class EmotionMetricsAspect {
         }
     }
 
-    @Around("execution(* com.pheeeew.sigh.domain.repository.SighRepository.findListWithinBounds(..))")
+    @Around("execution(* com.pheeeew.sigh.domain.repository.EmotionRepository.findListWithinBounds(..))")
     public Object recordListQuery(ProceedingJoinPoint joinPoint) throws Throwable {
         Timer.Sample sample = metrics.startQuery();
         try {

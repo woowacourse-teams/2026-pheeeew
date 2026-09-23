@@ -10,7 +10,7 @@ import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.SighLike;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.exception.SighException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class EmotionLikeService {
 
     private final EmotionLikeRepository emotionLikeRepository;
-    private final SighRepository emotionRepository;
+    private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
 
     @Transactional

@@ -17,7 +17,7 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -54,7 +54,7 @@ class EmotionLikeRetryServiceIntegrationTest {
     private EmotionLikeRepository emotionLikeRepository;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @Autowired
     private DeviceRepository deviceRepository;
@@ -71,13 +71,13 @@ class EmotionLikeRetryServiceIntegrationTest {
     @BeforeEach
     void setUp() {
         device = deviceRepository.save(기본_기기_빌더().build());
-        sigh = sighRepository.save(기본_한숨_빌더().build());
+        sigh = emotionRepository.save(기본_한숨_빌더().build());
     }
 
     @AfterEach
     void tearDown() {
         emotionLikeRepository.deleteAllInBatch();
-        sighRepository.deleteAllInBatch();
+        emotionRepository.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
     }
 
@@ -142,7 +142,7 @@ class EmotionLikeRetryServiceIntegrationTest {
 
     private void saveLike() {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            sighRepository.findById(sigh.getId()).orElseThrow().increaseLikeCount();
+            emotionRepository.findById(sigh.getId()).orElseThrow().increaseLikeCount();
             emotionLikeRepository.save(기본_좋아요_빌더()
                     .sighId(sigh.getId())
                     .deviceId(device.getId())
@@ -155,7 +155,7 @@ class EmotionLikeRetryServiceIntegrationTest {
         doAnswer(invocation -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
             if (attempts.incrementAndGet() <= conflictCount) {
-                sighRepository.findById(sigh.getId()).orElseThrow();
+                emotionRepository.findById(sigh.getId()).orElseThrow();
                 TransactionTemplate anotherTransaction = new TransactionTemplate(transactionManager);
                 anotherTransaction.setPropagationBehavior(Propagation.REQUIRES_NEW.value());
                 anotherTransaction.executeWithoutResult(status -> {
@@ -178,6 +178,6 @@ class EmotionLikeRetryServiceIntegrationTest {
                 .single();
 
         assertThat(likeRowCount).isEqualTo(expected);
-        assertThat(sighRepository.findById(sigh.getId()).orElseThrow().getLikeCount()).isEqualTo(expected);
+        assertThat(emotionRepository.findById(sigh.getId()).orElseThrow().getLikeCount()).isEqualTo(expected);
     }
 }

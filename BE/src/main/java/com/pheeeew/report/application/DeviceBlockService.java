@@ -17,7 +17,7 @@ import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.domain.repository.projection.BlockProjection;
 import com.pheeeew.report.exception.BlockException;
 import com.pheeeew.sigh.domain.Sigh;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.exception.SighException;
 import java.util.List;
 import java.util.Optional;
@@ -34,7 +34,7 @@ public class DeviceBlockService {
     private static final int PAGE_SIZE = 50;
 
     private final DeviceBlockRepository deviceBlockRepository;
-    private final SighRepository emotionRepository;
+    private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
 
     public BlockSaveResult save(Long emotionId, UUID devicePublicId) {

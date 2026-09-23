@@ -15,7 +15,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface SighRepository extends JpaRepository<Sigh, Long> {
+public interface EmotionRepository extends JpaRepository<Sigh, Long> {
 
     /**
      * 삭제 여부로 거르지 않는다.

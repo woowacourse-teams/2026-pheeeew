@@ -22,7 +22,7 @@ import com.pheeeew.device.domain.repository.DeviceChallengeRepository;
 import com.pheeeew.device.domain.repository.DeviceRefreshTokenRepository;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.support.SharedPostgisTestConfiguration;
 import java.util.List;
 import java.util.Map;
@@ -87,7 +87,7 @@ class SecurityAuthorizationIntegrationTest {
     private DeviceChallengeRepository deviceChallengeRepository;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @Autowired
     private EmotionReportRepository emotionReportRepository;
@@ -113,7 +113,7 @@ class SecurityAuthorizationIntegrationTest {
         jdbcClient.sql("DELETE FROM sigh_blocks").update();
         jdbcClient.sql("DELETE FROM device_blocks").update();
         emotionReportRepository.deleteAll();
-        sighRepository.deleteAll();
+        emotionRepository.deleteAll();
         deviceRefreshTokenRepository.deleteAll();
         deviceRepository.deleteAll();
         deviceChallengeRepository.deleteAll();
@@ -174,7 +174,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         인증_필요를_검증한다(result);
-        assertThat(sighRepository.count()).isZero();
+        assertThat(emotionRepository.count()).isZero();
     }
 
     @Test
@@ -252,7 +252,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         인증_필요를_검증한다(result);
-        assertThat(sighRepository.count()).isZero();
+        assertThat(emotionRepository.count()).isZero();
     }
 
     @ParameterizedTest
@@ -268,7 +268,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isUnauthorized();
-        assertThat(sighRepository.count()).isZero();
+        assertThat(emotionRepository.count()).isZero();
     }
 
     @Test
@@ -298,7 +298,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         retried.expectStatus().isOk();
-        assertThat(sighRepository.count()).isOne();
+        assertThat(emotionRepository.count()).isOne();
     }
 
     @Test
@@ -320,7 +320,7 @@ class SecurityAuthorizationIntegrationTest {
                 .json("""
                         {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
                         """, JsonCompareMode.STRICT);
-        assertThat(sighRepository.count()).isZero();
+        assertThat(emotionRepository.count()).isZero();
     }
 
     @ParameterizedTest
@@ -339,7 +339,7 @@ class SecurityAuthorizationIntegrationTest {
                     .expectStatus().isCreated();
         }
         String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
-        long originalCount = sighRepository.count();
+        long originalCount = emotionRepository.count();
 
         // when
         RestTestClient.ResponseSpec result = client.post()
@@ -355,7 +355,7 @@ class SecurityAuthorizationIntegrationTest {
                 .json("""
                         {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
                         """, JsonCompareMode.STRICT);
-        assertThat(sighRepository.count()).isEqualTo(originalCount);
+        assertThat(emotionRepository.count()).isEqualTo(originalCount);
     }
 
     @Test
@@ -467,7 +467,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isCreated();
-        assertThat(sighRepository.count()).isOne();
+        assertThat(emotionRepository.count()).isOne();
         assertThat(작성자_기기_식별자()).isNull();
     }
 
