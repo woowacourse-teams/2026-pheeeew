@@ -2,16 +2,16 @@ package com.pheeeew
 
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
-import com.pheeeew.core.monitoring.IosMonitoring
-import com.pheeeew.core.network.ApiConfig
-import com.pheeeew.core.network.IosConnectivityObserver
-import com.pheeeew.data.local.device.InMemoryAccessTokenStore
-import com.pheeeew.data.local.device.IosDeviceIdStorage
-import com.pheeeew.data.remote.version.createAppVersionApi
-import com.pheeeew.di.SighModule
-import com.pheeeew.di.createIosDeviceRegistrationDependencies
-import com.pheeeew.di.createIosLocationDependencies
-import com.pheeeew.feature.map.guide.resolveFirstSighGuideCompleted
+import com.pheeeew.legacy.core.monitoring.IosMonitoring
+import com.pheeeew.legacy.core.network.ApiConfig
+import com.pheeeew.legacy.core.network.IosConnectivityObserver
+import com.pheeeew.legacy.data.local.device.InMemoryAccessTokenStore
+import com.pheeeew.legacy.data.local.device.IosDeviceIdStorage
+import com.pheeeew.legacy.data.remote.version.createAppVersionApi
+import com.pheeeew.legacy.di.SighModule
+import com.pheeeew.legacy.di.createIosDeviceRegistrationDependencies
+import com.pheeeew.legacy.di.createIosLocationDependencies
+import com.pheeeew.legacy.feature.map.guide.resolveFirstSighGuideCompleted
 import platform.Foundation.NSBundle
 import platform.Foundation.NSUserDefaults
 

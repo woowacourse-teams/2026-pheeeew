@@ -8,19 +8,18 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.pheeeew.core.network.ApiConfig
-import com.pheeeew.data.local.device.AndroidDeviceIdStorage
-import com.pheeeew.data.local.device.InMemoryAccessTokenStore
-import com.pheeeew.data.remote.version.createAppVersionApi
-import com.pheeeew.di.LocationDependencies
-import com.pheeeew.di.SighModule
-import com.pheeeew.di.createAndroidDeviceRegistrationDependencies
-import com.pheeeew.di.createAndroidDeviceRegistrationWithPlayIntegrityDependencies
-import com.pheeeew.di.createAndroidLocationDependencies
-import com.pheeeew.feature.map.guide.resolveFirstSighGuideCompleted
+import com.pheeeew.legacy.core.network.ApiConfig
+import com.pheeeew.legacy.data.local.device.AndroidDeviceIdStorage
+import com.pheeeew.legacy.data.local.device.InMemoryAccessTokenStore
+import com.pheeeew.legacy.data.remote.version.createAppVersionApi
+import com.pheeeew.legacy.di.LocationDependencies
+import com.pheeeew.legacy.di.SighModule
+import com.pheeeew.legacy.di.createAndroidDeviceRegistrationDependencies
+import com.pheeeew.legacy.di.createAndroidDeviceRegistrationWithPlayIntegrityDependencies
+import com.pheeeew.legacy.di.createAndroidLocationDependencies
+import com.pheeeew.legacy.feature.map.guide.resolveFirstSighGuideCompleted
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -121,7 +120,10 @@ private fun resolveFirstSighGuidePreferences(preferences: SharedPreferences): Fi
             null
         }
     val hasCompletedFirstSighGuide =
-        resolveFirstSighGuideCompleted(hasCompletedOnboarding, storedGuideCompletion)
+        com.pheeeew.legacy.feature.map.guide.resolveFirstSighGuideCompleted(
+            hasCompletedOnboarding,
+            storedGuideCompletion
+        )
     if (storedGuideCompletion == null && hasCompletedOnboarding) {
         preferences.edit().putBoolean(KEY_FIRST_SIGH_GUIDE_COMPLETED, true).apply()
     }

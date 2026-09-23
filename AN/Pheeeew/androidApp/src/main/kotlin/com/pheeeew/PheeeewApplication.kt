@@ -5,10 +5,10 @@ import android.os.Build
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
-import com.pheeeew.core.monitoring.Monitoring
-import com.pheeeew.core.monitoring.MonitoringConfig
-import com.pheeeew.core.monitoring.MonitoringTicker
-import com.pheeeew.core.monitoring.createAndroidMonitoring
+import com.pheeeew.legacy.core.monitoring.Monitoring
+import com.pheeeew.legacy.core.monitoring.MonitoringConfig
+import com.pheeeew.legacy.core.monitoring.MonitoringTicker
+import com.pheeeew.legacy.core.monitoring.createAndroidMonitoring
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob

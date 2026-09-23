@@ -19,33 +19,33 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.pheeeew.core.designsystem.component.AppDialog
-import com.pheeeew.core.designsystem.component.ConfirmDialog
-import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.core.monitoring.Monitoring
-import com.pheeeew.core.navigation.DoubleBackToExitHandler
-import com.pheeeew.core.navigation.PredictiveBackContent
-import com.pheeeew.core.navigation.Screen
-import com.pheeeew.core.network.ConnectivityObserver
-import com.pheeeew.data.remote.version.AppVersionApi
-import com.pheeeew.data.remote.version.toPolicy
-import com.pheeeew.di.LocationDependencies
-import com.pheeeew.domain.model.version.AppVersionDecision
-import com.pheeeew.domain.model.version.evaluateAppVersion
-import com.pheeeew.domain.repository.SighRepository
-import com.pheeeew.domain.usecase.BlockUserUseCase
-import com.pheeeew.domain.usecase.CreateSighUseCase
-import com.pheeeew.domain.usecase.EnsureDeviceRegisteredUseCase
-import com.pheeeew.domain.usecase.ReportSighUseCase
-import com.pheeeew.feature.map.MapPerformanceLogger
-import com.pheeeew.feature.map.MapRoute
-import com.pheeeew.feature.map.MapViewModel
-import com.pheeeew.feature.map.sighlist.SighModerationViewModel
-import com.pheeeew.feature.onboarding.OnboardingScreen
-import com.pheeeew.feature.setting.SettingsScreen
-import com.pheeeew.feature.setting.legal.LegalDocument
-import com.pheeeew.feature.setting.legal.LegalDocumentRoute
-import com.pheeeew.feature.splash.SplashScreen
+import com.pheeeew.legacy.core.designsystem.component.AppDialog
+import com.pheeeew.legacy.core.designsystem.component.ConfirmDialog
+import com.pheeeew.legacy.core.designsystem.theme.AppTheme
+import com.pheeeew.legacy.core.monitoring.Monitoring
+import com.pheeeew.legacy.core.navigation.DoubleBackToExitHandler
+import com.pheeeew.legacy.core.navigation.PredictiveBackContent
+import com.pheeeew.legacy.core.navigation.Screen
+import com.pheeeew.legacy.core.network.ConnectivityObserver
+import com.pheeeew.legacy.data.remote.version.AppVersionApi
+import com.pheeeew.legacy.data.remote.version.toPolicy
+import com.pheeeew.legacy.di.LocationDependencies
+import com.pheeeew.legacy.domain.model.version.AppVersionDecision
+import com.pheeeew.legacy.domain.model.version.evaluateAppVersion
+import com.pheeeew.legacy.domain.repository.SighRepository
+import com.pheeeew.legacy.domain.usecase.BlockUserUseCase
+import com.pheeeew.legacy.domain.usecase.CreateSighUseCase
+import com.pheeeew.legacy.domain.usecase.EnsureDeviceRegisteredUseCase
+import com.pheeeew.legacy.domain.usecase.ReportSighUseCase
+import com.pheeeew.legacy.feature.map.MapPerformanceLogger
+import com.pheeeew.legacy.feature.map.MapRoute
+import com.pheeeew.legacy.feature.map.MapViewModel
+import com.pheeeew.legacy.feature.map.sighlist.SighModerationViewModel
+import com.pheeeew.legacy.feature.onboarding.OnboardingScreen
+import com.pheeeew.legacy.feature.setting.SettingsScreen
+import com.pheeeew.legacy.feature.setting.legal.LegalDocument
+import com.pheeeew.legacy.feature.setting.legal.LegalDocumentRoute
+import com.pheeeew.legacy.feature.splash.SplashScreen
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -63,12 +63,12 @@ fun App(
     onOnboardingCompleted: () -> Unit,
     onFirstSighGuideCompleted: () -> Unit,
     locationDependencies: LocationDependencies?,
-    sighRepository: SighRepository,
-    createSigh: CreateSighUseCase,
-    blockUser: BlockUserUseCase,
-    reportSigh: ReportSighUseCase,
+    sighRepository: com.pheeeew.legacy.domain.repository.SighRepository,
+    createSigh: com.pheeeew.legacy.domain.usecase.CreateSighUseCase,
+    blockUser: com.pheeeew.legacy.domain.usecase.BlockUserUseCase,
+    reportSigh: com.pheeeew.legacy.domain.usecase.ReportSighUseCase,
     mapPerformanceLogger: MapPerformanceLogger,
-    ensureDeviceRegistered: EnsureDeviceRegisteredUseCase? = null,
+    ensureDeviceRegistered: com.pheeeew.legacy.domain.usecase.EnsureDeviceRegisteredUseCase? = null,
     monitoring: Monitoring? = null,
 ) {
     AppTheme {
