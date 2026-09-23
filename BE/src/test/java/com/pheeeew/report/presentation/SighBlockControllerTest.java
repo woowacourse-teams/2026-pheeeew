@@ -15,7 +15,7 @@ import com.pheeeew.report.application.dto.BlockResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.exception.BlockErrorCode;
 import com.pheeeew.report.exception.BlockException;
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import java.time.Instant;
@@ -254,7 +254,7 @@ class SighBlockControllerTest {
     }
 
     private BlockResult 기본_차단_결과() {
-        Sigh sigh = 기본_한숨_빌더()
+        Emotion sigh = 기본_한숨_빌더()
                 .nickname("날아가는 고라니")
                 .memo("오늘은 조금 지쳤다")
                 .build();

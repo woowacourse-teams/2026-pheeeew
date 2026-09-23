@@ -13,7 +13,7 @@ public interface EmotionReportRepository extends JpaRepository<EmotionReport, Lo
 
     @Modifying
     @Query("""
-            UPDATE Sigh emotion
+            UPDATE Emotion emotion
                SET emotion.deletedAt = :now
              WHERE emotion.deletedAt IS NULL
                AND emotion.id IN (

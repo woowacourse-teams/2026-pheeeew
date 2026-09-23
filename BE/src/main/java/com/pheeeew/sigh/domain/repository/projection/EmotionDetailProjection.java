@@ -1,10 +1,10 @@
 package com.pheeeew.sigh.domain.repository.projection;
 
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 
 public interface EmotionDetailProjection {
 
-    Sigh getEmotion();
+    Emotion getEmotion();
 
     boolean getLiked();
 }

@@ -17,7 +17,7 @@ import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.projection.EmotionDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
@@ -136,7 +136,7 @@ public class SighService {
 
     private SighSaveResult saveNewEmotion(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
         Point location = emotionLocationGenerator.generate(longitude, latitude);
-        Sigh emotion = Sigh.builder()
+        Emotion emotion = Emotion.builder()
                 .requestId(requestId)
                 .location(location)
                 .memo(memo)
@@ -145,7 +145,7 @@ public class SighService {
                 .build();
 
         try {
-            Sigh savedEmotion = emotionRepository.saveAndFlush(emotion);
+            Emotion savedEmotion = emotionRepository.saveAndFlush(emotion);
             return SighSaveResult.of(SighResult.from(savedEmotion), true, SighLikeResult.of(false, 0));
         } catch (DataIntegrityViolationException cause) {
             return findExistingEmotion(requestId, deviceId, cause);

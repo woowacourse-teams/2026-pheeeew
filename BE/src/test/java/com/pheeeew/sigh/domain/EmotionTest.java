@@ -11,12 +11,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class SighTest {
+class EmotionTest {
 
     @Test
     void 좋아요_수를_한_개씩_증가시킨다() {
         // given
-        Sigh sigh = 기본_한숨_빌더().build();
+        Emotion sigh = 기본_한숨_빌더().build();
 
         // when
         sigh.increaseLikeCount();
@@ -29,7 +29,7 @@ class SighTest {
     @Test
     void 좋아요_수를_한_개_감소시킨다() {
         // given
-        Sigh sigh = 기본_한숨_빌더().build();
+        Emotion sigh = 기본_한숨_빌더().build();
         sigh.increaseLikeCount();
         sigh.increaseLikeCount();
 
@@ -43,7 +43,7 @@ class SighTest {
     @Test
     void 좋아요_수가_0이면_감소시킬_수_없다() {
         // given
-        Sigh sigh = 기본_한숨_빌더().build();
+        Emotion sigh = 기본_한숨_빌더().build();
 
         // when
         Throwable throwable = catchThrowable(sigh::decreaseLikeCount);
@@ -56,7 +56,7 @@ class SighTest {
     @Test
     void 삭제하면_삭제_시각이_기록된다() {
         // given
-        Sigh sigh = 기본_한숨_빌더().build();
+        Emotion sigh = 기본_한숨_빌더().build();
 
         // when
         sigh.delete();
@@ -68,7 +68,7 @@ class SighTest {
     @Test
     void 이미_삭제한_한숨을_다시_삭제해도_최초_삭제_시각을_유지한다() {
         // given
-        Sigh sigh = 기본_한숨_빌더().build();
+        Emotion sigh = 기본_한숨_빌더().build();
         sigh.delete();
         Instant 최초_삭제_시각 = sigh.getDeletedAt();
 
@@ -85,7 +85,7 @@ class SighTest {
         String memo = "  오늘은 힘들었다  ";
 
         // when
-        Sigh sigh = 기본_한숨_빌더()
+        Emotion sigh = 기본_한숨_빌더()
                 .memo(memo)
                 .build();
 
@@ -100,7 +100,7 @@ class SighTest {
         String requestedMemo = memo;
 
         // when
-        Sigh sigh = 기본_한숨_빌더()
+        Emotion sigh = 기본_한숨_빌더()
                 .memo(requestedMemo)
                 .build();
 

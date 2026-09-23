@@ -12,7 +12,7 @@ import com.pheeeew.report.domain.EmotionReport;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Instant;
@@ -196,7 +196,7 @@ class SighReportAutoDeleteIntegrationTest {
     }
 
     private Long 작성자가_쓴_한숨을_저장한다(Long deviceId) {
-        Sigh sigh = emotionRepository.saveAndFlush(
+        Emotion sigh = emotionRepository.saveAndFlush(
                 기기가_있는_한숨_빌더(deviceId).requestId(UUID.randomUUID()).build()
         );
 
@@ -204,7 +204,7 @@ class SighReportAutoDeleteIntegrationTest {
     }
 
     private Long 한숨을_저장한다() {
-        Sigh sigh = emotionRepository.saveAndFlush(기본_한숨_빌더().requestId(UUID.randomUUID()).build());
+        Emotion sigh = emotionRepository.saveAndFlush(기본_한숨_빌더().requestId(UUID.randomUUID()).build());
 
         return sigh.getId();
     }

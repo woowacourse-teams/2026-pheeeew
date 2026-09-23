@@ -21,7 +21,7 @@ import org.locationtech.jts.geom.Point;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "sighs")
 @Entity
-public class Sigh extends BaseEntity {
+public class Emotion extends BaseEntity {
 
     private static final int WGS84_SRID = 4326;
     private static final int MAX_MEMO_LENGTH = 50;
@@ -58,7 +58,7 @@ public class Sigh extends BaseEntity {
     private Long version;
 
     @Builder
-    private Sigh(UUID requestId, Point location, String memo, String nickname, Long deviceId) {
+    private Emotion(UUID requestId, Point location, String memo, String nickname, Long deviceId) {
         this.requestId = Objects.requireNonNull(requestId);
         this.location = requireWgs84Point(location);
         this.memo = normalizeMemo(memo);

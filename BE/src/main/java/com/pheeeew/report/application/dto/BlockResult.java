@@ -3,7 +3,7 @@ package com.pheeeew.report.application.dto;
 import com.pheeeew.report.domain.DeviceBlock;
 import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.report.domain.repository.projection.BlockProjection;
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import java.time.Instant;
 
 public record BlockResult(Long blockId, Long emotionId, String nickname, String memo, Instant createdAt) {
@@ -18,7 +18,7 @@ public record BlockResult(Long blockId, Long emotionId, String nickname, String 
         );
     }
 
-    public static BlockResult of(EmotionBlock block, Sigh emotion) {
+    public static BlockResult of(EmotionBlock block, Emotion emotion) {
         return new BlockResult(
                 block.getId(),
                 block.getEmotionId(),
@@ -28,7 +28,7 @@ public record BlockResult(Long blockId, Long emotionId, String nickname, String 
         );
     }
 
-    public static BlockResult of(DeviceBlock block, Sigh originEmotion) {
+    public static BlockResult of(DeviceBlock block, Emotion originEmotion) {
         return new BlockResult(
                 block.getId(),
                 block.getOriginEmotionId(),

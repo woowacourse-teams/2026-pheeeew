@@ -11,7 +11,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.EmotionLike;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
@@ -57,7 +57,7 @@ class EmotionLikeServiceIntegrationTest {
     private JdbcClient jdbcClient;
 
     private Device device;
-    private Sigh sigh;
+    private Emotion sigh;
 
     @BeforeEach
     void setUp() {
@@ -102,7 +102,7 @@ class EmotionLikeServiceIntegrationTest {
     void 좋아요를_취소해도_다른_기기나_다른_한숨의_좋아요는_유지한다() {
         // given
         Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
-        Sigh anotherSigh = emotionRepository.save(기본_한숨_빌더().build());
+        Emotion anotherSigh = emotionRepository.save(기본_한숨_빌더().build());
         saveLike(sigh.getId(), device.getId());
         EmotionLike anotherDeviceLike = saveLike(sigh.getId(), anotherDevice.getId());
         EmotionLike anotherSighLike = saveLike(anotherSigh.getId(), device.getId());
@@ -132,7 +132,7 @@ class EmotionLikeServiceIntegrationTest {
         assertThatThrownBy(() -> emotionLikeService.update(Long.MAX_VALUE, device.getPublicId(), liked))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
-        Sigh latestSigh = emotionRepository.findById(sigh.getId()).orElseThrow();
+        Emotion latestSigh = emotionRepository.findById(sigh.getId()).orElseThrow();
         latestSigh.delete();
         emotionRepository.saveAndFlush(latestSigh);
         assertThatThrownBy(() -> emotionLikeService.update(sigh.getId(), device.getPublicId(), liked))

@@ -7,7 +7,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.EmotionLike;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
@@ -31,7 +31,7 @@ public class EmotionLikeService {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
-        Sigh emotion = emotionRepository.findByIdAndDeletedAtIsNull(emotionId)
+        Emotion emotion = emotionRepository.findByIdAndDeletedAtIsNull(emotionId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
         EmotionLike like = emotionLikeRepository.findByEmotionIdAndDeviceId(emotionId, deviceId).orElse(null);
 

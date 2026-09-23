@@ -1,6 +1,6 @@
 package com.pheeeew.sigh.fixture;
 
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import java.time.Instant;
 import java.util.UUID;
 import org.locationtech.jts.geom.Coordinate;
@@ -18,14 +18,14 @@ public final class SighFixture {
     private SighFixture() {
     }
 
-    public static Sigh.SighBuilder 기본_한숨_빌더() {
-        return Sigh.builder()
+    public static Emotion.EmotionBuilder 기본_한숨_빌더() {
+        return Emotion.builder()
                 .requestId(UUID.randomUUID())
                 .location(서울시청_좌표())
                 .nickname("외로운 회사원");
     }
 
-    public static Sigh.SighBuilder 기기가_있는_한숨_빌더(Long deviceId) {
+    public static Emotion.EmotionBuilder 기기가_있는_한숨_빌더(Long deviceId) {
         return 기본_한숨_빌더().deviceId(deviceId);
     }
 
@@ -39,8 +39,8 @@ public final class SighFixture {
         return point;
     }
 
-    public static Sigh 저장된_기본_한숨(Long id, Instant createdAt) {
-        Sigh sigh = 기본_한숨_빌더().build();
+    public static Emotion 저장된_기본_한숨(Long id, Instant createdAt) {
+        Emotion sigh = 기본_한숨_빌더().build();
         ReflectionTestUtils.setField(sigh, "id", id);
         ReflectionTestUtils.setField(sigh, "createdAt", createdAt);
         return sigh;

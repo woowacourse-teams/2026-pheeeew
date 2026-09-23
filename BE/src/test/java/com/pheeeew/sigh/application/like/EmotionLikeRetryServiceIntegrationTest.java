@@ -15,7 +15,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -66,7 +66,7 @@ class EmotionLikeRetryServiceIntegrationTest {
     private JdbcClient jdbcClient;
 
     private Device device;
-    private Sigh sigh;
+    private Emotion sigh;
 
     @BeforeEach
     void setUp() {

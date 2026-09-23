@@ -1,6 +1,6 @@
 package com.pheeeew.sigh.application.dto;
 
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import java.time.Instant;
 
 public record SighResult(
@@ -12,7 +12,7 @@ public record SighResult(
         String nickname
 ) {
 
-    public static SighResult from(Sigh sigh) {
+    public static SighResult from(Emotion sigh) {
         return new SighResult(
                 sigh.getId(),
                 sigh.getLongitude(),

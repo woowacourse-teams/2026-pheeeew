@@ -1,6 +1,6 @@
 package com.pheeeew.sigh.domain.repository;
 
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.projection.GeneratedLocation;
 import com.pheeeew.sigh.domain.repository.projection.EmotionDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
@@ -15,7 +15,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface EmotionRepository extends JpaRepository<Sigh, Long> {
+public interface EmotionRepository extends JpaRepository<Emotion, Long> {
 
     /**
      * 삭제 여부로 거르지 않는다.
@@ -26,7 +26,7 @@ public interface EmotionRepository extends JpaRepository<Sigh, Long> {
      */
     @Query("""
             SELECT s AS emotion, CASE WHEN emotionLike.id IS NOT NULL THEN true ELSE false END AS liked
-            FROM Sigh s
+            FROM Emotion s
             LEFT JOIN EmotionLike emotionLike ON emotionLike.emotionId = s.id AND emotionLike.deviceId = :deviceId
             WHERE s.requestId = :requestId
             """)
@@ -35,11 +35,11 @@ public interface EmotionRepository extends JpaRepository<Sigh, Long> {
             @Param("deviceId") Long deviceId
     );
 
-    Optional<Sigh> findByIdAndDeletedAtIsNull(Long id);
+    Optional<Emotion> findByIdAndDeletedAtIsNull(Long id);
 
     @Query("""
             SELECT s AS emotion, CASE WHEN emotionLike.id IS NOT NULL THEN true ELSE false END AS liked
-            FROM Sigh s
+            FROM Emotion s
             LEFT JOIN EmotionLike emotionLike ON emotionLike.emotionId = s.id AND emotionLike.deviceId = :deviceId
             WHERE s.id = :id AND s.deletedAt IS NULL
             """)

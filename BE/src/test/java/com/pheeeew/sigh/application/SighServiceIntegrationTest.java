@@ -19,7 +19,7 @@ import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
@@ -138,7 +138,7 @@ class SighServiceIntegrationTest {
         assertThat(result.sigh().createdAt()).isNotNull();
         assertThat(result.sigh().createdAt().getNano() % 1_000).isZero();
 
-        Sigh saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
+        Emotion saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
         assertThat(saved.getCreatedAt()).isEqualTo(result.sigh().createdAt());
         assertThat(saved.getUpdatedAt()).isNotNull();
         assertThat(saved.getMemo()).isNull();
@@ -157,8 +157,8 @@ class SighServiceIntegrationTest {
                 SEOUL_CITY_HALL_LATITUDE
         );
         Long sighId = created.sigh().id();
-        Sigh first = emotionRepository.findById(sighId).orElseThrow();
-        Sigh second = emotionRepository.findById(sighId).orElseThrow();
+        Emotion first = emotionRepository.findById(sighId).orElseThrow();
+        Emotion second = emotionRepository.findById(sighId).orElseThrow();
         first.increaseLikeCount();
         emotionRepository.saveAndFlush(first);
 
@@ -186,7 +186,7 @@ class SighServiceIntegrationTest {
         );
 
         // then
-        Sigh saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
+        Emotion saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
         assertThat(result.created()).isTrue();
         assertThat(result.sigh().memo()).isEqualTo("오늘은 힘들었다");
         assertThat(result.sigh().nickname()).isEqualTo(saved.getNickname());
@@ -209,7 +209,7 @@ class SighServiceIntegrationTest {
         );
 
         // then
-        Sigh saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
+        Emotion saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
         assertThat(result.created()).isTrue();
         assertThat(saved.getDeviceId()).isEqualTo(device.getId());
     }
@@ -227,7 +227,7 @@ class SighServiceIntegrationTest {
         );
 
         // then
-        Sigh saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
+        Emotion saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
         assertThat(saved.getDeviceId()).isNull();
     }
 
@@ -255,7 +255,7 @@ class SighServiceIntegrationTest {
         );
 
         // then
-        Sigh saved = emotionRepository.findById(first.sigh().id()).orElseThrow();
+        Emotion saved = emotionRepository.findById(first.sigh().id()).orElseThrow();
         assertThat(retried.created()).isFalse();
         assertThat(retried.sigh().id()).isEqualTo(first.sigh().id());
         assertThat(saved.getDeviceId()).isEqualTo(최초_기기.getId());

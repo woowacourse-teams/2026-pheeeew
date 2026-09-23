@@ -14,7 +14,7 @@ import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.report.domain.repository.projection.BlockProjection;
 import com.pheeeew.report.exception.BlockException;
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.exception.SighException;
 import java.util.List;
@@ -36,7 +36,7 @@ public class EmotionBlockService {
     private final DeviceRepository deviceRepository;
 
     public BlockSaveResult save(Long emotionId, UUID devicePublicId) {
-        Sigh emotion = findEmotion(emotionId);
+        Emotion emotion = findEmotion(emotionId);
         Long blockerDeviceId = findBlockerDeviceId(devicePublicId);
 
         Optional<EmotionBlock> existingBlock = emotionBlockRepository.findByBlockerDeviceIdAndEmotionId(blockerDeviceId, emotionId);
@@ -77,7 +77,7 @@ public class EmotionBlockService {
         return BlockListResult.of(items, hasNext, nextCursor);
     }
 
-    private Sigh findEmotion(Long emotionId) {
+    private Emotion findEmotion(Long emotionId) {
         return emotionRepository.findById(emotionId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
     }
@@ -88,7 +88,7 @@ public class EmotionBlockService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
     }
 
-    private BlockSaveResult saveNewBlock(Long blockerDeviceId, Sigh emotion) {
+    private BlockSaveResult saveNewBlock(Long blockerDeviceId, Emotion emotion) {
         EmotionBlock block = EmotionBlock.builder()
                 .blockerDeviceId(blockerDeviceId)
                 .emotionId(emotion.getId())
@@ -101,7 +101,7 @@ public class EmotionBlockService {
         }
     }
 
-    private BlockSaveResult findExistingBlock(Long blockerDeviceId, Sigh emotion, DataIntegrityViolationException cause) {
+    private BlockSaveResult findExistingBlock(Long blockerDeviceId, Emotion emotion, DataIntegrityViolationException cause) {
         return emotionBlockRepository.findByBlockerDeviceIdAndEmotionId(blockerDeviceId, emotion.getId())
                 .map(block -> BlockSaveResult.of(BlockResult.of(block, emotion), false))
                 .orElseThrow(() -> new BlockException(BLOCK_SAVE_FAILED, cause));

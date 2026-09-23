@@ -12,7 +12,7 @@ import com.pheeeew.report.application.dto.EmotionReportResult;
 import com.pheeeew.report.domain.EmotionReport;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportException;
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.exception.SighException;
 import java.time.Instant;
@@ -46,7 +46,7 @@ public class EmotionReportService {
     }
 
     public EmotionReportResult save(Long emotionId, UUID devicePublicId, String reason) {
-        Sigh emotion = findEmotion(emotionId);
+        Emotion emotion = findEmotion(emotionId);
         Long reporterDeviceId = findReporterDeviceId(devicePublicId);
         validateNotSelf(emotion, reporterDeviceId);
 
@@ -59,12 +59,12 @@ public class EmotionReportService {
         return saveNewReport(emotionId, reporterDeviceId, reason);
     }
 
-    private Sigh findEmotion(Long emotionId) {
+    private Emotion findEmotion(Long emotionId) {
         return emotionRepository.findById(emotionId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
     }
 
-    private void validateNotSelf(Sigh emotion, Long reporterDeviceId) {
+    private void validateNotSelf(Emotion emotion, Long reporterDeviceId) {
         if (reporterDeviceId.equals(emotion.getDeviceId())) {
             throw new EmotionReportException(EMOTION_REPORT_SELF_NOT_ALLOWED);
         }
