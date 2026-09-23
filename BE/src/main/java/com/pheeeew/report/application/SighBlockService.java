@@ -31,34 +31,34 @@ public class SighBlockService {
 
     private static final int PAGE_SIZE = 50;
 
-    private final SighBlockRepository sighBlockRepository;
-    private final SighRepository sighRepository;
+    private final SighBlockRepository emotionBlockRepository;
+    private final SighRepository emotionRepository;
     private final DeviceRepository deviceRepository;
 
-    public BlockSaveResult save(Long sighId, UUID devicePublicId) {
-        Sigh sigh = findSigh(sighId);
+    public BlockSaveResult save(Long emotionId, UUID devicePublicId) {
+        Sigh emotion = findEmotion(emotionId);
         Long blockerDeviceId = findBlockerDeviceId(devicePublicId);
 
-        Optional<SighBlock> existingBlock = sighBlockRepository.findByBlockerDeviceIdAndSighId(blockerDeviceId, sighId);
+        Optional<SighBlock> existingBlock = emotionBlockRepository.findByBlockerDeviceIdAndSighId(blockerDeviceId, emotionId);
         if (existingBlock.isPresent()) {
-            return BlockSaveResult.of(BlockResult.of(existingBlock.get(), sigh), false);
+            return BlockSaveResult.of(BlockResult.of(existingBlock.get(), emotion), false);
         }
 
-        return saveNewBlock(blockerDeviceId, sigh);
+        return saveNewBlock(blockerDeviceId, emotion);
     }
 
     @Transactional
-    public void delete(Long sighId, UUID devicePublicId) {
+    public void delete(Long emotionId, UUID devicePublicId) {
         Long blockerDeviceId = findBlockerDeviceId(devicePublicId);
 
-        sighBlockRepository.deleteByBlockerDeviceIdAndSighId(blockerDeviceId, sighId);
+        emotionBlockRepository.deleteByBlockerDeviceIdAndSighId(blockerDeviceId, emotionId);
     }
 
     public BlockListResult findAll(UUID devicePublicId, String encodedCursor) {
         Long blockerDeviceId = findBlockerDeviceId(devicePublicId);
         long lastId = BlockListCursorCodec.decodeOrInitial(encodedCursor);
 
-        List<BlockProjection> projections = sighBlockRepository.findAllByBlockerDeviceId(
+        List<BlockProjection> projections = emotionBlockRepository.findAllByBlockerDeviceId(
                 blockerDeviceId,
                 lastId,
                 PAGE_SIZE + 1
@@ -77,8 +77,8 @@ public class SighBlockService {
         return BlockListResult.of(items, hasNext, nextCursor);
     }
 
-    private Sigh findSigh(Long sighId) {
-        return sighRepository.findById(sighId)
+    private Sigh findEmotion(Long emotionId) {
+        return emotionRepository.findById(emotionId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
     }
 
@@ -88,22 +88,22 @@ public class SighBlockService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
     }
 
-    private BlockSaveResult saveNewBlock(Long blockerDeviceId, Sigh sigh) {
+    private BlockSaveResult saveNewBlock(Long blockerDeviceId, Sigh emotion) {
         SighBlock block = SighBlock.builder()
                 .blockerDeviceId(blockerDeviceId)
-                .sighId(sigh.getId())
+                .sighId(emotion.getId())
                 .build();
 
         try {
-            return BlockSaveResult.of(BlockResult.of(sighBlockRepository.saveAndFlush(block), sigh), true);
+            return BlockSaveResult.of(BlockResult.of(emotionBlockRepository.saveAndFlush(block), emotion), true);
         } catch (DataIntegrityViolationException cause) {
-            return findExistingBlock(blockerDeviceId, sigh, cause);
+            return findExistingBlock(blockerDeviceId, emotion, cause);
         }
     }
 
-    private BlockSaveResult findExistingBlock(Long blockerDeviceId, Sigh sigh, DataIntegrityViolationException cause) {
-        return sighBlockRepository.findByBlockerDeviceIdAndSighId(blockerDeviceId, sigh.getId())
-                .map(block -> BlockSaveResult.of(BlockResult.of(block, sigh), false))
+    private BlockSaveResult findExistingBlock(Long blockerDeviceId, Sigh emotion, DataIntegrityViolationException cause) {
+        return emotionBlockRepository.findByBlockerDeviceIdAndSighId(blockerDeviceId, emotion.getId())
+                .map(block -> BlockSaveResult.of(BlockResult.of(block, emotion), false))
                 .orElseThrow(() -> new BlockException(BLOCK_SAVE_FAILED, cause));
     }
 

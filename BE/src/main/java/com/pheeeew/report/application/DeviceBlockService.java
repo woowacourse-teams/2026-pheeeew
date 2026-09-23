@@ -34,22 +34,22 @@ public class DeviceBlockService {
     private static final int PAGE_SIZE = 50;
 
     private final DeviceBlockRepository deviceBlockRepository;
-    private final SighRepository sighRepository;
+    private final SighRepository emotionRepository;
     private final DeviceRepository deviceRepository;
 
-    public BlockSaveResult save(Long sighId, UUID devicePublicId) {
-        Sigh sigh = findSigh(sighId);
-        Long blockedDeviceId = findAuthorDeviceId(sigh);
+    public BlockSaveResult save(Long emotionId, UUID devicePublicId) {
+        Sigh emotion = findEmotion(emotionId);
+        Long blockedDeviceId = findAuthorDeviceId(emotion);
         Long blockerDeviceId = findBlockerDeviceId(devicePublicId);
         validateNotSelf(blockerDeviceId, blockedDeviceId);
 
         Optional<DeviceBlock> existingBlock =
                 deviceBlockRepository.findByBlockerDeviceIdAndBlockedDeviceId(blockerDeviceId, blockedDeviceId);
         if (existingBlock.isPresent()) {
-            return BlockSaveResult.of(toResult(existingBlock.get(), sigh), false);
+            return BlockSaveResult.of(toResult(existingBlock.get(), emotion), false);
         }
 
-        return saveNewBlock(blockerDeviceId, blockedDeviceId, sigh);
+        return saveNewBlock(blockerDeviceId, blockedDeviceId, emotion);
     }
 
     @Transactional
@@ -82,13 +82,13 @@ public class DeviceBlockService {
         return BlockListResult.of(items, hasNext, nextCursor);
     }
 
-    private Sigh findSigh(Long sighId) {
-        return sighRepository.findById(sighId)
+    private Sigh findEmotion(Long emotionId) {
+        return emotionRepository.findById(emotionId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
     }
 
-    private Long findAuthorDeviceId(Sigh sigh) {
-        Long authorDeviceId = sigh.getDeviceId();
+    private Long findAuthorDeviceId(Sigh emotion) {
+        Long authorDeviceId = emotion.getDeviceId();
         if (authorDeviceId == null) {
             throw new BlockException(BLOCK_AUTHOR_UNKNOWN);
         }
@@ -108,36 +108,36 @@ public class DeviceBlockService {
         }
     }
 
-    private BlockResult toResult(DeviceBlock block, Sigh requestedSigh) {
-        if (block.getOriginSighId().equals(requestedSigh.getId())) {
-            return BlockResult.of(block, requestedSigh);
+    private BlockResult toResult(DeviceBlock block, Sigh requestedEmotion) {
+        if (block.getOriginSighId().equals(requestedEmotion.getId())) {
+            return BlockResult.of(block, requestedEmotion);
         }
 
-        return BlockResult.of(block, findSigh(block.getOriginSighId()));
+        return BlockResult.of(block, findEmotion(block.getOriginSighId()));
     }
 
-    private BlockSaveResult saveNewBlock(Long blockerDeviceId, Long blockedDeviceId, Sigh sigh) {
+    private BlockSaveResult saveNewBlock(Long blockerDeviceId, Long blockedDeviceId, Sigh emotion) {
         DeviceBlock block = DeviceBlock.builder()
                 .blockerDeviceId(blockerDeviceId)
                 .blockedDeviceId(blockedDeviceId)
-                .originSighId(sigh.getId())
+                .originSighId(emotion.getId())
                 .build();
 
         try {
-            return BlockSaveResult.of(BlockResult.of(deviceBlockRepository.saveAndFlush(block), sigh), true);
+            return BlockSaveResult.of(BlockResult.of(deviceBlockRepository.saveAndFlush(block), emotion), true);
         } catch (DataIntegrityViolationException cause) {
-            return findExistingBlock(blockerDeviceId, blockedDeviceId, sigh, cause);
+            return findExistingBlock(blockerDeviceId, blockedDeviceId, emotion, cause);
         }
     }
 
     private BlockSaveResult findExistingBlock(
             Long blockerDeviceId,
             Long blockedDeviceId,
-            Sigh sigh,
+            Sigh emotion,
             DataIntegrityViolationException cause
     ) {
         return deviceBlockRepository.findByBlockerDeviceIdAndBlockedDeviceId(blockerDeviceId, blockedDeviceId)
-                .map(block -> BlockSaveResult.of(toResult(block, sigh), false))
+                .map(block -> BlockSaveResult.of(toResult(block, emotion), false))
                 .orElseThrow(() -> new BlockException(BLOCK_SAVE_FAILED, cause));
     }
 
