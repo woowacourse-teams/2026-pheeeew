@@ -44,7 +44,7 @@ public class SighService {
     private static final int MAX_FIND_COUNT = 500;
     private static final int LIST_PAGE_SIZE = 20;
 
-    private final SighRepository sighRepository;
+    private final SighRepository emotionRepository;
     private final DeviceRepository deviceRepository;
     private final EmotionLocationGenerator emotionLocationGenerator;
     private final EmotionNicknameGenerator emotionNicknameGenerator;
@@ -64,7 +64,7 @@ public class SighService {
     public SighDetailResult findById(Long id, UUID devicePublicId) {
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         Long deviceId = findDeviceId(devicePublicId);
-        EmotionDetailProjection projection = sighRepository.findById(id, deviceId)
+        EmotionDetailProjection projection = emotionRepository.findById(id, deviceId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
 
         EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
@@ -79,7 +79,7 @@ public class SighService {
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
         Long blockerDeviceId = findBlockerDeviceId(viewerDevicePublicId);
-        List<EmotionMapProjection> projections = sighRepository.findAllWithinBounds(
+        List<EmotionMapProjection> projections = emotionRepository.findAllWithinBounds(
                 bounds, period, blockerDeviceId, MAX_FIND_COUNT + 1
         );
 
@@ -88,7 +88,7 @@ public class SighService {
             projections = projections.subList(0, MAX_FIND_COUNT);
         }
 
-        List<SighMapItem> sighs = projections.stream()
+        List<SighMapItem> emotions = projections.stream()
                 .map(projection -> SighMapItem.of(
                         projection.getId(),
                         projection.getLongitude(),
@@ -97,7 +97,7 @@ public class SighService {
                 ))
                 .toList();
 
-        return SighMapResult.of(sighs, truncated);
+        return SighMapResult.of(emotions, truncated);
     }
 
     public SighListResult findFirstListPage(SighSearchBounds bounds, UUID devicePublicId) {
@@ -120,10 +120,10 @@ public class SighService {
     }
 
     private SighSaveResult saveEmotion(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
-        Optional<EmotionDetailProjection> existingSigh = sighRepository.findByRequestId(requestId, deviceId);
+        Optional<EmotionDetailProjection> existingEmotion = emotionRepository.findByRequestId(requestId, deviceId);
 
-        if (existingSigh.isPresent()) {
-            return createSaveResult(existingSigh.get());
+        if (existingEmotion.isPresent()) {
+            return createSaveResult(existingEmotion.get());
         }
 
         return saveNewEmotion(requestId, longitude, latitude, memo, deviceId);
@@ -136,7 +136,7 @@ public class SighService {
 
     private SighSaveResult saveNewEmotion(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
         Point location = emotionLocationGenerator.generate(longitude, latitude);
-        Sigh sigh = Sigh.builder()
+        Sigh emotion = Sigh.builder()
                 .requestId(requestId)
                 .location(location)
                 .memo(memo)
@@ -145,15 +145,15 @@ public class SighService {
                 .build();
 
         try {
-            Sigh savedSigh = sighRepository.saveAndFlush(sigh);
-            return SighSaveResult.of(SighResult.from(savedSigh), true, SighLikeResult.of(false, 0));
+            Sigh savedEmotion = emotionRepository.saveAndFlush(emotion);
+            return SighSaveResult.of(SighResult.from(savedEmotion), true, SighLikeResult.of(false, 0));
         } catch (DataIntegrityViolationException cause) {
-            return findExistingSigh(requestId, deviceId, cause);
+            return findExistingEmotion(requestId, deviceId, cause);
         }
     }
 
-    private SighSaveResult findExistingSigh(UUID requestId, Long deviceId, DataIntegrityViolationException cause) {
-        return sighRepository.findByRequestId(requestId, deviceId)
+    private SighSaveResult findExistingEmotion(UUID requestId, Long deviceId, DataIntegrityViolationException cause) {
+        return emotionRepository.findByRequestId(requestId, deviceId)
                 .map(this::createSaveResult)
                 .orElseThrow(() -> new SighException(SIGH_SAVE_FAILED, cause));
     }
@@ -179,7 +179,7 @@ public class SighService {
 
         SighSearchBounds bounds = cursor.bounds();
         EmotionQueryPeriod period = EmotionQueryPeriod.of(currentPeriod.startAt(), cursor.snapshotAt());
-        List<EmotionListProjection> projections = sighRepository.findListWithinBounds(
+        List<EmotionListProjection> projections = emotionRepository.findListWithinBounds(
                 bounds,
                 period,
                 cursor.lastItemCreatedAt(),
