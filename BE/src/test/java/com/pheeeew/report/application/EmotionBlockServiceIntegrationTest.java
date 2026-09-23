@@ -11,7 +11,7 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.report.application.dto.BlockListResult;
 import com.pheeeew.report.application.dto.BlockResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
-import com.pheeeew.report.domain.repository.SighBlockRepository;
+import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.report.exception.BlockErrorCode;
 import com.pheeeew.report.exception.BlockException;
 import com.pheeeew.sigh.domain.repository.SighRepository;
@@ -49,7 +49,7 @@ class EmotionBlockServiceIntegrationTest {
     private EmotionBlockService emotionBlockService;
 
     @Autowired
-    private SighBlockRepository sighBlockRepository;
+    private EmotionBlockRepository emotionBlockRepository;
 
     @Autowired
     private SighRepository sighRepository;
@@ -62,7 +62,7 @@ class EmotionBlockServiceIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        sighBlockRepository.deleteAll();
+        emotionBlockRepository.deleteAll();
         sighRepository.deleteAll();
         deviceRepository.deleteAll();
         등록_순번 = 0;
@@ -85,7 +85,7 @@ class EmotionBlockServiceIntegrationTest {
         assertThat(result.block().nickname()).isEqualTo("외로운 회사원");
         assertThat(result.block().memo()).isEqualTo("오늘은 조금 지쳤다");
         assertThat(result.block().createdAt()).isNotNull();
-        assertThat(sighBlockRepository.count()).isOne();
+        assertThat(emotionBlockRepository.count()).isOne();
     }
 
     @Test
@@ -103,7 +103,7 @@ class EmotionBlockServiceIntegrationTest {
         assertThat(다시.created()).isFalse();
         assertThat(다시.block().blockId()).isEqualTo(최초.block().blockId());
         assertThat(다시.block().createdAt()).isEqualTo(최초.block().createdAt());
-        assertThat(sighBlockRepository.count()).isOne();
+        assertThat(emotionBlockRepository.count()).isOne();
     }
 
     @Test
@@ -124,7 +124,7 @@ class EmotionBlockServiceIntegrationTest {
         assertThat(results)
                 .extracting(result -> result.block().blockId())
                 .containsOnly(results.getFirst().block().blockId());
-        assertThat(sighBlockRepository.count()).isOne();
+        assertThat(emotionBlockRepository.count()).isOne();
     }
 
     @Test
@@ -138,7 +138,7 @@ class EmotionBlockServiceIntegrationTest {
 
         // then
         assertThat(result.created()).isTrue();
-        assertThat(sighBlockRepository.count()).isOne();
+        assertThat(emotionBlockRepository.count()).isOne();
     }
 
     @Test
@@ -155,7 +155,7 @@ class EmotionBlockServiceIntegrationTest {
                 .isInstanceOf(SighException.class)
                 .hasMessage("한숨을 찾을 수 없습니다.");
         assertThat(((SighException) throwable).getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND);
-        assertThat(sighBlockRepository.count()).isZero();
+        assertThat(emotionBlockRepository.count()).isZero();
     }
 
     @Test
@@ -171,7 +171,7 @@ class EmotionBlockServiceIntegrationTest {
         assertThat(throwable).isInstanceOf(DeviceException.class);
         assertThat(((DeviceException) throwable).getErrorCode())
                 .isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND);
-        assertThat(sighBlockRepository.count()).isZero();
+        assertThat(emotionBlockRepository.count()).isZero();
     }
 
     @Test
@@ -186,7 +186,7 @@ class EmotionBlockServiceIntegrationTest {
 
         // then
         assertThat(throwable).isNull();
-        assertThat(sighBlockRepository.count()).isZero();
+        assertThat(emotionBlockRepository.count()).isZero();
     }
 
     @Test
@@ -201,9 +201,9 @@ class EmotionBlockServiceIntegrationTest {
         emotionBlockService.delete(차단할_한숨, 남.getPublicId());
 
         // then
-        assertThat(sighBlockRepository.findByBlockerDeviceIdAndSighId(차단자.getId(), 차단할_한숨))
+        assertThat(emotionBlockRepository.findByBlockerDeviceIdAndSighId(차단자.getId(), 차단할_한숨))
                 .isPresent();
-        assertThat(sighBlockRepository.count()).isOne();
+        assertThat(emotionBlockRepository.count()).isOne();
     }
 
     @Test

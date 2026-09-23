@@ -7,7 +7,7 @@ import static org.mockito.BDDMockito.given;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.repository.DeviceBlockRepository;
-import com.pheeeew.report.domain.repository.SighBlockRepository;
+import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.application.dto.SighMapItem;
 import com.pheeeew.sigh.domain.repository.SighRepository;
@@ -55,7 +55,7 @@ class BlockFilterIntegrationTest {
     private SighRepository sighRepository;
 
     @Autowired
-    private SighBlockRepository sighBlockRepository;
+    private EmotionBlockRepository emotionBlockRepository;
 
     @Autowired
     private DeviceBlockRepository deviceBlockRepository;
@@ -77,7 +77,7 @@ class BlockFilterIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        sighBlockRepository.deleteAll();
+        emotionBlockRepository.deleteAll();
         deviceBlockRepository.deleteAll();
         sighRepository.deleteAll();
         deviceRepository.deleteAll();
@@ -101,7 +101,7 @@ class BlockFilterIntegrationTest {
         List<Long> 조회된_한숨들 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
 
         // then
-        assertThat(sighBlockRepository.count()).isOne();
+        assertThat(emotionBlockRepository.count()).isOne();
         assertThat(deviceBlockRepository.count()).isOne();
         assertThat(조회된_한숨들).containsExactly(작성자를_모르는_한숨);
     }
@@ -121,7 +121,7 @@ class BlockFilterIntegrationTest {
         List<Long> 조회된_한숨들 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
 
         // then
-        assertThat(sighBlockRepository.count()).isOne();
+        assertThat(emotionBlockRepository.count()).isOne();
         assertThat(deviceBlockRepository.count()).isZero();
         assertThat(조회된_한숨들).containsExactly(차단하지_않은_한숨, 작성자를_모르는_한숨);
     }
@@ -140,7 +140,7 @@ class BlockFilterIntegrationTest {
         List<Long> 조회된_한숨들 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
 
         // then
-        assertThat(sighBlockRepository.count()).isZero();
+        assertThat(emotionBlockRepository.count()).isZero();
         assertThat(deviceBlockRepository.count()).isOne();
         assertThat(조회된_한숨들).containsExactly(작성자를_모르는_한숨);
     }

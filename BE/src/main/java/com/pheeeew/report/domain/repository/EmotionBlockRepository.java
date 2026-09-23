@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface SighBlockRepository extends JpaRepository<SighBlock, Long> {
+public interface EmotionBlockRepository extends JpaRepository<SighBlock, Long> {
 
     Optional<SighBlock> findByBlockerDeviceIdAndSighId(Long blockerDeviceId, Long sighId);
 

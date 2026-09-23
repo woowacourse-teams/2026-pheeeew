@@ -11,7 +11,7 @@ import com.pheeeew.report.application.dto.BlockListResult;
 import com.pheeeew.report.application.dto.BlockResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.domain.SighBlock;
-import com.pheeeew.report.domain.repository.SighBlockRepository;
+import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.report.domain.repository.projection.BlockProjection;
 import com.pheeeew.report.exception.BlockException;
 import com.pheeeew.sigh.domain.Sigh;
@@ -31,7 +31,7 @@ public class EmotionBlockService {
 
     private static final int PAGE_SIZE = 50;
 
-    private final SighBlockRepository emotionBlockRepository;
+    private final EmotionBlockRepository emotionBlockRepository;
     private final SighRepository emotionRepository;
     private final DeviceRepository deviceRepository;
 
