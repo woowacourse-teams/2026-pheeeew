@@ -9,18 +9,18 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface SighReportRepository extends JpaRepository<SighReport, Long> {
 
-    Optional<SighReport> findBySighIdAndReporterDeviceId(Long sighId, Long reporterDeviceId);
+    Optional<SighReport> findBySighIdAndReporterDeviceId(Long emotionId, Long reporterDeviceId);
 
     @Modifying
     @Query("""
-            UPDATE Sigh sigh
-               SET sigh.deletedAt = :now
-             WHERE sigh.deletedAt IS NULL
-               AND sigh.id IN (
-                   SELECT sighReport.sighId
-                     FROM SighReport sighReport
-                    GROUP BY sighReport.sighId
-                   HAVING COUNT(sighReport.id) >= :threshold
+            UPDATE Sigh emotion
+               SET emotion.deletedAt = :now
+             WHERE emotion.deletedAt IS NULL
+               AND emotion.id IN (
+                   SELECT emotionReport.sighId
+                     FROM SighReport emotionReport
+                    GROUP BY emotionReport.sighId
+                   HAVING COUNT(emotionReport.id) >= :threshold
                )
             """)
     int deleteReportedOverThreshold(long threshold, Instant now);
