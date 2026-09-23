@@ -1,10 +1,10 @@
 package com.pheeeew.sigh.infra;
 
-final class SighLocationOffsetCalculator {
+final class EmotionLocationOffsetCalculator {
 
     private static final double RADIUS_METERS = 300.0;
 
-    private SighLocationOffsetCalculator() {
+    private EmotionLocationOffsetCalculator() {
     }
 
     static Offset calculate(double radialUniform, double angularUniform) {

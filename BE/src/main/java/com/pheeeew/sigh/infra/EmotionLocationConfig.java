@@ -5,10 +5,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-public class SighLocationConfig {
+public class EmotionLocationConfig {
 
     @Bean
-    public SecureRandom sighLocationRandom() {
+    public SecureRandom emotionLocationRandom() {
         return new SecureRandom();
     }
 }

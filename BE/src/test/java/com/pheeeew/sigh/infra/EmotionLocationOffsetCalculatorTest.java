@@ -9,7 +9,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class SighLocationOffsetCalculatorTest {
+class EmotionLocationOffsetCalculatorTest {
 
     @ParameterizedTest
     @CsvSource({"0, 0, 0, 0", "0.25, 0, 150, 0", "0.25, 0.25, 0, 150",
@@ -18,7 +18,7 @@ class SighLocationOffsetCalculatorTest {
             double radialUniform, double angularUniform, double easting, double northing
     ) {
         // given / when
-        var offset = SighLocationOffsetCalculator.calculate(radialUniform, angularUniform);
+        var offset = EmotionLocationOffsetCalculator.calculate(radialUniform, angularUniform);
 
         // then
         assertThat(offset.eastingMeters()).isCloseTo(easting, within(1e-9));
@@ -31,7 +31,7 @@ class SighLocationOffsetCalculatorTest {
         double uniform = Math.nextDown(1.0);
 
         // when
-        var offset = SighLocationOffsetCalculator.calculate(uniform, uniform);
+        var offset = EmotionLocationOffsetCalculator.calculate(uniform, uniform);
 
         // then
         assertThat(Math.hypot(offset.eastingMeters(), offset.northingMeters()))
@@ -48,7 +48,7 @@ class SighLocationOffsetCalculatorTest {
         // when
         for (int radial = 0; radial < 100; radial++) {
             for (int angular = 0; angular < 100; angular++) {
-                var offset = SighLocationOffsetCalculator.calculate((radial + 0.5) / 100, (angular + 0.5) / 100);
+                var offset = EmotionLocationOffsetCalculator.calculate((radial + 0.5) / 100, (angular + 0.5) / 100);
                 double x = offset.eastingMeters();
                 double y = offset.northingMeters();
                 rings[(int) ((x * x + y * y) / 9000)]++;
@@ -65,9 +65,9 @@ class SighLocationOffsetCalculatorTest {
     @ValueSource(doubles = {-0.1, 1.0, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
     void 영_이상_일_미만이_아닌_난수는_거절한다(double invalid) {
         // given / when / then
-        assertThatThrownBy(() -> SighLocationOffsetCalculator.calculate(invalid, 0.5))
+        assertThatThrownBy(() -> EmotionLocationOffsetCalculator.calculate(invalid, 0.5))
                 .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> SighLocationOffsetCalculator.calculate(0.5, invalid))
+        assertThatThrownBy(() -> EmotionLocationOffsetCalculator.calculate(0.5, invalid))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

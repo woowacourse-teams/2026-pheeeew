@@ -23,7 +23,7 @@ public class PostgisSighLocationGenerator implements SighLocationGenerator {
 
     @Override
     public Point generate(double longitude, double latitude) {
-        var offset = SighLocationOffsetCalculator.calculate(random.nextDouble(), random.nextDouble());
+        var offset = EmotionLocationOffsetCalculator.calculate(random.nextDouble(), random.nextDouble());
         GeneratedLocation location = sighRepository.findGeneratedLocation(
                 longitude, latitude, offset.eastingMeters(), offset.northingMeters()
         );
