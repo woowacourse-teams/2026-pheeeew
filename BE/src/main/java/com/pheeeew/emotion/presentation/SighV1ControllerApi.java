@@ -1,7 +1,7 @@
 package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.common.exception.ErrorResponse;
-import com.pheeeew.emotion.presentation.dto.SighCreateV1Request;
+import com.pheeeew.emotion.presentation.dto.EmotionCreateV1Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
 import com.pheeeew.emotion.presentation.dto.SighMapRequest;
 import com.pheeeew.emotion.presentation.dto.SighMapResponse;
@@ -177,5 +177,5 @@ public interface SighV1ControllerApi {
                     )
             )
     })
-    ResponseEntity<SighFeature<SighV1Properties>> save(SighCreateV1Request request);
+    ResponseEntity<SighFeature<SighV1Properties>> save(EmotionCreateV1Request request);
 }

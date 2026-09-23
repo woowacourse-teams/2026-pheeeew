@@ -16,7 +16,7 @@ import com.pheeeew.emotion.application.like.dto.EmotionLikeResult;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionErrorCode;
 import com.pheeeew.emotion.exception.EmotionException;
-import com.pheeeew.emotion.presentation.dto.SighCreateV1Request;
+import com.pheeeew.emotion.presentation.dto.EmotionCreateV1Request;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -201,7 +201,7 @@ class SighV1ControllerTest {
     @Test
     void 한숨을_최초_등록하면_201과_GeoJSON_Feature를_반환한다() {
         // given
-        SighCreateV1Request request = 기본_요청();
+        EmotionCreateV1Request request = 기본_요청();
         when(emotionService.save(REQUEST_ID, 126.9780, 37.5664))
                 .thenReturn(기본_저장_결과(true));
 
@@ -240,7 +240,7 @@ class SighV1ControllerTest {
     @Test
     void 같은_requestId로_재시도하면_200과_최초_GeoJSON_Feature를_반환한다() {
         // given
-        SighCreateV1Request request = new SighCreateV1Request(REQUEST_ID, 35.1796, 129.0756);
+        EmotionCreateV1Request request = new EmotionCreateV1Request(REQUEST_ID, 35.1796, 129.0756);
         when(emotionService.save(REQUEST_ID, 129.0756, 35.1796))
                 .thenReturn(기본_저장_결과(false));
 
@@ -257,7 +257,7 @@ class SighV1ControllerTest {
 
     @ParameterizedTest
     @MethodSource("올바르지_않은_요청들")
-    void 필수값이_없거나_좌표_범위를_벗어나면_400을_반환한다(SighCreateV1Request request) {
+    void 필수값이_없거나_좌표_범위를_벗어나면_400을_반환한다(EmotionCreateV1Request request) {
         // given / when
         RestTestClient.ResponseSpec result = 한숨을_등록한다(request);
 
@@ -340,8 +340,8 @@ class SighV1ControllerTest {
                         """.formatted(code, message), JsonCompareMode.STRICT);
     }
 
-    private SighCreateV1Request 기본_요청() {
-        return new SighCreateV1Request(REQUEST_ID, 37.5664, 126.9780);
+    private EmotionCreateV1Request 기본_요청() {
+        return new EmotionCreateV1Request(REQUEST_ID, 37.5664, 126.9780);
     }
 
     private EmotionSaveResult 기본_저장_결과(boolean created) {
@@ -359,7 +359,7 @@ class SighV1ControllerTest {
         );
     }
 
-    private RestTestClient.ResponseSpec 한숨을_등록한다(SighCreateV1Request request) {
+    private RestTestClient.ResponseSpec 한숨을_등록한다(EmotionCreateV1Request request) {
         return client.post()
                 .uri("/api/v1/sighs")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -397,10 +397,10 @@ class SighV1ControllerTest {
 
     private static Stream<Arguments> 올바르지_않은_요청들() {
         return Stream.of(
-                Arguments.of(new SighCreateV1Request(null, 37.5664, 126.9780)),
-                Arguments.of(new SighCreateV1Request(REQUEST_ID, null, 126.9780)),
-                Arguments.of(new SighCreateV1Request(REQUEST_ID, 90.0001, 126.9780)),
-                Arguments.of(new SighCreateV1Request(REQUEST_ID, 37.5664, -180.0001))
+                Arguments.of(new EmotionCreateV1Request(null, 37.5664, 126.9780)),
+                Arguments.of(new EmotionCreateV1Request(REQUEST_ID, null, 126.9780)),
+                Arguments.of(new EmotionCreateV1Request(REQUEST_ID, 90.0001, 126.9780)),
+                Arguments.of(new EmotionCreateV1Request(REQUEST_ID, 37.5664, -180.0001))
         );
     }
 }

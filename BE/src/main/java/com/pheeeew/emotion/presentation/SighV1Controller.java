@@ -5,7 +5,7 @@ import com.pheeeew.emotion.application.EmotionService;
 import com.pheeeew.emotion.application.dto.EmotionMapResult;
 import com.pheeeew.emotion.application.dto.EmotionResult;
 import com.pheeeew.emotion.application.dto.EmotionSaveResult;
-import com.pheeeew.emotion.presentation.dto.SighCreateV1Request;
+import com.pheeeew.emotion.presentation.dto.EmotionCreateV1Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
 import com.pheeeew.emotion.presentation.dto.SighMapRequest;
 import com.pheeeew.emotion.presentation.dto.SighMapResponse;
@@ -49,7 +49,7 @@ public class SighV1Controller implements SighV1ControllerApi {
     @Override
     @PostMapping
     public ResponseEntity<SighFeature<SighV1Properties>> save(
-            @Valid @RequestBody SighCreateV1Request request
+            @Valid @RequestBody EmotionCreateV1Request request
     ) {
         EmotionSaveResult result = emotionService.save(request.requestId(), request.longitude(), request.latitude());
         EmotionResult emotion = result.emotion();

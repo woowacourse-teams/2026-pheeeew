@@ -2,7 +2,7 @@ package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.common.presentation.dto.CursorResponse;
-import com.pheeeew.emotion.presentation.dto.SighCreateV2Request;
+import com.pheeeew.emotion.presentation.dto.EmotionCreateV2Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeResponse;
@@ -395,7 +395,7 @@ public interface SighV2ControllerApi {
                     required = true,
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = SighCreateV2Request.class),
+                            schema = @Schema(implementation = EmotionCreateV2Request.class),
                             examples = {
                                     @ExampleObject(
                                             name = "메모 포함",
@@ -422,7 +422,7 @@ public interface SighV2ControllerApi {
                     )
             )
             @Valid
-            SighCreateV2Request request,
+            EmotionCreateV2Request request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 

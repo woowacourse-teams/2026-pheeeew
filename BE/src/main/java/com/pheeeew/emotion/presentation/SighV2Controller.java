@@ -9,7 +9,7 @@ import com.pheeeew.emotion.application.dto.EmotionResult;
 import com.pheeeew.emotion.application.dto.EmotionSaveResult;
 import com.pheeeew.emotion.application.like.EmotionLikeRetryService;
 import com.pheeeew.emotion.application.like.dto.EmotionLikeResult;
-import com.pheeeew.emotion.presentation.dto.SighCreateV2Request;
+import com.pheeeew.emotion.presentation.dto.EmotionCreateV2Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeResponse;
@@ -79,7 +79,7 @@ public class SighV2Controller implements SighV2ControllerApi {
     @Override
     @PostMapping
     public ResponseEntity<SighFeature<SighV2Properties>> save(
-            @RequestBody SighCreateV2Request request,
+            @RequestBody EmotionCreateV2Request request,
             @CurrentDevice UUID devicePublicId
     ) {
         EmotionSaveResult result = emotionService.save(
