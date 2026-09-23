@@ -8,7 +8,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
-import com.pheeeew.sigh.domain.SighLike;
+import com.pheeeew.sigh.domain.EmotionLike;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.exception.SighException;
@@ -33,12 +33,12 @@ public class EmotionLikeService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
         Sigh emotion = emotionRepository.findByIdAndDeletedAtIsNull(emotionId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
-        SighLike like = emotionLikeRepository.findBySighIdAndDeviceId(emotionId, deviceId).orElse(null);
+        EmotionLike like = emotionLikeRepository.findByEmotionIdAndDeviceId(emotionId, deviceId).orElse(null);
 
         if (liked && like == null) {
             emotionLikeRepository.save(
-                    SighLike.builder()
-                            .sighId(emotionId)
+                    EmotionLike.builder()
+                            .emotionId(emotionId)
                             .deviceId(deviceId)
                             .build()
             );

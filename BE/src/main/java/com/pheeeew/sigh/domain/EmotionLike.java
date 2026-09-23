@@ -17,21 +17,21 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "sigh_likes")
 @Entity
-public class SighLike extends BaseEntity {
+public class EmotionLike extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "sigh_id", nullable = false, updatable = false)
-    private Long sighId;
+    private Long emotionId;
 
     @Column(name = "device_id", nullable = false, updatable = false)
     private Long deviceId;
 
     @Builder
-    private SighLike(Long sighId, Long deviceId) {
-        this.sighId = Objects.requireNonNull(sighId);
+    private EmotionLike(Long emotionId, Long deviceId) {
+        this.emotionId = Objects.requireNonNull(emotionId);
         this.deviceId = Objects.requireNonNull(deviceId);
     }
 }

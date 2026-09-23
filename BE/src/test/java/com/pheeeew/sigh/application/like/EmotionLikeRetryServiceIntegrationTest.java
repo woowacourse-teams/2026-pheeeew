@@ -96,7 +96,7 @@ class EmotionLikeRetryServiceIntegrationTest {
         // then
         assertThat(result).isEqualTo(SighLikeResult.of(liked, liked ? 2 : 1));
         verify(serviceSpy(), times(2)).update(sigh.getId(), device.getPublicId(), liked);
-        assertThat(emotionLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId()).isPresent())
+        assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sigh.getId(), device.getId()).isPresent())
                 .isEqualTo(liked);
         assertLikeCount(liked ? 2 : 1);
     }
@@ -110,7 +110,7 @@ class EmotionLikeRetryServiceIntegrationTest {
         assertThatThrownBy(() -> emotionLikeRetryService.update(sigh.getId(), device.getPublicId(), true))
                 .isInstanceOf(ObjectOptimisticLockingFailureException.class);
         verify(serviceSpy(), times(3)).update(sigh.getId(), device.getPublicId(), true);
-        assertThat(emotionLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
+        assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
         assertLikeCount(3);
     }
 
@@ -144,7 +144,7 @@ class EmotionLikeRetryServiceIntegrationTest {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             emotionRepository.findById(sigh.getId()).orElseThrow().increaseLikeCount();
             emotionLikeRepository.save(기본_좋아요_빌더()
-                    .sighId(sigh.getId())
+                    .emotionId(sigh.getId())
                     .deviceId(device.getId())
                     .build());
         });

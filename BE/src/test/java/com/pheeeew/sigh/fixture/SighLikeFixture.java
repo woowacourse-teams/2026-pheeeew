@@ -1,15 +1,15 @@
 package com.pheeeew.sigh.fixture;
 
-import com.pheeeew.sigh.domain.SighLike;
+import com.pheeeew.sigh.domain.EmotionLike;
 
 public final class SighLikeFixture {
 
     private SighLikeFixture() {
     }
 
-    public static SighLike.SighLikeBuilder 기본_좋아요_빌더() {
-        return SighLike.builder()
-                .sighId(42L)
+    public static EmotionLike.EmotionLikeBuilder 기본_좋아요_빌더() {
+        return EmotionLike.builder()
+                .emotionId(42L)
                 .deviceId(1L);
     }
 }

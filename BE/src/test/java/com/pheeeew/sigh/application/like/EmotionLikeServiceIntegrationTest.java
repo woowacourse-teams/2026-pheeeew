@@ -12,7 +12,7 @@ import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
-import com.pheeeew.sigh.domain.SighLike;
+import com.pheeeew.sigh.domain.EmotionLike;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.exception.SighErrorCode;
@@ -83,9 +83,9 @@ class EmotionLikeServiceIntegrationTest {
         assertLikeCount(sighId, 0);
         assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
         assertLikeCount(sighId, 1);
-        Long likeId = emotionLikeRepository.findBySighIdAndDeviceId(sighId, device.getId()).orElseThrow().getId();
+        Long likeId = emotionLikeRepository.findByEmotionIdAndDeviceId(sighId, device.getId()).orElseThrow().getId();
         assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
-        assertThat(emotionLikeRepository.findAll()).extracting(SighLike::getId).containsExactly(likeId);
+        assertThat(emotionLikeRepository.findAll()).extracting(EmotionLike::getId).containsExactly(likeId);
         assertLikeCount(sighId, 1);
 
         assertThat(emotionLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
@@ -94,8 +94,8 @@ class EmotionLikeServiceIntegrationTest {
         assertLikeCount(sighId, 0);
         assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
         assertLikeCount(sighId, 1);
-        assertThat(emotionLikeRepository.findBySighIdAndDeviceId(sighId, device.getId()))
-                .get().extracting(SighLike::getId).isNotEqualTo(likeId);
+        assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sighId, device.getId()))
+                .get().extracting(EmotionLike::getId).isNotEqualTo(likeId);
     }
 
     @Test
@@ -104,16 +104,16 @@ class EmotionLikeServiceIntegrationTest {
         Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
         Sigh anotherSigh = emotionRepository.save(기본_한숨_빌더().build());
         saveLike(sigh.getId(), device.getId());
-        SighLike anotherDeviceLike = saveLike(sigh.getId(), anotherDevice.getId());
-        SighLike anotherSighLike = saveLike(anotherSigh.getId(), device.getId());
+        EmotionLike anotherDeviceLike = saveLike(sigh.getId(), anotherDevice.getId());
+        EmotionLike anotherSighLike = saveLike(anotherSigh.getId(), device.getId());
 
         // when
         SighLikeResult result = emotionLikeService.update(sigh.getId(), device.getPublicId(), false);
 
         // then
         assertThat(result).isEqualTo(SighLikeResult.of(false, 1));
-        assertThat(emotionLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
-        assertThat(emotionLikeRepository.findAll()).extracting(SighLike::getId)
+        assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
+        assertThat(emotionLikeRepository.findAll()).extracting(EmotionLike::getId)
                 .containsExactlyInAnyOrder(anotherDeviceLike.getId(), anotherSighLike.getId());
         assertLikeCount(sigh.getId(), 1);
         assertLikeCount(anotherSigh.getId(), 1);
@@ -123,7 +123,7 @@ class EmotionLikeServiceIntegrationTest {
     @ValueSource(booleans = {false, true})
     void 없는_기기나_없는_한숨이나_삭제된_한숨은_요청한_상태와_관계없이_거부한다(boolean liked) {
         // given
-        SighLike like = saveLike(sigh.getId(), device.getId());
+        EmotionLike like = saveLike(sigh.getId(), device.getId());
 
         // when / then
         assertThatThrownBy(() -> emotionLikeService.update(sigh.getId(), UUID.randomUUID(), liked))
@@ -138,7 +138,7 @@ class EmotionLikeServiceIntegrationTest {
         assertThatThrownBy(() -> emotionLikeService.update(sigh.getId(), device.getPublicId(), liked))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
-        assertThat(emotionLikeRepository.findAll()).extracting(SighLike::getId).containsExactly(like.getId());
+        assertThat(emotionLikeRepository.findAll()).extracting(EmotionLike::getId).containsExactly(like.getId());
         assertLikeCount(sigh.getId(), 1);
     }
 
@@ -146,7 +146,7 @@ class EmotionLikeServiceIntegrationTest {
     @ValueSource(booleans = {false, true})
     void 트랜잭션이_실패하면_좋아요_생성이나_삭제와_개수가_함께_롤백된다(boolean desiredLiked) {
         // given
-        SighLike original = desiredLiked ? null : saveLike(sigh.getId(), device.getId());
+        EmotionLike original = desiredLiked ? null : saveLike(sigh.getId(), device.getId());
 
         // when
         assertThatThrownBy(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
@@ -160,7 +160,7 @@ class EmotionLikeServiceIntegrationTest {
         if (desiredLiked) {
             assertThat(emotionLikeRepository.findAll()).isEmpty();
         } else {
-            assertThat(emotionLikeRepository.findAll()).extracting(SighLike::getId).containsExactly(original.getId());
+            assertThat(emotionLikeRepository.findAll()).extracting(EmotionLike::getId).containsExactly(original.getId());
         }
         assertLikeCount(sigh.getId(), desiredLiked ? 0 : 1);
     }
@@ -169,7 +169,7 @@ class EmotionLikeServiceIntegrationTest {
     @ValueSource(booleans = {false, true})
     void 낙관적_잠금_충돌이_발생하면_먼저_성공한_좋아요와_개수를_보존한다(boolean desiredLiked) {
         // given
-        SighLike original = desiredLiked ? null : saveLike(sigh.getId(), device.getId());
+        EmotionLike original = desiredLiked ? null : saveLike(sigh.getId(), device.getId());
         Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
         TransactionTemplate anotherTransaction = new TransactionTemplate(transactionManager);
         anotherTransaction.setPropagationBehavior(Propagation.REQUIRES_NEW.value());
@@ -185,12 +185,12 @@ class EmotionLikeServiceIntegrationTest {
         })).isInstanceOf(ObjectOptimisticLockingFailureException.class);
 
         // then
-        assertThat(emotionLikeRepository.findBySighIdAndDeviceId(sigh.getId(), anotherDevice.getId())).isPresent();
+        assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sigh.getId(), anotherDevice.getId())).isPresent();
         if (desiredLiked) {
-            assertThat(emotionLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
+            assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
         } else {
-            assertThat(emotionLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId()))
-                    .get().extracting(SighLike::getId).isEqualTo(original.getId());
+            assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sigh.getId(), device.getId()))
+                    .get().extracting(EmotionLike::getId).isEqualTo(original.getId());
         }
         assertLikeCount(sigh.getId(), desiredLiked ? 1 : 2);
     }
@@ -205,11 +205,11 @@ class EmotionLikeServiceIntegrationTest {
         assertThat(emotionRepository.findById(sighId).orElseThrow().getLikeCount()).isEqualTo(expected);
     }
 
-    private SighLike saveLike(Long sighId, Long deviceId) {
+    private EmotionLike saveLike(Long sighId, Long deviceId) {
         return new TransactionTemplate(transactionManager).execute(status -> {
             emotionRepository.findById(sighId).orElseThrow().increaseLikeCount();
             return emotionLikeRepository.save(기본_좋아요_빌더()
-                    .sighId(sighId)
+                    .emotionId(sighId)
                     .deviceId(deviceId)
                     .build());
         });
