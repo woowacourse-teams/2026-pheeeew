@@ -1,10 +1,11 @@
-package com.pheeeew
+package com.pheeeew.legacy
 
 import android.app.Application
 import android.os.Build
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.pheeeew.BuildConfig
 import com.pheeeew.legacy.core.monitoring.Monitoring
 import com.pheeeew.legacy.core.monitoring.MonitoringConfig
 import com.pheeeew.legacy.core.monitoring.MonitoringTicker

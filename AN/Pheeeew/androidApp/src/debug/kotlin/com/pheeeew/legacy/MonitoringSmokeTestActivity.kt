@@ -1,9 +1,10 @@
-package com.pheeeew
+package com.pheeeew.legacy
 
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
+import com.pheeeew.BuildConfig
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

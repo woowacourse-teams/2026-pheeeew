@@ -1,4 +1,4 @@
-package com.pheeeew
+package com.pheeeew.legacy
 
 import android.content.Context
 import android.net.ConnectivityManager
