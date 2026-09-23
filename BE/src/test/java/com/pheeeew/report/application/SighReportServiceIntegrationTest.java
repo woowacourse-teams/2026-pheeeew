@@ -290,7 +290,7 @@ class SighReportServiceIntegrationTest {
                     .hasMessage("신고를 저장하지 못했습니다.")
                     .hasCauseInstanceOf(DataIntegrityViolationException.class);
             assertThat(((EmotionReportException) throwable).getErrorCode())
-                    .isEqualTo(SighReportErrorCode.SIGH_REPORT_SAVE_FAILED);
+                    .isEqualTo(SighReportErrorCode.EMOTION_REPORT_SAVE_FAILED);
         } finally {
             removeRejectedReasonConstraint();
         }

@@ -1,8 +1,8 @@
 package com.pheeeew.report.application;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
-import static com.pheeeew.report.exception.SighReportErrorCode.SIGH_REPORT_SAVE_FAILED;
-import static com.pheeeew.report.exception.SighReportErrorCode.SIGH_REPORT_SELF_NOT_ALLOWED;
+import static com.pheeeew.report.exception.SighReportErrorCode.EMOTION_REPORT_SAVE_FAILED;
+import static com.pheeeew.report.exception.SighReportErrorCode.EMOTION_REPORT_SELF_NOT_ALLOWED;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
@@ -66,7 +66,7 @@ public class SighReportService {
 
     private void validateNotSelf(Sigh sigh, Long reporterDeviceId) {
         if (reporterDeviceId.equals(sigh.getDeviceId())) {
-            throw new EmotionReportException(SIGH_REPORT_SELF_NOT_ALLOWED);
+            throw new EmotionReportException(EMOTION_REPORT_SELF_NOT_ALLOWED);
         }
     }
 
@@ -97,6 +97,6 @@ public class SighReportService {
     ) {
         return sighReportRepository.findBySighIdAndReporterDeviceId(sighId, reporterDeviceId)
                 .map(report -> SighReportResult.of(report, false))
-                .orElseThrow(() -> new EmotionReportException(SIGH_REPORT_SAVE_FAILED, cause));
+                .orElseThrow(() -> new EmotionReportException(EMOTION_REPORT_SAVE_FAILED, cause));
     }
 }

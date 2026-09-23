@@ -164,7 +164,7 @@ class SighReportAutoDeleteIntegrationTest {
         // then
         assertThat(throwable).isInstanceOf(EmotionReportException.class);
         assertThat(((EmotionReportException) throwable).getErrorCode())
-                .isEqualTo(SighReportErrorCode.SIGH_REPORT_SELF_NOT_ALLOWED);
+                .isEqualTo(SighReportErrorCode.EMOTION_REPORT_SELF_NOT_ALLOWED);
         assertThat(sighReportRepository.count()).isZero();
     }
 

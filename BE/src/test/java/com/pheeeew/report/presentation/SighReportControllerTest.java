@@ -178,7 +178,7 @@ class SighReportControllerTest {
         // given
         when(sighReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenThrow(new EmotionReportException(
-                        SighReportErrorCode.SIGH_REPORT_SAVE_FAILED,
+                        SighReportErrorCode.EMOTION_REPORT_SAVE_FAILED,
                         new IllegalStateException()
                 ));
 

@@ -9,8 +9,8 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum SighReportErrorCode implements ErrorCode {
 
-    SIGH_REPORT_SAVE_FAILED("REPORT-001", "신고를 저장하지 못했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
-    SIGH_REPORT_SELF_NOT_ALLOWED("REPORT-002", "자기 한숨은 신고할 수 없습니다.", HttpStatus.CONFLICT);
+    EMOTION_REPORT_SAVE_FAILED("REPORT-001", "신고를 저장하지 못했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    EMOTION_REPORT_SELF_NOT_ALLOWED("REPORT-002", "자기 한숨은 신고할 수 없습니다.", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;
