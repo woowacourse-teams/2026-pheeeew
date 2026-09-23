@@ -156,9 +156,9 @@ class EmotionServiceIntegrationTest {
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE
         );
-        Long sighId = created.emotion().id();
-        Emotion first = emotionRepository.findById(sighId).orElseThrow();
-        Emotion second = emotionRepository.findById(sighId).orElseThrow();
+        Long emotionId = created.emotion().id();
+        Emotion first = emotionRepository.findById(emotionId).orElseThrow();
+        Emotion second = emotionRepository.findById(emotionId).orElseThrow();
         first.increaseLikeCount();
         emotionRepository.saveAndFlush(first);
 
@@ -168,7 +168,7 @@ class EmotionServiceIntegrationTest {
 
         // then
         assertThat(throwable).isInstanceOf(ObjectOptimisticLockingFailureException.class);
-        assertThat(emotionRepository.findById(sighId).orElseThrow().getLikeCount()).isOne();
+        assertThat(emotionRepository.findById(emotionId).orElseThrow().getLikeCount()).isOne();
     }
 
     @Test
@@ -361,7 +361,7 @@ class EmotionServiceIntegrationTest {
     @Test
     void 등록되지_않은_기기로_조회하면_차단_필터를_끄지_않고_거부한다() {
         // given
-        insertSigh(126.9780, 37.5664, "2026-09-01T10:30:00Z");
+        insertEmotion(126.9780, 37.5664, "2026-09-01T10:30:00Z");
 
         // when
         Throwable 지도_조회 = catchThrowable(
@@ -390,10 +390,10 @@ class EmotionServiceIntegrationTest {
         Instant queriedAt = Instant.parse(currentTime);
         Instant startAt = Instant.parse(startTime);
         given(clock.instant()).willReturn(queriedAt);
-        insertSigh(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
-        Long 시작_경계_한숨 = insertSigh(126.9780, 37.5664, startAt.toString());
-        Long 조회_시각_한숨 = insertSigh(126.9780, 37.5664, queriedAt.toString());
-        insertSigh(126.9780, 37.5664, queriedAt.plus(1, ChronoUnit.MICROS).toString());
+        insertEmotion(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
+        Long 시작_경계_한숨 = insertEmotion(126.9780, 37.5664, startAt.toString());
+        Long 조회_시각_한숨 = insertEmotion(126.9780, 37.5664, queriedAt.toString());
+        insertEmotion(126.9780, 37.5664, queriedAt.plus(1, ChronoUnit.MICROS).toString());
 
         // when
         EmotionMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
@@ -408,8 +408,8 @@ class EmotionServiceIntegrationTest {
     void 지도_영역에_기간_밖의_한숨만_있으면_빈_결과를_반환한다() {
         // given
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
-        insertSigh(126.9780, 37.5664, "2026-08-31T14:59:59.999999Z");
-        insertSigh(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
+        insertEmotion(126.9780, 37.5664, "2026-08-31T14:59:59.999999Z");
+        insertEmotion(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
 
         // when
         EmotionMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
@@ -422,9 +422,9 @@ class EmotionServiceIntegrationTest {
     @Test
     void 삭제된_한숨은_지도_영역_조회에_나오지_않는다() {
         // given
-        Long 살아있는_한숨 = insertSigh(126.9780, 37.5664, "2026-09-01T10:30:00Z");
-        Long 삭제된_한숨 = insertSigh(126.9790, 37.5665, "2026-09-01T10:31:00Z");
-        softDeleteSigh(삭제된_한숨);
+        Long 살아있는_한숨 = insertEmotion(126.9780, 37.5664, "2026-09-01T10:30:00Z");
+        Long 삭제된_한숨 = insertEmotion(126.9790, 37.5665, "2026-09-01T10:31:00Z");
+        softDeleteEmotion(삭제된_한숨);
         Timer query = meterRegistry.get("pheeeew.sigh.map.query").timer();
         DistributionSummary results = meterRegistry.get("pheeeew.sigh.map.results")
                 .tag("truncated", "false").summary();
@@ -447,9 +447,9 @@ class EmotionServiceIntegrationTest {
     @Test
     void 지도_영역_안과_경계의_한숨만_최신순으로_조회한다() {
         // given
-        Long insideId = insertSigh(126.9780, 37.5664, "2026-08-31T10:30:00Z");
-        insertSigh(127.2000, 37.5664, "2026-08-31T10:31:00Z");
-        Long boundaryId = insertSigh(127.1000, 37.6000, "2026-08-31T10:32:00Z");
+        Long insideId = insertEmotion(126.9780, 37.5664, "2026-08-31T10:30:00Z");
+        insertEmotion(127.2000, 37.5664, "2026-08-31T10:31:00Z");
+        Long boundaryId = insertEmotion(127.1000, 37.6000, "2026-08-31T10:32:00Z");
 
         // when
         EmotionMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
@@ -468,11 +468,11 @@ class EmotionServiceIntegrationTest {
     @Test
     void 날짜변경선_양쪽_영역의_한숨을_최신순으로_조회한다() {
         // given
-        Long 양의_경도_한숨 = insertSigh(170.0000, 0.0000, "2026-08-31T10:30:00Z");
-        Long 음의_경도_한숨 = insertSigh(-170.0000, 0.0000, "2026-08-31T10:31:00Z");
-        insertSigh(169.9999, 0.0000, "2026-08-31T10:32:00Z");
-        insertSigh(-169.9999, 0.0000, "2026-08-31T10:33:00Z");
-        insertSigh(175.0000, 10.0001, "2026-08-31T10:34:00Z");
+        Long 양의_경도_한숨 = insertEmotion(170.0000, 0.0000, "2026-08-31T10:30:00Z");
+        Long 음의_경도_한숨 = insertEmotion(-170.0000, 0.0000, "2026-08-31T10:31:00Z");
+        insertEmotion(169.9999, 0.0000, "2026-08-31T10:32:00Z");
+        insertEmotion(-169.9999, 0.0000, "2026-08-31T10:33:00Z");
+        insertEmotion(175.0000, 10.0001, "2026-08-31T10:34:00Z");
 
         // when
         EmotionMapResult result = emotionService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
@@ -487,8 +487,8 @@ class EmotionServiceIntegrationTest {
     @Test
     void 날짜변경선_양쪽_영역을_합쳐_500건_제한과_잘림_여부를_계산한다() {
         // given
-        Long oldestId = insertSigh(175.0000, 0.0000, "2026-08-31T10:29:00Z");
-        insertSighs(500, -175.0000, 0.0000);
+        Long oldestId = insertEmotion(175.0000, 0.0000, "2026-08-31T10:29:00Z");
+        insertEmotions(500, -175.0000, 0.0000);
 
         // when
         EmotionMapResult result = emotionService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
@@ -504,9 +504,9 @@ class EmotionServiceIntegrationTest {
     @Test
     void 전_세계_경계의_한숨을_조회한다() {
         // given
-        Long 서쪽_경계_한숨 = insertSigh(-180.0000, 0.0000, "2026-08-31T10:30:00Z");
-        Long 중앙_한숨 = insertSigh(0.0000, 0.0000, "2026-08-31T10:31:00Z");
-        Long 동쪽_경계_한숨 = insertSigh(180.0000, 0.0000, "2026-08-31T10:32:00Z");
+        Long 서쪽_경계_한숨 = insertEmotion(-180.0000, 0.0000, "2026-08-31T10:30:00Z");
+        Long 중앙_한숨 = insertEmotion(0.0000, 0.0000, "2026-08-31T10:31:00Z");
+        Long 동쪽_경계_한숨 = insertEmotion(180.0000, 0.0000, "2026-08-31T10:32:00Z");
 
         // when
         EmotionMapResult result = emotionService.findAllWithinBounds(WORLD_BOUNDS, Optional.empty());
@@ -521,9 +521,9 @@ class EmotionServiceIntegrationTest {
     @Test
     void 지도_영역의_기간_내_한숨이_500건이면_기간_밖의_한숨을_제외하고_잘리지_않았음을_알린다() {
         // given
-        insertSighs(500, 126.9780, 37.5664);
-        insertSigh(126.9780, 37.5664, "2026-08-18T14:59:59.999999Z");
-        insertSigh(126.9780, 37.5664, CURRENT_TIME.plusSeconds(1).toString());
+        insertEmotions(500, 126.9780, 37.5664);
+        insertEmotion(126.9780, 37.5664, "2026-08-18T14:59:59.999999Z");
+        insertEmotion(126.9780, 37.5664, CURRENT_TIME.plusSeconds(1).toString());
 
         // when
         EmotionMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
@@ -536,8 +536,8 @@ class EmotionServiceIntegrationTest {
     @Test
     void 지도_영역의_한숨이_500건을_초과하면_최신_500건과_잘림_여부를_반환한다() {
         // given
-        Long oldestId = insertSigh(126.9780, 37.5664, "2026-08-31T10:29:00Z");
-        insertSighs(500, 126.9780, 37.5664);
+        Long oldestId = insertEmotion(126.9780, 37.5664, "2026-08-31T10:29:00Z");
+        insertEmotions(500, 126.9780, 37.5664);
 
         // when
         EmotionMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
@@ -558,14 +558,14 @@ class EmotionServiceIntegrationTest {
         List<Long> ids = new ArrayList<>();
         String createdAt = CURRENT_TIME.minusSeconds(60).toString();
         for (int index = 0; index < 21; index++) {
-            ids.add(insertSigh(126.9780, 37.5664, createdAt));
+            ids.add(insertEmotion(126.9780, 37.5664, createdAt));
         }
-        Long firstPageSighId = ids.getLast();
-        Long secondPageSighId = ids.getFirst();
-        emotionLikeService.update(firstPageSighId, devicePublicId, true);
-        emotionLikeService.update(firstPageSighId, anotherDevicePublicId, true);
+        Long firstPageEmotionId = ids.getLast();
+        Long secondPageEmotionId = ids.getFirst();
+        emotionLikeService.update(firstPageEmotionId, devicePublicId, true);
+        emotionLikeService.update(firstPageEmotionId, anotherDevicePublicId, true);
         emotionLikeService.update(ids.get(19), anotherDevicePublicId, true);
-        emotionLikeService.update(secondPageSighId, devicePublicId, true);
+        emotionLikeService.update(secondPageEmotionId, devicePublicId, true);
 
         // when
         EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
@@ -581,11 +581,11 @@ class EmotionServiceIntegrationTest {
         assertThat(firstPage.items().get(1).like()).isEqualTo(EmotionLikeResult.of(false, 1));
         assertThat(firstPage.items().get(2).like()).isEqualTo(EmotionLikeResult.of(false, 0));
         assertThat(secondPage.items()).singleElement().satisfies(item -> {
-            assertThat(item.emotion().id()).isEqualTo(secondPageSighId);
+            assertThat(item.emotion().id()).isEqualTo(secondPageEmotionId);
             assertThat(item.like()).isEqualTo(EmotionLikeResult.of(true, 1));
         });
         assertThat(anotherDevicePage.items()).singleElement().satisfies(item -> {
-            assertThat(item.emotion().id()).isEqualTo(secondPageSighId);
+            assertThat(item.emotion().id()).isEqualTo(secondPageEmotionId);
             assertThat(item.like()).isEqualTo(EmotionLikeResult.of(false, 1));
         });
     }
@@ -593,8 +593,8 @@ class EmotionServiceIntegrationTest {
     @Test
     void 다음_페이지의_좋아요_정보는_첫_페이지_이후의_취소를_반영한다() {
         // given
-        Long oldestId = insertSigh(126.9780, 37.5664, "2026-08-31T10:29:00Z");
-        insertSighs(20, 126.9780, 37.5664);
+        Long oldestId = insertEmotion(126.9780, 37.5664, "2026-08-31T10:29:00Z");
+        insertEmotions(20, 126.9780, 37.5664);
         emotionLikeService.update(oldestId, devicePublicId, true);
         EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         emotionLikeService.update(oldestId, devicePublicId, false);
@@ -624,7 +624,7 @@ class EmotionServiceIntegrationTest {
     @CsvSource({"2026-09-01T12:00:01Z", "2026-09-15T12:00:00Z"})
     void 기기가_삭제되면_발급된_커서가_있어도_다음_페이지를_조회할_수_없다(String queryTime) {
         // given
-        insertSighs(21, 126.9780, 37.5664);
+        insertEmotions(21, 126.9780, 37.5664);
         EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         deviceRepository.deleteAll();
         given(clock.instant()).willReturn(Instant.parse(queryTime));
@@ -642,9 +642,9 @@ class EmotionServiceIntegrationTest {
         String createdAt = CURRENT_TIME.minusSeconds(60).toString();
         List<Long> ids = new ArrayList<>();
         for (int index = 0; index < 20; index++) {
-            ids.add(insertSigh(126.9780, 37.5664, createdAt));
+            ids.add(insertEmotion(126.9780, 37.5664, createdAt));
         }
-        ids.add(insertSighWithDetails(
+        ids.add(insertEmotionWithDetails(
                 126.9780,
                 37.5664,
                 createdAt,
@@ -684,11 +684,11 @@ class EmotionServiceIntegrationTest {
     @Test
     void 바텀시트_목록은_날짜변경선_경계를_포함하고_삭제된_한숨을_제외한다() {
         // given
-        Long 양의_경도_경계_한숨 = insertSigh(170.0000, 10.0000, "2026-08-31T10:30:00Z");
-        Long 음의_경도_경계_한숨 = insertSigh(-170.0000, -10.0000, "2026-08-31T10:31:00Z");
-        insertSigh(169.9999, 0.0000, "2026-08-31T10:32:00Z");
-        Long 삭제된_한숨 = insertSigh(175.0000, 0.0000, "2026-08-31T10:33:00Z");
-        softDeleteSigh(삭제된_한숨);
+        Long 양의_경도_경계_한숨 = insertEmotion(170.0000, 10.0000, "2026-08-31T10:30:00Z");
+        Long 음의_경도_경계_한숨 = insertEmotion(-170.0000, -10.0000, "2026-08-31T10:31:00Z");
+        insertEmotion(169.9999, 0.0000, "2026-08-31T10:32:00Z");
+        Long 삭제된_한숨 = insertEmotion(175.0000, 0.0000, "2026-08-31T10:33:00Z");
+        softDeleteEmotion(삭제된_한숨);
 
         // when
         EmotionListResult result = emotionService.findFirstListPage(DATE_LINE_BOUNDS, devicePublicId);
@@ -708,9 +708,9 @@ class EmotionServiceIntegrationTest {
         String beforeSnapshot = snapshotAt.minusSeconds(60).toString();
         List<Long> ids = new ArrayList<>();
         for (int index = 0; index < 21; index++) {
-            ids.add(insertSigh(126.9780, 37.5664, beforeSnapshot));
+            ids.add(insertEmotion(126.9780, 37.5664, beforeSnapshot));
         }
-        Long 스냅샷_경계_한숨 = insertSigh(
+        Long 스냅샷_경계_한숨 = insertEmotion(
                 126.9780,
                 37.5664,
                 snapshotAt.toString()
@@ -746,14 +746,14 @@ class EmotionServiceIntegrationTest {
         Instant snapshotAt = Instant.parse(snapshotTime);
         Instant startAt = Instant.parse(startTime);
         given(clock.instant()).willReturn(snapshotAt);
-        insertSigh(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
-        Long 시작_경계_한숨 = insertSigh(126.9780, 37.5664, startAt.toString());
+        insertEmotion(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
+        Long 시작_경계_한숨 = insertEmotion(126.9780, 37.5664, startAt.toString());
         List<Long> recentIds = new ArrayList<>();
         for (int index = 0; index < 20; index++) {
-            recentIds.add(insertSigh(126.9780, 37.5664, snapshotAt.minus(1, ChronoUnit.MICROS).toString()));
+            recentIds.add(insertEmotion(126.9780, 37.5664, snapshotAt.minus(1, ChronoUnit.MICROS).toString()));
         }
-        insertSigh(126.9780, 37.5664, snapshotAt.toString());
-        insertSigh(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
+        insertEmotion(126.9780, 37.5664, snapshotAt.toString());
+        insertEmotion(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
 
         // when
         EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
@@ -772,8 +772,8 @@ class EmotionServiceIntegrationTest {
     void 목록_영역에_기간_밖의_한숨만_있으면_다음_페이지_없이_빈_결과를_반환한다() {
         // given
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
-        insertSigh(126.9780, 37.5664, "2026-08-31T14:59:59.999999Z");
-        insertSigh(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
+        insertEmotion(126.9780, 37.5664, "2026-08-31T14:59:59.999999Z");
+        insertEmotion(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
 
         // when
         EmotionListResult result = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
@@ -794,16 +794,16 @@ class EmotionServiceIntegrationTest {
         Instant snapshotAt = Instant.parse("2026-09-14T14:59:59.999999Z");
         Instant startAt = Instant.parse(startTime);
         given(clock.instant()).willReturn(snapshotAt);
-        insertSigh(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
+        insertEmotion(126.9780, 37.5664, startAt.minus(1, ChronoUnit.MICROS).toString());
         List<Long> boundaryIds = new ArrayList<>();
         for (int index = 0; index < 21; index++) {
-            boundaryIds.add(insertSigh(126.9780, 37.5664, startAt.toString()));
+            boundaryIds.add(insertEmotion(126.9780, 37.5664, startAt.toString()));
         }
         for (int index = 0; index < 20; index++) {
-            insertSigh(126.9780, 37.5664, "2026-09-14T14:00:00Z");
+            insertEmotion(126.9780, 37.5664, "2026-09-14T14:00:00Z");
         }
         EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
-        insertSigh(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
+        insertEmotion(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
         given(clock.instant()).willReturn(Instant.parse(queryTime));
 
         // when
@@ -825,9 +825,9 @@ class EmotionServiceIntegrationTest {
     void 자정_이후_남은_한숨이_기간_밖이면_발급된_커서로_빈_결과를_반환한다() {
         // given
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T14:59:59.999999Z"));
-        insertSigh(126.9780, 37.5664, "2026-08-31T15:00:00Z");
+        insertEmotion(126.9780, 37.5664, "2026-08-31T15:00:00Z");
         for (int index = 0; index < 20; index++) {
-            insertSigh(126.9780, 37.5664, "2026-09-14T14:00:00Z");
+            insertEmotion(126.9780, 37.5664, "2026-09-14T14:00:00Z");
         }
         EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T15:00:00Z"));
@@ -851,7 +851,7 @@ class EmotionServiceIntegrationTest {
     void 스냅샷이_현재_조회_시작_시각_이하이면_빈_결과를_반환한다(String snapshotTime) {
         // given
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
-        insertSigh(126.9780, 37.5664, "2026-08-31T14:00:00Z");
+        insertEmotion(126.9780, 37.5664, "2026-08-31T14:00:00Z");
         String encodedCursor = EmotionListCursorCodec.encode(
                 EmotionListCursor.initial(SEOUL_BOUNDS, Instant.parse(snapshotTime))
         );
@@ -892,11 +892,11 @@ class EmotionServiceIntegrationTest {
         String createdAt = snapshotAt.minusSeconds(60).toString();
         List<Long> ids = new ArrayList<>();
         for (int index = 0; index < 21; index++) {
-            ids.add(insertSigh(126.9780, 37.5664, createdAt));
+            ids.add(insertEmotion(126.9780, 37.5664, createdAt));
         }
         EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         EmotionListCursor cursor = EmotionListCursorCodec.decode(firstPage.nextCursor());
-        Long 이후에_등록된_한숨 = insertSigh(
+        Long 이후에_등록된_한숨 = insertEmotion(
                 126.9780,
                 37.5664,
                 cursor.snapshotAt().plusSeconds(30).toString()
@@ -918,10 +918,10 @@ class EmotionServiceIntegrationTest {
     @Test
     void 바텀시트_목록은_최신_500건까지만_페이지로_조회한다() {
         // given
-        Long oldestId = insertSigh(126.9780, 37.5664, "2026-08-31T10:29:00Z");
-        insertSighs(500, 126.9780, 37.5664);
-        Long 기간_이전_한숨 = insertSigh(126.9780, 37.5664, "2026-08-18T14:59:59.999999Z");
-        Long 미래_한숨 = insertSigh(126.9780, 37.5664, CURRENT_TIME.plusSeconds(1).toString());
+        Long oldestId = insertEmotion(126.9780, 37.5664, "2026-08-31T10:29:00Z");
+        insertEmotions(500, 126.9780, 37.5664);
+        Long 기간_이전_한숨 = insertEmotion(126.9780, 37.5664, "2026-08-18T14:59:59.999999Z");
+        Long 미래_한숨 = insertEmotion(126.9780, 37.5664, CURRENT_TIME.plusSeconds(1).toString());
 
         // when
         List<EmotionResult> items = findAllListPages(SEOUL_BOUNDS);
@@ -1002,13 +1002,13 @@ class EmotionServiceIntegrationTest {
                 .update();
     }
 
-    private void softDeleteSigh(Long sighId) {
+    private void softDeleteEmotion(Long emotionId) {
         jdbcClient.sql("UPDATE sighs SET deleted_at = NOW() WHERE id = :id")
-                .param("id", sighId)
+                .param("id", emotionId)
                 .update();
     }
 
-    private Long insertSigh(double longitude, double latitude, String createdAt) {
+    private Long insertEmotion(double longitude, double latitude, String createdAt) {
         return jdbcClient.sql("""
                         INSERT INTO sighs (request_id, location, nickname, created_at, updated_at)
                         VALUES (
@@ -1028,7 +1028,7 @@ class EmotionServiceIntegrationTest {
                 .single();
     }
 
-    private Long insertSighWithDetails(
+    private Long insertEmotionWithDetails(
             double longitude,
             double latitude,
             String createdAt,
@@ -1057,7 +1057,7 @@ class EmotionServiceIntegrationTest {
                 .single();
     }
 
-    private void insertSighs(int count, double longitude, double latitude) {
+    private void insertEmotions(int count, double longitude, double latitude) {
         jdbcClient.sql("""
                         INSERT INTO sighs (request_id, location, nickname, created_at, updated_at)
                         SELECT
