@@ -1,0 +1,18 @@
+package com.pheeeew.emotion.presentation.dto;
+
+import com.pheeeew.emotion.application.like.dto.EmotionLikeResult;
+import io.swagger.v3.oas.annotations.media.Schema;
+
+@Schema(name = "SighLikeResponse")
+public record EmotionLikeResponse(
+        @Schema(description = "처리 후 인증된 기기의 좋아요 여부", example = "true")
+        boolean liked,
+
+        @Schema(description = "이번 요청 처리 결과의 전체 좋아요 수", minimum = "0", example = "12")
+        long likeCount
+) {
+
+    public static EmotionLikeResponse from(EmotionLikeResult result) {
+        return new EmotionLikeResponse(result.liked(), result.likeCount());
+    }
+}

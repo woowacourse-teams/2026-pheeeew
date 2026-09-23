@@ -1,7 +1,7 @@
 package com.pheeeew.report.presentation;
 
 import static com.pheeeew.report.fixture.BlockFixture.저장된_사용자_차단;
-import static com.pheeeew.sigh.fixture.SighFixture.기본_한숨_빌더;
+import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -15,17 +15,15 @@ import com.pheeeew.report.application.dto.BlockResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.exception.BlockErrorCode;
 import com.pheeeew.report.exception.BlockException;
-import com.pheeeew.sigh.domain.Sigh;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.exception.EmotionErrorCode;
+import com.pheeeew.emotion.exception.EmotionException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -47,7 +45,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 class DeviceBlockControllerTest {
 
     private static final String BLOCKS_URI = "/api/v2/blocks/devices";
-    private static final Long SIGH_ID = 42L;
+    private static final Long EMOTION_ID = 42L;
     private static final Long BLOCK_ID = 7L;
     private static final Instant CREATED_AT = Instant.parse("2026-09-14T02:44:00Z");
     private static final UUID 기기_공개_식별자 = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
@@ -76,7 +74,7 @@ class DeviceBlockControllerTest {
     @Test
     void 처음_차단하면_201과_작성자_정보가_없는_차단_응답을_반환한다() {
         // given
-        when(deviceBlockService.save(SIGH_ID, 기기_공개_식별자))
+        when(deviceBlockService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenReturn(BlockSaveResult.of(기본_차단_결과(), true));
 
         // when
@@ -87,13 +85,13 @@ class DeviceBlockControllerTest {
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
                 .expectBody()
                 .json(기본_차단_응답(), JsonCompareMode.STRICT);
-        verify(deviceBlockService).save(SIGH_ID, 기기_공개_식별자);
+        verify(deviceBlockService).save(EMOTION_ID, 기기_공개_식별자);
     }
 
     @Test
     void 이미_차단한_사용자를_다시_차단하면_200과_최초_차단을_반환한다() {
         // given
-        when(deviceBlockService.save(SIGH_ID, 기기_공개_식별자))
+        when(deviceBlockService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenReturn(BlockSaveResult.of(기본_차단_결과(), false));
 
         // when
@@ -103,13 +101,13 @@ class DeviceBlockControllerTest {
         result.expectStatus().isOk()
                 .expectBody()
                 .json(기본_차단_응답(), JsonCompareMode.STRICT);
-        verify(deviceBlockService).save(SIGH_ID, 기기_공개_식별자);
+        verify(deviceBlockService).save(EMOTION_ID, 기기_공개_식별자);
     }
 
     @Test
     void 자기_자신을_차단하면_409를_반환한다() {
         // given
-        when(deviceBlockService.save(SIGH_ID, 기기_공개_식별자))
+        when(deviceBlockService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenThrow(new BlockException(BlockErrorCode.BLOCK_SELF_NOT_ALLOWED));
 
         // when
@@ -122,7 +120,7 @@ class DeviceBlockControllerTest {
     @Test
     void 작성자를_알_수_없는_한숨으로_차단하면_409를_반환한다() {
         // given
-        when(deviceBlockService.save(SIGH_ID, 기기_공개_식별자))
+        when(deviceBlockService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenThrow(new BlockException(BlockErrorCode.BLOCK_AUTHOR_UNKNOWN));
 
         // when
@@ -140,8 +138,8 @@ class DeviceBlockControllerTest {
     @Test
     void 차단할_한숨이_없으면_404를_반환한다() {
         // given
-        when(deviceBlockService.save(SIGH_ID, 기기_공개_식별자))
-                .thenThrow(new SighException(SighErrorCode.SIGH_NOT_FOUND));
+        when(deviceBlockService.save(EMOTION_ID, 기기_공개_식별자))
+                .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND));
 
         // when
         RestTestClient.ResponseSpec result = 차단한다(기본_차단_요청());
@@ -249,12 +247,12 @@ class DeviceBlockControllerTest {
     }
 
     private BlockResult 기본_차단_결과() {
-        Sigh sigh = 기본_한숨_빌더()
+        Emotion emotion = 기본_한숨_빌더()
                 .nickname("날아가는 고라니")
                 .memo("오늘은 조금 지쳤다")
                 .build();
 
-        return BlockResult.of(저장된_사용자_차단(BLOCK_ID, CREATED_AT), sigh);
+        return BlockResult.of(저장된_사용자_차단(BLOCK_ID, CREATED_AT), emotion);
     }
 
     private String 기본_차단_요청() {

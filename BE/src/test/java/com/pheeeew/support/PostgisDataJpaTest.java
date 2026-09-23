@@ -17,13 +17,13 @@ import com.pheeeew.device.infra.attestation.PlayIntegrityConfig;
 import com.pheeeew.device.infra.attestation.PlayIntegrityDeviceAttestationVerifier;
 import com.pheeeew.device.infra.attestation.PlayIntegrityMetrics;
 import com.pheeeew.report.application.DeviceBlockService;
-import com.pheeeew.report.application.SighBlockService;
-import com.pheeeew.report.application.SighReportMetrics;
-import com.pheeeew.report.application.SighReportService;
-import com.pheeeew.sigh.application.SighService;
-import com.pheeeew.sigh.infra.KoreanSighNicknameGenerator;
-import com.pheeeew.sigh.infra.PostgisSighLocationGenerator;
-import com.pheeeew.sigh.infra.SighLocationConfig;
+import com.pheeeew.report.application.EmotionBlockService;
+import com.pheeeew.report.application.EmotionReportMetrics;
+import com.pheeeew.report.application.EmotionReportService;
+import com.pheeeew.emotion.application.EmotionService;
+import com.pheeeew.emotion.infra.KoreanEmotionNicknameGenerator;
+import com.pheeeew.emotion.infra.PostgisEmotionLocationGenerator;
+import com.pheeeew.emotion.infra.EmotionLocationConfig;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
@@ -62,16 +62,16 @@ import org.springframework.test.context.ActiveProfiles;
         PlayIntegrityConfig.class,
         PlayIntegrityDeviceAttestationVerifier.class,
         PlayIntegrityMetrics.class,
-        SighReportMetrics.class,
+        EmotionReportMetrics.class,
         GroupService.class,
         InviteCodeGenerator.class,
-        SighReportService.class,
-        SighService.class,
-        SighBlockService.class,
+        EmotionReportService.class,
+        EmotionService.class,
+        EmotionBlockService.class,
         DeviceBlockService.class,
-        KoreanSighNicknameGenerator.class,
-        PostgisSighLocationGenerator.class,
-        SighLocationConfig.class
+        KoreanEmotionNicknameGenerator.class,
+        PostgisEmotionLocationGenerator.class,
+        EmotionLocationConfig.class
 })
 public @interface PostgisDataJpaTest {
 }

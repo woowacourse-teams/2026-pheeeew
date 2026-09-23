@@ -1,5 +1,6 @@
 package com.pheeeew.report.presentation.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.pheeeew.report.application.dto.BlockResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -23,7 +24,8 @@ public record DeviceBlockResponse(
                         """,
                 example = "42"
         )
-        Long sighId,
+        @JsonProperty("sighId")
+        Long emotionId,
 
         @Schema(
                 description = "근거가 된 한숨의 익명 닉네임입니다. 차단한 사용자를 식별하는 값이 아닙니다.",
@@ -48,7 +50,7 @@ public record DeviceBlockResponse(
     public static DeviceBlockResponse from(BlockResult result) {
         return new DeviceBlockResponse(
                 result.blockId(),
-                result.sighId(),
+                result.emotionId(),
                 result.nickname(),
                 result.memo(),
                 result.createdAt()
