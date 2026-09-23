@@ -13,7 +13,7 @@ import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.report.application.SighReportService;
 import com.pheeeew.report.application.dto.SighReportResult;
-import com.pheeeew.report.exception.SighReportErrorCode;
+import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
@@ -178,7 +178,7 @@ class SighReportControllerTest {
         // given
         when(sighReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenThrow(new EmotionReportException(
-                        SighReportErrorCode.EMOTION_REPORT_SAVE_FAILED,
+                        EmotionReportErrorCode.EMOTION_REPORT_SAVE_FAILED,
                         new IllegalStateException()
                 ));
 

@@ -10,7 +10,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.SighReport;
 import com.pheeeew.report.domain.repository.SighReportRepository;
-import com.pheeeew.report.exception.SighReportErrorCode;
+import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
@@ -164,7 +164,7 @@ class SighReportAutoDeleteIntegrationTest {
         // then
         assertThat(throwable).isInstanceOf(EmotionReportException.class);
         assertThat(((EmotionReportException) throwable).getErrorCode())
-                .isEqualTo(SighReportErrorCode.EMOTION_REPORT_SELF_NOT_ALLOWED);
+                .isEqualTo(EmotionReportErrorCode.EMOTION_REPORT_SELF_NOT_ALLOWED);
         assertThat(sighReportRepository.count()).isZero();
     }
 

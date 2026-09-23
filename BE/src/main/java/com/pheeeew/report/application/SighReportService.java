@@ -1,8 +1,8 @@
 package com.pheeeew.report.application;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
-import static com.pheeeew.report.exception.SighReportErrorCode.EMOTION_REPORT_SAVE_FAILED;
-import static com.pheeeew.report.exception.SighReportErrorCode.EMOTION_REPORT_SELF_NOT_ALLOWED;
+import static com.pheeeew.report.exception.EmotionReportErrorCode.EMOTION_REPORT_SAVE_FAILED;
+import static com.pheeeew.report.exception.EmotionReportErrorCode.EMOTION_REPORT_SELF_NOT_ALLOWED;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
