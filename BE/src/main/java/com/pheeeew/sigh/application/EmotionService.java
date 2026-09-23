@@ -11,7 +11,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.dto.EmotionDetailResult;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
-import com.pheeeew.sigh.application.dto.SighListResult;
+import com.pheeeew.sigh.application.dto.EmotionListResult;
 import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
@@ -100,7 +100,7 @@ public class EmotionService {
         return EmotionMapResult.of(emotions, truncated);
     }
 
-    public SighListResult findFirstListPage(EmotionSearchBounds bounds, UUID devicePublicId) {
+    public EmotionListResult findFirstListPage(EmotionSearchBounds bounds, UUID devicePublicId) {
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         EmotionListCursor cursor = EmotionListCursor.initial(bounds, snapshotAt);
         EmotionQueryPeriod period = EmotionQueryPeriod.of(snapshotAt, clock.getZone());
@@ -108,7 +108,7 @@ public class EmotionService {
         return findList(cursor, period, devicePublicId);
     }
 
-    public SighListResult findNextListPage(String encodedCursor, UUID devicePublicId) {
+    public EmotionListResult findNextListPage(String encodedCursor, UUID devicePublicId) {
         EmotionListCursor cursor = EmotionListCursorCodec.decode(encodedCursor);
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         if (cursor.snapshotAt().isAfter(queriedAt)) {
@@ -170,11 +170,11 @@ public class EmotionService {
                 .orElse(null);
     }
 
-    private SighListResult findList(EmotionListCursor cursor, EmotionQueryPeriod currentPeriod, UUID devicePublicId) {
+    private EmotionListResult findList(EmotionListCursor cursor, EmotionQueryPeriod currentPeriod, UUID devicePublicId) {
         Long deviceId = findDeviceId(devicePublicId);
 
         if (!cursor.snapshotAt().isAfter(currentPeriod.startAt())) {
-            return SighListResult.of(List.of(), false, null);
+            return EmotionListResult.of(List.of(), false, null);
         }
 
         EmotionSearchBounds bounds = cursor.bounds();
@@ -200,7 +200,7 @@ public class EmotionService {
                 .toList();
         String nextCursor = createNextCursor(cursor, projections, hasNext);
 
-        return SighListResult.of(items, hasNext, nextCursor);
+        return EmotionListResult.of(items, hasNext, nextCursor);
     }
 
     private String createNextCursor(

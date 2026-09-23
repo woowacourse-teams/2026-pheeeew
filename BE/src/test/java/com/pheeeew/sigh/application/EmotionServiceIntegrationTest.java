@@ -12,7 +12,7 @@ import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.dto.EmotionDetailResult;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
-import com.pheeeew.sigh.application.dto.SighListResult;
+import com.pheeeew.sigh.application.dto.EmotionListResult;
 import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
@@ -568,9 +568,9 @@ class EmotionServiceIntegrationTest {
         emotionLikeService.update(secondPageSighId, devicePublicId, true);
 
         // when
-        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
-        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
-        SighListResult anotherDevicePage = emotionService.findNextListPage(
+        EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        EmotionListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        EmotionListResult anotherDevicePage = emotionService.findNextListPage(
                 firstPage.nextCursor(), anotherDevicePublicId
         );
 
@@ -596,11 +596,11 @@ class EmotionServiceIntegrationTest {
         Long oldestId = insertSigh(126.9780, 37.5664, "2026-08-31T10:29:00Z");
         insertSighs(20, 126.9780, 37.5664);
         emotionLikeService.update(oldestId, devicePublicId, true);
-        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         emotionLikeService.update(oldestId, devicePublicId, false);
 
         // when
-        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        EmotionListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         assertThat(secondPage.items()).singleElement().satisfies(item -> {
@@ -625,7 +625,7 @@ class EmotionServiceIntegrationTest {
     void 기기가_삭제되면_발급된_커서가_있어도_다음_페이지를_조회할_수_없다(String queryTime) {
         // given
         insertSighs(21, 126.9780, 37.5664);
-        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         deviceRepository.deleteAll();
         given(clock.instant()).willReturn(Instant.parse(queryTime));
 
@@ -653,8 +653,8 @@ class EmotionServiceIntegrationTest {
         ));
 
         // when
-        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
-        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        EmotionListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         List<Long> expectedFirstPageIds = new ArrayList<>(ids.subList(1, ids.size()));
@@ -691,7 +691,7 @@ class EmotionServiceIntegrationTest {
         softDeleteSigh(삭제된_한숨);
 
         // when
-        SighListResult result = emotionService.findFirstListPage(DATE_LINE_BOUNDS, devicePublicId);
+        EmotionListResult result = emotionService.findFirstListPage(DATE_LINE_BOUNDS, devicePublicId);
 
         // then
         assertThat(result.items())
@@ -717,9 +717,9 @@ class EmotionServiceIntegrationTest {
         );
 
         // when
-        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         EmotionListCursor nextCursor = EmotionListCursorCodec.decode(firstPage.nextCursor());
-        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        EmotionListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         List<Long> expectedFirstPageIds = new ArrayList<>(ids.subList(1, ids.size()));
@@ -756,8 +756,8 @@ class EmotionServiceIntegrationTest {
         insertSigh(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
 
         // when
-        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
-        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        EmotionListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         recentIds.sort(Comparator.reverseOrder());
@@ -776,7 +776,7 @@ class EmotionServiceIntegrationTest {
         insertSigh(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
 
         // when
-        SighListResult result = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        EmotionListResult result = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
 
         // then
         assertThat(result.items()).isEmpty();
@@ -802,13 +802,13 @@ class EmotionServiceIntegrationTest {
         for (int index = 0; index < 20; index++) {
             insertSigh(126.9780, 37.5664, "2026-09-14T14:00:00Z");
         }
-        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         insertSigh(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
         given(clock.instant()).willReturn(Instant.parse(queryTime));
 
         // when
-        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
-        SighListResult thirdPage = emotionService.findNextListPage(secondPage.nextCursor(), devicePublicId);
+        EmotionListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        EmotionListResult thirdPage = emotionService.findNextListPage(secondPage.nextCursor(), devicePublicId);
 
         // then
         boundaryIds.sort(Comparator.reverseOrder());
@@ -829,11 +829,11 @@ class EmotionServiceIntegrationTest {
         for (int index = 0; index < 20; index++) {
             insertSigh(126.9780, 37.5664, "2026-09-14T14:00:00Z");
         }
-        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T15:00:00Z"));
 
         // when
-        SighListResult result = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        EmotionListResult result = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         assertThat(firstPage.hasNext()).isTrue();
@@ -857,7 +857,7 @@ class EmotionServiceIntegrationTest {
         );
 
         // when
-        SighListResult result = emotionService.findNextListPage(encodedCursor, devicePublicId);
+        EmotionListResult result = emotionService.findNextListPage(encodedCursor, devicePublicId);
 
         // then
         assertThat(result.items()).isEmpty();
@@ -894,7 +894,7 @@ class EmotionServiceIntegrationTest {
         for (int index = 0; index < 21; index++) {
             ids.add(insertSigh(126.9780, 37.5664, createdAt));
         }
-        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        EmotionListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         EmotionListCursor cursor = EmotionListCursorCodec.decode(firstPage.nextCursor());
         Long 이후에_등록된_한숨 = insertSigh(
                 126.9780,
@@ -904,7 +904,7 @@ class EmotionServiceIntegrationTest {
         given(clock.instant()).willReturn(Instant.parse("2026-09-15T06:00:00Z"));
 
         // when
-        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        EmotionListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         assertThat(secondPage.items())
@@ -1081,7 +1081,7 @@ class EmotionServiceIntegrationTest {
 
     private List<EmotionResult> findAllListPages(EmotionSearchBounds bounds) {
         List<EmotionResult> items = new ArrayList<>();
-        SighListResult page = emotionService.findFirstListPage(bounds, devicePublicId);
+        EmotionListResult page = emotionService.findFirstListPage(bounds, devicePublicId);
 
         for (int pageIndex = 0; pageIndex < 25; pageIndex++) {
             assertThat(page.items()).hasSizeLessThanOrEqualTo(20);

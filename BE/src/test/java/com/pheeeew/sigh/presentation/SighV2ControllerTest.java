@@ -16,7 +16,7 @@ import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.EmotionDetailResult;
-import com.pheeeew.sigh.application.dto.SighListResult;
+import com.pheeeew.sigh.application.dto.EmotionListResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
@@ -90,7 +90,7 @@ class SighV2ControllerTest {
         // given
         EmotionSearchBounds bounds = EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6);
         when(emotionService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
-                .thenReturn(SighListResult.of(
+                .thenReturn(EmotionListResult.of(
                         List.of(기본_상세_조회_결과("오늘은 조금 지쳤다", true, 12)),
                         true,
                         "next-cursor"
@@ -138,7 +138,7 @@ class SighV2ControllerTest {
         // given
         EmotionSearchBounds bounds = EmotionSearchBounds.of(170.0, -10.0, -170.0, 10.0);
         when(emotionService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
-                .thenReturn(SighListResult.of(List.of(), false, null));
+                .thenReturn(EmotionListResult.of(List.of(), false, null));
 
         // when
         RestTestClient.ResponseSpec result = client.get()
@@ -154,7 +154,7 @@ class SighV2ControllerTest {
     void 서버가_발급한_커서만으로_바텀시트_다음_페이지를_조회한다() {
         // given
         when(emotionService.findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID))
-                .thenReturn(SighListResult.of(
+                .thenReturn(EmotionListResult.of(
                         List.of(기본_상세_조회_결과(null, false, 0)),
                         false,
                         null

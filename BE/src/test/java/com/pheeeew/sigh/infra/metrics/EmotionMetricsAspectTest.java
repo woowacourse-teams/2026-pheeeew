@@ -18,7 +18,7 @@ import com.pheeeew.sigh.application.EmotionLocationGenerator;
 import com.pheeeew.sigh.application.EmotionNicknameGenerator;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
-import com.pheeeew.sigh.application.dto.SighListResult;
+import com.pheeeew.sigh.application.dto.EmotionListResult;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
@@ -239,7 +239,7 @@ class EmotionMetricsAspectTest {
         )).thenReturn(Collections.nCopies(fetched, projection));
 
         // when
-        SighListResult result = 목록을_조회한다(page, devicePublicId);
+        EmotionListResult result = 목록을_조회한다(page, devicePublicId);
 
         // then
         assertThat(result.items()).hasSize(returned);
@@ -285,7 +285,7 @@ class EmotionMetricsAspectTest {
         EmotionListCursor cursor = EmotionListCursor.initial(BOUNDS, SNAPSHOT_AT.minus(Duration.ofDays(30)));
 
         // when
-        SighListResult result = service.findNextListPage(EmotionListCursorCodec.encode(cursor), devicePublicId);
+        EmotionListResult result = service.findNextListPage(EmotionListCursorCodec.encode(cursor), devicePublicId);
 
         // then
         assertThat(result.items()).isEmpty();
@@ -302,7 +302,7 @@ class EmotionMetricsAspectTest {
         return device.getPublicId();
     }
 
-    private SighListResult 목록을_조회한다(String page, UUID devicePublicId) {
+    private EmotionListResult 목록을_조회한다(String page, UUID devicePublicId) {
         if ("first".equals(page)) {
             return service.findFirstListPage(BOUNDS, devicePublicId);
         }

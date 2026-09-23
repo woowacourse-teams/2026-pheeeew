@@ -4,7 +4,7 @@ import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.EmotionDetailResult;
-import com.pheeeew.sigh.application.dto.SighListResult;
+import com.pheeeew.sigh.application.dto.EmotionListResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
@@ -46,7 +46,7 @@ public class SighV2Controller implements SighV2ControllerApi {
             @ModelAttribute SighListRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
-        SighListResult result;
+        EmotionListResult result;
         if (request.isNextPageRequest()) {
             result = emotionService.findNextListPage(request.cursor(), devicePublicId);
         } else {

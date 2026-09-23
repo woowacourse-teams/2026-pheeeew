@@ -1,6 +1,6 @@
 package com.pheeeew.sigh.infra.metrics;
 
-import com.pheeeew.sigh.application.dto.SighListResult;
+import com.pheeeew.sigh.application.dto.EmotionListResult;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
@@ -49,7 +49,7 @@ public class EmotionMetricsAspect {
             pointcut = "execution(* com.pheeeew.sigh.application.EmotionService.findFirstListPage(..))",
             returning = "result"
     )
-    public void recordFirstListResult(SighListResult result) {
+    public void recordFirstListResult(EmotionListResult result) {
         metrics.recordListResult("first", result.items().size(), result.hasNext());
     }
 
@@ -57,7 +57,7 @@ public class EmotionMetricsAspect {
             pointcut = "execution(* com.pheeeew.sigh.application.EmotionService.findNextListPage(..))",
             returning = "result"
     )
-    public void recordNextListResult(SighListResult result) {
+    public void recordNextListResult(EmotionListResult result) {
         metrics.recordListResult("next", result.items().size(), result.hasNext());
     }
 }
