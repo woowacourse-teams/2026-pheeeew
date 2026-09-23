@@ -8,7 +8,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
-import com.pheeeew.report.domain.SighReport;
+import com.pheeeew.report.domain.EmotionReport;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
@@ -215,8 +215,8 @@ class SighReportAutoDeleteIntegrationTest {
                     기본_기기_빌더().requestId(UUID.randomUUID()).build()
             );
             emotionReportRepository.saveAndFlush(
-                    SighReport.builder()
-                            .sighId(sighId)
+                    EmotionReport.builder()
+                            .emotionId(sighId)
                             .reporterDeviceId(device.getId())
                             .reason("테스트 신고")
                             .build()

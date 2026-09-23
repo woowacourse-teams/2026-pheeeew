@@ -16,7 +16,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.report.application.dto.EmotionReportResult;
-import com.pheeeew.report.domain.SighReport;
+import com.pheeeew.report.domain.EmotionReport;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
@@ -86,7 +86,7 @@ class EmotionReportServiceIntegrationTest {
                 .update();
 
         // then
-        assertThat(emotionReportRepository.findBySighIdAndReporterDeviceId(sighId, device.getId()))
+        assertThat(emotionReportRepository.findByEmotionIdAndReporterDeviceId(sighId, device.getId()))
                 .isPresent();
         assertThat(emotionReportRepository.count()).isOne();
     }
@@ -107,7 +107,7 @@ class EmotionReportServiceIntegrationTest {
         assertThat(result.reason()).isEqualTo("광고성 게시물입니다");
         assertThat(result.createdAt()).isNotNull();
 
-        SighReport saved = emotionReportRepository.findById(result.id()).orElseThrow();
+        EmotionReport saved = emotionReportRepository.findById(result.id()).orElseThrow();
         assertThat(saved.getReporterDeviceId()).isEqualTo(device.getId());
         assertThat(saved.getUpdatedAt()).isNotNull();
         assertThat(emotionReportRepository.count()).isOne();
@@ -232,8 +232,8 @@ class EmotionReportServiceIntegrationTest {
     void 존재하지_않는_기기를_신고자로_저장하면_외래_키가_막는다() {
         // given
         Long sighId = insertSigh();
-        SighReport report = SighReport.builder()
-                .sighId(sighId)
+        EmotionReport report = EmotionReport.builder()
+                .emotionId(sighId)
                 .reporterDeviceId(NOT_EXISTING_DEVICE_ID)
                 .reason(기본_신고_사유())
                 .build();

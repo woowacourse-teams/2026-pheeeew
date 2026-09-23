@@ -1,6 +1,6 @@
 package com.pheeeew.report.fixture;
 
-import com.pheeeew.report.domain.SighReport;
+import com.pheeeew.report.domain.EmotionReport;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -12,15 +12,15 @@ public final class SighReportFixture {
     private SighReportFixture() {
     }
 
-    public static SighReport.SighReportBuilder 기본_신고_빌더() {
-        return SighReport.builder()
-                .sighId(DEFAULT_SIGH_ID)
+    public static EmotionReport.EmotionReportBuilder 기본_신고_빌더() {
+        return EmotionReport.builder()
+                .emotionId(DEFAULT_SIGH_ID)
                 .reporterDeviceId(신고자_기기_식별자())
                 .reason(기본_신고_사유());
     }
 
-    public static SighReport 저장된_기본_신고(Long id, Instant createdAt) {
-        SighReport report = 기본_신고_빌더().build();
+    public static EmotionReport 저장된_기본_신고(Long id, Instant createdAt) {
+        EmotionReport report = 기본_신고_빌더().build();
         ReflectionTestUtils.setField(report, "id", id);
         ReflectionTestUtils.setField(report, "createdAt", createdAt);
         return report;

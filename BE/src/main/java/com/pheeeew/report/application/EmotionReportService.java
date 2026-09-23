@@ -9,7 +9,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.report.application.dto.EmotionReportResult;
-import com.pheeeew.report.domain.SighReport;
+import com.pheeeew.report.domain.EmotionReport;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.domain.Sigh;
@@ -50,7 +50,7 @@ public class EmotionReportService {
         Long reporterDeviceId = findReporterDeviceId(devicePublicId);
         validateNotSelf(emotion, reporterDeviceId);
 
-        Optional<SighReport> existingReport = emotionReportRepository.findBySighIdAndReporterDeviceId(emotionId, reporterDeviceId);
+        Optional<EmotionReport> existingReport = emotionReportRepository.findByEmotionIdAndReporterDeviceId(emotionId, reporterDeviceId);
 
         if (existingReport.isPresent()) {
             return EmotionReportResult.of(existingReport.get(), false);
@@ -77,8 +77,8 @@ public class EmotionReportService {
     }
 
     private EmotionReportResult saveNewReport(Long emotionId, Long reporterDeviceId, String reason) {
-        SighReport report = SighReport.builder()
-                .sighId(emotionId)
+        EmotionReport report = EmotionReport.builder()
+                .emotionId(emotionId)
                 .reporterDeviceId(reporterDeviceId)
                 .reason(reason)
                 .build();
@@ -95,7 +95,7 @@ public class EmotionReportService {
             Long reporterDeviceId,
             DataIntegrityViolationException cause
     ) {
-        return emotionReportRepository.findBySighIdAndReporterDeviceId(emotionId, reporterDeviceId)
+        return emotionReportRepository.findByEmotionIdAndReporterDeviceId(emotionId, reporterDeviceId)
                 .map(report -> EmotionReportResult.of(report, false))
                 .orElseThrow(() -> new EmotionReportException(EMOTION_REPORT_SAVE_FAILED, cause));
     }

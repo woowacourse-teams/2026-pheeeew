@@ -12,7 +12,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class SighReportTest {
+class EmotionReportTest {
 
     @Test
     void 신고_사유의_앞뒤_공백을_제거해_보관한다() {
@@ -20,7 +20,7 @@ class SighReportTest {
         String reason = "  광고성 게시물입니다\n";
 
         // when
-        SighReport report = 기본_신고_빌더()
+        EmotionReport report = 기본_신고_빌더()
                 .reason(reason)
                 .build();
 
@@ -34,7 +34,7 @@ class SighReportTest {
         String reason = 신고_사유(200);
 
         // when
-        SighReport report = 기본_신고_빌더()
+        EmotionReport report = 기본_신고_빌더()
                 .reason(reason)
                 .build();
 
@@ -76,7 +76,7 @@ class SighReportTest {
 
     @ParameterizedTest
     @MethodSource("필수값이_빠진_신고들")
-    void 신고_대상과_신고자와_사유는_비어_있을_수_없다(SighReport.SighReportBuilder builder) {
+    void 신고_대상과_신고자와_사유는_비어_있을_수_없다(EmotionReport.EmotionReportBuilder builder) {
         // given / when
         Throwable throwable = catchThrowable(builder::build);
 
@@ -86,7 +86,7 @@ class SighReportTest {
 
     private static Stream<Arguments> 필수값이_빠진_신고들() {
         return Stream.of(
-                Arguments.of(기본_신고_빌더().sighId(null)),
+                Arguments.of(기본_신고_빌더().emotionId(null)),
                 Arguments.of(기본_신고_빌더().reporterDeviceId(null)),
                 Arguments.of(기본_신고_빌더().reason(null))
         );

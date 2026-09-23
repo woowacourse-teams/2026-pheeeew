@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "sigh_reports")
 @Entity
-public class SighReport extends BaseEntity {
+public class EmotionReport extends BaseEntity {
 
     private static final int MAX_REASON_LENGTH = 200;
 
@@ -26,7 +26,7 @@ public class SighReport extends BaseEntity {
     private Long id;
 
     @Column(name = "sigh_id", nullable = false, updatable = false)
-    private Long sighId;
+    private Long emotionId;
 
     @Column(name = "reporter_device_id", nullable = false, updatable = false)
     private Long reporterDeviceId;
@@ -35,8 +35,8 @@ public class SighReport extends BaseEntity {
     private String reason;
 
     @Builder
-    private SighReport(Long sighId, Long reporterDeviceId, String reason) {
-        this.sighId = Objects.requireNonNull(sighId);
+    private EmotionReport(Long emotionId, Long reporterDeviceId, String reason) {
+        this.emotionId = Objects.requireNonNull(emotionId);
         this.reporterDeviceId = Objects.requireNonNull(reporterDeviceId);
         this.reason = requireValidReason(reason);
     }
