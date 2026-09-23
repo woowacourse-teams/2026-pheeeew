@@ -15,7 +15,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.sigh.application.SighListCursorCodec;
 import com.pheeeew.sigh.application.SighLocationGenerator;
-import com.pheeeew.sigh.application.SighNicknameGenerator;
+import com.pheeeew.sigh.application.EmotionNicknameGenerator;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.application.dto.SighListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
@@ -70,7 +70,7 @@ class SighMetricsAspectTest {
         context.registerBean(SighRepository.class, () -> repository);
         context.registerBean(DeviceRepository.class, () -> mock(DeviceRepository.class));
         context.registerBean(SighLocationGenerator.class, () -> mock(SighLocationGenerator.class));
-        context.registerBean(SighNicknameGenerator.class, () -> mock(SighNicknameGenerator.class));
+        context.registerBean(EmotionNicknameGenerator.class, () -> mock(EmotionNicknameGenerator.class));
         context.registerBean(SimpleMeterRegistry.class, () -> registry);
         context.registerBean(Clock.class, () -> Clock.fixed(SNAPSHOT_AT, ZoneId.of("Asia/Seoul")));
         context.register(

@@ -1,11 +1,11 @@
 package com.pheeeew.sigh.infra;
 
-import com.pheeeew.sigh.application.SighNicknameGenerator;
+import com.pheeeew.sigh.application.EmotionNicknameGenerator;
 import koreannickname.KoreanNicknameGenerator;
 import org.springframework.stereotype.Component;
 
 @Component
-public class KoreanSighNicknameGenerator implements SighNicknameGenerator {
+public class KoreanEmotionNicknameGenerator implements EmotionNicknameGenerator {
 
     private final KoreanNicknameGenerator generator = KoreanNicknameGenerator.create();
 

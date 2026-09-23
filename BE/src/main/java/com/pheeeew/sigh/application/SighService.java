@@ -47,7 +47,7 @@ public class SighService {
     private final SighRepository sighRepository;
     private final DeviceRepository deviceRepository;
     private final SighLocationGenerator sighLocationGenerator;
-    private final SighNicknameGenerator sighNicknameGenerator;
+    private final EmotionNicknameGenerator emotionNicknameGenerator;
     private final Clock clock;
 
     public SighSaveResult save(UUID requestId, double longitude, double latitude) {
@@ -140,7 +140,7 @@ public class SighService {
                 .requestId(requestId)
                 .location(location)
                 .memo(memo)
-                .nickname(sighNicknameGenerator.generate())
+                .nickname(emotionNicknameGenerator.generate())
                 .deviceId(deviceId)
                 .build();
 
