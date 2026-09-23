@@ -12,7 +12,7 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
-import com.pheeeew.sigh.application.dto.SighMapItem;
+import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
@@ -88,8 +88,8 @@ public class EmotionService {
             projections = projections.subList(0, MAX_FIND_COUNT);
         }
 
-        List<SighMapItem> emotions = projections.stream()
-                .map(projection -> SighMapItem.of(
+        List<EmotionMapItem> emotions = projections.stream()
+                .map(projection -> EmotionMapItem.of(
                         projection.getId(),
                         projection.getLongitude(),
                         projection.getLatitude(),

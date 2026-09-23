@@ -13,7 +13,7 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
-import com.pheeeew.sigh.application.dto.SighMapItem;
+import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
@@ -399,7 +399,7 @@ class EmotionServiceIntegrationTest {
         SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
-        assertThat(result.sighs()).extracting(SighMapItem::id)
+        assertThat(result.sighs()).extracting(EmotionMapItem::id)
                 .containsExactly(조회_시각_한숨, 시작_경계_한숨);
         assertThat(result.truncated()).isFalse();
     }
@@ -437,7 +437,7 @@ class EmotionServiceIntegrationTest {
 
         // then
         assertThat(result.sighs())
-                .extracting(SighMapItem::id)
+                .extracting(EmotionMapItem::id)
                 .containsExactly(살아있는_한숨);
         assertThat(query.count()).isEqualTo(previousQueries + 1);
         assertThat(results.count()).isEqualTo(previousResults + 1);
@@ -457,7 +457,7 @@ class EmotionServiceIntegrationTest {
         // then
         assertThat(result.truncated()).isFalse();
         assertThat(result.sighs())
-                .extracting(SighMapItem::id)
+                .extracting(EmotionMapItem::id)
                 .containsExactly(boundaryId, insideId);
         assertThat(result.sighs().getFirst().longitude()).isEqualTo(127.1000);
         assertThat(result.sighs().getFirst().latitude()).isEqualTo(37.6000);
@@ -480,7 +480,7 @@ class EmotionServiceIntegrationTest {
         // then
         assertThat(result.truncated()).isFalse();
         assertThat(result.sighs())
-                .extracting(SighMapItem::id)
+                .extracting(EmotionMapItem::id)
                 .containsExactly(음의_경도_한숨, 양의_경도_한숨);
     }
 
@@ -497,7 +497,7 @@ class EmotionServiceIntegrationTest {
         assertThat(result.truncated()).isTrue();
         assertThat(result.sighs()).hasSize(500);
         assertThat(result.sighs())
-                .extracting(SighMapItem::id)
+                .extracting(EmotionMapItem::id)
                 .doesNotContain(oldestId);
     }
 
@@ -514,7 +514,7 @@ class EmotionServiceIntegrationTest {
         // then
         assertThat(result.truncated()).isFalse();
         assertThat(result.sighs())
-                .extracting(SighMapItem::id)
+                .extracting(EmotionMapItem::id)
                 .containsExactly(동쪽_경계_한숨, 중앙_한숨, 서쪽_경계_한숨);
     }
 
@@ -546,7 +546,7 @@ class EmotionServiceIntegrationTest {
         assertThat(result.truncated()).isTrue();
         assertThat(result.sighs()).hasSize(500);
         assertThat(result.sighs())
-                .extracting(SighMapItem::id)
+                .extracting(EmotionMapItem::id)
                 .isSortedAccordingTo(Comparator.reverseOrder())
                 .doesNotContain(oldestId);
     }

@@ -9,7 +9,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.sigh.application.EmotionService;
-import com.pheeeew.sigh.application.dto.SighMapItem;
+import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -287,7 +287,7 @@ class BlockFilterIntegrationTest {
 
     private List<Long> 인증하지_않고_지도를_조회한다() {
         return emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty()).sighs().stream()
-                .map(SighMapItem::id)
+                .map(EmotionMapItem::id)
                 .toList();
     }
 
@@ -323,7 +323,7 @@ class BlockFilterIntegrationTest {
             @Override
             List<Long> 조회한다(EmotionService emotionService, EmotionSearchBounds bounds, UUID viewerPublicId) {
                 return emotionService.findAllWithinBounds(bounds, Optional.of(viewerPublicId)).sighs().stream()
-                        .map(SighMapItem::id)
+                        .map(EmotionMapItem::id)
                         .toList();
             }
         },

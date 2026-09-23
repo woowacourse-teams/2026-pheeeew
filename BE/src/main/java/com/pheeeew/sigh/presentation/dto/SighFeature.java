@@ -1,6 +1,6 @@
 package com.pheeeew.sigh.presentation.dto;
 
-import com.pheeeew.sigh.application.dto.SighMapItem;
+import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.SighResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -27,7 +27,7 @@ public record SighFeature<P>(
         );
     }
 
-    public static <P> SighFeature<P> of(SighMapItem sigh, P properties) {
+    public static <P> SighFeature<P> of(EmotionMapItem sigh, P properties) {
         return new SighFeature<>(
                 FEATURE_TYPE,
                 sigh.id(),

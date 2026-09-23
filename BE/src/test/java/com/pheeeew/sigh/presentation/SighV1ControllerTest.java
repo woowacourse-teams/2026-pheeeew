@@ -8,7 +8,7 @@ import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.sigh.application.EmotionService;
-import com.pheeeew.sigh.application.dto.SighMapItem;
+import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
@@ -77,8 +77,8 @@ class SighV1ControllerTest {
         when(emotionService.findAllWithinBounds(BOUNDS, Optional.empty()))
                 .thenReturn(SighMapResult.of(
                         List.of(
-                                SighMapItem.of(2L, 127.1109, 37.3826, NEXT_CREATED_AT),
-                                SighMapItem.of(1L, 127.1258, 37.3467, CREATED_AT)
+                                EmotionMapItem.of(2L, 127.1109, 37.3826, NEXT_CREATED_AT),
+                                EmotionMapItem.of(1L, 127.1258, 37.3467, CREATED_AT)
                         ),
                         true
                 ));
