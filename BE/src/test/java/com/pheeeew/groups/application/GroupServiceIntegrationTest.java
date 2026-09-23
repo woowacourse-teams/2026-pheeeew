@@ -18,8 +18,15 @@ import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.exception.GroupErrorCode;
 import com.pheeeew.groups.exception.GroupException;
 import com.pheeeew.support.PostgisDataJpaTest;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 class GroupServiceIntegrationTest {
 
     private static final String 혼동되는_글자 = "ILOU";
+    private static final int 동시_요청_수 = 6;
 
     @Autowired
     private GroupService groupService;
@@ -117,6 +125,41 @@ class GroupServiceIntegrationTest {
 
         // then
         그룹_오류다(throwable, GroupErrorCode.GROUP_NAME_DUPLICATED);
+    }
+
+    @Test
+    void 같은_이름으로_동시에_만들면_하나만_성공한다() throws Exception {
+        // when
+        List<Boolean> 성공_여부들 = 동시에_실행한다(() -> {
+            groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, 스탬프("기본"));
+
+            return true;
+        });
+
+        // then
+        assertThat(성공_여부들).filteredOn(성공 -> 성공).hasSize(1);
+        assertThat(groupRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void 같은_이름으로_동시에_바꾸면_하나만_성공한다() throws Exception {
+        // given
+        Device 첫_그룹장 = 기기를_저장한다();
+        Device 둘째_그룹장 = 기기를_저장한다();
+        GroupResult 첫_그룹 = groupService.save(첫_그룹장.getPublicId(), "첫모임", null, 스탬프("기본"));
+        GroupResult 둘째_그룹 = groupService.save(둘째_그룹장.getPublicId(), "둘째모임", null, 스탬프("기본"));
+
+        // when
+        List<Boolean> 성공_여부들 = 동시에_바꾼다(
+                () -> groupService.update(첫_그룹.publicId(), 첫_그룹장.getPublicId(), "같은이름", null, 스탬프("기본")),
+                () -> groupService.update(둘째_그룹.publicId(), 둘째_그룹장.getPublicId(), "같은이름", null, 스탬프("기본"))
+        );
+
+        // then
+        assertThat(성공_여부들).filteredOn(성공 -> 성공).hasSize(1);
+        assertThat(groupRepository.findAll())
+                .filteredOn(그룹 -> 그룹.getName().equals("같은이름"))
+                .hasSize(1);
     }
 
     @Test
@@ -288,6 +331,56 @@ class GroupServiceIntegrationTest {
         // then
         assertThat(groupRepository.findByPublicIdAndDeletedAtIsNull(그룹.publicId())).isEmpty();
         assertThat(groupRepository.findAll()).hasSize(1);
+    }
+
+    @SafeVarargs
+    private List<Boolean> 동시에_바꾼다(Callable<GroupResult>... 작업들) throws Exception {
+        return 실행한다(List.of(작업들).stream()
+                .map(작업 -> (Callable<Boolean>) () -> {
+                    작업.call();
+
+                    return true;
+                })
+                .toList());
+    }
+
+    private List<Boolean> 동시에_실행한다(Callable<Boolean> 작업) throws Exception {
+        List<Callable<Boolean>> 작업들 = new ArrayList<>();
+        for (int index = 0; index < 동시_요청_수; index++) {
+            작업들.add(작업);
+        }
+
+        return 실행한다(작업들);
+    }
+
+    private List<Boolean> 실행한다(List<Callable<Boolean>> 작업들) throws Exception {
+        CountDownLatch 준비 = new CountDownLatch(작업들.size());
+        CountDownLatch 출발 = new CountDownLatch(1);
+        ExecutorService 실행기 = Executors.newFixedThreadPool(작업들.size());
+        try {
+            List<Future<Boolean>> 미래들 = 작업들.stream()
+                    .map(작업 -> 실행기.submit(() -> {
+                        준비.countDown();
+                        출발.await(5, TimeUnit.SECONDS);
+                        try {
+                            return 작업.call();
+                        } catch (GroupException exception) {
+                            return false;
+                        }
+                    }))
+                    .toList();
+            준비.await(5, TimeUnit.SECONDS);
+            출발.countDown();
+
+            List<Boolean> 성공_여부들 = new ArrayList<>();
+            for (Future<Boolean> 미래 : 미래들) {
+                성공_여부들.add(미래.get(10, TimeUnit.SECONDS));
+            }
+
+            return 성공_여부들;
+        } finally {
+            실행기.shutdownNow();
+        }
     }
 
     private Device 기기를_저장한다() {

@@ -99,6 +99,7 @@ public class GroupService {
                 stampCommand.backgroundColor(),
                 stampCommand.frame()
         );
+        flushRename();
 
         return toResult(group, GroupRole.OWNER);
     }
@@ -128,6 +129,14 @@ public class GroupService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
     }
 
+    private void flushRename() {
+        try {
+            groupRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            throw new GroupException(GROUP_NAME_DUPLICATED, exception);
+        }
+    }
+
     private void requireUnusedName(String name) {
         if (groupRepository.existsByNameAndDeletedAtIsNull(name)) {
             throw new GroupException(GROUP_NAME_DUPLICATED);
@@ -136,7 +145,7 @@ public class GroupService {
 
     private Group saveWithUniqueInviteCode(String name, String description) {
         try {
-            return groupRepository.save(Group.builder()
+            return groupRepository.saveAndFlush(Group.builder()
                     .name(name)
                     .description(description)
                     .inviteCode(unusedInviteCode())
