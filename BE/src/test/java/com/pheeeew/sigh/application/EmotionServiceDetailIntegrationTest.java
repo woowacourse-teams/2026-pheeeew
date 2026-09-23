@@ -14,7 +14,7 @@ import com.pheeeew.sigh.application.dto.EmotionDetailResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeService;
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
@@ -105,8 +105,8 @@ class EmotionServiceDetailIntegrationTest {
         assertThat(liked.emotion()).isEqualTo(expectedSigh);
         assertThat(liked.emotion().memo()).isEqualTo("오늘은 힘들었다");
         assertThat(unliked.emotion()).isEqualTo(expectedSigh);
-        assertThat(liked.like()).isEqualTo(SighLikeResult.of(true, 2));
-        assertThat(unliked.like()).isEqualTo(SighLikeResult.of(false, 2));
+        assertThat(liked.like()).isEqualTo(EmotionLikeResult.of(true, 2));
+        assertThat(unliked.like()).isEqualTo(EmotionLikeResult.of(false, 2));
     }
 
     @Test
@@ -115,7 +115,7 @@ class EmotionServiceDetailIntegrationTest {
         EmotionDetailResult result = emotionService.findById(sigh.getId(), device.getPublicId());
 
         // then
-        assertThat(result.like()).isEqualTo(SighLikeResult.of(false, 0));
+        assertThat(result.like()).isEqualTo(EmotionLikeResult.of(false, 0));
     }
 
     @ParameterizedTest
@@ -229,8 +229,8 @@ class EmotionServiceDetailIntegrationTest {
         assertThat(unliked.created()).isFalse();
         assertThat(liked.emotion()).isEqualTo(expectedSigh);
         assertThat(unliked.emotion()).isEqualTo(expectedSigh);
-        assertThat(liked.like()).isEqualTo(SighLikeResult.of(true, 1));
-        assertThat(unliked.like()).isEqualTo(SighLikeResult.of(false, 1));
+        assertThat(liked.like()).isEqualTo(EmotionLikeResult.of(true, 1));
+        assertThat(unliked.like()).isEqualTo(EmotionLikeResult.of(false, 1));
         assertThat(emotionRepository.count()).isOne();
     }
 
@@ -255,7 +255,7 @@ class EmotionServiceDetailIntegrationTest {
 
         // then
         assertThat(result.created()).isTrue();
-        assertThat(result.like()).isEqualTo(SighLikeResult.of(false, 0));
+        assertThat(result.like()).isEqualTo(EmotionLikeResult.of(false, 0));
         assertThat(emotionRepository.findById(result.emotion().id()).orElseThrow().getLikeCount()).isZero();
     }
 

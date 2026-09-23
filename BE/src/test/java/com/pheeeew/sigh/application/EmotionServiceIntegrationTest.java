@@ -18,7 +18,7 @@ import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeService;
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
@@ -354,7 +354,7 @@ class EmotionServiceIntegrationTest {
                 .extracting(result -> result.emotion().latitude())
                 .containsOnly(results.getFirst().emotion().latitude());
         assertThat(results).filteredOn(EmotionSaveResult::created).hasSize(1);
-        assertThat(results).extracting(EmotionSaveResult::like).containsOnly(SighLikeResult.of(false, 0));
+        assertThat(results).extracting(EmotionSaveResult::like).containsOnly(EmotionLikeResult.of(false, 0));
         assertThat(emotionRepository.count()).isOne();
     }
 
@@ -577,16 +577,16 @@ class EmotionServiceIntegrationTest {
         // then
         assertThat(firstPage.items()).extracting(item -> item.emotion().id())
                 .containsExactlyElementsOf(ids.subList(1, 21).reversed());
-        assertThat(firstPage.items().get(0).like()).isEqualTo(SighLikeResult.of(true, 2));
-        assertThat(firstPage.items().get(1).like()).isEqualTo(SighLikeResult.of(false, 1));
-        assertThat(firstPage.items().get(2).like()).isEqualTo(SighLikeResult.of(false, 0));
+        assertThat(firstPage.items().get(0).like()).isEqualTo(EmotionLikeResult.of(true, 2));
+        assertThat(firstPage.items().get(1).like()).isEqualTo(EmotionLikeResult.of(false, 1));
+        assertThat(firstPage.items().get(2).like()).isEqualTo(EmotionLikeResult.of(false, 0));
         assertThat(secondPage.items()).singleElement().satisfies(item -> {
             assertThat(item.emotion().id()).isEqualTo(secondPageSighId);
-            assertThat(item.like()).isEqualTo(SighLikeResult.of(true, 1));
+            assertThat(item.like()).isEqualTo(EmotionLikeResult.of(true, 1));
         });
         assertThat(anotherDevicePage.items()).singleElement().satisfies(item -> {
             assertThat(item.emotion().id()).isEqualTo(secondPageSighId);
-            assertThat(item.like()).isEqualTo(SighLikeResult.of(false, 1));
+            assertThat(item.like()).isEqualTo(EmotionLikeResult.of(false, 1));
         });
     }
 
@@ -605,7 +605,7 @@ class EmotionServiceIntegrationTest {
         // then
         assertThat(secondPage.items()).singleElement().satisfies(item -> {
             assertThat(item.emotion().id()).isEqualTo(oldestId);
-            assertThat(item.like()).isEqualTo(SighLikeResult.of(false, 0));
+            assertThat(item.like()).isEqualTo(EmotionLikeResult.of(false, 0));
         });
     }
 

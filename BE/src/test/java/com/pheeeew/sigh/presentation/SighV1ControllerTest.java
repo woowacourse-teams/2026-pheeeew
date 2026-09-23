@@ -12,7 +12,7 @@ import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.EmotionSaveResult;
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
@@ -355,7 +355,7 @@ class SighV1ControllerTest {
                         "외로운 회사원"
                 ),
                 created,
-                SighLikeResult.of(false, 0)
+                EmotionLikeResult.of(false, 0)
         );
     }
 

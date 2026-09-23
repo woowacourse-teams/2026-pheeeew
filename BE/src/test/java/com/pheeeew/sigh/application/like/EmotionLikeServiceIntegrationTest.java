@@ -10,7 +10,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.EmotionLike;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
@@ -79,20 +79,20 @@ class EmotionLikeServiceIntegrationTest {
         UUID devicePublicId = device.getPublicId();
 
         // when / then
-        assertThat(emotionLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, false)).isEqualTo(EmotionLikeResult.of(false, 0));
         assertLikeCount(sighId, 0);
-        assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(EmotionLikeResult.of(true, 1));
         assertLikeCount(sighId, 1);
         Long likeId = emotionLikeRepository.findByEmotionIdAndDeviceId(sighId, device.getId()).orElseThrow().getId();
-        assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(EmotionLikeResult.of(true, 1));
         assertThat(emotionLikeRepository.findAll()).extracting(EmotionLike::getId).containsExactly(likeId);
         assertLikeCount(sighId, 1);
 
-        assertThat(emotionLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, false)).isEqualTo(EmotionLikeResult.of(false, 0));
         assertLikeCount(sighId, 0);
-        assertThat(emotionLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, false)).isEqualTo(EmotionLikeResult.of(false, 0));
         assertLikeCount(sighId, 0);
-        assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(EmotionLikeResult.of(true, 1));
         assertLikeCount(sighId, 1);
         assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sighId, device.getId()))
                 .get().extracting(EmotionLike::getId).isNotEqualTo(likeId);
@@ -108,10 +108,10 @@ class EmotionLikeServiceIntegrationTest {
         EmotionLike anotherSighLike = saveLike(anotherSigh.getId(), device.getId());
 
         // when
-        SighLikeResult result = emotionLikeService.update(sigh.getId(), device.getPublicId(), false);
+        EmotionLikeResult result = emotionLikeService.update(sigh.getId(), device.getPublicId(), false);
 
         // then
-        assertThat(result).isEqualTo(SighLikeResult.of(false, 1));
+        assertThat(result).isEqualTo(EmotionLikeResult.of(false, 1));
         assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
         assertThat(emotionLikeRepository.findAll()).extracting(EmotionLike::getId)
                 .containsExactlyInAnyOrder(anotherDeviceLike.getId(), anotherSighLike.getId());

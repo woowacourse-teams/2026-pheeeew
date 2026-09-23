@@ -8,7 +8,7 @@ import com.pheeeew.sigh.application.dto.EmotionListResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.presentation.dto.SighCreateV2Request;
 import com.pheeeew.sigh.presentation.dto.SighFeature;
 import com.pheeeew.sigh.presentation.dto.SighLikeRequest;
@@ -109,11 +109,11 @@ public class SighV2Controller implements SighV2ControllerApi {
             @CurrentDevice UUID devicePublicId,
             @RequestBody SighLikeRequest request
     ) {
-        SighLikeResult result = emotionLikeRetryService.update(sighId, devicePublicId, request.liked());
+        EmotionLikeResult result = emotionLikeRetryService.update(sighId, devicePublicId, request.liked());
         return SighLikeResponse.from(result);
     }
 
-    private SighFeature<SighV2Properties> toFeature(EmotionResult sigh, SighLikeResult like) {
+    private SighFeature<SighV2Properties> toFeature(EmotionResult sigh, EmotionLikeResult like) {
         return SighFeature.of(sigh, SighV2Properties.of(sigh, like));
     }
 }

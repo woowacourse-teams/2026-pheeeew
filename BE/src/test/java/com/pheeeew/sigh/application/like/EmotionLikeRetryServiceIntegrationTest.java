@@ -14,7 +14,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
@@ -91,10 +91,10 @@ class EmotionLikeRetryServiceIntegrationTest {
         conflictOnFirstAttempts(liked, 1);
 
         // when
-        SighLikeResult result = emotionLikeRetryService.update(sigh.getId(), device.getPublicId(), liked);
+        EmotionLikeResult result = emotionLikeRetryService.update(sigh.getId(), device.getPublicId(), liked);
 
         // then
-        assertThat(result).isEqualTo(SighLikeResult.of(liked, liked ? 2 : 1));
+        assertThat(result).isEqualTo(EmotionLikeResult.of(liked, liked ? 2 : 1));
         verify(serviceSpy(), times(2)).update(sigh.getId(), device.getPublicId(), liked);
         assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sigh.getId(), device.getId()).isPresent())
                 .isEqualTo(liked);

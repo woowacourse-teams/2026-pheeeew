@@ -1,6 +1,6 @@
 package com.pheeeew.sigh.application.like;
 
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
@@ -17,7 +17,7 @@ public class EmotionLikeRetryService {
     private final EmotionLikeService emotionLikeService;
 
     @Transactional(propagation = Propagation.NEVER)
-    public SighLikeResult update(Long emotionId, UUID devicePublicId, boolean liked) {
+    public EmotionLikeResult update(Long emotionId, UUID devicePublicId, boolean liked) {
         for (int attempt = 1; ; attempt++) {
             try {
                 return emotionLikeService.update(emotionId, devicePublicId, liked);

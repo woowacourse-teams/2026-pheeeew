@@ -1,7 +1,7 @@
 package com.pheeeew.sigh.presentation.dto;
 
 import com.pheeeew.sigh.application.dto.EmotionResult;
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
@@ -22,7 +22,7 @@ public record SighV2Properties(
         long likeCount
 ) {
 
-    public static SighV2Properties of(EmotionResult sigh, SighLikeResult like) {
+    public static SighV2Properties of(EmotionResult sigh, EmotionLikeResult like) {
         return new SighV2Properties(
                 sigh.createdAt(), sigh.memo(), sigh.nickname(), like.liked(), like.likeCount()
         );

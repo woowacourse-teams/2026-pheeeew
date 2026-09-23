@@ -1,6 +1,6 @@
 package com.pheeeew.sigh.presentation.dto;
 
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 public record SighLikeResponse(
@@ -11,7 +11,7 @@ public record SighLikeResponse(
         long likeCount
 ) {
 
-    public static SighLikeResponse from(SighLikeResult result) {
+    public static SighLikeResponse from(EmotionLikeResult result) {
         return new SighLikeResponse(result.liked(), result.likeCount());
     }
 }

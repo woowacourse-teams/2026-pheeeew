@@ -20,7 +20,7 @@ import com.pheeeew.sigh.application.dto.EmotionListResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
@@ -367,7 +367,7 @@ class SighV2ControllerTest {
         // given
         when(emotionService.save(REQUEST_ID, 129.0756, 35.1796, "재시도 메모", DEVICE_PUBLIC_ID))
                 .thenReturn(EmotionSaveResult.of(
-                        기본_저장_결과("최초 메모", false).emotion(), false, SighLikeResult.of(liked, likeCount)
+                        기본_저장_결과("최초 메모", false).emotion(), false, EmotionLikeResult.of(liked, likeCount)
                 ));
 
         // when
@@ -570,7 +570,7 @@ class SighV2ControllerTest {
                         "날아가는 고라니"
                 ),
                 created,
-                SighLikeResult.of(false, 0)
+                EmotionLikeResult.of(false, 0)
         );
     }
 
@@ -584,7 +584,7 @@ class SighV2ControllerTest {
                         memo,
                         "날아가는 고라니"
                 ),
-                SighLikeResult.of(liked, likeCount)
+                EmotionLikeResult.of(liked, likeCount)
         );
     }
 

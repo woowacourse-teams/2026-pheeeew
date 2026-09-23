@@ -6,7 +6,7 @@ import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.EmotionLike;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
@@ -27,7 +27,7 @@ public class EmotionLikeService {
     private final DeviceRepository deviceRepository;
 
     @Transactional
-    public SighLikeResult update(Long emotionId, UUID devicePublicId, boolean liked) {
+    public EmotionLikeResult update(Long emotionId, UUID devicePublicId, boolean liked) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
@@ -48,6 +48,6 @@ public class EmotionLikeService {
             emotion.decreaseLikeCount();
         }
 
-        return SighLikeResult.of(liked, emotion.getLikeCount());
+        return EmotionLikeResult.of(liked, emotion.getLikeCount());
     }
 }

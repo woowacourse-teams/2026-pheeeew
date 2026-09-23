@@ -15,7 +15,7 @@ import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
-import com.pheeeew.sigh.application.like.dto.SighLikeResult;
+import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import java.util.UUID;
@@ -81,7 +81,7 @@ class SighV2LikeControllerTest {
         // given
         long likeCount = liked ? 12 : 11;
         when(emotionLikeRetryService.update(42L, DEVICE_PUBLIC_ID, liked))
-                .thenReturn(SighLikeResult.of(liked, likeCount));
+                .thenReturn(EmotionLikeResult.of(liked, likeCount));
 
         // when
         RestTestClient.ResponseSpec result = request(LIKES_URI, "access-token", """
