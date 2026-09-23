@@ -14,7 +14,7 @@ import com.pheeeew.emotion.presentation.dto.SighFeature;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
-import com.pheeeew.emotion.presentation.dto.SighV2Properties;
+import com.pheeeew.emotion.presentation.dto.EmotionV2Properties;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -42,7 +42,7 @@ public class SighV2Controller implements SighV2ControllerApi {
 
     @Override
     @GetMapping
-    public ResponseEntity<CursorResponse<SighFeature<SighV2Properties>>> findAll(
+    public ResponseEntity<CursorResponse<SighFeature<EmotionV2Properties>>> findAll(
             @ModelAttribute EmotionListRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
@@ -53,7 +53,7 @@ public class SighV2Controller implements SighV2ControllerApi {
             result = emotionService.findFirstListPage(request.toBounds(), devicePublicId);
         }
 
-        List<SighFeature<SighV2Properties>> items = result.items().stream()
+        List<SighFeature<EmotionV2Properties>> items = result.items().stream()
                 .map(item -> toFeature(item.emotion(), item.like()))
                 .toList();
 
@@ -64,7 +64,7 @@ public class SighV2Controller implements SighV2ControllerApi {
 
     @Override
     @GetMapping("/{id}")
-    public ResponseEntity<SighFeature<SighV2Properties>> findById(
+    public ResponseEntity<SighFeature<EmotionV2Properties>> findById(
             @PathVariable Long id,
             @CurrentDevice UUID devicePublicId
     ) {
@@ -78,7 +78,7 @@ public class SighV2Controller implements SighV2ControllerApi {
 
     @Override
     @PostMapping
-    public ResponseEntity<SighFeature<SighV2Properties>> save(
+    public ResponseEntity<SighFeature<EmotionV2Properties>> save(
             @RequestBody EmotionCreateV2Request request,
             @CurrentDevice UUID devicePublicId
     ) {
@@ -113,7 +113,7 @@ public class SighV2Controller implements SighV2ControllerApi {
         return EmotionLikeResponse.from(result);
     }
 
-    private SighFeature<SighV2Properties> toFeature(EmotionResult emotion, EmotionLikeResult like) {
-        return SighFeature.of(emotion, SighV2Properties.of(emotion, like));
+    private SighFeature<EmotionV2Properties> toFeature(EmotionResult emotion, EmotionLikeResult like) {
+        return SighFeature.of(emotion, EmotionV2Properties.of(emotion, like));
     }
 }

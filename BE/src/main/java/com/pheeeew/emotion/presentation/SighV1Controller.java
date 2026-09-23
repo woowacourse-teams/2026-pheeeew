@@ -9,7 +9,7 @@ import com.pheeeew.emotion.presentation.dto.EmotionCreateV1Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
 import com.pheeeew.emotion.presentation.dto.EmotionMapRequest;
 import com.pheeeew.emotion.presentation.dto.SighMapResponse;
-import com.pheeeew.emotion.presentation.dto.SighV1Properties;
+import com.pheeeew.emotion.presentation.dto.EmotionV1Properties;
 import jakarta.validation.Valid;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,7 +48,7 @@ public class SighV1Controller implements SighV1ControllerApi {
 
     @Override
     @PostMapping
-    public ResponseEntity<SighFeature<SighV1Properties>> save(
+    public ResponseEntity<SighFeature<EmotionV1Properties>> save(
             @Valid @RequestBody EmotionCreateV1Request request
     ) {
         EmotionSaveResult result = emotionService.save(request.requestId(), request.longitude(), request.latitude());
@@ -63,7 +63,7 @@ public class SighV1Controller implements SighV1ControllerApi {
                 .contentType(GEO_JSON)
                 .body(SighFeature.of(
                         emotion,
-                        SighV1Properties.from(emotion.createdAt())
+                        EmotionV1Properties.from(emotion.createdAt())
                 ));
     }
 }

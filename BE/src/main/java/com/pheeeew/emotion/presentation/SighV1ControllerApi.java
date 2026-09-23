@@ -5,7 +5,7 @@ import com.pheeeew.emotion.presentation.dto.EmotionCreateV1Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
 import com.pheeeew.emotion.presentation.dto.EmotionMapRequest;
 import com.pheeeew.emotion.presentation.dto.SighMapResponse;
-import com.pheeeew.emotion.presentation.dto.SighV1Properties;
+import com.pheeeew.emotion.presentation.dto.EmotionV1Properties;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
@@ -138,7 +138,7 @@ public interface SighV1ControllerApi {
                                     allOf = SighFeature.class,
                                     properties = @StringToClassMapItem(
                                             key = "properties",
-                                            value = SighV1Properties.class
+                                            value = EmotionV1Properties.class
                                     )
                             )
                     )
@@ -152,7 +152,7 @@ public interface SighV1ControllerApi {
                                     allOf = SighFeature.class,
                                     properties = @StringToClassMapItem(
                                             key = "properties",
-                                            value = SighV1Properties.class
+                                            value = EmotionV1Properties.class
                                     )
                             )
                     )
@@ -177,5 +177,5 @@ public interface SighV1ControllerApi {
                     )
             )
     })
-    ResponseEntity<SighFeature<SighV1Properties>> save(EmotionCreateV1Request request);
+    ResponseEntity<SighFeature<EmotionV1Properties>> save(EmotionCreateV1Request request);
 }

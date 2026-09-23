@@ -5,7 +5,8 @@ import com.pheeeew.emotion.application.like.dto.EmotionLikeResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
-public record SighV2Properties(
+@Schema(name = "SighV2Properties")
+public record EmotionV2Properties(
         @Schema(description = "한숨 생성 시각", example = "2026-09-01T12:00:00Z")
         Instant createdAt,
 
@@ -22,8 +23,8 @@ public record SighV2Properties(
         long likeCount
 ) {
 
-    public static SighV2Properties of(EmotionResult emotion, EmotionLikeResult like) {
-        return new SighV2Properties(
+    public static EmotionV2Properties of(EmotionResult emotion, EmotionLikeResult like) {
+        return new EmotionV2Properties(
                 emotion.createdAt(), emotion.memo(), emotion.nickname(), like.liked(), like.likeCount()
         );
     }

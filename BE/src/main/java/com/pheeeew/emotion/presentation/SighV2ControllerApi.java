@@ -7,7 +7,7 @@ import com.pheeeew.emotion.presentation.dto.SighFeature;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
-import com.pheeeew.emotion.presentation.dto.SighV2Properties;
+import com.pheeeew.emotion.presentation.dto.EmotionV2Properties;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.StringToClassMapItem;
@@ -155,7 +155,7 @@ public interface SighV2ControllerApi {
                     )
             )
     })
-    ResponseEntity<CursorResponse<SighFeature<SighV2Properties>>> findAll(
+    ResponseEntity<CursorResponse<SighFeature<EmotionV2Properties>>> findAll(
             @ParameterObject @Valid EmotionListRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
@@ -200,7 +200,7 @@ public interface SighV2ControllerApi {
                                     allOf = SighFeature.class,
                                     properties = @StringToClassMapItem(
                                             key = "properties",
-                                            value = SighV2Properties.class
+                                            value = EmotionV2Properties.class
                                     )
                             )
                     )
@@ -263,7 +263,7 @@ public interface SighV2ControllerApi {
                     )
             )
     })
-    ResponseEntity<SighFeature<SighV2Properties>> findById(
+    ResponseEntity<SighFeature<EmotionV2Properties>> findById(
             @Parameter(
                     description = "조회할 한숨 ID",
                     example = "42",
@@ -335,7 +335,7 @@ public interface SighV2ControllerApi {
                                     allOf = SighFeature.class,
                                     properties = @StringToClassMapItem(
                                             key = "properties",
-                                            value = SighV2Properties.class
+                                            value = EmotionV2Properties.class
                                     )
                             )
                     )
@@ -349,7 +349,7 @@ public interface SighV2ControllerApi {
                                     allOf = SighFeature.class,
                                     properties = @StringToClassMapItem(
                                             key = "properties",
-                                            value = SighV2Properties.class
+                                            value = EmotionV2Properties.class
                                     )
                             )
                     )
@@ -390,7 +390,7 @@ public interface SighV2ControllerApi {
                     )
             )
     })
-    ResponseEntity<SighFeature<SighV2Properties>> save(
+    ResponseEntity<SighFeature<EmotionV2Properties>> save(
             @RequestBody(
                     required = true,
                     content = @Content(
