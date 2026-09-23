@@ -5,8 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionErrorCode;
+import com.pheeeew.sigh.exception.EmotionException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
@@ -68,8 +68,8 @@ class EmotionListCursorCodecTest {
 
     private void 잘못된_커서임을_검증한다(String encoded) {
         assertThatThrownBy(() -> EmotionListCursorCodec.decode(encoded))
-                .isInstanceOf(SighException.class)
-                .extracting(exception -> ((SighException) exception).getErrorCode())
-                .isEqualTo(SighErrorCode.SIGH_INVALID_CURSOR);
+                .isInstanceOf(EmotionException.class)
+                .extracting(exception -> ((EmotionException) exception).getErrorCode())
+                .isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR);
     }
 }

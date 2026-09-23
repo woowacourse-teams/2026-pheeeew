@@ -15,8 +15,8 @@ import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.report.exception.BlockErrorCode;
 import com.pheeeew.report.exception.BlockException;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionErrorCode;
+import com.pheeeew.sigh.exception.EmotionException;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.util.ArrayList;
 import java.util.List;
@@ -152,9 +152,9 @@ class EmotionBlockServiceIntegrationTest {
 
         // then
         assertThat(throwable)
-                .isInstanceOf(SighException.class)
+                .isInstanceOf(EmotionException.class)
                 .hasMessage("한숨을 찾을 수 없습니다.");
-        assertThat(((SighException) throwable).getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND);
+        assertThat(((EmotionException) throwable).getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND);
         assertThat(emotionBlockRepository.count()).isZero();
     }
 

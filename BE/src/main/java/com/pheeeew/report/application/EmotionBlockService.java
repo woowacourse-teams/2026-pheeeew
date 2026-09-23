@@ -2,7 +2,7 @@ package com.pheeeew.report.application;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.report.exception.BlockErrorCode.BLOCK_SAVE_FAILED;
-import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
+import static com.pheeeew.sigh.exception.EmotionErrorCode.EMOTION_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -16,7 +16,7 @@ import com.pheeeew.report.domain.repository.projection.BlockProjection;
 import com.pheeeew.report.exception.BlockException;
 import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -79,7 +79,7 @@ public class EmotionBlockService {
 
     private Emotion findEmotion(Long emotionId) {
         return emotionRepository.findById(emotionId)
-                .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
+                .orElseThrow(() -> new EmotionException(EMOTION_NOT_FOUND));
     }
 
     private Long findBlockerDeviceId(UUID devicePublicId) {

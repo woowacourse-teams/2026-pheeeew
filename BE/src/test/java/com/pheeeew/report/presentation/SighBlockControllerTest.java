@@ -16,8 +16,8 @@ import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.exception.BlockErrorCode;
 import com.pheeeew.report.exception.BlockException;
 import com.pheeeew.sigh.domain.Emotion;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionErrorCode;
+import com.pheeeew.sigh.exception.EmotionException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -123,7 +123,7 @@ class SighBlockControllerTest {
     void 차단할_한숨이_없으면_404를_반환한다() {
         // given
         when(emotionBlockService.save(SIGH_ID, 기기_공개_식별자))
-                .thenThrow(new SighException(SighErrorCode.SIGH_NOT_FOUND));
+                .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND));
 
         // when
         RestTestClient.ResponseSpec result = 차단한다(기본_차단_요청());

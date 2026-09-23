@@ -22,8 +22,8 @@ import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionErrorCode;
+import com.pheeeew.sigh.exception.EmotionException;
 import com.pheeeew.sigh.infra.metrics.EmotionMetrics;
 import com.pheeeew.sigh.infra.metrics.EmotionMetricsAspect;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -879,9 +879,9 @@ class EmotionServiceIntegrationTest {
 
         // when / then
         assertThatThrownBy(() -> emotionService.findNextListPage(encodedCursor, devicePublicId))
-                .isInstanceOf(SighException.class)
-                .extracting(exception -> ((SighException) exception).getErrorCode())
-                .isEqualTo(SighErrorCode.SIGH_INVALID_CURSOR);
+                .isInstanceOf(EmotionException.class)
+                .extracting(exception -> ((EmotionException) exception).getErrorCode())
+                .isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR);
     }
 
     @Test
@@ -949,11 +949,11 @@ class EmotionServiceIntegrationTest {
 
             // then
             assertThat(throwable)
-                    .isInstanceOf(SighException.class)
+                    .isInstanceOf(EmotionException.class)
                     .hasMessage("한숨을 저장하지 못했습니다.")
                     .hasCauseInstanceOf(DataIntegrityViolationException.class);
-            assertThat(((SighException) throwable).getErrorCode())
-                    .isEqualTo(SighErrorCode.SIGH_SAVE_FAILED);
+            assertThat(((EmotionException) throwable).getErrorCode())
+                    .isEqualTo(EmotionErrorCode.EMOTION_SAVE_FAILED);
         } finally {
             removeRejectedRequestIdConstraint();
         }

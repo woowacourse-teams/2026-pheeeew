@@ -18,8 +18,8 @@ import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.exception.BlockErrorCode;
 import com.pheeeew.report.exception.BlockException;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionErrorCode;
+import com.pheeeew.sigh.exception.EmotionException;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.util.ArrayList;
 import java.util.List;
@@ -234,8 +234,8 @@ class DeviceBlockServiceIntegrationTest {
                 catchThrowable(() -> deviceBlockService.save(없는_한숨_식별자, 차단자.getPublicId()));
 
         // then
-        assertThat(throwable).isInstanceOf(SighException.class);
-        assertThat(((SighException) throwable).getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND);
+        assertThat(throwable).isInstanceOf(EmotionException.class);
+        assertThat(((EmotionException) throwable).getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND);
         assertThat(deviceBlockRepository.count()).isZero();
     }
 

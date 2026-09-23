@@ -22,8 +22,8 @@ import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionErrorCode;
+import com.pheeeew.sigh.exception.EmotionException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -225,7 +225,7 @@ class SighV2ControllerTest {
     void 사용할_수_없는_커서는_400을_반환한다() {
         // given
         when(emotionService.findNextListPage("invalid-cursor", DEVICE_PUBLIC_ID))
-                .thenThrow(new SighException(SighErrorCode.SIGH_INVALID_CURSOR));
+                .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_INVALID_CURSOR));
 
         // when
         RestTestClient.ResponseSpec result = client.get()
@@ -481,7 +481,7 @@ class SighV2ControllerTest {
     void 존재하지_않는_한숨_상세를_조회하면_404를_반환한다() {
         // given
         when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
-                .thenThrow(new SighException(SighErrorCode.SIGH_NOT_FOUND));
+                .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND));
 
         // when
         RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(SIGH_ID.toString());
@@ -500,7 +500,7 @@ class SighV2ControllerTest {
     void 기간이_지난_한숨_상세를_조회하면_410과_만료_코드를_반환한다() {
         // given
         when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
-                .thenThrow(new SighException(SighErrorCode.SIGH_EXPIRED));
+                .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_EXPIRED));
 
         // when
         RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(SIGH_ID.toString());

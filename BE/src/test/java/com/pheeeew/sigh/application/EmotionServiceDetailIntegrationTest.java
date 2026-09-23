@@ -18,8 +18,8 @@ import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionErrorCode;
+import com.pheeeew.sigh.exception.EmotionException;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Clock;
 import java.time.Instant;
@@ -149,8 +149,8 @@ class EmotionServiceDetailIntegrationTest {
 
         // when / then
         assertThatThrownBy(() -> emotionService.findById(sigh.getId(), device.getPublicId()))
-                .isInstanceOfSatisfying(SighException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_EXPIRED));
+                .isInstanceOfSatisfying(EmotionException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_EXPIRED));
     }
 
     @Test
@@ -165,8 +165,8 @@ class EmotionServiceDetailIntegrationTest {
         // when / then
         assertThat(beforeMidnight.emotion().id()).isEqualTo(sigh.getId());
         assertThatThrownBy(() -> emotionService.findById(sigh.getId(), device.getPublicId()))
-                .isInstanceOfSatisfying(SighException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_EXPIRED));
+                .isInstanceOfSatisfying(EmotionException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_EXPIRED));
         Emotion savedSigh = emotionRepository.findById(sigh.getId()).orElseThrow();
         assertThat(savedSigh.getCreatedAt()).isEqualTo(createdAt);
         assertThat(savedSigh.getDeletedAt()).isNull();
@@ -269,7 +269,7 @@ class EmotionServiceDetailIntegrationTest {
     private void assertSighNotFound(Long sighId, UUID devicePublicId) {
         assertThatThrownBy(() -> emotionService.findById(sighId, devicePublicId))
                 .hasMessage("한숨을 찾을 수 없습니다.")
-                .isInstanceOfSatisfying(SighException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
+                .isInstanceOfSatisfying(EmotionException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND));
     }
 }

@@ -1,10 +1,10 @@
 package com.pheeeew.sigh.application;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
-import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_EXPIRED;
-import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_INVALID_CURSOR;
-import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_SAVE_FAILED;
-import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
+import static com.pheeeew.sigh.exception.EmotionErrorCode.EMOTION_EXPIRED;
+import static com.pheeeew.sigh.exception.EmotionErrorCode.EMOTION_INVALID_CURSOR;
+import static com.pheeeew.sigh.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
+import static com.pheeeew.sigh.exception.EmotionErrorCode.EMOTION_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -24,7 +24,7 @@ import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -65,11 +65,11 @@ public class EmotionService {
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         Long deviceId = findDeviceId(devicePublicId);
         EmotionDetailProjection projection = emotionRepository.findById(id, deviceId)
-                .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
+                .orElseThrow(() -> new EmotionException(EMOTION_NOT_FOUND));
 
         EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
         if (projection.getEmotion().getCreatedAt().isBefore(period.startAt())) {
-            throw new SighException(SIGH_EXPIRED);
+            throw new EmotionException(EMOTION_EXPIRED);
         }
 
         return EmotionDetailResult.from(projection);
@@ -112,7 +112,7 @@ public class EmotionService {
         EmotionListCursor cursor = EmotionListCursorCodec.decode(encodedCursor);
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         if (cursor.snapshotAt().isAfter(queriedAt)) {
-            throw new SighException(SIGH_INVALID_CURSOR);
+            throw new EmotionException(EMOTION_INVALID_CURSOR);
         }
         EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
 
@@ -155,7 +155,7 @@ public class EmotionService {
     private EmotionSaveResult findExistingEmotion(UUID requestId, Long deviceId, DataIntegrityViolationException cause) {
         return emotionRepository.findByRequestId(requestId, deviceId)
                 .map(this::createSaveResult)
-                .orElseThrow(() -> new SighException(SIGH_SAVE_FAILED, cause));
+                .orElseThrow(() -> new EmotionException(EMOTION_SAVE_FAILED, cause));
     }
 
     private Long findDeviceId(UUID devicePublicId) {

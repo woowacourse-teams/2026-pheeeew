@@ -1,10 +1,10 @@
 package com.pheeeew.sigh.application;
 
-import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_INVALID_CURSOR;
+import static com.pheeeew.sigh.exception.EmotionErrorCode.EMOTION_INVALID_CURSOR;
 
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionException;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
 import java.time.Instant;
@@ -65,7 +65,7 @@ public final class EmotionListCursorCodec {
                 .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
     }
 
-    private static SighException invalidCursor() {
-        return new SighException(SIGH_INVALID_CURSOR);
+    private static EmotionException invalidCursor() {
+        return new EmotionException(EMOTION_INVALID_CURSOR);
     }
 }

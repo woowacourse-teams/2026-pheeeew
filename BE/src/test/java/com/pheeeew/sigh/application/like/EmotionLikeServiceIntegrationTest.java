@@ -15,8 +15,8 @@ import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.EmotionLike;
 import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionErrorCode;
+import com.pheeeew.sigh.exception.EmotionException;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -130,14 +130,14 @@ class EmotionLikeServiceIntegrationTest {
                 .isInstanceOfSatisfying(DeviceException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
         assertThatThrownBy(() -> emotionLikeService.update(Long.MAX_VALUE, device.getPublicId(), liked))
-                .isInstanceOfSatisfying(SighException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
+                .isInstanceOfSatisfying(EmotionException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND));
         Emotion latestSigh = emotionRepository.findById(sigh.getId()).orElseThrow();
         latestSigh.delete();
         emotionRepository.saveAndFlush(latestSigh);
         assertThatThrownBy(() -> emotionLikeService.update(sigh.getId(), device.getPublicId(), liked))
-                .isInstanceOfSatisfying(SighException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
+                .isInstanceOfSatisfying(EmotionException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND));
         assertThat(emotionLikeRepository.findAll()).extracting(EmotionLike::getId).containsExactly(like.getId());
         assertLikeCount(sigh.getId(), 1);
     }

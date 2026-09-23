@@ -16,8 +16,8 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionErrorCode;
+import com.pheeeew.sigh.exception.EmotionException;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -155,7 +155,7 @@ class SighV2LikeControllerTest {
     private static Stream<Arguments> serviceFailures() {
         return Stream.of(
                 Arguments.of(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND), 401, "DEVICE-004"),
-                Arguments.of(new SighException(SighErrorCode.SIGH_NOT_FOUND), 404, "SIGH-002"),
+                Arguments.of(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND), 404, "SIGH-002"),
                 Arguments.of(new ObjectOptimisticLockingFailureException("conflict", null), 500, "COMMON-002")
         );
     }

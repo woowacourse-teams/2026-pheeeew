@@ -14,8 +14,8 @@ import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.dto.EmotionLikeResult;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionErrorCode;
+import com.pheeeew.sigh.exception.EmotionException;
 import com.pheeeew.sigh.presentation.dto.SighCreateV1Request;
 import java.time.Instant;
 import java.util.List;
@@ -299,7 +299,7 @@ class SighV1ControllerTest {
     void 한숨_도메인_예외는_정의된_상태와_코드로_반환한다() {
         // given
         when(emotionService.save(REQUEST_ID, 126.9780, 37.5664))
-                .thenThrow(new SighException(SighErrorCode.SIGH_SAVE_FAILED, new IllegalStateException()));
+                .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_SAVE_FAILED, new IllegalStateException()));
 
         // when
         RestTestClient.ResponseSpec result = 한숨을_등록한다(기본_요청());

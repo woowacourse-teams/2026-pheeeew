@@ -25,7 +25,7 @@ import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionException;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MockClock;
 import io.micrometer.core.instrument.Timer;
@@ -163,7 +163,7 @@ class EmotionMetricsAspectTest {
         // when / then
         context.getBean(EmotionRepository.class).count();
         assertThatThrownBy(() -> service.findById(1L, device.getPublicId()))
-                .isInstanceOf(SighException.class);
+                .isInstanceOf(EmotionException.class);
         verify(repository).findById(1L, device.getId());
         assertThat(registry.get("pheeeew.sigh.map.query").timer().count()).isZero();
         assertThat(registry.get("pheeeew.sigh.list.query").timer().count()).isZero();
@@ -272,7 +272,7 @@ class EmotionMetricsAspectTest {
     void 잘못된_커서는_목록_성공_호출에_포함하지_않는다() {
         // given / when / then
         assertThatThrownBy(() -> service.findNextListPage("invalid", UUID.randomUUID()))
-                .isInstanceOf(SighException.class);
+                .isInstanceOf(EmotionException.class);
         assertThat(registry.get("pheeeew.sigh.list.results").summaries())
                 .allSatisfy(summary -> assertThat(summary.count()).isZero());
         assertThat(registry.get("pheeeew.sigh.list.query").timer().count()).isZero();

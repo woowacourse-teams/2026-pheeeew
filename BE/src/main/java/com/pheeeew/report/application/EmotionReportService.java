@@ -3,7 +3,7 @@ package com.pheeeew.report.application;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.report.exception.EmotionReportErrorCode.EMOTION_REPORT_SAVE_FAILED;
 import static com.pheeeew.report.exception.EmotionReportErrorCode.EMOTION_REPORT_SELF_NOT_ALLOWED;
-import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
+import static com.pheeeew.sigh.exception.EmotionErrorCode.EMOTION_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -14,7 +14,7 @@ import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionException;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -61,7 +61,7 @@ public class EmotionReportService {
 
     private Emotion findEmotion(Long emotionId) {
         return emotionRepository.findById(emotionId)
-                .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
+                .orElseThrow(() -> new EmotionException(EMOTION_NOT_FOUND));
     }
 
     private void validateNotSelf(Emotion emotion, Long reporterDeviceId) {

@@ -15,8 +15,8 @@ import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.report.application.dto.EmotionReportResult;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.sigh.exception.EmotionErrorCode;
+import com.pheeeew.sigh.exception.EmotionException;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -164,7 +164,7 @@ class SighReportControllerTest {
     void 신고할_한숨이_없으면_404를_반환한다() {
         // given
         when(emotionReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
-                .thenThrow(new SighException(SighErrorCode.SIGH_NOT_FOUND));
+                .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND));
 
         // when
         RestTestClient.ResponseSpec result = 신고한다(기본_신고_본문());
