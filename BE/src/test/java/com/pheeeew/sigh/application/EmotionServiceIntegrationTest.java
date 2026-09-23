@@ -14,7 +14,7 @@ import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.EmotionMapItem;
-import com.pheeeew.sigh.application.dto.SighMapResult;
+import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeService;
@@ -396,10 +396,10 @@ class EmotionServiceIntegrationTest {
         insertSigh(126.9780, 37.5664, queriedAt.plus(1, ChronoUnit.MICROS).toString());
 
         // when
-        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        EmotionMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
-        assertThat(result.sighs()).extracting(EmotionMapItem::id)
+        assertThat(result.emotions()).extracting(EmotionMapItem::id)
                 .containsExactly(조회_시각_한숨, 시작_경계_한숨);
         assertThat(result.truncated()).isFalse();
     }
@@ -412,10 +412,10 @@ class EmotionServiceIntegrationTest {
         insertSigh(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
 
         // when
-        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        EmotionMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
-        assertThat(result.sighs()).isEmpty();
+        assertThat(result.emotions()).isEmpty();
         assertThat(result.truncated()).isFalse();
     }
 
@@ -433,10 +433,10 @@ class EmotionServiceIntegrationTest {
         double previousReturnedCount = results.totalAmount();
 
         // when
-        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        EmotionMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
-        assertThat(result.sighs())
+        assertThat(result.emotions())
                 .extracting(EmotionMapItem::id)
                 .containsExactly(살아있는_한숨);
         assertThat(query.count()).isEqualTo(previousQueries + 1);
@@ -452,16 +452,16 @@ class EmotionServiceIntegrationTest {
         Long boundaryId = insertSigh(127.1000, 37.6000, "2026-08-31T10:32:00Z");
 
         // when
-        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        EmotionMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
-        assertThat(result.sighs())
+        assertThat(result.emotions())
                 .extracting(EmotionMapItem::id)
                 .containsExactly(boundaryId, insideId);
-        assertThat(result.sighs().getFirst().longitude()).isEqualTo(127.1000);
-        assertThat(result.sighs().getFirst().latitude()).isEqualTo(37.6000);
-        assertThat(result.sighs().getFirst().createdAt())
+        assertThat(result.emotions().getFirst().longitude()).isEqualTo(127.1000);
+        assertThat(result.emotions().getFirst().latitude()).isEqualTo(37.6000);
+        assertThat(result.emotions().getFirst().createdAt())
                 .isEqualTo(Instant.parse("2026-08-31T10:32:00Z"));
     }
 
@@ -475,11 +475,11 @@ class EmotionServiceIntegrationTest {
         insertSigh(175.0000, 10.0001, "2026-08-31T10:34:00Z");
 
         // when
-        SighMapResult result = emotionService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
+        EmotionMapResult result = emotionService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
-        assertThat(result.sighs())
+        assertThat(result.emotions())
                 .extracting(EmotionMapItem::id)
                 .containsExactly(음의_경도_한숨, 양의_경도_한숨);
     }
@@ -491,12 +491,12 @@ class EmotionServiceIntegrationTest {
         insertSighs(500, -175.0000, 0.0000);
 
         // when
-        SighMapResult result = emotionService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
+        EmotionMapResult result = emotionService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isTrue();
-        assertThat(result.sighs()).hasSize(500);
-        assertThat(result.sighs())
+        assertThat(result.emotions()).hasSize(500);
+        assertThat(result.emotions())
                 .extracting(EmotionMapItem::id)
                 .doesNotContain(oldestId);
     }
@@ -509,11 +509,11 @@ class EmotionServiceIntegrationTest {
         Long 동쪽_경계_한숨 = insertSigh(180.0000, 0.0000, "2026-08-31T10:32:00Z");
 
         // when
-        SighMapResult result = emotionService.findAllWithinBounds(WORLD_BOUNDS, Optional.empty());
+        EmotionMapResult result = emotionService.findAllWithinBounds(WORLD_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
-        assertThat(result.sighs())
+        assertThat(result.emotions())
                 .extracting(EmotionMapItem::id)
                 .containsExactly(동쪽_경계_한숨, 중앙_한숨, 서쪽_경계_한숨);
     }
@@ -526,11 +526,11 @@ class EmotionServiceIntegrationTest {
         insertSigh(126.9780, 37.5664, CURRENT_TIME.plusSeconds(1).toString());
 
         // when
-        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        EmotionMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
-        assertThat(result.sighs()).hasSize(500);
+        assertThat(result.emotions()).hasSize(500);
     }
 
     @Test
@@ -540,12 +540,12 @@ class EmotionServiceIntegrationTest {
         insertSighs(500, 126.9780, 37.5664);
 
         // when
-        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        EmotionMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isTrue();
-        assertThat(result.sighs()).hasSize(500);
-        assertThat(result.sighs())
+        assertThat(result.emotions()).hasSize(500);
+        assertThat(result.emotions())
                 .extracting(EmotionMapItem::id)
                 .isSortedAccordingTo(Comparator.reverseOrder())
                 .doesNotContain(oldestId);

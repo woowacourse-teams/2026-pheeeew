@@ -2,7 +2,7 @@ package com.pheeeew.sigh.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.sigh.application.EmotionService;
-import com.pheeeew.sigh.application.dto.SighMapResult;
+import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.presentation.dto.SighCreateV1Request;
@@ -39,7 +39,7 @@ public class SighV1Controller implements SighV1ControllerApi {
             @CurrentDevice Optional<UUID> devicePublicId,
             @Valid @ModelAttribute SighMapRequest request
     ) {
-        SighMapResult result = emotionService.findAllWithinBounds(request.toBounds(), devicePublicId);
+        EmotionMapResult result = emotionService.findAllWithinBounds(request.toBounds(), devicePublicId);
 
         return ResponseEntity.ok()
                 .contentType(GEO_JSON)

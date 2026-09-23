@@ -1,7 +1,7 @@
 package com.pheeeew.sigh.infra.metrics;
 
 import com.pheeeew.sigh.application.dto.SighListResult;
-import com.pheeeew.sigh.application.dto.SighMapResult;
+import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -41,8 +41,8 @@ public class EmotionMetricsAspect {
             pointcut = "execution(* com.pheeeew.sigh.application.EmotionService.findAllWithinBounds(..))",
             returning = "result"
     )
-    public void recordMapResult(SighMapResult result) {
-        metrics.recordMapResult(result.sighs().size(), result.truncated());
+    public void recordMapResult(EmotionMapResult result) {
+        metrics.recordMapResult(result.emotions().size(), result.truncated());
     }
 
     @AfterReturning(

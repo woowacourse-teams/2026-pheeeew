@@ -9,7 +9,7 @@ import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.EmotionMapItem;
-import com.pheeeew.sigh.application.dto.SighMapResult;
+import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
@@ -75,7 +75,7 @@ class SighV1ControllerTest {
     void 지도_영역의_한숨을_GeoJSON_FeatureCollection으로_반환한다() {
         // given
         when(emotionService.findAllWithinBounds(BOUNDS, Optional.empty()))
-                .thenReturn(SighMapResult.of(
+                .thenReturn(EmotionMapResult.of(
                         List.of(
                                 EmotionMapItem.of(2L, 127.1109, 37.3826, NEXT_CREATED_AT),
                                 EmotionMapItem.of(1L, 127.1258, 37.3467, CREATED_AT)
@@ -130,7 +130,7 @@ class SighV1ControllerTest {
     void 지도_영역에_한숨이_없으면_빈_FeatureCollection을_반환한다() {
         // given
         when(emotionService.findAllWithinBounds(BOUNDS, Optional.empty()))
-                .thenReturn(SighMapResult.of(List.of(), false));
+                .thenReturn(EmotionMapResult.of(List.of(), false));
 
         // when
         RestTestClient.ResponseSpec result = 한숨을_조회한다(
@@ -155,7 +155,7 @@ class SighV1ControllerTest {
     void 날짜변경선을_가로지르는_지도_영역을_조회한다() {
         // given
         when(emotionService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty()))
-                .thenReturn(SighMapResult.of(List.of(), false));
+                .thenReturn(EmotionMapResult.of(List.of(), false));
 
         // when
         RestTestClient.ResponseSpec result = 한숨을_조회한다(
@@ -174,7 +174,7 @@ class SighV1ControllerTest {
         SecurityContextHolder.getContext()
                 .setAuthentication(AccessTokenFixture.인증된_기기(기기_공개_식별자));
         when(emotionService.findAllWithinBounds(BOUNDS, Optional.of(기기_공개_식별자)))
-                .thenReturn(SighMapResult.of(List.of(), false));
+                .thenReturn(EmotionMapResult.of(List.of(), false));
 
         // when
         RestTestClient.ResponseSpec result = 한숨을_조회한다(

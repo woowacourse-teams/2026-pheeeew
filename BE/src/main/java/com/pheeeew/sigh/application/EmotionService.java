@@ -13,7 +13,7 @@ import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.EmotionMapItem;
-import com.pheeeew.sigh.application.dto.SighMapResult;
+import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
@@ -75,7 +75,7 @@ public class EmotionService {
         return SighDetailResult.from(projection);
     }
 
-    public SighMapResult findAllWithinBounds(EmotionSearchBounds bounds, Optional<UUID> viewerDevicePublicId) {
+    public EmotionMapResult findAllWithinBounds(EmotionSearchBounds bounds, Optional<UUID> viewerDevicePublicId) {
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
         Long blockerDeviceId = findBlockerDeviceId(viewerDevicePublicId);
@@ -97,7 +97,7 @@ public class EmotionService {
                 ))
                 .toList();
 
-        return SighMapResult.of(emotions, truncated);
+        return EmotionMapResult.of(emotions, truncated);
     }
 
     public SighListResult findFirstListPage(EmotionSearchBounds bounds, UUID devicePublicId) {

@@ -286,7 +286,7 @@ class BlockFilterIntegrationTest {
     }
 
     private List<Long> 인증하지_않고_지도를_조회한다() {
-        return emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty()).sighs().stream()
+        return emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty()).emotions().stream()
                 .map(EmotionMapItem::id)
                 .toList();
     }
@@ -322,7 +322,7 @@ class BlockFilterIntegrationTest {
         지도 {
             @Override
             List<Long> 조회한다(EmotionService emotionService, EmotionSearchBounds bounds, UUID viewerPublicId) {
-                return emotionService.findAllWithinBounds(bounds, Optional.of(viewerPublicId)).sighs().stream()
+                return emotionService.findAllWithinBounds(bounds, Optional.of(viewerPublicId)).emotions().stream()
                         .map(EmotionMapItem::id)
                         .toList();
             }

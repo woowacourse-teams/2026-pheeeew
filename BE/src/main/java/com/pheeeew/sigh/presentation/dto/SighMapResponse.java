@@ -1,6 +1,6 @@
 package com.pheeeew.sigh.presentation.dto;
 
-import com.pheeeew.sigh.application.dto.SighMapResult;
+import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
@@ -16,8 +16,8 @@ public record SighMapResponse(
 
     private static final String FEATURE_COLLECTION_TYPE = "FeatureCollection";
 
-    public static SighMapResponse from(SighMapResult result) {
-        List<SighFeature<SighV1Properties>> features = result.sighs().stream()
+    public static SighMapResponse from(EmotionMapResult result) {
+        List<SighFeature<SighV1Properties>> features = result.emotions().stream()
                 .map(sigh -> SighFeature.of(
                         sigh,
                         SighV1Properties.from(sigh.createdAt())

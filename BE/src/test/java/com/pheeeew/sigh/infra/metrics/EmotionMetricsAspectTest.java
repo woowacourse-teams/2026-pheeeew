@@ -19,7 +19,7 @@ import com.pheeeew.sigh.application.EmotionNicknameGenerator;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
-import com.pheeeew.sigh.application.dto.SighMapResult;
+import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
@@ -107,10 +107,10 @@ class EmotionMetricsAspectTest {
                 });
 
         // when
-        SighMapResult result = service.findAllWithinBounds(BOUNDS, Optional.empty());
+        EmotionMapResult result = service.findAllWithinBounds(BOUNDS, Optional.empty());
 
         // then
-        assertThat(result.sighs()).hasSize(returned);
+        assertThat(result.emotions()).hasSize(returned);
         assertThat(result.truncated()).isEqualTo(truncated);
         verify(repository).findAllWithinBounds(
                 eq(BOUNDS), any(EmotionQueryPeriod.class), isNull(), eq(501)
