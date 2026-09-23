@@ -20,7 +20,7 @@ import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.domain.repository.projection.EmotionDetailProjection;
-import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
+import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
@@ -179,7 +179,7 @@ public class SighService {
 
         SighSearchBounds bounds = cursor.bounds();
         EmotionQueryPeriod period = EmotionQueryPeriod.of(currentPeriod.startAt(), cursor.snapshotAt());
-        List<SighListProjection> projections = sighRepository.findListWithinBounds(
+        List<EmotionListProjection> projections = sighRepository.findListWithinBounds(
                 bounds,
                 period,
                 cursor.lastItemCreatedAt(),
@@ -205,14 +205,14 @@ public class SighService {
 
     private String createNextCursor(
             SighListCursor cursor,
-            List<SighListProjection> projections,
+            List<EmotionListProjection> projections,
             boolean hasNext
     ) {
         if (!hasNext) {
             return null;
         }
 
-        SighListProjection lastProjection = projections.getLast();
+        EmotionListProjection lastProjection = projections.getLast();
         SighListCursor nextCursor = cursor.next(
                 lastProjection.getCreatedAt(),
                 lastProjection.getId()

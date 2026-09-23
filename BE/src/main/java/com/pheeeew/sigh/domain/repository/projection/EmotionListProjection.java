@@ -2,7 +2,7 @@ package com.pheeeew.sigh.domain.repository.projection;
 
 import java.time.Instant;
 
-public interface SighListProjection {
+public interface EmotionListProjection {
 
     Long getId();
 

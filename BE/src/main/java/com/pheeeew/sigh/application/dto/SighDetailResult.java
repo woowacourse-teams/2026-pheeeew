@@ -2,7 +2,7 @@ package com.pheeeew.sigh.application.dto;
 
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.repository.projection.EmotionDetailProjection;
-import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
+import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 
 public record SighDetailResult(SighResult sigh, SighLikeResult like) {
 
@@ -13,7 +13,7 @@ public record SighDetailResult(SighResult sigh, SighLikeResult like) {
         );
     }
 
-    public static SighDetailResult from(SighListProjection projection) {
+    public static SighDetailResult from(EmotionListProjection projection) {
         return new SighDetailResult(
                 SighResult.of(
                         projection.getId(), projection.getLongitude(), projection.getLatitude(),

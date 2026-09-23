@@ -3,7 +3,7 @@ package com.pheeeew.sigh.domain.repository;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.projection.GeneratedLocation;
 import com.pheeeew.sigh.domain.repository.projection.EmotionDetailProjection;
-import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
+import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
@@ -188,7 +188,7 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                     """,
             nativeQuery = true
     )
-    List<SighListProjection> findListWithinBounds(
+    List<EmotionListProjection> findListWithinBounds(
             @Param("bounds") SighSearchBounds bounds,
             @Param("period") EmotionQueryPeriod period,
             @Param("lastItemCreatedAt") Instant lastItemCreatedAt,

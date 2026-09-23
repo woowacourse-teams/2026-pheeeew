@@ -21,7 +21,7 @@ import com.pheeeew.sigh.application.dto.SighListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.domain.repository.SighRepository;
-import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
+import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
@@ -175,7 +175,7 @@ class SighMetricsAspectTest {
     @ValueSource(ints = {0, 21})
     void 목록_조회_시간만_기록하고_반환값을_그대로_전달한다(int fetched) {
         // given
-        List<SighListProjection> projections = Collections.nCopies(fetched, mock(SighListProjection.class));
+        List<EmotionListProjection> projections = Collections.nCopies(fetched, mock(EmotionListProjection.class));
         when(repository.findListWithinBounds(BOUNDS, PERIOD, SNAPSHOT_AT, Long.MAX_VALUE, 1L, 500, 21, 1L))
                 .thenAnswer(invocation -> {
                     clock.add(Duration.ofMillis(250));
@@ -183,7 +183,7 @@ class SighMetricsAspectTest {
                 });
 
         // when
-        List<SighListProjection> result = context.getBean(SighRepository.class).findListWithinBounds(
+        List<EmotionListProjection> result = context.getBean(SighRepository.class).findListWithinBounds(
                 BOUNDS, PERIOD, SNAPSHOT_AT, Long.MAX_VALUE, 1L, 500, 21, 1L
         );
         clock.add(Duration.ofMillis(50));
@@ -228,7 +228,7 @@ class SighMetricsAspectTest {
     ) {
         // given
         UUID devicePublicId = 등록된_기기_식별자();
-        SighListProjection projection = mock(SighListProjection.class);
+        EmotionListProjection projection = mock(EmotionListProjection.class);
         when(projection.getId()).thenReturn(1L);
         when(projection.getLongitude()).thenReturn(127.0);
         when(projection.getLatitude()).thenReturn(37.55);
