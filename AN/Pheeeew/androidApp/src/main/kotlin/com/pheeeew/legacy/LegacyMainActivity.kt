@@ -123,7 +123,7 @@ private fun resolveFirstSighGuidePreferences(preferences: SharedPreferences): Fi
     val hasCompletedFirstSighGuide =
         com.pheeeew.legacy.feature.map.guide.resolveFirstSighGuideCompleted(
             hasCompletedOnboarding,
-            storedGuideCompletion
+            storedGuideCompletion,
         )
     if (storedGuideCompletion == null && hasCompletedOnboarding) {
         preferences.edit().putBoolean(KEY_FIRST_SIGH_GUIDE_COMPLETED, true).apply()

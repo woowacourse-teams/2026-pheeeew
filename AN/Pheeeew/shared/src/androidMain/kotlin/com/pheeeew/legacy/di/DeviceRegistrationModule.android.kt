@@ -31,10 +31,11 @@ fun createAndroidDeviceRegistrationDependencies(
             attestationProvider = AndroidDeviceAttestationProvider(),
             accessTokenStore = accessTokenStore,
         )
-    return AndroidDeviceRegistrationDependencies(repository,
+    return AndroidDeviceRegistrationDependencies(
+        repository,
         com.pheeeew.legacy.domain.usecase.EnsureDeviceRegisteredUseCase(
-            repository
-        )
+            repository,
+        ),
     )
 }
 
@@ -51,9 +52,10 @@ fun createAndroidDeviceRegistrationWithPlayIntegrityDependencies(
             attestationProvider = AndroidPlayIntegrityAttestationProvider(context, cloudProjectNumber),
             accessTokenStore = accessTokenStore,
         )
-    return AndroidDeviceRegistrationDependencies(repository,
+    return AndroidDeviceRegistrationDependencies(
+        repository,
         com.pheeeew.legacy.domain.usecase.EnsureDeviceRegisteredUseCase(
-            repository
-        )
+            repository,
+        ),
     )
 }

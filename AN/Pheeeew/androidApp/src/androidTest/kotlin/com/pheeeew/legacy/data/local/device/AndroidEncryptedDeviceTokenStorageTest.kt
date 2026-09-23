@@ -49,15 +49,23 @@ class AndroidEncryptedDeviceTokenStorageTest {
 
             storage.saveRefreshToken(
                 com.pheeeew.legacy.domain.model.device.RefreshToken(
-                    "new-token"
-                )
+                    "new-token",
+                ),
             )
 
-            assertEquals(com.pheeeew.legacy.domain.model.device.RefreshToken("new-token"), storage.getRefreshToken())
+            assertEquals(
+                com.pheeeew.legacy.domain.model.device
+                    .RefreshToken("new-token"),
+                storage.getRefreshToken(),
+            )
 
             val recreatedStorage = AndroidEncryptedDeviceTokenStorage(context)
 
-            assertEquals(com.pheeeew.legacy.domain.model.device.RefreshToken("new-token"), recreatedStorage.getRefreshToken())
+            assertEquals(
+                com.pheeeew.legacy.domain.model.device
+                    .RefreshToken("new-token"),
+                recreatedStorage.getRefreshToken(),
+            )
         }
 
     private fun createMasterKey(): MasterKey =

@@ -146,7 +146,9 @@ class AndroidPlatformLocationProvider(
             null
         }
 
-    private suspend fun requestProviderCandidate(provider: String): com.pheeeew.legacy.domain.model.location.CurrentLocation? =
+    private suspend fun requestProviderCandidate(
+        provider: String,
+    ): com.pheeeew.legacy.domain.model.location.CurrentLocation? =
         try {
             withTimeoutOrNull(LOCATION_REQUEST_TIMEOUT_MILLIS) {
                 (requestLocation(provider) as? PlatformLocationResult.Success)?.location
@@ -309,8 +311,9 @@ internal fun isRecentAndroidLocation(
         nowMillis >= capturedAtMillis &&
         nowMillis - capturedAtMillis <= maximumAgeMillis
 
-internal fun firstValidCurrentLocation(candidates: List<com.pheeeew.legacy.domain.model.location.CurrentLocation?>): com.pheeeew.legacy.domain.model.location.CurrentLocation? =
-    candidates.asSequence().filterNotNull().firstOrNull()
+internal fun firstValidCurrentLocation(
+    candidates: List<com.pheeeew.legacy.domain.model.location.CurrentLocation?>,
+): com.pheeeew.legacy.domain.model.location.CurrentLocation? = candidates.asSequence().filterNotNull().firstOrNull()
 
 internal fun androidPlatformLocationResult(
     latitude: Double,

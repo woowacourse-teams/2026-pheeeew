@@ -37,8 +37,12 @@ internal class AndroidMapCamera {
         state: com.pheeeew.legacy.feature.map.MapRenderState,
     ) {
         if (hasResolvedInitialCenter) return
-        val center = com.pheeeew.legacy.feature.map.map.MapRenderRules.initialCenter(state) ?: return
-        val isProvisional = com.pheeeew.legacy.feature.map.map.MapRenderRules.initialCenterIsProvisional(state)
+        val center =
+            com.pheeeew.legacy.feature.map.map.MapRenderRules
+                .initialCenter(state) ?: return
+        val isProvisional =
+            com.pheeeew.legacy.feature.map.map.MapRenderRules
+                .initialCenterIsProvisional(state)
         if (isProvisional && hasAppliedProvisionalCenter) return
 
         map.moveCamera(
