@@ -14,7 +14,7 @@ import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
-import com.pheeeew.sigh.application.dto.SighResult;
+import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
@@ -146,7 +146,7 @@ public class EmotionService {
 
         try {
             Emotion savedEmotion = emotionRepository.saveAndFlush(emotion);
-            return SighSaveResult.of(SighResult.from(savedEmotion), true, SighLikeResult.of(false, 0));
+            return SighSaveResult.of(EmotionResult.from(savedEmotion), true, SighLikeResult.of(false, 0));
         } catch (DataIntegrityViolationException cause) {
             return findExistingEmotion(requestId, deviceId, cause);
         }

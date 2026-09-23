@@ -17,7 +17,7 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
-import com.pheeeew.sigh.application.dto.SighResult;
+import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
@@ -561,7 +561,7 @@ class SighV2ControllerTest {
 
     private SighSaveResult 기본_저장_결과(String memo, boolean created) {
         return SighSaveResult.of(
-                SighResult.of(
+                EmotionResult.of(
                         42L,
                         126.9774,
                         37.5669,
@@ -576,7 +576,7 @@ class SighV2ControllerTest {
 
     private SighDetailResult 기본_상세_조회_결과(String memo, boolean liked, long likeCount) {
         return new SighDetailResult(
-                SighResult.of(
+                EmotionResult.of(
                         SIGH_ID,
                         126.9774,
                         37.5669,

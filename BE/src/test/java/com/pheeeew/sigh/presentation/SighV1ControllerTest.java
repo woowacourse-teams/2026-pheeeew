@@ -10,7 +10,7 @@ import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
-import com.pheeeew.sigh.application.dto.SighResult;
+import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
@@ -346,7 +346,7 @@ class SighV1ControllerTest {
 
     private SighSaveResult 기본_저장_결과(boolean created) {
         return SighSaveResult.of(
-                SighResult.of(
+                EmotionResult.of(
                         42L,
                         126.9774,
                         37.5669,

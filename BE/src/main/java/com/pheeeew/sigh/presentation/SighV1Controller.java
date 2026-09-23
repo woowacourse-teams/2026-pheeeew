@@ -3,7 +3,7 @@ package com.pheeeew.sigh.presentation;
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
-import com.pheeeew.sigh.application.dto.SighResult;
+import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.presentation.dto.SighCreateV1Request;
 import com.pheeeew.sigh.presentation.dto.SighFeature;
@@ -52,7 +52,7 @@ public class SighV1Controller implements SighV1ControllerApi {
             @Valid @RequestBody SighCreateV1Request request
     ) {
         SighSaveResult result = emotionService.save(request.requestId(), request.longitude(), request.latitude());
-        SighResult sigh = result.sigh();
+        EmotionResult sigh = result.sigh();
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {

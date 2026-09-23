@@ -5,7 +5,7 @@ import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
-import com.pheeeew.sigh.application.dto.SighResult;
+import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
@@ -89,7 +89,7 @@ public class SighV2Controller implements SighV2ControllerApi {
                 request.memo(),
                 devicePublicId
         );
-        SighResult sigh = result.sigh();
+        EmotionResult sigh = result.sigh();
 
         ResponseEntity.BodyBuilder response = ResponseEntity.ok();
         if (result.created()) {
@@ -113,7 +113,7 @@ public class SighV2Controller implements SighV2ControllerApi {
         return SighLikeResponse.from(result);
     }
 
-    private SighFeature<SighV2Properties> toFeature(SighResult sigh, SighLikeResult like) {
+    private SighFeature<SighV2Properties> toFeature(EmotionResult sigh, SighLikeResult like) {
         return SighFeature.of(sigh, SighV2Properties.of(sigh, like));
     }
 }

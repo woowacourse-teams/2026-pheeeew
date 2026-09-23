@@ -15,7 +15,7 @@ import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
-import com.pheeeew.sigh.application.dto.SighResult;
+import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
@@ -662,7 +662,7 @@ class EmotionServiceIntegrationTest {
 
         assertThat(firstPage.items())
                 .extracting(SighDetailResult::sigh)
-                .extracting(SighResult::id)
+                .extracting(EmotionResult::id)
                 .containsExactlyElementsOf(expectedFirstPageIds);
         assertThat(firstPage.items().getFirst().sigh().nickname()).isEqualTo("날아가는 고라니");
         assertThat(firstPage.items().getFirst().sigh().memo()).isEqualTo("오늘은 조금 지쳤다");
@@ -696,7 +696,7 @@ class EmotionServiceIntegrationTest {
         // then
         assertThat(result.items())
                 .extracting(SighDetailResult::sigh)
-                .extracting(SighResult::id)
+                .extracting(EmotionResult::id)
                 .containsExactly(음의_경도_경계_한숨, 양의_경도_경계_한숨);
         assertThat(result.hasNext()).isFalse();
     }
@@ -909,7 +909,7 @@ class EmotionServiceIntegrationTest {
         // then
         assertThat(secondPage.items())
                 .extracting(SighDetailResult::sigh)
-                .extracting(SighResult::id)
+                .extracting(EmotionResult::id)
                 .containsExactly(ids.getFirst())
                 .doesNotContain(이후에_등록된_한숨);
         assertThat(secondPage.hasNext()).isFalse();
@@ -924,12 +924,12 @@ class EmotionServiceIntegrationTest {
         Long 미래_한숨 = insertSigh(126.9780, 37.5664, CURRENT_TIME.plusSeconds(1).toString());
 
         // when
-        List<SighResult> items = findAllListPages(SEOUL_BOUNDS);
+        List<EmotionResult> items = findAllListPages(SEOUL_BOUNDS);
 
         // then
         assertThat(items)
                 .hasSize(500)
-                .extracting(SighResult::id)
+                .extracting(EmotionResult::id)
                 .isSortedAccordingTo(Comparator.reverseOrder())
                 .doesNotContain(oldestId, 기간_이전_한숨, 미래_한숨);
     }
@@ -1079,8 +1079,8 @@ class EmotionServiceIntegrationTest {
                 .update();
     }
 
-    private List<SighResult> findAllListPages(EmotionSearchBounds bounds) {
-        List<SighResult> items = new ArrayList<>();
+    private List<EmotionResult> findAllListPages(EmotionSearchBounds bounds) {
+        List<EmotionResult> items = new ArrayList<>();
         SighListResult page = emotionService.findFirstListPage(bounds, devicePublicId);
 
         for (int pageIndex = 0; pageIndex < 25; pageIndex++) {

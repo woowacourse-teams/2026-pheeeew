@@ -11,7 +11,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.dto.SighDetailResult;
-import com.pheeeew.sigh.application.dto.SighResult;
+import com.pheeeew.sigh.application.dto.EmotionResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
@@ -95,7 +95,7 @@ class EmotionServiceDetailIntegrationTest {
         emotionLikeService.update(sigh.getId(), device.getPublicId(), true);
         emotionLikeService.update(sigh.getId(), anotherDevice.getPublicId(), true);
         emotionLikeService.update(anotherSigh.getId(), unlikedDevice.getPublicId(), true);
-        SighResult expectedSigh = SighResult.from(emotionRepository.findById(sigh.getId()).orElseThrow());
+        EmotionResult expectedSigh = EmotionResult.from(emotionRepository.findById(sigh.getId()).orElseThrow());
 
         // when
         SighDetailResult liked = emotionService.findById(sigh.getId(), device.getPublicId());
@@ -218,7 +218,7 @@ class EmotionServiceDetailIntegrationTest {
             savedSigh.delete();
             emotionRepository.saveAndFlush(savedSigh);
         }
-        SighResult expectedSigh = SighResult.from(savedSigh);
+        EmotionResult expectedSigh = EmotionResult.from(savedSigh);
 
         // when
         SighSaveResult liked = emotionService.save(sigh.getRequestId(), 129.0756, 35.1796, "변경한 메모", device.getPublicId());
