@@ -40,10 +40,10 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @AutoConfigureRestTestClient
 @Import(GlobalExceptionHandler.class)
 @WebMvcTest(
-        controllers = SighReportController.class,
+        controllers = EmotionReportController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
 )
-class SighReportControllerTest {
+class EmotionReportControllerTest {
 
     private static final String REPORTS_URI = "/api/v2/reports";
     private static final Long SIGH_ID = 42L;
@@ -56,7 +56,7 @@ class SighReportControllerTest {
     private EmotionReportService emotionReportService;
 
     @Autowired
-    SighReportControllerTest(RestTestClient client) {
+    EmotionReportControllerTest(RestTestClient client) {
         this.client = client;
     }
 

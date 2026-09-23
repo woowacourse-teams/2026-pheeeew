@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/v2/blocks/sighs")
 @RestController
-public class SighBlockController implements SighBlockControllerApi {
+public class EmotionBlockController implements EmotionBlockControllerApi {
 
     private final EmotionBlockService emotionBlockService;
 

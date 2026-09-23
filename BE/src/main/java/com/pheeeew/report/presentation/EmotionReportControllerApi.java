@@ -16,7 +16,7 @@ import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "신고", description = "한숨 신고 API")
-public interface SighReportControllerApi {
+public interface EmotionReportControllerApi {
 
     @Operation(
             summary = "한숨 신고",

@@ -43,10 +43,10 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @AutoConfigureRestTestClient
 @Import(GlobalExceptionHandler.class)
 @WebMvcTest(
-        controllers = SighBlockController.class,
+        controllers = EmotionBlockController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AppVersionMetricsFilter.class)
 )
-class SighBlockControllerTest {
+class EmotionBlockControllerTest {
 
     private static final String BLOCKS_URI = "/api/v2/blocks/sighs";
     private static final Long SIGH_ID = 42L;
@@ -60,7 +60,7 @@ class SighBlockControllerTest {
     private EmotionBlockService emotionBlockService;
 
     @Autowired
-    SighBlockControllerTest(RestTestClient client) {
+    EmotionBlockControllerTest(RestTestClient client) {
         this.client = client;
     }
 

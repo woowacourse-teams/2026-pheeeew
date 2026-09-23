@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/api/v2/reports")
 @RestController
-public class SighReportController implements SighReportControllerApi {
+public class EmotionReportController implements EmotionReportControllerApi {
 
     private final EmotionReportService emotionReportService;
 

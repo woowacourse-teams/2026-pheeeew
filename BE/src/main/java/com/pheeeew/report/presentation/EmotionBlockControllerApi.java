@@ -18,7 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "한숨 차단", description = "한숨 하나를 내 지도와 목록에서 가리는 API")
-public interface SighBlockControllerApi {
+public interface EmotionBlockControllerApi {
 
     @Operation(
             summary = "한숨 차단",
