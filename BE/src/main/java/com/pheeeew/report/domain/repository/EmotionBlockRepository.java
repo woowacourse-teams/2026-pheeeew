@@ -18,12 +18,12 @@ public interface EmotionBlockRepository extends JpaRepository<EmotionBlock, Long
             value = """
                     SELECT
                         emotion_block.id AS "blockId",
-                        emotion_block.sigh_id AS "emotionId",
+                        emotion_block.emotion_id AS "emotionId",
                         emotion.nickname AS nickname,
                         emotion.memo AS memo,
                         emotion_block.created_at AS "createdAt"
-                    FROM sigh_blocks emotion_block
-                    JOIN sighs emotion ON emotion.id = emotion_block.sigh_id
+                    FROM emotion_blocks emotion_block
+                    JOIN emotions emotion ON emotion.id = emotion_block.emotion_id
                     WHERE emotion_block.blocker_device_id = :blockerDeviceId
                       AND emotion_block.id < :lastId
                     ORDER BY emotion_block.id DESC

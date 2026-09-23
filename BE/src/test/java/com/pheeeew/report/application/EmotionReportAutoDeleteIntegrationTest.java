@@ -225,7 +225,7 @@ class EmotionReportAutoDeleteIntegrationTest {
     }
 
     private Instant 삭제_시각(Long emotionId) {
-        return jdbcClient.sql("SELECT deleted_at FROM sighs WHERE id = ?")
+        return jdbcClient.sql("SELECT deleted_at FROM emotions WHERE id = ?")
                 .param(emotionId)
                 .query(Instant.class)
                 .optional()

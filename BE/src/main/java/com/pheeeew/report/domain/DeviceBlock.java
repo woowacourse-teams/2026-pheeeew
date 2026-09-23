@@ -29,7 +29,7 @@ public class DeviceBlock extends BaseEntity {
     @Column(name = "blocked_device_id", nullable = false, updatable = false)
     private Long blockedDeviceId;
 
-    @Column(name = "origin_sigh_id", nullable = false, updatable = false)
+    @Column(name = "origin_emotion_id", nullable = false, updatable = false)
     private Long originEmotionId;
 
     @Builder

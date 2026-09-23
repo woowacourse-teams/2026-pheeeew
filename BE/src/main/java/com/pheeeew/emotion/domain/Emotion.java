@@ -19,7 +19,7 @@ import org.locationtech.jts.geom.Point;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "sighs")
+@Table(name = "emotions")
 @Entity
 public class Emotion extends BaseEntity {
 

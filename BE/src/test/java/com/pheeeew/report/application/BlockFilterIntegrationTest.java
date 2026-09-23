@@ -298,7 +298,7 @@ class BlockFilterIntegrationTest {
     private Long 한숨을_저장한다(Long deviceId) {
         등록_순번++;
         return jdbcClient.sql("""
-                        INSERT INTO sighs (request_id, location, nickname, device_id, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, device_id, created_at, updated_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),

@@ -236,7 +236,7 @@ class EmotionBlockServiceIntegrationTest {
         Device 차단자 = 기기를_저장한다();
         Long 차단할_한숨 = 한숨을_저장한다(null, null);
         emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
-        jdbcClient.sql("UPDATE sighs SET deleted_at = NOW() WHERE id = :id")
+        jdbcClient.sql("UPDATE emotions SET deleted_at = NOW() WHERE id = :id")
                 .param("id", 차단할_한숨)
                 .update();
 
@@ -298,7 +298,7 @@ class EmotionBlockServiceIntegrationTest {
     private Long 한숨을_저장한다(Long deviceId, String memo) {
         등록_순번++;
         return jdbcClient.sql("""
-                        INSERT INTO sighs (request_id, location, nickname, memo, device_id, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, memo, device_id, created_at, updated_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),

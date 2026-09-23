@@ -110,7 +110,7 @@ class SecurityAuthorizationIntegrationTest {
     @AfterEach
     void tearDown() {
         appVersionRepository.deleteAll();
-        jdbcClient.sql("DELETE FROM sigh_blocks").update();
+        jdbcClient.sql("DELETE FROM emotion_blocks").update();
         jdbcClient.sql("DELETE FROM device_blocks").update();
         emotionReportRepository.deleteAll();
         emotionRepository.deleteAll();
@@ -751,7 +751,7 @@ class SecurityAuthorizationIntegrationTest {
         최초_신고.expectStatus().isCreated();
         다시_신고.expectStatus().isOk();
 
-        Map<String, Object> 저장된_신고 = jdbcClient.sql("SELECT reporter_device_id FROM sigh_reports")
+        Map<String, Object> 저장된_신고 = jdbcClient.sql("SELECT reporter_device_id FROM emotion_reports")
                 .query()
                 .singleRow();
         assertThat(저장된_신고.get("reporter_device_id")).isEqualTo(device.getId());
@@ -843,7 +843,7 @@ class SecurityAuthorizationIntegrationTest {
                 .exchange()
                 .expectStatus().isCreated();
 
-        return jdbcClient.sql("SELECT id FROM sighs")
+        return jdbcClient.sql("SELECT id FROM emotions")
                 .query(Long.class)
                 .single();
     }
@@ -874,20 +874,20 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     private Object 작성자_기기_식별자() {
-        return jdbcClient.sql("SELECT device_id FROM sighs")
+        return jdbcClient.sql("SELECT device_id FROM emotions")
                 .query()
                 .singleRow()
                 .get("device_id");
     }
 
     private long 차단_행_수() {
-        return jdbcClient.sql("SELECT COUNT(*) FROM sigh_blocks").query(Long.class).single()
+        return jdbcClient.sql("SELECT COUNT(*) FROM emotion_blocks").query(Long.class).single()
                 + jdbcClient.sql("SELECT COUNT(*) FROM device_blocks").query(Long.class).single();
     }
 
     private Long 작성자를_모르는_한숨을_넣는다() {
         return jdbcClient.sql("""
-                        INSERT INTO sighs (request_id, location, nickname, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, created_at, updated_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(126.9780, 37.5664), 4326),

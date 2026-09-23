@@ -317,7 +317,7 @@ class DeviceBlockServiceIntegrationTest {
     private Long 한숨을_저장한다(Long deviceId, String memo) {
         등록_순번++;
         return jdbcClient.sql("""
-                        INSERT INTO sighs (request_id, location, nickname, memo, device_id, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, memo, device_id, created_at, updated_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
@@ -342,7 +342,7 @@ class DeviceBlockServiceIntegrationTest {
     private void 차단_행을_직접_넣는다(Long blockerDeviceId, Long blockedDeviceId, Long originEmotionId) {
         jdbcClient.sql("""
                         INSERT INTO device_blocks
-                            (blocker_device_id, blocked_device_id, origin_sigh_id, created_at, updated_at)
+                            (blocker_device_id, blocked_device_id, origin_emotion_id, created_at, updated_at)
                         VALUES (:blockerDeviceId, :blockedDeviceId, :originEmotionId, NOW(), NOW())
                         """)
                 .param("blockerDeviceId", blockerDeviceId)

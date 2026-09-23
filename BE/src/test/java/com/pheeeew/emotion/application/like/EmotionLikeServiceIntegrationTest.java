@@ -196,7 +196,7 @@ class EmotionLikeServiceIntegrationTest {
     }
 
     private void assertLikeCount(Long emotionId, long expected) {
-        long likeRowCount = jdbcClient.sql("SELECT COUNT(*) FROM sigh_likes WHERE sigh_id = :emotionId")
+        long likeRowCount = jdbcClient.sql("SELECT COUNT(*) FROM emotion_likes WHERE emotion_id = :emotionId")
                 .param("emotionId", emotionId)
                 .query(Long.class)
                 .single();

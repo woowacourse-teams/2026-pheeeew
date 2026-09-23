@@ -112,10 +112,10 @@ class EmotionServiceIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        jdbcClient.sql("DELETE FROM sigh_blocks").update();
+        jdbcClient.sql("DELETE FROM emotion_blocks").update();
         jdbcClient.sql("DELETE FROM device_blocks").update();
-        jdbcClient.sql("DELETE FROM sigh_reports").update();
-        jdbcClient.sql("DELETE FROM sigh_likes").update();
+        jdbcClient.sql("DELETE FROM emotion_reports").update();
+        jdbcClient.sql("DELETE FROM emotion_likes").update();
         emotionRepository.deleteAll();
         deviceRepository.deleteAll();
     }
@@ -995,22 +995,22 @@ class EmotionServiceIntegrationTest {
 
     private void addRejectedRequestIdConstraint() {
         jdbcClient.sql("""
-                        ALTER TABLE sighs
-                        ADD CONSTRAINT ck_sighs_reject_test_request
+                        ALTER TABLE emotions
+                        ADD CONSTRAINT ck_emotions_reject_test_request
                         CHECK (request_id <> '00000000-0000-0000-0000-000000000001'::uuid)
                         """)
                 .update();
     }
 
     private void softDeleteEmotion(Long emotionId) {
-        jdbcClient.sql("UPDATE sighs SET deleted_at = NOW() WHERE id = :id")
+        jdbcClient.sql("UPDATE emotions SET deleted_at = NOW() WHERE id = :id")
                 .param("id", emotionId)
                 .update();
     }
 
     private Long insertEmotion(double longitude, double latitude, String createdAt) {
         return jdbcClient.sql("""
-                        INSERT INTO sighs (request_id, location, nickname, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, created_at, updated_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
@@ -1036,7 +1036,7 @@ class EmotionServiceIntegrationTest {
             String memo
     ) {
         return jdbcClient.sql("""
-                        INSERT INTO sighs (request_id, location, nickname, memo, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, memo, created_at, updated_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
@@ -1059,7 +1059,7 @@ class EmotionServiceIntegrationTest {
 
     private void insertEmotions(int count, double longitude, double latitude) {
         jdbcClient.sql("""
-                        INSERT INTO sighs (request_id, location, nickname, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, created_at, updated_at)
                         SELECT
                             (
                                 '00000000-0000-0000-0000-'
@@ -1097,8 +1097,8 @@ class EmotionServiceIntegrationTest {
 
     private void removeRejectedRequestIdConstraint() {
         jdbcClient.sql("""
-                        ALTER TABLE sighs
-                        DROP CONSTRAINT IF EXISTS ck_sighs_reject_test_request
+                        ALTER TABLE emotions
+                        DROP CONSTRAINT IF EXISTS ck_emotions_reject_test_request
                         """)
                 .update();
     }

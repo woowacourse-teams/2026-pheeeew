@@ -74,7 +74,7 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
                         ST_X(emotion.location) AS longitude,
                         ST_Y(emotion.location) AS latitude,
                         emotion.created_at AS "createdAt"
-                    FROM sighs emotion
+                    FROM emotions emotion
                     CROSS JOIN bounds
                     WHERE emotion.deleted_at IS NULL
                       AND emotion.created_at >= :#{#period.startAt()}
@@ -85,9 +85,9 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
                           CAST(:blockerDeviceId AS BIGINT) IS NULL
                           OR NOT EXISTS (
                               SELECT 1
-                              FROM sigh_blocks emotion_block
+                              FROM emotion_blocks emotion_block
                               WHERE emotion_block.blocker_device_id = :blockerDeviceId
-                                AND emotion_block.sigh_id = emotion.id
+                                AND emotion_block.emotion_id = emotion.id
                           )
                       )
                       AND (
@@ -142,7 +142,7 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
                             emotion.nickname,
                             emotion.memo,
                             emotion.like_count
-                        FROM sighs emotion
+                        FROM emotions emotion
                         CROSS JOIN bounds
                         WHERE emotion.deleted_at IS NULL
                           AND emotion.created_at >= :#{#period.startAt()}
@@ -153,9 +153,9 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
                               CAST(:blockerDeviceId AS BIGINT) IS NULL
                               OR NOT EXISTS (
                                   SELECT 1
-                                  FROM sigh_blocks emotion_block
+                                  FROM emotion_blocks emotion_block
                                   WHERE emotion_block.blocker_device_id = :blockerDeviceId
-                                    AND emotion_block.sigh_id = emotion.id
+                                    AND emotion_block.emotion_id = emotion.id
                               )
                           )
                           AND (
@@ -180,8 +180,8 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
                         latest_emotions.like_count AS "likeCount",
                         emotion_like.id IS NOT NULL AS liked
                     FROM latest_emotions
-                    LEFT JOIN sigh_likes emotion_like
-                      ON emotion_like.sigh_id = latest_emotions.id AND emotion_like.device_id = :deviceId
+                    LEFT JOIN emotion_likes emotion_like
+                      ON emotion_like.emotion_id = latest_emotions.id AND emotion_like.device_id = :deviceId
                     WHERE (latest_emotions.created_at, latest_emotions.id) < (:lastItemCreatedAt, :lastId)
                     ORDER BY latest_emotions.created_at DESC, latest_emotions.id DESC
                     LIMIT :limit

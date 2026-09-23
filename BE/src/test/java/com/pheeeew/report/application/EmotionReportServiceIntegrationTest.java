@@ -81,7 +81,7 @@ class EmotionReportServiceIntegrationTest {
         emotionReportService.save(emotionId, device.getPublicId(), 기본_신고_사유());
 
         // when
-        jdbcClient.sql("UPDATE sighs SET deleted_at = NOW() WHERE id = :id")
+        jdbcClient.sql("UPDATE emotions SET deleted_at = NOW() WHERE id = :id")
                 .param("id", emotionId)
                 .update();
 
@@ -243,7 +243,7 @@ class EmotionReportServiceIntegrationTest {
 
         // then
         assertThat(throwable).isInstanceOf(DataIntegrityViolationException.class);
-        assertThat(예외_사슬의_메시지(throwable)).contains("fk_sigh_reports_device");
+        assertThat(예외_사슬의_메시지(throwable)).contains("fk_emotion_reports_device");
         assertThat(emotionReportRepository.count()).isZero();
     }
 
@@ -260,9 +260,9 @@ class EmotionReportServiceIntegrationTest {
 
             // then
             String 남은_로그 = 수집한_로그(appender);
-            assertThat(남은_로그).contains("sigh_reports");
+            assertThat(남은_로그).contains("emotion_reports");
             assertThat(남은_로그)
-                    .doesNotContain("uk_sigh_reports_sigh_reporter")
+                    .doesNotContain("uk_emotion_reports_emotion_reporter")
                     .doesNotContain("reporter_device_id)=(")
                     .doesNotContain(device.getPublicId().toString());
             assertThat(emotionReportRepository.count()).isOne();
@@ -298,7 +298,7 @@ class EmotionReportServiceIntegrationTest {
 
     private Long insertEmotion() {
         return jdbcClient.sql("""
-                        INSERT INTO sighs (request_id, location, nickname, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, created_at, updated_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
@@ -350,8 +350,8 @@ class EmotionReportServiceIntegrationTest {
 
     private void addRejectedReasonConstraint() {
         jdbcClient.sql("""
-                        ALTER TABLE sigh_reports
-                        ADD CONSTRAINT ck_sigh_reports_reject_test_reason
+                        ALTER TABLE emotion_reports
+                        ADD CONSTRAINT ck_emotion_reports_reject_test_reason
                         CHECK (reason <> '저장이 거부되는 사유')
                         """)
                 .update();
@@ -407,8 +407,8 @@ class EmotionReportServiceIntegrationTest {
 
     private void removeRejectedReasonConstraint() {
         jdbcClient.sql("""
-                        ALTER TABLE sigh_reports
-                        DROP CONSTRAINT IF EXISTS ck_sigh_reports_reject_test_reason
+                        ALTER TABLE emotion_reports
+                        DROP CONSTRAINT IF EXISTS ck_emotion_reports_reject_test_reason
                         """)
                 .update();
     }

@@ -18,12 +18,12 @@ public interface DeviceBlockRepository extends JpaRepository<DeviceBlock, Long> 
             value = """
                     SELECT
                         device_block.id AS "blockId",
-                        device_block.origin_sigh_id AS "emotionId",
+                        device_block.origin_emotion_id AS "emotionId",
                         emotion.nickname AS nickname,
                         emotion.memo AS memo,
                         device_block.created_at AS "createdAt"
                     FROM device_blocks device_block
-                    JOIN sighs emotion ON emotion.id = device_block.origin_sigh_id
+                    JOIN emotions emotion ON emotion.id = device_block.origin_emotion_id
                     WHERE device_block.blocker_device_id = :blockerDeviceId
                       AND device_block.id < :lastId
                     ORDER BY device_block.id DESC

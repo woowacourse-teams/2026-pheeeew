@@ -260,7 +260,7 @@ class EmotionServiceDetailIntegrationTest {
     }
 
     private void updateCreatedAt(Instant createdAt) {
-        jdbcClient.sql("UPDATE sighs SET created_at = CAST(:createdAt AS TIMESTAMPTZ) WHERE id = :id")
+        jdbcClient.sql("UPDATE emotions SET created_at = CAST(:createdAt AS TIMESTAMPTZ) WHERE id = :id")
                 .param("createdAt", createdAt.toString())
                 .param("id", emotion.getId())
                 .update();

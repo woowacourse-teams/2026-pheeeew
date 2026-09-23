@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "sigh_reports")
+@Table(name = "emotion_reports")
 @Entity
 public class EmotionReport extends BaseEntity {
 
@@ -25,7 +25,7 @@ public class EmotionReport extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "sigh_id", nullable = false, updatable = false)
+    @Column(name = "emotion_id", nullable = false, updatable = false)
     private Long emotionId;
 
     @Column(name = "reporter_device_id", nullable = false, updatable = false)
