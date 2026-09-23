@@ -50,7 +50,7 @@ import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.test.util.ReflectionTestUtils;
 
-class SighMetricsAspectTest {
+class EmotionMetricsAspectTest {
 
     private static final SighSearchBounds BOUNDS = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
 
@@ -75,7 +75,7 @@ class SighMetricsAspectTest {
         context.registerBean(Clock.class, () -> Clock.fixed(SNAPSHOT_AT, ZoneId.of("Asia/Seoul")));
         context.register(
                 AopAutoConfiguration.class,
-                SighMetrics.class, SighMetricsAspect.class, SighService.class
+                EmotionMetrics.class, EmotionMetricsAspect.class, SighService.class
         );
         context.refresh();
         service = context.getBean(SighService.class);

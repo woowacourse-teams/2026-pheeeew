@@ -13,9 +13,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Aspect
 @Component
-public class SighMetricsAspect {
+public class EmotionMetricsAspect {
 
-    private final SighMetrics metrics;
+    private final EmotionMetrics metrics;
 
     @Around("execution(* com.pheeeew.sigh.domain.repository.SighRepository.findAllWithinBounds(..))")
     public Object recordMapQuery(ProceedingJoinPoint joinPoint) throws Throwable {

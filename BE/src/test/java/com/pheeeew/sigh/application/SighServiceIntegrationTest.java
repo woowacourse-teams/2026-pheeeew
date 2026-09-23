@@ -24,8 +24,8 @@ import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
-import com.pheeeew.sigh.infra.metrics.SighMetrics;
-import com.pheeeew.sigh.infra.metrics.SighMetricsAspect;
+import com.pheeeew.sigh.infra.metrics.EmotionMetrics;
+import com.pheeeew.sigh.infra.metrics.EmotionMetricsAspect;
 import com.pheeeew.support.PostgisDataJpaTest;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -62,7 +62,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
 @ImportAutoConfiguration(AopAutoConfiguration.class)
-@Import({SighMetrics.class, SighMetricsAspect.class, SighLikeService.class})
+@Import({EmotionMetrics.class, EmotionMetricsAspect.class, SighLikeService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class SighServiceIntegrationTest {
 

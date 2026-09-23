@@ -6,7 +6,7 @@ import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
 
 @Component
-public class SighMetrics {
+public class EmotionMetrics {
 
     private final MeterRegistry registry;
     private final Timer mapQueryTimer;
@@ -14,7 +14,7 @@ public class SighMetrics {
     private final DistributionSummary completeMapResults;
     private final DistributionSummary truncatedMapResults;
 
-    public SighMetrics(MeterRegistry registry) {
+    public EmotionMetrics(MeterRegistry registry) {
         this.registry = registry;
         mapQueryTimer = Timer.builder("pheeeew.sigh.map.query")
                 .description("Map repository call duration, including failed calls")
