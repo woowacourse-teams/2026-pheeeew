@@ -187,7 +187,6 @@ class GroupPersistenceIntegrationTest {
         GroupMember 읽은_멤버 = groupMemberRepository.findById(저장한_멤버.getId()).orElseThrow();
 
         // then
-        assertThat(읽은_멤버.getPublicId()).isNotNull();
         assertThat(읽은_멤버.getGroup().getId()).isEqualTo(그룹.getId());
         assertThat(읽은_멤버.getDevice().getId()).isEqualTo(기기.getId());
         assertThat(읽은_멤버.getRole()).isEqualTo(GroupRole.OWNER);

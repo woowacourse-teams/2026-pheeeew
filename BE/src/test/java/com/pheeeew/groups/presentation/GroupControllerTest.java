@@ -71,8 +71,9 @@ class GroupControllerTest {
     @Test
     void 그룹을_만들면_201과_위치_헤더를_반환한다() {
         // given
+        GroupResult 만든_그룹 = 기본_결과();
         when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq("설명입니다"), any()))
-                .thenReturn(기본_결과());
+                .thenReturn(만든_그룹);
 
         // when
         RestTestClient.ResponseSpec result = 생성한다("""
@@ -80,7 +81,8 @@ class GroupControllerTest {
                 """.formatted(스탬프_본문()));
 
         // then
-        result.expectStatus().isCreated();
+        result.expectStatus().isCreated()
+                .expectHeader().location(GROUPS_URI + "/" + 만든_그룹.publicId());
         verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq("설명입니다"), any());
     }
 
