@@ -29,14 +29,14 @@ public class SighReportService {
 
     private static final long AUTO_DELETE_REPORT_THRESHOLD = 5L;
 
-    private final SighReportRepository sighReportRepository;
-    private final SighRepository sighRepository;
+    private final SighReportRepository emotionReportRepository;
+    private final SighRepository emotionRepository;
     private final DeviceRepository deviceRepository;
     private final EmotionReportMetrics emotionReportMetrics;
 
     @Transactional
     public int deleteReportedOverThreshold() {
-        int deletedCount = sighReportRepository.deleteReportedOverThreshold(
+        int deletedCount = emotionReportRepository.deleteReportedOverThreshold(
                 AUTO_DELETE_REPORT_THRESHOLD,
                 Instant.now()
         );
@@ -45,27 +45,27 @@ public class SighReportService {
         return deletedCount;
     }
 
-    public EmotionReportResult save(Long sighId, UUID devicePublicId, String reason) {
-        Sigh sigh = findSigh(sighId);
+    public EmotionReportResult save(Long emotionId, UUID devicePublicId, String reason) {
+        Sigh emotion = findEmotion(emotionId);
         Long reporterDeviceId = findReporterDeviceId(devicePublicId);
-        validateNotSelf(sigh, reporterDeviceId);
+        validateNotSelf(emotion, reporterDeviceId);
 
-        Optional<SighReport> existingReport = sighReportRepository.findBySighIdAndReporterDeviceId(sighId, reporterDeviceId);
+        Optional<SighReport> existingReport = emotionReportRepository.findBySighIdAndReporterDeviceId(emotionId, reporterDeviceId);
 
         if (existingReport.isPresent()) {
             return EmotionReportResult.of(existingReport.get(), false);
         }
 
-        return saveNewReport(sighId, reporterDeviceId, reason);
+        return saveNewReport(emotionId, reporterDeviceId, reason);
     }
 
-    private Sigh findSigh(Long sighId) {
-        return sighRepository.findById(sighId)
+    private Sigh findEmotion(Long emotionId) {
+        return emotionRepository.findById(emotionId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
     }
 
-    private void validateNotSelf(Sigh sigh, Long reporterDeviceId) {
-        if (reporterDeviceId.equals(sigh.getDeviceId())) {
+    private void validateNotSelf(Sigh emotion, Long reporterDeviceId) {
+        if (reporterDeviceId.equals(emotion.getDeviceId())) {
             throw new EmotionReportException(EMOTION_REPORT_SELF_NOT_ALLOWED);
         }
     }
@@ -76,26 +76,26 @@ public class SighReportService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
     }
 
-    private EmotionReportResult saveNewReport(Long sighId, Long reporterDeviceId, String reason) {
+    private EmotionReportResult saveNewReport(Long emotionId, Long reporterDeviceId, String reason) {
         SighReport report = SighReport.builder()
-                .sighId(sighId)
+                .sighId(emotionId)
                 .reporterDeviceId(reporterDeviceId)
                 .reason(reason)
                 .build();
 
         try {
-            return EmotionReportResult.of(sighReportRepository.saveAndFlush(report), true);
+            return EmotionReportResult.of(emotionReportRepository.saveAndFlush(report), true);
         } catch (DataIntegrityViolationException cause) {
-            return findExistingReport(sighId, reporterDeviceId, cause);
+            return findExistingReport(emotionId, reporterDeviceId, cause);
         }
     }
 
     private EmotionReportResult findExistingReport(
-            Long sighId,
+            Long emotionId,
             Long reporterDeviceId,
             DataIntegrityViolationException cause
     ) {
-        return sighReportRepository.findBySighIdAndReporterDeviceId(sighId, reporterDeviceId)
+        return emotionReportRepository.findBySighIdAndReporterDeviceId(emotionId, reporterDeviceId)
                 .map(report -> EmotionReportResult.of(report, false))
                 .orElseThrow(() -> new EmotionReportException(EMOTION_REPORT_SAVE_FAILED, cause));
     }
