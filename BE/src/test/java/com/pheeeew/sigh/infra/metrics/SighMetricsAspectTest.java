@@ -22,7 +22,7 @@ import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
-import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
+import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighException;
@@ -90,7 +90,7 @@ class SighMetricsAspectTest {
     @CsvSource({"0, 0, false", "500, 500, false", "501, 500, true"})
     void 조회_시간과_실제_반환_개수_및_잘림을_기록한다(int fetched, int returned, boolean truncated) {
         // given
-        SighMapProjection projection = mock(SighMapProjection.class);
+        EmotionMapProjection projection = mock(EmotionMapProjection.class);
         when(projection.getId()).thenAnswer(invocation -> {
             clock.add(Duration.ofMillis(50));
             return 1L;

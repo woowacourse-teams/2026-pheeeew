@@ -21,7 +21,7 @@ import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.domain.repository.projection.SighDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
-import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
+import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighException;
@@ -79,7 +79,7 @@ public class SighService {
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
         Long blockerDeviceId = findBlockerDeviceId(viewerDevicePublicId);
-        List<SighMapProjection> projections = sighRepository.findAllWithinBounds(
+        List<EmotionMapProjection> projections = sighRepository.findAllWithinBounds(
                 bounds, period, blockerDeviceId, MAX_FIND_COUNT + 1
         );
 

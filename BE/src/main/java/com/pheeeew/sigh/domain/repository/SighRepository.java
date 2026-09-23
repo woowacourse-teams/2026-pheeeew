@@ -4,7 +4,7 @@ import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.projection.GeneratedLocation;
 import com.pheeeew.sigh.domain.repository.projection.SighDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
-import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
+import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import java.time.Instant;
@@ -104,7 +104,7 @@ public interface SighRepository extends JpaRepository<Sigh, Long> {
                     """,
             nativeQuery = true
     )
-    List<SighMapProjection> findAllWithinBounds(
+    List<EmotionMapProjection> findAllWithinBounds(
             @Param("bounds") SighSearchBounds bounds,
             @Param("period") EmotionQueryPeriod period,
             @Param("blockerDeviceId") Long blockerDeviceId,
