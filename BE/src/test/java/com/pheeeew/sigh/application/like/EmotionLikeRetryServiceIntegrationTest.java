@@ -16,7 +16,7 @@ import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
-import com.pheeeew.sigh.domain.repository.SighLikeRepository;
+import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.util.UUID;
@@ -51,7 +51,7 @@ class EmotionLikeRetryServiceIntegrationTest {
     private EmotionLikeService emotionLikeService;
 
     @Autowired
-    private SighLikeRepository sighLikeRepository;
+    private EmotionLikeRepository emotionLikeRepository;
 
     @Autowired
     private SighRepository sighRepository;
@@ -76,7 +76,7 @@ class EmotionLikeRetryServiceIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        sighLikeRepository.deleteAllInBatch();
+        emotionLikeRepository.deleteAllInBatch();
         sighRepository.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
     }
@@ -96,7 +96,7 @@ class EmotionLikeRetryServiceIntegrationTest {
         // then
         assertThat(result).isEqualTo(SighLikeResult.of(liked, liked ? 2 : 1));
         verify(serviceSpy(), times(2)).update(sigh.getId(), device.getPublicId(), liked);
-        assertThat(sighLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId()).isPresent())
+        assertThat(emotionLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId()).isPresent())
                 .isEqualTo(liked);
         assertLikeCount(liked ? 2 : 1);
     }
@@ -110,7 +110,7 @@ class EmotionLikeRetryServiceIntegrationTest {
         assertThatThrownBy(() -> emotionLikeRetryService.update(sigh.getId(), device.getPublicId(), true))
                 .isInstanceOf(ObjectOptimisticLockingFailureException.class);
         verify(serviceSpy(), times(3)).update(sigh.getId(), device.getPublicId(), true);
-        assertThat(sighLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
+        assertThat(emotionLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
         assertLikeCount(3);
     }
 
@@ -143,7 +143,7 @@ class EmotionLikeRetryServiceIntegrationTest {
     private void saveLike() {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             sighRepository.findById(sigh.getId()).orElseThrow().increaseLikeCount();
-            sighLikeRepository.save(기본_좋아요_빌더()
+            emotionLikeRepository.save(기본_좋아요_빌더()
                     .sighId(sigh.getId())
                     .deviceId(device.getId())
                     .build());

@@ -16,7 +16,7 @@ import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
-import com.pheeeew.sigh.domain.repository.SighLikeRepository;
+import com.pheeeew.sigh.domain.repository.EmotionLikeRepository;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
@@ -56,7 +56,7 @@ class SighServiceDetailIntegrationTest {
     private SighRepository sighRepository;
 
     @Autowired
-    private SighLikeRepository sighLikeRepository;
+    private EmotionLikeRepository emotionLikeRepository;
 
     @Autowired
     private DeviceRepository deviceRepository;
@@ -81,7 +81,7 @@ class SighServiceDetailIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        sighLikeRepository.deleteAll();
+        emotionLikeRepository.deleteAll();
         sighRepository.deleteAll();
         deviceRepository.deleteAll();
     }
