@@ -22,32 +22,32 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EmotionLikeService {
 
-    private final SighLikeRepository sighLikeRepository;
-    private final SighRepository sighRepository;
+    private final SighLikeRepository emotionLikeRepository;
+    private final SighRepository emotionRepository;
     private final DeviceRepository deviceRepository;
 
     @Transactional
-    public SighLikeResult update(Long sighId, UUID devicePublicId, boolean liked) {
+    public SighLikeResult update(Long emotionId, UUID devicePublicId, boolean liked) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
-        Sigh sigh = sighRepository.findByIdAndDeletedAtIsNull(sighId)
+        Sigh emotion = emotionRepository.findByIdAndDeletedAtIsNull(emotionId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
-        SighLike like = sighLikeRepository.findBySighIdAndDeviceId(sighId, deviceId).orElse(null);
+        SighLike like = emotionLikeRepository.findBySighIdAndDeviceId(emotionId, deviceId).orElse(null);
 
         if (liked && like == null) {
-            sighLikeRepository.save(
+            emotionLikeRepository.save(
                     SighLike.builder()
-                            .sighId(sighId)
+                            .sighId(emotionId)
                             .deviceId(deviceId)
                             .build()
             );
-            sigh.increaseLikeCount();
+            emotion.increaseLikeCount();
         } else if (!liked && like != null) {
-            sighLikeRepository.delete(like);
-            sigh.decreaseLikeCount();
+            emotionLikeRepository.delete(like);
+            emotion.decreaseLikeCount();
         }
 
-        return SighLikeResult.of(liked, sigh.getLikeCount());
+        return SighLikeResult.of(liked, emotion.getLikeCount());
     }
 }
