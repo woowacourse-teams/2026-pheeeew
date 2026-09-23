@@ -3,7 +3,7 @@ package com.pheeeew.sigh.application;
 import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_INVALID_CURSOR;
 
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
-import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
+import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.sigh.exception.SighException;
 import java.nio.charset.StandardCharsets;
 import java.time.DateTimeException;
@@ -34,7 +34,7 @@ public final class EmotionListCursorCodec {
             }
 
             return EmotionListCursor.of(
-                    SighSearchBounds.of(
+                    EmotionSearchBounds.of(
                             Double.parseDouble(fields[1]), Double.parseDouble(fields[2]),
                             Double.parseDouble(fields[3]), Double.parseDouble(fields[4])
                     ),
@@ -48,7 +48,7 @@ public final class EmotionListCursorCodec {
     }
 
     public static String encode(EmotionListCursor cursor) {
-        SighSearchBounds bounds = cursor.bounds();
+        EmotionSearchBounds bounds = cursor.bounds();
         String payload = String.join(
                 FIELD_DELIMITER,
                 VERSION,

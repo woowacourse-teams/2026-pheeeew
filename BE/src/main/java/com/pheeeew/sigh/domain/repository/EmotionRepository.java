@@ -6,7 +6,7 @@ import com.pheeeew.sigh.domain.repository.projection.EmotionDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
-import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
+import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -105,7 +105,7 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
             nativeQuery = true
     )
     List<EmotionMapProjection> findAllWithinBounds(
-            @Param("bounds") SighSearchBounds bounds,
+            @Param("bounds") EmotionSearchBounds bounds,
             @Param("period") EmotionQueryPeriod period,
             @Param("blockerDeviceId") Long blockerDeviceId,
             @Param("limit") int limit
@@ -189,7 +189,7 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
             nativeQuery = true
     )
     List<EmotionListProjection> findListWithinBounds(
-            @Param("bounds") SighSearchBounds bounds,
+            @Param("bounds") EmotionSearchBounds bounds,
             @Param("period") EmotionQueryPeriod period,
             @Param("lastItemCreatedAt") Instant lastItemCreatedAt,
             @Param("lastId") long lastId,

@@ -10,12 +10,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
-class SighSearchBoundsTest {
+class EmotionSearchBoundsTest {
 
     @Test
     void 일반_검색_영역을_생성한다() {
         // given / when
-        SighSearchBounds bounds = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6);
 
         // then
         assertThat(bounds.minLongitude()).isEqualTo(126.9);
@@ -27,7 +27,7 @@ class SighSearchBoundsTest {
     @Test
     void 날짜변경선을_가로지르는_검색_영역을_생성한다() {
         // given / when / then
-        assertThatCode(() -> SighSearchBounds.of(170.0, -10.0, -170.0, 10.0))
+        assertThatCode(() -> EmotionSearchBounds.of(170.0, -10.0, -170.0, 10.0))
                 .doesNotThrowAnyException();
     }
 
@@ -40,7 +40,7 @@ class SighSearchBoundsTest {
             double maxLatitude
     ) {
         // given / when / then
-        assertThatThrownBy(() -> SighSearchBounds.of(
+        assertThatThrownBy(() -> EmotionSearchBounds.of(
                 minLongitude,
                 minLatitude,
                 maxLongitude,

@@ -11,7 +11,7 @@ import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.SighMapItem;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
-import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
+import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Clock;
 import java.time.Instant;
@@ -35,8 +35,8 @@ import org.springframework.transaction.annotation.Transactional;
 class BlockFilterIntegrationTest {
 
     private static final Instant CURRENT_TIME = Instant.parse("2026-09-01T12:00:00Z");
-    private static final SighSearchBounds SEOUL_BOUNDS =
-            SighSearchBounds.of(126.9000, 37.5000, 127.1000, 37.6000);
+    private static final EmotionSearchBounds SEOUL_BOUNDS =
+            EmotionSearchBounds.of(126.9000, 37.5000, 127.1000, 37.6000);
     private static final double SEOUL_CITY_HALL_LONGITUDE = 126.9780;
     private static final double SEOUL_CITY_HALL_LATITUDE = 37.5664;
 
@@ -321,7 +321,7 @@ class BlockFilterIntegrationTest {
     private enum 조회_방식 {
         지도 {
             @Override
-            List<Long> 조회한다(EmotionService emotionService, SighSearchBounds bounds, UUID viewerPublicId) {
+            List<Long> 조회한다(EmotionService emotionService, EmotionSearchBounds bounds, UUID viewerPublicId) {
                 return emotionService.findAllWithinBounds(bounds, Optional.of(viewerPublicId)).sighs().stream()
                         .map(SighMapItem::id)
                         .toList();
@@ -329,13 +329,13 @@ class BlockFilterIntegrationTest {
         },
         목록 {
             @Override
-            List<Long> 조회한다(EmotionService emotionService, SighSearchBounds bounds, UUID viewerPublicId) {
+            List<Long> 조회한다(EmotionService emotionService, EmotionSearchBounds bounds, UUID viewerPublicId) {
                 return emotionService.findFirstListPage(bounds, viewerPublicId).items().stream()
                         .map(item -> item.sigh().id())
                         .toList();
             }
         };
 
-        abstract List<Long> 조회한다(EmotionService emotionService, SighSearchBounds bounds, UUID viewerPublicId);
+        abstract List<Long> 조회한다(EmotionService emotionService, EmotionSearchBounds bounds, UUID viewerPublicId);
     }
 }

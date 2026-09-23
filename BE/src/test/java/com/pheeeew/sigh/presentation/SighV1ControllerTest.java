@@ -13,7 +13,7 @@ import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
-import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
+import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import com.pheeeew.sigh.presentation.dto.SighCreateV1Request;
@@ -52,8 +52,8 @@ class SighV1ControllerTest {
     private static final UUID REQUEST_ID = UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b");
     private static final Instant CREATED_AT = Instant.parse("2026-08-31T10:30:00Z");
     private static final Instant NEXT_CREATED_AT = Instant.parse("2026-08-31T10:31:00Z");
-    private static final SighSearchBounds BOUNDS = SighSearchBounds.of(127.10, 37.30, 127.20, 37.40);
-    private static final SighSearchBounds DATE_LINE_BOUNDS = SighSearchBounds.of(170.0, -10.0, -170.0, 10.0);
+    private static final EmotionSearchBounds BOUNDS = EmotionSearchBounds.of(127.10, 37.30, 127.20, 37.40);
+    private static final EmotionSearchBounds DATE_LINE_BOUNDS = EmotionSearchBounds.of(170.0, -10.0, -170.0, 10.0);
     private static final UUID 기기_공개_식별자 = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
 
     private final RestTestClient client;

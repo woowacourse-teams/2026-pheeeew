@@ -21,7 +21,7 @@ import com.pheeeew.sigh.application.like.EmotionLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
-import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
+import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import com.pheeeew.sigh.infra.metrics.EmotionMetrics;
@@ -69,12 +69,12 @@ class EmotionServiceIntegrationTest {
     private static final Instant CURRENT_TIME = Instant.parse("2026-09-01T12:00:00.123456789Z");
     private static final double SEOUL_CITY_HALL_LONGITUDE = 126.9780;
     private static final double SEOUL_CITY_HALL_LATITUDE = 37.5664;
-    private static final SighSearchBounds SEOUL_BOUNDS =
-            SighSearchBounds.of(126.9000, 37.5000, 127.1000, 37.6000);
-    private static final SighSearchBounds DATE_LINE_BOUNDS =
-            SighSearchBounds.of(170.0000, -10.0000, -170.0000, 10.0000);
-    private static final SighSearchBounds WORLD_BOUNDS =
-            SighSearchBounds.of(-180.0000, -90.0000, 180.0000, 90.0000);
+    private static final EmotionSearchBounds SEOUL_BOUNDS =
+            EmotionSearchBounds.of(126.9000, 37.5000, 127.1000, 37.6000);
+    private static final EmotionSearchBounds DATE_LINE_BOUNDS =
+            EmotionSearchBounds.of(170.0000, -10.0000, -170.0000, 10.0000);
+    private static final EmotionSearchBounds WORLD_BOUNDS =
+            EmotionSearchBounds.of(-180.0000, -90.0000, 180.0000, 90.0000);
     private static final UUID REJECTED_REQUEST_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID 없는_기기_공개_식별자 =
@@ -1079,7 +1079,7 @@ class EmotionServiceIntegrationTest {
                 .update();
     }
 
-    private List<SighResult> findAllListPages(SighSearchBounds bounds) {
+    private List<SighResult> findAllListPages(EmotionSearchBounds bounds) {
         List<SighResult> items = new ArrayList<>();
         SighListResult page = emotionService.findFirstListPage(bounds, devicePublicId);
 

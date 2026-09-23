@@ -24,7 +24,7 @@ import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
-import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
+import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.sigh.exception.SighException;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MockClock;
@@ -52,7 +52,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 class EmotionMetricsAspectTest {
 
-    private static final SighSearchBounds BOUNDS = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
+    private static final EmotionSearchBounds BOUNDS = EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6);
 
     private static final Instant SNAPSHOT_AT = Instant.parse("2026-09-15T00:00:00Z");
     private static final EmotionQueryPeriod PERIOD = EmotionQueryPeriod.of(

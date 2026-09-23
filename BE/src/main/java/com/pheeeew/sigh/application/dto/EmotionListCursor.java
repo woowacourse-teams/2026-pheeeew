@@ -1,10 +1,10 @@
 package com.pheeeew.sigh.application.dto;
 
-import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
+import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import java.time.Instant;
 import java.util.Objects;
 
-public record EmotionListCursor(SighSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId) {
+public record EmotionListCursor(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId) {
 
     public EmotionListCursor {
         Objects.requireNonNull(bounds);
@@ -18,11 +18,11 @@ public record EmotionListCursor(SighSearchBounds bounds, Instant snapshotAt, Ins
         }
     }
 
-    public static EmotionListCursor initial(SighSearchBounds bounds, Instant snapshotAt) {
+    public static EmotionListCursor initial(EmotionSearchBounds bounds, Instant snapshotAt) {
         return new EmotionListCursor(bounds, snapshotAt, snapshotAt, Long.MAX_VALUE);
     }
 
-    public static EmotionListCursor of(SighSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId) {
+    public static EmotionListCursor of(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId) {
         return new EmotionListCursor(bounds, snapshotAt, lastItemCreatedAt, lastId);
     }
 

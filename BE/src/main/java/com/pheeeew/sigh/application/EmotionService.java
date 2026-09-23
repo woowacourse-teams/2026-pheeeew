@@ -23,7 +23,7 @@ import com.pheeeew.sigh.domain.repository.projection.EmotionDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionListProjection;
 import com.pheeeew.sigh.domain.repository.projection.EmotionMapProjection;
 import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
-import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
+import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.sigh.exception.SighException;
 import java.time.Clock;
 import java.time.Instant;
@@ -75,7 +75,7 @@ public class EmotionService {
         return SighDetailResult.from(projection);
     }
 
-    public SighMapResult findAllWithinBounds(SighSearchBounds bounds, Optional<UUID> viewerDevicePublicId) {
+    public SighMapResult findAllWithinBounds(EmotionSearchBounds bounds, Optional<UUID> viewerDevicePublicId) {
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
         Long blockerDeviceId = findBlockerDeviceId(viewerDevicePublicId);
@@ -100,7 +100,7 @@ public class EmotionService {
         return SighMapResult.of(emotions, truncated);
     }
 
-    public SighListResult findFirstListPage(SighSearchBounds bounds, UUID devicePublicId) {
+    public SighListResult findFirstListPage(EmotionSearchBounds bounds, UUID devicePublicId) {
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         EmotionListCursor cursor = EmotionListCursor.initial(bounds, snapshotAt);
         EmotionQueryPeriod period = EmotionQueryPeriod.of(snapshotAt, clock.getZone());
@@ -177,7 +177,7 @@ public class EmotionService {
             return SighListResult.of(List.of(), false, null);
         }
 
-        SighSearchBounds bounds = cursor.bounds();
+        EmotionSearchBounds bounds = cursor.bounds();
         EmotionQueryPeriod period = EmotionQueryPeriod.of(currentPeriod.startAt(), cursor.snapshotAt());
         List<EmotionListProjection> projections = emotionRepository.findListWithinBounds(
                 bounds,

@@ -21,7 +21,7 @@ import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
-import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
+import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
 import java.time.Instant;
@@ -88,7 +88,7 @@ class SighV2ControllerTest {
     @Test
     void 검색_영역으로_바텀시트_첫_페이지를_조회한다() {
         // given
-        SighSearchBounds bounds = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6);
         when(emotionService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
                 .thenReturn(SighListResult.of(
                         List.of(기본_상세_조회_결과("오늘은 조금 지쳤다", true, 12)),
@@ -136,7 +136,7 @@ class SighV2ControllerTest {
     @Test
     void 날짜변경선을_가로지르는_검색_영역으로_첫_페이지를_조회한다() {
         // given
-        SighSearchBounds bounds = SighSearchBounds.of(170.0, -10.0, -170.0, 10.0);
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(170.0, -10.0, -170.0, 10.0);
         when(emotionService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
                 .thenReturn(SighListResult.of(List.of(), false, null));
 
@@ -249,7 +249,7 @@ class SighV2ControllerTest {
     })
     void 토큰의_기기가_등록되어_있지_않으면_목록_조회는_401을_반환한다(String uri) {
         // given
-        SighSearchBounds bounds = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6);
         when(emotionService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
                 .thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND));
         when(emotionService.findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID))

@@ -1,13 +1,13 @@
 package com.pheeeew.sigh.domain.repository.query;
 
-public record SighSearchBounds(
+public record EmotionSearchBounds(
         double minLongitude,
         double minLatitude,
         double maxLongitude,
         double maxLatitude
 ) {
 
-    public SighSearchBounds {
+    public EmotionSearchBounds {
         validateLongitude(minLongitude);
         validateLongitude(maxLongitude);
         validateLatitude(minLatitude);
@@ -20,13 +20,13 @@ public record SighSearchBounds(
         }
     }
 
-    public static SighSearchBounds of(
+    public static EmotionSearchBounds of(
             double minLongitude,
             double minLatitude,
             double maxLongitude,
             double maxLatitude
     ) {
-        return new SighSearchBounds(minLongitude, minLatitude, maxLongitude, maxLatitude);
+        return new EmotionSearchBounds(minLongitude, minLatitude, maxLongitude, maxLatitude);
     }
 
     private static void validateLongitude(double longitude) {

@@ -1,6 +1,6 @@
 package com.pheeeew.sigh.presentation.dto;
 
-import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
+import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
@@ -65,7 +65,7 @@ public record SighListRequest(
         return cursor != null;
     }
 
-    public SighSearchBounds toBounds() {
-        return SighSearchBounds.of(minLongitude, minLatitude, maxLongitude, maxLatitude);
+    public EmotionSearchBounds toBounds() {
+        return EmotionSearchBounds.of(minLongitude, minLatitude, maxLongitude, maxLatitude);
     }
 }
