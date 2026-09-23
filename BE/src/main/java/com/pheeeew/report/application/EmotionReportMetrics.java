@@ -5,11 +5,11 @@ import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.stereotype.Component;
 
 @Component
-public class SighReportMetrics {
+public class EmotionReportMetrics {
 
     private final Counter autoDeleted;
 
-    public SighReportMetrics(MeterRegistry registry) {
+    public EmotionReportMetrics(MeterRegistry registry) {
         autoDeleted = Counter.builder("pheeeew.report.sigh.auto_deleted")
                 .description("Automatically deleted sigh count by report threshold")
                 .register(registry);

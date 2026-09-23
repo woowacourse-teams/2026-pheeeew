@@ -6,12 +6,12 @@ import org.springframework.stereotype.Component;
 
 @RequiredArgsConstructor
 @Component
-public class SighReportCleanupScheduler {
+public class EmotionReportCleanupScheduler {
 
-    private final SighReportService sighReportService;
+    private final SighReportService emotionReportService;
 
     @Scheduled(fixedDelayString = "PT1H", initialDelayString = "PT1H")
     public void deleteReportedOverThreshold() {
-        sighReportService.deleteReportedOverThreshold();
+        emotionReportService.deleteReportedOverThreshold();
     }
 }

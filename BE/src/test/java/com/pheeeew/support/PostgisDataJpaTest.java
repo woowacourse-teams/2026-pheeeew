@@ -18,7 +18,7 @@ import com.pheeeew.device.infra.attestation.PlayIntegrityDeviceAttestationVerifi
 import com.pheeeew.device.infra.attestation.PlayIntegrityMetrics;
 import com.pheeeew.report.application.DeviceBlockService;
 import com.pheeeew.report.application.SighBlockService;
-import com.pheeeew.report.application.SighReportMetrics;
+import com.pheeeew.report.application.EmotionReportMetrics;
 import com.pheeeew.report.application.SighReportService;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.infra.KoreanEmotionNicknameGenerator;
@@ -62,7 +62,7 @@ import org.springframework.test.context.ActiveProfiles;
         PlayIntegrityConfig.class,
         PlayIntegrityDeviceAttestationVerifier.class,
         PlayIntegrityMetrics.class,
-        SighReportMetrics.class,
+        EmotionReportMetrics.class,
         GroupService.class,
         InviteCodeGenerator.class,
         SighReportService.class,

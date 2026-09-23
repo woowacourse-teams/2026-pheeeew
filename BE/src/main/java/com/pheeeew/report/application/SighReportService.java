@@ -32,7 +32,7 @@ public class SighReportService {
     private final SighReportRepository sighReportRepository;
     private final SighRepository sighRepository;
     private final DeviceRepository deviceRepository;
-    private final SighReportMetrics sighReportMetrics;
+    private final EmotionReportMetrics emotionReportMetrics;
 
     @Transactional
     public int deleteReportedOverThreshold() {
@@ -40,7 +40,7 @@ public class SighReportService {
                 AUTO_DELETE_REPORT_THRESHOLD,
                 Instant.now()
         );
-        sighReportMetrics.recordAutoDeleted(deletedCount);
+        emotionReportMetrics.recordAutoDeleted(deletedCount);
 
         return deletedCount;
     }
