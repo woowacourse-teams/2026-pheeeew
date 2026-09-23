@@ -51,13 +51,13 @@ public class SighService {
     private final Clock clock;
 
     public SighSaveResult save(UUID requestId, double longitude, double latitude) {
-        return saveSigh(requestId, longitude, latitude, null, null);
+        return saveEmotion(requestId, longitude, latitude, null, null);
     }
 
     public SighSaveResult save(UUID requestId, double longitude, double latitude, String memo, UUID devicePublicId) {
         Long deviceId = findDeviceId(devicePublicId);
 
-        return saveSigh(requestId, longitude, latitude, memo, deviceId);
+        return saveEmotion(requestId, longitude, latitude, memo, deviceId);
     }
 
     @Transactional(readOnly = true)
@@ -119,14 +119,14 @@ public class SighService {
         return findList(cursor, period, devicePublicId);
     }
 
-    private SighSaveResult saveSigh(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
+    private SighSaveResult saveEmotion(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
         Optional<EmotionDetailProjection> existingSigh = sighRepository.findByRequestId(requestId, deviceId);
 
         if (existingSigh.isPresent()) {
             return createSaveResult(existingSigh.get());
         }
 
-        return saveNewSigh(requestId, longitude, latitude, memo, deviceId);
+        return saveNewEmotion(requestId, longitude, latitude, memo, deviceId);
     }
 
     private SighSaveResult createSaveResult(EmotionDetailProjection projection) {
@@ -134,7 +134,7 @@ public class SighService {
         return SighSaveResult.of(detail.sigh(), false, detail.like());
     }
 
-    private SighSaveResult saveNewSigh(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
+    private SighSaveResult saveNewEmotion(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
         Point location = emotionLocationGenerator.generate(longitude, latitude);
         Sigh sigh = Sigh.builder()
                 .requestId(requestId)
