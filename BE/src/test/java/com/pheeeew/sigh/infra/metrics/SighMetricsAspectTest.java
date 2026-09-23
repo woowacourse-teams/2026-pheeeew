@@ -23,7 +23,7 @@ import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
-import com.pheeeew.sigh.domain.repository.query.SighQueryPeriod;
+import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighException;
 import io.micrometer.core.instrument.DistributionSummary;
@@ -55,7 +55,7 @@ class SighMetricsAspectTest {
     private static final SighSearchBounds BOUNDS = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
 
     private static final Instant SNAPSHOT_AT = Instant.parse("2026-09-15T00:00:00Z");
-    private static final SighQueryPeriod PERIOD = SighQueryPeriod.of(
+    private static final EmotionQueryPeriod PERIOD = EmotionQueryPeriod.of(
             Instant.parse("2026-09-01T15:00:00Z"), SNAPSHOT_AT
     );
 
@@ -99,7 +99,7 @@ class SighMetricsAspectTest {
         when(projection.getLatitude()).thenReturn(37.55);
         when(projection.getCreatedAt()).thenReturn(Instant.parse("2026-09-11T00:00:00Z"));
         when(repository.findAllWithinBounds(
-                eq(BOUNDS), any(SighQueryPeriod.class), isNull(), eq(501)
+                eq(BOUNDS), any(EmotionQueryPeriod.class), isNull(), eq(501)
         ))
                 .thenAnswer(invocation -> {
                     clock.add(Duration.ofMillis(250));
@@ -113,7 +113,7 @@ class SighMetricsAspectTest {
         assertThat(result.sighs()).hasSize(returned);
         assertThat(result.truncated()).isEqualTo(truncated);
         verify(repository).findAllWithinBounds(
-                eq(BOUNDS), any(SighQueryPeriod.class), isNull(), eq(501)
+                eq(BOUNDS), any(EmotionQueryPeriod.class), isNull(), eq(501)
         );
         Timer query = registry.get("pheeeew.sigh.map.query").timer();
         assertThat(query.count()).isEqualTo(1);
@@ -136,7 +136,7 @@ class SighMetricsAspectTest {
         // given
         IllegalStateException failure = new IllegalStateException("query failed");
         when(repository.findAllWithinBounds(
-                eq(BOUNDS), any(SighQueryPeriod.class), isNull(), eq(501)
+                eq(BOUNDS), any(EmotionQueryPeriod.class), isNull(), eq(501)
         ))
                 .thenAnswer(invocation -> {
                     clock.add(Duration.ofMillis(100));
@@ -234,7 +234,7 @@ class SighMetricsAspectTest {
         when(projection.getLatitude()).thenReturn(37.55);
         when(projection.getCreatedAt()).thenReturn(SNAPSHOT_AT.minusSeconds(1));
         when(repository.findListWithinBounds(
-                eq(BOUNDS), any(SighQueryPeriod.class), any(Instant.class), anyLong(),
+                eq(BOUNDS), any(EmotionQueryPeriod.class), any(Instant.class), anyLong(),
                 eq(1L), eq(500), eq(21), eq(1L)
         )).thenReturn(Collections.nCopies(fetched, projection));
 
@@ -257,7 +257,7 @@ class SighMetricsAspectTest {
         UUID devicePublicId = 등록된_기기_식별자();
         IllegalStateException failure = new IllegalStateException("query failed");
         when(repository.findListWithinBounds(
-                eq(BOUNDS), any(SighQueryPeriod.class), any(Instant.class), anyLong(),
+                eq(BOUNDS), any(EmotionQueryPeriod.class), any(Instant.class), anyLong(),
                 eq(1L), eq(500), eq(21), eq(1L)
         )).thenThrow(failure);
 

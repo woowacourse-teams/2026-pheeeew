@@ -4,11 +4,11 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Objects;
 
-public record SighQueryPeriod(Instant startAt, Instant endAt) {
+public record EmotionQueryPeriod(Instant startAt, Instant endAt) {
 
     private static final int QUERY_PERIOD_DAYS = 14;
 
-    public SighQueryPeriod {
+    public EmotionQueryPeriod {
         Objects.requireNonNull(startAt);
         Objects.requireNonNull(endAt);
         if (startAt.isAfter(endAt)) {
@@ -16,11 +16,11 @@ public record SighQueryPeriod(Instant startAt, Instant endAt) {
         }
     }
 
-    public static SighQueryPeriod of(Instant startAt, Instant endAt) {
-        return new SighQueryPeriod(startAt, endAt);
+    public static EmotionQueryPeriod of(Instant startAt, Instant endAt) {
+        return new EmotionQueryPeriod(startAt, endAt);
     }
 
-    public static SighQueryPeriod of(Instant endAt, ZoneId zone) {
+    public static EmotionQueryPeriod of(Instant endAt, ZoneId zone) {
         Instant startAt = endAt.atZone(zone)
                 .toLocalDate()
                 .minusDays(QUERY_PERIOD_DAYS - 1)

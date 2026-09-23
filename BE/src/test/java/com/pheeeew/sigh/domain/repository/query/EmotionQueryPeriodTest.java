@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-class SighQueryPeriodTest {
+class EmotionQueryPeriodTest {
 
     @ParameterizedTest
     @CsvSource({
@@ -21,7 +21,7 @@ class SighQueryPeriodTest {
         Instant endAt = Instant.parse("2026-09-14T15:00:00Z");
 
         // when
-        SighQueryPeriod period = SighQueryPeriod.of(endAt, ZoneId.of(zone));
+        EmotionQueryPeriod period = EmotionQueryPeriod.of(endAt, ZoneId.of(zone));
 
         // then
         assertThat(period.startAt()).isEqualTo(Instant.parse(expectedStartAt));
@@ -35,7 +35,7 @@ class SighQueryPeriodTest {
         Instant startAt = endAt.plusSeconds(1);
 
         // when / then
-        assertThatThrownBy(() -> SighQueryPeriod.of(startAt, endAt))
+        assertThatThrownBy(() -> EmotionQueryPeriod.of(startAt, endAt))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

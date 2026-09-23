@@ -22,7 +22,7 @@ import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.domain.repository.projection.SighDetailProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighListProjection;
 import com.pheeeew.sigh.domain.repository.projection.SighMapProjection;
-import com.pheeeew.sigh.domain.repository.query.SighQueryPeriod;
+import com.pheeeew.sigh.domain.repository.query.EmotionQueryPeriod;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighException;
 import java.time.Clock;
@@ -67,7 +67,7 @@ public class SighService {
         SighDetailProjection projection = sighRepository.findById(id, deviceId)
                 .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
 
-        SighQueryPeriod period = SighQueryPeriod.of(queriedAt, clock.getZone());
+        EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
         if (projection.getSigh().getCreatedAt().isBefore(period.startAt())) {
             throw new SighException(SIGH_EXPIRED);
         }
@@ -77,7 +77,7 @@ public class SighService {
 
     public SighMapResult findAllWithinBounds(SighSearchBounds bounds, Optional<UUID> viewerDevicePublicId) {
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
-        SighQueryPeriod period = SighQueryPeriod.of(queriedAt, clock.getZone());
+        EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
         Long blockerDeviceId = findBlockerDeviceId(viewerDevicePublicId);
         List<SighMapProjection> projections = sighRepository.findAllWithinBounds(
                 bounds, period, blockerDeviceId, MAX_FIND_COUNT + 1
@@ -103,7 +103,7 @@ public class SighService {
     public SighListResult findFirstListPage(SighSearchBounds bounds, UUID devicePublicId) {
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         SighListCursor cursor = SighListCursor.initial(bounds, snapshotAt);
-        SighQueryPeriod period = SighQueryPeriod.of(snapshotAt, clock.getZone());
+        EmotionQueryPeriod period = EmotionQueryPeriod.of(snapshotAt, clock.getZone());
 
         return findList(cursor, period, devicePublicId);
     }
@@ -114,7 +114,7 @@ public class SighService {
         if (cursor.snapshotAt().isAfter(queriedAt)) {
             throw new SighException(SIGH_INVALID_CURSOR);
         }
-        SighQueryPeriod period = SighQueryPeriod.of(queriedAt, clock.getZone());
+        EmotionQueryPeriod period = EmotionQueryPeriod.of(queriedAt, clock.getZone());
 
         return findList(cursor, period, devicePublicId);
     }
@@ -170,7 +170,7 @@ public class SighService {
                 .orElse(null);
     }
 
-    private SighListResult findList(SighListCursor cursor, SighQueryPeriod currentPeriod, UUID devicePublicId) {
+    private SighListResult findList(SighListCursor cursor, EmotionQueryPeriod currentPeriod, UUID devicePublicId) {
         Long deviceId = findDeviceId(devicePublicId);
 
         if (!cursor.snapshotAt().isAfter(currentPeriod.startAt())) {
@@ -178,7 +178,7 @@ public class SighService {
         }
 
         SighSearchBounds bounds = cursor.bounds();
-        SighQueryPeriod period = SighQueryPeriod.of(currentPeriod.startAt(), cursor.snapshotAt());
+        EmotionQueryPeriod period = EmotionQueryPeriod.of(currentPeriod.startAt(), cursor.snapshotAt());
         List<SighListProjection> projections = sighRepository.findListWithinBounds(
                 bounds,
                 period,
