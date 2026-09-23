@@ -9,6 +9,8 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 
     Optional<Group> findByPublicIdAndDeletedAtIsNull(UUID publicId);
 
+    Optional<Group> findByInviteCodeAndDeletedAtIsNull(String inviteCode);
+
     boolean existsByNameAndDeletedAtIsNull(String name);
 
     boolean existsByInviteCode(String inviteCode);
