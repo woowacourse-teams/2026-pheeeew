@@ -1,5 +1,6 @@
 package com.pheeeew.report.presentation.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.pheeeew.report.application.dto.EmotionReportResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -10,7 +11,8 @@ public record EmotionReportResponse(
         Long id,
 
         @Schema(description = "신고된 한숨 ID", example = "42")
-        Long sighId,
+        @JsonProperty("sighId")
+        Long emotionId,
 
         @Schema(description = "신고 사유", example = "광고성 게시물입니다")
         String reason,

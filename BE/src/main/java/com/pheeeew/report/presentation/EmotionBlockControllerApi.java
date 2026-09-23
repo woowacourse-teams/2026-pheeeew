@@ -248,10 +248,11 @@ public interface EmotionBlockControllerApi {
             @Parameter(hidden = true) UUID devicePublicId,
 
             @Parameter(
+                    name = "sighId",
                     description = "차단을 해제할 한숨 ID",
                     example = "42",
                     schema = @Schema(minimum = "1")
             )
-            Long sighId
+            Long emotionId
     );
 }

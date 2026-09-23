@@ -35,7 +35,7 @@ public class EmotionBlockController implements EmotionBlockControllerApi {
             @CurrentDevice UUID devicePublicId,
             @Valid @RequestBody BlockCreateRequest request
     ) {
-        BlockSaveResult result = emotionBlockService.save(request.sighId(), devicePublicId);
+        BlockSaveResult result = emotionBlockService.save(request.emotionId(), devicePublicId);
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {
@@ -65,9 +65,9 @@ public class EmotionBlockController implements EmotionBlockControllerApi {
     @DeleteMapping("/{sighId}")
     public ResponseEntity<Void> delete(
             @CurrentDevice UUID devicePublicId,
-            @PathVariable Long sighId
+            @PathVariable("sighId") Long emotionId
     ) {
-        emotionBlockService.delete(sighId, devicePublicId);
+        emotionBlockService.delete(emotionId, devicePublicId);
 
         return ResponseEntity.noContent().build();
     }

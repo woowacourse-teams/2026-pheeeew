@@ -453,8 +453,8 @@ public interface EmotionV2ControllerApi {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     EmotionLikeResponse update(
-            @Parameter(description = "좋아요 상태를 변경할 한숨 ID", example = "42", schema = @Schema(minimum = "1"))
-            @Min(value = 1, message = "한숨 ID는 1 이상이어야 합니다.") Long sighId,
+            @Parameter(name = "sighId", description = "좋아요 상태를 변경할 한숨 ID", example = "42", schema = @Schema(minimum = "1"))
+            @Min(value = 1, message = "한숨 ID는 1 이상이어야 합니다.") Long emotionId,
             @Parameter(hidden = true) UUID devicePublicId,
             @RequestBody(required = true, content = @Content(examples = {
                     @ExampleObject(name = "좋아요 추가", value = "{\"liked\":true}"),

@@ -28,7 +28,7 @@ public class EmotionReportController implements EmotionReportControllerApi {
             @CurrentDevice UUID devicePublicId,
             @Valid @RequestBody EmotionReportCreateRequest request
     ) {
-        EmotionReportResult result = emotionReportService.save(request.sighId(), devicePublicId, request.reason());
+        EmotionReportResult result = emotionReportService.save(request.emotionId(), devicePublicId, request.reason());
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {

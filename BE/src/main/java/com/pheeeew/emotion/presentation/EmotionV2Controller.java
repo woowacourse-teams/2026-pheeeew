@@ -105,11 +105,11 @@ public class EmotionV2Controller implements EmotionV2ControllerApi {
     @Override
     @PostMapping("/{sighId}/likes")
     public EmotionLikeResponse update(
-            @PathVariable Long sighId,
+            @PathVariable("sighId") Long emotionId,
             @CurrentDevice UUID devicePublicId,
             @RequestBody EmotionLikeRequest request
     ) {
-        EmotionLikeResult result = emotionLikeRetryService.update(sighId, devicePublicId, request.liked());
+        EmotionLikeResult result = emotionLikeRetryService.update(emotionId, devicePublicId, request.liked());
         return EmotionLikeResponse.from(result);
     }
 
