@@ -22,9 +22,9 @@ public record SighV2Properties(
         long likeCount
 ) {
 
-    public static SighV2Properties of(EmotionResult sigh, EmotionLikeResult like) {
+    public static SighV2Properties of(EmotionResult emotion, EmotionLikeResult like) {
         return new SighV2Properties(
-                sigh.createdAt(), sigh.memo(), sigh.nickname(), like.liked(), like.likeCount()
+                emotion.createdAt(), emotion.memo(), emotion.nickname(), like.liked(), like.likeCount()
         );
     }
 }

@@ -12,14 +12,14 @@ public record EmotionResult(
         String nickname
 ) {
 
-    public static EmotionResult from(Emotion sigh) {
+    public static EmotionResult from(Emotion emotion) {
         return new EmotionResult(
-                sigh.getId(),
-                sigh.getLongitude(),
-                sigh.getLatitude(),
-                sigh.getCreatedAt(),
-                sigh.getMemo(),
-                sigh.getNickname()
+                emotion.getId(),
+                emotion.getLongitude(),
+                emotion.getLatitude(),
+                emotion.getCreatedAt(),
+                emotion.getMemo(),
+                emotion.getNickname()
         );
     }
 

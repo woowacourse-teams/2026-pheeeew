@@ -52,7 +52,7 @@ public class SighV1Controller implements SighV1ControllerApi {
             @Valid @RequestBody SighCreateV1Request request
     ) {
         EmotionSaveResult result = emotionService.save(request.requestId(), request.longitude(), request.latitude());
-        EmotionResult sigh = result.emotion();
+        EmotionResult emotion = result.emotion();
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {
@@ -62,8 +62,8 @@ public class SighV1Controller implements SighV1ControllerApi {
         return ResponseEntity.status(status)
                 .contentType(GEO_JSON)
                 .body(SighFeature.of(
-                        sigh,
-                        SighV1Properties.from(sigh.createdAt())
+                        emotion,
+                        SighV1Properties.from(emotion.createdAt())
                 ));
     }
 }

@@ -18,20 +18,20 @@ public record SighFeature<P>(
 
     private static final String FEATURE_TYPE = "Feature";
 
-    public static <P> SighFeature<P> of(EmotionResult sigh, P properties) {
+    public static <P> SighFeature<P> of(EmotionResult emotion, P properties) {
         return new SighFeature<>(
                 FEATURE_TYPE,
-                sigh.id(),
-                PointGeometry.of(sigh.longitude(), sigh.latitude()),
+                emotion.id(),
+                PointGeometry.of(emotion.longitude(), emotion.latitude()),
                 properties
         );
     }
 
-    public static <P> SighFeature<P> of(EmotionMapItem sigh, P properties) {
+    public static <P> SighFeature<P> of(EmotionMapItem emotion, P properties) {
         return new SighFeature<>(
                 FEATURE_TYPE,
-                sigh.id(),
-                PointGeometry.of(sigh.longitude(), sigh.latitude()),
+                emotion.id(),
+                PointGeometry.of(emotion.longitude(), emotion.latitude()),
                 properties
         );
     }

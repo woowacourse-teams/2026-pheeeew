@@ -89,17 +89,17 @@ public class SighV2Controller implements SighV2ControllerApi {
                 request.memo(),
                 devicePublicId
         );
-        EmotionResult sigh = result.emotion();
+        EmotionResult emotion = result.emotion();
 
         ResponseEntity.BodyBuilder response = ResponseEntity.ok();
         if (result.created()) {
-            response = ResponseEntity.created(URI.create("/api/v2/sighs/" + sigh.id()));
+            response = ResponseEntity.created(URI.create("/api/v2/sighs/" + emotion.id()));
         }
 
         return response
                 .contentType(GEO_JSON)
                 .cacheControl(CacheControl.noStore())
-                .body(toFeature(sigh, result.like()));
+                .body(toFeature(emotion, result.like()));
     }
 
     @Override
@@ -113,7 +113,7 @@ public class SighV2Controller implements SighV2ControllerApi {
         return SighLikeResponse.from(result);
     }
 
-    private SighFeature<SighV2Properties> toFeature(EmotionResult sigh, EmotionLikeResult like) {
-        return SighFeature.of(sigh, SighV2Properties.of(sigh, like));
+    private SighFeature<SighV2Properties> toFeature(EmotionResult emotion, EmotionLikeResult like) {
+        return SighFeature.of(emotion, SighV2Properties.of(emotion, like));
     }
 }

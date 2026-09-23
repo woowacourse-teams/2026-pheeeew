@@ -18,9 +18,9 @@ public record SighMapResponse(
 
     public static SighMapResponse from(EmotionMapResult result) {
         List<SighFeature<SighV1Properties>> features = result.emotions().stream()
-                .map(sigh -> SighFeature.of(
-                        sigh,
-                        SighV1Properties.from(sigh.createdAt())
+                .map(emotion -> SighFeature.of(
+                        emotion,
+                        SighV1Properties.from(emotion.createdAt())
                 ))
                 .toList();
 
