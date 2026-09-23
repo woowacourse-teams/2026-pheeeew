@@ -60,37 +60,37 @@ class EmotionReportAutoDeleteIntegrationTest {
     @ValueSource(ints = {0, 1, 4})
     void 신고가_임계값에_못_미치면_한숨이_남는다(int 신고_수) {
         // given
-        Long sighId = 한숨을_저장한다();
-        서로_다른_기기로_신고한다(sighId, 신고_수);
+        Long emotionId = 한숨을_저장한다();
+        서로_다른_기기로_신고한다(emotionId, 신고_수);
 
         // when
         int 삭제_수 = emotionReportService.deleteReportedOverThreshold();
 
         // then
         assertThat(삭제_수).isZero();
-        assertThat(삭제_시각(sighId)).isNull();
+        assertThat(삭제_시각(emotionId)).isNull();
     }
 
     @ParameterizedTest
     @ValueSource(ints = {5, 6})
     void 신고가_임계값_이상이면_한숨을_삭제한다(int 신고_수) {
         // given
-        Long sighId = 한숨을_저장한다();
-        서로_다른_기기로_신고한다(sighId, 신고_수);
+        Long emotionId = 한숨을_저장한다();
+        서로_다른_기기로_신고한다(emotionId, 신고_수);
 
         // when
         int 삭제_수 = emotionReportService.deleteReportedOverThreshold();
 
         // then
         assertThat(삭제_수).isOne();
-        assertThat(삭제_시각(sighId)).isNotNull();
+        assertThat(삭제_시각(emotionId)).isNotNull();
     }
 
     @Test
     void 삭제해도_신고_기록은_남는다() {
         // given
-        Long sighId = 한숨을_저장한다();
-        서로_다른_기기로_신고한다(sighId, 자동_삭제_임계값);
+        Long emotionId = 한숨을_저장한다();
+        서로_다른_기기로_신고한다(emotionId, 자동_삭제_임계값);
 
         // when
         emotionReportService.deleteReportedOverThreshold();
@@ -102,17 +102,17 @@ class EmotionReportAutoDeleteIntegrationTest {
     @Test
     void 이미_삭제한_한숨은_다시_갱신하지_않는다() {
         // given
-        Long sighId = 한숨을_저장한다();
-        서로_다른_기기로_신고한다(sighId, 자동_삭제_임계값);
+        Long emotionId = 한숨을_저장한다();
+        서로_다른_기기로_신고한다(emotionId, 자동_삭제_임계값);
         emotionReportService.deleteReportedOverThreshold();
-        Instant 첫_삭제_시각 = 삭제_시각(sighId);
+        Instant 첫_삭제_시각 = 삭제_시각(emotionId);
 
         // when
         int 두_번째_삭제_수 = emotionReportService.deleteReportedOverThreshold();
 
         // then
         assertThat(두_번째_삭제_수).isZero();
-        assertThat(삭제_시각(sighId)).isEqualTo(첫_삭제_시각);
+        assertThat(삭제_시각(emotionId)).isEqualTo(첫_삭제_시각);
     }
 
     @Test
@@ -137,9 +137,9 @@ class EmotionReportAutoDeleteIntegrationTest {
         // given
         List<Long> 한숨들 = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
-            Long sighId = 한숨을_저장한다();
-            서로_다른_기기로_신고한다(sighId, 자동_삭제_임계값);
-            한숨들.add(sighId);
+            Long emotionId = 한숨을_저장한다();
+            서로_다른_기기로_신고한다(emotionId, 자동_삭제_임계값);
+            한숨들.add(emotionId);
         }
 
         // when
@@ -147,18 +147,18 @@ class EmotionReportAutoDeleteIntegrationTest {
 
         // then
         assertThat(삭제_수).isEqualTo(3);
-        assertThat(한숨들).allSatisfy(sighId -> assertThat(삭제_시각(sighId)).isNotNull());
+        assertThat(한숨들).allSatisfy(emotionId -> assertThat(삭제_시각(emotionId)).isNotNull());
     }
 
     @Test
     void 자기_한숨은_신고할_수_없다() {
         // given
         Device 작성자 = deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
-        Long sighId = 작성자가_쓴_한숨을_저장한다(작성자.getId());
+        Long emotionId = 작성자가_쓴_한숨을_저장한다(작성자.getId());
 
         // when
         Throwable throwable = catchThrowable(
-                () -> emotionReportService.save(sighId, 작성자.getPublicId(), "테스트 신고")
+                () -> emotionReportService.save(emotionId, 작성자.getPublicId(), "테스트 신고")
         );
 
         // then
@@ -173,10 +173,10 @@ class EmotionReportAutoDeleteIntegrationTest {
         // given
         Device 작성자 = deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
         Device 신고자 = deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
-        Long sighId = 작성자가_쓴_한숨을_저장한다(작성자.getId());
+        Long emotionId = 작성자가_쓴_한숨을_저장한다(작성자.getId());
 
         // when
-        emotionReportService.save(sighId, 신고자.getPublicId(), "테스트 신고");
+        emotionReportService.save(emotionId, 신고자.getPublicId(), "테스트 신고");
 
         // then
         assertThat(emotionReportRepository.count()).isOne();
@@ -186,37 +186,37 @@ class EmotionReportAutoDeleteIntegrationTest {
     void 작성자를_모르는_한숨은_누구나_신고할_수_있다() {
         // given
         Device 신고자 = deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
-        Long sighId = 한숨을_저장한다();
+        Long emotionId = 한숨을_저장한다();
 
         // when
-        emotionReportService.save(sighId, 신고자.getPublicId(), "테스트 신고");
+        emotionReportService.save(emotionId, 신고자.getPublicId(), "테스트 신고");
 
         // then
         assertThat(emotionReportRepository.count()).isOne();
     }
 
     private Long 작성자가_쓴_한숨을_저장한다(Long deviceId) {
-        Emotion sigh = emotionRepository.saveAndFlush(
+        Emotion emotion = emotionRepository.saveAndFlush(
                 기기가_있는_한숨_빌더(deviceId).requestId(UUID.randomUUID()).build()
         );
 
-        return sigh.getId();
+        return emotion.getId();
     }
 
     private Long 한숨을_저장한다() {
-        Emotion sigh = emotionRepository.saveAndFlush(기본_한숨_빌더().requestId(UUID.randomUUID()).build());
+        Emotion emotion = emotionRepository.saveAndFlush(기본_한숨_빌더().requestId(UUID.randomUUID()).build());
 
-        return sigh.getId();
+        return emotion.getId();
     }
 
-    private void 서로_다른_기기로_신고한다(Long sighId, int 신고_수) {
+    private void 서로_다른_기기로_신고한다(Long emotionId, int 신고_수) {
         for (int i = 0; i < 신고_수; i++) {
             Device device = deviceRepository.saveAndFlush(
                     기본_기기_빌더().requestId(UUID.randomUUID()).build()
             );
             emotionReportRepository.saveAndFlush(
                     EmotionReport.builder()
-                            .emotionId(sighId)
+                            .emotionId(emotionId)
                             .reporterDeviceId(device.getId())
                             .reason("테스트 신고")
                             .build()
@@ -224,9 +224,9 @@ class EmotionReportAutoDeleteIntegrationTest {
         }
     }
 
-    private Instant 삭제_시각(Long sighId) {
+    private Instant 삭제_시각(Long emotionId) {
         return jdbcClient.sql("SELECT deleted_at FROM sighs WHERE id = ?")
-                .param(sighId)
+                .param(emotionId)
                 .query(Instant.class)
                 .optional()
                 .orElse(null);

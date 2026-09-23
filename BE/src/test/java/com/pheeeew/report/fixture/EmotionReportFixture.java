@@ -7,14 +7,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 public final class EmotionReportFixture {
 
-    private static final Long DEFAULT_SIGH_ID = 42L;
+    private static final Long DEFAULT_EMOTION_ID = 42L;
 
     private EmotionReportFixture() {
     }
 
     public static EmotionReport.EmotionReportBuilder 기본_신고_빌더() {
         return EmotionReport.builder()
-                .emotionId(DEFAULT_SIGH_ID)
+                .emotionId(DEFAULT_EMOTION_ID)
                 .reporterDeviceId(신고자_기기_식별자())
                 .reason(기본_신고_사유());
     }

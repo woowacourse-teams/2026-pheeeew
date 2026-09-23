@@ -353,7 +353,7 @@ class DeviceBlockServiceIntegrationTest {
 
     private List<BlockSaveResult> 동시에_차단한다(
             int requestCount,
-            Long sighId,
+            Long emotionId,
             UUID devicePublicId,
             CountDownLatch ready,
             CountDownLatch start
@@ -364,7 +364,7 @@ class DeviceBlockServiceIntegrationTest {
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
                     start.await();
-                    return deviceBlockService.save(sighId, devicePublicId);
+                    return deviceBlockService.save(emotionId, devicePublicId);
                 }));
             }
 

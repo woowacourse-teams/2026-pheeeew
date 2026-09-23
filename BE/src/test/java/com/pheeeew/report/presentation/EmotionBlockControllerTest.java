@@ -49,7 +49,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 class EmotionBlockControllerTest {
 
     private static final String BLOCKS_URI = "/api/v2/blocks/sighs";
-    private static final Long SIGH_ID = 42L;
+    private static final Long EMOTION_ID = 42L;
     private static final Long BLOCK_ID = 7L;
     private static final Instant CREATED_AT = Instant.parse("2026-09-14T02:44:00Z");
     private static final UUID 기기_공개_식별자 = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
@@ -78,7 +78,7 @@ class EmotionBlockControllerTest {
     @Test
     void 처음_차단하면_201과_작성자_정보가_없는_차단_응답을_반환한다() {
         // given
-        when(emotionBlockService.save(SIGH_ID, 기기_공개_식별자))
+        when(emotionBlockService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenReturn(BlockSaveResult.of(기본_차단_결과(), true));
 
         // when
@@ -89,13 +89,13 @@ class EmotionBlockControllerTest {
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
                 .expectBody()
                 .json(기본_차단_응답(), JsonCompareMode.STRICT);
-        verify(emotionBlockService).save(SIGH_ID, 기기_공개_식별자);
+        verify(emotionBlockService).save(EMOTION_ID, 기기_공개_식별자);
     }
 
     @Test
     void 이미_차단한_한숨을_다시_차단하면_200과_최초_차단을_반환한다() {
         // given
-        when(emotionBlockService.save(SIGH_ID, 기기_공개_식별자))
+        when(emotionBlockService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenReturn(BlockSaveResult.of(기본_차단_결과(), false));
 
         // when
@@ -105,7 +105,7 @@ class EmotionBlockControllerTest {
         result.expectStatus().isOk()
                 .expectBody()
                 .json(기본_차단_응답(), JsonCompareMode.STRICT);
-        verify(emotionBlockService).save(SIGH_ID, 기기_공개_식별자);
+        verify(emotionBlockService).save(EMOTION_ID, 기기_공개_식별자);
     }
 
     @ParameterizedTest
@@ -122,7 +122,7 @@ class EmotionBlockControllerTest {
     @Test
     void 차단할_한숨이_없으면_404를_반환한다() {
         // given
-        when(emotionBlockService.save(SIGH_ID, 기기_공개_식별자))
+        when(emotionBlockService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND));
 
         // when
@@ -209,21 +209,21 @@ class EmotionBlockControllerTest {
     void 차단을_해제하면_204와_빈_본문을_반환한다() {
         // given / when
         RestTestClient.ResponseSpec result = client.delete()
-                .uri(BLOCKS_URI + "/{sighId}", SIGH_ID)
+                .uri(BLOCKS_URI + "/{sighId}", EMOTION_ID)
                 .exchange();
 
         // then
         result.expectStatus().isNoContent()
                 .expectBody().isEmpty();
-        verify(emotionBlockService).delete(SIGH_ID, 기기_공개_식별자);
+        verify(emotionBlockService).delete(EMOTION_ID, 기기_공개_식별자);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"not-a-number", "4.2"})
-    void 해제할_한숨_식별자_형식이_올바르지_않으면_400을_반환한다(String sighId) {
+    void 해제할_한숨_식별자_형식이_올바르지_않으면_400을_반환한다(String emotionId) {
         // given / when
         RestTestClient.ResponseSpec result = client.delete()
-                .uri(BLOCKS_URI + "/{sighId}", sighId)
+                .uri(BLOCKS_URI + "/{sighId}", emotionId)
                 .exchange();
 
         // then
@@ -254,12 +254,12 @@ class EmotionBlockControllerTest {
     }
 
     private BlockResult 기본_차단_결과() {
-        Emotion sigh = 기본_한숨_빌더()
+        Emotion emotion = 기본_한숨_빌더()
                 .nickname("날아가는 고라니")
                 .memo("오늘은 조금 지쳤다")
                 .build();
 
-        return BlockResult.of(저장된_한숨_차단(BLOCK_ID, CREATED_AT), sigh);
+        return BlockResult.of(저장된_한숨_차단(BLOCK_ID, CREATED_AT), emotion);
     }
 
     private String 기본_차단_요청() {

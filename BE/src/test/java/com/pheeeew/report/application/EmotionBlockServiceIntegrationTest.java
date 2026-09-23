@@ -255,9 +255,9 @@ class EmotionBlockServiceIntegrationTest {
         Device 차단자 = 기기를_저장한다();
         List<Long> 차단한_한숨들 = new ArrayList<>();
         for (int index = 0; index < 51; index++) {
-            Long sighId = 한숨을_저장한다(null, null);
-            차단한_한숨들.add(sighId);
-            emotionBlockService.save(sighId, 차단자.getPublicId());
+            Long emotionId = 한숨을_저장한다(null, null);
+            차단한_한숨들.add(emotionId);
+            emotionBlockService.save(emotionId, 차단자.getPublicId());
         }
 
         // when
@@ -322,7 +322,7 @@ class EmotionBlockServiceIntegrationTest {
 
     private List<BlockSaveResult> 동시에_차단한다(
             int requestCount,
-            Long sighId,
+            Long emotionId,
             UUID devicePublicId,
             CountDownLatch ready,
             CountDownLatch start
@@ -333,7 +333,7 @@ class EmotionBlockServiceIntegrationTest {
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
                     start.await();
-                    return emotionBlockService.save(sighId, devicePublicId);
+                    return emotionBlockService.save(emotionId, devicePublicId);
                 }));
             }
 

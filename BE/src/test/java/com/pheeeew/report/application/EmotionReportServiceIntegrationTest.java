@@ -47,7 +47,7 @@ class EmotionReportServiceIntegrationTest {
 
     private static final double SEOUL_CITY_HALL_LONGITUDE = 126.9780;
     private static final double SEOUL_CITY_HALL_LATITUDE = 37.5664;
-    private static final Long NOT_EXISTING_SIGH_ID = Long.MAX_VALUE;
+    private static final Long NOT_EXISTING_EMOTION_ID = Long.MAX_VALUE;
     private static final Long NOT_EXISTING_DEVICE_ID = Long.MAX_VALUE;
     private static final String REJECTED_REASON = "저장이 거부되는 사유";
 
@@ -76,17 +76,17 @@ class EmotionReportServiceIntegrationTest {
     @Test
     void 삭제된_한숨의_신고_기록은_그대로_남는다() {
         // given
-        Long sighId = insertSigh();
+        Long emotionId = insertEmotion();
         Device device = insertDevice();
-        emotionReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
+        emotionReportService.save(emotionId, device.getPublicId(), 기본_신고_사유());
 
         // when
         jdbcClient.sql("UPDATE sighs SET deleted_at = NOW() WHERE id = :id")
-                .param("id", sighId)
+                .param("id", emotionId)
                 .update();
 
         // then
-        assertThat(emotionReportRepository.findByEmotionIdAndReporterDeviceId(sighId, device.getId()))
+        assertThat(emotionReportRepository.findByEmotionIdAndReporterDeviceId(emotionId, device.getId()))
                 .isPresent();
         assertThat(emotionReportRepository.count()).isOne();
     }
@@ -94,16 +94,16 @@ class EmotionReportServiceIntegrationTest {
     @Test
     void 처음_신고하는_기기의_신고를_저장한다() {
         // given
-        Long sighId = insertSigh();
+        Long emotionId = insertEmotion();
         Device device = insertDevice();
 
         // when
-        EmotionReportResult result = emotionReportService.save(sighId, device.getPublicId(), "  광고성 게시물입니다  ");
+        EmotionReportResult result = emotionReportService.save(emotionId, device.getPublicId(), "  광고성 게시물입니다  ");
 
         // then
         assertThat(result.created()).isTrue();
         assertThat(result.id()).isPositive();
-        assertThat(result.emotionId()).isEqualTo(sighId);
+        assertThat(result.emotionId()).isEqualTo(emotionId);
         assertThat(result.reason()).isEqualTo("광고성 게시물입니다");
         assertThat(result.createdAt()).isNotNull();
 
@@ -116,12 +116,12 @@ class EmotionReportServiceIntegrationTest {
     @Test
     void 같은_기기가_같은_한숨을_다시_신고하면_최초_신고를_반환한다() {
         // given
-        Long sighId = insertSigh();
+        Long emotionId = insertEmotion();
         Device device = insertDevice();
-        EmotionReportResult first = emotionReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult first = emotionReportService.save(emotionId, device.getPublicId(), 기본_신고_사유());
 
         // when
-        EmotionReportResult retried = emotionReportService.save(sighId, device.getPublicId(), "나중에 바꾼 사유입니다");
+        EmotionReportResult retried = emotionReportService.save(emotionId, device.getPublicId(), "나중에 바꾼 사유입니다");
 
         // then
         assertThat(retried.created()).isFalse();
@@ -133,13 +133,13 @@ class EmotionReportServiceIntegrationTest {
     @Test
     void 다른_기기가_같은_한숨을_신고하면_신고를_따로_저장한다() {
         // given
-        Long sighId = insertSigh();
+        Long emotionId = insertEmotion();
         Device device = insertDevice();
         Device otherDevice = insertDevice();
-        EmotionReportResult first = emotionReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult first = emotionReportService.save(emotionId, device.getPublicId(), 기본_신고_사유());
 
         // when
-        EmotionReportResult second = emotionReportService.save(sighId, otherDevice.getPublicId(), 기본_신고_사유());
+        EmotionReportResult second = emotionReportService.save(emotionId, otherDevice.getPublicId(), 기본_신고_사유());
 
         // then
         assertThat(second.created()).isTrue();
@@ -150,13 +150,13 @@ class EmotionReportServiceIntegrationTest {
     @Test
     void 같은_기기가_다른_한숨을_신고하면_신고를_따로_저장한다() {
         // given
-        Long sighId = insertSigh();
-        Long otherSighId = insertSigh();
+        Long emotionId = insertEmotion();
+        Long otherEmotionId = insertEmotion();
         Device device = insertDevice();
-        EmotionReportResult first = emotionReportService.save(sighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult first = emotionReportService.save(emotionId, device.getPublicId(), 기본_신고_사유());
 
         // when
-        EmotionReportResult second = emotionReportService.save(otherSighId, device.getPublicId(), 기본_신고_사유());
+        EmotionReportResult second = emotionReportService.save(otherEmotionId, device.getPublicId(), 기본_신고_사유());
 
         // then
         assertThat(second.created()).isTrue();
@@ -168,7 +168,7 @@ class EmotionReportServiceIntegrationTest {
     void 같은_기기가_같은_한숨을_동시에_신고해도_한_건만_저장한다() throws Exception {
         // given
         int requestCount = 6;
-        Long sighId = insertSigh();
+        Long emotionId = insertEmotion();
         Device device = insertDevice();
         CountDownLatch ready = new CountDownLatch(requestCount);
         CountDownLatch start = new CountDownLatch(1);
@@ -176,7 +176,7 @@ class EmotionReportServiceIntegrationTest {
         // when
         List<EmotionReportResult> results = executeConcurrently(
                 requestCount,
-                sighId,
+                emotionId,
                 device.getPublicId(),
                 ready,
                 start
@@ -197,7 +197,7 @@ class EmotionReportServiceIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(
-                () -> emotionReportService.save(NOT_EXISTING_SIGH_ID, device.getPublicId(), 기본_신고_사유())
+                () -> emotionReportService.save(NOT_EXISTING_EMOTION_ID, device.getPublicId(), 기본_신고_사유())
         );
 
         // then
@@ -212,11 +212,11 @@ class EmotionReportServiceIntegrationTest {
     @Test
     void 등록되지_않은_기기로_신고하면_기기_없음_예외가_발생한다() {
         // given
-        Long sighId = insertSigh();
+        Long emotionId = insertEmotion();
 
         // when
         Throwable throwable = catchThrowable(
-                () -> emotionReportService.save(sighId, 없는_기기_공개_식별자(), 기본_신고_사유())
+                () -> emotionReportService.save(emotionId, 없는_기기_공개_식별자(), 기본_신고_사유())
         );
 
         // then
@@ -231,9 +231,9 @@ class EmotionReportServiceIntegrationTest {
     @Test
     void 존재하지_않는_기기를_신고자로_저장하면_외래_키가_막는다() {
         // given
-        Long sighId = insertSigh();
+        Long emotionId = insertEmotion();
         EmotionReport report = EmotionReport.builder()
-                .emotionId(sighId)
+                .emotionId(emotionId)
                 .reporterDeviceId(NOT_EXISTING_DEVICE_ID)
                 .reason(기본_신고_사유())
                 .build();
@@ -250,13 +250,13 @@ class EmotionReportServiceIntegrationTest {
     @Test
     void 중복_신고의_제약_위반은_신고자_기기를_로그에_남기지_않는다() throws Exception {
         // given
-        Long sighId = insertSigh();
+        Long emotionId = insertEmotion();
         Device device = insertDevice();
         ListAppender<ILoggingEvent> appender = 로그_수집을_시작한다();
 
         try {
             // when
-            executeConcurrently(6, sighId, device.getPublicId(), new CountDownLatch(6), new CountDownLatch(1));
+            executeConcurrently(6, emotionId, device.getPublicId(), new CountDownLatch(6), new CountDownLatch(1));
 
             // then
             String 남은_로그 = 수집한_로그(appender);
@@ -274,14 +274,14 @@ class EmotionReportServiceIntegrationTest {
     @Test
     void 저장_무결성_오류는_신고_도메인_예외로_변환한다() {
         // given
-        Long sighId = insertSigh();
+        Long emotionId = insertEmotion();
         Device device = insertDevice();
         addRejectedReasonConstraint();
 
         try {
             // when
             Throwable throwable = catchThrowable(
-                    () -> emotionReportService.save(sighId, device.getPublicId(), REJECTED_REASON)
+                    () -> emotionReportService.save(emotionId, device.getPublicId(), REJECTED_REASON)
             );
 
             // then
@@ -296,7 +296,7 @@ class EmotionReportServiceIntegrationTest {
         }
     }
 
-    private Long insertSigh() {
+    private Long insertEmotion() {
         return jdbcClient.sql("""
                         INSERT INTO sighs (request_id, location, nickname, created_at, updated_at)
                         VALUES (
@@ -321,7 +321,7 @@ class EmotionReportServiceIntegrationTest {
 
     private List<EmotionReportResult> executeConcurrently(
             int requestCount,
-            Long sighId,
+            Long emotionId,
             UUID devicePublicId,
             CountDownLatch ready,
             CountDownLatch start
@@ -332,7 +332,7 @@ class EmotionReportServiceIntegrationTest {
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
                     start.await();
-                    return emotionReportService.save(sighId, devicePublicId, 기본_신고_사유());
+                    return emotionReportService.save(emotionId, devicePublicId, 기본_신고_사유());
                 }));
             }
 

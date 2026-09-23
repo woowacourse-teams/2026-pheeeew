@@ -46,7 +46,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 class EmotionReportControllerTest {
 
     private static final String REPORTS_URI = "/api/v2/reports";
-    private static final Long SIGH_ID = 42L;
+    private static final Long EMOTION_ID = 42L;
     private static final Long REPORT_ID = 7L;
     private static final Instant CREATED_AT = Instant.parse("2026-09-01T02:44:00Z");
 
@@ -74,7 +74,7 @@ class EmotionReportControllerTest {
     @Test
     void 한숨을_최초로_신고하면_201과_신고_정보를_반환한다() {
         // given
-        when(emotionReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
+        when(emotionReportService.save(EMOTION_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenReturn(EmotionReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), true));
 
         // when
@@ -85,14 +85,14 @@ class EmotionReportControllerTest {
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
                 .expectBody()
                 .json(기본_신고_응답(), JsonCompareMode.STRICT);
-        verify(emotionReportService).save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유());
+        verify(emotionReportService).save(EMOTION_ID, 신고자_기기_공개_식별자(), 기본_신고_사유());
     }
 
     @Test
     void 이미_신고한_한숨을_다시_신고하면_200과_최초_신고를_반환한다() {
         // given
         String 다시_보낸_사유 = "나중에 바꾼 사유입니다";
-        when(emotionReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 다시_보낸_사유))
+        when(emotionReportService.save(EMOTION_ID, 신고자_기기_공개_식별자(), 다시_보낸_사유))
                 .thenReturn(EmotionReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), false));
 
         // when
@@ -104,14 +104,14 @@ class EmotionReportControllerTest {
         result.expectStatus().isOk()
                 .expectBody()
                 .json(기본_신고_응답(), JsonCompareMode.STRICT);
-        verify(emotionReportService).save(SIGH_ID, 신고자_기기_공개_식별자(), 다시_보낸_사유);
+        verify(emotionReportService).save(EMOTION_ID, 신고자_기기_공개_식별자(), 다시_보낸_사유);
     }
 
     @Test
     void 요청_본문에_담긴_기기_식별자는_무시하고_인증된_기기를_신고자로_쓴다() {
         // given
         UUID 사칭하려는_기기 = UUID.fromString("00000000-0000-4000-8000-000000009999");
-        when(emotionReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
+        when(emotionReportService.save(EMOTION_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenReturn(EmotionReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), true));
 
         // when
@@ -121,7 +121,7 @@ class EmotionReportControllerTest {
 
         // then
         result.expectStatus().isCreated();
-        verify(emotionReportService).save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유());
+        verify(emotionReportService).save(EMOTION_ID, 신고자_기기_공개_식별자(), 기본_신고_사유());
     }
 
     @Test
@@ -163,7 +163,7 @@ class EmotionReportControllerTest {
     @Test
     void 신고할_한숨이_없으면_404를_반환한다() {
         // given
-        when(emotionReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
+        when(emotionReportService.save(EMOTION_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND));
 
         // when
@@ -176,7 +176,7 @@ class EmotionReportControllerTest {
     @Test
     void 신고_도메인_예외는_정의된_상태와_코드로_반환한다() {
         // given
-        when(emotionReportService.save(SIGH_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
+        when(emotionReportService.save(EMOTION_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenThrow(new EmotionReportException(
                         EmotionReportErrorCode.EMOTION_REPORT_SAVE_FAILED,
                         new IllegalStateException()
