@@ -3,6 +3,8 @@ package com.pheeeew.emotion.domain;
 import com.pheeeew.common.domain.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -41,6 +43,10 @@ public class Emotion extends BaseEntity {
     @Column(length = MAX_MEMO_LENGTH, updatable = false)
     private String memo;
 
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20, updatable = false)
+    private EmotionState state;
+
     @Column(nullable = false, length = MAX_NICKNAME_LENGTH, updatable = false)
     private String nickname;
 
@@ -58,10 +64,11 @@ public class Emotion extends BaseEntity {
     private Long version;
 
     @Builder
-    private Emotion(UUID requestId, Point location, String memo, String nickname, Long deviceId) {
+    private Emotion(UUID requestId, Point location, String memo, EmotionState state, String nickname, Long deviceId) {
         this.requestId = Objects.requireNonNull(requestId);
         this.location = requireWgs84Point(location);
         this.memo = normalizeMemo(memo);
+        this.state = state;
         this.nickname = requireValidNickname(nickname);
         this.deviceId = deviceId;
     }

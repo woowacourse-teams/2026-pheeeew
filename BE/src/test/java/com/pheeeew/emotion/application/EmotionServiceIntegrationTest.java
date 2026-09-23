@@ -1,6 +1,7 @@
 package com.pheeeew.emotion.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -20,6 +21,7 @@ import com.pheeeew.emotion.application.dto.EmotionSaveResult;
 import com.pheeeew.emotion.application.like.EmotionLikeService;
 import com.pheeeew.emotion.application.like.dto.EmotionLikeResult;
 import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionErrorCode;
@@ -49,6 +51,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
@@ -142,10 +145,44 @@ class EmotionServiceIntegrationTest {
         assertThat(saved.getCreatedAt()).isEqualTo(result.emotion().createdAt());
         assertThat(saved.getUpdatedAt()).isNotNull();
         assertThat(saved.getMemo()).isNull();
+        assertThat(saved.getState()).isNull();
         assertThat(saved.getNickname())
                 .isNotBlank()
                 .hasSizeLessThanOrEqualTo(50);
         assertThat(emotionRepository.count()).isOne();
+    }
+
+    @ParameterizedTest
+    @EnumSource(EmotionState.class)
+    void 다섯_감정_상태를_문자열로_저장하고_다시_읽는다(EmotionState state) {
+        // given
+        Emotion emotion = 기본_한숨_빌더().state(state).build();
+
+        // when
+        Long emotionId = emotionRepository.saveAndFlush(emotion).getId();
+        Emotion found = emotionRepository.findById(emotionId).orElseThrow();
+        String storedState = jdbcClient.sql("SELECT state FROM emotions WHERE id = :id")
+                .param("id", emotionId)
+                .query(String.class)
+                .single();
+
+        // then
+        assertThat(found.getState()).isEqualTo(state);
+        assertThat(storedState).isEqualTo(state.name());
+    }
+
+    @Test
+    void 정해지지_않은_감정_상태는_DB에서_거부한다() {
+        // given
+        Long emotionId = emotionRepository.saveAndFlush(기본_한숨_빌더().build()).getId();
+
+        // when
+        Throwable throwable = catchThrowable(() -> jdbcClient.sql("UPDATE emotions SET state = 'UNKNOWN' WHERE id = :id")
+                .param("id", emotionId)
+                .update());
+
+        // then
+        assertThat(throwable).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     @Test
