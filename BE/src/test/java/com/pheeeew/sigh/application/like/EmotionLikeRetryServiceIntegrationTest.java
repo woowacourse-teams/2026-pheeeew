@@ -40,7 +40,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 @PostgisDataJpaTest
-@Import({EmotionLikeRetryService.class, SighLikeService.class})
+@Import({EmotionLikeRetryService.class, EmotionLikeService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class EmotionLikeRetryServiceIntegrationTest {
 
@@ -48,7 +48,7 @@ class EmotionLikeRetryServiceIntegrationTest {
     private EmotionLikeRetryService emotionLikeRetryService;
 
     @MockitoSpyBean
-    private SighLikeService sighLikeService;
+    private EmotionLikeService emotionLikeService;
 
     @Autowired
     private SighLikeRepository sighLikeRepository;
@@ -160,15 +160,15 @@ class EmotionLikeRetryServiceIntegrationTest {
                 anotherTransaction.setPropagationBehavior(Propagation.REQUIRES_NEW.value());
                 anotherTransaction.executeWithoutResult(status -> {
                     Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
-                    sighLikeService.update(sigh.getId(), anotherDevice.getPublicId(), true);
+                    emotionLikeService.update(sigh.getId(), anotherDevice.getPublicId(), true);
                 });
             }
             return invocation.callRealMethod();
         }).when(serviceSpy()).update(sigh.getId(), device.getPublicId(), liked);
     }
 
-    private SighLikeService serviceSpy() {
-        return AopTestUtils.getUltimateTargetObject(sighLikeService);
+    private EmotionLikeService serviceSpy() {
+        return AopTestUtils.getUltimateTargetObject(emotionLikeService);
     }
 
     private void assertLikeCount(long expected) {

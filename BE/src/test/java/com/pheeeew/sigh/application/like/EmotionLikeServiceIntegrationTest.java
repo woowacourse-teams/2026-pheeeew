@@ -34,12 +34,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @PostgisDataJpaTest
-@Import(SighLikeService.class)
+@Import(EmotionLikeService.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-class SighLikeServiceIntegrationTest {
+class EmotionLikeServiceIntegrationTest {
 
     @Autowired
-    private SighLikeService sighLikeService;
+    private EmotionLikeService emotionLikeService;
 
     @Autowired
     private SighLikeRepository sighLikeRepository;
@@ -79,20 +79,20 @@ class SighLikeServiceIntegrationTest {
         UUID devicePublicId = device.getPublicId();
 
         // when / then
-        assertThat(sighLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
         assertLikeCount(sighId, 0);
-        assertThat(sighLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
         assertLikeCount(sighId, 1);
         Long likeId = sighLikeRepository.findBySighIdAndDeviceId(sighId, device.getId()).orElseThrow().getId();
-        assertThat(sighLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
         assertThat(sighLikeRepository.findAll()).extracting(SighLike::getId).containsExactly(likeId);
         assertLikeCount(sighId, 1);
 
-        assertThat(sighLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
         assertLikeCount(sighId, 0);
-        assertThat(sighLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, false)).isEqualTo(SighLikeResult.of(false, 0));
         assertLikeCount(sighId, 0);
-        assertThat(sighLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
+        assertThat(emotionLikeService.update(sighId, devicePublicId, true)).isEqualTo(SighLikeResult.of(true, 1));
         assertLikeCount(sighId, 1);
         assertThat(sighLikeRepository.findBySighIdAndDeviceId(sighId, device.getId()))
                 .get().extracting(SighLike::getId).isNotEqualTo(likeId);
@@ -108,7 +108,7 @@ class SighLikeServiceIntegrationTest {
         SighLike anotherSighLike = saveLike(anotherSigh.getId(), device.getId());
 
         // when
-        SighLikeResult result = sighLikeService.update(sigh.getId(), device.getPublicId(), false);
+        SighLikeResult result = emotionLikeService.update(sigh.getId(), device.getPublicId(), false);
 
         // then
         assertThat(result).isEqualTo(SighLikeResult.of(false, 1));
@@ -126,16 +126,16 @@ class SighLikeServiceIntegrationTest {
         SighLike like = saveLike(sigh.getId(), device.getId());
 
         // when / then
-        assertThatThrownBy(() -> sighLikeService.update(sigh.getId(), UUID.randomUUID(), liked))
+        assertThatThrownBy(() -> emotionLikeService.update(sigh.getId(), UUID.randomUUID(), liked))
                 .isInstanceOfSatisfying(DeviceException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
-        assertThatThrownBy(() -> sighLikeService.update(Long.MAX_VALUE, device.getPublicId(), liked))
+        assertThatThrownBy(() -> emotionLikeService.update(Long.MAX_VALUE, device.getPublicId(), liked))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
         Sigh latestSigh = sighRepository.findById(sigh.getId()).orElseThrow();
         latestSigh.delete();
         sighRepository.saveAndFlush(latestSigh);
-        assertThatThrownBy(() -> sighLikeService.update(sigh.getId(), device.getPublicId(), liked))
+        assertThatThrownBy(() -> emotionLikeService.update(sigh.getId(), device.getPublicId(), liked))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));
         assertThat(sighLikeRepository.findAll()).extracting(SighLike::getId).containsExactly(like.getId());
@@ -150,7 +150,7 @@ class SighLikeServiceIntegrationTest {
 
         // when
         assertThatThrownBy(() -> new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            sighLikeService.update(sigh.getId(), device.getPublicId(), desiredLiked);
+            emotionLikeService.update(sigh.getId(), device.getPublicId(), desiredLiked);
             sighLikeRepository.flush();
             assertLikeCount(sigh.getId(), desiredLiked ? 1 : 0);
             throw new IllegalStateException("저장 후 실패");
@@ -179,8 +179,8 @@ class SighLikeServiceIntegrationTest {
             // 바깥 트랜잭션이 읽은 버전을 유지한 채 다른 기기의 변경을 먼저 커밋한다.
             sighRepository.findById(sigh.getId()).orElseThrow();
             anotherTransaction.executeWithoutResult(anotherStatus ->
-                    sighLikeService.update(sigh.getId(), anotherDevice.getPublicId(), true));
-            sighLikeService.update(sigh.getId(), device.getPublicId(), desiredLiked);
+                    emotionLikeService.update(sigh.getId(), anotherDevice.getPublicId(), true));
+            emotionLikeService.update(sigh.getId(), device.getPublicId(), desiredLiked);
             sighLikeRepository.flush();
         })).isInstanceOf(ObjectOptimisticLockingFailureException.class);
 

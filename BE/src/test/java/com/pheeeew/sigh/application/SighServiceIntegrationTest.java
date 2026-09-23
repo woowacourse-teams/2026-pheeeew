@@ -17,7 +17,7 @@ import com.pheeeew.sigh.application.dto.SighMapItem;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
-import com.pheeeew.sigh.application.like.SighLikeService;
+import com.pheeeew.sigh.application.like.EmotionLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighRepository;
@@ -62,7 +62,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
 @ImportAutoConfiguration(AopAutoConfiguration.class)
-@Import({EmotionMetrics.class, EmotionMetricsAspect.class, SighLikeService.class})
+@Import({EmotionMetrics.class, EmotionMetricsAspect.class, EmotionLikeService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class SighServiceIntegrationTest {
 
@@ -90,7 +90,7 @@ class SighServiceIntegrationTest {
     private DeviceRepository deviceRepository;
 
     @Autowired
-    private SighLikeService sighLikeService;
+    private EmotionLikeService emotionLikeService;
 
     @Autowired
     private JdbcClient jdbcClient;
@@ -562,10 +562,10 @@ class SighServiceIntegrationTest {
         }
         Long firstPageSighId = ids.getLast();
         Long secondPageSighId = ids.getFirst();
-        sighLikeService.update(firstPageSighId, devicePublicId, true);
-        sighLikeService.update(firstPageSighId, anotherDevicePublicId, true);
-        sighLikeService.update(ids.get(19), anotherDevicePublicId, true);
-        sighLikeService.update(secondPageSighId, devicePublicId, true);
+        emotionLikeService.update(firstPageSighId, devicePublicId, true);
+        emotionLikeService.update(firstPageSighId, anotherDevicePublicId, true);
+        emotionLikeService.update(ids.get(19), anotherDevicePublicId, true);
+        emotionLikeService.update(secondPageSighId, devicePublicId, true);
 
         // when
         SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
@@ -595,9 +595,9 @@ class SighServiceIntegrationTest {
         // given
         Long oldestId = insertSigh(126.9780, 37.5664, "2026-08-31T10:29:00Z");
         insertSighs(20, 126.9780, 37.5664);
-        sighLikeService.update(oldestId, devicePublicId, true);
+        emotionLikeService.update(oldestId, devicePublicId, true);
         SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
-        sighLikeService.update(oldestId, devicePublicId, false);
+        emotionLikeService.update(oldestId, devicePublicId, false);
 
         // when
         SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);

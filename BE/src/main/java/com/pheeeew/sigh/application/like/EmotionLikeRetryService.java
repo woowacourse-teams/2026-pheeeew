@@ -14,13 +14,13 @@ public class EmotionLikeRetryService {
 
     private static final int MAX_ATTEMPTS = 3;
 
-    private final SighLikeService sighLikeService;
+    private final EmotionLikeService emotionLikeService;
 
     @Transactional(propagation = Propagation.NEVER)
     public SighLikeResult update(Long sighId, UUID devicePublicId, boolean liked) {
         for (int attempt = 1; ; attempt++) {
             try {
-                return sighLikeService.update(sighId, devicePublicId, liked);
+                return emotionLikeService.update(sighId, devicePublicId, liked);
             } catch (ObjectOptimisticLockingFailureException exception) {
                 if (attempt == MAX_ATTEMPTS) {
                     throw exception;

@@ -13,7 +13,7 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
-import com.pheeeew.sigh.application.like.SighLikeService;
+import com.pheeeew.sigh.application.like.EmotionLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Sigh;
 import com.pheeeew.sigh.domain.repository.SighLikeRepository;
@@ -40,7 +40,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
-@Import(SighLikeService.class)
+@Import(EmotionLikeService.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class SighServiceDetailIntegrationTest {
 
@@ -50,7 +50,7 @@ class SighServiceDetailIntegrationTest {
     private SighService sighService;
 
     @Autowired
-    private SighLikeService sighLikeService;
+    private EmotionLikeService emotionLikeService;
 
     @Autowired
     private SighRepository sighRepository;
@@ -92,9 +92,9 @@ class SighServiceDetailIntegrationTest {
         Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
         Device unlikedDevice = deviceRepository.save(기본_기기_빌더().build());
         Sigh anotherSigh = sighRepository.save(기본_한숨_빌더().build());
-        sighLikeService.update(sigh.getId(), device.getPublicId(), true);
-        sighLikeService.update(sigh.getId(), anotherDevice.getPublicId(), true);
-        sighLikeService.update(anotherSigh.getId(), unlikedDevice.getPublicId(), true);
+        emotionLikeService.update(sigh.getId(), device.getPublicId(), true);
+        emotionLikeService.update(sigh.getId(), anotherDevice.getPublicId(), true);
+        emotionLikeService.update(anotherSigh.getId(), unlikedDevice.getPublicId(), true);
         SighResult expectedSigh = SighResult.from(sighRepository.findById(sigh.getId()).orElseThrow());
 
         // when
@@ -179,7 +179,7 @@ class SighServiceDetailIntegrationTest {
         if (expired) {
             updateCreatedAt(CURRENT_TIME.minus(14, ChronoUnit.DAYS));
         }
-        sighLikeService.update(sigh.getId(), device.getPublicId(), true);
+        emotionLikeService.update(sigh.getId(), device.getPublicId(), true);
         Sigh deletedSigh = sighRepository.findById(sigh.getId()).orElseThrow();
         deletedSigh.delete();
         sighRepository.saveAndFlush(deletedSigh);
@@ -212,7 +212,7 @@ class SighServiceDetailIntegrationTest {
             updateCreatedAt(CURRENT_TIME.minus(14, ChronoUnit.DAYS));
         }
         Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
-        sighLikeService.update(sigh.getId(), device.getPublicId(), true);
+        emotionLikeService.update(sigh.getId(), device.getPublicId(), true);
         Sigh savedSigh = sighRepository.findById(sigh.getId()).orElseThrow();
         if (deleted) {
             savedSigh.delete();
