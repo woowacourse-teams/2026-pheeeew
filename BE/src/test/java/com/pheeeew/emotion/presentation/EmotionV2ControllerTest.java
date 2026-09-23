@@ -59,7 +59,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 class EmotionV2ControllerTest {
 
     private static final MediaType GEO_JSON = MediaType.parseMediaType("application/geo+json");
-    private static final Long SIGH_ID = 42L;
+    private static final Long EMOTION_ID = 42L;
     private static final UUID DEVICE_PUBLIC_ID = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
     private static final UUID REQUEST_ID = UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b");
     private static final Instant CREATED_AT = Instant.parse("2026-09-01T12:00:00Z");
@@ -442,12 +442,12 @@ class EmotionV2ControllerTest {
     @CsvSource({"false, 0", "true, 12", "false, 12"})
     void application_json_응답을_요청해도_인증된_기기의_좋아요_정보를_포함한_GeoJSON을_반환한다(boolean liked, long likeCount) {
         // given
-        when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+        when(emotionService.findById(EMOTION_ID, DEVICE_PUBLIC_ID))
                 .thenReturn(기본_상세_조회_결과("오늘은 조금 지쳤다", liked, likeCount));
 
         // when
         RestTestClient.ResponseSpec result = client.get()
-                .uri("/api/v2/sighs/{id}?devicePublicId={spoofedId}", SIGH_ID, UUID.randomUUID())
+                .uri("/api/v2/sighs/{id}?devicePublicId={spoofedId}", EMOTION_ID, UUID.randomUUID())
                 .accept(MediaType.APPLICATION_JSON)
                 .exchange();
 
@@ -457,34 +457,34 @@ class EmotionV2ControllerTest {
                 .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody()
                 .json(좋아요를_포함한_GeoJSON("\"오늘은 조금 지쳤다\"", liked, likeCount), JsonCompareMode.STRICT);
-        verify(emotionService).findById(SIGH_ID, DEVICE_PUBLIC_ID);
+        verify(emotionService).findById(EMOTION_ID, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 메모가_없는_한숨_상세는_memo를_null로_반환한다() {
         // given
-        when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+        when(emotionService.findById(EMOTION_ID, DEVICE_PUBLIC_ID))
                 .thenReturn(기본_상세_조회_결과(null, false, 0));
 
         // when
-        RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(SIGH_ID.toString());
+        RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(EMOTION_ID.toString());
 
         // then
         result.expectStatus().isOk()
                 .expectHeader().contentType(GEO_JSON)
                 .expectBody()
                 .json(좋아요를_포함한_GeoJSON("null", false, 0), JsonCompareMode.STRICT);
-        verify(emotionService).findById(SIGH_ID, DEVICE_PUBLIC_ID);
+        verify(emotionService).findById(EMOTION_ID, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 존재하지_않는_한숨_상세를_조회하면_404를_반환한다() {
         // given
-        when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+        when(emotionService.findById(EMOTION_ID, DEVICE_PUBLIC_ID))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND));
 
         // when
-        RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(SIGH_ID.toString());
+        RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(EMOTION_ID.toString());
 
         // then
         result.expectStatus().isNotFound()
@@ -493,17 +493,17 @@ class EmotionV2ControllerTest {
                 .json("""
                         {"code":"SIGH-002","message":"한숨을 찾을 수 없습니다."}
                         """, JsonCompareMode.STRICT);
-        verify(emotionService).findById(SIGH_ID, DEVICE_PUBLIC_ID);
+        verify(emotionService).findById(EMOTION_ID, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 기간이_지난_한숨_상세를_조회하면_410과_만료_코드를_반환한다() {
         // given
-        when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+        when(emotionService.findById(EMOTION_ID, DEVICE_PUBLIC_ID))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_EXPIRED));
 
         // when
-        RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(SIGH_ID.toString());
+        RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(EMOTION_ID.toString());
 
         // then
         result.expectStatus().isEqualTo(410)
@@ -517,11 +517,11 @@ class EmotionV2ControllerTest {
     @Test
     void 토큰의_기기가_등록되어_있지_않으면_단건_조회는_401을_반환한다() {
         // given
-        when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+        when(emotionService.findById(EMOTION_ID, DEVICE_PUBLIC_ID))
                 .thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND));
 
         // when
-        RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(SIGH_ID.toString());
+        RestTestClient.ResponseSpec result = 한숨_상세를_조회한다(EMOTION_ID.toString());
 
         // then
         result.expectStatus().isUnauthorized().expectBody().json("""
@@ -577,7 +577,7 @@ class EmotionV2ControllerTest {
     private EmotionDetailResult 기본_상세_조회_결과(String memo, boolean liked, long likeCount) {
         return new EmotionDetailResult(
                 EmotionResult.of(
-                        SIGH_ID,
+                        EMOTION_ID,
                         126.9774,
                         37.5669,
                         CREATED_AT,

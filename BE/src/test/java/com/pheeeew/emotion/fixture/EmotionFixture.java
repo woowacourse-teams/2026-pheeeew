@@ -40,9 +40,9 @@ public final class EmotionFixture {
     }
 
     public static Emotion 저장된_기본_한숨(Long id, Instant createdAt) {
-        Emotion sigh = 기본_한숨_빌더().build();
-        ReflectionTestUtils.setField(sigh, "id", id);
-        ReflectionTestUtils.setField(sigh, "createdAt", createdAt);
-        return sigh;
+        Emotion emotion = 기본_한숨_빌더().build();
+        ReflectionTestUtils.setField(emotion, "id", id);
+        ReflectionTestUtils.setField(emotion, "createdAt", createdAt);
+        return emotion;
     }
 }

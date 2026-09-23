@@ -16,67 +16,67 @@ class EmotionTest {
     @Test
     void 좋아요_수를_한_개씩_증가시킨다() {
         // given
-        Emotion sigh = 기본_한숨_빌더().build();
+        Emotion emotion = 기본_한숨_빌더().build();
 
         // when
-        sigh.increaseLikeCount();
-        sigh.increaseLikeCount();
+        emotion.increaseLikeCount();
+        emotion.increaseLikeCount();
 
         // then
-        assertThat(sigh.getLikeCount()).isEqualTo(2);
+        assertThat(emotion.getLikeCount()).isEqualTo(2);
     }
 
     @Test
     void 좋아요_수를_한_개_감소시킨다() {
         // given
-        Emotion sigh = 기본_한숨_빌더().build();
-        sigh.increaseLikeCount();
-        sigh.increaseLikeCount();
+        Emotion emotion = 기본_한숨_빌더().build();
+        emotion.increaseLikeCount();
+        emotion.increaseLikeCount();
 
         // when
-        sigh.decreaseLikeCount();
+        emotion.decreaseLikeCount();
 
         // then
-        assertThat(sigh.getLikeCount()).isOne();
+        assertThat(emotion.getLikeCount()).isOne();
     }
 
     @Test
     void 좋아요_수가_0이면_감소시킬_수_없다() {
         // given
-        Emotion sigh = 기본_한숨_빌더().build();
+        Emotion emotion = 기본_한숨_빌더().build();
 
         // when
-        Throwable throwable = catchThrowable(sigh::decreaseLikeCount);
+        Throwable throwable = catchThrowable(emotion::decreaseLikeCount);
 
         // then
         assertThat(throwable).isInstanceOf(IllegalStateException.class);
-        assertThat(sigh.getLikeCount()).isZero();
+        assertThat(emotion.getLikeCount()).isZero();
     }
 
     @Test
     void 삭제하면_삭제_시각이_기록된다() {
         // given
-        Emotion sigh = 기본_한숨_빌더().build();
+        Emotion emotion = 기본_한숨_빌더().build();
 
         // when
-        sigh.delete();
+        emotion.delete();
 
         // then
-        assertThat(sigh.getDeletedAt()).isNotNull();
+        assertThat(emotion.getDeletedAt()).isNotNull();
     }
 
     @Test
     void 이미_삭제한_한숨을_다시_삭제해도_최초_삭제_시각을_유지한다() {
         // given
-        Emotion sigh = 기본_한숨_빌더().build();
-        sigh.delete();
-        Instant 최초_삭제_시각 = sigh.getDeletedAt();
+        Emotion emotion = 기본_한숨_빌더().build();
+        emotion.delete();
+        Instant 최초_삭제_시각 = emotion.getDeletedAt();
 
         // when
-        sigh.delete();
+        emotion.delete();
 
         // then
-        assertThat(sigh.getDeletedAt()).isEqualTo(최초_삭제_시각);
+        assertThat(emotion.getDeletedAt()).isEqualTo(최초_삭제_시각);
     }
 
     @Test
@@ -85,12 +85,12 @@ class EmotionTest {
         String memo = "  오늘은 힘들었다  ";
 
         // when
-        Emotion sigh = 기본_한숨_빌더()
+        Emotion emotion = 기본_한숨_빌더()
                 .memo(memo)
                 .build();
 
         // then
-        assertThat(sigh.getMemo()).isEqualTo("오늘은 힘들었다");
+        assertThat(emotion.getMemo()).isEqualTo("오늘은 힘들었다");
     }
 
     @ParameterizedTest
@@ -100,12 +100,12 @@ class EmotionTest {
         String requestedMemo = memo;
 
         // when
-        Emotion sigh = 기본_한숨_빌더()
+        Emotion emotion = 기본_한숨_빌더()
                 .memo(requestedMemo)
                 .build();
 
         // then
-        assertThat(sigh.getMemo()).isNull();
+        assertThat(emotion.getMemo()).isNull();
     }
 
     @Test

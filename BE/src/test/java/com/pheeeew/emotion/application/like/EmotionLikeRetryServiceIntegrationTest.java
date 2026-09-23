@@ -66,12 +66,12 @@ class EmotionLikeRetryServiceIntegrationTest {
     private JdbcClient jdbcClient;
 
     private Device device;
-    private Emotion sigh;
+    private Emotion emotion;
 
     @BeforeEach
     void setUp() {
         device = deviceRepository.save(기본_기기_빌더().build());
-        sigh = emotionRepository.save(기본_한숨_빌더().build());
+        emotion = emotionRepository.save(기본_한숨_빌더().build());
     }
 
     @AfterEach
@@ -91,12 +91,12 @@ class EmotionLikeRetryServiceIntegrationTest {
         conflictOnFirstAttempts(liked, 1);
 
         // when
-        EmotionLikeResult result = emotionLikeRetryService.update(sigh.getId(), device.getPublicId(), liked);
+        EmotionLikeResult result = emotionLikeRetryService.update(emotion.getId(), device.getPublicId(), liked);
 
         // then
         assertThat(result).isEqualTo(EmotionLikeResult.of(liked, liked ? 2 : 1));
-        verify(serviceSpy(), times(2)).update(sigh.getId(), device.getPublicId(), liked);
-        assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sigh.getId(), device.getId()).isPresent())
+        verify(serviceSpy(), times(2)).update(emotion.getId(), device.getPublicId(), liked);
+        assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(emotion.getId(), device.getId()).isPresent())
                 .isEqualTo(liked);
         assertLikeCount(liked ? 2 : 1);
     }
@@ -107,10 +107,10 @@ class EmotionLikeRetryServiceIntegrationTest {
         conflictOnFirstAttempts(true, 3);
 
         // when / then
-        assertThatThrownBy(() -> emotionLikeRetryService.update(sigh.getId(), device.getPublicId(), true))
+        assertThatThrownBy(() -> emotionLikeRetryService.update(emotion.getId(), device.getPublicId(), true))
                 .isInstanceOf(ObjectOptimisticLockingFailureException.class);
-        verify(serviceSpy(), times(3)).update(sigh.getId(), device.getPublicId(), true);
-        assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
+        verify(serviceSpy(), times(3)).update(emotion.getId(), device.getPublicId(), true);
+        assertThat(emotionLikeRepository.findByEmotionIdAndDeviceId(emotion.getId(), device.getId())).isEmpty();
         assertLikeCount(3);
     }
 
@@ -120,10 +120,10 @@ class EmotionLikeRetryServiceIntegrationTest {
         UUID missingDevicePublicId = UUID.randomUUID();
 
         // when / then
-        assertThatThrownBy(() -> emotionLikeRetryService.update(sigh.getId(), missingDevicePublicId, true))
+        assertThatThrownBy(() -> emotionLikeRetryService.update(emotion.getId(), missingDevicePublicId, true))
                 .isInstanceOfSatisfying(DeviceException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
-        verify(serviceSpy()).update(sigh.getId(), missingDevicePublicId, true);
+        verify(serviceSpy()).update(emotion.getId(), missingDevicePublicId, true);
         assertLikeCount(0);
     }
 
@@ -134,7 +134,7 @@ class EmotionLikeRetryServiceIntegrationTest {
 
         // when / then
         assertThatThrownBy(() -> transaction.executeWithoutResult(status ->
-                emotionLikeRetryService.update(sigh.getId(), device.getPublicId(), true)))
+                emotionLikeRetryService.update(emotion.getId(), device.getPublicId(), true)))
                 .isInstanceOf(IllegalTransactionStateException.class);
         verifyNoInteractions(serviceSpy());
         assertLikeCount(0);
@@ -142,9 +142,9 @@ class EmotionLikeRetryServiceIntegrationTest {
 
     private void saveLike() {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            emotionRepository.findById(sigh.getId()).orElseThrow().increaseLikeCount();
+            emotionRepository.findById(emotion.getId()).orElseThrow().increaseLikeCount();
             emotionLikeRepository.save(기본_좋아요_빌더()
-                    .emotionId(sigh.getId())
+                    .emotionId(emotion.getId())
                     .deviceId(device.getId())
                     .build());
         });
@@ -155,16 +155,16 @@ class EmotionLikeRetryServiceIntegrationTest {
         doAnswer(invocation -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isTrue();
             if (attempts.incrementAndGet() <= conflictCount) {
-                emotionRepository.findById(sigh.getId()).orElseThrow();
+                emotionRepository.findById(emotion.getId()).orElseThrow();
                 TransactionTemplate anotherTransaction = new TransactionTemplate(transactionManager);
                 anotherTransaction.setPropagationBehavior(Propagation.REQUIRES_NEW.value());
                 anotherTransaction.executeWithoutResult(status -> {
                     Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
-                    emotionLikeService.update(sigh.getId(), anotherDevice.getPublicId(), true);
+                    emotionLikeService.update(emotion.getId(), anotherDevice.getPublicId(), true);
                 });
             }
             return invocation.callRealMethod();
-        }).when(serviceSpy()).update(sigh.getId(), device.getPublicId(), liked);
+        }).when(serviceSpy()).update(emotion.getId(), device.getPublicId(), liked);
     }
 
     private EmotionLikeService serviceSpy() {
@@ -172,12 +172,12 @@ class EmotionLikeRetryServiceIntegrationTest {
     }
 
     private void assertLikeCount(long expected) {
-        long likeRowCount = jdbcClient.sql("SELECT COUNT(*) FROM sigh_likes WHERE sigh_id = :sighId")
-                .param("sighId", sigh.getId())
+        long likeRowCount = jdbcClient.sql("SELECT COUNT(*) FROM sigh_likes WHERE sigh_id = :emotionId")
+                .param("emotionId", emotion.getId())
                 .query(Long.class)
                 .single();
 
         assertThat(likeRowCount).isEqualTo(expected);
-        assertThat(emotionRepository.findById(sigh.getId()).orElseThrow().getLikeCount()).isEqualTo(expected);
+        assertThat(emotionRepository.findById(emotion.getId()).orElseThrow().getLikeCount()).isEqualTo(expected);
     }
 }

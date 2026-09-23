@@ -107,9 +107,9 @@ class EmotionV2LikeControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"0", "-1", "not-a-number"})
-    void 한숨_ID가_유효하지_않으면_400을_반환한다(String sighId) {
+    void 한숨_ID가_유효하지_않으면_400을_반환한다(String emotionId) {
         // given / when
-        RestTestClient.ResponseSpec result = request("/api/v2/sighs/" + sighId + "/likes", "access-token", "{\"liked\":true}");
+        RestTestClient.ResponseSpec result = request("/api/v2/sighs/" + emotionId + "/likes", "access-token", "{\"liked\":true}");
 
         // then
         result.expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
