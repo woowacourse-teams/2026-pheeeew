@@ -201,7 +201,7 @@ class EmotionBlockServiceIntegrationTest {
         emotionBlockService.delete(차단할_한숨, 남.getPublicId());
 
         // then
-        assertThat(emotionBlockRepository.findByBlockerDeviceIdAndSighId(차단자.getId(), 차단할_한숨))
+        assertThat(emotionBlockRepository.findByBlockerDeviceIdAndEmotionId(차단자.getId(), 차단할_한숨))
                 .isPresent();
         assertThat(emotionBlockRepository.count()).isOne();
     }

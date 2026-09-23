@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "sigh_blocks")
 @Entity
-public class SighBlock extends BaseEntity {
+public class EmotionBlock extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,11 +27,11 @@ public class SighBlock extends BaseEntity {
     private Long blockerDeviceId;
 
     @Column(name = "sigh_id", nullable = false, updatable = false)
-    private Long sighId;
+    private Long emotionId;
 
     @Builder
-    private SighBlock(Long blockerDeviceId, Long sighId) {
+    private EmotionBlock(Long blockerDeviceId, Long emotionId) {
         this.blockerDeviceId = Objects.requireNonNull(blockerDeviceId);
-        this.sighId = Objects.requireNonNull(sighId);
+        this.emotionId = Objects.requireNonNull(emotionId);
     }
 }

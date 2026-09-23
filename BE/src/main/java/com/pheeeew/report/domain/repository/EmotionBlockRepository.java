@@ -1,6 +1,6 @@
 package com.pheeeew.report.domain.repository;
 
-import com.pheeeew.report.domain.SighBlock;
+import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.report.domain.repository.projection.BlockProjection;
 import java.util.List;
 import java.util.Optional;
@@ -8,11 +8,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface EmotionBlockRepository extends JpaRepository<SighBlock, Long> {
+public interface EmotionBlockRepository extends JpaRepository<EmotionBlock, Long> {
 
-    Optional<SighBlock> findByBlockerDeviceIdAndSighId(Long blockerDeviceId, Long sighId);
+    Optional<EmotionBlock> findByBlockerDeviceIdAndEmotionId(Long blockerDeviceId, Long emotionId);
 
-    void deleteByBlockerDeviceIdAndSighId(Long blockerDeviceId, Long sighId);
+    void deleteByBlockerDeviceIdAndEmotionId(Long blockerDeviceId, Long emotionId);
 
     @Query(
             value = """

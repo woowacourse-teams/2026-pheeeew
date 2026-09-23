@@ -10,7 +10,7 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.report.application.dto.BlockListResult;
 import com.pheeeew.report.application.dto.BlockResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
-import com.pheeeew.report.domain.SighBlock;
+import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.report.domain.repository.projection.BlockProjection;
 import com.pheeeew.report.exception.BlockException;
@@ -39,7 +39,7 @@ public class EmotionBlockService {
         Sigh emotion = findEmotion(emotionId);
         Long blockerDeviceId = findBlockerDeviceId(devicePublicId);
 
-        Optional<SighBlock> existingBlock = emotionBlockRepository.findByBlockerDeviceIdAndSighId(blockerDeviceId, emotionId);
+        Optional<EmotionBlock> existingBlock = emotionBlockRepository.findByBlockerDeviceIdAndEmotionId(blockerDeviceId, emotionId);
         if (existingBlock.isPresent()) {
             return BlockSaveResult.of(BlockResult.of(existingBlock.get(), emotion), false);
         }
@@ -51,7 +51,7 @@ public class EmotionBlockService {
     public void delete(Long emotionId, UUID devicePublicId) {
         Long blockerDeviceId = findBlockerDeviceId(devicePublicId);
 
-        emotionBlockRepository.deleteByBlockerDeviceIdAndSighId(blockerDeviceId, emotionId);
+        emotionBlockRepository.deleteByBlockerDeviceIdAndEmotionId(blockerDeviceId, emotionId);
     }
 
     public BlockListResult findAll(UUID devicePublicId, String encodedCursor) {
@@ -89,9 +89,9 @@ public class EmotionBlockService {
     }
 
     private BlockSaveResult saveNewBlock(Long blockerDeviceId, Sigh emotion) {
-        SighBlock block = SighBlock.builder()
+        EmotionBlock block = EmotionBlock.builder()
                 .blockerDeviceId(blockerDeviceId)
-                .sighId(emotion.getId())
+                .emotionId(emotion.getId())
                 .build();
 
         try {
@@ -102,7 +102,7 @@ public class EmotionBlockService {
     }
 
     private BlockSaveResult findExistingBlock(Long blockerDeviceId, Sigh emotion, DataIntegrityViolationException cause) {
-        return emotionBlockRepository.findByBlockerDeviceIdAndSighId(blockerDeviceId, emotion.getId())
+        return emotionBlockRepository.findByBlockerDeviceIdAndEmotionId(blockerDeviceId, emotion.getId())
                 .map(block -> BlockSaveResult.of(BlockResult.of(block, emotion), false))
                 .orElseThrow(() -> new BlockException(BLOCK_SAVE_FAILED, cause));
     }

@@ -1,7 +1,7 @@
 package com.pheeeew.report.application.dto;
 
 import com.pheeeew.report.domain.DeviceBlock;
-import com.pheeeew.report.domain.SighBlock;
+import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.report.domain.repository.projection.BlockProjection;
 import com.pheeeew.sigh.domain.Sigh;
 import java.time.Instant;
@@ -18,10 +18,10 @@ public record BlockResult(Long blockId, Long emotionId, String nickname, String 
         );
     }
 
-    public static BlockResult of(SighBlock block, Sigh emotion) {
+    public static BlockResult of(EmotionBlock block, Sigh emotion) {
         return new BlockResult(
                 block.getId(),
-                block.getSighId(),
+                block.getEmotionId(),
                 emotion.getNickname(),
                 emotion.getMemo(),
                 block.getCreatedAt()
