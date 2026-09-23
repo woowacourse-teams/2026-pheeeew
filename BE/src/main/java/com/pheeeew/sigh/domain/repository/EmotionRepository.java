@@ -70,24 +70,24 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
                         WHERE :#{#bounds.minLongitude()} > :#{#bounds.maxLongitude()}
                     )
                     SELECT
-                        sigh.id AS id,
-                        ST_X(sigh.location) AS longitude,
-                        ST_Y(sigh.location) AS latitude,
-                        sigh.created_at AS "createdAt"
-                    FROM sighs sigh
+                        emotion.id AS id,
+                        ST_X(emotion.location) AS longitude,
+                        ST_Y(emotion.location) AS latitude,
+                        emotion.created_at AS "createdAt"
+                    FROM sighs emotion
                     CROSS JOIN bounds
-                    WHERE sigh.deleted_at IS NULL
-                      AND sigh.created_at >= :#{#period.startAt()}
-                      AND sigh.created_at <= :#{#period.endAt()}
-                      AND sigh.location && bounds.area
-                      AND ST_Intersects(sigh.location, bounds.area)
+                    WHERE emotion.deleted_at IS NULL
+                      AND emotion.created_at >= :#{#period.startAt()}
+                      AND emotion.created_at <= :#{#period.endAt()}
+                      AND emotion.location && bounds.area
+                      AND ST_Intersects(emotion.location, bounds.area)
                       AND (
                           CAST(:blockerDeviceId AS BIGINT) IS NULL
                           OR NOT EXISTS (
                               SELECT 1
-                              FROM sigh_blocks sigh_block
-                              WHERE sigh_block.blocker_device_id = :blockerDeviceId
-                                AND sigh_block.sigh_id = sigh.id
+                              FROM sigh_blocks emotion_block
+                              WHERE emotion_block.blocker_device_id = :blockerDeviceId
+                                AND emotion_block.sigh_id = emotion.id
                           )
                       )
                       AND (
@@ -96,10 +96,10 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
                               SELECT 1
                               FROM device_blocks device_block
                               WHERE device_block.blocker_device_id = :blockerDeviceId
-                                AND device_block.blocked_device_id = sigh.device_id
+                                AND device_block.blocked_device_id = emotion.device_id
                           )
                       )
-                    ORDER BY sigh.created_at DESC, sigh.id DESC
+                    ORDER BY emotion.created_at DESC, emotion.id DESC
                     LIMIT :limit
                     """,
             nativeQuery = true
@@ -134,28 +134,28 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
                             4326
                         ) AS area
                         WHERE :#{#bounds.minLongitude()} > :#{#bounds.maxLongitude()}
-                    ), latest_sighs AS (
+                    ), latest_emotions AS (
                         SELECT
-                            sigh.id,
-                            sigh.location,
-                            sigh.created_at,
-                            sigh.nickname,
-                            sigh.memo,
-                            sigh.like_count
-                        FROM sighs sigh
+                            emotion.id,
+                            emotion.location,
+                            emotion.created_at,
+                            emotion.nickname,
+                            emotion.memo,
+                            emotion.like_count
+                        FROM sighs emotion
                         CROSS JOIN bounds
-                        WHERE sigh.deleted_at IS NULL
-                          AND sigh.created_at >= :#{#period.startAt()}
-                          AND sigh.created_at < :#{#period.endAt()}
-                          AND sigh.location && bounds.area
-                          AND ST_Intersects(sigh.location, bounds.area)
+                        WHERE emotion.deleted_at IS NULL
+                          AND emotion.created_at >= :#{#period.startAt()}
+                          AND emotion.created_at < :#{#period.endAt()}
+                          AND emotion.location && bounds.area
+                          AND ST_Intersects(emotion.location, bounds.area)
                           AND (
                               CAST(:blockerDeviceId AS BIGINT) IS NULL
                               OR NOT EXISTS (
                                   SELECT 1
-                                  FROM sigh_blocks sigh_block
-                                  WHERE sigh_block.blocker_device_id = :blockerDeviceId
-                                    AND sigh_block.sigh_id = sigh.id
+                                  FROM sigh_blocks emotion_block
+                                  WHERE emotion_block.blocker_device_id = :blockerDeviceId
+                                    AND emotion_block.sigh_id = emotion.id
                               )
                           )
                           AND (
@@ -164,26 +164,26 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
                                   SELECT 1
                                   FROM device_blocks device_block
                                   WHERE device_block.blocker_device_id = :blockerDeviceId
-                                    AND device_block.blocked_device_id = sigh.device_id
+                                    AND device_block.blocked_device_id = emotion.device_id
                               )
                           )
-                        ORDER BY sigh.created_at DESC, sigh.id DESC
+                        ORDER BY emotion.created_at DESC, emotion.id DESC
                         LIMIT :maxCount
                     )
                     SELECT
-                        latest_sighs.id AS id,
-                        ST_X(latest_sighs.location) AS longitude,
-                        ST_Y(latest_sighs.location) AS latitude,
-                        latest_sighs.created_at AS "createdAt",
-                        latest_sighs.nickname AS nickname,
-                        latest_sighs.memo AS memo,
-                        latest_sighs.like_count AS "likeCount",
-                        sigh_like.id IS NOT NULL AS liked
-                    FROM latest_sighs
-                    LEFT JOIN sigh_likes sigh_like
-                      ON sigh_like.sigh_id = latest_sighs.id AND sigh_like.device_id = :deviceId
-                    WHERE (latest_sighs.created_at, latest_sighs.id) < (:lastItemCreatedAt, :lastId)
-                    ORDER BY latest_sighs.created_at DESC, latest_sighs.id DESC
+                        latest_emotions.id AS id,
+                        ST_X(latest_emotions.location) AS longitude,
+                        ST_Y(latest_emotions.location) AS latitude,
+                        latest_emotions.created_at AS "createdAt",
+                        latest_emotions.nickname AS nickname,
+                        latest_emotions.memo AS memo,
+                        latest_emotions.like_count AS "likeCount",
+                        emotion_like.id IS NOT NULL AS liked
+                    FROM latest_emotions
+                    LEFT JOIN sigh_likes emotion_like
+                      ON emotion_like.sigh_id = latest_emotions.id AND emotion_like.device_id = :deviceId
+                    WHERE (latest_emotions.created_at, latest_emotions.id) < (:lastItemCreatedAt, :lastId)
+                    ORDER BY latest_emotions.created_at DESC, latest_emotions.id DESC
                     LIMIT :limit
                     """,
             nativeQuery = true
