@@ -57,4 +57,8 @@ public class GroupMember extends BaseEntity {
     public boolean isOwner() {
         return role == GroupRole.OWNER;
     }
+
+    public void leave(Instant leftAt) {
+        this.leftAt = Objects.requireNonNull(leftAt);
+    }
 }

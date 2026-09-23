@@ -1,10 +1,12 @@
 package com.pheeeew.groups.application;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
+import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_ALREADY_JOINED;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_INVITE_CODE_UNAVAILABLE;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_MEMBER_REMAINS;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NAME_DUPLICATED;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
+import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_OWNER_CANNOT_LEAVE;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_OWNER_ONLY;
 
 import com.pheeeew.device.domain.Device;
@@ -111,6 +113,36 @@ public class GroupService {
         group.reissueInviteCode(unusedInviteCode());
 
         return toResult(group, GroupRole.OWNER);
+    }
+
+    @Transactional
+    public GroupResult join(UUID devicePublicId, String inviteCode) {
+        Device device = findDevice(devicePublicId);
+        Group group = groupRepository.findByInviteCodeAndDeletedAtIsNull(inviteCode)
+                .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));
+
+        try {
+            groupMemberRepository.saveAndFlush(GroupMember.builder()
+                    .group(group)
+                    .device(device)
+                    .role(GroupRole.MEMBER)
+                    .build());
+        } catch (DataIntegrityViolationException exception) {
+            throw new GroupException(GROUP_ALREADY_JOINED, exception);
+        }
+
+        return toResult(group, GroupRole.MEMBER);
+    }
+
+    @Transactional
+    public void leave(UUID groupPublicId, UUID devicePublicId) {
+        Group group = findGroup(groupPublicId);
+        GroupMember member = requireMember(group, devicePublicId);
+        if (member.isOwner()) {
+            throw new GroupException(GROUP_OWNER_CANNOT_LEAVE);
+        }
+
+        member.leave(Instant.now());
     }
 
     @Transactional
