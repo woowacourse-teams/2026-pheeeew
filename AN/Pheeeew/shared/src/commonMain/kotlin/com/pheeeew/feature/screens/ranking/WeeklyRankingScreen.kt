@@ -41,7 +41,7 @@ fun WeeklyRankingScreen(modifier: Modifier = Modifier) {
         ) {
             Spacer(Modifier.height(22.dp))
             Text(
-                text = "이번 주 랭킹",
+                text = "주간 랭킹",
                 color = AppColors.RankingContent,
                 fontSize = 32.sp,
                 fontWeight = FontWeight.ExtraBold,
