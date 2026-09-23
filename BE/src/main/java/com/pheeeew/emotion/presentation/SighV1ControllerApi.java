@@ -3,7 +3,7 @@ package com.pheeeew.emotion.presentation;
 import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateV1Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
-import com.pheeeew.emotion.presentation.dto.SighMapRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionMapRequest;
 import com.pheeeew.emotion.presentation.dto.SighMapResponse;
 import com.pheeeew.emotion.presentation.dto.SighV1Properties;
 import io.swagger.v3.oas.annotations.Operation;
@@ -99,7 +99,7 @@ public interface SighV1ControllerApi {
     })
     ResponseEntity<SighMapResponse> findAllWithinBounds(
             @Parameter(hidden = true) Optional<UUID> devicePublicId,
-            @ParameterObject SighMapRequest request
+            @ParameterObject EmotionMapRequest request
     );
 
     @Operation(

@@ -6,7 +6,7 @@ import com.pheeeew.emotion.presentation.dto.EmotionCreateV2Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeResponse;
-import com.pheeeew.emotion.presentation.dto.SighListRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
 import com.pheeeew.emotion.presentation.dto.SighV2Properties;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -156,7 +156,7 @@ public interface SighV2ControllerApi {
             )
     })
     ResponseEntity<CursorResponse<SighFeature<SighV2Properties>>> findAll(
-            @ParameterObject @Valid SighListRequest request,
+            @ParameterObject @Valid EmotionListRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 

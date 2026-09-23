@@ -7,7 +7,7 @@ import com.pheeeew.emotion.application.dto.EmotionResult;
 import com.pheeeew.emotion.application.dto.EmotionSaveResult;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateV1Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
-import com.pheeeew.emotion.presentation.dto.SighMapRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionMapRequest;
 import com.pheeeew.emotion.presentation.dto.SighMapResponse;
 import com.pheeeew.emotion.presentation.dto.SighV1Properties;
 import jakarta.validation.Valid;
@@ -37,7 +37,7 @@ public class SighV1Controller implements SighV1ControllerApi {
     @GetMapping
     public ResponseEntity<SighMapResponse> findAllWithinBounds(
             @CurrentDevice Optional<UUID> devicePublicId,
-            @Valid @ModelAttribute SighMapRequest request
+            @Valid @ModelAttribute EmotionMapRequest request
     ) {
         EmotionMapResult result = emotionService.findAllWithinBounds(request.toBounds(), devicePublicId);
 

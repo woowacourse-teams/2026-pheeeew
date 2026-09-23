@@ -7,7 +7,8 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 
-public record SighMapRequest(
+@Schema(name = "SighMapRequest")
+public record EmotionMapRequest(
         @NotNull
         @DecimalMin("-180.0")
         @DecimalMax("180.0")

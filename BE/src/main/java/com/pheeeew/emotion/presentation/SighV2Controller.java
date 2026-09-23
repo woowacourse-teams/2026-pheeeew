@@ -13,7 +13,7 @@ import com.pheeeew.emotion.presentation.dto.EmotionCreateV2Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionLikeResponse;
-import com.pheeeew.emotion.presentation.dto.SighListRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
 import com.pheeeew.emotion.presentation.dto.SighV2Properties;
 import java.net.URI;
 import java.util.List;
@@ -43,7 +43,7 @@ public class SighV2Controller implements SighV2ControllerApi {
     @Override
     @GetMapping
     public ResponseEntity<CursorResponse<SighFeature<SighV2Properties>>> findAll(
-            @ModelAttribute SighListRequest request,
+            @ModelAttribute EmotionListRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
         EmotionListResult result;
