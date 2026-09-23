@@ -40,12 +40,12 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 
 @PostgisDataJpaTest
-@Import({SighLikeRetryService.class, SighLikeService.class})
+@Import({EmotionLikeRetryService.class, SighLikeService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-class SighLikeRetryServiceIntegrationTest {
+class EmotionLikeRetryServiceIntegrationTest {
 
     @Autowired
-    private SighLikeRetryService sighLikeRetryService;
+    private EmotionLikeRetryService emotionLikeRetryService;
 
     @MockitoSpyBean
     private SighLikeService sighLikeService;
@@ -91,7 +91,7 @@ class SighLikeRetryServiceIntegrationTest {
         conflictOnFirstAttempts(liked, 1);
 
         // when
-        SighLikeResult result = sighLikeRetryService.update(sigh.getId(), device.getPublicId(), liked);
+        SighLikeResult result = emotionLikeRetryService.update(sigh.getId(), device.getPublicId(), liked);
 
         // then
         assertThat(result).isEqualTo(SighLikeResult.of(liked, liked ? 2 : 1));
@@ -107,7 +107,7 @@ class SighLikeRetryServiceIntegrationTest {
         conflictOnFirstAttempts(true, 3);
 
         // when / then
-        assertThatThrownBy(() -> sighLikeRetryService.update(sigh.getId(), device.getPublicId(), true))
+        assertThatThrownBy(() -> emotionLikeRetryService.update(sigh.getId(), device.getPublicId(), true))
                 .isInstanceOf(ObjectOptimisticLockingFailureException.class);
         verify(serviceSpy(), times(3)).update(sigh.getId(), device.getPublicId(), true);
         assertThat(sighLikeRepository.findBySighIdAndDeviceId(sigh.getId(), device.getId())).isEmpty();
@@ -120,7 +120,7 @@ class SighLikeRetryServiceIntegrationTest {
         UUID missingDevicePublicId = UUID.randomUUID();
 
         // when / then
-        assertThatThrownBy(() -> sighLikeRetryService.update(sigh.getId(), missingDevicePublicId, true))
+        assertThatThrownBy(() -> emotionLikeRetryService.update(sigh.getId(), missingDevicePublicId, true))
                 .isInstanceOfSatisfying(DeviceException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
         verify(serviceSpy()).update(sigh.getId(), missingDevicePublicId, true);
@@ -134,7 +134,7 @@ class SighLikeRetryServiceIntegrationTest {
 
         // when / then
         assertThatThrownBy(() -> transaction.executeWithoutResult(status ->
-                sighLikeRetryService.update(sigh.getId(), device.getPublicId(), true)))
+                emotionLikeRetryService.update(sigh.getId(), device.getPublicId(), true)))
                 .isInstanceOf(IllegalTransactionStateException.class);
         verifyNoInteractions(serviceSpy());
         assertLikeCount(0);

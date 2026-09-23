@@ -7,7 +7,7 @@ import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
-import com.pheeeew.sigh.application.like.SighLikeRetryService;
+import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.presentation.dto.SighCreateV2Request;
 import com.pheeeew.sigh.presentation.dto.SighFeature;
@@ -38,7 +38,7 @@ public class SighV2Controller implements SighV2ControllerApi {
     private static final MediaType GEO_JSON = MediaType.parseMediaType("application/geo+json");
 
     private final SighService sighService;
-    private final SighLikeRetryService sighLikeRetryService;
+    private final EmotionLikeRetryService emotionLikeRetryService;
 
     @Override
     @GetMapping
@@ -109,7 +109,7 @@ public class SighV2Controller implements SighV2ControllerApi {
             @CurrentDevice UUID devicePublicId,
             @RequestBody SighLikeRequest request
     ) {
-        SighLikeResult result = sighLikeRetryService.update(sighId, devicePublicId, request.liked());
+        SighLikeResult result = emotionLikeRetryService.update(sighId, devicePublicId, request.liked());
         return SighLikeResponse.from(result);
     }
 

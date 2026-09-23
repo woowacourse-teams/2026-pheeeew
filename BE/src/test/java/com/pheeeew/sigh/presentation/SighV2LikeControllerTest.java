@@ -14,7 +14,7 @@ import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.SighService;
-import com.pheeeew.sigh.application.like.SighLikeRetryService;
+import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.exception.SighErrorCode;
 import com.pheeeew.sigh.exception.SighException;
@@ -61,7 +61,7 @@ class SighV2LikeControllerTest {
     private RestTestClient client;
 
     @MockitoBean
-    private SighLikeRetryService sighLikeRetryService;
+    private EmotionLikeRetryService emotionLikeRetryService;
 
     @MockitoBean
     private SighService sighService;
@@ -80,7 +80,7 @@ class SighV2LikeControllerTest {
     void 요청_본문의_기기_식별자와_무관하게_인증된_기기의_상태를_변경하고_결과를_반환한다(boolean liked) {
         // given
         long likeCount = liked ? 12 : 11;
-        when(sighLikeRetryService.update(42L, DEVICE_PUBLIC_ID, liked))
+        when(emotionLikeRetryService.update(42L, DEVICE_PUBLIC_ID, liked))
                 .thenReturn(SighLikeResult.of(liked, likeCount));
 
         // when
@@ -91,7 +91,7 @@ class SighV2LikeControllerTest {
         // then
         result.expectStatus().isOk().expectHeader().contentType(MediaType.APPLICATION_JSON)
                 .expectBody().json("{\"liked\":%s,\"likeCount\":%s}".formatted(liked, likeCount), JsonCompareMode.STRICT);
-        verify(sighLikeRetryService).update(42L, DEVICE_PUBLIC_ID, liked);
+        verify(emotionLikeRetryService).update(42L, DEVICE_PUBLIC_ID, liked);
     }
 
     @ParameterizedTest
@@ -102,7 +102,7 @@ class SighV2LikeControllerTest {
 
         // then
         result.expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
-        verifyNoInteractions(sighLikeRetryService);
+        verifyNoInteractions(emotionLikeRetryService);
     }
 
     @ParameterizedTest
@@ -113,7 +113,7 @@ class SighV2LikeControllerTest {
 
         // then
         result.expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
-        verifyNoInteractions(sighLikeRetryService);
+        verifyNoInteractions(emotionLikeRetryService);
     }
 
     @ParameterizedTest
@@ -125,7 +125,7 @@ class SighV2LikeControllerTest {
 
         // then
         result.expectStatus().isUnauthorized().expectBody().jsonPath("$.code").isEqualTo("AUTH-001");
-        verifyNoInteractions(sighLikeRetryService);
+        verifyNoInteractions(emotionLikeRetryService);
         if (token == null) {
             verifyNoInteractions(jwtDecoder);
         }
@@ -135,7 +135,7 @@ class SighV2LikeControllerTest {
     @MethodSource("serviceFailures")
     void 서비스_실패는_공통_오류_응답으로_반환한다(RuntimeException exception, int status, String code) {
         // given
-        when(sighLikeRetryService.update(42L, DEVICE_PUBLIC_ID, true)).thenThrow(exception);
+        when(emotionLikeRetryService.update(42L, DEVICE_PUBLIC_ID, true)).thenThrow(exception);
 
         // when
         RestTestClient.ResponseSpec result = request(LIKES_URI, "access-token", "{\"liked\":true}");

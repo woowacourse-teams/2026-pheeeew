@@ -19,7 +19,7 @@ import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
-import com.pheeeew.sigh.application.like.SighLikeRetryService;
+import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
@@ -70,7 +70,7 @@ class SighV2ControllerTest {
     private SighService sighService;
 
     @MockitoBean
-    private SighLikeRetryService sighLikeRetryService;
+    private EmotionLikeRetryService emotionLikeRetryService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;

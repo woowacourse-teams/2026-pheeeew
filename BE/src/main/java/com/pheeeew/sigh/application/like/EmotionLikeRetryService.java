@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
-public class SighLikeRetryService {
+public class EmotionLikeRetryService {
 
     private static final int MAX_ATTEMPTS = 3;
 
