@@ -17,7 +17,7 @@ import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.report.application.dto.EmotionReportResult;
 import com.pheeeew.report.domain.SighReport;
-import com.pheeeew.report.domain.repository.SighReportRepository;
+import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.domain.repository.SighRepository;
@@ -55,7 +55,7 @@ class EmotionReportServiceIntegrationTest {
     private EmotionReportService emotionReportService;
 
     @Autowired
-    private SighReportRepository sighReportRepository;
+    private EmotionReportRepository emotionReportRepository;
 
     @Autowired
     private SighRepository sighRepository;
@@ -68,7 +68,7 @@ class EmotionReportServiceIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        sighReportRepository.deleteAll();
+        emotionReportRepository.deleteAll();
         sighRepository.deleteAll();
         deviceRepository.deleteAll();
     }
@@ -86,9 +86,9 @@ class EmotionReportServiceIntegrationTest {
                 .update();
 
         // then
-        assertThat(sighReportRepository.findBySighIdAndReporterDeviceId(sighId, device.getId()))
+        assertThat(emotionReportRepository.findBySighIdAndReporterDeviceId(sighId, device.getId()))
                 .isPresent();
-        assertThat(sighReportRepository.count()).isOne();
+        assertThat(emotionReportRepository.count()).isOne();
     }
 
     @Test
@@ -107,10 +107,10 @@ class EmotionReportServiceIntegrationTest {
         assertThat(result.reason()).isEqualTo("광고성 게시물입니다");
         assertThat(result.createdAt()).isNotNull();
 
-        SighReport saved = sighReportRepository.findById(result.id()).orElseThrow();
+        SighReport saved = emotionReportRepository.findById(result.id()).orElseThrow();
         assertThat(saved.getReporterDeviceId()).isEqualTo(device.getId());
         assertThat(saved.getUpdatedAt()).isNotNull();
-        assertThat(sighReportRepository.count()).isOne();
+        assertThat(emotionReportRepository.count()).isOne();
     }
 
     @Test
@@ -127,7 +127,7 @@ class EmotionReportServiceIntegrationTest {
         assertThat(retried.created()).isFalse();
         assertThat(retried.id()).isEqualTo(first.id());
         assertThat(retried.reason()).isEqualTo(기본_신고_사유());
-        assertThat(sighReportRepository.count()).isOne();
+        assertThat(emotionReportRepository.count()).isOne();
     }
 
     @Test
@@ -144,7 +144,7 @@ class EmotionReportServiceIntegrationTest {
         // then
         assertThat(second.created()).isTrue();
         assertThat(second.id()).isNotEqualTo(first.id());
-        assertThat(sighReportRepository.count()).isEqualTo(2);
+        assertThat(emotionReportRepository.count()).isEqualTo(2);
     }
 
     @Test
@@ -161,7 +161,7 @@ class EmotionReportServiceIntegrationTest {
         // then
         assertThat(second.created()).isTrue();
         assertThat(second.id()).isNotEqualTo(first.id());
-        assertThat(sighReportRepository.count()).isEqualTo(2);
+        assertThat(emotionReportRepository.count()).isEqualTo(2);
     }
 
     @Test
@@ -187,7 +187,7 @@ class EmotionReportServiceIntegrationTest {
                 .extracting(EmotionReportResult::id)
                 .containsOnly(results.getFirst().id());
         assertThat(results).filteredOn(EmotionReportResult::created).hasSize(1);
-        assertThat(sighReportRepository.count()).isOne();
+        assertThat(emotionReportRepository.count()).isOne();
     }
 
     @Test
@@ -206,7 +206,7 @@ class EmotionReportServiceIntegrationTest {
                 .hasMessage("한숨을 찾을 수 없습니다.");
         assertThat(((SighException) throwable).getErrorCode())
                 .isEqualTo(SighErrorCode.SIGH_NOT_FOUND);
-        assertThat(sighReportRepository.count()).isZero();
+        assertThat(emotionReportRepository.count()).isZero();
     }
 
     @Test
@@ -225,7 +225,7 @@ class EmotionReportServiceIntegrationTest {
                 .hasMessage("인증 정보를 사용할 수 없습니다.");
         assertThat(((DeviceException) throwable).getErrorCode())
                 .isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND);
-        assertThat(sighReportRepository.count()).isZero();
+        assertThat(emotionReportRepository.count()).isZero();
     }
 
     @Test
@@ -239,12 +239,12 @@ class EmotionReportServiceIntegrationTest {
                 .build();
 
         // when
-        Throwable throwable = catchThrowable(() -> sighReportRepository.saveAndFlush(report));
+        Throwable throwable = catchThrowable(() -> emotionReportRepository.saveAndFlush(report));
 
         // then
         assertThat(throwable).isInstanceOf(DataIntegrityViolationException.class);
         assertThat(예외_사슬의_메시지(throwable)).contains("fk_sigh_reports_device");
-        assertThat(sighReportRepository.count()).isZero();
+        assertThat(emotionReportRepository.count()).isZero();
     }
 
     @Test
@@ -265,7 +265,7 @@ class EmotionReportServiceIntegrationTest {
                     .doesNotContain("uk_sigh_reports_sigh_reporter")
                     .doesNotContain("reporter_device_id)=(")
                     .doesNotContain(device.getPublicId().toString());
-            assertThat(sighReportRepository.count()).isOne();
+            assertThat(emotionReportRepository.count()).isOne();
         } finally {
             로그_수집을_끝낸다(appender);
         }

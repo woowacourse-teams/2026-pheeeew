@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
-public interface SighReportRepository extends JpaRepository<SighReport, Long> {
+public interface EmotionReportRepository extends JpaRepository<SighReport, Long> {
 
     Optional<SighReport> findBySighIdAndReporterDeviceId(Long emotionId, Long reporterDeviceId);
 

@@ -9,7 +9,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.SighReport;
-import com.pheeeew.report.domain.repository.SighReportRepository;
+import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
 import com.pheeeew.sigh.domain.Sigh;
@@ -38,7 +38,7 @@ class SighReportAutoDeleteIntegrationTest {
     private EmotionReportService emotionReportService;
 
     @Autowired
-    private SighReportRepository sighReportRepository;
+    private EmotionReportRepository emotionReportRepository;
 
     @Autowired
     private SighRepository sighRepository;
@@ -51,7 +51,7 @@ class SighReportAutoDeleteIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        sighReportRepository.deleteAllInBatch();
+        emotionReportRepository.deleteAllInBatch();
         sighRepository.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
     }
@@ -96,7 +96,7 @@ class SighReportAutoDeleteIntegrationTest {
         emotionReportService.deleteReportedOverThreshold();
 
         // then
-        assertThat(sighReportRepository.count()).isEqualTo(자동_삭제_임계값);
+        assertThat(emotionReportRepository.count()).isEqualTo(자동_삭제_임계값);
     }
 
     @Test
@@ -165,7 +165,7 @@ class SighReportAutoDeleteIntegrationTest {
         assertThat(throwable).isInstanceOf(EmotionReportException.class);
         assertThat(((EmotionReportException) throwable).getErrorCode())
                 .isEqualTo(EmotionReportErrorCode.EMOTION_REPORT_SELF_NOT_ALLOWED);
-        assertThat(sighReportRepository.count()).isZero();
+        assertThat(emotionReportRepository.count()).isZero();
     }
 
     @Test
@@ -179,7 +179,7 @@ class SighReportAutoDeleteIntegrationTest {
         emotionReportService.save(sighId, 신고자.getPublicId(), "테스트 신고");
 
         // then
-        assertThat(sighReportRepository.count()).isOne();
+        assertThat(emotionReportRepository.count()).isOne();
     }
 
     @Test
@@ -192,7 +192,7 @@ class SighReportAutoDeleteIntegrationTest {
         emotionReportService.save(sighId, 신고자.getPublicId(), "테스트 신고");
 
         // then
-        assertThat(sighReportRepository.count()).isOne();
+        assertThat(emotionReportRepository.count()).isOne();
     }
 
     private Long 작성자가_쓴_한숨을_저장한다(Long deviceId) {
@@ -214,7 +214,7 @@ class SighReportAutoDeleteIntegrationTest {
             Device device = deviceRepository.saveAndFlush(
                     기본_기기_빌더().requestId(UUID.randomUUID()).build()
             );
-            sighReportRepository.saveAndFlush(
+            emotionReportRepository.saveAndFlush(
                     SighReport.builder()
                             .sighId(sighId)
                             .reporterDeviceId(device.getId())

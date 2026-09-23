@@ -21,7 +21,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceChallengeRepository;
 import com.pheeeew.device.domain.repository.DeviceRefreshTokenRepository;
 import com.pheeeew.device.domain.repository.DeviceRepository;
-import com.pheeeew.report.domain.repository.SighReportRepository;
+import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.support.SharedPostgisTestConfiguration;
 import java.util.List;
@@ -90,7 +90,7 @@ class SecurityAuthorizationIntegrationTest {
     private SighRepository sighRepository;
 
     @Autowired
-    private SighReportRepository sighReportRepository;
+    private EmotionReportRepository emotionReportRepository;
 
     @Autowired
     private JdbcClient jdbcClient;
@@ -112,7 +112,7 @@ class SecurityAuthorizationIntegrationTest {
         appVersionRepository.deleteAll();
         jdbcClient.sql("DELETE FROM sigh_blocks").update();
         jdbcClient.sql("DELETE FROM device_blocks").update();
-        sighReportRepository.deleteAll();
+        emotionReportRepository.deleteAll();
         sighRepository.deleteAll();
         deviceRefreshTokenRepository.deleteAll();
         deviceRepository.deleteAll();
@@ -190,7 +190,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         인증_필요를_검증한다(result);
-        assertThat(sighReportRepository.count()).isZero();
+        assertThat(emotionReportRepository.count()).isZero();
     }
 
     @ParameterizedTest(name = "{0} {1}")
@@ -451,7 +451,7 @@ class SecurityAuthorizationIntegrationTest {
                 .json("""
                         {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
                         """, JsonCompareMode.STRICT);
-        assertThat(sighReportRepository.count()).isZero();
+        assertThat(emotionReportRepository.count()).isZero();
     }
 
     @Test
