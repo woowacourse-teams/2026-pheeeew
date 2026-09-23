@@ -18,7 +18,7 @@ public interface SighBlockRepository extends JpaRepository<SighBlock, Long> {
             value = """
                     SELECT
                         sigh_block.id AS "blockId",
-                        sigh_block.sigh_id AS "sighId",
+                        sigh_block.sigh_id AS "emotionId",
                         sigh.nickname AS nickname,
                         sigh.memo AS memo,
                         sigh_block.created_at AS "createdAt"

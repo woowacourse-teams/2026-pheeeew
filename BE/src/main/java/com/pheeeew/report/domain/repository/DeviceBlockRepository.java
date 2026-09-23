@@ -18,7 +18,7 @@ public interface DeviceBlockRepository extends JpaRepository<DeviceBlock, Long> 
             value = """
                     SELECT
                         device_block.id AS "blockId",
-                        device_block.origin_sigh_id AS "sighId",
+                        device_block.origin_sigh_id AS "emotionId",
                         sigh.nickname AS nickname,
                         sigh.memo AS memo,
                         device_block.created_at AS "createdAt"

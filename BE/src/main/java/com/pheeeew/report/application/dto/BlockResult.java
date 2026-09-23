@@ -11,7 +11,7 @@ public record BlockResult(Long blockId, Long emotionId, String nickname, String 
     public static BlockResult from(BlockProjection projection) {
         return new BlockResult(
                 projection.getBlockId(),
-                projection.getSighId(),
+                projection.getEmotionId(),
                 projection.getNickname(),
                 projection.getMemo(),
                 projection.getCreatedAt()
