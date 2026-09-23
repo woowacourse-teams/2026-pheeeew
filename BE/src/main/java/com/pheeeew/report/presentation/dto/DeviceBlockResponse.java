@@ -48,7 +48,7 @@ public record DeviceBlockResponse(
     public static DeviceBlockResponse from(BlockResult result) {
         return new DeviceBlockResponse(
                 result.blockId(),
-                result.sighId(),
+                result.emotionId(),
                 result.nickname(),
                 result.memo(),
                 result.createdAt()

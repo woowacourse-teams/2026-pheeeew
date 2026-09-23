@@ -6,7 +6,7 @@ import com.pheeeew.report.domain.repository.projection.BlockProjection;
 import com.pheeeew.sigh.domain.Sigh;
 import java.time.Instant;
 
-public record BlockResult(Long blockId, Long sighId, String nickname, String memo, Instant createdAt) {
+public record BlockResult(Long blockId, Long emotionId, String nickname, String memo, Instant createdAt) {
 
     public static BlockResult from(BlockProjection projection) {
         return new BlockResult(
@@ -18,22 +18,22 @@ public record BlockResult(Long blockId, Long sighId, String nickname, String mem
         );
     }
 
-    public static BlockResult of(SighBlock block, Sigh sigh) {
+    public static BlockResult of(SighBlock block, Sigh emotion) {
         return new BlockResult(
                 block.getId(),
                 block.getSighId(),
-                sigh.getNickname(),
-                sigh.getMemo(),
+                emotion.getNickname(),
+                emotion.getMemo(),
                 block.getCreatedAt()
         );
     }
 
-    public static BlockResult of(DeviceBlock block, Sigh originSigh) {
+    public static BlockResult of(DeviceBlock block, Sigh originEmotion) {
         return new BlockResult(
                 block.getId(),
                 block.getOriginSighId(),
-                originSigh.getNickname(),
-                originSigh.getMemo(),
+                originEmotion.getNickname(),
+                originEmotion.getMemo(),
                 block.getCreatedAt()
         );
     }

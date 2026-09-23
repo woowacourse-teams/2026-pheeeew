@@ -81,7 +81,7 @@ class EmotionBlockServiceIntegrationTest {
         // then
         assertThat(result.created()).isTrue();
         assertThat(result.block().blockId()).isPositive();
-        assertThat(result.block().sighId()).isEqualTo(차단할_한숨);
+        assertThat(result.block().emotionId()).isEqualTo(차단할_한숨);
         assertThat(result.block().nickname()).isEqualTo("외로운 회사원");
         assertThat(result.block().memo()).isEqualTo("오늘은 조금 지쳤다");
         assertThat(result.block().createdAt()).isNotNull();
@@ -223,7 +223,7 @@ class EmotionBlockServiceIntegrationTest {
 
         // then
         assertThat(result.items())
-                .extracting(BlockResult::sighId)
+                .extracting(BlockResult::emotionId)
                 .containsExactly(나중에_차단한_한숨, 먼저_차단한_한숨);
         assertThat(result.items().getFirst().memo()).isEqualTo("나중에 차단");
         assertThat(result.hasNext()).isFalse();
@@ -245,7 +245,7 @@ class EmotionBlockServiceIntegrationTest {
 
         // then
         assertThat(result.items())
-                .extracting(BlockResult::sighId)
+                .extracting(BlockResult::emotionId)
                 .containsExactly(차단할_한숨);
     }
 
@@ -270,7 +270,7 @@ class EmotionBlockServiceIntegrationTest {
         assertThat(첫_페이지.hasNext()).isTrue();
         assertThat(첫_페이지.nextCursor()).isNotBlank();
         assertThat(다음_페이지.items())
-                .extracting(BlockResult::sighId)
+                .extracting(BlockResult::emotionId)
                 .containsExactly(차단한_한숨들.getFirst());
         assertThat(다음_페이지.hasNext()).isFalse();
         assertThat(다음_페이지.nextCursor()).isNull();

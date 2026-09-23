@@ -30,7 +30,7 @@ public record SighBlockResponse(
 
     public static SighBlockResponse from(BlockResult result) {
         return new SighBlockResponse(
-                result.sighId(),
+                result.emotionId(),
                 result.nickname(),
                 result.memo(),
                 result.createdAt()

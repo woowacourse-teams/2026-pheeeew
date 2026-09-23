@@ -85,7 +85,7 @@ class DeviceBlockServiceIntegrationTest {
         // then
         assertThat(result.created()).isTrue();
         assertThat(result.block().blockId()).isPositive();
-        assertThat(result.block().sighId()).isEqualTo(근거_한숨);
+        assertThat(result.block().emotionId()).isEqualTo(근거_한숨);
         assertThat(result.block().nickname()).isEqualTo("외로운 회사원");
         assertThat(result.block().memo()).isEqualTo("오늘은 조금 지쳤다");
         assertThat(deviceBlockRepository.count()).isOne();
@@ -106,7 +106,7 @@ class DeviceBlockServiceIntegrationTest {
         // then
         assertThat(다시.created()).isFalse();
         assertThat(다시.block().blockId()).isEqualTo(최초.block().blockId());
-        assertThat(다시.block().sighId()).isEqualTo(최초_근거_한숨);
+        assertThat(다시.block().emotionId()).isEqualTo(최초_근거_한숨);
         assertThat(다시.block().memo()).isEqualTo("최초 근거");
         assertThat(deviceBlockRepository.count()).isOne();
     }
@@ -288,7 +288,7 @@ class DeviceBlockServiceIntegrationTest {
 
         // then
         assertThat(result.items())
-                .extracting(BlockResult::sighId)
+                .extracting(BlockResult::emotionId)
                 .containsExactly(나중에_차단한_근거_한숨, 먼저_차단한_근거_한숨);
         assertThat(result.items().getFirst().memo()).isEqualTo("나중에 차단");
         assertThat(result.hasNext()).isFalse();
