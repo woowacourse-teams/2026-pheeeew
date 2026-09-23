@@ -4,8 +4,8 @@ import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.emotion.presentation.dto.SighCreateV2Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
-import com.pheeeew.emotion.presentation.dto.SighLikeRequest;
-import com.pheeeew.emotion.presentation.dto.SighLikeResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionLikeRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionLikeResponse;
 import com.pheeeew.emotion.presentation.dto.SighListRequest;
 import com.pheeeew.emotion.presentation.dto.SighV2Properties;
 import io.swagger.v3.oas.annotations.Operation;
@@ -438,7 +438,7 @@ public interface SighV2ControllerApi {
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "요청한 상태 반영 또는 기존 상태 유지",
-                    content = @Content(schema = @Schema(implementation = SighLikeResponse.class))),
+                    content = @Content(schema = @Schema(implementation = EmotionLikeResponse.class))),
             @ApiResponse(responseCode = "400", description = "한숨 ID가 1 미만이거나 liked가 누락 또는 유효하지 않음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401",
@@ -452,7 +452,7 @@ public interface SighV2ControllerApi {
             @ApiResponse(responseCode = "500", description = "동시 변경 충돌이 해소되지 않거나 처리 중 서버 오류",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    SighLikeResponse update(
+    EmotionLikeResponse update(
             @Parameter(description = "좋아요 상태를 변경할 한숨 ID", example = "42", schema = @Schema(minimum = "1"))
             @Min(value = 1, message = "한숨 ID는 1 이상이어야 합니다.") Long sighId,
             @Parameter(hidden = true) UUID devicePublicId,
@@ -460,6 +460,6 @@ public interface SighV2ControllerApi {
                     @ExampleObject(name = "좋아요 추가", value = "{\"liked\":true}"),
                     @ExampleObject(name = "좋아요 취소", value = "{\"liked\":false}")
             }))
-            @Valid SighLikeRequest request
+            @Valid EmotionLikeRequest request
     );
 }

@@ -11,8 +11,8 @@ import com.pheeeew.emotion.application.like.EmotionLikeRetryService;
 import com.pheeeew.emotion.application.like.dto.EmotionLikeResult;
 import com.pheeeew.emotion.presentation.dto.SighCreateV2Request;
 import com.pheeeew.emotion.presentation.dto.SighFeature;
-import com.pheeeew.emotion.presentation.dto.SighLikeRequest;
-import com.pheeeew.emotion.presentation.dto.SighLikeResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionLikeRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionLikeResponse;
 import com.pheeeew.emotion.presentation.dto.SighListRequest;
 import com.pheeeew.emotion.presentation.dto.SighV2Properties;
 import java.net.URI;
@@ -104,13 +104,13 @@ public class SighV2Controller implements SighV2ControllerApi {
 
     @Override
     @PostMapping("/{sighId}/likes")
-    public SighLikeResponse update(
+    public EmotionLikeResponse update(
             @PathVariable Long sighId,
             @CurrentDevice UUID devicePublicId,
-            @RequestBody SighLikeRequest request
+            @RequestBody EmotionLikeRequest request
     ) {
         EmotionLikeResult result = emotionLikeRetryService.update(sighId, devicePublicId, request.liked());
-        return SighLikeResponse.from(result);
+        return EmotionLikeResponse.from(result);
     }
 
     private SighFeature<SighV2Properties> toFeature(EmotionResult emotion, EmotionLikeResult like) {

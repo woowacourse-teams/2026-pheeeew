@@ -3,7 +3,8 @@ package com.pheeeew.emotion.presentation.dto;
 import com.pheeeew.emotion.application.like.dto.EmotionLikeResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-public record SighLikeResponse(
+@Schema(name = "SighLikeResponse")
+public record EmotionLikeResponse(
         @Schema(description = "처리 후 인증된 기기의 좋아요 여부", example = "true")
         boolean liked,
 
@@ -11,7 +12,7 @@ public record SighLikeResponse(
         long likeCount
 ) {
 
-    public static SighLikeResponse from(EmotionLikeResult result) {
-        return new SighLikeResponse(result.liked(), result.likeCount());
+    public static EmotionLikeResponse from(EmotionLikeResult result) {
+        return new EmotionLikeResponse(result.liked(), result.likeCount());
     }
 }
