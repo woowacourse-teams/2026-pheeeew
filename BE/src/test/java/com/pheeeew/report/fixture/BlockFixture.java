@@ -24,7 +24,7 @@ public final class BlockFixture {
         return DeviceBlock.builder()
                 .blockerDeviceId(기본_차단자_기기_식별자)
                 .blockedDeviceId(기본_차단_대상_기기_식별자)
-                .originSighId(기본_한숨_식별자);
+                .originEmotionId(기본_한숨_식별자);
     }
 
     public static EmotionBlock 저장된_한숨_차단(Long id, Instant createdAt) {

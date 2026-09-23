@@ -30,13 +30,13 @@ public class DeviceBlock extends BaseEntity {
     private Long blockedDeviceId;
 
     @Column(name = "origin_sigh_id", nullable = false, updatable = false)
-    private Long originSighId;
+    private Long originEmotionId;
 
     @Builder
-    private DeviceBlock(Long blockerDeviceId, Long blockedDeviceId, Long originSighId) {
+    private DeviceBlock(Long blockerDeviceId, Long blockedDeviceId, Long originEmotionId) {
         this.blockerDeviceId = Objects.requireNonNull(blockerDeviceId);
         this.blockedDeviceId = requireNotSelf(blockerDeviceId, blockedDeviceId);
-        this.originSighId = Objects.requireNonNull(originSighId);
+        this.originEmotionId = Objects.requireNonNull(originEmotionId);
     }
 
     private Long requireNotSelf(Long blockerDeviceId, Long blockedDeviceId) {

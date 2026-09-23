@@ -109,18 +109,18 @@ public class DeviceBlockService {
     }
 
     private BlockResult toResult(DeviceBlock block, Sigh requestedEmotion) {
-        if (block.getOriginSighId().equals(requestedEmotion.getId())) {
+        if (block.getOriginEmotionId().equals(requestedEmotion.getId())) {
             return BlockResult.of(block, requestedEmotion);
         }
 
-        return BlockResult.of(block, findEmotion(block.getOriginSighId()));
+        return BlockResult.of(block, findEmotion(block.getOriginEmotionId()));
     }
 
     private BlockSaveResult saveNewBlock(Long blockerDeviceId, Long blockedDeviceId, Sigh emotion) {
         DeviceBlock block = DeviceBlock.builder()
                 .blockerDeviceId(blockerDeviceId)
                 .blockedDeviceId(blockedDeviceId)
-                .originSighId(emotion.getId())
+                .originEmotionId(emotion.getId())
                 .build();
 
         try {

@@ -339,15 +339,15 @@ class DeviceBlockServiceIntegrationTest {
                 .single();
     }
 
-    private void 차단_행을_직접_넣는다(Long blockerDeviceId, Long blockedDeviceId, Long originSighId) {
+    private void 차단_행을_직접_넣는다(Long blockerDeviceId, Long blockedDeviceId, Long originEmotionId) {
         jdbcClient.sql("""
                         INSERT INTO device_blocks
                             (blocker_device_id, blocked_device_id, origin_sigh_id, created_at, updated_at)
-                        VALUES (:blockerDeviceId, :blockedDeviceId, :originSighId, NOW(), NOW())
+                        VALUES (:blockerDeviceId, :blockedDeviceId, :originEmotionId, NOW(), NOW())
                         """)
                 .param("blockerDeviceId", blockerDeviceId)
                 .param("blockedDeviceId", blockedDeviceId)
-                .param("originSighId", originSighId)
+                .param("originEmotionId", originEmotionId)
                 .update();
     }
 

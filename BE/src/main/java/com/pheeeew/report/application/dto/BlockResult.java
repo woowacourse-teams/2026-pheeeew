@@ -31,7 +31,7 @@ public record BlockResult(Long blockId, Long emotionId, String nickname, String 
     public static BlockResult of(DeviceBlock block, Sigh originEmotion) {
         return new BlockResult(
                 block.getId(),
-                block.getOriginSighId(),
+                block.getOriginEmotionId(),
                 originEmotion.getNickname(),
                 originEmotion.getMemo(),
                 block.getCreatedAt()
