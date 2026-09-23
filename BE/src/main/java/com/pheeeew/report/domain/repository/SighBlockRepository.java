@@ -17,16 +17,16 @@ public interface SighBlockRepository extends JpaRepository<SighBlock, Long> {
     @Query(
             value = """
                     SELECT
-                        sigh_block.id AS "blockId",
-                        sigh_block.sigh_id AS "emotionId",
-                        sigh.nickname AS nickname,
-                        sigh.memo AS memo,
-                        sigh_block.created_at AS "createdAt"
-                    FROM sigh_blocks sigh_block
-                    JOIN sighs sigh ON sigh.id = sigh_block.sigh_id
-                    WHERE sigh_block.blocker_device_id = :blockerDeviceId
-                      AND sigh_block.id < :lastId
-                    ORDER BY sigh_block.id DESC
+                        emotion_block.id AS "blockId",
+                        emotion_block.sigh_id AS "emotionId",
+                        emotion.nickname AS nickname,
+                        emotion.memo AS memo,
+                        emotion_block.created_at AS "createdAt"
+                    FROM sigh_blocks emotion_block
+                    JOIN sighs emotion ON emotion.id = emotion_block.sigh_id
+                    WHERE emotion_block.blocker_device_id = :blockerDeviceId
+                      AND emotion_block.id < :lastId
+                    ORDER BY emotion_block.id DESC
                     LIMIT :limit
                     """,
             nativeQuery = true
