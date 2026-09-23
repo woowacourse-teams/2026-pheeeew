@@ -58,4 +58,8 @@ public class GroupMember extends BaseEntity {
         this.device = Objects.requireNonNull(device);
         this.role = Objects.requireNonNull(role);
     }
+
+    public boolean isOwner() {
+        return role == GroupRole.OWNER;
+    }
 }

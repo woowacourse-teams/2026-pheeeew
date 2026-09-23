@@ -57,4 +57,11 @@ public class GroupStamp extends BaseEntity {
         this.backgroundColor = Objects.requireNonNull(backgroundColor);
         this.frame = Objects.requireNonNull(frame);
     }
+
+    public void change(String text, String textColor, String backgroundColor, StampFrame frame) {
+        this.text = Objects.requireNonNull(text);
+        this.textColor = Objects.requireNonNull(textColor);
+        this.backgroundColor = Objects.requireNonNull(backgroundColor);
+        this.frame = Objects.requireNonNull(frame);
+    }
 }
