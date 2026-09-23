@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.pheeeew.sigh.application.SighLocationGenerator;
+import com.pheeeew.sigh.application.EmotionLocationGenerator;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.security.SecureRandom;
@@ -25,7 +25,7 @@ class PostgisSighLocationGeneratorIntegrationTest {
     private static final double SEOUL_CITY_HALL_LATITUDE = 37.5664;
 
     @Autowired
-    private SighLocationGenerator sighLocationGenerator;
+    private EmotionLocationGenerator emotionLocationGenerator;
 
     @Autowired
     private JdbcClient jdbcClient;
@@ -39,7 +39,7 @@ class PostgisSighLocationGeneratorIntegrationTest {
             double centerLongitude, double centerLatitude
     ) {
         // given / when
-        Point location = sighLocationGenerator.generate(centerLongitude, centerLatitude);
+        Point location = emotionLocationGenerator.generate(centerLongitude, centerLatitude);
 
         // then
         ProjectedOffset offset = findProjectedOffset(location, centerLongitude, centerLatitude);
@@ -58,7 +58,7 @@ class PostgisSighLocationGeneratorIntegrationTest {
         // given
         SecureRandom random = mock(SecureRandom.class);
         when(random.nextDouble()).thenReturn(radialUniform, angularUniform);
-        SighLocationGenerator generator = new PostgisSighLocationGenerator(sighRepository, random);
+        EmotionLocationGenerator generator = new PostgisSighLocationGenerator(sighRepository, random);
 
         // when
         Point location = generator.generate(SEOUL_CITY_HALL_LONGITUDE, SEOUL_CITY_HALL_LATITUDE);

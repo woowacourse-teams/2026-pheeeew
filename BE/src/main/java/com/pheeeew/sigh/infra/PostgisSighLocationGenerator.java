@@ -1,6 +1,6 @@
 package com.pheeeew.sigh.infra;
 
-import com.pheeeew.sigh.application.SighLocationGenerator;
+import com.pheeeew.sigh.application.EmotionLocationGenerator;
 import com.pheeeew.sigh.domain.repository.SighRepository;
 import com.pheeeew.sigh.domain.repository.projection.GeneratedLocation;
 import java.security.SecureRandom;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 @RequiredArgsConstructor
 @Component
-public class PostgisSighLocationGenerator implements SighLocationGenerator {
+public class PostgisSighLocationGenerator implements EmotionLocationGenerator {
 
     private static final int WGS84_SRID = 4326;
     private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory(new PrecisionModel(), WGS84_SRID);

@@ -46,7 +46,7 @@ public class SighService {
 
     private final SighRepository sighRepository;
     private final DeviceRepository deviceRepository;
-    private final SighLocationGenerator sighLocationGenerator;
+    private final EmotionLocationGenerator emotionLocationGenerator;
     private final EmotionNicknameGenerator emotionNicknameGenerator;
     private final Clock clock;
 
@@ -135,7 +135,7 @@ public class SighService {
     }
 
     private SighSaveResult saveNewSigh(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
-        Point location = sighLocationGenerator.generate(longitude, latitude);
+        Point location = emotionLocationGenerator.generate(longitude, latitude);
         Sigh sigh = Sigh.builder()
                 .requestId(requestId)
                 .location(location)

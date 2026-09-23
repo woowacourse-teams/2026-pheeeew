@@ -14,7 +14,7 @@ import static org.mockito.Mockito.when;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.sigh.application.SighListCursorCodec;
-import com.pheeeew.sigh.application.SighLocationGenerator;
+import com.pheeeew.sigh.application.EmotionLocationGenerator;
 import com.pheeeew.sigh.application.EmotionNicknameGenerator;
 import com.pheeeew.sigh.application.SighService;
 import com.pheeeew.sigh.application.dto.SighListCursor;
@@ -69,7 +69,7 @@ class SighMetricsAspectTest {
     void setUp() {
         context.registerBean(SighRepository.class, () -> repository);
         context.registerBean(DeviceRepository.class, () -> mock(DeviceRepository.class));
-        context.registerBean(SighLocationGenerator.class, () -> mock(SighLocationGenerator.class));
+        context.registerBean(EmotionLocationGenerator.class, () -> mock(EmotionLocationGenerator.class));
         context.registerBean(EmotionNicknameGenerator.class, () -> mock(EmotionNicknameGenerator.class));
         context.registerBean(SimpleMeterRegistry.class, () -> registry);
         context.registerBean(Clock.class, () -> Clock.fixed(SNAPSHOT_AT, ZoneId.of("Asia/Seoul")));
