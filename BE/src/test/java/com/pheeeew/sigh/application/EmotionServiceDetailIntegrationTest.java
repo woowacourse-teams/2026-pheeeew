@@ -1,7 +1,7 @@
 package com.pheeeew.sigh.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
-import static com.pheeeew.sigh.fixture.SighFixture.기본_한숨_빌더;
+import static com.pheeeew.sigh.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;

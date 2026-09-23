@@ -1,7 +1,7 @@
 package com.pheeeew.report.presentation;
 
 import static com.pheeeew.report.fixture.BlockFixture.저장된_사용자_차단;
-import static com.pheeeew.sigh.fixture.SighFixture.기본_한숨_빌더;
+import static com.pheeeew.sigh.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;

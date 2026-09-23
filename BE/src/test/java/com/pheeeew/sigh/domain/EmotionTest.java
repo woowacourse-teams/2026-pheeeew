@@ -1,7 +1,7 @@
 package com.pheeeew.sigh.domain;
 
-import static com.pheeeew.sigh.fixture.SighFixture.기본_한숨_빌더;
-import static com.pheeeew.sigh.fixture.SighFixture.서울시청_좌표;
+import static com.pheeeew.sigh.fixture.EmotionFixture.기본_한숨_빌더;
+import static com.pheeeew.sigh.fixture.EmotionFixture.서울시청_좌표;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 

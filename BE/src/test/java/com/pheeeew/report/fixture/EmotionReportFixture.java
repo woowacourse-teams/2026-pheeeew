@@ -5,11 +5,11 @@ import java.time.Instant;
 import java.util.UUID;
 import org.springframework.test.util.ReflectionTestUtils;
 
-public final class SighReportFixture {
+public final class EmotionReportFixture {
 
     private static final Long DEFAULT_SIGH_ID = 42L;
 
-    private SighReportFixture() {
+    private EmotionReportFixture() {
     }
 
     public static EmotionReport.EmotionReportBuilder 기본_신고_빌더() {

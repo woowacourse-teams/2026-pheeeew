@@ -1,8 +1,8 @@
 package com.pheeeew.sigh.application.like;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
-import static com.pheeeew.sigh.fixture.SighFixture.기본_한숨_빌더;
-import static com.pheeeew.sigh.fixture.SighLikeFixture.기본_좋아요_빌더;
+import static com.pheeeew.sigh.fixture.EmotionFixture.기본_한숨_빌더;
+import static com.pheeeew.sigh.fixture.EmotionLikeFixture.기본_좋아요_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doAnswer;

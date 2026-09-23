@@ -2,9 +2,9 @@ package com.pheeeew.sigh.fixture;
 
 import com.pheeeew.sigh.domain.EmotionLike;
 
-public final class SighLikeFixture {
+public final class EmotionLikeFixture {
 
-    private SighLikeFixture() {
+    private EmotionLikeFixture() {
     }
 
     public static EmotionLike.EmotionLikeBuilder 기본_좋아요_빌더() {

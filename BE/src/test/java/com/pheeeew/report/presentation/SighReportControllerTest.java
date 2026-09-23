@@ -1,9 +1,9 @@
 package com.pheeeew.report.presentation;
 
-import static com.pheeeew.report.fixture.SighReportFixture.기본_신고_사유;
-import static com.pheeeew.report.fixture.SighReportFixture.신고_사유;
-import static com.pheeeew.report.fixture.SighReportFixture.신고자_기기_공개_식별자;
-import static com.pheeeew.report.fixture.SighReportFixture.저장된_기본_신고;
+import static com.pheeeew.report.fixture.EmotionReportFixture.기본_신고_사유;
+import static com.pheeeew.report.fixture.EmotionReportFixture.신고_사유;
+import static com.pheeeew.report.fixture.EmotionReportFixture.신고자_기기_공개_식별자;
+import static com.pheeeew.report.fixture.EmotionReportFixture.저장된_기본_신고;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;

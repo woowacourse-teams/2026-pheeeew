@@ -1,8 +1,8 @@
 package com.pheeeew.report.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
-import static com.pheeeew.sigh.fixture.SighFixture.기기가_있는_한숨_빌더;
-import static com.pheeeew.sigh.fixture.SighFixture.기본_한숨_빌더;
+import static com.pheeeew.sigh.fixture.EmotionFixture.기기가_있는_한숨_빌더;
+import static com.pheeeew.sigh.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
@@ -30,7 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-class SighReportAutoDeleteIntegrationTest {
+class EmotionReportAutoDeleteIntegrationTest {
 
     private static final int 자동_삭제_임계값 = 5;
 

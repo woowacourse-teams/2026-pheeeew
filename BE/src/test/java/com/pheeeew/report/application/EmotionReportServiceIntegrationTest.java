@@ -1,8 +1,8 @@
 package com.pheeeew.report.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
-import static com.pheeeew.report.fixture.SighReportFixture.기본_신고_사유;
-import static com.pheeeew.report.fixture.SighReportFixture.없는_기기_공개_식별자;
+import static com.pheeeew.report.fixture.EmotionReportFixture.기본_신고_사유;
+import static com.pheeeew.report.fixture.EmotionReportFixture.없는_기기_공개_식별자;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 

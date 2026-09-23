@@ -1,7 +1,7 @@
 package com.pheeeew.report.domain;
 
-import static com.pheeeew.report.fixture.SighReportFixture.기본_신고_빌더;
-import static com.pheeeew.report.fixture.SighReportFixture.신고_사유;
+import static com.pheeeew.report.fixture.EmotionReportFixture.기본_신고_빌더;
+import static com.pheeeew.report.fixture.EmotionReportFixture.신고_사유;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 

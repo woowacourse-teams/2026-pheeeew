@@ -9,13 +9,13 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.test.util.ReflectionTestUtils;
 
-public final class SighFixture {
+public final class EmotionFixture {
 
     private static final int WGS84_SRID = 4326;
     private static final GeometryFactory GEOMETRY_FACTORY =
             new GeometryFactory(new PrecisionModel(), WGS84_SRID);
 
-    private SighFixture() {
+    private EmotionFixture() {
     }
 
     public static Emotion.EmotionBuilder 기본_한숨_빌더() {
