@@ -4,7 +4,8 @@ import com.pheeeew.emotion.application.dto.EmotionMapItem;
 import com.pheeeew.emotion.application.dto.EmotionResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-public record SighFeature<P>(
+@Schema(name = "SighFeature")
+public record EmotionFeature<P>(
         @Schema(example = "Feature")
         String type,
 
@@ -18,8 +19,8 @@ public record SighFeature<P>(
 
     private static final String FEATURE_TYPE = "Feature";
 
-    public static <P> SighFeature<P> of(EmotionResult emotion, P properties) {
-        return new SighFeature<>(
+    public static <P> EmotionFeature<P> of(EmotionResult emotion, P properties) {
+        return new EmotionFeature<>(
                 FEATURE_TYPE,
                 emotion.id(),
                 PointGeometry.of(emotion.longitude(), emotion.latitude()),
@@ -27,8 +28,8 @@ public record SighFeature<P>(
         );
     }
 
-    public static <P> SighFeature<P> of(EmotionMapItem emotion, P properties) {
-        return new SighFeature<>(
+    public static <P> EmotionFeature<P> of(EmotionMapItem emotion, P properties) {
+        return new EmotionFeature<>(
                 FEATURE_TYPE,
                 emotion.id(),
                 PointGeometry.of(emotion.longitude(), emotion.latitude()),

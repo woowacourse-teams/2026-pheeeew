@@ -2,9 +2,9 @@ package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateV1Request;
-import com.pheeeew.emotion.presentation.dto.SighFeature;
+import com.pheeeew.emotion.presentation.dto.EmotionFeature;
 import com.pheeeew.emotion.presentation.dto.EmotionMapRequest;
-import com.pheeeew.emotion.presentation.dto.SighMapResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV1Properties;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -60,7 +60,7 @@ public interface SighV1ControllerApi {
                     description = "지도 영역 내 한숨 조회 성공",
                     content = @Content(
                             mediaType = "application/geo+json",
-                            schema = @Schema(implementation = SighMapResponse.class)
+                            schema = @Schema(implementation = EmotionMapResponse.class)
                     )
             ),
             @ApiResponse(
@@ -97,7 +97,7 @@ public interface SighV1ControllerApi {
                     )
             )
     })
-    ResponseEntity<SighMapResponse> findAllWithinBounds(
+    ResponseEntity<EmotionMapResponse> findAllWithinBounds(
             @Parameter(hidden = true) Optional<UUID> devicePublicId,
             @ParameterObject EmotionMapRequest request
     );
@@ -135,7 +135,7 @@ public interface SighV1ControllerApi {
                     content = @Content(
                             mediaType = "application/geo+json",
                             schema = @Schema(
-                                    allOf = SighFeature.class,
+                                    allOf = EmotionFeature.class,
                                     properties = @StringToClassMapItem(
                                             key = "properties",
                                             value = EmotionV1Properties.class
@@ -149,7 +149,7 @@ public interface SighV1ControllerApi {
                     content = @Content(
                             mediaType = "application/geo+json",
                             schema = @Schema(
-                                    allOf = SighFeature.class,
+                                    allOf = EmotionFeature.class,
                                     properties = @StringToClassMapItem(
                                             key = "properties",
                                             value = EmotionV1Properties.class
@@ -177,5 +177,5 @@ public interface SighV1ControllerApi {
                     )
             )
     })
-    ResponseEntity<SighFeature<EmotionV1Properties>> save(EmotionCreateV1Request request);
+    ResponseEntity<EmotionFeature<EmotionV1Properties>> save(EmotionCreateV1Request request);
 }

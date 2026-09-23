@@ -6,9 +6,9 @@ import com.pheeeew.emotion.application.dto.EmotionMapResult;
 import com.pheeeew.emotion.application.dto.EmotionResult;
 import com.pheeeew.emotion.application.dto.EmotionSaveResult;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateV1Request;
-import com.pheeeew.emotion.presentation.dto.SighFeature;
+import com.pheeeew.emotion.presentation.dto.EmotionFeature;
 import com.pheeeew.emotion.presentation.dto.EmotionMapRequest;
-import com.pheeeew.emotion.presentation.dto.SighMapResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV1Properties;
 import jakarta.validation.Valid;
 import java.util.Optional;
@@ -35,7 +35,7 @@ public class SighV1Controller implements SighV1ControllerApi {
 
     @Override
     @GetMapping
-    public ResponseEntity<SighMapResponse> findAllWithinBounds(
+    public ResponseEntity<EmotionMapResponse> findAllWithinBounds(
             @CurrentDevice Optional<UUID> devicePublicId,
             @Valid @ModelAttribute EmotionMapRequest request
     ) {
@@ -43,12 +43,12 @@ public class SighV1Controller implements SighV1ControllerApi {
 
         return ResponseEntity.ok()
                 .contentType(GEO_JSON)
-                .body(SighMapResponse.from(result));
+                .body(EmotionMapResponse.from(result));
     }
 
     @Override
     @PostMapping
-    public ResponseEntity<SighFeature<EmotionV1Properties>> save(
+    public ResponseEntity<EmotionFeature<EmotionV1Properties>> save(
             @Valid @RequestBody EmotionCreateV1Request request
     ) {
         EmotionSaveResult result = emotionService.save(request.requestId(), request.longitude(), request.latitude());
@@ -61,7 +61,7 @@ public class SighV1Controller implements SighV1ControllerApi {
 
         return ResponseEntity.status(status)
                 .contentType(GEO_JSON)
-                .body(SighFeature.of(
+                .body(EmotionFeature.of(
                         emotion,
                         EmotionV1Properties.from(emotion.createdAt())
                 ));
