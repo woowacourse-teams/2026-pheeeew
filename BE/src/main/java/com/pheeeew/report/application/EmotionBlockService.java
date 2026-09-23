@@ -2,7 +2,7 @@ package com.pheeeew.report.application;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.report.exception.BlockErrorCode.BLOCK_SAVE_FAILED;
-import static com.pheeeew.sigh.exception.EmotionErrorCode.EMOTION_NOT_FOUND;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -14,9 +14,9 @@ import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.report.domain.repository.projection.BlockProjection;
 import com.pheeeew.report.exception.BlockException;
-import com.pheeeew.sigh.domain.Emotion;
-import com.pheeeew.sigh.domain.repository.EmotionRepository;
-import com.pheeeew.sigh.exception.EmotionException;
+import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.domain.repository.EmotionRepository;
+import com.pheeeew.emotion.exception.EmotionException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

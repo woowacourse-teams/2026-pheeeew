@@ -22,7 +22,7 @@ import com.pheeeew.device.domain.repository.DeviceChallengeRepository;
 import com.pheeeew.device.domain.repository.DeviceRefreshTokenRepository;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
-import com.pheeeew.sigh.domain.repository.EmotionRepository;
+import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.support.SharedPostgisTestConfiguration;
 import java.util.List;
 import java.util.Map;

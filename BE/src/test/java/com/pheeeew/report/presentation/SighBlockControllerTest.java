@@ -1,7 +1,7 @@
 package com.pheeeew.report.presentation;
 
 import static com.pheeeew.report.fixture.BlockFixture.저장된_한숨_차단;
-import static com.pheeeew.sigh.fixture.EmotionFixture.기본_한숨_빌더;
+import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -15,9 +15,9 @@ import com.pheeeew.report.application.dto.BlockResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.exception.BlockErrorCode;
 import com.pheeeew.report.exception.BlockException;
-import com.pheeeew.sigh.domain.Emotion;
-import com.pheeeew.sigh.exception.EmotionErrorCode;
-import com.pheeeew.sigh.exception.EmotionException;
+import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.exception.EmotionErrorCode;
+import com.pheeeew.emotion.exception.EmotionException;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;

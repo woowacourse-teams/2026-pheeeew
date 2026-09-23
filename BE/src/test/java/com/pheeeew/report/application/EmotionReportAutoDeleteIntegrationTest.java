@@ -1,8 +1,8 @@
 package com.pheeeew.report.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
-import static com.pheeeew.sigh.fixture.EmotionFixture.기기가_있는_한숨_빌더;
-import static com.pheeeew.sigh.fixture.EmotionFixture.기본_한숨_빌더;
+import static com.pheeeew.emotion.fixture.EmotionFixture.기기가_있는_한숨_빌더;
+import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
@@ -12,8 +12,8 @@ import com.pheeeew.report.domain.EmotionReport;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
-import com.pheeeew.sigh.domain.Emotion;
-import com.pheeeew.sigh.domain.repository.EmotionRepository;
+import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Instant;
 import java.util.ArrayList;

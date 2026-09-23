@@ -3,7 +3,7 @@ package com.pheeeew.report.application.dto;
 import com.pheeeew.report.domain.DeviceBlock;
 import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.report.domain.repository.projection.BlockProjection;
-import com.pheeeew.sigh.domain.Emotion;
+import com.pheeeew.emotion.domain.Emotion;
 import java.time.Instant;
 
 public record BlockResult(Long blockId, Long emotionId, String nickname, String memo, Instant createdAt) {
