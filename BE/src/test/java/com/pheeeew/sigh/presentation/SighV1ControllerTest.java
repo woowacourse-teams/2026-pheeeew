@@ -11,7 +11,7 @@ import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
-import com.pheeeew.sigh.application.dto.SighSaveResult;
+import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.sigh.exception.SighErrorCode;
@@ -344,8 +344,8 @@ class SighV1ControllerTest {
         return new SighCreateV1Request(REQUEST_ID, 37.5664, 126.9780);
     }
 
-    private SighSaveResult 기본_저장_결과(boolean created) {
-        return SighSaveResult.of(
+    private EmotionSaveResult 기본_저장_결과(boolean created) {
+        return EmotionSaveResult.of(
                 EmotionResult.of(
                         42L,
                         126.9774,

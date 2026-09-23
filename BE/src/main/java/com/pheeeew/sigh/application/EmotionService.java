@@ -9,13 +9,13 @@ import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.sigh.application.dto.SighDetailResult;
+import com.pheeeew.sigh.application.dto.EmotionDetailResult;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
-import com.pheeeew.sigh.application.dto.SighSaveResult;
+import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
@@ -50,18 +50,18 @@ public class EmotionService {
     private final EmotionNicknameGenerator emotionNicknameGenerator;
     private final Clock clock;
 
-    public SighSaveResult save(UUID requestId, double longitude, double latitude) {
+    public EmotionSaveResult save(UUID requestId, double longitude, double latitude) {
         return saveEmotion(requestId, longitude, latitude, null, null);
     }
 
-    public SighSaveResult save(UUID requestId, double longitude, double latitude, String memo, UUID devicePublicId) {
+    public EmotionSaveResult save(UUID requestId, double longitude, double latitude, String memo, UUID devicePublicId) {
         Long deviceId = findDeviceId(devicePublicId);
 
         return saveEmotion(requestId, longitude, latitude, memo, deviceId);
     }
 
     @Transactional(readOnly = true)
-    public SighDetailResult findById(Long id, UUID devicePublicId) {
+    public EmotionDetailResult findById(Long id, UUID devicePublicId) {
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         Long deviceId = findDeviceId(devicePublicId);
         EmotionDetailProjection projection = emotionRepository.findById(id, deviceId)
@@ -72,7 +72,7 @@ public class EmotionService {
             throw new SighException(SIGH_EXPIRED);
         }
 
-        return SighDetailResult.from(projection);
+        return EmotionDetailResult.from(projection);
     }
 
     public EmotionMapResult findAllWithinBounds(EmotionSearchBounds bounds, Optional<UUID> viewerDevicePublicId) {
@@ -119,7 +119,7 @@ public class EmotionService {
         return findList(cursor, period, devicePublicId);
     }
 
-    private SighSaveResult saveEmotion(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
+    private EmotionSaveResult saveEmotion(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
         Optional<EmotionDetailProjection> existingEmotion = emotionRepository.findByRequestId(requestId, deviceId);
 
         if (existingEmotion.isPresent()) {
@@ -129,12 +129,12 @@ public class EmotionService {
         return saveNewEmotion(requestId, longitude, latitude, memo, deviceId);
     }
 
-    private SighSaveResult createSaveResult(EmotionDetailProjection projection) {
-        SighDetailResult detail = SighDetailResult.from(projection);
-        return SighSaveResult.of(detail.sigh(), false, detail.like());
+    private EmotionSaveResult createSaveResult(EmotionDetailProjection projection) {
+        EmotionDetailResult detail = EmotionDetailResult.from(projection);
+        return EmotionSaveResult.of(detail.emotion(), false, detail.like());
     }
 
-    private SighSaveResult saveNewEmotion(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
+    private EmotionSaveResult saveNewEmotion(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
         Point location = emotionLocationGenerator.generate(longitude, latitude);
         Emotion emotion = Emotion.builder()
                 .requestId(requestId)
@@ -146,13 +146,13 @@ public class EmotionService {
 
         try {
             Emotion savedEmotion = emotionRepository.saveAndFlush(emotion);
-            return SighSaveResult.of(EmotionResult.from(savedEmotion), true, SighLikeResult.of(false, 0));
+            return EmotionSaveResult.of(EmotionResult.from(savedEmotion), true, SighLikeResult.of(false, 0));
         } catch (DataIntegrityViolationException cause) {
             return findExistingEmotion(requestId, deviceId, cause);
         }
     }
 
-    private SighSaveResult findExistingEmotion(UUID requestId, Long deviceId, DataIntegrityViolationException cause) {
+    private EmotionSaveResult findExistingEmotion(UUID requestId, Long deviceId, DataIntegrityViolationException cause) {
         return emotionRepository.findByRequestId(requestId, deviceId)
                 .map(this::createSaveResult)
                 .orElseThrow(() -> new SighException(SIGH_SAVE_FAILED, cause));
@@ -195,8 +195,8 @@ public class EmotionService {
             projections = projections.subList(0, LIST_PAGE_SIZE);
         }
 
-        List<SighDetailResult> items = projections.stream()
-                .map(SighDetailResult::from)
+        List<EmotionDetailResult> items = projections.stream()
+                .map(EmotionDetailResult::from)
                 .toList();
         String nextCursor = createNextCursor(cursor, projections, hasNext);
 

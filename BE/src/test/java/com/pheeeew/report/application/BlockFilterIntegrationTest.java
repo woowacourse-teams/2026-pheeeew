@@ -331,7 +331,7 @@ class BlockFilterIntegrationTest {
             @Override
             List<Long> 조회한다(EmotionService emotionService, EmotionSearchBounds bounds, UUID viewerPublicId) {
                 return emotionService.findFirstListPage(bounds, viewerPublicId).items().stream()
-                        .map(item -> item.sigh().id())
+                        .map(item -> item.emotion().id())
                         .toList();
             }
         };

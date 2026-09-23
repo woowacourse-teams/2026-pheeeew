@@ -10,13 +10,13 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.sigh.application.dto.SighDetailResult;
+import com.pheeeew.sigh.application.dto.EmotionDetailResult;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.EmotionMapItem;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
-import com.pheeeew.sigh.application.dto.SighSaveResult;
+import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
@@ -126,7 +126,7 @@ class EmotionServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        SighSaveResult result = emotionService.save(
+        EmotionSaveResult result = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE
@@ -134,12 +134,12 @@ class EmotionServiceIntegrationTest {
 
         // then
         assertThat(result.created()).isTrue();
-        assertThat(result.sigh().id()).isPositive();
-        assertThat(result.sigh().createdAt()).isNotNull();
-        assertThat(result.sigh().createdAt().getNano() % 1_000).isZero();
+        assertThat(result.emotion().id()).isPositive();
+        assertThat(result.emotion().createdAt()).isNotNull();
+        assertThat(result.emotion().createdAt().getNano() % 1_000).isZero();
 
-        Emotion saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
-        assertThat(saved.getCreatedAt()).isEqualTo(result.sigh().createdAt());
+        Emotion saved = emotionRepository.findById(result.emotion().id()).orElseThrow();
+        assertThat(saved.getCreatedAt()).isEqualTo(result.emotion().createdAt());
         assertThat(saved.getUpdatedAt()).isNotNull();
         assertThat(saved.getMemo()).isNull();
         assertThat(saved.getNickname())
@@ -151,12 +151,12 @@ class EmotionServiceIntegrationTest {
     @Test
     void 이전_버전으로_좋아요_수를_저장하면_먼저_저장된_값을_덮어쓰지_못한다() {
         // given
-        SighSaveResult created = emotionService.save(
+        EmotionSaveResult created = emotionService.save(
                 UUID.randomUUID(),
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE
         );
-        Long sighId = created.sigh().id();
+        Long sighId = created.emotion().id();
         Emotion first = emotionRepository.findById(sighId).orElseThrow();
         Emotion second = emotionRepository.findById(sighId).orElseThrow();
         first.increaseLikeCount();
@@ -177,7 +177,7 @@ class EmotionServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        SighSaveResult result = emotionService.save(
+        EmotionSaveResult result = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -186,10 +186,10 @@ class EmotionServiceIntegrationTest {
         );
 
         // then
-        Emotion saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
+        Emotion saved = emotionRepository.findById(result.emotion().id()).orElseThrow();
         assertThat(result.created()).isTrue();
-        assertThat(result.sigh().memo()).isEqualTo("오늘은 힘들었다");
-        assertThat(result.sigh().nickname()).isEqualTo(saved.getNickname());
+        assertThat(result.emotion().memo()).isEqualTo("오늘은 힘들었다");
+        assertThat(result.emotion().nickname()).isEqualTo(saved.getNickname());
         assertThat(saved.getMemo()).isEqualTo("오늘은 힘들었다");
     }
 
@@ -200,7 +200,7 @@ class EmotionServiceIntegrationTest {
         Device device = deviceRepository.saveAndFlush(기본_기기_빌더().build());
 
         // when
-        SighSaveResult result = emotionService.save(
+        EmotionSaveResult result = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -209,7 +209,7 @@ class EmotionServiceIntegrationTest {
         );
 
         // then
-        Emotion saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
+        Emotion saved = emotionRepository.findById(result.emotion().id()).orElseThrow();
         assertThat(result.created()).isTrue();
         assertThat(saved.getDeviceId()).isEqualTo(device.getId());
     }
@@ -220,14 +220,14 @@ class EmotionServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        SighSaveResult result = emotionService.save(
+        EmotionSaveResult result = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE
         );
 
         // then
-        Emotion saved = emotionRepository.findById(result.sigh().id()).orElseThrow();
+        Emotion saved = emotionRepository.findById(result.emotion().id()).orElseThrow();
         assertThat(saved.getDeviceId()).isNull();
     }
 
@@ -237,7 +237,7 @@ class EmotionServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
         Device 최초_기기 = deviceRepository.saveAndFlush(기본_기기_빌더().build());
         Device 나중_기기 = deviceRepository.saveAndFlush(기본_기기_빌더().build());
-        SighSaveResult first = emotionService.save(
+        EmotionSaveResult first = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -246,7 +246,7 @@ class EmotionServiceIntegrationTest {
         );
 
         // when
-        SighSaveResult retried = emotionService.save(
+        EmotionSaveResult retried = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -255,9 +255,9 @@ class EmotionServiceIntegrationTest {
         );
 
         // then
-        Emotion saved = emotionRepository.findById(first.sigh().id()).orElseThrow();
+        Emotion saved = emotionRepository.findById(first.emotion().id()).orElseThrow();
         assertThat(retried.created()).isFalse();
-        assertThat(retried.sigh().id()).isEqualTo(first.sigh().id());
+        assertThat(retried.emotion().id()).isEqualTo(first.emotion().id());
         assertThat(saved.getDeviceId()).isEqualTo(최초_기기.getId());
         assertThat(emotionRepository.count()).isOne();
     }
@@ -287,20 +287,20 @@ class EmotionServiceIntegrationTest {
     void 같은_requestId는_다른_중심으로_재시도해도_기존_한숨을_반환한다() {
         // given
         UUID requestId = UUID.randomUUID();
-        SighSaveResult first = emotionService.save(
+        EmotionSaveResult first = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE
         );
 
         // when
-        SighSaveResult retried = emotionService.save(requestId, 129.0756, 35.1796);
+        EmotionSaveResult retried = emotionService.save(requestId, 129.0756, 35.1796);
 
         // then
         assertThat(retried.created()).isFalse();
-        assertThat(retried.sigh().id()).isEqualTo(first.sigh().id());
-        assertThat(retried.sigh().longitude()).isEqualTo(first.sigh().longitude());
-        assertThat(retried.sigh().latitude()).isEqualTo(first.sigh().latitude());
+        assertThat(retried.emotion().id()).isEqualTo(first.emotion().id());
+        assertThat(retried.emotion().longitude()).isEqualTo(first.emotion().longitude());
+        assertThat(retried.emotion().latitude()).isEqualTo(first.emotion().latitude());
         assertThat(emotionRepository.count()).isOne();
     }
 
@@ -308,7 +308,7 @@ class EmotionServiceIntegrationTest {
     void 같은_requestId는_다른_메모로_재시도해도_최초_메모와_닉네임을_반환한다() {
         // given
         UUID requestId = UUID.randomUUID();
-        SighSaveResult first = emotionService.save(
+        EmotionSaveResult first = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -317,7 +317,7 @@ class EmotionServiceIntegrationTest {
         );
 
         // when
-        SighSaveResult retried = emotionService.save(
+        EmotionSaveResult retried = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -327,8 +327,8 @@ class EmotionServiceIntegrationTest {
 
         // then
         assertThat(retried.created()).isFalse();
-        assertThat(retried.sigh().memo()).isEqualTo("최초 메모");
-        assertThat(retried.sigh().nickname()).isEqualTo(first.sigh().nickname());
+        assertThat(retried.emotion().memo()).isEqualTo("최초 메모");
+        assertThat(retried.emotion().nickname()).isEqualTo(first.emotion().nickname());
         assertThat(emotionRepository.count()).isOne();
     }
 
@@ -341,20 +341,20 @@ class EmotionServiceIntegrationTest {
         CountDownLatch start = new CountDownLatch(1);
 
         // when
-        List<SighSaveResult> results = executeConcurrently(requestCount, requestId, ready, start);
+        List<EmotionSaveResult> results = executeConcurrently(requestCount, requestId, ready, start);
 
         // then
         assertThat(results)
-                .extracting(result -> result.sigh().id())
-                .containsOnly(results.getFirst().sigh().id());
+                .extracting(result -> result.emotion().id())
+                .containsOnly(results.getFirst().emotion().id());
         assertThat(results)
-                .extracting(result -> result.sigh().longitude())
-                .containsOnly(results.getFirst().sigh().longitude());
+                .extracting(result -> result.emotion().longitude())
+                .containsOnly(results.getFirst().emotion().longitude());
         assertThat(results)
-                .extracting(result -> result.sigh().latitude())
-                .containsOnly(results.getFirst().sigh().latitude());
-        assertThat(results).filteredOn(SighSaveResult::created).hasSize(1);
-        assertThat(results).extracting(SighSaveResult::like).containsOnly(SighLikeResult.of(false, 0));
+                .extracting(result -> result.emotion().latitude())
+                .containsOnly(results.getFirst().emotion().latitude());
+        assertThat(results).filteredOn(EmotionSaveResult::created).hasSize(1);
+        assertThat(results).extracting(EmotionSaveResult::like).containsOnly(SighLikeResult.of(false, 0));
         assertThat(emotionRepository.count()).isOne();
     }
 
@@ -575,17 +575,17 @@ class EmotionServiceIntegrationTest {
         );
 
         // then
-        assertThat(firstPage.items()).extracting(item -> item.sigh().id())
+        assertThat(firstPage.items()).extracting(item -> item.emotion().id())
                 .containsExactlyElementsOf(ids.subList(1, 21).reversed());
         assertThat(firstPage.items().get(0).like()).isEqualTo(SighLikeResult.of(true, 2));
         assertThat(firstPage.items().get(1).like()).isEqualTo(SighLikeResult.of(false, 1));
         assertThat(firstPage.items().get(2).like()).isEqualTo(SighLikeResult.of(false, 0));
         assertThat(secondPage.items()).singleElement().satisfies(item -> {
-            assertThat(item.sigh().id()).isEqualTo(secondPageSighId);
+            assertThat(item.emotion().id()).isEqualTo(secondPageSighId);
             assertThat(item.like()).isEqualTo(SighLikeResult.of(true, 1));
         });
         assertThat(anotherDevicePage.items()).singleElement().satisfies(item -> {
-            assertThat(item.sigh().id()).isEqualTo(secondPageSighId);
+            assertThat(item.emotion().id()).isEqualTo(secondPageSighId);
             assertThat(item.like()).isEqualTo(SighLikeResult.of(false, 1));
         });
     }
@@ -604,7 +604,7 @@ class EmotionServiceIntegrationTest {
 
         // then
         assertThat(secondPage.items()).singleElement().satisfies(item -> {
-            assertThat(item.sigh().id()).isEqualTo(oldestId);
+            assertThat(item.emotion().id()).isEqualTo(oldestId);
             assertThat(item.like()).isEqualTo(SighLikeResult.of(false, 0));
         });
     }
@@ -661,21 +661,21 @@ class EmotionServiceIntegrationTest {
         expectedFirstPageIds.sort(Comparator.reverseOrder());
 
         assertThat(firstPage.items())
-                .extracting(SighDetailResult::sigh)
+                .extracting(EmotionDetailResult::emotion)
                 .extracting(EmotionResult::id)
                 .containsExactlyElementsOf(expectedFirstPageIds);
-        assertThat(firstPage.items().getFirst().sigh().nickname()).isEqualTo("날아가는 고라니");
-        assertThat(firstPage.items().getFirst().sigh().memo()).isEqualTo("오늘은 조금 지쳤다");
-        assertThat(firstPage.items().getFirst().sigh().longitude()).isEqualTo(126.9780);
-        assertThat(firstPage.items().getFirst().sigh().latitude()).isEqualTo(37.5664);
+        assertThat(firstPage.items().getFirst().emotion().nickname()).isEqualTo("날아가는 고라니");
+        assertThat(firstPage.items().getFirst().emotion().memo()).isEqualTo("오늘은 조금 지쳤다");
+        assertThat(firstPage.items().getFirst().emotion().longitude()).isEqualTo(126.9780);
+        assertThat(firstPage.items().getFirst().emotion().latitude()).isEqualTo(37.5664);
         assertThat(firstPage.hasNext()).isTrue();
         assertThat(firstPage.nextCursor()).isNotBlank();
 
         assertThat(secondPage.items())
                 .singleElement()
                 .satisfies(item -> {
-                    assertThat(item.sigh().id()).isEqualTo(ids.getFirst());
-                    assertThat(item.sigh().memo()).isNull();
+                    assertThat(item.emotion().id()).isEqualTo(ids.getFirst());
+                    assertThat(item.emotion().memo()).isNull();
                 });
         assertThat(secondPage.hasNext()).isFalse();
         assertThat(secondPage.nextCursor()).isNull();
@@ -695,7 +695,7 @@ class EmotionServiceIntegrationTest {
 
         // then
         assertThat(result.items())
-                .extracting(SighDetailResult::sigh)
+                .extracting(EmotionDetailResult::emotion)
                 .extracting(EmotionResult::id)
                 .containsExactly(음의_경도_경계_한숨, 양의_경도_경계_한숨);
         assertThat(result.hasNext()).isFalse();
@@ -727,11 +727,11 @@ class EmotionServiceIntegrationTest {
 
         assertThat(nextCursor.snapshotAt()).isEqualTo(snapshotAt);
         assertThat(firstPage.items())
-                .extracting(item -> item.sigh().id())
+                .extracting(item -> item.emotion().id())
                 .containsExactlyElementsOf(expectedFirstPageIds)
                 .doesNotContain(스냅샷_경계_한숨);
         assertThat(secondPage.items())
-                .extracting(item -> item.sigh().id())
+                .extracting(item -> item.emotion().id())
                 .containsExactly(ids.getFirst())
                 .doesNotContain(스냅샷_경계_한숨);
     }
@@ -761,9 +761,9 @@ class EmotionServiceIntegrationTest {
 
         // then
         recentIds.sort(Comparator.reverseOrder());
-        assertThat(firstPage.items()).extracting(item -> item.sigh().id()).containsExactlyElementsOf(recentIds);
+        assertThat(firstPage.items()).extracting(item -> item.emotion().id()).containsExactlyElementsOf(recentIds);
         assertThat(firstPage.hasNext()).isTrue();
-        assertThat(secondPage.items()).extracting(item -> item.sigh().id()).containsExactly(시작_경계_한숨);
+        assertThat(secondPage.items()).extracting(item -> item.emotion().id()).containsExactly(시작_경계_한숨);
         assertThat(secondPage.hasNext()).isFalse();
         assertThat(secondPage.nextCursor()).isNull();
     }
@@ -812,11 +812,11 @@ class EmotionServiceIntegrationTest {
 
         // then
         boundaryIds.sort(Comparator.reverseOrder());
-        assertThat(secondPage.items()).extracting(item -> item.sigh().id())
+        assertThat(secondPage.items()).extracting(item -> item.emotion().id())
                 .containsExactlyElementsOf(boundaryIds.subList(0, 20));
         assertThat(secondPage.hasNext()).isTrue();
         assertThat(EmotionListCursorCodec.decode(secondPage.nextCursor()).snapshotAt()).isEqualTo(snapshotAt);
-        assertThat(thirdPage.items()).extracting(item -> item.sigh().id()).containsExactly(boundaryIds.getLast());
+        assertThat(thirdPage.items()).extracting(item -> item.emotion().id()).containsExactly(boundaryIds.getLast());
         assertThat(thirdPage.hasNext()).isFalse();
         assertThat(thirdPage.nextCursor()).isNull();
     }
@@ -908,7 +908,7 @@ class EmotionServiceIntegrationTest {
 
         // then
         assertThat(secondPage.items())
-                .extracting(SighDetailResult::sigh)
+                .extracting(EmotionDetailResult::emotion)
                 .extracting(EmotionResult::id)
                 .containsExactly(ids.getFirst())
                 .doesNotContain(이후에_등록된_한숨);
@@ -959,14 +959,14 @@ class EmotionServiceIntegrationTest {
         }
     }
 
-    private List<SighSaveResult> executeConcurrently(
+    private List<EmotionSaveResult> executeConcurrently(
             int requestCount,
             UUID requestId,
             CountDownLatch ready,
             CountDownLatch start
     ) throws Exception {
         try (ExecutorService executorService = Executors.newFixedThreadPool(requestCount)) {
-            List<Future<SighSaveResult>> futures = new ArrayList<>();
+            List<Future<EmotionSaveResult>> futures = new ArrayList<>();
             for (int index = 0; index < requestCount; index++) {
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
@@ -985,8 +985,8 @@ class EmotionServiceIntegrationTest {
             start.countDown();
             assertThat(allRequestsReady).isTrue();
 
-            List<SighSaveResult> results = new ArrayList<>();
-            for (Future<SighSaveResult> future : futures) {
+            List<EmotionSaveResult> results = new ArrayList<>();
+            for (Future<EmotionSaveResult> future : futures) {
                 results.add(future.get(10, TimeUnit.SECONDS));
             }
             return results;
@@ -1085,7 +1085,7 @@ class EmotionServiceIntegrationTest {
 
         for (int pageIndex = 0; pageIndex < 25; pageIndex++) {
             assertThat(page.items()).hasSizeLessThanOrEqualTo(20);
-            items.addAll(page.items().stream().map(SighDetailResult::sigh).toList());
+            items.addAll(page.items().stream().map(EmotionDetailResult::emotion).toList());
             if (!page.hasNext()) {
                 return items;
             }

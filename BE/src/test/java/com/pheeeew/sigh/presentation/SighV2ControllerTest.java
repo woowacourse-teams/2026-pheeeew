@@ -15,10 +15,10 @@ import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.sigh.application.EmotionService;
-import com.pheeeew.sigh.application.dto.SighDetailResult;
+import com.pheeeew.sigh.application.dto.EmotionDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
-import com.pheeeew.sigh.application.dto.SighSaveResult;
+import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.repository.query.EmotionSearchBounds;
@@ -366,8 +366,8 @@ class SighV2ControllerTest {
     void 같은_requestId로_재시도하면_200과_최초_내용과_현재_좋아요_정보를_반환한다(boolean liked, long likeCount) {
         // given
         when(emotionService.save(REQUEST_ID, 129.0756, 35.1796, "재시도 메모", DEVICE_PUBLIC_ID))
-                .thenReturn(SighSaveResult.of(
-                        기본_저장_결과("최초 메모", false).sigh(), false, SighLikeResult.of(liked, likeCount)
+                .thenReturn(EmotionSaveResult.of(
+                        기본_저장_결과("최초 메모", false).emotion(), false, SighLikeResult.of(liked, likeCount)
                 ));
 
         // when
@@ -559,8 +559,8 @@ class SighV2ControllerTest {
                 .exchange();
     }
 
-    private SighSaveResult 기본_저장_결과(String memo, boolean created) {
-        return SighSaveResult.of(
+    private EmotionSaveResult 기본_저장_결과(String memo, boolean created) {
+        return EmotionSaveResult.of(
                 EmotionResult.of(
                         42L,
                         126.9774,
@@ -574,8 +574,8 @@ class SighV2ControllerTest {
         );
     }
 
-    private SighDetailResult 기본_상세_조회_결과(String memo, boolean liked, long likeCount) {
-        return new SighDetailResult(
+    private EmotionDetailResult 기본_상세_조회_결과(String memo, boolean liked, long likeCount) {
+        return new EmotionDetailResult(
                 EmotionResult.of(
                         SIGH_ID,
                         126.9774,

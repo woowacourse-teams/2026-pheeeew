@@ -10,9 +10,9 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.sigh.application.dto.SighDetailResult;
+import com.pheeeew.sigh.application.dto.EmotionDetailResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
-import com.pheeeew.sigh.application.dto.SighSaveResult;
+import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.domain.Emotion;
@@ -98,13 +98,13 @@ class EmotionServiceDetailIntegrationTest {
         EmotionResult expectedSigh = EmotionResult.from(emotionRepository.findById(sigh.getId()).orElseThrow());
 
         // when
-        SighDetailResult liked = emotionService.findById(sigh.getId(), device.getPublicId());
-        SighDetailResult unliked = emotionService.findById(sigh.getId(), unlikedDevice.getPublicId());
+        EmotionDetailResult liked = emotionService.findById(sigh.getId(), device.getPublicId());
+        EmotionDetailResult unliked = emotionService.findById(sigh.getId(), unlikedDevice.getPublicId());
 
         // then
-        assertThat(liked.sigh()).isEqualTo(expectedSigh);
-        assertThat(liked.sigh().memo()).isEqualTo("오늘은 힘들었다");
-        assertThat(unliked.sigh()).isEqualTo(expectedSigh);
+        assertThat(liked.emotion()).isEqualTo(expectedSigh);
+        assertThat(liked.emotion().memo()).isEqualTo("오늘은 힘들었다");
+        assertThat(unliked.emotion()).isEqualTo(expectedSigh);
         assertThat(liked.like()).isEqualTo(SighLikeResult.of(true, 2));
         assertThat(unliked.like()).isEqualTo(SighLikeResult.of(false, 2));
     }
@@ -112,7 +112,7 @@ class EmotionServiceDetailIntegrationTest {
     @Test
     void 좋아요가_없으면_false와_0을_반환한다() {
         // when
-        SighDetailResult result = emotionService.findById(sigh.getId(), device.getPublicId());
+        EmotionDetailResult result = emotionService.findById(sigh.getId(), device.getPublicId());
 
         // then
         assertThat(result.like()).isEqualTo(SighLikeResult.of(false, 0));
@@ -130,11 +130,11 @@ class EmotionServiceDetailIntegrationTest {
         updateCreatedAt(Instant.parse(createdTime));
 
         // when
-        SighDetailResult result = emotionService.findById(sigh.getId(), device.getPublicId());
+        EmotionDetailResult result = emotionService.findById(sigh.getId(), device.getPublicId());
 
         // then
-        assertThat(result.sigh().id()).isEqualTo(sigh.getId());
-        assertThat(result.sigh().createdAt()).isEqualTo(Instant.parse(createdTime));
+        assertThat(result.emotion().id()).isEqualTo(sigh.getId());
+        assertThat(result.emotion().createdAt()).isEqualTo(Instant.parse(createdTime));
     }
 
     @ParameterizedTest
@@ -159,11 +159,11 @@ class EmotionServiceDetailIntegrationTest {
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T14:59:59.999999Z"));
         Instant createdAt = Instant.parse("2026-08-31T15:00:00Z");
         updateCreatedAt(createdAt);
-        SighDetailResult beforeMidnight = emotionService.findById(sigh.getId(), device.getPublicId());
+        EmotionDetailResult beforeMidnight = emotionService.findById(sigh.getId(), device.getPublicId());
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T15:00:00Z"));
 
         // when / then
-        assertThat(beforeMidnight.sigh().id()).isEqualTo(sigh.getId());
+        assertThat(beforeMidnight.emotion().id()).isEqualTo(sigh.getId());
         assertThatThrownBy(() -> emotionService.findById(sigh.getId(), device.getPublicId()))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_EXPIRED));
@@ -221,14 +221,14 @@ class EmotionServiceDetailIntegrationTest {
         EmotionResult expectedSigh = EmotionResult.from(savedSigh);
 
         // when
-        SighSaveResult liked = emotionService.save(sigh.getRequestId(), 129.0756, 35.1796, "변경한 메모", device.getPublicId());
-        SighSaveResult unliked = emotionService.save(sigh.getRequestId(), 129.0756, 35.1796, "변경한 메모", anotherDevice.getPublicId());
+        EmotionSaveResult liked = emotionService.save(sigh.getRequestId(), 129.0756, 35.1796, "변경한 메모", device.getPublicId());
+        EmotionSaveResult unliked = emotionService.save(sigh.getRequestId(), 129.0756, 35.1796, "변경한 메모", anotherDevice.getPublicId());
 
         // then
         assertThat(liked.created()).isFalse();
         assertThat(unliked.created()).isFalse();
-        assertThat(liked.sigh()).isEqualTo(expectedSigh);
-        assertThat(unliked.sigh()).isEqualTo(expectedSigh);
+        assertThat(liked.emotion()).isEqualTo(expectedSigh);
+        assertThat(unliked.emotion()).isEqualTo(expectedSigh);
         assertThat(liked.like()).isEqualTo(SighLikeResult.of(true, 1));
         assertThat(unliked.like()).isEqualTo(SighLikeResult.of(false, 1));
         assertThat(emotionRepository.count()).isOne();
@@ -251,12 +251,12 @@ class EmotionServiceDetailIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        SighSaveResult result = emotionService.save(requestId, 126.9780, 37.5664, null, device.getPublicId());
+        EmotionSaveResult result = emotionService.save(requestId, 126.9780, 37.5664, null, device.getPublicId());
 
         // then
         assertThat(result.created()).isTrue();
         assertThat(result.like()).isEqualTo(SighLikeResult.of(false, 0));
-        assertThat(emotionRepository.findById(result.sigh().id()).orElseThrow().getLikeCount()).isZero();
+        assertThat(emotionRepository.findById(result.emotion().id()).orElseThrow().getLikeCount()).isZero();
     }
 
     private void updateCreatedAt(Instant createdAt) {

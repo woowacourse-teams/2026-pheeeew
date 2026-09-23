@@ -3,10 +3,10 @@ package com.pheeeew.sigh.presentation;
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.sigh.application.EmotionService;
-import com.pheeeew.sigh.application.dto.SighDetailResult;
+import com.pheeeew.sigh.application.dto.EmotionDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
-import com.pheeeew.sigh.application.dto.SighSaveResult;
+import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.presentation.dto.SighCreateV2Request;
@@ -54,7 +54,7 @@ public class SighV2Controller implements SighV2ControllerApi {
         }
 
         List<SighFeature<SighV2Properties>> items = result.items().stream()
-                .map(item -> toFeature(item.sigh(), item.like()))
+                .map(item -> toFeature(item.emotion(), item.like()))
                 .toList();
 
         return ResponseEntity.ok()
@@ -68,12 +68,12 @@ public class SighV2Controller implements SighV2ControllerApi {
             @PathVariable Long id,
             @CurrentDevice UUID devicePublicId
     ) {
-        SighDetailResult result = emotionService.findById(id, devicePublicId);
+        EmotionDetailResult result = emotionService.findById(id, devicePublicId);
 
         return ResponseEntity.ok()
                 .contentType(GEO_JSON)
                 .cacheControl(CacheControl.noStore())
-                .body(toFeature(result.sigh(), result.like()));
+                .body(toFeature(result.emotion(), result.like()));
     }
 
     @Override
@@ -82,14 +82,14 @@ public class SighV2Controller implements SighV2ControllerApi {
             @RequestBody SighCreateV2Request request,
             @CurrentDevice UUID devicePublicId
     ) {
-        SighSaveResult result = emotionService.save(
+        EmotionSaveResult result = emotionService.save(
                 request.requestId(),
                 request.longitude(),
                 request.latitude(),
                 request.memo(),
                 devicePublicId
         );
-        EmotionResult sigh = result.sigh();
+        EmotionResult sigh = result.emotion();
 
         ResponseEntity.BodyBuilder response = ResponseEntity.ok();
         if (result.created()) {

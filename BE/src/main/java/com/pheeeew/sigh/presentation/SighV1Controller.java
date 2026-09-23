@@ -4,7 +4,7 @@ import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.EmotionMapResult;
 import com.pheeeew.sigh.application.dto.EmotionResult;
-import com.pheeeew.sigh.application.dto.SighSaveResult;
+import com.pheeeew.sigh.application.dto.EmotionSaveResult;
 import com.pheeeew.sigh.presentation.dto.SighCreateV1Request;
 import com.pheeeew.sigh.presentation.dto.SighFeature;
 import com.pheeeew.sigh.presentation.dto.SighMapRequest;
@@ -51,8 +51,8 @@ public class SighV1Controller implements SighV1ControllerApi {
     public ResponseEntity<SighFeature<SighV1Properties>> save(
             @Valid @RequestBody SighCreateV1Request request
     ) {
-        SighSaveResult result = emotionService.save(request.requestId(), request.longitude(), request.latitude());
-        EmotionResult sigh = result.sigh();
+        EmotionSaveResult result = emotionService.save(request.requestId(), request.longitude(), request.latitude());
+        EmotionResult sigh = result.emotion();
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {
