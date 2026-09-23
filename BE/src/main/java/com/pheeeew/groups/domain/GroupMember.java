@@ -15,7 +15,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.Objects;
-import java.util.UUID;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
@@ -32,9 +31,6 @@ public class GroupMember extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    @Column(name = "public_id", nullable = false, updatable = false)
-    private UUID publicId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "group_id", nullable = false, updatable = false)
@@ -53,7 +49,6 @@ public class GroupMember extends BaseEntity {
 
     @Builder
     private GroupMember(Group group, Device device, GroupRole role) {
-        this.publicId = UUID.randomUUID();
         this.group = Objects.requireNonNull(group);
         this.device = Objects.requireNonNull(device);
         this.role = Objects.requireNonNull(role);
