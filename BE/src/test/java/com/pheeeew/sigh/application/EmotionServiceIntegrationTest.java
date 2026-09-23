@@ -64,7 +64,7 @@ import org.springframework.transaction.annotation.Transactional;
 @ImportAutoConfiguration(AopAutoConfiguration.class)
 @Import({EmotionMetrics.class, EmotionMetricsAspect.class, EmotionLikeService.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-class SighServiceIntegrationTest {
+class EmotionServiceIntegrationTest {
 
     private static final Instant CURRENT_TIME = Instant.parse("2026-09-01T12:00:00.123456789Z");
     private static final double SEOUL_CITY_HALL_LONGITUDE = 126.9780;
@@ -81,7 +81,7 @@ class SighServiceIntegrationTest {
             UUID.fromString("1f9b0c6a-7d4e-4a1b-9c2d-8e3f5a6b7c8d");
 
     @Autowired
-    private SighService sighService;
+    private EmotionService emotionService;
 
     @Autowired
     private EmotionRepository emotionRepository;
@@ -126,7 +126,7 @@ class SighServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        SighSaveResult result = sighService.save(
+        SighSaveResult result = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE
@@ -151,7 +151,7 @@ class SighServiceIntegrationTest {
     @Test
     void 이전_버전으로_좋아요_수를_저장하면_먼저_저장된_값을_덮어쓰지_못한다() {
         // given
-        SighSaveResult created = sighService.save(
+        SighSaveResult created = emotionService.save(
                 UUID.randomUUID(),
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE
@@ -177,7 +177,7 @@ class SighServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        SighSaveResult result = sighService.save(
+        SighSaveResult result = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -200,7 +200,7 @@ class SighServiceIntegrationTest {
         Device device = deviceRepository.saveAndFlush(기본_기기_빌더().build());
 
         // when
-        SighSaveResult result = sighService.save(
+        SighSaveResult result = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -220,7 +220,7 @@ class SighServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        SighSaveResult result = sighService.save(
+        SighSaveResult result = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE
@@ -237,7 +237,7 @@ class SighServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
         Device 최초_기기 = deviceRepository.saveAndFlush(기본_기기_빌더().build());
         Device 나중_기기 = deviceRepository.saveAndFlush(기본_기기_빌더().build());
-        SighSaveResult first = sighService.save(
+        SighSaveResult first = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -246,7 +246,7 @@ class SighServiceIntegrationTest {
         );
 
         // when
-        SighSaveResult retried = sighService.save(
+        SighSaveResult retried = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -268,7 +268,7 @@ class SighServiceIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        Throwable throwable = catchThrowable(() -> sighService.save(
+        Throwable throwable = catchThrowable(() -> emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -287,14 +287,14 @@ class SighServiceIntegrationTest {
     void 같은_requestId는_다른_중심으로_재시도해도_기존_한숨을_반환한다() {
         // given
         UUID requestId = UUID.randomUUID();
-        SighSaveResult first = sighService.save(
+        SighSaveResult first = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE
         );
 
         // when
-        SighSaveResult retried = sighService.save(requestId, 129.0756, 35.1796);
+        SighSaveResult retried = emotionService.save(requestId, 129.0756, 35.1796);
 
         // then
         assertThat(retried.created()).isFalse();
@@ -308,7 +308,7 @@ class SighServiceIntegrationTest {
     void 같은_requestId는_다른_메모로_재시도해도_최초_메모와_닉네임을_반환한다() {
         // given
         UUID requestId = UUID.randomUUID();
-        SighSaveResult first = sighService.save(
+        SighSaveResult first = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -317,7 +317,7 @@ class SighServiceIntegrationTest {
         );
 
         // when
-        SighSaveResult retried = sighService.save(
+        SighSaveResult retried = emotionService.save(
                 requestId,
                 SEOUL_CITY_HALL_LONGITUDE,
                 SEOUL_CITY_HALL_LATITUDE,
@@ -365,10 +365,10 @@ class SighServiceIntegrationTest {
 
         // when
         Throwable 지도_조회 = catchThrowable(
-                () -> sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.of(없는_기기_공개_식별자))
+                () -> emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.of(없는_기기_공개_식별자))
         );
         Throwable 목록_조회 = catchThrowable(
-                () -> sighService.findFirstListPage(SEOUL_BOUNDS, 없는_기기_공개_식별자)
+                () -> emotionService.findFirstListPage(SEOUL_BOUNDS, 없는_기기_공개_식별자)
         );
 
         // then
@@ -396,7 +396,7 @@ class SighServiceIntegrationTest {
         insertSigh(126.9780, 37.5664, queriedAt.plus(1, ChronoUnit.MICROS).toString());
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.sighs()).extracting(SighMapItem::id)
@@ -412,7 +412,7 @@ class SighServiceIntegrationTest {
         insertSigh(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.sighs()).isEmpty();
@@ -433,7 +433,7 @@ class SighServiceIntegrationTest {
         double previousReturnedCount = results.totalAmount();
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.sighs())
@@ -452,7 +452,7 @@ class SighServiceIntegrationTest {
         Long boundaryId = insertSigh(127.1000, 37.6000, "2026-08-31T10:32:00Z");
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
@@ -475,7 +475,7 @@ class SighServiceIntegrationTest {
         insertSigh(175.0000, 10.0001, "2026-08-31T10:34:00Z");
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
+        SighMapResult result = emotionService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
@@ -491,7 +491,7 @@ class SighServiceIntegrationTest {
         insertSighs(500, -175.0000, 0.0000);
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
+        SighMapResult result = emotionService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isTrue();
@@ -509,7 +509,7 @@ class SighServiceIntegrationTest {
         Long 동쪽_경계_한숨 = insertSigh(180.0000, 0.0000, "2026-08-31T10:32:00Z");
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(WORLD_BOUNDS, Optional.empty());
+        SighMapResult result = emotionService.findAllWithinBounds(WORLD_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
@@ -526,7 +526,7 @@ class SighServiceIntegrationTest {
         insertSigh(126.9780, 37.5664, CURRENT_TIME.plusSeconds(1).toString());
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isFalse();
@@ -540,7 +540,7 @@ class SighServiceIntegrationTest {
         insertSighs(500, 126.9780, 37.5664);
 
         // when
-        SighMapResult result = sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
+        SighMapResult result = emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty());
 
         // then
         assertThat(result.truncated()).isTrue();
@@ -568,9 +568,9 @@ class SighServiceIntegrationTest {
         emotionLikeService.update(secondPageSighId, devicePublicId, true);
 
         // when
-        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
-        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
-        SighListResult anotherDevicePage = sighService.findNextListPage(
+        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        SighListResult anotherDevicePage = emotionService.findNextListPage(
                 firstPage.nextCursor(), anotherDevicePublicId
         );
 
@@ -596,11 +596,11 @@ class SighServiceIntegrationTest {
         Long oldestId = insertSigh(126.9780, 37.5664, "2026-08-31T10:29:00Z");
         insertSighs(20, 126.9780, 37.5664);
         emotionLikeService.update(oldestId, devicePublicId, true);
-        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         emotionLikeService.update(oldestId, devicePublicId, false);
 
         // when
-        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         assertThat(secondPage.items()).singleElement().satisfies(item -> {
@@ -615,7 +615,7 @@ class SighServiceIntegrationTest {
         UUID unknownDevicePublicId = UUID.randomUUID();
 
         // when / then
-        assertThatThrownBy(() -> sighService.findFirstListPage(SEOUL_BOUNDS, unknownDevicePublicId))
+        assertThatThrownBy(() -> emotionService.findFirstListPage(SEOUL_BOUNDS, unknownDevicePublicId))
                 .isInstanceOfSatisfying(DeviceException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
     }
@@ -625,13 +625,13 @@ class SighServiceIntegrationTest {
     void 기기가_삭제되면_발급된_커서가_있어도_다음_페이지를_조회할_수_없다(String queryTime) {
         // given
         insertSighs(21, 126.9780, 37.5664);
-        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         deviceRepository.deleteAll();
         given(clock.instant()).willReturn(Instant.parse(queryTime));
 
         // when / then
         assertThat(firstPage.nextCursor()).isNotBlank();
-        assertThatThrownBy(() -> sighService.findNextListPage(firstPage.nextCursor(), devicePublicId))
+        assertThatThrownBy(() -> emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId))
                 .isInstanceOfSatisfying(DeviceException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
     }
@@ -653,8 +653,8 @@ class SighServiceIntegrationTest {
         ));
 
         // when
-        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
-        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         List<Long> expectedFirstPageIds = new ArrayList<>(ids.subList(1, ids.size()));
@@ -691,7 +691,7 @@ class SighServiceIntegrationTest {
         softDeleteSigh(삭제된_한숨);
 
         // when
-        SighListResult result = sighService.findFirstListPage(DATE_LINE_BOUNDS, devicePublicId);
+        SighListResult result = emotionService.findFirstListPage(DATE_LINE_BOUNDS, devicePublicId);
 
         // then
         assertThat(result.items())
@@ -717,9 +717,9 @@ class SighServiceIntegrationTest {
         );
 
         // when
-        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         EmotionListCursor nextCursor = EmotionListCursorCodec.decode(firstPage.nextCursor());
-        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         List<Long> expectedFirstPageIds = new ArrayList<>(ids.subList(1, ids.size()));
@@ -756,8 +756,8 @@ class SighServiceIntegrationTest {
         insertSigh(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
 
         // when
-        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
-        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         recentIds.sort(Comparator.reverseOrder());
@@ -776,7 +776,7 @@ class SighServiceIntegrationTest {
         insertSigh(126.9780, 37.5664, "2026-09-14T06:00:00.000001Z");
 
         // when
-        SighListResult result = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult result = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
 
         // then
         assertThat(result.items()).isEmpty();
@@ -802,13 +802,13 @@ class SighServiceIntegrationTest {
         for (int index = 0; index < 20; index++) {
             insertSigh(126.9780, 37.5664, "2026-09-14T14:00:00Z");
         }
-        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         insertSigh(126.9780, 37.5664, snapshotAt.plus(1, ChronoUnit.MICROS).toString());
         given(clock.instant()).willReturn(Instant.parse(queryTime));
 
         // when
-        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
-        SighListResult thirdPage = sighService.findNextListPage(secondPage.nextCursor(), devicePublicId);
+        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        SighListResult thirdPage = emotionService.findNextListPage(secondPage.nextCursor(), devicePublicId);
 
         // then
         boundaryIds.sort(Comparator.reverseOrder());
@@ -829,11 +829,11 @@ class SighServiceIntegrationTest {
         for (int index = 0; index < 20; index++) {
             insertSigh(126.9780, 37.5664, "2026-09-14T14:00:00Z");
         }
-        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T15:00:00Z"));
 
         // when
-        SighListResult result = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        SighListResult result = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         assertThat(firstPage.hasNext()).isTrue();
@@ -857,7 +857,7 @@ class SighServiceIntegrationTest {
         );
 
         // when
-        SighListResult result = sighService.findNextListPage(encodedCursor, devicePublicId);
+        SighListResult result = emotionService.findNextListPage(encodedCursor, devicePublicId);
 
         // then
         assertThat(result.items()).isEmpty();
@@ -878,7 +878,7 @@ class SighServiceIntegrationTest {
         );
 
         // when / then
-        assertThatThrownBy(() -> sighService.findNextListPage(encodedCursor, devicePublicId))
+        assertThatThrownBy(() -> emotionService.findNextListPage(encodedCursor, devicePublicId))
                 .isInstanceOf(SighException.class)
                 .extracting(exception -> ((SighException) exception).getErrorCode())
                 .isEqualTo(SighErrorCode.SIGH_INVALID_CURSOR);
@@ -894,7 +894,7 @@ class SighServiceIntegrationTest {
         for (int index = 0; index < 21; index++) {
             ids.add(insertSigh(126.9780, 37.5664, createdAt));
         }
-        SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
+        SighListResult firstPage = emotionService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
         EmotionListCursor cursor = EmotionListCursorCodec.decode(firstPage.nextCursor());
         Long 이후에_등록된_한숨 = insertSigh(
                 126.9780,
@@ -904,7 +904,7 @@ class SighServiceIntegrationTest {
         given(clock.instant()).willReturn(Instant.parse("2026-09-15T06:00:00Z"));
 
         // when
-        SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
+        SighListResult secondPage = emotionService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
         assertThat(secondPage.items())
@@ -941,7 +941,7 @@ class SighServiceIntegrationTest {
 
         try {
             // when
-            Throwable throwable = catchThrowable(() -> sighService.save(
+            Throwable throwable = catchThrowable(() -> emotionService.save(
                     REJECTED_REQUEST_ID,
                     SEOUL_CITY_HALL_LONGITUDE,
                     SEOUL_CITY_HALL_LATITUDE
@@ -971,7 +971,7 @@ class SighServiceIntegrationTest {
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
                     start.await();
-                    return sighService.save(
+                    return emotionService.save(
                             requestId,
                             SEOUL_CITY_HALL_LONGITUDE,
                             SEOUL_CITY_HALL_LATITUDE,
@@ -1081,7 +1081,7 @@ class SighServiceIntegrationTest {
 
     private List<SighResult> findAllListPages(SighSearchBounds bounds) {
         List<SighResult> items = new ArrayList<>();
-        SighListResult page = sighService.findFirstListPage(bounds, devicePublicId);
+        SighListResult page = emotionService.findFirstListPage(bounds, devicePublicId);
 
         for (int pageIndex = 0; pageIndex < 25; pageIndex++) {
             assertThat(page.items()).hasSizeLessThanOrEqualTo(20);
@@ -1089,7 +1089,7 @@ class SighServiceIntegrationTest {
             if (!page.hasNext()) {
                 return items;
             }
-            page = sighService.findNextListPage(page.nextCursor(), devicePublicId);
+            page = emotionService.findNextListPage(page.nextCursor(), devicePublicId);
         }
 
         throw new AssertionError("500건 조회는 25페이지 안에 끝나야 합니다.");

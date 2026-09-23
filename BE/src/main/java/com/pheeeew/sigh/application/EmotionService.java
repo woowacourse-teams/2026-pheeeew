@@ -39,7 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
-public class SighService {
+public class EmotionService {
 
     private static final int MAX_FIND_COUNT = 500;
     private static final int LIST_PAGE_SIZE = 20;

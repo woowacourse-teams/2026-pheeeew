@@ -16,7 +16,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.sigh.application.EmotionListCursorCodec;
 import com.pheeeew.sigh.application.EmotionLocationGenerator;
 import com.pheeeew.sigh.application.EmotionNicknameGenerator;
-import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.EmotionListCursor;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighMapResult;
@@ -63,7 +63,7 @@ class EmotionMetricsAspectTest {
     private final SimpleMeterRegistry registry = new SimpleMeterRegistry(SimpleConfig.DEFAULT, clock);
     private final EmotionRepository repository = mock(EmotionRepository.class);
     private final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
-    private SighService service;
+    private EmotionService service;
 
     @BeforeEach
     void setUp() {
@@ -75,10 +75,10 @@ class EmotionMetricsAspectTest {
         context.registerBean(Clock.class, () -> Clock.fixed(SNAPSHOT_AT, ZoneId.of("Asia/Seoul")));
         context.register(
                 AopAutoConfiguration.class,
-                EmotionMetrics.class, EmotionMetricsAspect.class, SighService.class
+                EmotionMetrics.class, EmotionMetricsAspect.class, EmotionService.class
         );
         context.refresh();
-        service = context.getBean(SighService.class);
+        service = context.getBean(EmotionService.class);
     }
 
     @AfterEach

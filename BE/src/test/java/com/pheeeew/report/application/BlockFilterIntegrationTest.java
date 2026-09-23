@@ -8,7 +8,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.domain.repository.EmotionBlockRepository;
-import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.SighMapItem;
 import com.pheeeew.sigh.domain.repository.EmotionRepository;
 import com.pheeeew.sigh.domain.repository.query.SighSearchBounds;
@@ -43,7 +43,7 @@ class BlockFilterIntegrationTest {
     private int 등록_순번;
 
     @Autowired
-    private SighService sighService;
+    private EmotionService emotionService;
 
     @Autowired
     private EmotionBlockService emotionBlockService;
@@ -98,7 +98,7 @@ class BlockFilterIntegrationTest {
         deviceBlockService.save(사용자_차단_대상의_한숨, 차단자.getPublicId());
 
         // when
-        List<Long> 조회된_한숨들 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
 
         // then
         assertThat(emotionBlockRepository.count()).isOne();
@@ -118,7 +118,7 @@ class BlockFilterIntegrationTest {
         emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
 
         // when
-        List<Long> 조회된_한숨들 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
 
         // then
         assertThat(emotionBlockRepository.count()).isOne();
@@ -137,7 +137,7 @@ class BlockFilterIntegrationTest {
         deviceBlockService.save(차단_대상의_한숨, 차단자.getPublicId());
 
         // when
-        List<Long> 조회된_한숨들 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
 
         // then
         assertThat(emotionBlockRepository.count()).isZero();
@@ -156,9 +156,9 @@ class BlockFilterIntegrationTest {
         emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
 
         // when
-        List<Long> 차단_후 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 차단_후 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
         emotionBlockService.delete(차단할_한숨, 차단자.getPublicId());
-        List<Long> 해제_후 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 해제_후 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
 
         // then
         assertThat(차단_후).containsExactly(같은_작성자의_다른_한숨);
@@ -179,7 +179,7 @@ class BlockFilterIntegrationTest {
 
         // when
         Long 차단_이후에_올린_한숨 = 한숨을_저장한다(차단_대상.getId());
-        List<Long> 조회된_한숨들 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
 
         // then
         assertThat(deviceBlockRepository.count()).isOne();
@@ -200,7 +200,7 @@ class BlockFilterIntegrationTest {
 
         // when
         deviceBlockService.delete(차단_식별자, 차단자.getPublicId());
-        List<Long> 조회된_한숨들 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
 
         // then
         assertThat(deviceBlockRepository.count()).isZero();
@@ -220,7 +220,7 @@ class BlockFilterIntegrationTest {
 
         // when
         deviceBlockService.delete(차단_식별자, 차단자.getPublicId());
-        List<Long> 조회된_한숨들 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
 
         // then
         assertThat(조회된_한숨들).containsExactly(차단_대상의_다른_한숨);
@@ -262,7 +262,7 @@ class BlockFilterIntegrationTest {
 
         // when
         List<Long> 조회된_한숨들 =
-                조회.조회한다(sighService, SEOUL_BOUNDS, 차단하지_않은_기기.getPublicId());
+                조회.조회한다(emotionService, SEOUL_BOUNDS, 차단하지_않은_기기.getPublicId());
 
         // then
         assertThat(조회된_한숨들).containsExactly(사용자_차단으로_가려진_한숨, 개별로_차단한_한숨);
@@ -277,7 +277,7 @@ class BlockFilterIntegrationTest {
         Long 작성자가_있는_한숨 = 한숨을_저장한다(작성자.getId());
 
         // when
-        List<Long> 인증_조회 = 조회_방식.지도.조회한다(sighService, SEOUL_BOUNDS, 차단하지_않은_기기.getPublicId());
+        List<Long> 인증_조회 = 조회_방식.지도.조회한다(emotionService, SEOUL_BOUNDS, 차단하지_않은_기기.getPublicId());
         List<Long> 비인증_조회 = 인증하지_않고_지도를_조회한다();
 
         // then
@@ -286,7 +286,7 @@ class BlockFilterIntegrationTest {
     }
 
     private List<Long> 인증하지_않고_지도를_조회한다() {
-        return sighService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty()).sighs().stream()
+        return emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty()).sighs().stream()
                 .map(SighMapItem::id)
                 .toList();
     }
@@ -321,21 +321,21 @@ class BlockFilterIntegrationTest {
     private enum 조회_방식 {
         지도 {
             @Override
-            List<Long> 조회한다(SighService sighService, SighSearchBounds bounds, UUID viewerPublicId) {
-                return sighService.findAllWithinBounds(bounds, Optional.of(viewerPublicId)).sighs().stream()
+            List<Long> 조회한다(EmotionService emotionService, SighSearchBounds bounds, UUID viewerPublicId) {
+                return emotionService.findAllWithinBounds(bounds, Optional.of(viewerPublicId)).sighs().stream()
                         .map(SighMapItem::id)
                         .toList();
             }
         },
         목록 {
             @Override
-            List<Long> 조회한다(SighService sighService, SighSearchBounds bounds, UUID viewerPublicId) {
-                return sighService.findFirstListPage(bounds, viewerPublicId).items().stream()
+            List<Long> 조회한다(EmotionService emotionService, SighSearchBounds bounds, UUID viewerPublicId) {
+                return emotionService.findFirstListPage(bounds, viewerPublicId).items().stream()
                         .map(item -> item.sigh().id())
                         .toList();
             }
         };
 
-        abstract List<Long> 조회한다(SighService sighService, SighSearchBounds bounds, UUID viewerPublicId);
+        abstract List<Long> 조회한다(EmotionService emotionService, SighSearchBounds bounds, UUID viewerPublicId);
     }
 }

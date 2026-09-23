@@ -2,7 +2,7 @@ package com.pheeeew.sigh.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
-import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighResult;
@@ -37,7 +37,7 @@ public class SighV2Controller implements SighV2ControllerApi {
 
     private static final MediaType GEO_JSON = MediaType.parseMediaType("application/geo+json");
 
-    private final SighService sighService;
+    private final EmotionService emotionService;
     private final EmotionLikeRetryService emotionLikeRetryService;
 
     @Override
@@ -48,9 +48,9 @@ public class SighV2Controller implements SighV2ControllerApi {
     ) {
         SighListResult result;
         if (request.isNextPageRequest()) {
-            result = sighService.findNextListPage(request.cursor(), devicePublicId);
+            result = emotionService.findNextListPage(request.cursor(), devicePublicId);
         } else {
-            result = sighService.findFirstListPage(request.toBounds(), devicePublicId);
+            result = emotionService.findFirstListPage(request.toBounds(), devicePublicId);
         }
 
         List<SighFeature<SighV2Properties>> items = result.items().stream()
@@ -68,7 +68,7 @@ public class SighV2Controller implements SighV2ControllerApi {
             @PathVariable Long id,
             @CurrentDevice UUID devicePublicId
     ) {
-        SighDetailResult result = sighService.findById(id, devicePublicId);
+        SighDetailResult result = emotionService.findById(id, devicePublicId);
 
         return ResponseEntity.ok()
                 .contentType(GEO_JSON)
@@ -82,7 +82,7 @@ public class SighV2Controller implements SighV2ControllerApi {
             @RequestBody SighCreateV2Request request,
             @CurrentDevice UUID devicePublicId
     ) {
-        SighSaveResult result = sighService.save(
+        SighSaveResult result = emotionService.save(
                 request.requestId(),
                 request.longitude(),
                 request.latitude(),

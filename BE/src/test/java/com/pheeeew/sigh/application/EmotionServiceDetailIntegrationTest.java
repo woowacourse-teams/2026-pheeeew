@@ -42,12 +42,12 @@ import org.springframework.transaction.annotation.Transactional;
 @PostgisDataJpaTest
 @Import(EmotionLikeService.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-class SighServiceDetailIntegrationTest {
+class EmotionServiceDetailIntegrationTest {
 
     private static final Instant CURRENT_TIME = Instant.parse("2026-09-14T06:00:00Z");
 
     @Autowired
-    private SighService sighService;
+    private EmotionService emotionService;
 
     @Autowired
     private EmotionLikeService emotionLikeService;
@@ -98,8 +98,8 @@ class SighServiceDetailIntegrationTest {
         SighResult expectedSigh = SighResult.from(emotionRepository.findById(sigh.getId()).orElseThrow());
 
         // when
-        SighDetailResult liked = sighService.findById(sigh.getId(), device.getPublicId());
-        SighDetailResult unliked = sighService.findById(sigh.getId(), unlikedDevice.getPublicId());
+        SighDetailResult liked = emotionService.findById(sigh.getId(), device.getPublicId());
+        SighDetailResult unliked = emotionService.findById(sigh.getId(), unlikedDevice.getPublicId());
 
         // then
         assertThat(liked.sigh()).isEqualTo(expectedSigh);
@@ -112,7 +112,7 @@ class SighServiceDetailIntegrationTest {
     @Test
     void 좋아요가_없으면_false와_0을_반환한다() {
         // when
-        SighDetailResult result = sighService.findById(sigh.getId(), device.getPublicId());
+        SighDetailResult result = emotionService.findById(sigh.getId(), device.getPublicId());
 
         // then
         assertThat(result.like()).isEqualTo(SighLikeResult.of(false, 0));
@@ -130,7 +130,7 @@ class SighServiceDetailIntegrationTest {
         updateCreatedAt(Instant.parse(createdTime));
 
         // when
-        SighDetailResult result = sighService.findById(sigh.getId(), device.getPublicId());
+        SighDetailResult result = emotionService.findById(sigh.getId(), device.getPublicId());
 
         // then
         assertThat(result.sigh().id()).isEqualTo(sigh.getId());
@@ -148,7 +148,7 @@ class SighServiceDetailIntegrationTest {
         updateCreatedAt(Instant.parse(createdTime));
 
         // when / then
-        assertThatThrownBy(() -> sighService.findById(sigh.getId(), device.getPublicId()))
+        assertThatThrownBy(() -> emotionService.findById(sigh.getId(), device.getPublicId()))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_EXPIRED));
     }
@@ -159,12 +159,12 @@ class SighServiceDetailIntegrationTest {
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T14:59:59.999999Z"));
         Instant createdAt = Instant.parse("2026-08-31T15:00:00Z");
         updateCreatedAt(createdAt);
-        SighDetailResult beforeMidnight = sighService.findById(sigh.getId(), device.getPublicId());
+        SighDetailResult beforeMidnight = emotionService.findById(sigh.getId(), device.getPublicId());
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T15:00:00Z"));
 
         // when / then
         assertThat(beforeMidnight.sigh().id()).isEqualTo(sigh.getId());
-        assertThatThrownBy(() -> sighService.findById(sigh.getId(), device.getPublicId()))
+        assertThatThrownBy(() -> emotionService.findById(sigh.getId(), device.getPublicId()))
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_EXPIRED));
         Emotion savedSigh = emotionRepository.findById(sigh.getId()).orElseThrow();
@@ -199,7 +199,7 @@ class SighServiceDetailIntegrationTest {
         UUID unknownDevicePublicId = UUID.randomUUID();
 
         // when / then
-        assertThatThrownBy(() -> sighService.findById(sigh.getId(), unknownDevicePublicId))
+        assertThatThrownBy(() -> emotionService.findById(sigh.getId(), unknownDevicePublicId))
                 .isInstanceOfSatisfying(DeviceException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
     }
@@ -221,8 +221,8 @@ class SighServiceDetailIntegrationTest {
         SighResult expectedSigh = SighResult.from(savedSigh);
 
         // when
-        SighSaveResult liked = sighService.save(sigh.getRequestId(), 129.0756, 35.1796, "변경한 메모", device.getPublicId());
-        SighSaveResult unliked = sighService.save(sigh.getRequestId(), 129.0756, 35.1796, "변경한 메모", anotherDevice.getPublicId());
+        SighSaveResult liked = emotionService.save(sigh.getRequestId(), 129.0756, 35.1796, "변경한 메모", device.getPublicId());
+        SighSaveResult unliked = emotionService.save(sigh.getRequestId(), 129.0756, 35.1796, "변경한 메모", anotherDevice.getPublicId());
 
         // then
         assertThat(liked.created()).isFalse();
@@ -240,7 +240,7 @@ class SighServiceDetailIntegrationTest {
         UUID unknownDevicePublicId = UUID.randomUUID();
 
         // when / then
-        assertThatThrownBy(() -> sighService.save(sigh.getRequestId(), 129.0756, 35.1796, null, unknownDevicePublicId))
+        assertThatThrownBy(() -> emotionService.save(sigh.getRequestId(), 129.0756, 35.1796, null, unknownDevicePublicId))
                 .isInstanceOfSatisfying(DeviceException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
     }
@@ -251,7 +251,7 @@ class SighServiceDetailIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        SighSaveResult result = sighService.save(requestId, 126.9780, 37.5664, null, device.getPublicId());
+        SighSaveResult result = emotionService.save(requestId, 126.9780, 37.5664, null, device.getPublicId());
 
         // then
         assertThat(result.created()).isTrue();
@@ -267,7 +267,7 @@ class SighServiceDetailIntegrationTest {
     }
 
     private void assertSighNotFound(Long sighId, UUID devicePublicId) {
-        assertThatThrownBy(() -> sighService.findById(sighId, devicePublicId))
+        assertThatThrownBy(() -> emotionService.findById(sighId, devicePublicId))
                 .hasMessage("한숨을 찾을 수 없습니다.")
                 .isInstanceOfSatisfying(SighException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND));

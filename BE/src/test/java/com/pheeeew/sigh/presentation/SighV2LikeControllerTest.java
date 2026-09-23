@@ -13,7 +13,7 @@ import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.like.EmotionLikeRetryService;
 import com.pheeeew.sigh.application.like.dto.SighLikeResult;
 import com.pheeeew.sigh.exception.SighErrorCode;
@@ -64,7 +64,7 @@ class SighV2LikeControllerTest {
     private EmotionLikeRetryService emotionLikeRetryService;
 
     @MockitoBean
-    private SighService sighService;
+    private EmotionService emotionService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;

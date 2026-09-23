@@ -7,7 +7,7 @@ import static org.mockito.Mockito.when;
 import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
-import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.SighMapItem;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
@@ -59,7 +59,7 @@ class SighV1ControllerTest {
     private final RestTestClient client;
 
     @MockitoBean
-    private SighService sighService;
+    private EmotionService emotionService;
 
     @Autowired
     SighV1ControllerTest(RestTestClient client) {
@@ -74,7 +74,7 @@ class SighV1ControllerTest {
     @Test
     void 지도_영역의_한숨을_GeoJSON_FeatureCollection으로_반환한다() {
         // given
-        when(sighService.findAllWithinBounds(BOUNDS, Optional.empty()))
+        when(emotionService.findAllWithinBounds(BOUNDS, Optional.empty()))
                 .thenReturn(SighMapResult.of(
                         List.of(
                                 SighMapItem.of(2L, 127.1109, 37.3826, NEXT_CREATED_AT),
@@ -123,13 +123,13 @@ class SighV1ControllerTest {
                           ]
                         }
                         """, JsonCompareMode.STRICT);
-        verify(sighService).findAllWithinBounds(BOUNDS, Optional.empty());
+        verify(emotionService).findAllWithinBounds(BOUNDS, Optional.empty());
     }
 
     @Test
     void 지도_영역에_한숨이_없으면_빈_FeatureCollection을_반환한다() {
         // given
-        when(sighService.findAllWithinBounds(BOUNDS, Optional.empty()))
+        when(emotionService.findAllWithinBounds(BOUNDS, Optional.empty()))
                 .thenReturn(SighMapResult.of(List.of(), false));
 
         // when
@@ -154,7 +154,7 @@ class SighV1ControllerTest {
     @Test
     void 날짜변경선을_가로지르는_지도_영역을_조회한다() {
         // given
-        when(sighService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty()))
+        when(emotionService.findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty()))
                 .thenReturn(SighMapResult.of(List.of(), false));
 
         // when
@@ -165,7 +165,7 @@ class SighV1ControllerTest {
 
         // then
         result.expectStatus().isOk();
-        verify(sighService).findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
+        verify(emotionService).findAllWithinBounds(DATE_LINE_BOUNDS, Optional.empty());
     }
 
     @Test
@@ -173,7 +173,7 @@ class SighV1ControllerTest {
         // given
         SecurityContextHolder.getContext()
                 .setAuthentication(AccessTokenFixture.인증된_기기(기기_공개_식별자));
-        when(sighService.findAllWithinBounds(BOUNDS, Optional.of(기기_공개_식별자)))
+        when(emotionService.findAllWithinBounds(BOUNDS, Optional.of(기기_공개_식별자)))
                 .thenReturn(SighMapResult.of(List.of(), false));
 
         // when
@@ -184,7 +184,7 @@ class SighV1ControllerTest {
 
         // then
         result.expectStatus().isOk();
-        verify(sighService).findAllWithinBounds(BOUNDS, Optional.of(기기_공개_식별자));
+        verify(emotionService).findAllWithinBounds(BOUNDS, Optional.of(기기_공개_식별자));
     }
 
     @ParameterizedTest
@@ -195,14 +195,14 @@ class SighV1ControllerTest {
 
         // then
         오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
-        verifyNoInteractions(sighService);
+        verifyNoInteractions(emotionService);
     }
 
     @Test
     void 한숨을_최초_등록하면_201과_GeoJSON_Feature를_반환한다() {
         // given
         SighCreateV1Request request = 기본_요청();
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664))
+        when(emotionService.save(REQUEST_ID, 126.9780, 37.5664))
                 .thenReturn(기본_저장_결과(true));
 
         // when
@@ -214,13 +214,13 @@ class SighV1ControllerTest {
                 .expectHeader().doesNotExist(HttpHeaders.LOCATION)
                 .expectBody()
                 .json(기본_GeoJSON(), JsonCompareMode.STRICT);
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664);
+        verify(emotionService).save(REQUEST_ID, 126.9780, 37.5664);
     }
 
     @Test
     void application_json_응답을_요청해도_406_없이_한숨을_등록한다() {
         // given
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664))
+        when(emotionService.save(REQUEST_ID, 126.9780, 37.5664))
                 .thenReturn(기본_저장_결과(true));
 
         // when
@@ -234,14 +234,14 @@ class SighV1ControllerTest {
         // then
         result.expectStatus().isCreated()
                 .expectHeader().contentType(GEO_JSON);
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664);
+        verify(emotionService).save(REQUEST_ID, 126.9780, 37.5664);
     }
 
     @Test
     void 같은_requestId로_재시도하면_200과_최초_GeoJSON_Feature를_반환한다() {
         // given
         SighCreateV1Request request = new SighCreateV1Request(REQUEST_ID, 35.1796, 129.0756);
-        when(sighService.save(REQUEST_ID, 129.0756, 35.1796))
+        when(emotionService.save(REQUEST_ID, 129.0756, 35.1796))
                 .thenReturn(기본_저장_결과(false));
 
         // when
@@ -252,7 +252,7 @@ class SighV1ControllerTest {
                 .expectHeader().contentType(GEO_JSON)
                 .expectBody()
                 .json(기본_GeoJSON(), JsonCompareMode.STRICT);
-        verify(sighService).save(REQUEST_ID, 129.0756, 35.1796);
+        verify(emotionService).save(REQUEST_ID, 129.0756, 35.1796);
     }
 
     @ParameterizedTest
@@ -298,7 +298,7 @@ class SighV1ControllerTest {
     @Test
     void 한숨_도메인_예외는_정의된_상태와_코드로_반환한다() {
         // given
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664))
+        when(emotionService.save(REQUEST_ID, 126.9780, 37.5664))
                 .thenThrow(new SighException(SighErrorCode.SIGH_SAVE_FAILED, new IllegalStateException()));
 
         // when
@@ -311,7 +311,7 @@ class SighV1ControllerTest {
     @Test
     void 예상하지_못한_예외는_내부_메시지를_노출하지_않는다() {
         // given
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664))
+        when(emotionService.save(REQUEST_ID, 126.9780, 37.5664))
                 .thenThrow(new IllegalStateException("외부에 노출되면 안 되는 메시지"));
 
         // when

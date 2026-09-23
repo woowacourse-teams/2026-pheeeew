@@ -38,7 +38,7 @@ public class EmotionMetricsAspect {
     }
 
     @AfterReturning(
-            pointcut = "execution(* com.pheeeew.sigh.application.SighService.findAllWithinBounds(..))",
+            pointcut = "execution(* com.pheeeew.sigh.application.EmotionService.findAllWithinBounds(..))",
             returning = "result"
     )
     public void recordMapResult(SighMapResult result) {
@@ -46,7 +46,7 @@ public class EmotionMetricsAspect {
     }
 
     @AfterReturning(
-            pointcut = "execution(* com.pheeeew.sigh.application.SighService.findFirstListPage(..))",
+            pointcut = "execution(* com.pheeeew.sigh.application.EmotionService.findFirstListPage(..))",
             returning = "result"
     )
     public void recordFirstListResult(SighListResult result) {
@@ -54,7 +54,7 @@ public class EmotionMetricsAspect {
     }
 
     @AfterReturning(
-            pointcut = "execution(* com.pheeeew.sigh.application.SighService.findNextListPage(..))",
+            pointcut = "execution(* com.pheeeew.sigh.application.EmotionService.findNextListPage(..))",
             returning = "result"
     )
     public void recordNextListResult(SighListResult result) {

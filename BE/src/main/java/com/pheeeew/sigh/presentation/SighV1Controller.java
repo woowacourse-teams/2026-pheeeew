@@ -1,7 +1,7 @@
 package com.pheeeew.sigh.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
-import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.SighMapResult;
 import com.pheeeew.sigh.application.dto.SighResult;
 import com.pheeeew.sigh.application.dto.SighSaveResult;
@@ -31,7 +31,7 @@ public class SighV1Controller implements SighV1ControllerApi {
 
     private static final MediaType GEO_JSON = MediaType.parseMediaType("application/geo+json");
 
-    private final SighService sighService;
+    private final EmotionService emotionService;
 
     @Override
     @GetMapping
@@ -39,7 +39,7 @@ public class SighV1Controller implements SighV1ControllerApi {
             @CurrentDevice Optional<UUID> devicePublicId,
             @Valid @ModelAttribute SighMapRequest request
     ) {
-        SighMapResult result = sighService.findAllWithinBounds(request.toBounds(), devicePublicId);
+        SighMapResult result = emotionService.findAllWithinBounds(request.toBounds(), devicePublicId);
 
         return ResponseEntity.ok()
                 .contentType(GEO_JSON)
@@ -51,7 +51,7 @@ public class SighV1Controller implements SighV1ControllerApi {
     public ResponseEntity<SighFeature<SighV1Properties>> save(
             @Valid @RequestBody SighCreateV1Request request
     ) {
-        SighSaveResult result = sighService.save(request.requestId(), request.longitude(), request.latitude());
+        SighSaveResult result = emotionService.save(request.requestId(), request.longitude(), request.latitude());
         SighResult sigh = result.sigh();
 
         HttpStatus status = HttpStatus.OK;

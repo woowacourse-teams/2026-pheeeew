@@ -14,7 +14,7 @@ import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.sigh.application.SighService;
+import com.pheeeew.sigh.application.EmotionService;
 import com.pheeeew.sigh.application.dto.SighDetailResult;
 import com.pheeeew.sigh.application.dto.SighListResult;
 import com.pheeeew.sigh.application.dto.SighResult;
@@ -67,7 +67,7 @@ class SighV2ControllerTest {
     private final RestTestClient client;
 
     @MockitoBean
-    private SighService sighService;
+    private EmotionService emotionService;
 
     @MockitoBean
     private EmotionLikeRetryService emotionLikeRetryService;
@@ -89,7 +89,7 @@ class SighV2ControllerTest {
     void 검색_영역으로_바텀시트_첫_페이지를_조회한다() {
         // given
         SighSearchBounds bounds = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
-        when(sighService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
+        when(emotionService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
                 .thenReturn(SighListResult.of(
                         List.of(기본_상세_조회_결과("오늘은 조금 지쳤다", true, 12)),
                         true,
@@ -130,14 +130,14 @@ class SighV2ControllerTest {
                           "nextCursor": "next-cursor"
                         }
                         """, JsonCompareMode.STRICT);
-        verify(sighService).findFirstListPage(bounds, DEVICE_PUBLIC_ID);
+        verify(emotionService).findFirstListPage(bounds, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 날짜변경선을_가로지르는_검색_영역으로_첫_페이지를_조회한다() {
         // given
         SighSearchBounds bounds = SighSearchBounds.of(170.0, -10.0, -170.0, 10.0);
-        when(sighService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
+        when(emotionService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
                 .thenReturn(SighListResult.of(List.of(), false, null));
 
         // when
@@ -147,13 +147,13 @@ class SighV2ControllerTest {
 
         // then
         result.expectStatus().isOk();
-        verify(sighService).findFirstListPage(bounds, DEVICE_PUBLIC_ID);
+        verify(emotionService).findFirstListPage(bounds, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 서버가_발급한_커서만으로_바텀시트_다음_페이지를_조회한다() {
         // given
-        when(sighService.findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID))
+        when(emotionService.findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID))
                 .thenReturn(SighListResult.of(
                         List.of(기본_상세_조회_결과(null, false, 0)),
                         false,
@@ -193,7 +193,7 @@ class SighV2ControllerTest {
                           "nextCursor": null
                         }
                         """, JsonCompareMode.STRICT);
-        verify(sighService).findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID);
+        verify(emotionService).findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID);
     }
 
     @ParameterizedTest
@@ -218,13 +218,13 @@ class SighV2ControllerTest {
                 .json("""
                         {"code":"COMMON-001","message":"요청 값이 올바르지 않습니다."}
                         """, JsonCompareMode.STRICT);
-        verifyNoInteractions(sighService);
+        verifyNoInteractions(emotionService);
     }
 
     @Test
     void 사용할_수_없는_커서는_400을_반환한다() {
         // given
-        when(sighService.findNextListPage("invalid-cursor", DEVICE_PUBLIC_ID))
+        when(emotionService.findNextListPage("invalid-cursor", DEVICE_PUBLIC_ID))
                 .thenThrow(new SighException(SighErrorCode.SIGH_INVALID_CURSOR));
 
         // when
@@ -239,7 +239,7 @@ class SighV2ControllerTest {
                 .json("""
                         {"code":"SIGH-003","message":"한숨 목록 커서를 사용할 수 없습니다."}
                         """, JsonCompareMode.STRICT);
-        verify(sighService).findNextListPage("invalid-cursor", DEVICE_PUBLIC_ID);
+        verify(emotionService).findNextListPage("invalid-cursor", DEVICE_PUBLIC_ID);
     }
 
     @ParameterizedTest
@@ -250,9 +250,9 @@ class SighV2ControllerTest {
     void 토큰의_기기가_등록되어_있지_않으면_목록_조회는_401을_반환한다(String uri) {
         // given
         SighSearchBounds bounds = SighSearchBounds.of(126.9, 37.5, 127.1, 37.6);
-        when(sighService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
+        when(emotionService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
                 .thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND));
-        when(sighService.findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID))
+        when(emotionService.findNextListPage("opaque-cursor", DEVICE_PUBLIC_ID))
                 .thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND));
 
         // when
@@ -267,7 +267,7 @@ class SighV2ControllerTest {
     @Test
     void 메모가_있는_한숨을_최초_등록하면_201과_상세_URI와_메모와_닉네임을_반환한다() {
         // given
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, "  오늘은 조금 지쳤다  ", DEVICE_PUBLIC_ID))
+        when(emotionService.save(REQUEST_ID, 126.9780, 37.5664, "  오늘은 조금 지쳤다  ", DEVICE_PUBLIC_ID))
                 .thenReturn(기본_저장_결과("오늘은 조금 지쳤다", true));
 
         // when
@@ -287,14 +287,14 @@ class SighV2ControllerTest {
                 .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody()
                 .json(좋아요를_포함한_GeoJSON("\"오늘은 조금 지쳤다\"", false, 0), JsonCompareMode.STRICT);
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, "  오늘은 조금 지쳤다  ", DEVICE_PUBLIC_ID);
-        verifyNoMoreInteractions(sighService);
+        verify(emotionService).save(REQUEST_ID, 126.9780, 37.5664, "  오늘은 조금 지쳤다  ", DEVICE_PUBLIC_ID);
+        verifyNoMoreInteractions(emotionService);
     }
 
     @Test
     void application_json_응답을_요청해도_406_없이_한숨을_등록한다() {
         // given
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID))
+        when(emotionService.save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID))
                 .thenReturn(기본_저장_결과(null, true));
 
         // when
@@ -314,13 +314,13 @@ class SighV2ControllerTest {
         // then
         result.expectStatus().isCreated()
                 .expectHeader().contentType(GEO_JSON);
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID);
+        verify(emotionService).save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 메모를_생략하면_null로_등록하고_반환한다() {
         // given
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID))
+        when(emotionService.save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID))
                 .thenReturn(기본_저장_결과(null, true));
 
         // when
@@ -337,13 +337,13 @@ class SighV2ControllerTest {
                 .expectHeader().contentType(GEO_JSON)
                 .expectBody()
                 .json(좋아요를_포함한_GeoJSON("null", false, 0), JsonCompareMode.STRICT);
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID);
+        verify(emotionService).save(REQUEST_ID, 126.9780, 37.5664, null, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 공백으로만_이루어진_메모는_null로_등록한다() {
         // given
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, "   ", DEVICE_PUBLIC_ID))
+        when(emotionService.save(REQUEST_ID, 126.9780, 37.5664, "   ", DEVICE_PUBLIC_ID))
                 .thenReturn(기본_저장_결과(null, true));
 
         // when
@@ -358,14 +358,14 @@ class SighV2ControllerTest {
 
         // then
         result.expectStatus().isCreated();
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, "   ", DEVICE_PUBLIC_ID);
+        verify(emotionService).save(REQUEST_ID, 126.9780, 37.5664, "   ", DEVICE_PUBLIC_ID);
     }
 
     @ParameterizedTest
     @CsvSource({"true, 12", "false, 12", "false, 0"})
     void 같은_requestId로_재시도하면_200과_최초_내용과_현재_좋아요_정보를_반환한다(boolean liked, long likeCount) {
         // given
-        when(sighService.save(REQUEST_ID, 129.0756, 35.1796, "재시도 메모", DEVICE_PUBLIC_ID))
+        when(emotionService.save(REQUEST_ID, 129.0756, 35.1796, "재시도 메모", DEVICE_PUBLIC_ID))
                 .thenReturn(SighSaveResult.of(
                         기본_저장_결과("최초 메모", false).sigh(), false, SighLikeResult.of(liked, likeCount)
                 ));
@@ -387,8 +387,8 @@ class SighV2ControllerTest {
                 .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody()
                 .json(좋아요를_포함한_GeoJSON("\"최초 메모\"", liked, likeCount), JsonCompareMode.STRICT);
-        verify(sighService).save(REQUEST_ID, 129.0756, 35.1796, "재시도 메모", DEVICE_PUBLIC_ID);
-        verifyNoMoreInteractions(sighService);
+        verify(emotionService).save(REQUEST_ID, 129.0756, 35.1796, "재시도 메모", DEVICE_PUBLIC_ID);
+        verifyNoMoreInteractions(emotionService);
     }
 
     @Test
@@ -396,7 +396,7 @@ class SighV2ControllerTest {
         // given
         String memo = "가".repeat(50);
         String requestedMemo = "  " + memo + "  ";
-        when(sighService.save(REQUEST_ID, 126.9780, 37.5664, requestedMemo, DEVICE_PUBLIC_ID))
+        when(emotionService.save(REQUEST_ID, 126.9780, 37.5664, requestedMemo, DEVICE_PUBLIC_ID))
                 .thenReturn(기본_저장_결과(memo, true));
 
         // when
@@ -411,7 +411,7 @@ class SighV2ControllerTest {
 
         // then
         result.expectStatus().isCreated();
-        verify(sighService).save(REQUEST_ID, 126.9780, 37.5664, requestedMemo, DEVICE_PUBLIC_ID);
+        verify(emotionService).save(REQUEST_ID, 126.9780, 37.5664, requestedMemo, DEVICE_PUBLIC_ID);
     }
 
     @Test
@@ -435,14 +435,14 @@ class SighV2ControllerTest {
                 .json("""
                         {"code":"COMMON-001","message":"요청 값이 올바르지 않습니다."}
                         """, JsonCompareMode.STRICT);
-        verifyNoInteractions(sighService);
+        verifyNoInteractions(emotionService);
     }
 
     @ParameterizedTest
     @CsvSource({"false, 0", "true, 12", "false, 12"})
     void application_json_응답을_요청해도_인증된_기기의_좋아요_정보를_포함한_GeoJSON을_반환한다(boolean liked, long likeCount) {
         // given
-        when(sighService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+        when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
                 .thenReturn(기본_상세_조회_결과("오늘은 조금 지쳤다", liked, likeCount));
 
         // when
@@ -457,13 +457,13 @@ class SighV2ControllerTest {
                 .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
                 .expectBody()
                 .json(좋아요를_포함한_GeoJSON("\"오늘은 조금 지쳤다\"", liked, likeCount), JsonCompareMode.STRICT);
-        verify(sighService).findById(SIGH_ID, DEVICE_PUBLIC_ID);
+        verify(emotionService).findById(SIGH_ID, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 메모가_없는_한숨_상세는_memo를_null로_반환한다() {
         // given
-        when(sighService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+        when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
                 .thenReturn(기본_상세_조회_결과(null, false, 0));
 
         // when
@@ -474,13 +474,13 @@ class SighV2ControllerTest {
                 .expectHeader().contentType(GEO_JSON)
                 .expectBody()
                 .json(좋아요를_포함한_GeoJSON("null", false, 0), JsonCompareMode.STRICT);
-        verify(sighService).findById(SIGH_ID, DEVICE_PUBLIC_ID);
+        verify(emotionService).findById(SIGH_ID, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 존재하지_않는_한숨_상세를_조회하면_404를_반환한다() {
         // given
-        when(sighService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+        when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
                 .thenThrow(new SighException(SighErrorCode.SIGH_NOT_FOUND));
 
         // when
@@ -493,13 +493,13 @@ class SighV2ControllerTest {
                 .json("""
                         {"code":"SIGH-002","message":"한숨을 찾을 수 없습니다."}
                         """, JsonCompareMode.STRICT);
-        verify(sighService).findById(SIGH_ID, DEVICE_PUBLIC_ID);
+        verify(emotionService).findById(SIGH_ID, DEVICE_PUBLIC_ID);
     }
 
     @Test
     void 기간이_지난_한숨_상세를_조회하면_410과_만료_코드를_반환한다() {
         // given
-        when(sighService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+        when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
                 .thenThrow(new SighException(SighErrorCode.SIGH_EXPIRED));
 
         // when
@@ -517,7 +517,7 @@ class SighV2ControllerTest {
     @Test
     void 토큰의_기기가_등록되어_있지_않으면_단건_조회는_401을_반환한다() {
         // given
-        when(sighService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
+        when(emotionService.findById(SIGH_ID, DEVICE_PUBLIC_ID))
                 .thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND));
 
         // when
@@ -542,7 +542,7 @@ class SighV2ControllerTest {
                 .json("""
                         {"code":"COMMON-001","message":"요청 값이 올바르지 않습니다."}
                         """, JsonCompareMode.STRICT);
-        verifyNoInteractions(sighService);
+        verifyNoInteractions(emotionService);
     }
 
     private RestTestClient.ResponseSpec 한숨을_등록한다(String body) {
