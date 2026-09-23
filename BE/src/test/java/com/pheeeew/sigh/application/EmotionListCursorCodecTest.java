@@ -15,7 +15,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
-class SighListCursorCodecTest {
+class EmotionListCursorCodecTest {
 
     @Test
     void 커서를_인코딩하고_디코딩하면_검색_조건을_복원한다() {
@@ -28,8 +28,8 @@ class SighListCursorCodecTest {
         );
 
         // when
-        String encoded = SighListCursorCodec.encode(cursor);
-        SighListCursor decoded = SighListCursorCodec.decode(encoded);
+        String encoded = EmotionListCursorCodec.encode(cursor);
+        SighListCursor decoded = EmotionListCursorCodec.decode(encoded);
         String payload = new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8);
 
         // then
@@ -67,7 +67,7 @@ class SighListCursorCodecTest {
     }
 
     private void 잘못된_커서임을_검증한다(String encoded) {
-        assertThatThrownBy(() -> SighListCursorCodec.decode(encoded))
+        assertThatThrownBy(() -> EmotionListCursorCodec.decode(encoded))
                 .isInstanceOf(SighException.class)
                 .extracting(exception -> ((SighException) exception).getErrorCode())
                 .isEqualTo(SighErrorCode.SIGH_INVALID_CURSOR);

@@ -13,7 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
-import com.pheeeew.sigh.application.SighListCursorCodec;
+import com.pheeeew.sigh.application.EmotionListCursorCodec;
 import com.pheeeew.sigh.application.EmotionLocationGenerator;
 import com.pheeeew.sigh.application.EmotionNicknameGenerator;
 import com.pheeeew.sigh.application.SighService;
@@ -285,7 +285,7 @@ class SighMetricsAspectTest {
         SighListCursor cursor = SighListCursor.initial(BOUNDS, SNAPSHOT_AT.minus(Duration.ofDays(30)));
 
         // when
-        SighListResult result = service.findNextListPage(SighListCursorCodec.encode(cursor), devicePublicId);
+        SighListResult result = service.findNextListPage(EmotionListCursorCodec.encode(cursor), devicePublicId);
 
         // then
         assertThat(result.items()).isEmpty();
@@ -307,7 +307,7 @@ class SighMetricsAspectTest {
             return service.findFirstListPage(BOUNDS, devicePublicId);
         }
         SighListCursor cursor = SighListCursor.of(BOUNDS, SNAPSHOT_AT, SNAPSHOT_AT.minusSeconds(1), 42L);
-        return service.findNextListPage(SighListCursorCodec.encode(cursor), devicePublicId);
+        return service.findNextListPage(EmotionListCursorCodec.encode(cursor), devicePublicId);
     }
 
     private void 목록_결과_집계를_검증한다(String page, int returned, boolean hasNext) {

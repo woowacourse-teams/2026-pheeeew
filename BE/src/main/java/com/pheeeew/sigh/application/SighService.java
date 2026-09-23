@@ -109,7 +109,7 @@ public class SighService {
     }
 
     public SighListResult findNextListPage(String encodedCursor, UUID devicePublicId) {
-        SighListCursor cursor = SighListCursorCodec.decode(encodedCursor);
+        SighListCursor cursor = EmotionListCursorCodec.decode(encodedCursor);
         Instant queriedAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
         if (cursor.snapshotAt().isAfter(queriedAt)) {
             throw new SighException(SIGH_INVALID_CURSOR);
@@ -217,6 +217,6 @@ public class SighService {
                 lastProjection.getCreatedAt(),
                 lastProjection.getId()
         );
-        return SighListCursorCodec.encode(nextCursor);
+        return EmotionListCursorCodec.encode(nextCursor);
     }
 }

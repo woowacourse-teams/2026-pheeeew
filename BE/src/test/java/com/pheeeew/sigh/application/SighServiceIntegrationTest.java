@@ -718,7 +718,7 @@ class SighServiceIntegrationTest {
 
         // when
         SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
-        SighListCursor nextCursor = SighListCursorCodec.decode(firstPage.nextCursor());
+        SighListCursor nextCursor = EmotionListCursorCodec.decode(firstPage.nextCursor());
         SighListResult secondPage = sighService.findNextListPage(firstPage.nextCursor(), devicePublicId);
 
         // then
@@ -815,7 +815,7 @@ class SighServiceIntegrationTest {
         assertThat(secondPage.items()).extracting(item -> item.sigh().id())
                 .containsExactlyElementsOf(boundaryIds.subList(0, 20));
         assertThat(secondPage.hasNext()).isTrue();
-        assertThat(SighListCursorCodec.decode(secondPage.nextCursor()).snapshotAt()).isEqualTo(snapshotAt);
+        assertThat(EmotionListCursorCodec.decode(secondPage.nextCursor()).snapshotAt()).isEqualTo(snapshotAt);
         assertThat(thirdPage.items()).extracting(item -> item.sigh().id()).containsExactly(boundaryIds.getLast());
         assertThat(thirdPage.hasNext()).isFalse();
         assertThat(thirdPage.nextCursor()).isNull();
@@ -852,7 +852,7 @@ class SighServiceIntegrationTest {
         // given
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
         insertSigh(126.9780, 37.5664, "2026-08-31T14:00:00Z");
-        String encodedCursor = SighListCursorCodec.encode(
+        String encodedCursor = EmotionListCursorCodec.encode(
                 SighListCursor.initial(SEOUL_BOUNDS, Instant.parse(snapshotTime))
         );
 
@@ -873,7 +873,7 @@ class SighServiceIntegrationTest {
     void 스냅샷이_현재보다_미래이면_커서를_거부한다(String snapshotTime) {
         // given
         given(clock.instant()).willReturn(Instant.parse("2026-09-14T06:00:00Z"));
-        String encodedCursor = SighListCursorCodec.encode(
+        String encodedCursor = EmotionListCursorCodec.encode(
                 SighListCursor.initial(SEOUL_BOUNDS, Instant.parse(snapshotTime))
         );
 
@@ -895,7 +895,7 @@ class SighServiceIntegrationTest {
             ids.add(insertSigh(126.9780, 37.5664, createdAt));
         }
         SighListResult firstPage = sighService.findFirstListPage(SEOUL_BOUNDS, devicePublicId);
-        SighListCursor cursor = SighListCursorCodec.decode(firstPage.nextCursor());
+        SighListCursor cursor = EmotionListCursorCodec.decode(firstPage.nextCursor());
         Long 이후에_등록된_한숨 = insertSigh(
                 126.9780,
                 37.5664,

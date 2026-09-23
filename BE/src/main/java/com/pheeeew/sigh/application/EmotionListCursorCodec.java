@@ -11,14 +11,14 @@ import java.time.Instant;
 import java.util.Base64;
 import java.util.regex.Pattern;
 
-public final class SighListCursorCodec {
+public final class EmotionListCursorCodec {
 
     private static final String VERSION = "1";
     private static final String FIELD_DELIMITER = "|";
     private static final int FIELD_COUNT = 8;
     private static final int MAX_CURSOR_LENGTH = 2_048;
 
-    private SighListCursorCodec() {
+    private EmotionListCursorCodec() {
     }
 
     public static SighListCursor decode(String encoded) {
