@@ -27,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
-public class SighBlockService {
+public class EmotionBlockService {
 
     private static final int PAGE_SIZE = 50;
 

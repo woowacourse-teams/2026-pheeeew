@@ -2,7 +2,7 @@ package com.pheeeew.report.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
-import com.pheeeew.report.application.SighBlockService;
+import com.pheeeew.report.application.EmotionBlockService;
 import com.pheeeew.report.application.dto.BlockListResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.presentation.dto.BlockCreateRequest;
@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class SighBlockController implements SighBlockControllerApi {
 
-    private final SighBlockService sighBlockService;
+    private final EmotionBlockService emotionBlockService;
 
     @Override
     @PostMapping
@@ -35,7 +35,7 @@ public class SighBlockController implements SighBlockControllerApi {
             @CurrentDevice UUID devicePublicId,
             @Valid @RequestBody BlockCreateRequest request
     ) {
-        BlockSaveResult result = sighBlockService.save(request.sighId(), devicePublicId);
+        BlockSaveResult result = emotionBlockService.save(request.sighId(), devicePublicId);
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {
@@ -52,7 +52,7 @@ public class SighBlockController implements SighBlockControllerApi {
             @CurrentDevice UUID devicePublicId,
             @RequestParam(required = false) String cursor
     ) {
-        BlockListResult result = sighBlockService.findAll(devicePublicId, cursor);
+        BlockListResult result = emotionBlockService.findAll(devicePublicId, cursor);
 
         List<SighBlockResponse> items = result.items().stream()
                 .map(SighBlockResponse::from)
@@ -67,7 +67,7 @@ public class SighBlockController implements SighBlockControllerApi {
             @CurrentDevice UUID devicePublicId,
             @PathVariable Long sighId
     ) {
-        sighBlockService.delete(sighId, devicePublicId);
+        emotionBlockService.delete(sighId, devicePublicId);
 
         return ResponseEntity.noContent().build();
     }

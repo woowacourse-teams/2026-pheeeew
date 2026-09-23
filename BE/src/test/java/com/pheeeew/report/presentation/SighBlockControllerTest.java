@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
-import com.pheeeew.report.application.SighBlockService;
+import com.pheeeew.report.application.EmotionBlockService;
 import com.pheeeew.report.application.dto.BlockListResult;
 import com.pheeeew.report.application.dto.BlockResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
@@ -57,7 +57,7 @@ class SighBlockControllerTest {
     private final RestTestClient client;
 
     @MockitoBean
-    private SighBlockService sighBlockService;
+    private EmotionBlockService emotionBlockService;
 
     @Autowired
     SighBlockControllerTest(RestTestClient client) {
@@ -78,7 +78,7 @@ class SighBlockControllerTest {
     @Test
     void 처음_차단하면_201과_작성자_정보가_없는_차단_응답을_반환한다() {
         // given
-        when(sighBlockService.save(SIGH_ID, 기기_공개_식별자))
+        when(emotionBlockService.save(SIGH_ID, 기기_공개_식별자))
                 .thenReturn(BlockSaveResult.of(기본_차단_결과(), true));
 
         // when
@@ -89,13 +89,13 @@ class SighBlockControllerTest {
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
                 .expectBody()
                 .json(기본_차단_응답(), JsonCompareMode.STRICT);
-        verify(sighBlockService).save(SIGH_ID, 기기_공개_식별자);
+        verify(emotionBlockService).save(SIGH_ID, 기기_공개_식별자);
     }
 
     @Test
     void 이미_차단한_한숨을_다시_차단하면_200과_최초_차단을_반환한다() {
         // given
-        when(sighBlockService.save(SIGH_ID, 기기_공개_식별자))
+        when(emotionBlockService.save(SIGH_ID, 기기_공개_식별자))
                 .thenReturn(BlockSaveResult.of(기본_차단_결과(), false));
 
         // when
@@ -105,7 +105,7 @@ class SighBlockControllerTest {
         result.expectStatus().isOk()
                 .expectBody()
                 .json(기본_차단_응답(), JsonCompareMode.STRICT);
-        verify(sighBlockService).save(SIGH_ID, 기기_공개_식별자);
+        verify(emotionBlockService).save(SIGH_ID, 기기_공개_식별자);
     }
 
     @ParameterizedTest
@@ -116,13 +116,13 @@ class SighBlockControllerTest {
 
         // then
         오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
-        verifyNoInteractions(sighBlockService);
+        verifyNoInteractions(emotionBlockService);
     }
 
     @Test
     void 차단할_한숨이_없으면_404를_반환한다() {
         // given
-        when(sighBlockService.save(SIGH_ID, 기기_공개_식별자))
+        when(emotionBlockService.save(SIGH_ID, 기기_공개_식별자))
                 .thenThrow(new SighException(SighErrorCode.SIGH_NOT_FOUND));
 
         // when
@@ -142,13 +142,13 @@ class SighBlockControllerTest {
 
         // then
         오류를_검증한다(result, 500, "COMMON-002", "서버 내부 오류가 발생했습니다.");
-        verifyNoInteractions(sighBlockService);
+        verifyNoInteractions(emotionBlockService);
     }
 
     @Test
     void 차단_목록을_커서와_함께_반환한다() {
         // given
-        when(sighBlockService.findAll(기기_공개_식별자, "opaque-cursor"))
+        when(emotionBlockService.findAll(기기_공개_식별자, "opaque-cursor"))
                 .thenReturn(BlockListResult.of(List.of(기본_차단_결과()), true, "next-cursor"));
 
         // when
@@ -167,13 +167,13 @@ class SighBlockControllerTest {
                           "nextCursor": "next-cursor"
                         }
                         """.formatted(기본_차단_응답()), JsonCompareMode.STRICT);
-        verify(sighBlockService).findAll(기기_공개_식별자, "opaque-cursor");
+        verify(emotionBlockService).findAll(기기_공개_식별자, "opaque-cursor");
     }
 
     @Test
     void 커서를_생략하면_첫_페이지를_조회한다() {
         // given
-        when(sighBlockService.findAll(기기_공개_식별자, null))
+        when(emotionBlockService.findAll(기기_공개_식별자, null))
                 .thenReturn(BlockListResult.of(List.of(), false, null));
 
         // when
@@ -187,13 +187,13 @@ class SighBlockControllerTest {
                 .json("""
                         {"items": [], "hasNext": false, "nextCursor": null}
                         """, JsonCompareMode.STRICT);
-        verify(sighBlockService).findAll(기기_공개_식별자, null);
+        verify(emotionBlockService).findAll(기기_공개_식별자, null);
     }
 
     @Test
     void 사용할_수_없는_커서는_400을_반환한다() {
         // given
-        when(sighBlockService.findAll(기기_공개_식별자, "invalid-cursor"))
+        when(emotionBlockService.findAll(기기_공개_식별자, "invalid-cursor"))
                 .thenThrow(new BlockException(BlockErrorCode.BLOCK_INVALID_CURSOR));
 
         // when
@@ -215,7 +215,7 @@ class SighBlockControllerTest {
         // then
         result.expectStatus().isNoContent()
                 .expectBody().isEmpty();
-        verify(sighBlockService).delete(SIGH_ID, 기기_공개_식별자);
+        verify(emotionBlockService).delete(SIGH_ID, 기기_공개_식별자);
     }
 
     @ParameterizedTest
@@ -228,7 +228,7 @@ class SighBlockControllerTest {
 
         // then
         오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
-        verifyNoInteractions(sighBlockService);
+        verifyNoInteractions(emotionBlockService);
     }
 
     private RestTestClient.ResponseSpec 차단한다(String body) {

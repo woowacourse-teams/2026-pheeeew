@@ -46,7 +46,7 @@ class BlockFilterIntegrationTest {
     private SighService sighService;
 
     @Autowired
-    private SighBlockService sighBlockService;
+    private EmotionBlockService emotionBlockService;
 
     @Autowired
     private DeviceBlockService deviceBlockService;
@@ -94,7 +94,7 @@ class BlockFilterIntegrationTest {
         Long 작성자를_모르는_한숨 = 한숨을_저장한다(null);
         Long 사용자_차단_대상의_한숨 = 한숨을_저장한다(사용자_차단_대상.getId());
         Long 한숨_차단_대상의_한숨 = 한숨을_저장한다(한숨_차단_대상.getId());
-        sighBlockService.save(한숨_차단_대상의_한숨, 차단자.getPublicId());
+        emotionBlockService.save(한숨_차단_대상의_한숨, 차단자.getPublicId());
         deviceBlockService.save(사용자_차단_대상의_한숨, 차단자.getPublicId());
 
         // when
@@ -115,7 +115,7 @@ class BlockFilterIntegrationTest {
         Long 작성자를_모르는_한숨 = 한숨을_저장한다(null);
         Long 차단할_한숨 = 한숨을_저장한다(작성자.getId());
         Long 차단하지_않은_한숨 = 한숨을_저장한다(작성자.getId());
-        sighBlockService.save(차단할_한숨, 차단자.getPublicId());
+        emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
 
         // when
         List<Long> 조회된_한숨들 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
@@ -153,11 +153,11 @@ class BlockFilterIntegrationTest {
         Device 작성자 = 기기를_저장한다();
         Long 차단할_한숨 = 한숨을_저장한다(작성자.getId());
         Long 같은_작성자의_다른_한숨 = 한숨을_저장한다(작성자.getId());
-        sighBlockService.save(차단할_한숨, 차단자.getPublicId());
+        emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
 
         // when
         List<Long> 차단_후 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
-        sighBlockService.delete(차단할_한숨, 차단자.getPublicId());
+        emotionBlockService.delete(차단할_한숨, 차단자.getPublicId());
         List<Long> 해제_후 = 조회.조회한다(sighService, SEOUL_BOUNDS, 차단자.getPublicId());
 
         // then
@@ -215,7 +215,7 @@ class BlockFilterIntegrationTest {
         Device 차단_대상 = 기기를_저장한다();
         Long 두_번_차단한_한숨 = 한숨을_저장한다(차단_대상.getId());
         Long 차단_대상의_다른_한숨 = 한숨을_저장한다(차단_대상.getId());
-        sighBlockService.save(두_번_차단한_한숨, 차단자.getPublicId());
+        emotionBlockService.save(두_번_차단한_한숨, 차단자.getPublicId());
         Long 차단_식별자 = deviceBlockService.save(두_번_차단한_한숨, 차단자.getPublicId()).block().blockId();
 
         // when
@@ -234,7 +234,7 @@ class BlockFilterIntegrationTest {
         Long 작성자를_모르는_한숨 = 한숨을_저장한다(null);
         Long 개별로_차단한_한숨 = 한숨을_저장한다(차단_대상.getId());
         Long 사용자_차단으로_가려진_한숨 = 한숨을_저장한다(차단_대상.getId());
-        sighBlockService.save(개별로_차단한_한숨, 차단자.getPublicId());
+        emotionBlockService.save(개별로_차단한_한숨, 차단자.getPublicId());
         deviceBlockService.save(사용자_차단으로_가려진_한숨, 차단자.getPublicId());
 
         // when
@@ -257,7 +257,7 @@ class BlockFilterIntegrationTest {
         Device 차단_대상 = 기기를_저장한다();
         Long 개별로_차단한_한숨 = 한숨을_저장한다(차단_대상.getId());
         Long 사용자_차단으로_가려진_한숨 = 한숨을_저장한다(차단_대상.getId());
-        sighBlockService.save(개별로_차단한_한숨, 차단자.getPublicId());
+        emotionBlockService.save(개별로_차단한_한숨, 차단자.getPublicId());
         deviceBlockService.save(사용자_차단으로_가려진_한숨, 차단자.getPublicId());
 
         // when

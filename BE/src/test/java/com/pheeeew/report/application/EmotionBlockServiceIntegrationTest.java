@@ -35,7 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-class SighBlockServiceIntegrationTest {
+class EmotionBlockServiceIntegrationTest {
 
     private static final double SEOUL_CITY_HALL_LONGITUDE = 126.9780;
     private static final double SEOUL_CITY_HALL_LATITUDE = 37.5664;
@@ -46,7 +46,7 @@ class SighBlockServiceIntegrationTest {
     private int 등록_순번;
 
     @Autowired
-    private SighBlockService sighBlockService;
+    private EmotionBlockService emotionBlockService;
 
     @Autowired
     private SighBlockRepository sighBlockRepository;
@@ -76,7 +76,7 @@ class SighBlockServiceIntegrationTest {
         Long 차단할_한숨 = 한숨을_저장한다(작성자.getId(), "오늘은 조금 지쳤다");
 
         // when
-        BlockSaveResult result = sighBlockService.save(차단할_한숨, 차단자.getPublicId());
+        BlockSaveResult result = emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
 
         // then
         assertThat(result.created()).isTrue();
@@ -93,10 +93,10 @@ class SighBlockServiceIntegrationTest {
         // given
         Device 차단자 = 기기를_저장한다();
         Long 차단할_한숨 = 한숨을_저장한다(null, null);
-        BlockSaveResult 최초 = sighBlockService.save(차단할_한숨, 차단자.getPublicId());
+        BlockSaveResult 최초 = emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
 
         // when
-        BlockSaveResult 다시 = sighBlockService.save(차단할_한숨, 차단자.getPublicId());
+        BlockSaveResult 다시 = emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
 
         // then
         assertThat(최초.created()).isTrue();
@@ -134,7 +134,7 @@ class SighBlockServiceIntegrationTest {
         Long 내가_쓴_한숨 = 한숨을_저장한다(차단자.getId(), null);
 
         // when
-        BlockSaveResult result = sighBlockService.save(내가_쓴_한숨, 차단자.getPublicId());
+        BlockSaveResult result = emotionBlockService.save(내가_쓴_한숨, 차단자.getPublicId());
 
         // then
         assertThat(result.created()).isTrue();
@@ -148,7 +148,7 @@ class SighBlockServiceIntegrationTest {
 
         // when
         Throwable throwable =
-                catchThrowable(() -> sighBlockService.save(없는_한숨_식별자, 차단자.getPublicId()));
+                catchThrowable(() -> emotionBlockService.save(없는_한숨_식별자, 차단자.getPublicId()));
 
         // then
         assertThat(throwable)
@@ -165,7 +165,7 @@ class SighBlockServiceIntegrationTest {
 
         // when
         Throwable throwable =
-                catchThrowable(() -> sighBlockService.save(차단할_한숨, 없는_기기_공개_식별자));
+                catchThrowable(() -> emotionBlockService.save(차단할_한숨, 없는_기기_공개_식별자));
 
         // then
         assertThat(throwable).isInstanceOf(DeviceException.class);
@@ -182,7 +182,7 @@ class SighBlockServiceIntegrationTest {
 
         // when
         Throwable throwable =
-                catchThrowable(() -> sighBlockService.delete(차단하지_않은_한숨, 차단자.getPublicId()));
+                catchThrowable(() -> emotionBlockService.delete(차단하지_않은_한숨, 차단자.getPublicId()));
 
         // then
         assertThat(throwable).isNull();
@@ -195,10 +195,10 @@ class SighBlockServiceIntegrationTest {
         Device 차단자 = 기기를_저장한다();
         Device 남 = 기기를_저장한다();
         Long 차단할_한숨 = 한숨을_저장한다(null, null);
-        sighBlockService.save(차단할_한숨, 차단자.getPublicId());
+        emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
 
         // when
-        sighBlockService.delete(차단할_한숨, 남.getPublicId());
+        emotionBlockService.delete(차단할_한숨, 남.getPublicId());
 
         // then
         assertThat(sighBlockRepository.findByBlockerDeviceIdAndSighId(차단자.getId(), 차단할_한숨))
@@ -214,12 +214,12 @@ class SighBlockServiceIntegrationTest {
         Long 먼저_차단한_한숨 = 한숨을_저장한다(null, "먼저 차단");
         Long 나중에_차단한_한숨 = 한숨을_저장한다(null, "나중에 차단");
         Long 남이_차단한_한숨 = 한숨을_저장한다(null, null);
-        sighBlockService.save(먼저_차단한_한숨, 차단자.getPublicId());
-        sighBlockService.save(나중에_차단한_한숨, 차단자.getPublicId());
-        sighBlockService.save(남이_차단한_한숨, 남.getPublicId());
+        emotionBlockService.save(먼저_차단한_한숨, 차단자.getPublicId());
+        emotionBlockService.save(나중에_차단한_한숨, 차단자.getPublicId());
+        emotionBlockService.save(남이_차단한_한숨, 남.getPublicId());
 
         // when
-        BlockListResult result = sighBlockService.findAll(차단자.getPublicId(), null);
+        BlockListResult result = emotionBlockService.findAll(차단자.getPublicId(), null);
 
         // then
         assertThat(result.items())
@@ -235,13 +235,13 @@ class SighBlockServiceIntegrationTest {
         // given
         Device 차단자 = 기기를_저장한다();
         Long 차단할_한숨 = 한숨을_저장한다(null, null);
-        sighBlockService.save(차단할_한숨, 차단자.getPublicId());
+        emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
         jdbcClient.sql("UPDATE sighs SET deleted_at = NOW() WHERE id = :id")
                 .param("id", 차단할_한숨)
                 .update();
 
         // when
-        BlockListResult result = sighBlockService.findAll(차단자.getPublicId(), null);
+        BlockListResult result = emotionBlockService.findAll(차단자.getPublicId(), null);
 
         // then
         assertThat(result.items())
@@ -257,13 +257,13 @@ class SighBlockServiceIntegrationTest {
         for (int index = 0; index < 51; index++) {
             Long sighId = 한숨을_저장한다(null, null);
             차단한_한숨들.add(sighId);
-            sighBlockService.save(sighId, 차단자.getPublicId());
+            emotionBlockService.save(sighId, 차단자.getPublicId());
         }
 
         // when
-        BlockListResult 첫_페이지 = sighBlockService.findAll(차단자.getPublicId(), null);
+        BlockListResult 첫_페이지 = emotionBlockService.findAll(차단자.getPublicId(), null);
         BlockListResult 다음_페이지 =
-                sighBlockService.findAll(차단자.getPublicId(), 첫_페이지.nextCursor());
+                emotionBlockService.findAll(차단자.getPublicId(), 첫_페이지.nextCursor());
 
         // then
         assertThat(첫_페이지.items()).hasSize(50);
@@ -283,7 +283,7 @@ class SighBlockServiceIntegrationTest {
 
         // when
         Throwable throwable =
-                catchThrowable(() -> sighBlockService.findAll(차단자.getPublicId(), "not-a-cursor"));
+                catchThrowable(() -> emotionBlockService.findAll(차단자.getPublicId(), "not-a-cursor"));
 
         // then
         assertThat(throwable).isInstanceOf(BlockException.class);
@@ -333,7 +333,7 @@ class SighBlockServiceIntegrationTest {
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
                     start.await();
-                    return sighBlockService.save(sighId, devicePublicId);
+                    return emotionBlockService.save(sighId, devicePublicId);
                 }));
             }
 
