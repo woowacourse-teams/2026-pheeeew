@@ -25,18 +25,41 @@ import com.pheeeew.feature.screens.ranking.RankingMember
 import com.pheeeew.feature.screens.ranking.sampleRankings
 
 @Composable
-fun RankingRow(member: RankingMember, modifier: Modifier = Modifier) {
+fun RankingRow(
+    member: RankingMember,
+    modifier: Modifier = Modifier,
+) {
     val shape = RoundedCornerShape(15.dp)
     Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 24.dp).shadow(4.dp, shape)
-            .border(1.dp, AppColors.RankingContent, shape).background(AppColors.Background, shape)
-            .height(73.dp).padding(horizontal = 16.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .shadow(4.dp, shape)
+                .border(1.dp, AppColors.RankingContent, shape)
+                .background(AppColors.Background, shape)
+                .height(73.dp)
+                .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Text("${member.rank}위", Modifier.weight(0.65f), color = AppColors.RankingContent, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+        Text(
+            "${member.rank}위",
+            Modifier.weight(0.65f),
+            color = AppColors.RankingContent,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
         GroupStamp("하유", 47.dp)
-        Text(member.name, Modifier.weight(2f), color = AppColors.RankingContent, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+        Text(
+            member.name,
+            Modifier.weight(2f),
+            color = AppColors.RankingContent,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
         Column(horizontalAlignment = Alignment.End) {
             Text("톡 개수", color = AppColors.RankingSecondaryContent, fontSize = 11.sp)
             Text("${member.count}개", color = AppColors.RankingContent, fontSize = 15.sp, fontWeight = FontWeight.Bold)

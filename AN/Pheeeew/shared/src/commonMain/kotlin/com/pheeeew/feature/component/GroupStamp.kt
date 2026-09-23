@@ -18,10 +18,18 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 
 @Composable
-fun GroupStamp(label: String, size: Dp, modifier: Modifier = Modifier) {
+fun GroupStamp(
+    label: String,
+    size: Dp,
+    modifier: Modifier = Modifier,
+) {
     Box(
-        modifier = modifier.size(size).border(2.dp, AppColors.RankingContent, CircleShape).padding(4.dp)
-            .background(AppColors.RankingAccent, CircleShape),
+        modifier =
+            modifier
+                .size(size)
+                .border(2.dp, AppColors.RankingContent, CircleShape)
+                .padding(4.dp)
+                .background(AppColors.RankingAccent, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         Text(label, color = AppColors.RankingContent, fontSize = 15.sp, fontWeight = FontWeight.Bold)

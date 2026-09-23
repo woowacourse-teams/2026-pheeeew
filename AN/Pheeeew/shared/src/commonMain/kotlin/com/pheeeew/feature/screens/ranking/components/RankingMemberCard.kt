@@ -29,16 +29,30 @@ import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.weekly_ranking_crown
 
 @Composable
-fun RankingMemberCard(member: RankingMember, height: Dp, modifier: Modifier = Modifier) {
+fun RankingMemberCard(
+    member: RankingMember,
+    height: Dp,
+    modifier: Modifier = Modifier,
+) {
     val shape = RoundedCornerShape(if (member.rank == 1) 22.dp else 18.dp)
     Column(
-        modifier = modifier.height(height).shadow(5.dp, shape).border(1.dp, AppColors.RankingContent, shape)
-            .background(AppColors.Background, shape).padding(
-                start = 8.dp,
-                top = if (member.rank == 1) 10.dp else 8.dp,
-                end = 8.dp,
-                bottom = when (member.rank) { 1 -> 10.dp; 2 -> 8.dp; else -> 4.dp },
-            ),
+        modifier =
+            modifier
+                .height(height)
+                .shadow(5.dp, shape)
+                .border(1.dp, AppColors.RankingContent, shape)
+                .background(AppColors.Background, shape)
+                .padding(
+                    start = 8.dp,
+                    top = if (member.rank == 1) 10.dp else 8.dp,
+                    end = 8.dp,
+                    bottom =
+                        when (member.rank) {
+                            1 -> 10.dp
+                            2 -> 8.dp
+                            else -> 4.dp
+                        },
+                ),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween,
     ) {
@@ -51,8 +65,23 @@ fun RankingMemberCard(member: RankingMember, height: Dp, modifier: Modifier = Mo
             )
         }
         GroupStamp("히유", if (member.rank == 1) 62.dp else 56.dp)
-        Text(member.name, color = AppColors.RankingContent, fontSize = 13.sp, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center, maxLines = 2, lineHeight = 17.sp)
-        Text("톡 개수 ${member.count}개", color = AppColors.RankingContent, fontSize = 12.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1)
+        Text(
+            member.name,
+            color = AppColors.RankingContent,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            lineHeight = 17.sp,
+        )
+        Text(
+            "톡 개수 ${member.count}개",
+            color = AppColors.RankingContent,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
     }
 }
 

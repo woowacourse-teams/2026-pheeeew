@@ -13,7 +13,10 @@ import com.pheeeew.feature.screens.ranking.RankingMember
 import com.pheeeew.feature.screens.ranking.sampleRankings
 
 @Composable
-fun TopThreeRanking(members: List<RankingMember>, modifier: Modifier = Modifier) {
+fun TopThreeRanking(
+    members: List<RankingMember>,
+    modifier: Modifier = Modifier,
+) {
     Row(
         modifier = modifier.fillMaxWidth().padding(horizontal = 22.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
