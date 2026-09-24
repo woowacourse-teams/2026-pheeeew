@@ -3,6 +3,7 @@ package com.pheeeew.emotion.presentation;
 import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionUpdateRequest;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.presentation.dto.EmotionDetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateRequest;
@@ -83,6 +84,43 @@ public interface EmotionControllerApi {
     ResponseEntity<EmotionDetailResponse> findById(
             @Parameter(description = "감정 ID", example = "42", schema = @Schema(minimum = "1"))
             @Min(value = 1, message = "감정 ID는 1 이상이어야 합니다.") Long emotionId,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
+
+    @Operation(summary = "본인 감정 수정", description = """
+            작성 기기의 감정만 기한 없이 수정합니다. state와 contentType은 필수입니다.
+            상태·메모·녹음·그룹 스탬프를 수정하며 위치·각도·작성 시각·닉네임은 바뀌지 않습니다.
+            contentType=NONE이면 내용을 제거합니다. MEMO이면 memo로 바꾸며 null·공백은 내용 없음입니다.
+            AUDIO이면 audioUploadId로 새 녹음을 연결합니다. audioUploadId가 null이면 기존 녹음을 유지합니다.
+            groupId가 null이면 그룹 스탬프를 제거합니다. 현재 groupId를 보내면 기존 선택을 유지합니다.
+            새 그룹 선택은 현재 소속된 그룹만 가능합니다. 수정 완료 후 204를 반환합니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "수정 완료"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청 또는 유지할 기존 녹음이 없음"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
+            @ApiResponse(responseCode = "404", description = "감정이 없거나 본인 글이 아니거나 삭제됨, 또는 사용할 수 없는 그룹·업로드"),
+            @ApiResponse(responseCode = "409", description = "녹음 미완료 또는 다른 감정에서 사용한 업로드"),
+            @ApiResponse(responseCode = "503", description = "녹음 업로드를 확인할 수 없음")
+    })
+    ResponseEntity<Void> update(
+            @Min(1) Long emotionId,
+            @Valid EmotionUpdateRequest request,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
+
+    @Operation(summary = "본인 감정 삭제", description = """
+            작성 기기의 감정만 소프트 삭제합니다. 삭제된 감정은 지도·목록·상세에 표시하지 않습니다.
+            본인 글을 다시 삭제해도 204를 반환합니다. 기록과 신고 이력은 보존하며 녹음 파일은 즉시 삭제하지 않습니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "삭제 완료 또는 이미 삭제됨"),
+            @ApiResponse(responseCode = "400", description = "감정 ID가 올바르지 않음"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
+            @ApiResponse(responseCode = "404", description = "감정이 없거나 본인 글이 아님")
+    })
+    ResponseEntity<Void> delete(
+            @Min(1) Long emotionId,
             @Parameter(hidden = true) UUID devicePublicId
     );
 

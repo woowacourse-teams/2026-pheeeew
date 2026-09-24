@@ -3,6 +3,8 @@ package com.pheeeew.emotion.presentation;
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionUpdateRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionContentType;
 import com.pheeeew.emotion.application.dto.EmotionPageView;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
@@ -72,6 +74,28 @@ public class EmotionController implements EmotionControllerApi {
                 .contentType(GEO_JSON)
                 .cacheControl(CacheControl.noCache().cachePrivate())
                 .body(EmotionDetailResponse.from(emotionQueryService.findById(emotionId, devicePublicId)));
+    }
+
+    @Override
+    @PutMapping("/{emotionId}")
+    public ResponseEntity<Void> update(
+            @PathVariable Long emotionId,
+            @RequestBody EmotionUpdateRequest request,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        emotionCommandService.update(emotionId, devicePublicId, request.state(), request.memo(), request.audioUploadId(),
+                request.contentType() == EmotionContentType.AUDIO && request.audioUploadId() == null, request.groupId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @DeleteMapping("/{emotionId}")
+    public ResponseEntity<Void> delete(
+            @PathVariable Long emotionId,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        emotionCommandService.delete(emotionId, devicePublicId);
+        return ResponseEntity.noContent().build();
     }
 
     @Override

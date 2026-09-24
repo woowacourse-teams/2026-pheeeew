@@ -406,6 +406,39 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @Test
+    void 본인_감정만_수정과_소프트_삭제할_수_있다() {
+        // given
+        String ownerToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        String otherToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        Long id = 한숨을_등록한다(ownerToken);
+        String uri = "/api/v1/emotions/" + id;
+        String body = "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"수정한 메모\"}";
+
+        // when / then
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNotFound();
+        client.delete().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken)
+                .exchange().expectStatus().isNotFound();
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNoContent();
+        client.get().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .exchange().expectStatus().isOk().expectBody()
+                .jsonPath("$.properties.state").isEqualTo("ANGRY")
+                .jsonPath("$.properties.memo").isEqualTo("수정한 메모");
+        for (int retry = 0; retry < 2; retry++) {
+            client.delete().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                    .exchange().expectStatus().isNoContent();
+        }
+        client.get().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .exchange().expectStatus().isNotFound();
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNotFound();
+        client.get().uri("/api/v1/emotions" + 지도_영역_질의).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .exchange().expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty();
+        assertThat(emotionRepository.findById(id).orElseThrow().getDeletedAt()).isNotNull();
+    }
+
+    @Test
     void 유효한_토큰으로_없는_한숨을_조회하면_404를_반환한다() {
         // given
         String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());

@@ -121,6 +121,7 @@ class EmotionControllerTest {
                             "contentType":"MEMO",
                             "audio":null,
                             "groupStamp":null,
+                            "groupId":null,
                             "nickname":"먼지구름",
                             "emojis":[
                               {"type":"HEART","count":2,"selected":true},
@@ -174,6 +175,77 @@ class EmotionControllerTest {
         request(HttpMethod.GET, "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38",
                 "access-token").expectStatus().isOk().expectBody()
                 .jsonPath("$.items[0].properties.groupStamp.text").isEqualTo("모임");
+    }
+
+    @ParameterizedTest
+    @MethodSource("updateContents")
+    void 수정_내용과_그룹을_인증된_기기로_전달하고_204를_반환한다(
+            String content, String memo, String uploadId, boolean keepAudio) {
+        // given
+        UUID groupId = UUID.randomUUID();
+        String body = "{\"state\":\"ANGRY\",\"groupId\":\"" + groupId + "\"," + content + "}";
+
+        // when / then
+        client.put().uri(EMOTION_URI + "?devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(body).exchange().expectStatus().isNoContent().expectBody().isEmpty();
+        verify(emotionCommandService).update(42L, DEVICE_PUBLIC_ID, EmotionState.ANGRY, memo, uploadId, keepAudio, groupId);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{}", "{\"state\":\"ANGRY\"}", "{\"contentType\":\"NONE\"}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"NONE\",\"memo\":\"메모\"}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\",\"memo\":\"메모\"}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\",\"audioUploadId\":\" \"}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"audioUploadId\":\"upload\"}"
+    })
+    void 잘못된_수정_내용은_서비스를_호출하지_않는다(String body) {
+        client.put().uri(EMOTION_URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isBadRequest();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @Test
+    void 수정_메모가_200자를_초과하면_거부한다() {
+        client.put().uri(EMOTION_URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"" + "가".repeat(201) + "\"}")
+                .exchange().expectStatus().isBadRequest();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @Test
+    void 삭제는_인증된_기기로_위임하고_204를_반환한다() {
+        request(HttpMethod.DELETE, EMOTION_URI + "?devicePublicId=" + UUID.randomUUID(), "access-token")
+                .expectStatus().isNoContent().expectBody().isEmpty();
+        verify(emotionCommandService).delete(42L, DEVICE_PUBLIC_ID);
+    }
+
+    @ParameterizedTest
+    @MethodSource("unauthenticatedRequests")
+    void 수정과_삭제는_인증이_필요하다(HttpMethod method, String token) {
+        request(method, EMOTION_URI, token).expectStatus().isUnauthorized();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"EMOTION_NOT_VISIBLE", "EMOTION_AUDIO_REQUIRED", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE"})
+    void 수정_서비스의_실패_코드를_반환한다(String name) {
+        EmotionErrorCode error = EmotionErrorCode.valueOf(name);
+        doThrow(new EmotionException(error)).when(emotionCommandService)
+                .update(42L, DEVICE_PUBLIC_ID, EmotionState.ANGRY, null, null, true, null);
+        client.put().uri(EMOTION_URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body("{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\"}")
+                .exchange().expectStatus().isEqualTo(error.getStatus().value())
+                .expectBody().jsonPath("$.code").isEqualTo(error.getCode());
+    }
+
+    @Test
+    void 삭제_권한이_없으면_404를_반환한다() {
+        doThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_VISIBLE))
+                .when(emotionCommandService).delete(42L, DEVICE_PUBLIC_ID);
+        request(HttpMethod.DELETE, EMOTION_URI, "access-token").expectStatus().isNotFound();
     }
 
     @Test
@@ -398,6 +470,15 @@ class EmotionControllerTest {
                 EmotionEmojiResult.of(EmojiType.RAGE, 0, false),
                 EmotionEmojiResult.of(EmojiType.SKULL, 0, false)
         ));
+    }
+
+    private static Stream<Arguments> updateContents() {
+        return Stream.of(
+                Arguments.of("\"contentType\":\"NONE\"", null, null, false),
+                Arguments.of("\"contentType\":\"MEMO\",\"memo\":\"메모\"", "메모", null, false),
+                Arguments.of("\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\"", null, "upload", false),
+                Arguments.of("\"contentType\":\"AUDIO\"", null, null, true)
+        );
     }
 
     private static Stream<Arguments> detailFailures() {

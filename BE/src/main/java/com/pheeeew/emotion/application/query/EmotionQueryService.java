@@ -133,7 +133,7 @@ public class EmotionQueryService {
         List<Long> stampIds = page.stream().map(Emotion::getGroupStamp).filter(Objects::nonNull)
                 .map(GroupStamp::getId).distinct().toList();
         Map<Long, GroupStampResult> stamps = stampIds.isEmpty() ? Map.of()
-                : groupStampRepository.findAllById(stampIds).stream()
+                : groupStampRepository.findAllWithGroupByIdIn(stampIds).stream()
                         .collect(Collectors.toMap(GroupStamp::getId, GroupStampResult::from));
         List<EmotionDetailView> items = page.stream().map(emotion -> EmotionDetailView.of(
                 emotion, List.copyOf(counts.get(emotion.getId()).values()), null,

@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import com.pheeeew.groups.presentation.dto.GroupStampResponse;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Schema(name = "EmotionDetailResponse")
 public record EmotionDetailResponse(
@@ -36,7 +37,9 @@ public record EmotionDetailResponse(
             @Schema(description = "녹음 상세 조회에만 포함됩니다. 만료되면 상세를 다시 조회합니다.", nullable = true)
             PlaybackUrl audio,
             @Schema(description = "연결된 그룹 스탬프의 현재 모양. 선택하지 않았으면 null입니다.", nullable = true)
-            GroupStampResponse groupStamp
+            GroupStampResponse groupStamp,
+            @Schema(description = "선택한 그룹의 공개 ID. 수정 시 기존 스탬프를 유지하려면 이 값을 보냅니다. 그룹 스탬프가 없으면 null입니다.", nullable = true)
+            UUID groupId
     ) {
 
         public static Properties from(EmotionDetailView view) {
@@ -45,7 +48,8 @@ public record EmotionDetailResponse(
                     view.emojis().stream().map(Emoji::from).toList(),
                     view.hasAudio() ? EmotionContentType.AUDIO
                             : view.memo() == null ? EmotionContentType.NONE : EmotionContentType.MEMO,
-                    view.audio(), view.groupStamp() == null ? null : GroupStampResponse.from(view.groupStamp())
+                    view.audio(), view.groupStamp() == null ? null : GroupStampResponse.from(view.groupStamp()),
+                    view.groupId()
             );
         }
     }

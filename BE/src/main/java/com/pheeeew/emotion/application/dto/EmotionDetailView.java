@@ -6,6 +6,7 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 public record EmotionDetailView(
         Long id,
@@ -19,7 +20,8 @@ public record EmotionDetailView(
         List<EmotionEmojiResult> emojis,
         boolean hasAudio,
         PlaybackUrl audio,
-        GroupStampResult groupStamp
+        GroupStampResult groupStamp,
+        UUID groupId
 ) {
 
     public static EmotionDetailView of(Emotion emotion, List<EmotionEmojiResult> emojis) {
@@ -35,7 +37,8 @@ public record EmotionDetailView(
         return new EmotionDetailView(
                 emotion.getId(), emotion.getLongitude(), emotion.getLatitude(), emotion.getCreatedAt(),
                 emotion.getState(), emotion.getRotationDegrees(), emotion.getMemo(), emotion.getNickname(),
-                List.copyOf(emojis), emotion.getContent().getAudio() != null, audio, groupStamp
+                List.copyOf(emojis), emotion.getContent().getAudio() != null, audio, groupStamp,
+                emotion.getGroupStamp() == null ? null : emotion.getGroupStamp().getGroup().getPublicId()
         );
     }
 }
