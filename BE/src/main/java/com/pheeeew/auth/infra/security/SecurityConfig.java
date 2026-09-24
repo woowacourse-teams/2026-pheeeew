@@ -38,6 +38,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/sighs").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v2/sighs").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v2/sighs/*/likes").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/emotions/*").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/emotions/*/emojis/*").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/emotions/*/emojis/*").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v2/reports").authenticated()

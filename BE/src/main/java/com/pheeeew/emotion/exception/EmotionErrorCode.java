@@ -13,7 +13,8 @@ public enum EmotionErrorCode implements ErrorCode {
     EMOTION_NOT_FOUND("SIGH-002", "한숨을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     EMOTION_INVALID_CURSOR("SIGH-003", "한숨 목록 커서를 사용할 수 없습니다.", HttpStatus.BAD_REQUEST),
     EMOTION_EXPIRED("SIGH-004", "한숨의 조회 기간이 지났습니다.", HttpStatus.GONE),
-    EMOTION_REQUEST_ID_CONFLICT("EMOTION-001", "요청 식별자를 사용할 수 없습니다.", HttpStatus.CONFLICT);
+    EMOTION_REQUEST_ID_CONFLICT("EMOTION-001", "요청 식별자를 사용할 수 없습니다.", HttpStatus.CONFLICT),
+    EMOTION_NOT_VISIBLE("EMOTION-002", "감정을 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
 
     private final String code;
     private final String message;

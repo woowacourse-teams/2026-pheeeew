@@ -38,6 +38,24 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
     Optional<Emotion> findByIdAndDeletedAtIsNull(Long id);
 
     @Query("""
+            SELECT emotion
+            FROM Emotion emotion
+            WHERE emotion.id = :id
+              AND emotion.deletedAt IS NULL
+              AND NOT EXISTS (
+                  SELECT emotionBlock.id FROM EmotionBlock emotionBlock
+                  WHERE emotionBlock.blockerDeviceId = :deviceId
+                    AND emotionBlock.emotionId = emotion.id
+              )
+              AND NOT EXISTS (
+                  SELECT deviceBlock.id FROM DeviceBlock deviceBlock
+                  WHERE deviceBlock.blockerDeviceId = :deviceId
+                    AND deviceBlock.blockedDeviceId = emotion.deviceId
+              )
+            """)
+    Optional<Emotion> findVisibleById(@Param("id") Long id, @Param("deviceId") Long deviceId);
+
+    @Query("""
             SELECT s AS emotion, CASE WHEN emotionLike.id IS NOT NULL THEN true ELSE false END AS liked
             FROM Emotion s
             LEFT JOIN EmotionLike emotionLike ON emotionLike.emotionId = s.id AND emotionLike.deviceId = :deviceId

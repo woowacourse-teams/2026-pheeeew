@@ -1,4 +1,4 @@
-package com.pheeeew.emotion.application.emoji;
+package com.pheeeew.emotion.application.command;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
@@ -10,7 +10,6 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.emotion.application.emoji.dto.EmotionEmojiResult;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionEmoji;
@@ -39,12 +38,12 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @PostgisDataJpaTest
-@Import(EmotionEmojiService.class)
+@Import(EmotionCommandService.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
-class EmotionEmojiServiceIntegrationTest {
+class EmotionCommandServiceIntegrationTest {
 
     @Autowired
-    private EmotionEmojiService emotionEmojiService;
+    private EmotionCommandService emotionCommandService;
 
     @Autowired
     private EmotionEmojiRepository emotionEmojiRepository;
@@ -81,81 +80,16 @@ class EmotionEmojiServiceIntegrationTest {
         UUID devicePublicId = device.getPublicId();
 
         // when / then
-        emotionEmojiService.update(emotionId, devicePublicId, EmojiType.HEART, true);
+        emotionCommandService.updateEmoji(emotionId, devicePublicId, EmojiType.HEART, true);
         Long heartId = emotionEmojiRepository.findAll().getFirst().getId();
-        emotionEmojiService.update(emotionId, devicePublicId, EmojiType.HEART, true);
+        emotionCommandService.updateEmoji(emotionId, devicePublicId, EmojiType.HEART, true);
         assertThat(emotionEmojiRepository.findAll()).extracting(EmotionEmoji::getId).containsExactly(heartId);
 
-        emotionEmojiService.update(emotionId, devicePublicId, EmojiType.LAUGH, true);
-        emotionEmojiService.update(emotionId, devicePublicId, EmojiType.HEART, false);
-        emotionEmojiService.update(emotionId, devicePublicId, EmojiType.HEART, false);
+        emotionCommandService.updateEmoji(emotionId, devicePublicId, EmojiType.LAUGH, true);
+        emotionCommandService.updateEmoji(emotionId, devicePublicId, EmojiType.HEART, false);
+        emotionCommandService.updateEmoji(emotionId, devicePublicId, EmojiType.HEART, false);
         assertThat(emotionEmojiRepository.findAll()).extracting(EmotionEmoji::getEmojiType)
                 .containsExactly(EmojiType.LAUGH);
-    }
-
-    @Test
-    void 선택이_없어도_여섯_이모지를_0과_미선택으로_조회한다() {
-        // when
-        List<EmotionEmojiResult> results = emotionEmojiService.findAll(emotion.getId(), device.getPublicId());
-
-        // then
-        assertThat(results).containsExactly(
-                EmotionEmojiResult.of(EmojiType.HEART, 0, false),
-                EmotionEmojiResult.of(EmojiType.LAUGH, 0, false),
-                EmotionEmojiResult.of(EmojiType.CRY, 0, false),
-                EmotionEmojiResult.of(EmojiType.DIZZY, 0, false),
-                EmotionEmojiResult.of(EmojiType.RAGE, 0, false),
-                EmotionEmojiResult.of(EmojiType.SKULL, 0, false)
-        );
-    }
-
-    @Test
-    void 종류별_전체_선택_수와_인증된_기기의_선택_여부를_조회한다() {
-        // given
-        Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
-        emotionEmojiService.update(emotion.getId(), device.getPublicId(), EmojiType.HEART, true);
-        emotionEmojiService.update(emotion.getId(), anotherDevice.getPublicId(), EmojiType.HEART, true);
-        emotionEmojiService.update(emotion.getId(), anotherDevice.getPublicId(), EmojiType.LAUGH, true);
-        emotionEmojiService.update(emotion.getId(), device.getPublicId(), EmojiType.SKULL, true);
-
-        // when
-        List<EmotionEmojiResult> mine = emotionEmojiService.findAll(emotion.getId(), device.getPublicId());
-        List<EmotionEmojiResult> theirs = emotionEmojiService.findAll(emotion.getId(), anotherDevice.getPublicId());
-
-        // then
-        assertThat(mine).containsExactly(
-                EmotionEmojiResult.of(EmojiType.HEART, 2, true),
-                EmotionEmojiResult.of(EmojiType.LAUGH, 1, false),
-                EmotionEmojiResult.of(EmojiType.CRY, 0, false),
-                EmotionEmojiResult.of(EmojiType.DIZZY, 0, false),
-                EmotionEmojiResult.of(EmojiType.RAGE, 0, false),
-                EmotionEmojiResult.of(EmojiType.SKULL, 1, true)
-        );
-        assertThat(theirs.getFirst()).isEqualTo(EmotionEmojiResult.of(EmojiType.HEART, 2, true));
-        assertThat(theirs.get(1)).isEqualTo(EmotionEmojiResult.of(EmojiType.LAUGH, 1, true));
-        assertThat(theirs.getLast()).isEqualTo(EmotionEmojiResult.of(EmojiType.SKULL, 1, false));
-
-        emotionEmojiService.update(emotion.getId(), device.getPublicId(), EmojiType.HEART, false);
-        assertThat(emotionEmojiService.findAll(emotion.getId(), device.getPublicId()).getFirst())
-                .isEqualTo(EmotionEmojiResult.of(EmojiType.HEART, 1, false));
-    }
-
-    @Test
-    void 없는_기기나_감정과_삭제된_감정의_이모지_조회는_거부한다() {
-        // when / then
-        assertThatThrownBy(() -> emotionEmojiService.findAll(emotion.getId(), UUID.randomUUID()))
-                .isInstanceOfSatisfying(DeviceException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
-        assertThatThrownBy(() -> emotionEmojiService.findAll(Long.MAX_VALUE, device.getPublicId()))
-                .isInstanceOfSatisfying(EmotionException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND));
-
-        Emotion deleted = emotionRepository.findById(emotion.getId()).orElseThrow();
-        deleted.delete();
-        emotionRepository.saveAndFlush(deleted);
-        assertThatThrownBy(() -> emotionEmojiService.findAll(emotion.getId(), device.getPublicId()))
-                .isInstanceOfSatisfying(EmotionException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND));
     }
 
     @Test
@@ -163,12 +97,12 @@ class EmotionEmojiServiceIntegrationTest {
         // given
         Device anotherDevice = deviceRepository.save(기본_기기_빌더().build());
         Emotion anotherEmotion = emotionRepository.save(기본_한숨_빌더().build());
-        emotionEmojiService.update(emotion.getId(), device.getPublicId(), EmojiType.HEART, true);
-        emotionEmojiService.update(emotion.getId(), anotherDevice.getPublicId(), EmojiType.HEART, true);
-        emotionEmojiService.update(anotherEmotion.getId(), device.getPublicId(), EmojiType.HEART, true);
+        emotionCommandService.updateEmoji(emotion.getId(), device.getPublicId(), EmojiType.HEART, true);
+        emotionCommandService.updateEmoji(emotion.getId(), anotherDevice.getPublicId(), EmojiType.HEART, true);
+        emotionCommandService.updateEmoji(anotherEmotion.getId(), device.getPublicId(), EmojiType.HEART, true);
 
         // when
-        emotionEmojiService.update(emotion.getId(), device.getPublicId(), EmojiType.HEART, false);
+        emotionCommandService.updateEmoji(emotion.getId(), device.getPublicId(), EmojiType.HEART, false);
 
         // then
         assertThat(emotionEmojiRepository.findAll())
@@ -183,19 +117,19 @@ class EmotionEmojiServiceIntegrationTest {
     @ValueSource(booleans = {false, true})
     void 없는_기기나_감정과_삭제된_감정의_이모지_요청은_거부한다(boolean selected) {
         // when / then
-        assertThatThrownBy(() -> emotionEmojiService.update(emotion.getId(), UUID.randomUUID(), EmojiType.HEART, selected))
+        assertThatThrownBy(() -> emotionCommandService.updateEmoji(emotion.getId(), UUID.randomUUID(), EmojiType.HEART, selected))
                 .isInstanceOfSatisfying(DeviceException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
-        assertThatThrownBy(() -> emotionEmojiService.update(Long.MAX_VALUE, device.getPublicId(), EmojiType.HEART, selected))
+        assertThatThrownBy(() -> emotionCommandService.updateEmoji(Long.MAX_VALUE, device.getPublicId(), EmojiType.HEART, selected))
                 .isInstanceOfSatisfying(EmotionException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND));
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_VISIBLE));
 
         Emotion deleted = emotionRepository.findById(emotion.getId()).orElseThrow();
         deleted.delete();
         emotionRepository.saveAndFlush(deleted);
-        assertThatThrownBy(() -> emotionEmojiService.update(emotion.getId(), device.getPublicId(), EmojiType.HEART, selected))
+        assertThatThrownBy(() -> emotionCommandService.updateEmoji(emotion.getId(), device.getPublicId(), EmojiType.HEART, selected))
                 .isInstanceOfSatisfying(EmotionException.class,
-                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND));
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_VISIBLE));
         assertThat(emotionEmojiRepository.findAll()).isEmpty();
     }
 
@@ -206,14 +140,14 @@ class EmotionEmojiServiceIntegrationTest {
 
         // when / then
         assertThatThrownBy(() -> transaction.executeWithoutResult(status -> {
-            emotionEmojiService.update(emotion.getId(), device.getPublicId(), EmojiType.HEART, true);
+            emotionCommandService.updateEmoji(emotion.getId(), device.getPublicId(), EmojiType.HEART, true);
             throw new IllegalStateException("선택 후 실패");
         })).isInstanceOf(IllegalStateException.class);
         assertThat(emotionEmojiRepository.findAll()).isEmpty();
 
-        emotionEmojiService.update(emotion.getId(), device.getPublicId(), EmojiType.HEART, true);
+        emotionCommandService.updateEmoji(emotion.getId(), device.getPublicId(), EmojiType.HEART, true);
         assertThatThrownBy(() -> transaction.executeWithoutResult(status -> {
-            emotionEmojiService.update(emotion.getId(), device.getPublicId(), EmojiType.HEART, false);
+            emotionCommandService.updateEmoji(emotion.getId(), device.getPublicId(), EmojiType.HEART, false);
             throw new IllegalStateException("취소 후 실패");
         })).isInstanceOf(IllegalStateException.class);
         assertThat(emotionEmojiRepository.findAll()).extracting(EmotionEmoji::getEmojiType)
@@ -253,7 +187,7 @@ class EmotionEmojiServiceIntegrationTest {
         try {
             ready.countDown();
             start.await();
-            emotionEmojiService.update(emotion.getId(), device.getPublicId(), EmojiType.HEART, true);
+            emotionCommandService.updateEmoji(emotion.getId(), device.getPublicId(), EmojiType.HEART, true);
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException(exception);

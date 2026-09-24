@@ -1,18 +1,19 @@
-package com.pheeeew.emotion.application.emoji;
+package com.pheeeew.emotion.application.query;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
-import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_FOUND;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.emoji.dto.EmotionEmojiResult;
+import com.pheeeew.emotion.application.query.dto.EmotionDetailView;
+import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.projection.EmotionEmojiCountProjection;
 import com.pheeeew.emotion.exception.EmotionException;
-import java.time.Instant;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.UUID;
@@ -21,30 +22,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 @Service
-public class EmotionEmojiService {
+public class EmotionQueryService {
 
-    private final EmotionEmojiRepository emotionEmojiRepository;
     private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
+    private final EmotionEmojiRepository emotionEmojiRepository;
 
-    @Transactional
-    public void update(Long emotionId, UUID devicePublicId, EmojiType emojiType, boolean selected) {
-        Long deviceId = findDeviceId(devicePublicId);
-        validateEmotion(emotionId);
+    public EmotionDetailView findById(Long emotionId, UUID devicePublicId) {
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
+                .map(Device::getId)
+                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+        Emotion emotion = emotionRepository.findVisibleById(emotionId, deviceId)
+                .orElseThrow(() -> new EmotionException(EMOTION_NOT_VISIBLE));
 
-        if (selected) {
-            emotionEmojiRepository.saveIfAbsent(emotionId, deviceId, emojiType.name(), Instant.now());
-        } else {
-            emotionEmojiRepository.deleteSelection(emotionId, deviceId, emojiType.name());
-        }
+        return EmotionDetailView.of(emotion, findEmojis(emotionId, deviceId));
     }
 
-    @Transactional(readOnly = true)
-    public List<EmotionEmojiResult> findAll(Long emotionId, UUID devicePublicId) {
-        Long deviceId = findDeviceId(devicePublicId);
-        validateEmotion(emotionId);
-
+    private List<EmotionEmojiResult> findEmojis(Long emotionId, Long deviceId) {
         EnumMap<EmojiType, EmotionEmojiResult> results = new EnumMap<>(EmojiType.class);
         for (EmojiType type : EmojiType.values()) {
             results.put(type, EmotionEmojiResult.of(type, 0, false));
@@ -55,16 +51,5 @@ public class EmotionEmojiService {
         }
 
         return List.copyOf(results.values());
-    }
-
-    private Long findDeviceId(UUID devicePublicId) {
-        return deviceRepository.findByPublicId(devicePublicId)
-                .map(Device::getId)
-                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
-    }
-
-    private void validateEmotion(Long emotionId) {
-        emotionRepository.findByIdAndDeletedAtIsNull(emotionId)
-                .orElseThrow(() -> new EmotionException(EMOTION_NOT_FOUND));
     }
 }
