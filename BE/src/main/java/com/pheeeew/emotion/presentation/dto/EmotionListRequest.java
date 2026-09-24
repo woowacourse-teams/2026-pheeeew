@@ -6,7 +6,7 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 
-@Schema(name = "SighListRequest")
+@Schema(name = "EmotionListRequest")
 public record EmotionListRequest(
         @DecimalMin("-180.0")
         @DecimalMax("180.0")

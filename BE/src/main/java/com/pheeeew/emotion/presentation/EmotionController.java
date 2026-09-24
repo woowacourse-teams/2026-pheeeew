@@ -1,6 +1,9 @@
 package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
+import com.pheeeew.common.presentation.dto.CursorResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
+import com.pheeeew.emotion.application.query.dto.EmotionPageView;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
 import com.pheeeew.emotion.domain.EmojiType;
@@ -15,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,6 +35,19 @@ public class EmotionController implements EmotionControllerApi {
 
     private final EmotionCommandService emotionCommandService;
     private final EmotionQueryService emotionQueryService;
+
+    @Override
+    @GetMapping
+    public ResponseEntity<CursorResponse<EmotionDetailResponse>> findAll(
+            @ModelAttribute EmotionListRequest request, @CurrentDevice UUID devicePublicId
+    ) {
+        EmotionPageView page = request.isNextPageRequest()
+                ? emotionQueryService.findNextListPage(request.cursor(), devicePublicId)
+                : emotionQueryService.findFirstListPage(request.toBounds(), devicePublicId);
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
+                .body(CursorResponse.of(page.items().stream().map(EmotionDetailResponse::from).toList(),
+                        page.hasNext(), page.nextCursor()));
+    }
 
     @Override
     @PostMapping

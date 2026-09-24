@@ -1,6 +1,8 @@
 package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.common.exception.ErrorResponse;
+import com.pheeeew.common.presentation.dto.CursorResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.presentation.dto.EmotionDetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateRequest;
@@ -21,6 +23,23 @@ import org.springframework.http.ResponseEntity;
 
 @Tag(name = "감정", description = "감정과 이모지 API")
 public interface EmotionControllerApi {
+
+    @Operation(summary = "감정 지도·목록 조회", description = """
+            첫 페이지에는 minLongitude, minLatitude, maxLongitude, maxLatitude를 전달합니다.
+            다음 페이지에는 반환된 cursor만 전달합니다. 날짜변경선을 넘는 영역은 minLongitude > maxLongitude로 표현합니다.
+            기간 제한 없이 (createdAt DESC, id DESC) 순으로 최대 20개씩 조회합니다.
+            지도는 모든 페이지를 모아 오래된 감정부터 그려 최신 감정이 위에 표시되도록 합니다.
+            최초 조회 이후 작성된 감정은 제외하고, 삭제·차단은 매 페이지에 반영합니다.
+            각 항목은 상세와 같은 GeoJSON Feature이며 여섯 이모지 집계와 본인 선택 여부를 포함합니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "감정 목록과 다음 커서"),
+            @ApiResponse(responseCode = "400", description = "영역 또는 커서가 올바르지 않음"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음")
+    })
+    ResponseEntity<CursorResponse<EmotionDetailResponse>> findAll(@Valid EmotionListRequest request,
+            @Parameter(hidden = true) UUID devicePublicId);
+
 
     @Operation(summary = "감정 등록", description = """
             선택 위치에 감정을 등록합니다. contentType은 NONE, MEMO, AUDIO 중 하나입니다.

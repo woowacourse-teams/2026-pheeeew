@@ -22,6 +22,8 @@ import com.pheeeew.emotion.application.emoji.dto.EmotionEmojiResult;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
 import com.pheeeew.emotion.application.query.dto.EmotionDetailView;
+import com.pheeeew.emotion.application.query.dto.EmotionPageView;
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.EmotionState;
@@ -262,6 +264,40 @@ class EmotionControllerTest {
         client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON).body(createBody("\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\""))
                 .exchange().expectStatus().isEqualTo(error.getStatus().value()).expectBody().jsonPath("$.code").isEqualTo(error.getCode());
+    }
+
+    @Test
+    void 목록의_첫_페이지와_다음_페이지를_인증된_기기로_조회한다() {
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6);
+        when(emotionQueryService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
+                .thenReturn(EmotionPageView.of(List.of(detailView()), true, "next"));
+        when(emotionQueryService.findNextListPage("next", DEVICE_PUBLIC_ID))
+                .thenReturn(EmotionPageView.of(List.of(), false, null));
+
+        request(HttpMethod.GET, "/api/v1/emotions?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6", "access-token")
+                .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-cache, private")
+                .expectBody().jsonPath("$.items[0].properties.emojis.length()").isEqualTo(6)
+                .jsonPath("$.hasNext").isEqualTo(true).jsonPath("$.nextCursor").isEqualTo("next");
+        request(HttpMethod.GET, "/api/v1/emotions?cursor=next", "access-token")
+                .expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty().jsonPath("$.hasNext").isEqualTo(false);
+        verify(emotionQueryService).findFirstListPage(bounds, DEVICE_PUBLIC_ID);
+        verify(emotionQueryService).findNextListPage("next", DEVICE_PUBLIC_ID);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "?minLongitude=126.9", "?cursor=next&minLongitude=126.9",
+            "?minLongitude=126.9&minLatitude=37.5&maxLongitude=126.9&maxLatitude=37.6",
+            "?minLongitude=181&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6"})
+    void 목록_영역과_커서_조합을_검증한다(String query) {
+        request(HttpMethod.GET, "/api/v1/emotions" + query, "access-token").expectStatus().isBadRequest();
+        verifyNoInteractions(emotionQueryService);
+    }
+
+    @Test
+    void 목록은_기기_인증이_필수다() {
+        request(HttpMethod.GET, "/api/v1/emotions?cursor=next", null).expectStatus().isUnauthorized();
+        request(HttpMethod.GET, "/api/v1/emotions?cursor=next", "invalid-token").expectStatus().isUnauthorized();
+        verifyNoInteractions(emotionQueryService);
     }
 
     private String createBody(String content) {
