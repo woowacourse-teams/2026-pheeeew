@@ -1,13 +1,18 @@
 package com.pheeeew.emotion.domain;
 
 import com.pheeeew.common.domain.BaseEntity;
+import com.pheeeew.groups.domain.GroupStamp;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
@@ -26,7 +31,6 @@ import org.locationtech.jts.geom.Point;
 public class Emotion extends BaseEntity {
 
     private static final int WGS84_SRID = 4326;
-    private static final int MAX_MEMO_LENGTH = 200;
     private static final int MAX_NICKNAME_LENGTH = 50;
 
     @Id
@@ -40,8 +44,9 @@ public class Emotion extends BaseEntity {
     @Column(nullable = false, updatable = false, columnDefinition = "geometry(Point,4326)")
     private Point location;
 
-    @Column(length = MAX_MEMO_LENGTH, updatable = false)
-    private String memo;
+    @Getter(AccessLevel.NONE)
+    @Embedded
+    private EmotionContent content;
 
     @Enumerated(EnumType.STRING)
     @Column(length = 20, updatable = false)
@@ -49,6 +54,10 @@ public class Emotion extends BaseEntity {
 
     @Column(name = "rotation_degrees", nullable = false, updatable = false)
     private double rotationDegrees;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_stamp_id")
+    private GroupStamp groupStamp;
 
     @Column(nullable = false, length = MAX_NICKNAME_LENGTH, updatable = false)
     private String nickname;
@@ -68,14 +77,15 @@ public class Emotion extends BaseEntity {
 
     @Builder
     private Emotion(
-            UUID requestId, Point location, String memo, EmotionState state,
-            double rotationDegrees, String nickname, Long deviceId
+            UUID requestId, Point location, String memo, Audio audio, EmotionState state,
+            double rotationDegrees, String nickname, Long deviceId, GroupStamp groupStamp
     ) {
         this.requestId = Objects.requireNonNull(requestId);
         this.location = requireWgs84Point(location);
-        this.memo = normalizeMemo(memo);
+        this.content = EmotionContent.builder().memo(memo).audio(audio).build();
         this.state = state;
         this.rotationDegrees = requireValidRotationDegrees(rotationDegrees);
+        this.groupStamp = groupStamp;
         this.nickname = requireValidNickname(nickname);
         this.deviceId = deviceId;
     }
@@ -106,6 +116,14 @@ public class Emotion extends BaseEntity {
         return location.getY();
     }
 
+    public EmotionContent getContent() {
+        return content == null ? EmotionContent.builder().build() : content;
+    }
+
+    public String getMemo() {
+        return getContent().getMemo();
+    }
+
     private Point requireWgs84Point(Point location) {
         Objects.requireNonNull(location);
         if (location.isEmpty() || location.getSRID() != WGS84_SRID) {
@@ -119,22 +137,6 @@ public class Emotion extends BaseEntity {
             throw new IllegalArgumentException("스탬프 각도는 0도 이상 360도 미만이어야 합니다.");
         }
         return rotationDegrees;
-    }
-
-    private String normalizeMemo(String memo) {
-        if (memo == null) {
-            return null;
-        }
-
-        String normalizedMemo = memo.strip();
-        if (normalizedMemo.isEmpty()) {
-            return null;
-        }
-        if (normalizedMemo.codePointCount(0, normalizedMemo.length()) > MAX_MEMO_LENGTH) {
-            throw new IllegalArgumentException("메모는 200자를 초과할 수 없습니다.");
-        }
-
-        return normalizedMemo;
     }
 
     private String requireValidNickname(String nickname) {
