@@ -38,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @PostgisDataJpaTest
-@Import(EmotionCommandService.class)
+@Import({EmotionCommandService.class, EmotionContentResolver.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class EmotionCommandServiceIntegrationTest {
 

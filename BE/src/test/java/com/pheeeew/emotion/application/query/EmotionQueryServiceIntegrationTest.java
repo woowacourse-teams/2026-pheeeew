@@ -14,6 +14,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.emoji.dto.EmotionEmojiResult;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
+import com.pheeeew.emotion.application.command.EmotionContentResolver;
 import com.pheeeew.emotion.application.query.dto.EmotionDetailView;
 import com.pheeeew.emotion.application.query.dto.EmotionListItemView;
 import com.pheeeew.emotion.domain.Audio;
@@ -50,7 +51,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 @PostgisDataJpaTest
-@Import({EmotionQueryService.class, EmotionCommandService.class})
+@Import({EmotionQueryService.class, EmotionCommandService.class, EmotionContentResolver.class})
 class EmotionQueryServiceIntegrationTest {
 
     @Autowired
