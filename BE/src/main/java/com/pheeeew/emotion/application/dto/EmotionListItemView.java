@@ -1,4 +1,4 @@
-package com.pheeeew.emotion.application.query.dto;
+package com.pheeeew.emotion.application.dto;
 
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionState;

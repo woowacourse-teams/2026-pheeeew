@@ -1,6 +1,6 @@
 package com.pheeeew.emotion.infra.metrics;
 
-import com.pheeeew.emotion.application.query.dto.EmotionPageView;
+import com.pheeeew.emotion.application.dto.EmotionPageView;
 import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import org.aspectj.lang.ProceedingJoinPoint;

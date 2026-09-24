@@ -3,7 +3,7 @@ package com.pheeeew.emotion.presentation;
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
-import com.pheeeew.emotion.application.query.dto.EmotionPageView;
+import com.pheeeew.emotion.application.dto.EmotionPageView;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
 import com.pheeeew.emotion.domain.EmojiType;

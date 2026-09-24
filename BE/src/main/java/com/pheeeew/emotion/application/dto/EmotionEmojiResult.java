@@ -1,4 +1,4 @@
-package com.pheeeew.emotion.application.emoji.dto;
+package com.pheeeew.emotion.application.dto;
 
 import com.pheeeew.emotion.domain.EmojiType;
 

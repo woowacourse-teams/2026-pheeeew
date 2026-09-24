@@ -1,8 +1,8 @@
 package com.pheeeew.emotion.presentation.dto;
 
 import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer.PlaybackUrl;
-import com.pheeeew.emotion.application.emoji.dto.EmotionEmojiResult;
-import com.pheeeew.emotion.application.query.dto.EmotionDetailView;
+import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
+import com.pheeeew.emotion.application.dto.EmotionDetailView;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.EmotionState;
 import io.swagger.v3.oas.annotations.media.Schema;
