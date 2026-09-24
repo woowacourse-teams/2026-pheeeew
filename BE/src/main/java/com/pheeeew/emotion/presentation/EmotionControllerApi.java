@@ -30,7 +30,8 @@ public interface EmotionControllerApi {
             기간 제한 없이 (createdAt DESC, id DESC) 순으로 최대 20개씩 조회합니다.
             지도는 모든 페이지를 모아 오래된 감정부터 그려 최신 감정이 위에 표시되도록 합니다.
             최초 조회 이후 작성된 감정은 제외하고, 삭제·차단은 매 페이지에 반영합니다.
-            각 항목은 상세와 같은 GeoJSON Feature이며 여섯 이모지 집계와 본인 선택 여부를 포함합니다.
+            각 항목은 GeoJSON Feature이며 여섯 이모지 집계와 본인 선택 여부를 포함합니다.
+            contentType으로 녹음 유무를 구분하며 목록의 audio는 null입니다. 재생 URL은 상세 조회에서 발급합니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "감정 목록과 다음 커서"),
@@ -62,6 +63,7 @@ public interface EmotionControllerApi {
     @Operation(summary = "감정 상세 조회", description = """
             감정 정보와 여섯 이모지 코드별 전체 선택 수 및 인증된 기기의 선택 여부를 함께 반환합니다.
             조회 기간 제한은 없으며 삭제되거나 인증된 기기가 차단한 감정·작성자의 감정은 반환하지 않습니다.
+            녹음이 있으면 audio.playbackUrl과 audio.expiresAt을 반환합니다. URL 만료 시 상세를 다시 조회합니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "감정 상세 조회 성공",
@@ -73,6 +75,7 @@ public interface EmotionControllerApi {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "녹음 재생 URL을 발급할 수 없음"),
             @ApiResponse(responseCode = "404", description = "감정이 없거나 삭제·차단됨",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })

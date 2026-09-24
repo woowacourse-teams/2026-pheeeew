@@ -3,8 +3,11 @@ package com.pheeeew.emotion.application.query;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_INVALID_CURSOR;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE;
 
 import com.pheeeew.device.domain.Device;
+import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer;
+import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer.PlaybackUrl;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.emoji.dto.EmotionEmojiResult;
@@ -29,6 +32,7 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +43,7 @@ public class EmotionQueryService {
 
     private static final int PAGE_SIZE = 20;
 
+    private final ObjectProvider<AudioPlaybackUrlIssuer> playbackUrlIssuer;
     private final Clock clock;
     private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
@@ -51,7 +56,7 @@ public class EmotionQueryService {
         Emotion emotion = emotionRepository.findVisibleById(emotionId, deviceId)
                 .orElseThrow(() -> new EmotionException(EMOTION_NOT_VISIBLE));
 
-        return EmotionDetailView.of(emotion, findEmojis(emotionId, deviceId));
+        return EmotionDetailView.of(emotion, findEmojis(emotionId, deviceId), issuePlaybackUrl(emotion));
     }
 
     List<EmotionListItemView> findVisiblePageWithinBounds(
@@ -78,6 +83,26 @@ public class EmotionQueryService {
             throw new EmotionException(EMOTION_INVALID_CURSOR);
         }
         return findList(cursor, devicePublicId);
+    }
+
+    private PlaybackUrl issuePlaybackUrl(Emotion emotion) {
+        if (emotion.getContent().getAudio() == null) {
+            return null;
+        }
+        AudioPlaybackUrlIssuer issuer = playbackUrlIssuer.getIfAvailable();
+        if (issuer == null) {
+            throw new EmotionException(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE);
+        }
+        try {
+            PlaybackUrl result = issuer.issue(emotion.getContent().getAudio().getObjectKey());
+            if (result == null || result.playbackUrl() == null || result.playbackUrl().isBlank()
+                    || result.expiresAt() == null || !result.expiresAt().isAfter(Instant.now(clock))) {
+                throw new IllegalStateException("유효한 재생 URL과 만료 시각이 필요합니다.");
+            }
+            return result;
+        } catch (RuntimeException exception) {
+            throw new EmotionException(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE, exception);
+        }
     }
 
     private EmotionPageView findList(EmotionListCursor cursor, UUID devicePublicId) {

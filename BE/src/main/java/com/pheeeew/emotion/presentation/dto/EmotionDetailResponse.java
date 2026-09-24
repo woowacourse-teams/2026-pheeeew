@@ -1,5 +1,6 @@
 package com.pheeeew.emotion.presentation.dto;
 
+import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer.PlaybackUrl;
 import com.pheeeew.emotion.application.emoji.dto.EmotionEmojiResult;
 import com.pheeeew.emotion.application.query.dto.EmotionDetailView;
 import com.pheeeew.emotion.domain.EmojiType;
@@ -29,13 +30,19 @@ public record EmotionDetailResponse(
             double rotationDegrees,
             @Schema(description = "감정 메모", nullable = true, example = "답답한 하루") String memo,
             @Schema(description = "익명 닉네임", example = "먼지구름") String nickname,
-            List<Emoji> emojis
+            List<Emoji> emojis,
+            EmotionContentType contentType,
+            @Schema(description = "녹음 상세 조회에만 포함됩니다. 만료되면 상세를 다시 조회합니다.", nullable = true)
+            PlaybackUrl audio
     ) {
 
         public static Properties from(EmotionDetailView view) {
             return new Properties(
                     view.createdAt(), view.state(), view.rotationDegrees(), view.memo(), view.nickname(),
-                    view.emojis().stream().map(Emoji::from).toList()
+                    view.emojis().stream().map(Emoji::from).toList(),
+                    view.hasAudio() ? EmotionContentType.AUDIO
+                            : view.memo() == null ? EmotionContentType.NONE : EmotionContentType.MEMO,
+                    view.audio()
             );
         }
     }

@@ -17,6 +17,7 @@ public enum EmotionErrorCode implements ErrorCode {
     EMOTION_AUDIO_UPLOAD_NOT_FOUND("EMOTION-003", "녹음 업로드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     EMOTION_AUDIO_UPLOAD_NOT_READY("EMOTION-004", "녹음 업로드가 완료되지 않았습니다.", HttpStatus.CONFLICT),
     EMOTION_AUDIO_UPLOAD_ALREADY_USED("EMOTION-005", "이미 다른 감정에 사용된 녹음입니다.", HttpStatus.CONFLICT),
+    EMOTION_AUDIO_PLAYBACK_UNAVAILABLE("EMOTION-009", "녹음 재생 주소를 발급할 수 없습니다.", HttpStatus.SERVICE_UNAVAILABLE),
     EMOTION_AUDIO_UPLOAD_UNAVAILABLE("EMOTION-006", "녹음 업로드를 확인할 수 없습니다.", HttpStatus.SERVICE_UNAVAILABLE);
 
     private final String code;

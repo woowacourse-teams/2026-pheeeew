@@ -2,6 +2,7 @@ package com.pheeeew.emotion.application.query;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static com.pheeeew.emotion.fixture.EmotionFixture.서울시청_좌표;
 import static com.pheeeew.groups.fixture.GroupFixture.기본_그룹_빌더;
@@ -248,7 +249,7 @@ class EmotionQueryServiceIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("emotionContents")
-    void 감정_내용을_저장하고_상세와_목록에서_다시_조회한다(String memo, Audio audio) {
+    void 감정_내용은_저장되고_녹음_상세는_발급기가_필요하다(String memo, Audio audio) {
         // given
         Emotion saved = emotionRepository.save(기본_한숨_빌더()
                 .deviceId(author.getId())
@@ -261,11 +262,17 @@ class EmotionQueryServiceIntegrationTest {
         String expectedMemo = memo == null ? null : memo.strip();
 
         // when
-        EmotionDetailView detail = emotionQueryService.findById(saved.getId(), viewer.getPublicId());
+        if (audio == null) {
+            assertThat(emotionQueryService.findById(saved.getId(), viewer.getPublicId()).memo())
+                    .isEqualTo(expectedMemo);
+        } else {
+            assertThatThrownBy(() -> emotionQueryService.findById(saved.getId(), viewer.getPublicId()))
+                    .isInstanceOfSatisfying(EmotionException.class, exception -> assertThat(exception.getErrorCode())
+                            .isEqualTo(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE));
+        }
         Emotion loaded = entityManager.find(Emotion.class, saved.getId());
 
         // then
-        assertThat(detail.memo()).isEqualTo(expectedMemo);
         assertThat(loaded.getContent()).isNotNull();
         assertThat(loaded.getMemo()).isEqualTo(expectedMemo);
         assertThat(loaded.getContent().getAudio()).isEqualTo(audio);

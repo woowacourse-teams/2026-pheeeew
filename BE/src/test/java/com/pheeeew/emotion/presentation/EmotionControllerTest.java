@@ -19,6 +19,8 @@ import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.emoji.dto.EmotionEmojiResult;
+import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer.PlaybackUrl;
+import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
 import com.pheeeew.emotion.application.query.dto.EmotionDetailView;
@@ -114,6 +116,8 @@ class EmotionControllerTest {
                             "state":"FRUSTRATED",
                             "rotationDegrees":35.5,
                             "memo":"답답한 하루",
+                            "contentType":"MEMO",
+                            "audio":null,
                             "nickname":"먼지구름",
                             "emojis":[
                               {"type":"HEART","count":2,"selected":true},
@@ -127,6 +131,25 @@ class EmotionControllerTest {
                         }
                         """, JsonCompareMode.STRICT);
         verify(emotionQueryService).findById(42L, DEVICE_PUBLIC_ID);
+    }
+
+    @Test
+    void 녹음_상세는_재생_URL과_만료_시각만_반환한다() {
+        // given
+        Emotion emotion = Emotion.builder().requestId(UUID.randomUUID()).location(서울시청_좌표())
+                .state(EmotionState.FRUSTRATED).rotationDegrees(0).nickname("먼지구름").deviceId(1L)
+                .audio(Audio.builder().objectKey("private/voice.m4a").build()).build();
+        var playback = PlaybackUrl.of(
+                "https://audio.example.test/signed", Instant.parse("2026-09-25T12:05:00Z"));
+        when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID))
+                .thenReturn(EmotionDetailView.of(emotion, List.of(), playback));
+
+        // when / then
+        request(HttpMethod.GET, EMOTION_URI, "access-token").expectStatus().isOk().expectBody()
+                .jsonPath("$.properties.contentType").isEqualTo("AUDIO")
+                .jsonPath("$.properties.audio.playbackUrl").isEqualTo(playback.playbackUrl())
+                .jsonPath("$.properties.audio.expiresAt").isEqualTo("2026-09-25T12:05:00Z")
+                .jsonPath("$.properties.audio.objectKey").doesNotExist();
     }
 
     @Test
@@ -338,7 +361,8 @@ class EmotionControllerTest {
     private static Stream<Arguments> detailFailures() {
         return Stream.of(
                 Arguments.of(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND), 401, "DEVICE-004"),
-                Arguments.of(new EmotionException(EmotionErrorCode.EMOTION_NOT_VISIBLE), 404, "EMOTION-002")
+                Arguments.of(new EmotionException(EmotionErrorCode.EMOTION_NOT_VISIBLE), 404, "EMOTION-002"),
+                Arguments.of(new EmotionException(EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE), 503, "EMOTION-009")
         );
     }
 
