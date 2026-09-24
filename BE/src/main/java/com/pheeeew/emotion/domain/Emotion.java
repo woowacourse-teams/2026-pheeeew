@@ -26,7 +26,7 @@ import org.locationtech.jts.geom.Point;
 public class Emotion extends BaseEntity {
 
     private static final int WGS84_SRID = 4326;
-    private static final int MAX_MEMO_LENGTH = 50;
+    private static final int MAX_MEMO_LENGTH = 200;
     private static final int MAX_NICKNAME_LENGTH = 50;
 
     @Id
@@ -47,6 +47,9 @@ public class Emotion extends BaseEntity {
     @Column(length = 20, updatable = false)
     private EmotionState state;
 
+    @Column(name = "rotation_degrees", nullable = false, updatable = false)
+    private double rotationDegrees;
+
     @Column(nullable = false, length = MAX_NICKNAME_LENGTH, updatable = false)
     private String nickname;
 
@@ -64,11 +67,15 @@ public class Emotion extends BaseEntity {
     private Long version;
 
     @Builder
-    private Emotion(UUID requestId, Point location, String memo, EmotionState state, String nickname, Long deviceId) {
+    private Emotion(
+            UUID requestId, Point location, String memo, EmotionState state,
+            double rotationDegrees, String nickname, Long deviceId
+    ) {
         this.requestId = Objects.requireNonNull(requestId);
         this.location = requireWgs84Point(location);
         this.memo = normalizeMemo(memo);
         this.state = state;
+        this.rotationDegrees = requireValidRotationDegrees(rotationDegrees);
         this.nickname = requireValidNickname(nickname);
         this.deviceId = deviceId;
     }
@@ -107,6 +114,13 @@ public class Emotion extends BaseEntity {
         return location;
     }
 
+    private double requireValidRotationDegrees(double rotationDegrees) {
+        if (!Double.isFinite(rotationDegrees) || rotationDegrees < 0 || rotationDegrees >= 360) {
+            throw new IllegalArgumentException("스탬프 각도는 0도 이상 360도 미만이어야 합니다.");
+        }
+        return rotationDegrees;
+    }
+
     private String normalizeMemo(String memo) {
         if (memo == null) {
             return null;
@@ -116,8 +130,8 @@ public class Emotion extends BaseEntity {
         if (normalizedMemo.isEmpty()) {
             return null;
         }
-        if (normalizedMemo.length() > MAX_MEMO_LENGTH) {
-            throw new IllegalArgumentException("메모는 50자를 초과할 수 없습니다.");
+        if (normalizedMemo.codePointCount(0, normalizedMemo.length()) > MAX_MEMO_LENGTH) {
+            throw new IllegalArgumentException("메모는 200자를 초과할 수 없습니다.");
         }
 
         return normalizedMemo;

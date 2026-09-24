@@ -186,6 +186,48 @@ class EmotionServiceIntegrationTest {
     }
 
     @Test
+    void 스탬프_각도를_DB에_저장하고_범위_밖의_값은_거부한다() {
+        // given
+        Emotion emotion = 기본_한숨_빌더().rotationDegrees(23.5).build();
+        Long emotionId = emotionRepository.saveAndFlush(emotion).getId();
+
+        // when
+        Emotion saved = emotionRepository.findById(emotionId).orElseThrow();
+        Double storedRotation = jdbcClient.sql("SELECT rotation_degrees FROM emotions WHERE id = :id")
+                .param("id", emotionId)
+                .query(Double.class)
+                .single();
+        Throwable invalidRotation = catchThrowable(() -> jdbcClient.sql(
+                        "UPDATE emotions SET rotation_degrees = 360 WHERE id = :id")
+                .param("id", emotionId)
+                .update());
+
+        // then
+        assertThat(saved.getRotationDegrees()).isEqualTo(23.5);
+        assertThat(storedRotation).isEqualTo(23.5);
+        assertThat(invalidRotation).isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void 메모_200자를_DB에_저장한다() {
+        // given
+        String memo = "😀".repeat(200);
+        Emotion emotion = 기본_한숨_빌더().memo(memo).build();
+
+        // when
+        Long emotionId = emotionRepository.saveAndFlush(emotion).getId();
+        Emotion found = emotionRepository.findById(emotionId).orElseThrow();
+        String storedMemo = jdbcClient.sql("SELECT memo FROM emotions WHERE id = :id")
+                .param("id", emotionId)
+                .query(String.class)
+                .single();
+
+        // then
+        assertThat(found.getMemo()).isEqualTo(memo);
+        assertThat(storedMemo).isEqualTo(memo);
+    }
+
+    @Test
     void 감정_상태와_선택한_위치를_이동하지_않고_저장한다() {
         // given
         UUID requestId = UUID.randomUUID();

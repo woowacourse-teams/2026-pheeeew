@@ -1,4 +1,0 @@
-ALTER TABLE emotions
-    ADD COLUMN state VARCHAR(20),
-    ADD CONSTRAINT ck_emotions_state
-        CHECK (state IN ('FRUSTRATED', 'IRRITATED', 'EXHAUSTED', 'DISCOURAGED', 'ANGRY'));
