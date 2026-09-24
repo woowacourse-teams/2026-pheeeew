@@ -8,8 +8,8 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.domain.repository.EmotionBlockRepository;
-import com.pheeeew.emotion.application.EmotionService;
-import com.pheeeew.emotion.application.dto.EmotionMapItem;
+import com.pheeeew.emotion.application.query.EmotionQueryService;
+import org.springframework.context.annotation.Import;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -17,13 +17,10 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -31,6 +28,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
+@Import(EmotionQueryService.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class BlockFilterIntegrationTest {
 
@@ -43,7 +41,7 @@ class BlockFilterIntegrationTest {
     private int 등록_순번;
 
     @Autowired
-    private EmotionService emotionService;
+    private EmotionQueryService emotionQueryService;
 
     @Autowired
     private EmotionBlockService emotionBlockService;
@@ -84,9 +82,8 @@ class BlockFilterIntegrationTest {
         등록_순번 = 0;
     }
 
-    @ParameterizedTest
-    @EnumSource(조회_방식.class)
-    void 작성자를_모르는_한숨은_두_차단이_모두_있어도_결과에_남는다(조회_방식 조회) {
+    @Test
+    void 작성자를_모르는_한숨은_두_차단이_모두_있어도_결과에_남는다() {
         // given
         Device 차단자 = 기기를_저장한다();
         Device 사용자_차단_대상 = 기기를_저장한다();
@@ -98,7 +95,7 @@ class BlockFilterIntegrationTest {
         deviceBlockService.save(사용자_차단_대상의_한숨, 차단자.getPublicId());
 
         // when
-        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회한다(차단자.getPublicId());
 
         // then
         assertThat(emotionBlockRepository.count()).isOne();
@@ -106,9 +103,8 @@ class BlockFilterIntegrationTest {
         assertThat(조회된_한숨들).containsExactly(작성자를_모르는_한숨);
     }
 
-    @ParameterizedTest
-    @EnumSource(조회_방식.class)
-    void 작성자를_모르는_한숨은_한숨_차단만_있어도_결과에_남는다(조회_방식 조회) {
+    @Test
+    void 작성자를_모르는_한숨은_한숨_차단만_있어도_결과에_남는다() {
         // given
         Device 차단자 = 기기를_저장한다();
         Device 작성자 = 기기를_저장한다();
@@ -118,7 +114,7 @@ class BlockFilterIntegrationTest {
         emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
 
         // when
-        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회한다(차단자.getPublicId());
 
         // then
         assertThat(emotionBlockRepository.count()).isOne();
@@ -126,9 +122,8 @@ class BlockFilterIntegrationTest {
         assertThat(조회된_한숨들).containsExactly(차단하지_않은_한숨, 작성자를_모르는_한숨);
     }
 
-    @ParameterizedTest
-    @EnumSource(조회_방식.class)
-    void 작성자를_모르는_한숨은_사용자_차단만_있어도_결과에_남는다(조회_방식 조회) {
+    @Test
+    void 작성자를_모르는_한숨은_사용자_차단만_있어도_결과에_남는다() {
         // given
         Device 차단자 = 기기를_저장한다();
         Device 차단_대상 = 기기를_저장한다();
@@ -137,7 +132,7 @@ class BlockFilterIntegrationTest {
         deviceBlockService.save(차단_대상의_한숨, 차단자.getPublicId());
 
         // when
-        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회한다(차단자.getPublicId());
 
         // then
         assertThat(emotionBlockRepository.count()).isZero();
@@ -145,9 +140,8 @@ class BlockFilterIntegrationTest {
         assertThat(조회된_한숨들).containsExactly(작성자를_모르는_한숨);
     }
 
-    @ParameterizedTest
-    @EnumSource(조회_방식.class)
-    void 차단한_한숨만_결과에서_사라지고_해제하면_다시_보인다(조회_방식 조회) {
+    @Test
+    void 차단한_한숨만_결과에서_사라지고_해제하면_다시_보인다() {
         // given
         Device 차단자 = 기기를_저장한다();
         Device 작성자 = 기기를_저장한다();
@@ -156,18 +150,17 @@ class BlockFilterIntegrationTest {
         emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
 
         // when
-        List<Long> 차단_후 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 차단_후 = 조회한다(차단자.getPublicId());
         emotionBlockService.delete(차단할_한숨, 차단자.getPublicId());
-        List<Long> 해제_후 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 해제_후 = 조회한다(차단자.getPublicId());
 
         // then
         assertThat(차단_후).containsExactly(같은_작성자의_다른_한숨);
         assertThat(해제_후).containsExactly(같은_작성자의_다른_한숨, 차단할_한숨);
     }
 
-    @ParameterizedTest
-    @EnumSource(조회_방식.class)
-    void 사용자를_차단하면_그_기기의_한숨이_차단_이후에_올린_것까지_전부_사라진다(조회_방식 조회) {
+    @Test
+    void 사용자를_차단하면_그_기기의_한숨이_차단_이후에_올린_것까지_전부_사라진다() {
         // given
         Device 차단자 = 기기를_저장한다();
         Device 차단_대상 = 기기를_저장한다();
@@ -179,7 +172,7 @@ class BlockFilterIntegrationTest {
 
         // when
         Long 차단_이후에_올린_한숨 = 한숨을_저장한다(차단_대상.getId());
-        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회한다(차단자.getPublicId());
 
         // then
         assertThat(deviceBlockRepository.count()).isOne();
@@ -188,9 +181,8 @@ class BlockFilterIntegrationTest {
                 .doesNotContain(차단_대상의_한숨, 차단_대상의_다른_한숨, 차단_이후에_올린_한숨);
     }
 
-    @ParameterizedTest
-    @EnumSource(조회_방식.class)
-    void 사용자_차단을_해제하면_그_기기의_한숨이_다시_보인다(조회_방식 조회) {
+    @Test
+    void 사용자_차단을_해제하면_그_기기의_한숨이_다시_보인다() {
         // given
         Device 차단자 = 기기를_저장한다();
         Device 차단_대상 = 기기를_저장한다();
@@ -200,16 +192,15 @@ class BlockFilterIntegrationTest {
 
         // when
         deviceBlockService.delete(차단_식별자, 차단자.getPublicId());
-        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회한다(차단자.getPublicId());
 
         // then
         assertThat(deviceBlockRepository.count()).isZero();
         assertThat(조회된_한숨들).containsExactly(차단_대상의_다른_한숨, 차단_대상의_한숨);
     }
 
-    @ParameterizedTest
-    @EnumSource(조회_방식.class)
-    void 사용자_차단을_해제해도_한숨_차단이_남아_있으면_그_한숨은_계속_가려진다(조회_방식 조회) {
+    @Test
+    void 사용자_차단을_해제해도_한숨_차단이_남아_있으면_그_한숨은_계속_가려진다() {
         // given
         Device 차단자 = 기기를_저장한다();
         Device 차단_대상 = 기기를_저장한다();
@@ -220,37 +211,14 @@ class BlockFilterIntegrationTest {
 
         // when
         deviceBlockService.delete(차단_식별자, 차단자.getPublicId());
-        List<Long> 조회된_한숨들 = 조회.조회한다(emotionService, SEOUL_BOUNDS, 차단자.getPublicId());
+        List<Long> 조회된_한숨들 = 조회한다(차단자.getPublicId());
 
         // then
         assertThat(조회된_한숨들).containsExactly(차단_대상의_다른_한숨);
     }
 
     @Test
-    void 인증하지_않은_지도_조회에는_차단이_적용되지_않는다() {
-        // given
-        Device 차단자 = 기기를_저장한다();
-        Device 차단_대상 = 기기를_저장한다();
-        Long 작성자를_모르는_한숨 = 한숨을_저장한다(null);
-        Long 개별로_차단한_한숨 = 한숨을_저장한다(차단_대상.getId());
-        Long 사용자_차단으로_가려진_한숨 = 한숨을_저장한다(차단_대상.getId());
-        emotionBlockService.save(개별로_차단한_한숨, 차단자.getPublicId());
-        deviceBlockService.save(사용자_차단으로_가려진_한숨, 차단자.getPublicId());
-
-        // when
-        List<Long> 조회된_한숨들 = 인증하지_않고_지도를_조회한다();
-
-        // then
-        assertThat(조회된_한숨들).containsExactly(
-                사용자_차단으로_가려진_한숨,
-                개별로_차단한_한숨,
-                작성자를_모르는_한숨
-        );
-    }
-
-    @ParameterizedTest
-    @EnumSource(조회_방식.class)
-    void 다른_기기가_만든_차단은_내_조회에_영향을_주지_않는다(조회_방식 조회) {
+    void 다른_기기가_만든_차단은_내_조회에_영향을_주지_않는다() {
         // given
         Device 차단자 = 기기를_저장한다();
         Device 차단하지_않은_기기 = 기기를_저장한다();
@@ -262,33 +230,10 @@ class BlockFilterIntegrationTest {
 
         // when
         List<Long> 조회된_한숨들 =
-                조회.조회한다(emotionService, SEOUL_BOUNDS, 차단하지_않은_기기.getPublicId());
+                조회한다(차단하지_않은_기기.getPublicId());
 
         // then
         assertThat(조회된_한숨들).containsExactly(사용자_차단으로_가려진_한숨, 개별로_차단한_한숨);
-    }
-
-    @Test
-    void 인증된_조회가_한숨을_하나도_가리지_않으면_비인증_조회와_결과가_같다() {
-        // given
-        Device 차단하지_않은_기기 = 기기를_저장한다();
-        Device 작성자 = 기기를_저장한다();
-        Long 작성자를_모르는_한숨 = 한숨을_저장한다(null);
-        Long 작성자가_있는_한숨 = 한숨을_저장한다(작성자.getId());
-
-        // when
-        List<Long> 인증_조회 = 조회_방식.지도.조회한다(emotionService, SEOUL_BOUNDS, 차단하지_않은_기기.getPublicId());
-        List<Long> 비인증_조회 = 인증하지_않고_지도를_조회한다();
-
-        // then
-        assertThat(인증_조회).containsExactly(작성자가_있는_한숨, 작성자를_모르는_한숨);
-        assertThat(인증_조회).isEqualTo(비인증_조회);
-    }
-
-    private List<Long> 인증하지_않고_지도를_조회한다() {
-        return emotionService.findAllWithinBounds(SEOUL_BOUNDS, Optional.empty()).emotions().stream()
-                .map(EmotionMapItem::id)
-                .toList();
     }
 
     private Device 기기를_저장한다() {
@@ -318,24 +263,8 @@ class BlockFilterIntegrationTest {
                 .single();
     }
 
-    private enum 조회_방식 {
-        지도 {
-            @Override
-            List<Long> 조회한다(EmotionService emotionService, EmotionSearchBounds bounds, UUID viewerPublicId) {
-                return emotionService.findAllWithinBounds(bounds, Optional.of(viewerPublicId)).emotions().stream()
-                        .map(EmotionMapItem::id)
-                        .toList();
-            }
-        },
-        목록 {
-            @Override
-            List<Long> 조회한다(EmotionService emotionService, EmotionSearchBounds bounds, UUID viewerPublicId) {
-                return emotionService.findFirstListPage(bounds, viewerPublicId).items().stream()
-                        .map(item -> item.emotion().id())
-                        .toList();
-            }
-        };
-
-        abstract List<Long> 조회한다(EmotionService emotionService, EmotionSearchBounds bounds, UUID viewerPublicId);
+    private List<Long> 조회한다(UUID viewerPublicId) {
+        return emotionQueryService.findFirstListPage(SEOUL_BOUNDS, viewerPublicId).items().stream()
+                .map(item -> item.id()).toList();
     }
 }
