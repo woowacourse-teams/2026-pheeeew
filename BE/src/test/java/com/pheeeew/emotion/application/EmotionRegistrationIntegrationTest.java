@@ -4,6 +4,10 @@ import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_UPLOAD_NOT_READY;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REQUEST_ID_CONFLICT;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
+import static com.pheeeew.groups.fixture.GroupFixture.기본_그룹_빌더;
+import static com.pheeeew.groups.fixture.GroupFixture.기본_스탬프_빌더;
+import static com.pheeeew.groups.fixture.GroupFixture.일반_멤버_빌더;
+import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,6 +26,14 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.support.PostgisDataJpaTest;
+import com.pheeeew.groups.domain.Group;
+import com.pheeeew.groups.domain.GroupMember;
+import com.pheeeew.groups.domain.GroupStamp;
+import com.pheeeew.groups.domain.repository.GroupRepository;
+import com.pheeeew.groups.domain.repository.GroupMemberRepository;
+import com.pheeeew.groups.domain.repository.GroupStampRepository;
+import com.pheeeew.groups.exception.GroupException;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
@@ -57,6 +69,13 @@ class EmotionRegistrationIntegrationTest {
     @MockitoBean
     private AudioUploadLinker linker;
 
+    @Autowired
+    private GroupRepository groups;
+    @Autowired
+    private GroupMemberRepository members;
+    @Autowired
+    private GroupStampRepository stamps;
+
     private Device device;
 
     @BeforeEach
@@ -67,7 +86,62 @@ class EmotionRegistrationIntegrationTest {
     @AfterEach
     void tearDown() {
         emotions.deleteAllInBatch();
+        members.deleteAllInBatch();
+        stamps.deleteAllInBatch();
+        groups.deleteAllInBatch();
         devices.deleteAllInBatch();
+    }
+
+    @Test
+    void 소속_그룹의_스탬프를_저장하고_탈퇴_후_재시도도_최초_연결을_유지한다() {
+        // given
+        Group group = groups.save(기본_그룹_빌더().build());
+        GroupStamp stamp = stamps.save(기본_스탬프_빌더(group).build());
+        GroupMember member = members.save(일반_멤버_빌더(group, device).build());
+        UUID requestId = UUID.randomUUID();
+
+        // when
+        Emotion saved = service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 0,
+                null, null, group.getPublicId(), device.getPublicId());
+        member.leave(Instant.now());
+        members.saveAndFlush(member);
+        Emotion retried = service.save(requestId, EmotionState.ANGRY, 126.97, 37.56, 0,
+                null, "unused-upload", UUID.randomUUID(), device.getPublicId());
+
+        // then
+        assertThat(emotions.findById(saved.getId()).orElseThrow().getGroupStamp().getId()).isEqualTo(stamp.getId());
+        assertThat(retried.getId()).isEqualTo(saved.getId());
+        assertThat(retried.getGroupStamp().getId()).isEqualTo(stamp.getId());
+        assertThat(emotions.count()).isOne();
+        verifyNoInteractions(linker);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"nonMember", "left", "deleted", "missing"})
+    void 사용할_수_없는_그룹은_녹음_연결과_감정_저장_전에_거부한다(String reason) {
+        // given
+        Group group = groups.save(기본_그룹_빌더().build());
+        stamps.save(기본_스탬프_빌더(group).build());
+        if (!reason.equals("nonMember")) {
+            GroupMember member = 일반_멤버_빌더(group, device).build();
+            if (reason.equals("left")) {
+                member.leave(Instant.now());
+            }
+            members.saveAndFlush(member);
+        }
+        if (reason.equals("deleted")) {
+            group.delete(Instant.now());
+            groups.saveAndFlush(group);
+        }
+        UUID groupId = reason.equals("missing") ? UUID.randomUUID() : group.getPublicId();
+
+        // when / then
+        assertThatThrownBy(() -> service.save(UUID.randomUUID(), EmotionState.FRUSTRATED, 126.97, 37.56, 0,
+                null, "upload", groupId, device.getPublicId()))
+                .isInstanceOfSatisfying(GroupException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(GROUP_NOT_FOUND));
+        assertThat(emotions.count()).isZero();
+        verifyNoInteractions(linker);
     }
 
     @ParameterizedTest
@@ -78,12 +152,12 @@ class EmotionRegistrationIntegrationTest {
         when(linker.claim("upload", device.getId(), requestId)).thenReturn("recordings/original.m4a");
         Emotion original = service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
                 contentType.equals("MEMO") ? "최초 메모" : null,
-                contentType.equals("AUDIO") ? "upload" : null, device.getPublicId());
+                contentType.equals("AUDIO") ? "upload" : null, null, device.getPublicId());
         clearInvocations(linker);
 
         // when
         Emotion retried = service.save(requestId, EmotionState.ANGRY, 129.07, 35.17, 90,
-                null, "different-upload", device.getPublicId());
+                null, "different-upload", null, device.getPublicId());
 
         // then
         assertThat(retried.getId()).isEqualTo(original.getId());
@@ -104,7 +178,7 @@ class EmotionRegistrationIntegrationTest {
     void 삭제된_감정도_재등록하지_않고_최초_식별자를_반환한다() {
         UUID requestId = UUID.randomUUID();
         Emotion original = service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 0,
-                null, null, device.getPublicId());
+                null, null, null, device.getPublicId());
         jdbc.sql("UPDATE emotions SET deleted_at = now() WHERE id = :id").param("id", original.getId()).update();
 
         Emotion retried = saveAudio(requestId, device);
@@ -118,7 +192,7 @@ class EmotionRegistrationIntegrationTest {
     @Test
     void 다른_기기의_재요청은_녹음_확인_전에_거부한다() {
         UUID requestId = UUID.randomUUID();
-        service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 0, null, null, device.getPublicId());
+        service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 0, null, null, null, device.getPublicId());
         Device other = devices.save(기본_기기_빌더().build());
 
         assertThatThrownBy(() -> saveAudio(requestId, other)).isInstanceOfSatisfying(EmotionException.class,
@@ -184,7 +258,7 @@ class EmotionRegistrationIntegrationTest {
 
     private Emotion saveAudio(UUID requestId, Device author) {
         return service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
-                null, "upload", author.getPublicId());
+                null, "upload", null, author.getPublicId());
     }
 
     private Object outcome(UUID requestId, Device author) {

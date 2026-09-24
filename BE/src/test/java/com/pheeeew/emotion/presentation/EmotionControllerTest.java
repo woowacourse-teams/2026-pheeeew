@@ -31,6 +31,8 @@ import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.exception.EmotionErrorCode;
 import com.pheeeew.emotion.exception.EmotionException;
+import com.pheeeew.groups.application.dto.GroupStampResult;
+import com.pheeeew.groups.domain.StampFrame;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -118,6 +120,7 @@ class EmotionControllerTest {
                             "memo":"답답한 하루",
                             "contentType":"MEMO",
                             "audio":null,
+                            "groupStamp":null,
                             "nickname":"먼지구름",
                             "emojis":[
                               {"type":"HEART","count":2,"selected":true},
@@ -150,6 +153,27 @@ class EmotionControllerTest {
                 .jsonPath("$.properties.audio.playbackUrl").isEqualTo(playback.playbackUrl())
                 .jsonPath("$.properties.audio.expiresAt").isEqualTo("2026-09-25T12:05:00Z")
                 .jsonPath("$.properties.audio.objectKey").doesNotExist();
+    }
+
+    @Test
+    void 그룹_스탬프는_목록과_상세에서_같은_모양으로_반환한다() {
+        // given
+        Emotion emotion = com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더().build();
+        var stamp = new GroupStampResult("모임", "#FFFFFF", "#000000", StampFrame.CIRCLE);
+        EmotionDetailView view = EmotionDetailView.of(emotion, List.of(), null, stamp);
+        when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(view);
+        when(emotionQueryService.findFirstListPage(any(), eq(DEVICE_PUBLIC_ID)))
+                .thenReturn(EmotionPageView.of(List.of(view), false, null));
+
+        // when / then
+        request(HttpMethod.GET, EMOTION_URI, "access-token").expectStatus().isOk().expectBody()
+                .jsonPath("$.properties.groupStamp.text").isEqualTo("모임")
+                .jsonPath("$.properties.groupStamp.textColor").isEqualTo("#FFFFFF")
+                .jsonPath("$.properties.groupStamp.backgroundColor").isEqualTo("#000000")
+                .jsonPath("$.properties.groupStamp.frame").isEqualTo("CIRCLE");
+        request(HttpMethod.GET, "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38",
+                "access-token").expectStatus().isOk().expectBody()
+                .jsonPath("$.items[0].properties.groupStamp.text").isEqualTo("모임");
     }
 
     @Test
@@ -236,7 +260,7 @@ class EmotionControllerTest {
     void 등록_내용을_인증된_기기로_저장하고_식별자를_반환한다(String content) {
         Emotion saved = com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더().build();
         ReflectionTestUtils.setField(saved, "id", 42L);
-        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), eq(DEVICE_PUBLIC_ID)))
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), eq(DEVICE_PUBLIC_ID)))
                 .thenReturn(saved);
         client.post().uri("/api/v1/emotions?devicePublicId=" + UUID.randomUUID())
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
@@ -246,7 +270,25 @@ class EmotionControllerTest {
                 .expectBody().json("{\"id\":42}", JsonCompareMode.STRICT);
         verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
                 EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
-                content.contains("MEMO") ? "메모" : null, content.contains("AUDIO") ? "upload" : null, DEVICE_PUBLIC_ID);
+                content.contains("MEMO") ? "메모" : null, content.contains("AUDIO") ? "upload" : null, null, DEVICE_PUBLIC_ID);
+    }
+
+    @Test
+    void 선택한_그룹_ID를_등록_요청에_전달한다() {
+        // given
+        UUID groupId = UUID.randomUUID();
+        Emotion saved = com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더().build();
+        ReflectionTestUtils.setField(saved, "id", 42L);
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(),
+                eq(groupId), eq(DEVICE_PUBLIC_ID))).thenReturn(saved);
+
+        // when / then
+        client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(createBody("\"contentType\":\"NONE\",\"groupId\":\"" + groupId + "\""))
+                .exchange().expectStatus().isOk();
+        verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
+                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, null, null, groupId, DEVICE_PUBLIC_ID);
     }
 
     @ParameterizedTest
@@ -282,7 +324,7 @@ class EmotionControllerTest {
             "EMOTION_AUDIO_UPLOAD_ALREADY_USED", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE"})
     void 등록_실패_상태와_코드를_전달한다(String name) {
         EmotionErrorCode error = EmotionErrorCode.valueOf(name);
-        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any()))
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any()))
                 .thenThrow(new EmotionException(error));
         client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON).body(createBody("\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\""))

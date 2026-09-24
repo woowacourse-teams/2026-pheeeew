@@ -225,6 +225,9 @@ class EmotionQueryServiceIntegrationTest {
                     .isEqualTo(target.getId());
         }
         assertThat(entityManager.find(Emotion.class, emotion.getId()).getGroupStamp()).isNull();
+        assertThat(emotionQueryService.findById(emotion.getId(), viewer.getPublicId()).groupStamp()).isNull();
+        assertThat(emotionQueryService.findById(first.getId(), viewer.getPublicId()).groupStamp().text())
+                .isEqualTo("기본");
         for (Emotion target : List.of(first, second)) {
             GroupStamp loadedStamp = entityManager.find(Emotion.class, target.getId()).getGroupStamp();
             assertThat(loadedStamp.getId()).isEqualTo(stamp.getId());
@@ -238,6 +241,12 @@ class EmotionQueryServiceIntegrationTest {
         entityManager.clear();
 
         // then
+        assertThat(emotionQueryService.findById(first.getId(), viewer.getPublicId()).groupStamp().text())
+                .isEqualTo("변경");
+        assertThat(emotionQueryService.findFirstListPage(
+                EmotionSearchBounds.of(126, 37, 128, 38), viewer.getPublicId()).items())
+                .filteredOn(item -> item.id().equals(first.getId()) || item.id().equals(second.getId()))
+                .hasSize(2).allSatisfy(item -> assertThat(item.groupStamp().text()).isEqualTo("변경"));
         for (Emotion target : List.of(first, second)) {
             emotionQueryService.findById(target.getId(), viewer.getPublicId());
             GroupStamp loadedStamp = entityManager.find(Emotion.class, target.getId()).getGroupStamp();

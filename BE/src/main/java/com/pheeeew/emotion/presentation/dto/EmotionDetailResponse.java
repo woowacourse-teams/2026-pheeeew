@@ -6,6 +6,7 @@ import com.pheeeew.emotion.application.query.dto.EmotionDetailView;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.EmotionState;
 import io.swagger.v3.oas.annotations.media.Schema;
+import com.pheeeew.groups.presentation.dto.GroupStampResponse;
 import java.time.Instant;
 import java.util.List;
 
@@ -33,7 +34,9 @@ public record EmotionDetailResponse(
             List<Emoji> emojis,
             EmotionContentType contentType,
             @Schema(description = "녹음 상세 조회에만 포함됩니다. 만료되면 상세를 다시 조회합니다.", nullable = true)
-            PlaybackUrl audio
+            PlaybackUrl audio,
+            @Schema(description = "연결된 그룹 스탬프의 현재 모양. 선택하지 않았으면 null입니다.", nullable = true)
+            GroupStampResponse groupStamp
     ) {
 
         public static Properties from(EmotionDetailView view) {
@@ -42,7 +45,7 @@ public record EmotionDetailResponse(
                     view.emojis().stream().map(Emoji::from).toList(),
                     view.hasAudio() ? EmotionContentType.AUDIO
                             : view.memo() == null ? EmotionContentType.NONE : EmotionContentType.MEMO,
-                    view.audio()
+                    view.audio(), view.groupStamp() == null ? null : GroupStampResponse.from(view.groupStamp())
             );
         }
     }

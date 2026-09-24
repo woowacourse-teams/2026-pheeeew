@@ -112,7 +112,7 @@ class EmotionCommandServiceSaveIntegrationTest {
 
         // when / then
         assertThatThrownBy(() -> commandService.save(requestId, EmotionState.FRUSTRATED,
-                126.9774, 37.5669, 45, null, "upload-id", device.getPublicId()))
+                126.9774, 37.5669, 45, null, "upload-id", null, device.getPublicId()))
                 .isInstanceOfSatisfying(EmotionException.class, exception -> {
                     assertThat(exception.getErrorCode()).isEqualTo(EMOTION_SAVE_FAILED);
                     assertThat(exception.getCause()).isInstanceOf(DataIntegrityViolationException.class);
@@ -135,7 +135,7 @@ class EmotionCommandServiceSaveIntegrationTest {
         // when / then
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             assertThatThrownBy(() -> commandService.save(UUID.randomUUID(), EmotionState.FRUSTRATED,
-                    126.9774, 37.5669, 45, null, "upload-id", device.getPublicId()))
+                    126.9774, 37.5669, 45, null, "upload-id", null, device.getPublicId()))
                     .isInstanceOfSatisfying(EmotionException.class,
                             exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_SAVE_FAILED));
             assertThat(emotionRepository.findById(original.getId()).orElseThrow().getMemo())
@@ -147,7 +147,7 @@ class EmotionCommandServiceSaveIntegrationTest {
     @Test
     void 없는_기기는_녹음을_연결하거나_감정을_저장할_수_없다() {
         assertThatThrownBy(() -> commandService.save(UUID.randomUUID(), EmotionState.FRUSTRATED,
-                126.9774, 37.5669, 35.5, null, "upload-id", UUID.randomUUID()))
+                126.9774, 37.5669, 35.5, null, "upload-id", null, UUID.randomUUID()))
                 .isInstanceOfSatisfying(DeviceException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DEVICE_NOT_FOUND));
         assertThat(linkCount()).isZero();
@@ -158,10 +158,10 @@ class EmotionCommandServiceSaveIntegrationTest {
     void 필수값과_좌표가_잘못되면_녹음을_연결하지_않는다() {
         assertThatThrownBy(() -> save(null, null, "upload-id")).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> commandService.save(UUID.randomUUID(), null,
-                126.9774, 37.5669, 35.5, null, "upload-id", device.getPublicId()))
+                126.9774, 37.5669, 35.5, null, "upload-id", null, device.getPublicId()))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> commandService.save(UUID.randomUUID(), EmotionState.FRUSTRATED,
-                Double.NaN, 37.5669, 35.5, null, "upload-id", device.getPublicId()))
+                Double.NaN, 37.5669, 35.5, null, "upload-id", null, device.getPublicId()))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(linkCount()).isZero();
         assertThat(emotionRepository.count()).isZero();
@@ -169,7 +169,7 @@ class EmotionCommandServiceSaveIntegrationTest {
 
     private Emotion save(UUID requestId, String memo, String uploadId) {
         return commandService.save(requestId, EmotionState.FRUSTRATED,
-                126.9774, 37.5669, 35.5, memo, uploadId, device.getPublicId());
+                126.9774, 37.5669, 35.5, memo, uploadId, null, device.getPublicId());
     }
 
     private long linkCount() {

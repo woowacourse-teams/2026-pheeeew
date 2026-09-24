@@ -56,7 +56,7 @@ public class EmotionController implements EmotionControllerApi {
     ) {
         EmotionCreateResponse result = EmotionCreateResponse.from(emotionCommandService.save(
                 request.requestId(), request.state(), request.longitude(), request.latitude(), request.rotationDegrees(),
-                request.memo(), request.audioUploadId(), devicePublicId));
+                request.memo(), request.audioUploadId(), request.groupId(), devicePublicId));
         return ResponseEntity.ok().location(URI.create("/api/v1/emotions/" + result.id()))
                 .cacheControl(CacheControl.noStore()).body(result);
     }

@@ -23,6 +23,11 @@ import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.projection.EmotionEmojiCountProjection;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
+import com.pheeeew.groups.application.dto.GroupStampResult;
+import com.pheeeew.groups.domain.GroupStamp;
+import com.pheeeew.groups.domain.repository.GroupStampRepository;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import java.time.Instant;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
@@ -48,6 +53,7 @@ public class EmotionQueryService {
     private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
     private final EmotionEmojiRepository emotionEmojiRepository;
+    private final GroupStampRepository groupStampRepository;
 
     public EmotionDetailView findById(Long emotionId, UUID devicePublicId) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
@@ -56,7 +62,8 @@ public class EmotionQueryService {
         Emotion emotion = emotionRepository.findVisibleById(emotionId, deviceId)
                 .orElseThrow(() -> new EmotionException(EMOTION_NOT_VISIBLE));
 
-        return EmotionDetailView.of(emotion, findEmojis(emotionId, deviceId), issuePlaybackUrl(emotion));
+        return EmotionDetailView.of(emotion, findEmojis(emotionId, deviceId), issuePlaybackUrl(emotion),
+                emotion.getGroupStamp() == null ? null : GroupStampResult.from(emotion.getGroupStamp()));
     }
 
     List<EmotionListItemView> findVisiblePageWithinBounds(
@@ -123,8 +130,14 @@ public class EmotionQueryService {
                         EmotionEmojiResult.of(type, count.getSelectionCount(), count.getSelected()));
             }
         }
+        List<Long> stampIds = page.stream().map(Emotion::getGroupStamp).filter(Objects::nonNull)
+                .map(GroupStamp::getId).distinct().toList();
+        Map<Long, GroupStampResult> stamps = stampIds.isEmpty() ? Map.of()
+                : groupStampRepository.findAllById(stampIds).stream()
+                        .collect(Collectors.toMap(GroupStamp::getId, GroupStampResult::from));
         List<EmotionDetailView> items = page.stream().map(emotion -> EmotionDetailView.of(
-                emotion, List.copyOf(counts.get(emotion.getId()).values()))).toList();
+                emotion, List.copyOf(counts.get(emotion.getId()).values()), null,
+                emotion.getGroupStamp() == null ? null : stamps.get(emotion.getGroupStamp().getId()))).toList();
         String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId())) : null;
         return EmotionPageView.of(items, hasNext, nextCursor);

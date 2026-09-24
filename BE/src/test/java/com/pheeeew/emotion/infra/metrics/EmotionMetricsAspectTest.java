@@ -20,6 +20,7 @@ import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -55,6 +56,7 @@ class EmotionMetricsAspectTest {
         context.registerBean(EmotionRepository.class, () -> repository);
         context.registerBean(DeviceRepository.class, () -> devices);
         context.registerBean(EmotionEmojiRepository.class, () -> mock(EmotionEmojiRepository.class));
+        context.registerBean(GroupStampRepository.class, () -> mock(GroupStampRepository.class));
         context.registerBean(SimpleMeterRegistry.class, () -> registry);
         context.registerBean(Clock.class, () -> Clock.fixed(NOW, ZoneOffset.UTC));
         context.register(AopAutoConfiguration.class, EmotionMetrics.class, EmotionMetricsAspect.class, EmotionQueryService.class);

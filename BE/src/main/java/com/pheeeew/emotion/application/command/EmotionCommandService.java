@@ -4,6 +4,7 @@ import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REQUEST_ID_CONFLICT;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
+import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -16,6 +17,9 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.exception.EmotionException;
+import com.pheeeew.groups.domain.GroupStamp;
+import com.pheeeew.groups.domain.repository.GroupStampRepository;
+import com.pheeeew.groups.exception.GroupException;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
@@ -40,6 +44,7 @@ public class EmotionCommandService {
     private final EmotionEmojiRepository emotionEmojiRepository;
     private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
+    private final GroupStampRepository groupStampRepository;
     private final EmotionContentResolver contentResolver;
     private final EmotionNicknameGenerator nicknameGenerator;
     private final PlatformTransactionManager transactionManager;
@@ -50,7 +55,7 @@ public class EmotionCommandService {
      */
     public Emotion save(
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
-            String memo, String audioUploadId, UUID devicePublicId
+            String memo, String audioUploadId, UUID groupPublicId, UUID devicePublicId
     ) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId)
@@ -64,46 +69,11 @@ public class EmotionCommandService {
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         try {
             return transaction.execute(status -> saveNewEmotion(requestId, state, longitude, latitude,
-                    rotationDegrees, memo, audioUploadId, deviceId));
+                    rotationDegrees, memo, audioUploadId, groupPublicId, deviceId));
         } catch (DataIntegrityViolationException cause) {
             return findRegisteredEmotion(requestId, deviceId)
                     .orElseThrow(() -> new EmotionException(EMOTION_SAVE_FAILED, cause));
         }
-    }
-
-    private Emotion saveNewEmotion(
-            UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
-            String memo, String audioUploadId, Long deviceId
-    ) {
-        if (requestId == null || state == null) {
-            throw new IllegalArgumentException("요청 식별자와 감정 상태는 필수입니다.");
-        }
-        if (!Double.isFinite(longitude) || longitude < -180 || longitude > 180
-                || !Double.isFinite(latitude) || latitude < -90 || latitude > 90) {
-            throw new IllegalArgumentException("선택 위치는 유효한 WGS84 좌표여야 합니다.");
-        }
-        EmotionContent content = contentResolver.resolve(memo, audioUploadId, deviceId, requestId);
-
-        return emotionRepository.saveAndFlush(Emotion.builder()
-                .requestId(requestId)
-                .state(state)
-                .location(WGS84.createPoint(new Coordinate(longitude, latitude)))
-                .rotationDegrees(rotationDegrees)
-                .memo(content.getMemo())
-                .audio(content.getAudio())
-                .nickname(nicknameGenerator.generate())
-                .deviceId(deviceId)
-                .build());
-    }
-
-    private Optional<Emotion> findRegisteredEmotion(UUID requestId, Long deviceId) {
-        return emotionRepository.findByRequestId(requestId)
-                .map(emotion -> {
-                    if (!Objects.equals(emotion.getDeviceId(), deviceId)) {
-                        throw new EmotionException(EMOTION_REQUEST_ID_CONFLICT);
-                    }
-                    return emotion;
-                });
     }
 
     @Transactional
@@ -119,5 +89,44 @@ public class EmotionCommandService {
         } else {
             emotionEmojiRepository.deleteSelection(emotionId, deviceId, emojiType.name());
         }
+    }
+
+    private Emotion saveNewEmotion(
+            UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
+            String memo, String audioUploadId, UUID groupPublicId, Long deviceId
+    ) {
+        if (requestId == null || state == null) {
+            throw new IllegalArgumentException("요청 식별자와 감정 상태는 필수입니다.");
+        }
+        if (!Double.isFinite(longitude) || longitude < -180 || longitude > 180
+                || !Double.isFinite(latitude) || latitude < -90 || latitude > 90) {
+            throw new IllegalArgumentException("선택 위치는 유효한 WGS84 좌표여야 합니다.");
+        }
+        GroupStamp stamp = groupPublicId == null ? null
+                : groupStampRepository.findAvailableByGroupPublicIdAndDeviceId(groupPublicId, deviceId)
+                        .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));
+        EmotionContent content = contentResolver.resolve(memo, audioUploadId, deviceId, requestId);
+
+        return emotionRepository.saveAndFlush(Emotion.builder()
+                .requestId(requestId)
+                .state(state)
+                .location(WGS84.createPoint(new Coordinate(longitude, latitude)))
+                .rotationDegrees(rotationDegrees)
+                .memo(content.getMemo())
+                .audio(content.getAudio())
+                .groupStamp(stamp)
+                .nickname(nicknameGenerator.generate())
+                .deviceId(deviceId)
+                .build());
+    }
+
+    private Optional<Emotion> findRegisteredEmotion(UUID requestId, Long deviceId) {
+        return emotionRepository.findByRequestId(requestId)
+                .map(emotion -> {
+                    if (!Objects.equals(emotion.getDeviceId(), deviceId)) {
+                        throw new EmotionException(EMOTION_REQUEST_ID_CONFLICT);
+                    }
+                    return emotion;
+                });
     }
 }
