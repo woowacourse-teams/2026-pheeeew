@@ -1,11 +1,18 @@
 package com.pheeeew.emotion.domain;
 
 import com.pheeeew.common.domain.BaseEntity;
+import com.pheeeew.groups.domain.GroupStamp;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
@@ -24,7 +31,6 @@ import org.locationtech.jts.geom.Point;
 public class Emotion extends BaseEntity {
 
     private static final int WGS84_SRID = 4326;
-    private static final int MAX_MEMO_LENGTH = 50;
     private static final int MAX_NICKNAME_LENGTH = 50;
 
     @Id
@@ -38,8 +44,20 @@ public class Emotion extends BaseEntity {
     @Column(nullable = false, updatable = false, columnDefinition = "geometry(Point,4326)")
     private Point location;
 
-    @Column(length = MAX_MEMO_LENGTH, updatable = false)
-    private String memo;
+    @Getter(AccessLevel.NONE)
+    @Embedded
+    private EmotionContent content;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private EmotionState state;
+
+    @Column(name = "rotation_degrees", nullable = false, updatable = false)
+    private double rotationDegrees;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_stamp_id")
+    private GroupStamp groupStamp;
 
     @Column(nullable = false, length = MAX_NICKNAME_LENGTH, updatable = false)
     private String nickname;
@@ -50,31 +68,32 @@ public class Emotion extends BaseEntity {
     @Column(name = "device_id", updatable = false)
     private Long deviceId;
 
-    @Column(name = "like_count", nullable = false)
-    private long likeCount;
-
     @Column(nullable = false)
     @Version
     private Long version;
 
     @Builder
-    private Emotion(UUID requestId, Point location, String memo, String nickname, Long deviceId) {
+    private Emotion(
+            UUID requestId, Point location, String memo, Audio audio, EmotionState state,
+            double rotationDegrees, String nickname, Long deviceId, GroupStamp groupStamp
+    ) {
         this.requestId = Objects.requireNonNull(requestId);
         this.location = requireWgs84Point(location);
-        this.memo = normalizeMemo(memo);
+        this.content = EmotionContent.builder().memo(memo).audio(audio).build();
+        this.state = state;
+        this.rotationDegrees = requireValidRotationDegrees(rotationDegrees);
+        this.groupStamp = groupStamp;
         this.nickname = requireValidNickname(nickname);
         this.deviceId = deviceId;
     }
 
-    public void increaseLikeCount() {
-        this.likeCount++;
-    }
-
-    public void decreaseLikeCount() {
-        if (likeCount == 0) {
-            throw new IllegalStateException("좋아요 수는 0보다 작아질 수 없습니다.");
+    public void update(EmotionState state, EmotionContent content, GroupStamp groupStamp) {
+        if (state == null || content == null) {
+            throw new IllegalArgumentException("감정 상태와 내용은 필수입니다.");
         }
-        this.likeCount--;
+        this.state = state;
+        this.content = content;
+        this.groupStamp = groupStamp;
     }
 
     public void delete() {
@@ -92,6 +111,14 @@ public class Emotion extends BaseEntity {
         return location.getY();
     }
 
+    public EmotionContent getContent() {
+        return content == null ? EmotionContent.builder().build() : content;
+    }
+
+    public String getMemo() {
+        return getContent().getMemo();
+    }
+
     private Point requireWgs84Point(Point location) {
         Objects.requireNonNull(location);
         if (location.isEmpty() || location.getSRID() != WGS84_SRID) {
@@ -100,20 +127,11 @@ public class Emotion extends BaseEntity {
         return location;
     }
 
-    private String normalizeMemo(String memo) {
-        if (memo == null) {
-            return null;
+    private double requireValidRotationDegrees(double rotationDegrees) {
+        if (!Double.isFinite(rotationDegrees) || rotationDegrees < 0 || rotationDegrees >= 360) {
+            throw new IllegalArgumentException("스탬프 각도는 0도 이상 360도 미만이어야 합니다.");
         }
-
-        String normalizedMemo = memo.strip();
-        if (normalizedMemo.isEmpty()) {
-            return null;
-        }
-        if (normalizedMemo.length() > MAX_MEMO_LENGTH) {
-            throw new IllegalArgumentException("메모는 50자를 초과할 수 없습니다.");
-        }
-
-        return normalizedMemo;
+        return rotationDegrees;
     }
 
     private String requireValidNickname(String nickname) {

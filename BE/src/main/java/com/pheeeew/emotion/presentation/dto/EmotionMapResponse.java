@@ -1,30 +1,32 @@
 package com.pheeeew.emotion.presentation.dto;
 
-import com.pheeeew.emotion.application.dto.EmotionMapResult;
+import com.pheeeew.emotion.application.dto.EmotionMapItemView;
+import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.groups.presentation.dto.GroupStampResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
-import java.util.List;
+import java.time.Instant;
+import java.util.UUID;
 
-@Schema(name = "SighMapResponse")
+@Schema(name = "EmotionMapResponse")
 public record EmotionMapResponse(
-        @Schema(example = "FeatureCollection")
-        String type,
-
-        @Schema(description = "현재 영역의 조회 결과가 500건을 초과해 일부만 반환됐는지 여부", example = "false")
-        boolean truncated,
-
-        List<EmotionFeature<EmotionV1Properties>> features
+        @Schema(example = "Feature") String type,
+        @Schema(description = "지도에 표시할 감정 ID") Long id,
+        PointGeometry geometry,
+        Properties properties
 ) {
 
-    private static final String FEATURE_COLLECTION_TYPE = "FeatureCollection";
+    public static EmotionMapResponse from(EmotionMapItemView view) {
+        return new EmotionMapResponse("Feature", view.id(), PointGeometry.of(view.longitude(), view.latitude()),
+                new Properties(view.createdAt(), view.state(), view.rotationDegrees(),
+                        view.groupStamp() == null ? null : GroupStampResponse.from(view.groupStamp()), view.groupId()));
+    }
 
-    public static EmotionMapResponse from(EmotionMapResult result) {
-        List<EmotionFeature<EmotionV1Properties>> features = result.emotions().stream()
-                .map(emotion -> EmotionFeature.of(
-                        emotion,
-                        EmotionV1Properties.from(emotion.createdAt())
-                ))
-                .toList();
-
-        return new EmotionMapResponse(FEATURE_COLLECTION_TYPE, result.truncated(), features);
+    public record Properties(
+            @Schema(description = "감정 작성 시각. 오래된 감정부터 그리면 최신 감정이 위에 표시됩니다.") Instant createdAt,
+            EmotionState state,
+            @Schema(description = "스탬프 회전 각도. 0도 이상 360도 미만") double rotationDegrees,
+            @Schema(description = "현재 그룹 스탬프 모양. 선택하지 않았으면 null입니다.", nullable = true) GroupStampResponse groupStamp,
+            @Schema(description = "선택한 그룹의 공개 ID. 그룹 스탬프가 없으면 null입니다.", nullable = true) UUID groupId
+    ) {
     }
 }

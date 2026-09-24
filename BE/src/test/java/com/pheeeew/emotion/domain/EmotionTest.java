@@ -14,46 +14,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 class EmotionTest {
 
     @Test
-    void 좋아요_수를_한_개씩_증가시킨다() {
-        // given
-        Emotion emotion = 기본_한숨_빌더().build();
-
-        // when
-        emotion.increaseLikeCount();
-        emotion.increaseLikeCount();
-
-        // then
-        assertThat(emotion.getLikeCount()).isEqualTo(2);
-    }
-
-    @Test
-    void 좋아요_수를_한_개_감소시킨다() {
-        // given
-        Emotion emotion = 기본_한숨_빌더().build();
-        emotion.increaseLikeCount();
-        emotion.increaseLikeCount();
-
-        // when
-        emotion.decreaseLikeCount();
-
-        // then
-        assertThat(emotion.getLikeCount()).isOne();
-    }
-
-    @Test
-    void 좋아요_수가_0이면_감소시킬_수_없다() {
-        // given
-        Emotion emotion = 기본_한숨_빌더().build();
-
-        // when
-        Throwable throwable = catchThrowable(emotion::decreaseLikeCount);
-
-        // then
-        assertThat(throwable).isInstanceOf(IllegalStateException.class);
-        assertThat(emotion.getLikeCount()).isZero();
-    }
-
-    @Test
     void 삭제하면_삭제_시각이_기록된다() {
         // given
         Emotion emotion = 기본_한숨_빌더().build();
@@ -109,9 +69,9 @@ class EmotionTest {
     }
 
     @Test
-    void 메모는_50자를_초과하면_생성할_수_없다() {
+    void 메모는_200자를_초과하면_생성할_수_없다() {
         // given
-        String memo = "가".repeat(51);
+        String memo = "가".repeat(201);
 
         // when
         Throwable throwable = catchThrowable(() -> 기본_한숨_빌더()
@@ -122,7 +82,45 @@ class EmotionTest {
         // then
         assertThat(throwable)
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("메모는 50자를 초과할 수 없습니다.");
+                .hasMessage("메모는 200자를 초과할 수 없습니다.");
+    }
+
+    @Test
+    void 메모의_글자_수는_유니코드_코드포인트로_센다() {
+        // given
+        String memo = "😀".repeat(200);
+
+        // when
+        Emotion emotion = 기본_한숨_빌더().memo(memo).build();
+
+        // then
+        assertThat(emotion.getMemo()).isEqualTo(memo);
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {0.0, 23.5, 359.999})
+    void 스탬프_각도는_0도_이상_360도_미만으로_저장한다(double rotationDegrees) {
+        // when
+        Emotion emotion = 기본_한숨_빌더()
+                .rotationDegrees(rotationDegrees)
+                .build();
+
+        // then
+        assertThat(emotion.getRotationDegrees()).isEqualTo(rotationDegrees);
+    }
+
+    @ParameterizedTest
+    @ValueSource(doubles = {-0.1, 360.0, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY})
+    void 범위를_벗어나거나_유한하지_않은_스탬프_각도는_거부한다(double rotationDegrees) {
+        // when
+        Throwable throwable = catchThrowable(() -> 기본_한숨_빌더()
+                .rotationDegrees(rotationDegrees)
+                .build());
+
+        // then
+        assertThat(throwable)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("스탬프 각도는 0도 이상 360도 미만이어야 합니다.");
     }
 
     @ParameterizedTest
