@@ -200,6 +200,7 @@ class EmotionServiceIntegrationTest {
         // then
         Emotion saved = emotionRepository.findById(result.emotion().id()).orElseThrow();
         assertThat(result.created()).isTrue();
+        assertThat(result.emotion().state()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(saved.getState()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(saved.getLongitude()).isEqualTo(SEOUL_CITY_HALL_LONGITUDE);
         assertThat(saved.getLatitude()).isEqualTo(SEOUL_CITY_HALL_LATITUDE);
@@ -228,6 +229,7 @@ class EmotionServiceIntegrationTest {
         Emotion saved = emotionRepository.findById(first.emotion().id()).orElseThrow();
         assertThat(retried.created()).isFalse();
         assertThat(retried.emotion().id()).isEqualTo(first.emotion().id());
+        assertThat(retried.emotion().state()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(saved.getState()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(saved.getMemo()).isEqualTo("최초 메모");
         assertThat(saved.getLongitude()).isEqualTo(SEOUL_CITY_HALL_LONGITUDE);

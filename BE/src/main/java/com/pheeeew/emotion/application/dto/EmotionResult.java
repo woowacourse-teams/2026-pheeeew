@@ -1,6 +1,7 @@
 package com.pheeeew.emotion.application.dto;
 
 import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.domain.EmotionState;
 import java.time.Instant;
 
 public record EmotionResult(
@@ -8,6 +9,7 @@ public record EmotionResult(
         double longitude,
         double latitude,
         Instant createdAt,
+        EmotionState state,
         String memo,
         String nickname
 ) {
@@ -18,6 +20,7 @@ public record EmotionResult(
                 emotion.getLongitude(),
                 emotion.getLatitude(),
                 emotion.getCreatedAt(),
+                emotion.getState(),
                 emotion.getMemo(),
                 emotion.getNickname()
         );
@@ -31,6 +34,6 @@ public record EmotionResult(
             String memo,
             String nickname
     ) {
-        return new EmotionResult(id, longitude, latitude, createdAt, memo, nickname);
+        return new EmotionResult(id, longitude, latitude, createdAt, null, memo, nickname);
     }
 }
