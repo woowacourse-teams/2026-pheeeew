@@ -87,10 +87,11 @@ internal fun MapScreenContent(
                     Text("지도를 불러오지 못했어요", color = Color.White)
                     Button(
                         onClick = onRetryMap,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color.Black,
-                            contentColor = Color.White,
-                        ),
+                        colors =
+                            ButtonDefaults.buttonColors(
+                                containerColor = Color.Black,
+                                contentColor = Color.White,
+                            ),
                     ) {
                         Text("다시 시도")
                     }

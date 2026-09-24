@@ -70,16 +70,16 @@ internal fun EmotionBubbleCluster(
         } else {
             val idleTransition = rememberInfiniteTransition(label = "emotionBubbleIdleMotion")
             val progress by
-            idleTransition.animateFloat(
-                initialValue = 0f,
-                targetValue = 1f,
-                animationSpec =
-                    infiniteRepeatable(
-                        animation = tween(durationMillis = 2600, easing = FastOutSlowInEasing),
-                        repeatMode = RepeatMode.Reverse,
-                    ),
-                label = "emotionBubbleIdleProgress",
-            )
+                idleTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 1f,
+                    animationSpec =
+                        infiniteRepeatable(
+                            animation = tween(durationMillis = 2600, easing = FastOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse,
+                        ),
+                    label = "emotionBubbleIdleProgress",
+                )
             progress
         }
     val idleMotion = if (isExpanded) 0f else 1f
@@ -87,17 +87,17 @@ internal fun EmotionBubbleCluster(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val pressScaleX by
-    animateFloatAsState(
-        targetValue = if (isPressed) 1.035f else 1f,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 800f),
-        label = "emotionBubblePressScaleX",
-    )
+        animateFloatAsState(
+            targetValue = if (isPressed) 1.035f else 1f,
+            animationSpec = spring(dampingRatio = 0.7f, stiffness = 800f),
+            label = "emotionBubblePressScaleX",
+        )
     val pressScaleY by
-    animateFloatAsState(
-        targetValue = if (isPressed) 0.82f else 1f,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 800f),
-        label = "emotionBubblePressScaleY",
-    )
+        animateFloatAsState(
+            targetValue = if (isPressed) 0.82f else 1f,
+            animationSpec = spring(dampingRatio = 0.7f, stiffness = 800f),
+            label = "emotionBubblePressScaleY",
+        )
     val bubbleScaleX = 0.97f + 0.06f * idleProgress
     val bubbleScaleY = 1.03f - 0.06f * idleProgress
     val bubbleRotation = (idleProgress - 0.5f) * 1.4f * idleMotion
@@ -191,23 +191,23 @@ private fun EmotionBubble(
         )
     val targetOffset = emotion.offset(isExpanded)
     val x by
-    animateDpAsState(
-        targetValue = targetOffset.x,
-        animationSpec = animationSpec,
-        label = "emotionBubbleX",
-    )
+        animateDpAsState(
+            targetValue = targetOffset.x,
+            animationSpec = animationSpec,
+            label = "emotionBubbleX",
+        )
     val y by
-    animateDpAsState(
-        targetValue = targetOffset.y,
-        animationSpec = animationSpec,
-        label = "emotionBubbleY",
-    )
+        animateDpAsState(
+            targetValue = targetOffset.y,
+            animationSpec = animationSpec,
+            label = "emotionBubbleY",
+        )
     val iconSize by
-    animateDpAsState(
-        targetValue = if (isExpanded) 58.dp else 24.dp,
-        animationSpec = animationSpec,
-        label = "emotionBubbleSize",
-    )
+        animateDpAsState(
+            targetValue = if (isExpanded) 58.dp else 24.dp,
+            animationSpec = animationSpec,
+            label = "emotionBubbleSize",
+        )
     Column(
         modifier =
             Modifier
@@ -216,8 +216,7 @@ private fun EmotionBubble(
                     y = y + idleFloatY.dp,
                 ).graphicsLayer {
                     rotationZ = idleRotation
-                }
-                .width(iconSize)
+                }.width(iconSize)
                 .then(
                     if (isExpanded) {
                         Modifier.clickable(
@@ -246,11 +245,15 @@ private fun EmotionBubble(
                             durationMillis = 180,
                             delayMillis = 150 + emotion.ordinal * 48,
                         ),
-                ) + expandVertically(
-                    expandFrom = Alignment.Top,
-                    animationSpec = tween(durationMillis = 180, delayMillis = 150 + emotion.ordinal * 48),
-                ),
-            exit = fadeOut(tween(durationMillis = 100)) + shrinkVertically(animationSpec = tween(durationMillis = 100)),
+                ) +
+                    expandVertically(
+                        expandFrom = Alignment.Top,
+                        animationSpec = tween(durationMillis = 180, delayMillis = 150 + emotion.ordinal * 48),
+                    ),
+            exit =
+                fadeOut(
+                    tween(durationMillis = 100),
+                ) + shrinkVertically(animationSpec = tween(durationMillis = 100)),
         ) {
             Text(
                 text = emotion.label,
