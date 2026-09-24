@@ -26,6 +26,12 @@ import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import com.pheeeew.emotion.application.query.dto.EmotionListItemView;
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -183,6 +189,110 @@ class EmotionQueryServiceIntegrationTest {
     void 존재하지_않는_기기로는_조회할_수_없다() {
         assertThatThrownBy(() -> emotionQueryService.findById(emotion.getId(), UUID.randomUUID()))
                 .isInstanceOf(DeviceException.class);
+    }
+
+    @Test
+    void 목록은_기간_제한없이_조회하고_삭제와_차단_및_영역_밖_감정을_제외한다() {
+        // given
+        Emotion blockedEmotion = saveEmotion(author.getId(), 126.9774, 37.5669);
+        Device blockedAuthor = deviceRepository.save(기본_기기_빌더().build());
+        Emotion blockedAuthorEmotion = saveEmotion(blockedAuthor.getId(), 126.9774, 37.5669);
+        Emotion deletedEmotion = saveEmotion(author.getId(), 126.9774, 37.5669);
+        saveEmotion(author.getId(), 129.0, 37.5669);
+        deletedEmotion.delete();
+        emotionBlockRepository.save(EmotionBlock.builder()
+                .blockerDeviceId(viewer.getId())
+                .emotionId(blockedEmotion.getId())
+                .build());
+        deviceBlockRepository.save(DeviceBlock.builder()
+                .blockerDeviceId(viewer.getId())
+                .blockedDeviceId(blockedAuthor.getId())
+                .originEmotionId(blockedAuthorEmotion.getId())
+                .build());
+        entityManager.flush();
+        setCreatedAt(emotion, Instant.parse("2025-01-01T00:00:00Z"));
+        entityManager.clear();
+        Instant snapshotAt = Instant.now().plusSeconds(1);
+
+        // when
+        List<EmotionListItemView> result = emotionQueryService.findVisiblePageWithinBounds(
+                EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0),
+                snapshotAt, snapshotAt, Long.MAX_VALUE, 10, viewer.getPublicId()
+        );
+
+        // then
+        assertThat(result).extracting(EmotionListItemView::id).containsExactly(emotion.getId());
+        assertThat(result.getFirst().state()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(result.getFirst().rotationDegrees()).isEqualTo(35.5);
+        assertThat(result.getFirst().longitude()).isEqualTo(126.9774);
+        assertThat(result.getFirst().latitude()).isEqualTo(37.5669);
+    }
+
+    @Test
+    void 목록은_스냅샷과_생성시각_ID_커서로_중복없이_이어진다() {
+        // given
+        Emotion sameTime = saveEmotion(author.getId(), 126.9774, 37.5669);
+        Emotion older = saveEmotion(author.getId(), 126.9774, 37.5669);
+        Emotion afterSnapshot = saveEmotion(author.getId(), 126.9774, 37.5669);
+        entityManager.flush();
+        Instant newestAt = Instant.parse("2025-01-03T00:00:00Z");
+        setCreatedAt(emotion, newestAt);
+        setCreatedAt(sameTime, newestAt);
+        setCreatedAt(older, Instant.parse("2025-01-02T00:00:00Z"));
+        setCreatedAt(afterSnapshot, Instant.parse("2025-01-05T00:00:00Z"));
+        entityManager.clear();
+        Instant snapshotAt = Instant.parse("2025-01-04T00:00:00Z");
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0);
+
+        // when
+        List<EmotionListItemView> firstPage = emotionQueryService.findVisiblePageWithinBounds(
+                bounds, snapshotAt, snapshotAt, Long.MAX_VALUE, 2, viewer.getPublicId()
+        );
+        EmotionListItemView lastItem = firstPage.getLast();
+        List<EmotionListItemView> nextPage = emotionQueryService.findVisiblePageWithinBounds(
+                bounds, snapshotAt, lastItem.createdAt(), lastItem.id(), 2, viewer.getPublicId()
+        );
+
+        // then
+        assertThat(firstPage).extracting(EmotionListItemView::id).containsExactly(sameTime.getId(), emotion.getId());
+        assertThat(nextPage).extracting(EmotionListItemView::id).containsExactly(older.getId());
+    }
+
+    @Test
+    void 날짜_변경선을_넘는_영역에서_양쪽_감정을_한_번씩_조회한다() {
+        // given
+        Emotion east = saveEmotion(author.getId(), 179.0, 0.0);
+        Emotion west = saveEmotion(author.getId(), -179.0, 0.0);
+        saveEmotion(author.getId(), -160.0, 0.0);
+        Instant snapshotAt = Instant.now().plusSeconds(1);
+
+        // when
+        List<EmotionListItemView> result = emotionQueryService.findVisiblePageWithinBounds(
+                EmotionSearchBounds.of(170.0, -10.0, -170.0, 10.0),
+                snapshotAt, snapshotAt, Long.MAX_VALUE, 10, viewer.getPublicId()
+        );
+
+        // then
+        assertThat(result).extracting(EmotionListItemView::id).containsExactly(west.getId(), east.getId());
+    }
+
+    private Emotion saveEmotion(Long authorId, double longitude, double latitude) {
+        GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
+        Point location = geometryFactory.createPoint(new Coordinate(longitude, latitude));
+        return emotionRepository.save(Emotion.builder()
+                .requestId(UUID.randomUUID())
+                .location(location)
+                .state(EmotionState.FRUSTRATED)
+                .nickname("먼지구름")
+                .deviceId(authorId)
+                .build());
+    }
+
+    private void setCreatedAt(Emotion target, Instant createdAt) {
+        jdbcClient.sql("UPDATE emotions SET created_at = CAST(:createdAt AS TIMESTAMPTZ) WHERE id = :id")
+                .param("createdAt", createdAt.toString())
+                .param("id", target.getId())
+                .update();
     }
 
     private void assertNotVisible() {

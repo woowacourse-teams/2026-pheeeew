@@ -8,12 +8,15 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.emoji.dto.EmotionEmojiResult;
 import com.pheeeew.emotion.application.query.dto.EmotionDetailView;
+import com.pheeeew.emotion.application.query.dto.EmotionListItemView;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.projection.EmotionEmojiCountProjection;
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
+import java.time.Instant;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.UUID;
@@ -38,6 +41,19 @@ public class EmotionQueryService {
                 .orElseThrow(() -> new EmotionException(EMOTION_NOT_VISIBLE));
 
         return EmotionDetailView.of(emotion, findEmojis(emotionId, deviceId));
+    }
+
+    List<EmotionListItemView> findVisiblePageWithinBounds(
+            EmotionSearchBounds bounds, Instant snapshotAt, Instant lastCreatedAt,
+            long lastId, int limit, UUID devicePublicId
+    ) {
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
+                .map(Device::getId)
+                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+
+        return emotionRepository.findVisiblePageWithinBounds(
+                bounds, snapshotAt, lastCreatedAt, lastId, deviceId, limit
+        ).stream().map(EmotionListItemView::from).toList();
     }
 
     private List<EmotionEmojiResult> findEmojis(Long emotionId, Long deviceId) {
