@@ -8,4 +8,8 @@ object AppColors {
     val RankingSurface = Color(0xFFF3F4F5)
     val RankingSecondaryContent = Color(0xFF808080)
     val Background = Color.White
+
+    val Surface = Color(0xffFFFFFF)
+
+    val Border = Color(0xFF000000)
 }

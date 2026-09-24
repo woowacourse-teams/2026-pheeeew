@@ -1,17 +1,23 @@
 package com.pheeeew
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pheeeew.core.di.LocationDependencies
+import com.pheeeew.feature.screens.map.MapScreen
+import com.pheeeew.feature.screens.map.MapViewModel
 
-/**
- * Entry point for the new application UI.
- *
- * The legacy application is kept separately in [com.pheeeew.legacy.LegacyApp]
- * while the new feature structure is being introduced.
- */
 @Composable
-fun App() {
-    Box(modifier = Modifier.fillMaxSize())
+fun App(locationDependencies: LocationDependencies) {
+    val mapViewModel: MapViewModel =
+        viewModel {
+            MapViewModel.create(locationDependencies)
+        }
+    MapScreen(
+        viewModel = mapViewModel,
+        onListClick = {},
+        onSettingClick = {},
+        modifier = Modifier.fillMaxSize(),
+    )
 }
