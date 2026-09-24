@@ -1,5 +1,7 @@
 package com.pheeeew.data.location.platform.ios
 
+import com.pheeeew.core.location.PlatformLocationProvider
+import com.pheeeew.domain.model.CurrentLocation
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import kotlinx.coroutines.CancellableContinuation
@@ -15,8 +17,6 @@ import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 import kotlin.coroutines.resume
-import com.pheeeew.domain.model.CurrentLocation
-import com.pheeeew.core.location.PlatformLocationProvider
 
 @OptIn(ExperimentalForeignApi::class)
 internal class IosPlatformLocationProvider(
@@ -24,39 +24,48 @@ internal class IosPlatformLocationProvider(
 ) : PlatformLocationProvider {
     private val delegate = LocationDelegate(locationManager)
 
-    override suspend fun getCurrentLocation(): CurrentLocation? = withContext(Dispatchers.Main) {
-        if (!CLLocationManager.locationServicesEnabled()) null else delegate.requestLocation()
-    }
+    override suspend fun getCurrentLocation(): CurrentLocation? =
+        withContext(Dispatchers.Main) {
+            if (!CLLocationManager.locationServicesEnabled()) null else delegate.requestLocation()
+        }
 }
 
 @OptIn(ExperimentalForeignApi::class)
 private class LocationDelegate(
     private val locationManager: CLLocationManager,
-) : NSObject(), CLLocationManagerDelegateProtocol {
+) : NSObject(),
+    CLLocationManagerDelegateProtocol {
     private var continuation: CancellableContinuation<CurrentLocation?>? = null
 
-    suspend fun requestLocation(): CurrentLocation? = suspendCancellableCoroutine { requestContinuation ->
-        continuation?.cancel()
-        continuation = requestContinuation
-        locationManager.delegate = this
-        locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-        requestContinuation.invokeOnCancellation {
-            dispatch_async(dispatch_get_main_queue()) {
-                if (continuation === requestContinuation) {
-                    continuation = null
-                    locationManager.delegate = null
-                    locationManager.stopUpdatingLocation()
+    suspend fun requestLocation(): CurrentLocation? =
+        suspendCancellableCoroutine { requestContinuation ->
+            continuation?.cancel()
+            continuation = requestContinuation
+            locationManager.delegate = this
+            locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+            requestContinuation.invokeOnCancellation {
+                dispatch_async(dispatch_get_main_queue()) {
+                    if (continuation === requestContinuation) {
+                        continuation = null
+                        locationManager.delegate = null
+                        locationManager.stopUpdatingLocation()
+                    }
                 }
             }
+            locationManager.requestLocation()
         }
-        locationManager.requestLocation()
-    }
 
-    override fun locationManager(manager: CLLocationManager, didUpdateLocations: List<*>) {
+    override fun locationManager(
+        manager: CLLocationManager,
+        didUpdateLocations: List<*>,
+    ) {
         finish((didUpdateLocations.lastOrNull() as? CLLocation)?.toCurrentLocation())
     }
 
-    override fun locationManager(manager: CLLocationManager, didFailWithError: NSError) {
+    override fun locationManager(
+        manager: CLLocationManager,
+        didFailWithError: NSError,
+    ) {
         finish(null)
     }
 

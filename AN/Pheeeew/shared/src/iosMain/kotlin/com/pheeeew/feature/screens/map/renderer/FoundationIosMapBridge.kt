@@ -12,7 +12,10 @@ object FoundationIosMapBridge {
     internal fun createMapView(eventSink: FoundationIosMapEventSink): UIView =
         factory?.createMapView(eventSink) ?: UIView().also { eventSink.onRendererUnavailable() }
 
-    internal fun updateMapView(mapView: UIView, state: FoundationIosMapRenderUiModel) {
+    internal fun updateMapView(
+        mapView: UIView,
+        state: FoundationIosMapRenderUiModel,
+    ) {
         factory?.updateMapView(mapView, state)
     }
 

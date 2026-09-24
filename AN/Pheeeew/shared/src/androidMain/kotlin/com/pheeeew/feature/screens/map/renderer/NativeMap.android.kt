@@ -13,6 +13,11 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.pheeeew.domain.model.LocationState
+import com.pheeeew.domain.model.MapCameraState
+import com.pheeeew.feature.screens.map.MapCameraActionUiModel
+import com.pheeeew.feature.screens.map.MapErrorUiModel
+import com.pheeeew.feature.screens.map.MapUiModel
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -20,19 +25,17 @@ import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
-import com.pheeeew.domain.model.MapCameraState
-import com.pheeeew.feature.screens.map.MapCameraActionUiModel
-import com.pheeeew.feature.screens.map.MapErrorUiModel
-import com.pheeeew.feature.screens.map.MapRenderUiModel
 
 private const val OPEN_FREE_MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 private const val INITIAL_ZOOM = 11.0
 private const val MINIMUM_ZOOM = 2.0
 private const val MAXIMUM_ZOOM = 20.0
+private const val FALLBACK_LATITUDE = 37.5665
+private const val FALLBACK_LONGITUDE = 126.9780
 
 @Composable
 internal actual fun NativeMap(
-    state: MapRenderUiModel,
+    state: MapUiModel,
     onCameraStateChanged: (MapCameraState) -> Unit,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
@@ -43,20 +46,21 @@ internal actual fun NativeMap(
     val currentOnCameraStateChanged by rememberUpdatedState(onCameraStateChanged)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
-    val hostResult = remember(context) {
-        runCatching {
-            MapLibre.getInstance(context.applicationContext)
-            AndroidFoundationMapHost(
-                MapView(context).apply {
-                    setBackgroundColor(Color.BLACK)
-                    onCreate(null)
-                },
-                onCameraStateChanged = currentOnCameraStateChanged,
-                onMapError = currentOnMapError,
-                onMapRecovered = currentOnMapRecovered,
-            )
+    val hostResult =
+        remember(context) {
+            runCatching {
+                MapLibre.getInstance(context.applicationContext)
+                AndroidFoundationMapHost(
+                    MapView(context).apply {
+                        setBackgroundColor(Color.BLACK)
+                        onCreate(null)
+                    },
+                    onCameraStateChanged = currentOnCameraStateChanged,
+                    onMapError = currentOnMapError,
+                    onMapRecovered = currentOnMapRecovered,
+                )
+            }
         }
-    }
     val host = hostResult.getOrNull()
 
     if (host == null) {
@@ -65,15 +69,16 @@ internal actual fun NativeMap(
     }
 
     DisposableEffect(host, lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_START -> host.mapView.onStart()
-                Lifecycle.Event.ON_RESUME -> host.mapView.onResume()
-                Lifecycle.Event.ON_PAUSE -> host.mapView.onPause()
-                Lifecycle.Event.ON_STOP -> host.mapView.onStop()
-                else -> Unit
+        val observer =
+            LifecycleEventObserver { _, event ->
+                when (event) {
+                    Lifecycle.Event.ON_START -> host.mapView.onStart()
+                    Lifecycle.Event.ON_RESUME -> host.mapView.onResume()
+                    Lifecycle.Event.ON_PAUSE -> host.mapView.onPause()
+                    Lifecycle.Event.ON_STOP -> host.mapView.onStop()
+                    else -> Unit
+                }
             }
-        }
         lifecycleOwner.lifecycle.addObserver(observer)
         if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) host.mapView.onStart()
         if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) host.mapView.onResume()
@@ -99,15 +104,16 @@ private class AndroidFoundationMapHost(
     private var map: MapLibreMap? = null
     private var style: Style? = null
     private var released = false
-    private var latestState: MapRenderUiModel? = null
+    private var latestState: MapUiModel? = null
     private var styleLoaded = false
     private var didSetInitialCamera = false
     private var initialCameraUsedFallback = false
     private var lastAppliedCameraCommandId = 0L
 
-    private val mapLoadFailureListener = MapView.OnDidFailLoadingMapListener {
-        if (!released) onMapError(MapErrorUiModel.StyleLoadFailed)
-    }
+    private val mapLoadFailureListener =
+        MapView.OnDidFailLoadingMapListener {
+            if (!released) onMapError(MapErrorUiModel.StyleLoadFailed)
+        }
 
     init {
         mapView.addOnDidFailLoadingMapListener(mapLoadFailureListener)
@@ -130,7 +136,7 @@ private class AndroidFoundationMapHost(
         }
     }
 
-    fun render(state: MapRenderUiModel) {
+    fun render(state: MapUiModel) {
         latestState = state
         renderLatestState()
     }
@@ -150,28 +156,36 @@ private class AndroidFoundationMapHost(
         if (!styleLoaded || released) return
         val currentMap = map ?: return
         val state = latestState ?: return
-        AndroidCurrentLocationLayer.update(style, state.currentLocation)
-        val point = state.currentLocation?.let { LatLng(it.latitude, it.longitude) }
-            ?: LatLng(state.fallbackCameraState.latitude, state.fallbackCameraState.longitude)
-        if (!didSetInitialCamera || (initialCameraUsedFallback && state.currentLocation != null)) {
-            currentMap.cameraPosition = CameraPosition.Builder()
-                .target(point)
-                .zoom(INITIAL_ZOOM)
-                .build()
+        val currentLocation = (state.locationState as? LocationState.Available)?.location
+        AndroidCurrentLocationLayer.update(style, currentLocation)
+        val point =
+            currentLocation?.let { LatLng(it.latitude, it.longitude) }
+                ?: LatLng(FALLBACK_LATITUDE, FALLBACK_LONGITUDE)
+        if (!didSetInitialCamera || (initialCameraUsedFallback && currentLocation != null)) {
+            currentMap.cameraPosition =
+                CameraPosition
+                    .Builder()
+                    .target(point)
+                    .zoom(INITIAL_ZOOM)
+                    .build()
             didSetInitialCamera = true
-            initialCameraUsedFallback = state.currentLocation == null
+            initialCameraUsedFallback = currentLocation == null
         }
         state.cameraCommand?.takeIf { it.id > lastAppliedCameraCommandId }?.let { command ->
             lastAppliedCameraCommandId = command.id
-            val update = when (command.action) {
-                MapCameraActionUiModel.MoveToCoordinate ->
-                    CameraUpdateFactory.newLatLngZoom(
-                        LatLng(command.latitude, command.longitude),
-                        command.value,
-                    )
-                MapCameraActionUiModel.ZoomBy ->
-                    CameraUpdateFactory.zoomBy(command.value)
-            }
+            val update =
+                when (command.action) {
+                    MapCameraActionUiModel.MoveToCoordinate -> {
+                        CameraUpdateFactory.newLatLngZoom(
+                            LatLng(command.latitude, command.longitude),
+                            command.value,
+                        )
+                    }
+
+                    MapCameraActionUiModel.ZoomBy -> {
+                        CameraUpdateFactory.zoomBy(command.value)
+                    }
+                }
             currentMap.animateCamera(update, 350)
         }
         publishCameraState()

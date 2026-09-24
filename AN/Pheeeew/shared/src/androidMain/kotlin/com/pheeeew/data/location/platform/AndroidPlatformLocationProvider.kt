@@ -14,8 +14,8 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
-import com.pheeeew.domain.model.CurrentLocation
 import com.pheeeew.core.location.PlatformLocationProvider
+import com.pheeeew.domain.model.CurrentLocation
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
@@ -24,9 +24,10 @@ class AndroidPlatformLocationProvider(
     context: Context,
 ) : PlatformLocationProvider {
     private val applicationContext = context.applicationContext
-    private val locationManager = requireNotNull(
-        applicationContext.getSystemService(LocationManager::class.java),
-    )
+    private val locationManager =
+        requireNotNull(
+            applicationContext.getSystemService(LocationManager::class.java),
+        )
     private val fusedClient: FusedLocationProviderClient =
         LocationServices.getFusedLocationProviderClient(applicationContext)
 
@@ -50,13 +51,14 @@ class AndroidPlatformLocationProvider(
             PackageManager.PERMISSION_GRANTED
 
     @SuppressLint("MissingPermission")
-    private fun lastKnown(provider: String): Location? = try {
-        if (locationManager.isProviderEnabled(provider)) locationManager.getLastKnownLocation(provider) else null
-    } catch (_: SecurityException) {
-        null
-    } catch (_: IllegalArgumentException) {
-        null
-    }
+    private fun lastKnown(provider: String): Location? =
+        try {
+            if (locationManager.isProviderEnabled(provider)) locationManager.getLastKnownLocation(provider) else null
+        } catch (_: SecurityException) {
+            null
+        } catch (_: IllegalArgumentException) {
+            null
+        }
 
     private fun recentLocation(location: Location?): CurrentLocation? {
         val currentTime = System.currentTimeMillis()
@@ -64,18 +66,20 @@ class AndroidPlatformLocationProvider(
     }
 
     @SuppressLint("MissingPermission")
-    private suspend fun requestFusedLocation(): Location? = suspendCancellableCoroutine { continuation ->
-        val cancellation = CancellationTokenSource()
-        continuation.invokeOnCancellation { cancellation.cancel() }
-        try {
-            fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellation.token)
-                .addOnSuccessListener { if (continuation.isActive) continuation.resume(it) }
-                .addOnFailureListener { if (continuation.isActive) continuation.resume(null) }
-                .addOnCanceledListener { if (continuation.isActive) continuation.resume(null) }
-        } catch (_: Exception) {
-            if (continuation.isActive) continuation.resume(null)
+    private suspend fun requestFusedLocation(): Location? =
+        suspendCancellableCoroutine { continuation ->
+            val cancellation = CancellationTokenSource()
+            continuation.invokeOnCancellation { cancellation.cancel() }
+            try {
+                fusedClient
+                    .getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, cancellation.token)
+                    .addOnSuccessListener { if (continuation.isActive) continuation.resume(it) }
+                    .addOnFailureListener { if (continuation.isActive) continuation.resume(null) }
+                    .addOnCanceledListener { if (continuation.isActive) continuation.resume(null) }
+            } catch (_: Exception) {
+                if (continuation.isActive) continuation.resume(null)
+            }
         }
-    }
 
     @SuppressLint("MissingPermission")
     private suspend fun requestNetworkLocation(): Location? = requestProvider(LocationManager.NETWORK_PROVIDER)
@@ -84,35 +88,37 @@ class AndroidPlatformLocationProvider(
     private suspend fun requestGpsLocation(): Location? = requestProvider(LocationManager.GPS_PROVIDER)
 
     @SuppressLint("MissingPermission")
-    private suspend fun requestProvider(provider: String): Location? = suspendCancellableCoroutine { continuation ->
-        if (!runCatching { locationManager.isProviderEnabled(provider) }.getOrDefault(false)) {
-            continuation.resume(null)
-            return@suspendCancellableCoroutine
-        }
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                val cancellation = CancellationSignal()
-                continuation.invokeOnCancellation { cancellation.cancel() }
-                locationManager.getCurrentLocation(
-                    provider,
-                    cancellation,
-                    ContextCompat.getMainExecutor(applicationContext),
-                ) { if (continuation.isActive) continuation.resume(it) }
-            } else {
-                val listener = object : android.location.LocationListener {
-                    override fun onLocationChanged(location: Location) {
-                        locationManager.removeUpdates(this)
-                        if (continuation.isActive) continuation.resume(location)
-                    }
-                }
-                continuation.invokeOnCancellation { locationManager.removeUpdates(listener) }
-                @Suppress("DEPRECATION")
-                locationManager.requestSingleUpdate(provider, listener, Looper.getMainLooper())
+    private suspend fun requestProvider(provider: String): Location? =
+        suspendCancellableCoroutine { continuation ->
+            if (!runCatching { locationManager.isProviderEnabled(provider) }.getOrDefault(false)) {
+                continuation.resume(null)
+                return@suspendCancellableCoroutine
             }
-        } catch (_: Exception) {
-            if (continuation.isActive) continuation.resume(null)
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    val cancellation = CancellationSignal()
+                    continuation.invokeOnCancellation { cancellation.cancel() }
+                    locationManager.getCurrentLocation(
+                        provider,
+                        cancellation,
+                        ContextCompat.getMainExecutor(applicationContext),
+                    ) { if (continuation.isActive) continuation.resume(it) }
+                } else {
+                    val listener =
+                        object : android.location.LocationListener {
+                            override fun onLocationChanged(location: Location) {
+                                locationManager.removeUpdates(this)
+                                if (continuation.isActive) continuation.resume(location)
+                            }
+                        }
+                    continuation.invokeOnCancellation { locationManager.removeUpdates(listener) }
+                    @Suppress("DEPRECATION")
+                    locationManager.requestSingleUpdate(provider, listener, Looper.getMainLooper())
+                }
+            } catch (_: Exception) {
+                if (continuation.isActive) continuation.resume(null)
+            }
         }
-    }
 
     private fun Location.toCurrentLocation(): CurrentLocation? {
         if (!latitude.isFinite() || !longitude.isFinite()) return null

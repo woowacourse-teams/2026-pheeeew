@@ -8,15 +8,18 @@ fun createAndroidLocationDependencies(
     activity: ComponentActivity,
     retainedDependencies: LocationDependencies?,
 ): LocationDependencies {
-    val permissionController = retainedDependencies?.permissionController
-        ?.let { it as? AndroidLocationPermissionController }
-        ?.also { it.attach(activity) }
-        ?: AndroidLocationPermissionController(activity)
+    val permissionController =
+        retainedDependencies
+            ?.permissionController
+            ?.let { it as? AndroidLocationPermissionController }
+            ?.also { it.attach(activity) }
+            ?: AndroidLocationPermissionController(activity)
     return LocationDependencies(
         permissionController = permissionController,
-        repository = LocationRepositoryImpl(
-            permissionController = permissionController,
-            provider = AndroidPlatformLocationProvider(activity),
-        ),
+        repository =
+            LocationRepositoryImpl(
+                permissionController = permissionController,
+                provider = AndroidPlatformLocationProvider(activity),
+            ),
     )
 }

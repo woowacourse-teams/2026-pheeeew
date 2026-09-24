@@ -43,23 +43,27 @@ fun MapOverlay(
     modifier: Modifier = Modifier,
 ) {
     Box(
-        modifier = modifier.fillMaxSize()
-            .statusBarsPadding()
-            .padding( 16.dp),
+        modifier =
+            modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .padding(16.dp),
     ) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .align(Alignment.TopCenter),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopCenter),
         ) {
             Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(100.dp))
-                    .background(AppColors.Surface)
-                    .border(width = 1.dp, color = AppColors.Border, shape = RoundedCornerShape(100.dp))
-                    .clickable(onClick = onListClick)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .align(Alignment.Center),
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(100.dp))
+                        .background(AppColors.Surface)
+                        .border(width = 1.dp, color = AppColors.Border, shape = RoundedCornerShape(100.dp))
+                        .clickable(onClick = onListClick)
+                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .align(Alignment.Center),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
@@ -76,13 +80,14 @@ fun MapOverlay(
             }
 
             Box(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .clip(RoundedCornerShape(15.dp))
-                    .background(AppColors.Surface)
-                    .border(width = 1.dp, color = AppColors.Border, shape = RoundedCornerShape(15.dp))
-                    .clickable(onClick = onSettingClick)
-                    .padding(horizontal = 10.dp, vertical = 10.dp),
+                modifier =
+                    Modifier
+                        .align(Alignment.CenterStart)
+                        .clip(RoundedCornerShape(15.dp))
+                        .background(AppColors.Surface)
+                        .border(width = 1.dp, color = AppColors.Border, shape = RoundedCornerShape(15.dp))
+                        .clickable(onClick = onSettingClick)
+                        .padding(horizontal = 10.dp, vertical = 10.dp),
             ) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_settings),
@@ -90,21 +95,20 @@ fun MapOverlay(
                     modifier = Modifier.size(24.dp),
                 )
             }
-
         }
 
         Box(
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .navigationBarsPadding()
-                .clip(CircleShape)
-                .shadow(elevation = 4.dp, shape = CircleShape)
-                .background(AppColors.Surface)
-                .clickable(
-                    enabled = !isRequestingLocation,
-                    onClick = onMyLocationClick,
-                )
-                .padding(horizontal = 10.dp, vertical = 10.dp),
+            modifier =
+                Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .clip(CircleShape)
+                    .shadow(elevation = 4.dp, shape = CircleShape)
+                    .background(AppColors.Surface)
+                    .clickable(
+                        enabled = !isRequestingLocation,
+                        onClick = onMyLocationClick,
+                    ).padding(horizontal = 10.dp, vertical = 10.dp),
         ) {
             Icon(
                 painter = painterResource(Res.drawable.ic_my_location),
@@ -131,9 +135,10 @@ private fun MapOverlayRequestingLocationPreview() {
 @Composable
 private fun MapOverlayPreviewContent(isRequestingLocation: Boolean) {
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFECEAE5)),
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .background(Color(0xFFECEAE5)),
     ) {
         MapOverlay(
             onListClick = {},

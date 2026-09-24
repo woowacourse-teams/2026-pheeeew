@@ -43,13 +43,18 @@ internal object AndroidCurrentLocationLayer {
         }
     }
 
-    fun update(style: Style?, location: CurrentLocation?) {
-        val features = location
-            ?.takeIf { it.latitude.isFinite() && it.longitude.isFinite() }
-            ?.let { Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude)) }
-            ?.let(::listOf)
-            ?: emptyList()
-        style?.getSourceAs<GeoJsonSource>(SOURCE_ID)
+    fun update(
+        style: Style?,
+        location: CurrentLocation?,
+    ) {
+        val features =
+            location
+                ?.takeIf { it.latitude.isFinite() && it.longitude.isFinite() }
+                ?.let { Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude)) }
+                ?.let(::listOf)
+                ?: emptyList()
+        style
+            ?.getSourceAs<GeoJsonSource>(SOURCE_ID)
             ?.setGeoJson(FeatureCollection.fromFeatures(features))
     }
 }

@@ -2,17 +2,17 @@ package com.pheeeew.feature.screens.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pheeeew.domain.model.LocationError
 import com.pheeeew.core.di.LocationDependencies
+import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
-import com.pheeeew.domain.usecase.RefreshLocationUseCase
 import com.pheeeew.domain.model.MapCameraState
-import kotlinx.coroutines.Job
+import com.pheeeew.domain.usecase.RefreshLocationUseCase
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class MapViewModel(
     private val refreshLocation: RefreshLocationUseCase,
@@ -47,38 +47,41 @@ class MapViewModel(
     }
 
     fun retryMap() {
-        _uiModel.value = _uiModel.value.copy(
-            mapError = null,
-            mapRevision = _uiModel.value.mapRevision + 1,
-        )
+        _uiModel.value =
+            _uiModel.value.copy(
+                mapError = null,
+                mapRevision = _uiModel.value.mapRevision + 1,
+            )
     }
 
     private fun requestCurrentLocation(moveCamera: Boolean) {
         if (locationRequestJob?.isActive == true) return
-        locationRequestJob = viewModelScope.launch {
-            _uiModel.value = _uiModel.value.copy(isRequestingLocation = true)
-            try {
-                val locationState = refreshLocation()
-                _uiModel.value = _uiModel.value.copy(locationState = locationState)
-                val location = (locationState as? LocationState.Available)?.location
-                if (moveCamera && location != null) {
-                    sendCameraCommand(
-                        action = MapCameraActionUiModel.MoveToCoordinate,
-                        latitude = location.latitude,
-                        longitude = location.longitude,
-                        value = LOCATION_FOCUS_ZOOM,
-                    )
+        locationRequestJob =
+            viewModelScope.launch {
+                _uiModel.value = _uiModel.value.copy(isRequestingLocation = true)
+                try {
+                    val locationState = refreshLocation()
+                    _uiModel.value = _uiModel.value.copy(locationState = locationState)
+                    val location = (locationState as? LocationState.Available)?.location
+                    if (moveCamera && location != null) {
+                        sendCameraCommand(
+                            action = MapCameraActionUiModel.MoveToCoordinate,
+                            latitude = location.latitude,
+                            longitude = location.longitude,
+                            value = LOCATION_FOCUS_ZOOM,
+                        )
+                    }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    _uiModel.value =
+                        _uiModel.value.copy(
+                            locationState = LocationState.Unavailable(LocationError.GpsUnavailable),
+                        )
+                } finally {
+                    _uiModel.value = _uiModel.value.copy(isRequestingLocation = false)
                 }
-            } catch (cancellation: CancellationException) {
-                throw cancellation
-            } catch (_: Exception) {
-                _uiModel.value = _uiModel.value.copy(
-                    locationState = LocationState.Unavailable(LocationError.GpsUnavailable),
-                )
-            } finally {
-                _uiModel.value = _uiModel.value.copy(isRequestingLocation = false)
             }
-        }
     }
 
     private fun sendCameraCommand(
@@ -87,28 +90,29 @@ class MapViewModel(
         longitude: Double = 0.0,
         value: Double,
     ) {
-        _uiModel.value = _uiModel.value.copy(
-            cameraCommand = MapCameraCommandUiModel(
-                id = ++nextCameraCommandId,
-                action = action,
-                latitude = latitude,
-                longitude = longitude,
-                value = value,
-            ),
-        )
+        _uiModel.value =
+            _uiModel.value.copy(
+                cameraCommand =
+                    MapCameraCommandUiModel(
+                        id = ++nextCameraCommandId,
+                        action = action,
+                        latitude = latitude,
+                        longitude = longitude,
+                        value = value,
+                    ),
+            )
     }
 
     companion object {
         private const val LOCATION_FOCUS_ZOOM = 15.5
 
-        fun create(
-            locationDependencies: LocationDependencies,
-        ): MapViewModel =
+        fun create(locationDependencies: LocationDependencies): MapViewModel =
             MapViewModel(
-                refreshLocation = RefreshLocationUseCase(
-                    permissionController = locationDependencies.permissionController,
-                    repository = locationDependencies.repository,
-                ),
+                refreshLocation =
+                    RefreshLocationUseCase(
+                        permissionController = locationDependencies.permissionController,
+                        repository = locationDependencies.repository,
+                    ),
             )
     }
 }

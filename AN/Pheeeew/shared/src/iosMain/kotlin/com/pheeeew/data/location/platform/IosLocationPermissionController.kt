@@ -1,5 +1,7 @@
 package com.pheeeew.data.location.platform.ios
 
+import com.pheeeew.core.permission.LocationPermissionController
+import com.pheeeew.core.permission.LocationPermissionStatus
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
@@ -17,8 +19,6 @@ import platform.darwin.NSObject
 import platform.darwin.dispatch_async
 import platform.darwin.dispatch_get_main_queue
 import kotlin.coroutines.resume
-import com.pheeeew.core.permission.LocationPermissionController
-import com.pheeeew.core.permission.LocationPermissionStatus
 
 @OptIn(ExperimentalForeignApi::class)
 class IosLocationPermissionController(
@@ -26,21 +26,24 @@ class IosLocationPermissionController(
 ) : LocationPermissionController {
     private val delegate = PermissionDelegate(locationManager)
 
-    override suspend fun currentStatus(): LocationPermissionStatus = withContext(Dispatchers.Main) {
-        locationManager.authorizationStatus.toLocationPermissionStatus(
-            CLLocationManager.locationServicesEnabled(),
-        )
-    }
+    override suspend fun currentStatus(): LocationPermissionStatus =
+        withContext(Dispatchers.Main) {
+            locationManager.authorizationStatus.toLocationPermissionStatus(
+                CLLocationManager.locationServicesEnabled(),
+            )
+        }
 
-    override suspend fun requestPermission(): LocationPermissionStatus = withContext(Dispatchers.Main) {
-        delegate.requestPermission()
-    }
+    override suspend fun requestPermission(): LocationPermissionStatus =
+        withContext(Dispatchers.Main) {
+            delegate.requestPermission()
+        }
 }
 
 @OptIn(ExperimentalForeignApi::class)
 private class PermissionDelegate(
     private val locationManager: CLLocationManager,
-) : NSObject(), CLLocationManagerDelegateProtocol {
+) : NSObject(),
+    CLLocationManagerDelegateProtocol {
     private var continuation: CancellableContinuation<LocationPermissionStatus>? = null
 
     suspend fun requestPermission(): LocationPermissionStatus {
@@ -69,7 +72,10 @@ private class PermissionDelegate(
     }
 
     @Suppress("DEPRECATION")
-    override fun locationManager(manager: CLLocationManager, didChangeAuthorizationStatus: CLAuthorizationStatus) {
+    override fun locationManager(
+        manager: CLLocationManager,
+        didChangeAuthorizationStatus: CLAuthorizationStatus,
+    ) {
         finish(didChangeAuthorizationStatus)
     }
 
@@ -93,9 +99,13 @@ private fun CLAuthorizationStatus.toLocationPermissionStatus(
     if (!locationServicesEnabled) return LocationPermissionStatus.ServicesDisabled
     return when (this) {
         kCLAuthorizationStatusAuthorizedAlways,
-        kCLAuthorizationStatusAuthorizedWhenInUse -> LocationPermissionStatus.Granted
+        kCLAuthorizationStatusAuthorizedWhenInUse,
+        -> LocationPermissionStatus.Granted
+
         kCLAuthorizationStatusDenied,
-        kCLAuthorizationStatusRestricted -> LocationPermissionStatus.PermanentlyDenied
+        kCLAuthorizationStatusRestricted,
+        -> LocationPermissionStatus.PermanentlyDenied
+
         else -> LocationPermissionStatus.Denied
     }
 }

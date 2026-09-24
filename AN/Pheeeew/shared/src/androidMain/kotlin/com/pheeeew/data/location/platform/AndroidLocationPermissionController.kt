@@ -27,7 +27,8 @@ import kotlin.coroutines.resume
 
 class AndroidLocationPermissionController(
     activity: ComponentActivity,
-) : LocationPermissionController, AutoCloseable {
+) : LocationPermissionController,
+    AutoCloseable {
     private val applicationContext = activity.applicationContext
     private val preferences =
         applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -38,11 +39,12 @@ class AndroidLocationPermissionController(
     private var activityReference = WeakReference(activity)
     private var permissionLauncher: ActivityResultLauncher<Array<String>>? = null
     private var pendingContinuation: CancellableContinuation<LocationPermissionStatus>? = null
-    private val lifecycleObserver = LifecycleEventObserver { owner, event ->
-        if (event == Lifecycle.Event.ON_DESTROY && activityReference.get() === owner) {
-            detach(cancelPendingRequest = !owner.isChangingConfigurations)
+    private val lifecycleObserver =
+        LifecycleEventObserver { owner, event ->
+            if (event == Lifecycle.Event.ON_DESTROY && activityReference.get() === owner) {
+                detach(cancelPendingRequest = !owner.isChangingConfigurations)
+            }
         }
-    }
 
     init {
         attach(activity)
@@ -53,42 +55,44 @@ class AndroidLocationPermissionController(
         if (activityReference.get() === activity && permissionLauncher != null) return
         detach(cancelPendingRequest = false)
         activityReference = WeakReference(activity)
-        permissionLauncher = activity.activityResultRegistry.register(
-            ACTIVITY_RESULT_KEY,
-            ActivityResultContracts.RequestMultiplePermissions(),
-        ) {
-            pendingContinuation?.let { continuation ->
-                pendingContinuation = null
-                if (continuation.isActive) continuation.resume(statusNow())
+        permissionLauncher =
+            activity.activityResultRegistry.register(
+                ACTIVITY_RESULT_KEY,
+                ActivityResultContracts.RequestMultiplePermissions(),
+            ) {
+                pendingContinuation?.let { continuation ->
+                    pendingContinuation = null
+                    if (continuation.isActive) continuation.resume(statusNow())
+                }
             }
-        }
         activity.lifecycle.addObserver(lifecycleObserver)
     }
 
     override suspend fun currentStatus(): LocationPermissionStatus =
         withContext(Dispatchers.Main.immediate) { statusNow() }
 
-    override suspend fun requestPermission(): LocationPermissionStatus = requestMutex.withLock {
-        withContext(Dispatchers.Main.immediate) {
-            if (hasLocationPermission()) return@withContext statusNow()
-            val launcher = permissionLauncher ?: return@withContext statusNow()
-            preferences.edit().putBoolean(KEY_HAS_REQUESTED, true).apply()
-            suspendCancellableCoroutine { continuation ->
-                pendingContinuation = continuation
-                continuation.invokeOnCancellation {
-                    mainHandler.post {
-                        if (pendingContinuation === continuation) pendingContinuation = null
+    override suspend fun requestPermission(): LocationPermissionStatus =
+        requestMutex.withLock {
+            withContext(Dispatchers.Main.immediate) {
+                if (hasLocationPermission()) return@withContext statusNow()
+                val launcher = permissionLauncher ?: return@withContext statusNow()
+                preferences.edit().putBoolean(KEY_HAS_REQUESTED, true).apply()
+                suspendCancellableCoroutine { continuation ->
+                    pendingContinuation = continuation
+                    continuation.invokeOnCancellation {
+                        mainHandler.post {
+                            if (pendingContinuation === continuation) pendingContinuation = null
+                        }
                     }
-                }
-                try {
-                    launcher.launch(LOCATION_PERMISSIONS)
-                } catch (_: IllegalStateException) {
-                    pendingContinuation = null
-                    if (continuation.isActive) continuation.resume(statusNow())
+                    try {
+                        launcher.launch(LOCATION_PERMISSIONS)
+                    } catch (_: IllegalStateException) {
+                        pendingContinuation = null
+                        if (continuation.isActive) continuation.resume(statusNow())
+                    }
                 }
             }
         }
-    }
 
     override fun close() {
         if (Looper.myLooper() == Looper.getMainLooper()) {
@@ -113,11 +117,12 @@ class AndroidLocationPermissionController(
         val servicesEnabled = Build.VERSION.SDK_INT < Build.VERSION_CODES.P || locationManager.isLocationEnabled
         val wasRequested = preferences.getBoolean(KEY_HAS_REQUESTED, false)
         val activity = activityReference.get()
-        val canExplainDenial = activity?.let {
-            LOCATION_PERMISSIONS.any { permission ->
-                ActivityCompat.shouldShowRequestPermissionRationale(it, permission)
-            }
-        } ?: false
+        val canExplainDenial =
+            activity?.let {
+                LOCATION_PERMISSIONS.any { permission ->
+                    ActivityCompat.shouldShowRequestPermissionRationale(it, permission)
+                }
+            } ?: false
         return when {
             hasLocationPermission() && !servicesEnabled -> LocationPermissionStatus.ServicesDisabled
             hasLocationPermission() -> LocationPermissionStatus.Granted
@@ -126,17 +131,19 @@ class AndroidLocationPermissionController(
         }
     }
 
-    private fun hasLocationPermission(): Boolean = LOCATION_PERMISSIONS.any { permission ->
-        ContextCompat.checkSelfPermission(applicationContext, permission) == PackageManager.PERMISSION_GRANTED
-    }
+    private fun hasLocationPermission(): Boolean =
+        LOCATION_PERMISSIONS.any { permission ->
+            ContextCompat.checkSelfPermission(applicationContext, permission) == PackageManager.PERMISSION_GRANTED
+        }
 
     private companion object {
         const val PREFERENCES_NAME = "foundation-location-permission"
         const val KEY_HAS_REQUESTED = "has-requested-foreground-location"
         const val ACTIVITY_RESULT_KEY = "foundation-foreground-location-permission"
-        val LOCATION_PERMISSIONS = arrayOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION,
-        )
+        val LOCATION_PERMISSIONS =
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            )
     }
 }
