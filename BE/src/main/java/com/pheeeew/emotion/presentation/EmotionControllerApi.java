@@ -3,6 +3,7 @@ package com.pheeeew.emotion.presentation;
 import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionUpdateRequest;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.presentation.dto.EmotionDetailResponse;
@@ -25,13 +26,12 @@ import org.springframework.http.ResponseEntity;
 @Tag(name = "감정", description = "감정과 이모지 API")
 public interface EmotionControllerApi {
 
-    @Operation(summary = "감정 지도·목록 조회", description = """
+    @Operation(summary = "바텀시트 감정 목록 조회", description = """
             첫 페이지에는 minLongitude, minLatitude, maxLongitude, maxLatitude를 전달합니다.
             groupId를 생략하면 그룹 없는 감정까지 전체 조회하며, 지정하면 해당 그룹의 스탬프만 조회합니다.
             그룹 필터는 공개 감정의 조회 조건이며 그룹 가입 여부로 제한하지 않습니다.
             다음 페이지에는 영역과 그룹 조건이 담긴 cursor만 전달합니다. 날짜변경선을 넘는 영역은 minLongitude > maxLongitude로 표현합니다.
             기간 제한 없이 (createdAt DESC, id DESC) 순으로 최대 20개씩 조회합니다.
-            지도는 모든 페이지를 모아 오래된 감정부터 그려 최신 감정이 위에 표시되도록 합니다.
             최초 조회 이후 작성된 감정은 제외하고, 삭제·차단은 매 페이지에 반영합니다.
             각 항목은 GeoJSON Feature이며 여섯 이모지 집계와 본인 선택 여부를 포함합니다.
             contentType으로 녹음 유무를 구분하며 목록의 audio는 null입니다. 재생 URL은 상세 조회에서 발급합니다.
@@ -44,6 +44,26 @@ public interface EmotionControllerApi {
     ResponseEntity<CursorResponse<EmotionDetailResponse>> findAll(@Valid EmotionListRequest request,
             @Parameter(hidden = true) UUID devicePublicId);
 
+
+    @Operation(summary = "지도 스탬프 조회", description = """
+            지도 표시에 필요한 감정 ID·좌표·작성 시각·상태·각도·그룹 스탬프만 반환합니다.
+            메모·닉네임·이모지 집계·녹음 재생 URL은 포함하지 않습니다. 바텀시트는 감정 목록 API로 조회합니다.
+            첫 페이지에는 minLongitude, minLatitude, maxLongitude, maxLatitude를 전달합니다.
+            groupId를 생략하면 전체를 조회하며 지정하면 해당 그룹만 조회합니다. 그룹 가입 여부로 제한하지 않습니다.
+            다음 페이지에는 반환된 cursor만 전달합니다. 영역이나 그룹을 바꾸면 첫 페이지부터 다시 조회합니다.
+            기간 제한 없이 (createdAt DESC, id DESC) 순으로 최대 200개씩 반환합니다. 총량을 잘라내지 않으며 hasNext가 false일 때까지 이어서 조회합니다.
+            지도에서는 오래된 감정부터 그려 최신 감정이 위에 표시되도록 합니다.
+            최초 조회 이후 작성된 감정은 제외하고 삭제·차단은 매 페이지에 반영합니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "지도 스탬프와 다음 커서"),
+            @ApiResponse(responseCode = "400", description = "영역 또는 커서가 올바르지 않음"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음")
+    })
+    ResponseEntity<CursorResponse<EmotionMapResponse>> findMap(
+            @Valid EmotionListRequest request,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
 
     @Operation(summary = "감정 등록", description = """
             선택 위치에 감정을 등록합니다. contentType은 NONE, MEMO, AUDIO 중 하나입니다.

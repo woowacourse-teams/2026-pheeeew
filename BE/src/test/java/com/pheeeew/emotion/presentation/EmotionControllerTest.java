@@ -25,6 +25,8 @@ import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
 import com.pheeeew.emotion.application.dto.EmotionDetailView;
 import com.pheeeew.emotion.application.dto.EmotionPageView;
+import com.pheeeew.emotion.application.dto.EmotionMapItemView;
+import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmojiType;
@@ -454,6 +456,60 @@ class EmotionControllerTest {
     @Test
     void 다음_페이지에서_그룹_조건을_다시_지정할_수_없다() {
         request(HttpMethod.GET, "/api/v1/emotions?cursor=next&groupId=" + UUID.randomUUID(), "access-token")
+                .expectStatus().isBadRequest();
+        verifyNoInteractions(emotionQueryService);
+    }
+
+    @Test
+    void 지도는_표시_정보만_반환하고_목록이나_단건_조회를_호출하지_않는다() {
+        // given
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+        var item = new EmotionMapItemView(42L, 126.9774, 37.5669,
+                Instant.parse("2026-09-24T12:00:00Z"), EmotionState.FRUSTRATED, 35.5, null, null);
+        when(emotionQueryService.findFirstMapPage(bounds, DEVICE_PUBLIC_ID, null))
+                .thenReturn(EmotionMapPageView.of(List.of(item), true, "next-map"));
+
+        // when / then
+        request(HttpMethod.GET, "/api/v1/emotions/map?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38",
+                "access-token").expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-cache, private")
+                .expectBody().json("""
+                        {"items":[{"type":"Feature","id":42,
+                          "geometry":{"type":"Point","coordinates":[126.9774,37.5669]},
+                          "properties":{"createdAt":"2026-09-24T12:00:00Z","state":"FRUSTRATED",
+                          "rotationDegrees":35.5,"groupStamp":null,"groupId":null}}],
+                          "hasNext":true,"nextCursor":"next-map"}
+                        """, JsonCompareMode.STRICT);
+        verify(emotionQueryService).findFirstMapPage(bounds, DEVICE_PUBLIC_ID, null);
+        org.mockito.Mockito.verifyNoMoreInteractions(emotionQueryService);
+    }
+
+    @Test
+    void 지도_다음_페이지는_지도_조회에_커서를_전달한다() {
+        when(emotionQueryService.findNextMapPage("next-map", DEVICE_PUBLIC_ID))
+                .thenReturn(EmotionMapPageView.of(List.of(), false, null));
+        request(HttpMethod.GET, "/api/v1/emotions/map?cursor=next-map", "access-token").expectStatus().isOk()
+                .expectBody().jsonPath("$.items").isEmpty();
+        verify(emotionQueryService).findNextMapPage("next-map", DEVICE_PUBLIC_ID);
+    }
+
+    @Test
+    void 지도도_그룹_필터를_전달한다() {
+        UUID groupId = UUID.randomUUID();
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+        when(emotionQueryService.findFirstMapPage(bounds, DEVICE_PUBLIC_ID, groupId))
+                .thenReturn(EmotionMapPageView.of(List.of(), false, null));
+        request(HttpMethod.GET, "/api/v1/emotions/map?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38&groupId=" + groupId,
+                "access-token").expectStatus().isOk();
+        verify(emotionQueryService).findFirstMapPage(bounds, DEVICE_PUBLIC_ID, groupId);
+    }
+
+    @Test
+    void 지도_조회도_인증과_유효한_검색_조건이_필요하다() {
+        request(HttpMethod.GET, "/api/v1/emotions/map?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38", null)
+                .expectStatus().isUnauthorized();
+        request(HttpMethod.GET, "/api/v1/emotions/map", "access-token").expectStatus().isBadRequest();
+        request(HttpMethod.GET, "/api/v1/emotions/map?cursor=next&groupId=" + UUID.randomUUID(), "access-token")
                 .expectStatus().isBadRequest();
         verifyNoInteractions(emotionQueryService);
     }

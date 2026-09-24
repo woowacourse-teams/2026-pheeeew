@@ -17,6 +17,8 @@ import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer.PlaybackUrl;
 import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
+import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
+import com.pheeeew.emotion.application.dto.EmotionMapItemView;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.report.domain.DeviceBlock;
@@ -35,6 +37,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 @PostgisDataJpaTest
 @Import(EmotionQueryService.class)
@@ -56,6 +59,9 @@ class EmotionAudioPlaybackIntegrationTest {
     private EntityManager entityManager;
     @MockitoBean
     private AudioPlaybackUrlIssuer issuer;
+
+    @MockitoSpyBean
+    private EmotionEmojiRepository emojis;
 
     private Device viewer;
     private Device author;
@@ -151,6 +157,30 @@ class EmotionAudioPlaybackIntegrationTest {
         assertThatThrownBy(() -> queryService.findById(emotion.getId(), viewer.getPublicId()))
                 .isInstanceOfSatisfying(EmotionException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE));
+    }
+
+    @Test
+    void 지도는_200개씩_커서로_이어지며_이모지와_녹음_URL을_조회하지_않는다() {
+        // given: 녹음 감정 한 개와 내용 없는 감정 200개
+        for (int i = 0; i < 200; i++) {
+            emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).build());
+        }
+        entityManager.flush();
+        entityManager.clear();
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+
+        // when
+        var first = queryService.findFirstMapPage(bounds, viewer.getPublicId(), null);
+        var second = queryService.findNextMapPage(first.nextCursor(), viewer.getPublicId());
+
+        // then
+        assertThat(first.items()).hasSize(200);
+        assertThat(first.hasNext()).isTrue();
+        assertThat(second.items()).extracting(EmotionMapItemView::id).containsExactly(emotion.getId());
+        assertThat(second.hasNext()).isFalse();
+        assertThat(second.nextCursor()).isNull();
+        assertThat(first.items()).extracting(EmotionMapItemView::id).doesNotContain(emotion.getId());
+        verifyNoInteractions(issuer, emojis);
     }
 
     private static Stream<PlaybackUrl> invalidPlaybackUrls() {

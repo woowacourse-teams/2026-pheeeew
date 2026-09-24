@@ -14,6 +14,8 @@ import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
 import com.pheeeew.emotion.application.EmotionListCursorCodec;
 import com.pheeeew.emotion.application.dto.EmotionListCursor;
 import com.pheeeew.emotion.application.dto.EmotionPageView;
+import com.pheeeew.emotion.application.dto.EmotionMapItemView;
+import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.application.dto.EmotionDetailView;
 import com.pheeeew.emotion.application.dto.EmotionListItemView;
 import com.pheeeew.emotion.domain.Emotion;
@@ -47,6 +49,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class EmotionQueryService {
 
     private static final int PAGE_SIZE = 20;
+    private static final int MAP_PAGE_SIZE = 200;
 
     private final ObjectProvider<AudioPlaybackUrlIssuer> playbackUrlIssuer;
     private final Clock clock;
@@ -89,11 +92,16 @@ public class EmotionQueryService {
     }
 
     public EmotionPageView findNextListPage(String encodedCursor, UUID devicePublicId) {
-        EmotionListCursor cursor = EmotionListCursorCodec.decode(encodedCursor);
-        if (cursor.snapshotAt().isAfter(Instant.now(clock))) {
-            throw new EmotionException(EMOTION_INVALID_CURSOR);
-        }
-        return findList(cursor, devicePublicId);
+        return findList(decodeCursor(encodedCursor), devicePublicId);
+    }
+
+    public EmotionMapPageView findFirstMapPage(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId) {
+        Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
+        return findMap(EmotionListCursor.initial(bounds, snapshotAt, groupId), devicePublicId);
+    }
+
+    public EmotionMapPageView findNextMapPage(String encodedCursor, UUID devicePublicId) {
+        return findMap(decodeCursor(encodedCursor), devicePublicId);
     }
 
     private PlaybackUrl issuePlaybackUrl(Emotion emotion) {
@@ -134,17 +142,44 @@ public class EmotionQueryService {
                         EmotionEmojiResult.of(type, count.getSelectionCount(), count.getSelected()));
             }
         }
-        List<Long> stampIds = page.stream().map(Emotion::getGroupStamp).filter(Objects::nonNull)
-                .map(GroupStamp::getId).distinct().toList();
-        Map<Long, GroupStampResult> stamps = stampIds.isEmpty() ? Map.of()
-                : groupStampRepository.findAllWithGroupByIdIn(stampIds).stream()
-                        .collect(Collectors.toMap(GroupStamp::getId, GroupStampResult::from));
+        Map<Long, GroupStampResult> stamps = findStamps(page);
         List<EmotionDetailView> items = page.stream().map(emotion -> EmotionDetailView.of(
                 emotion, List.copyOf(counts.get(emotion.getId()).values()), null,
                 emotion.getGroupStamp() == null ? null : stamps.get(emotion.getGroupStamp().getId()))).toList();
         String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId())) : null;
         return EmotionPageView.of(items, hasNext, nextCursor);
+    }
+
+    private EmotionMapPageView findMap(EmotionListCursor cursor, UUID devicePublicId) {
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
+                .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+        List<Emotion> found = emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
+                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), MAP_PAGE_SIZE + 1);
+        boolean hasNext = found.size() > MAP_PAGE_SIZE;
+        List<Emotion> page = hasNext ? found.subList(0, MAP_PAGE_SIZE) : found;
+        Map<Long, GroupStampResult> stamps = findStamps(page);
+        List<EmotionMapItemView> items = page.stream().map(emotion -> EmotionMapItemView.of(emotion,
+                emotion.getGroupStamp() == null ? null : stamps.get(emotion.getGroupStamp().getId()))).toList();
+        String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
+                page.getLast().getCreatedAt(), page.getLast().getId())) : null;
+        return EmotionMapPageView.of(items, hasNext, nextCursor);
+    }
+
+    private EmotionListCursor decodeCursor(String encodedCursor) {
+        EmotionListCursor cursor = EmotionListCursorCodec.decode(encodedCursor);
+        if (cursor.snapshotAt().isAfter(Instant.now(clock))) {
+            throw new EmotionException(EMOTION_INVALID_CURSOR);
+        }
+        return cursor;
+    }
+
+    private Map<Long, GroupStampResult> findStamps(List<Emotion> page) {
+        List<Long> stampIds = page.stream().map(Emotion::getGroupStamp).filter(Objects::nonNull)
+                .map(GroupStamp::getId).distinct().toList();
+        return stampIds.isEmpty() ? Map.of()
+                : groupStampRepository.findAllWithGroupByIdIn(stampIds).stream()
+                        .collect(Collectors.toMap(GroupStamp::getId, GroupStampResult::from));
     }
 
     private EnumMap<EmojiType, EmotionEmojiResult> emptyEmojis() {

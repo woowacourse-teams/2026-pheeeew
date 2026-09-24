@@ -18,6 +18,7 @@ import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.command.EmotionContentResolver;
 import com.pheeeew.emotion.application.dto.EmotionDetailView;
 import com.pheeeew.emotion.application.dto.EmotionPageView;
+import com.pheeeew.emotion.application.dto.EmotionMapItemView;
 import com.pheeeew.emotion.application.EmotionListCursorCodec;
 import com.pheeeew.emotion.application.dto.EmotionListCursor;
 import com.pheeeew.emotion.application.dto.EmotionListItemView;
@@ -361,6 +362,8 @@ class EmotionQueryServiceIntegrationTest {
         assertThat(result.getFirst().rotationDegrees()).isEqualTo(35.5);
         assertThat(result.getFirst().longitude()).isEqualTo(126.9774);
         assertThat(result.getFirst().latitude()).isEqualTo(37.5669);
+        assertThat(emotionQueryService.findFirstMapPage(EmotionSearchBounds.of(126, 37, 128, 38),
+                viewer.getPublicId(), null).items()).extracting(EmotionMapItemView::id).containsExactly(emotion.getId());
     }
 
     @Test
@@ -409,6 +412,8 @@ class EmotionQueryServiceIntegrationTest {
 
         // then
         assertThat(result).extracting(EmotionListItemView::id).containsExactly(west.getId(), east.getId());
+        assertThat(emotionQueryService.findFirstMapPage(EmotionSearchBounds.of(170, -10, -170, 10),
+                viewer.getPublicId(), null).items()).extracting(EmotionMapItemView::id).containsExactly(west.getId(), east.getId());
     }
 
     @Test
@@ -451,6 +456,14 @@ class EmotionQueryServiceIntegrationTest {
         assertThat(Stream.concat(all.items().stream(), allNext.items().stream()).map(EmotionDetailView::id).toList())
                 .contains(other.getId(), emotion.getId()).hasSize(23);
         assertThat(emotionQueryService.findFirstListPage(bounds, viewer.getPublicId(), UUID.randomUUID()).items()).isEmpty();
+        var map = emotionQueryService.findFirstMapPage(bounds, viewer.getPublicId(), group.getPublicId());
+        assertThat(map.items()).hasSize(21).allSatisfy(item -> {
+            assertThat(item.groupId()).isEqualTo(group.getPublicId());
+            assertThat(item.groupStamp().text()).isEqualTo(stamp.getText());
+        });
+        assertThat(map.items()).extracting(EmotionMapItemView::id)
+                .containsExactlyElementsOf(Stream.concat(first.items().stream(), second.items().stream())
+                        .map(EmotionDetailView::id).toList());
     }
 
     private static Stream<Arguments> emotionContents() {

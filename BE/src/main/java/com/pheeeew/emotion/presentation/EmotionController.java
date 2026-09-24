@@ -3,6 +3,8 @@ package com.pheeeew.emotion.presentation;
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionMapResponse;
+import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.presentation.dto.EmotionUpdateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionContentType;
 import com.pheeeew.emotion.application.dto.EmotionPageView;
@@ -48,6 +50,19 @@ public class EmotionController implements EmotionControllerApi {
                 : emotionQueryService.findFirstListPage(request.toBounds(), devicePublicId, request.groupId());
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(CursorResponse.of(page.items().stream().map(EmotionDetailResponse::from).toList(),
+                        page.hasNext(), page.nextCursor()));
+    }
+
+    @Override
+    @GetMapping("/map")
+    public ResponseEntity<CursorResponse<EmotionMapResponse>> findMap(
+            @ModelAttribute EmotionListRequest request, @CurrentDevice UUID devicePublicId
+    ) {
+        EmotionMapPageView page = request.isNextPageRequest()
+                ? emotionQueryService.findNextMapPage(request.cursor(), devicePublicId)
+                : emotionQueryService.findFirstMapPage(request.toBounds(), devicePublicId, request.groupId());
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
+                .body(CursorResponse.of(page.items().stream().map(EmotionMapResponse::from).toList(),
                         page.hasNext(), page.nextCursor()));
     }
 
