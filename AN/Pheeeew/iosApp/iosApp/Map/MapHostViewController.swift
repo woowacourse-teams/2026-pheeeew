@@ -57,12 +57,12 @@ private final class MapHostContainerView: UIView {
 }
 
 final class IosMapFactory: NSObject, IosNativeMapFactory {
-    func createMapView(eventSink: IosMapEventSink) -> UIView {
-        MapHostContainerView(eventSink: eventSink)
+    func createMapView(eventSink_: IosMapEventSink) -> UIView {
+        MapHostContainerView(eventSink: eventSink_)
     }
 
-    func updateMapView(mapView: UIView, state: IosMapRenderState) {
-        (mapView as? MapHostContainerView)?.update(state: state)
+    func updateMapView(mapView: UIView, state_: IosMapRenderState) {
+        (mapView as? MapHostContainerView)?.update(state: state_)
     }
 
     func releaseMapView(mapView: UIView) {
