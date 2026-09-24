@@ -3,8 +3,9 @@ package com.pheeeew.emotion.application;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_EXPIRED;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_INVALID_CURSOR;
-import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_FOUND;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REQUEST_ID_CONFLICT;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -18,6 +19,7 @@ import com.pheeeew.emotion.application.dto.EmotionResult;
 import com.pheeeew.emotion.application.dto.EmotionSaveResult;
 import com.pheeeew.emotion.application.like.dto.EmotionLikeResult;
 import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.projection.EmotionDetailProjection;
 import com.pheeeew.emotion.domain.repository.projection.EmotionListProjection;
@@ -29,10 +31,15 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +50,8 @@ public class EmotionService {
 
     private static final int MAX_FIND_COUNT = 500;
     private static final int LIST_PAGE_SIZE = 20;
+    private static final GeometryFactory WGS84_GEOMETRY_FACTORY =
+            new GeometryFactory(new PrecisionModel(), 4326);
 
     private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
@@ -51,13 +60,30 @@ public class EmotionService {
     private final Clock clock;
 
     public EmotionSaveResult save(UUID requestId, double longitude, double latitude) {
-        return saveEmotion(requestId, longitude, latitude, null, null);
+        return saveEmotion(requestId, () -> emotionLocationGenerator.generate(longitude, latitude), null, null, null, false);
     }
 
     public EmotionSaveResult save(UUID requestId, double longitude, double latitude, String memo, UUID devicePublicId) {
         Long deviceId = findDeviceId(devicePublicId);
 
-        return saveEmotion(requestId, longitude, latitude, memo, deviceId);
+        return saveEmotion(requestId, () -> emotionLocationGenerator.generate(longitude, latitude), memo, null, deviceId, false);
+    }
+
+    public EmotionSaveResult saveAtSelectedLocation(
+            UUID requestId, EmotionState state, double longitude, double latitude, String memo, UUID devicePublicId
+    ) {
+        Objects.requireNonNull(state, "감정 상태는 필수입니다.");
+        requireValidCoordinates(longitude, latitude);
+        Long deviceId = findDeviceId(devicePublicId);
+
+        return saveEmotion(
+                requestId,
+                () -> WGS84_GEOMETRY_FACTORY.createPoint(new Coordinate(longitude, latitude)),
+                memo,
+                state,
+                deviceId,
+                true
+        );
     }
 
     @Transactional(readOnly = true)
@@ -119,27 +145,38 @@ public class EmotionService {
         return findList(cursor, period, devicePublicId);
     }
 
-    private EmotionSaveResult saveEmotion(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
+    private EmotionSaveResult saveEmotion(
+            UUID requestId, Supplier<Point> location, String memo, EmotionState state, Long deviceId,
+            boolean requireSameDevice
+    ) {
         Optional<EmotionDetailProjection> existingEmotion = emotionRepository.findByRequestId(requestId, deviceId);
 
         if (existingEmotion.isPresent()) {
-            return createSaveResult(existingEmotion.get());
+            return createSaveResult(existingEmotion.get(), deviceId, requireSameDevice);
         }
 
-        return saveNewEmotion(requestId, longitude, latitude, memo, deviceId);
+        return saveNewEmotion(requestId, location, memo, state, deviceId, requireSameDevice);
     }
 
-    private EmotionSaveResult createSaveResult(EmotionDetailProjection projection) {
+    private EmotionSaveResult createSaveResult(
+            EmotionDetailProjection projection, Long deviceId, boolean requireSameDevice
+    ) {
+        if (requireSameDevice && !Objects.equals(projection.getEmotion().getDeviceId(), deviceId)) {
+            throw new EmotionException(EMOTION_REQUEST_ID_CONFLICT);
+        }
         EmotionDetailResult detail = EmotionDetailResult.from(projection);
         return EmotionSaveResult.of(detail.emotion(), false, detail.like());
     }
 
-    private EmotionSaveResult saveNewEmotion(UUID requestId, double longitude, double latitude, String memo, Long deviceId) {
-        Point location = emotionLocationGenerator.generate(longitude, latitude);
+    private EmotionSaveResult saveNewEmotion(
+            UUID requestId, Supplier<Point> location, String memo, EmotionState state, Long deviceId,
+            boolean requireSameDevice
+    ) {
         Emotion emotion = Emotion.builder()
                 .requestId(requestId)
-                .location(location)
+                .location(location.get())
                 .memo(memo)
+                .state(state)
                 .nickname(emotionNicknameGenerator.generate())
                 .deviceId(deviceId)
                 .build();
@@ -148,13 +185,15 @@ public class EmotionService {
             Emotion savedEmotion = emotionRepository.saveAndFlush(emotion);
             return EmotionSaveResult.of(EmotionResult.from(savedEmotion), true, EmotionLikeResult.of(false, 0));
         } catch (DataIntegrityViolationException cause) {
-            return findExistingEmotion(requestId, deviceId, cause);
+            return findExistingEmotion(requestId, deviceId, requireSameDevice, cause);
         }
     }
 
-    private EmotionSaveResult findExistingEmotion(UUID requestId, Long deviceId, DataIntegrityViolationException cause) {
+    private EmotionSaveResult findExistingEmotion(
+            UUID requestId, Long deviceId, boolean requireSameDevice, DataIntegrityViolationException cause
+    ) {
         return emotionRepository.findByRequestId(requestId, deviceId)
-                .map(this::createSaveResult)
+                .map(projection -> createSaveResult(projection, deviceId, requireSameDevice))
                 .orElseThrow(() -> new EmotionException(EMOTION_SAVE_FAILED, cause));
     }
 
@@ -162,6 +201,13 @@ public class EmotionService {
         return deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+    }
+
+    private void requireValidCoordinates(double longitude, double latitude) {
+        if (!Double.isFinite(longitude) || longitude < -180 || longitude > 180
+                || !Double.isFinite(latitude) || latitude < -90 || latitude > 90) {
+            throw new IllegalArgumentException("선택 위치는 유효한 WGS84 좌표여야 합니다.");
+        }
     }
 
     private Long findBlockerDeviceId(Optional<UUID> viewerDevicePublicId) {

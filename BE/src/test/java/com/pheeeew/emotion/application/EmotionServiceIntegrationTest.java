@@ -186,6 +186,140 @@ class EmotionServiceIntegrationTest {
     }
 
     @Test
+    void 감정_상태와_선택한_위치를_이동하지_않고_저장한다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+
+        // when
+        EmotionSaveResult result = emotionService.saveAtSelectedLocation(
+                requestId, EmotionState.FRUSTRATED,
+                SEOUL_CITY_HALL_LONGITUDE, SEOUL_CITY_HALL_LATITUDE,
+                null, devicePublicId
+        );
+
+        // then
+        Emotion saved = emotionRepository.findById(result.emotion().id()).orElseThrow();
+        assertThat(result.created()).isTrue();
+        assertThat(saved.getState()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(saved.getLongitude()).isEqualTo(SEOUL_CITY_HALL_LONGITUDE);
+        assertThat(saved.getLatitude()).isEqualTo(SEOUL_CITY_HALL_LATITUDE);
+        assertThat(saved.getMemo()).isNull();
+        assertThat(saved.getDeviceId()).isEqualTo(deviceRepository.findByPublicId(devicePublicId).orElseThrow().getId());
+    }
+
+    @Test
+    void 선택_위치_등록을_같은_requestId로_재시도하면_최초_감정과_위치를_유지한다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+        EmotionSaveResult first = emotionService.saveAtSelectedLocation(
+                requestId, EmotionState.FRUSTRATED,
+                SEOUL_CITY_HALL_LONGITUDE, SEOUL_CITY_HALL_LATITUDE,
+                "최초 메모", devicePublicId
+        );
+
+        // when
+        EmotionSaveResult retried = emotionService.saveAtSelectedLocation(
+                requestId, EmotionState.ANGRY,
+                129.0756, 35.1796,
+                "재시도 메모", devicePublicId
+        );
+
+        // then
+        Emotion saved = emotionRepository.findById(first.emotion().id()).orElseThrow();
+        assertThat(retried.created()).isFalse();
+        assertThat(retried.emotion().id()).isEqualTo(first.emotion().id());
+        assertThat(saved.getState()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(saved.getMemo()).isEqualTo("최초 메모");
+        assertThat(saved.getLongitude()).isEqualTo(SEOUL_CITY_HALL_LONGITUDE);
+        assertThat(saved.getLatitude()).isEqualTo(SEOUL_CITY_HALL_LATITUDE);
+        assertThat(emotionRepository.count()).isOne();
+    }
+
+    @Test
+    void 다른_기기가_선택_위치_등록의_requestId를_재사용하면_거부한다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+        Device otherDevice = deviceRepository.saveAndFlush(기본_기기_빌더().build());
+        EmotionSaveResult first = emotionService.saveAtSelectedLocation(
+                requestId, EmotionState.FRUSTRATED,
+                SEOUL_CITY_HALL_LONGITUDE, SEOUL_CITY_HALL_LATITUDE,
+                "최초 메모", devicePublicId
+        );
+
+        // when
+        Throwable throwable = catchThrowable(() -> emotionService.saveAtSelectedLocation(
+                requestId, EmotionState.ANGRY,
+                129.0756, 35.1796,
+                "다른 기기의 메모", otherDevice.getPublicId()
+        ));
+
+        // then
+        assertThat(throwable).isInstanceOf(EmotionException.class);
+        assertThat(((EmotionException) throwable).getErrorCode())
+                .isEqualTo(EmotionErrorCode.EMOTION_REQUEST_ID_CONFLICT);
+        Emotion saved = emotionRepository.findById(first.emotion().id()).orElseThrow();
+        assertThat(saved.getDeviceId()).isEqualTo(deviceRepository.findByPublicId(devicePublicId).orElseThrow().getId());
+        assertThat(saved.getMemo()).isEqualTo("최초 메모");
+        assertThat(emotionRepository.count()).isOne();
+    }
+
+    @Test
+    void 다른_두_기기가_같은_requestId로_동시에_등록하면_한_기기만_성공한다() throws Exception {
+        // given
+        UUID requestId = UUID.randomUUID();
+        Device otherDevice = deviceRepository.saveAndFlush(기본_기기_빌더().build());
+        List<UUID> devices = List.of(devicePublicId, otherDevice.getPublicId());
+        CountDownLatch ready = new CountDownLatch(devices.size());
+        CountDownLatch start = new CountDownLatch(1);
+
+        // when
+        List<Throwable> outcomes = new ArrayList<>();
+        try (ExecutorService executor = Executors.newFixedThreadPool(devices.size())) {
+            List<Future<Throwable>> futures = new ArrayList<>();
+            for (UUID currentDevice : devices) {
+                futures.add(executor.submit(() -> {
+                    ready.countDown();
+                    start.await();
+                    return catchThrowable(() -> emotionService.saveAtSelectedLocation(
+                            requestId, EmotionState.FRUSTRATED,
+                            SEOUL_CITY_HALL_LONGITUDE, SEOUL_CITY_HALL_LATITUDE,
+                            null, currentDevice
+                    ));
+                }));
+            }
+
+            boolean allRequestsReady = ready.await(5, TimeUnit.SECONDS);
+            start.countDown();
+            assertThat(allRequestsReady).isTrue();
+            for (Future<Throwable> future : futures) {
+                outcomes.add(future.get(10, TimeUnit.SECONDS));
+            }
+        }
+
+        // then
+        assertThat(outcomes).filteredOn(outcome -> outcome == null).hasSize(1);
+        assertThat(outcomes).filteredOn(outcome -> outcome != null).singleElement().satisfies(outcome -> {
+            assertThat(outcome).isInstanceOf(EmotionException.class);
+            assertThat(((EmotionException) outcome).getErrorCode())
+                    .isEqualTo(EmotionErrorCode.EMOTION_REQUEST_ID_CONFLICT);
+        });
+        assertThat(emotionRepository.count()).isOne();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"181.0, 37.5664", "126.9780, 91.0"})
+    void 선택_좌표가_WGS84_범위를_벗어나면_저장하지_않는다(double longitude, double latitude) {
+        // when
+        Throwable throwable = catchThrowable(() -> emotionService.saveAtSelectedLocation(
+                UUID.randomUUID(), EmotionState.FRUSTRATED, longitude, latitude, null, devicePublicId
+        ));
+
+        // then
+        assertThat(throwable).isInstanceOf(IllegalArgumentException.class);
+        assertThat(emotionRepository.count()).isZero();
+    }
+
+    @Test
     void 이전_버전으로_좋아요_수를_저장하면_먼저_저장된_값을_덮어쓰지_못한다() {
         // given
         EmotionSaveResult created = emotionService.save(
