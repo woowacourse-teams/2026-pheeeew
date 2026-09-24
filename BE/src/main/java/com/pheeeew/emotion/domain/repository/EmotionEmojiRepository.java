@@ -2,6 +2,7 @@ package com.pheeeew.emotion.domain.repository;
 
 import com.pheeeew.emotion.domain.EmotionEmoji;
 import com.pheeeew.emotion.domain.repository.projection.EmotionEmojiCountProjection;
+import com.pheeeew.emotion.domain.repository.projection.EmotionEmojiPageCountProjection;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -36,4 +37,12 @@ public interface EmotionEmojiRepository extends JpaRepository<EmotionEmoji, Long
              GROUP BY emoji_type
             """, nativeQuery = true)
     List<EmotionEmojiCountProjection> findCounts(Long emotionId, Long deviceId);
+    @Query(value = """
+            SELECT emotion_id AS "emotionId", emoji_type AS "emojiType",
+                   COUNT(*) AS "selectionCount", BOOL_OR(device_id = :deviceId) AS "selected"
+              FROM emotion_emojis
+             WHERE emotion_id IN (:emotionIds)
+             GROUP BY emotion_id, emoji_type
+            """, nativeQuery = true)
+    List<EmotionEmojiPageCountProjection> findCountsForPage(List<Long> emotionIds, Long deviceId);
 }

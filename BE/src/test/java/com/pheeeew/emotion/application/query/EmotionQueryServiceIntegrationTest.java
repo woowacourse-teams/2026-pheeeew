@@ -16,6 +16,9 @@ import com.pheeeew.emotion.application.emoji.dto.EmotionEmojiResult;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.command.EmotionContentResolver;
 import com.pheeeew.emotion.application.query.dto.EmotionDetailView;
+import com.pheeeew.emotion.application.query.dto.EmotionPageView;
+import com.pheeeew.emotion.application.EmotionListCursorCodec;
+import com.pheeeew.emotion.application.dto.EmotionListCursor;
 import com.pheeeew.emotion.application.query.dto.EmotionListItemView;
 import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.domain.EmojiType;
@@ -394,6 +397,64 @@ class EmotionQueryServiceIntegrationTest {
                 Arguments.of("  " + "😀".repeat(200) + "  ", null),
                 Arguments.of(null, Audio.builder().objectKey("recordings/기기/음성 기록.m4a").build())
         );
+    }
+
+    @Test
+    void 공개_목록은_기간과_총량_제한없이_커서로_이어지며_이모지를_포함한다() {
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0);
+        for (int i = 0; i < 20; i++) {
+            saveEmotion(author.getId(), 126.9774, 37.5669);
+        }
+        emotionCommandService.updateEmoji(emotion.getId(), viewer.getPublicId(), EmojiType.HEART, true);
+        emotionCommandService.updateEmoji(emotion.getId(), author.getPublicId(), EmojiType.HEART, true);
+        entityManager.flush();
+        jdbcClient.sql("UPDATE emotions SET created_at = '2025-01-01T00:00:00Z'").update();
+        entityManager.clear();
+
+        EmotionPageView first = emotionQueryService.findFirstListPage(bounds, viewer.getPublicId());
+        EmotionPageView second = emotionQueryService.findNextListPage(first.nextCursor(), viewer.getPublicId());
+
+        assertThat(first.items()).hasSize(20);
+        assertThat(first.hasNext()).isTrue();
+        assertThat(first.items()).extracting(EmotionDetailView::id).doesNotContain(emotion.getId());
+        assertThat(second.items()).extracting(EmotionDetailView::id).containsExactly(emotion.getId());
+        assertThat(second.hasNext()).isFalse();
+        assertThat(second.nextCursor()).isNull();
+        assertThat(second.items().getFirst().emojis()).hasSize(6).contains(EmotionEmojiResult.of(EmojiType.HEART, 2, true));
+        Device other = deviceRepository.save(기본_기기_빌더().build());
+        EmotionPageView otherViewer = emotionQueryService.findNextListPage(first.nextCursor(), other.getPublicId());
+        assertThat(otherViewer.items().getFirst().emojis()).contains(EmotionEmojiResult.of(EmojiType.HEART, 2, false));
+    }
+
+    @Test
+    void 공개_목록은_다음_페이지에서_차단과_신규_등록을_다시_반영한다() {
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0);
+        for (int i = 0; i < 20; i++) {
+            saveEmotion(author.getId(), 126.9774, 37.5669);
+        }
+        entityManager.flush();
+        jdbcClient.sql("UPDATE emotions SET created_at = '2025-01-01T00:00:00Z'").update();
+        entityManager.clear();
+        EmotionPageView first = emotionQueryService.findFirstListPage(bounds, viewer.getPublicId());
+        emotionBlockRepository.save(EmotionBlock.builder().blockerDeviceId(viewer.getId()).emotionId(emotion.getId()).build());
+        Emotion newEmotion = saveEmotion(author.getId(), 126.9774, 37.5669);
+        entityManager.flush();
+        setCreatedAt(newEmotion, Instant.now().plusSeconds(10));
+
+        EmotionPageView second = emotionQueryService.findNextListPage(first.nextCursor(), viewer.getPublicId());
+        assertThat(second.items()).isEmpty();
+        assertThat(second.hasNext()).isFalse();
+        assertThat(second.nextCursor()).isNull();
+    }
+
+    @Test
+    void 공개_목록은_변조된_커서와_미래_스냅샷을_거부한다() {
+        assertThatThrownBy(() -> emotionQueryService.findNextListPage("invalid", viewer.getPublicId()))
+                .isInstanceOf(EmotionException.class);
+        String future = EmotionListCursorCodec.encode(EmotionListCursor.initial(
+                EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0), Instant.now().plusSeconds(60)));
+        assertThatThrownBy(() -> emotionQueryService.findNextListPage(future, viewer.getPublicId()))
+                .isInstanceOf(EmotionException.class);
     }
 
     private Emotion saveEmotionWithStamp(GroupStamp stamp) {

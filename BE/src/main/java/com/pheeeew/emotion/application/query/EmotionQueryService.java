@@ -2,11 +2,15 @@ package com.pheeeew.emotion.application.query;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_INVALID_CURSOR;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.emoji.dto.EmotionEmojiResult;
+import com.pheeeew.emotion.application.EmotionListCursorCodec;
+import com.pheeeew.emotion.application.dto.EmotionListCursor;
+import com.pheeeew.emotion.application.query.dto.EmotionPageView;
 import com.pheeeew.emotion.application.query.dto.EmotionDetailView;
 import com.pheeeew.emotion.application.query.dto.EmotionListItemView;
 import com.pheeeew.emotion.domain.Emotion;
@@ -17,6 +21,10 @@ import com.pheeeew.emotion.domain.repository.projection.EmotionEmojiCountProject
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
 import java.time.Instant;
+import java.time.Clock;
+import java.time.temporal.ChronoUnit;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EmotionQueryService {
 
+    private static final int PAGE_SIZE = 20;
+
+    private final Clock clock;
     private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
     private final EmotionEmojiRepository emotionEmojiRepository;
@@ -56,11 +67,54 @@ public class EmotionQueryService {
         ).stream().map(EmotionListItemView::from).toList();
     }
 
-    private List<EmotionEmojiResult> findEmojis(Long emotionId, Long deviceId) {
+    public EmotionPageView findFirstListPage(EmotionSearchBounds bounds, UUID devicePublicId) {
+        Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
+        return findList(EmotionListCursor.initial(bounds, snapshotAt), devicePublicId);
+    }
+
+    public EmotionPageView findNextListPage(String encodedCursor, UUID devicePublicId) {
+        EmotionListCursor cursor = EmotionListCursorCodec.decode(encodedCursor);
+        if (cursor.snapshotAt().isAfter(Instant.now(clock))) {
+            throw new EmotionException(EMOTION_INVALID_CURSOR);
+        }
+        return findList(cursor, devicePublicId);
+    }
+
+    private EmotionPageView findList(EmotionListCursor cursor, UUID devicePublicId) {
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
+                .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+        List<Emotion> found = emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
+                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, PAGE_SIZE + 1);
+        boolean hasNext = found.size() > PAGE_SIZE;
+        List<Emotion> page = hasNext ? found.subList(0, PAGE_SIZE) : found;
+        Map<Long, EnumMap<EmojiType, EmotionEmojiResult>> counts = new HashMap<>();
+        for (Emotion emotion : page) {
+            counts.put(emotion.getId(), emptyEmojis());
+        }
+        if (!page.isEmpty()) {
+            for (var count : emotionEmojiRepository.findCountsForPage(page.stream().map(Emotion::getId).toList(), deviceId)) {
+                EmojiType type = EmojiType.valueOf(count.getEmojiType());
+                counts.get(count.getEmotionId()).put(type,
+                        EmotionEmojiResult.of(type, count.getSelectionCount(), count.getSelected()));
+            }
+        }
+        List<EmotionDetailView> items = page.stream().map(emotion -> EmotionDetailView.of(
+                emotion, List.copyOf(counts.get(emotion.getId()).values()))).toList();
+        String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
+                page.getLast().getCreatedAt(), page.getLast().getId())) : null;
+        return EmotionPageView.of(items, hasNext, nextCursor);
+    }
+
+    private EnumMap<EmojiType, EmotionEmojiResult> emptyEmojis() {
         EnumMap<EmojiType, EmotionEmojiResult> results = new EnumMap<>(EmojiType.class);
         for (EmojiType type : EmojiType.values()) {
             results.put(type, EmotionEmojiResult.of(type, 0, false));
         }
+        return results;
+    }
+
+    private List<EmotionEmojiResult> findEmojis(Long emotionId, Long deviceId) {
+        EnumMap<EmojiType, EmotionEmojiResult> results = emptyEmojis();
         for (EmotionEmojiCountProjection count : emotionEmojiRepository.findCounts(emotionId, deviceId)) {
             EmojiType type = EmojiType.valueOf(count.getEmojiType());
             results.put(type, EmotionEmojiResult.of(type, count.getSelectionCount(), count.getSelected()));
