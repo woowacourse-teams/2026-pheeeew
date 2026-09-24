@@ -68,9 +68,6 @@ public class Emotion extends BaseEntity {
     @Column(name = "device_id", updatable = false)
     private Long deviceId;
 
-    @Column(name = "like_count", nullable = false)
-    private long likeCount;
-
     @Column(nullable = false)
     @Version
     private Long version;
@@ -88,17 +85,6 @@ public class Emotion extends BaseEntity {
         this.groupStamp = groupStamp;
         this.nickname = requireValidNickname(nickname);
         this.deviceId = deviceId;
-    }
-
-    public void increaseLikeCount() {
-        this.likeCount++;
-    }
-
-    public void decreaseLikeCount() {
-        if (likeCount == 0) {
-            throw new IllegalStateException("좋아요 수는 0보다 작아질 수 없습니다.");
-        }
-        this.likeCount--;
     }
 
     public void delete() {

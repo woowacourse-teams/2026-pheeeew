@@ -21,8 +21,6 @@ import com.pheeeew.report.application.EmotionBlockService;
 import com.pheeeew.report.application.EmotionReportMetrics;
 import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.emotion.infra.KoreanEmotionNicknameGenerator;
-import com.pheeeew.emotion.infra.PostgisEmotionLocationGenerator;
-import com.pheeeew.emotion.infra.EmotionLocationConfig;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
@@ -67,9 +65,7 @@ import org.springframework.test.context.ActiveProfiles;
         EmotionReportService.class,
         EmotionBlockService.class,
         DeviceBlockService.class,
-        KoreanEmotionNicknameGenerator.class,
-        PostgisEmotionLocationGenerator.class,
-        EmotionLocationConfig.class
+        KoreanEmotionNicknameGenerator.class
 })
 public @interface PostgisDataJpaTest {
 }

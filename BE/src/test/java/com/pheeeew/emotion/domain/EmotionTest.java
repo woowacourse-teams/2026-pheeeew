@@ -14,46 +14,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 class EmotionTest {
 
     @Test
-    void 좋아요_수를_한_개씩_증가시킨다() {
-        // given
-        Emotion emotion = 기본_한숨_빌더().build();
-
-        // when
-        emotion.increaseLikeCount();
-        emotion.increaseLikeCount();
-
-        // then
-        assertThat(emotion.getLikeCount()).isEqualTo(2);
-    }
-
-    @Test
-    void 좋아요_수를_한_개_감소시킨다() {
-        // given
-        Emotion emotion = 기본_한숨_빌더().build();
-        emotion.increaseLikeCount();
-        emotion.increaseLikeCount();
-
-        // when
-        emotion.decreaseLikeCount();
-
-        // then
-        assertThat(emotion.getLikeCount()).isOne();
-    }
-
-    @Test
-    void 좋아요_수가_0이면_감소시킬_수_없다() {
-        // given
-        Emotion emotion = 기본_한숨_빌더().build();
-
-        // when
-        Throwable throwable = catchThrowable(emotion::decreaseLikeCount);
-
-        // then
-        assertThat(throwable).isInstanceOf(IllegalStateException.class);
-        assertThat(emotion.getLikeCount()).isZero();
-    }
-
-    @Test
     void 삭제하면_삭제_시각이_기록된다() {
         // given
         Emotion emotion = 기본_한숨_빌더().build();

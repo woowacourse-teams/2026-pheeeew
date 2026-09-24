@@ -9,10 +9,9 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum EmotionErrorCode implements ErrorCode {
 
-    EMOTION_SAVE_FAILED("SIGH-001", "한숨을 저장하지 못했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    EMOTION_SAVE_FAILED("EMOTION-007", "감정을 저장하지 못했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     EMOTION_NOT_FOUND("SIGH-002", "한숨을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-    EMOTION_INVALID_CURSOR("SIGH-003", "한숨 목록 커서를 사용할 수 없습니다.", HttpStatus.BAD_REQUEST),
-    EMOTION_EXPIRED("SIGH-004", "한숨의 조회 기간이 지났습니다.", HttpStatus.GONE),
+    EMOTION_INVALID_CURSOR("EMOTION-008", "감정 목록 커서를 사용할 수 없습니다.", HttpStatus.BAD_REQUEST),
     EMOTION_REQUEST_ID_CONFLICT("EMOTION-001", "요청 식별자를 사용할 수 없습니다.", HttpStatus.CONFLICT),
     EMOTION_NOT_VISIBLE("EMOTION-002", "감정을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     EMOTION_AUDIO_UPLOAD_NOT_FOUND("EMOTION-003", "녹음 업로드를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),

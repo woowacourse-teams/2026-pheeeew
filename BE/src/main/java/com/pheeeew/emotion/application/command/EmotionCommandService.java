@@ -15,7 +15,6 @@ import com.pheeeew.emotion.domain.EmotionContent;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
-import com.pheeeew.emotion.domain.repository.projection.EmotionDetailProjection;
 import com.pheeeew.emotion.exception.EmotionException;
 import java.time.Instant;
 import java.util.Objects;
@@ -98,8 +97,7 @@ public class EmotionCommandService {
     }
 
     private Optional<Emotion> findRegisteredEmotion(UUID requestId, Long deviceId) {
-        return emotionRepository.findByRequestId(requestId, deviceId)
-                .map(EmotionDetailProjection::getEmotion)
+        return emotionRepository.findByRequestId(requestId)
                 .map(emotion -> {
                     if (!Objects.equals(emotion.getDeviceId(), deviceId)) {
                         throw new EmotionException(EMOTION_REQUEST_ID_CONFLICT);

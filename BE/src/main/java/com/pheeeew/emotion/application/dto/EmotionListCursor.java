@@ -11,10 +11,10 @@ public record EmotionListCursor(EmotionSearchBounds bounds, Instant snapshotAt, 
         Objects.requireNonNull(snapshotAt);
         Objects.requireNonNull(lastItemCreatedAt);
         if (lastItemCreatedAt.isAfter(snapshotAt)) {
-            throw new IllegalArgumentException("마지막 한숨 생성 시각은 스냅샷 시각보다 늦을 수 없습니다.");
+            throw new IllegalArgumentException("마지막 감정 생성 시각은 스냅샷 시각보다 늦을 수 없습니다.");
         }
         if (lastId < 1) {
-            throw new IllegalArgumentException("마지막 한숨 ID는 1 이상이어야 합니다.");
+            throw new IllegalArgumentException("마지막 감정 ID는 1 이상이어야 합니다.");
         }
     }
 
