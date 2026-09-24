@@ -5,6 +5,9 @@ import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.presentation.dto.EmotionDetailResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionCreateRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionCreateResponse;
+import java.net.URI;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -12,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -26,6 +31,18 @@ public class EmotionController implements EmotionControllerApi {
 
     private final EmotionCommandService emotionCommandService;
     private final EmotionQueryService emotionQueryService;
+
+    @Override
+    @PostMapping
+    public ResponseEntity<EmotionCreateResponse> save(
+            @RequestBody EmotionCreateRequest request, @CurrentDevice UUID devicePublicId
+    ) {
+        EmotionCreateResponse result = EmotionCreateResponse.from(emotionCommandService.save(
+                request.requestId(), request.state(), request.longitude(), request.latitude(), request.rotationDegrees(),
+                request.memo(), request.audioUploadId(), devicePublicId));
+        return ResponseEntity.ok().location(URI.create("/api/v1/emotions/" + result.id()))
+                .cacheControl(CacheControl.noStore()).body(result);
+    }
 
     @Override
     @GetMapping("/{emotionId}")

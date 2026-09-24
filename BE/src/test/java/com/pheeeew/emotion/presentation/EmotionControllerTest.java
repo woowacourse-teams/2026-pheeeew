@@ -2,6 +2,9 @@ package com.pheeeew.emotion.presentation;
 
 import static com.pheeeew.emotion.fixture.EmotionFixture.서울시청_좌표;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -33,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -199,6 +203,70 @@ class EmotionControllerTest {
 
         // then
         result.expectStatus().isEqualTo(status).expectBody().jsonPath("$.code").isEqualTo(code);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"\"contentType\":\"NONE\"", "\"contentType\":\"MEMO\",\"memo\":\"메모\"",
+            "\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\""})
+    void 등록_내용을_인증된_기기로_저장하고_식별자를_반환한다(String content) {
+        Emotion saved = com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더().build();
+        ReflectionTestUtils.setField(saved, "id", 42L);
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), eq(DEVICE_PUBLIC_ID)))
+                .thenReturn(saved);
+        client.post().uri("/api/v1/emotions?devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(createBody(content)).exchange().expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.LOCATION, EMOTION_URI)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("{\"id\":42}", JsonCompareMode.STRICT);
+        verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
+                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
+                content.contains("MEMO") ? "메모" : null, content.contains("AUDIO") ? "upload" : null, DEVICE_PUBLIC_ID);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"\"contentType\":\"NONE\",\"memo\":\"메모\"", "\"contentType\":\"AUDIO\"", "\"contentType\":null"})
+    void 잘못된_내용_조합은_저장하지_않는다(String content) {
+        client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body(createBody(content)).exchange().expectStatus().isBadRequest();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @Test
+    void 등록_필수값과_좌표_각도_메모_길이를_검증한다() {
+        String valid = createBody("\"contentType\":\"NONE\"");
+        for (String body : List.of(valid.replace("35.5", "360"), valid.replace("126.97", "181"),
+                valid.replace("37.56", "-91"), valid.replace("\"FRUSTRATED\"", "null"),
+                valid.replace("\"5d1ad34e-1e20-4f20-a20e-3825a095fe6b\"", "null"),
+                createBody("\"contentType\":\"MEMO\",\"memo\":\"" + "가".repeat(201) + "\""))) {
+            client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                    .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isBadRequest();
+        }
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @Test
+    void 등록은_기기_인증이_필수다() {
+        request(HttpMethod.POST, "/api/v1/emotions", null).expectStatus().isUnauthorized();
+        request(HttpMethod.POST, "/api/v1/emotions", "invalid-token").expectStatus().isUnauthorized();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"EMOTION_REQUEST_ID_CONFLICT", "EMOTION_AUDIO_UPLOAD_NOT_FOUND", "EMOTION_AUDIO_UPLOAD_NOT_READY",
+            "EMOTION_AUDIO_UPLOAD_ALREADY_USED", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE"})
+    void 등록_실패_상태와_코드를_전달한다(String name) {
+        EmotionErrorCode error = EmotionErrorCode.valueOf(name);
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any()))
+                .thenThrow(new EmotionException(error));
+        client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body(createBody("\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\""))
+                .exchange().expectStatus().isEqualTo(error.getStatus().value()).expectBody().jsonPath("$.code").isEqualTo(error.getCode());
+    }
+
+    private String createBody(String content) {
+        return "{\"requestId\":\"5d1ad34e-1e20-4f20-a20e-3825a095fe6b\",\"state\":\"FRUSTRATED\","
+                + "\"longitude\":126.97,\"latitude\":37.56,\"rotationDegrees\":35.5," + content + "}";
     }
 
     private RestTestClient.ResponseSpec request(HttpMethod method, String uri, String token) {

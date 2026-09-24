@@ -3,6 +3,9 @@ package com.pheeeew.emotion.presentation;
 import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.presentation.dto.EmotionDetailResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionCreateRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionCreateResponse;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
@@ -18,6 +21,24 @@ import org.springframework.http.ResponseEntity;
 
 @Tag(name = "감정", description = "감정과 이모지 API")
 public interface EmotionControllerApi {
+
+    @Operation(summary = "감정 등록", description = """
+            선택 위치에 감정을 등록합니다. contentType은 NONE, MEMO, AUDIO 중 하나입니다.
+            최초 등록과 같은 기기의 requestId 재시도 모두 최초 감정 ID를 200으로 반환합니다.
+            다른 기기가 사용한 requestId는 409입니다. 녹음은 업로드 완료된 audioUploadId로 연결합니다.
+            그룹 스탬프 선택은 아직 지원하지 않습니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "저장된 감정 ID"),
+            @ApiResponse(responseCode = "400", description = "등록 필드 또는 내용 조합이 올바르지 않음"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
+            @ApiResponse(responseCode = "404", description = "녹음 업로드가 없거나 해당 기기의 업로드가 아님"),
+            @ApiResponse(responseCode = "409", description = "요청 식별자 충돌 또는 녹음 미완료·이미 사용됨"),
+            @ApiResponse(responseCode = "503", description = "녹음 확인 기능을 사용할 수 없음")
+    })
+    ResponseEntity<EmotionCreateResponse> save(@Valid EmotionCreateRequest request,
+            @Parameter(hidden = true) UUID devicePublicId);
+
 
     @Operation(summary = "감정 상세 조회", description = """
             감정 정보와 여섯 이모지 코드별 전체 선택 수 및 인증된 기기의 선택 여부를 함께 반환합니다.

@@ -28,6 +28,10 @@ public record EmotionContentRequest(
         String audioUploadId
 ) {
 
+    public static EmotionContentRequest of(EmotionContentType contentType, String memo, String audioUploadId) {
+        return new EmotionContentRequest(contentType, memo, audioUploadId);
+    }
+
     @AssertTrue(message = "내용 유형에 맞는 메모 또는 녹음 업로드 식별자를 전달해야 합니다.")
     @Schema(hidden = true)
     public boolean isContentCombinationValid() {
