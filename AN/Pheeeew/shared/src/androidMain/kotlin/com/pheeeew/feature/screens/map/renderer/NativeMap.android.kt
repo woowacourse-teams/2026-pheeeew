@@ -14,7 +14,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.domain.model.LocationState
-import com.pheeeew.domain.model.MapCameraState
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
@@ -36,14 +35,12 @@ private const val FALLBACK_LONGITUDE = 126.9780
 @Composable
 internal actual fun NativeMap(
     state: MapUiModel,
-    onCameraStateChanged: (MapCameraState) -> Unit,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val currentOnCameraStateChanged by rememberUpdatedState(onCameraStateChanged)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val hostResult =
@@ -55,7 +52,6 @@ internal actual fun NativeMap(
                         setBackgroundColor(Color.BLACK)
                         onCreate(null)
                     },
-                    onCameraStateChanged = currentOnCameraStateChanged,
                     onMapError = currentOnMapError,
                     onMapRecovered = currentOnMapRecovered,
                 )
@@ -97,7 +93,6 @@ internal actual fun NativeMap(
 
 private class AndroidFoundationMapHost(
     val mapView: MapView,
-    private val onCameraStateChanged: (MapCameraState) -> Unit,
     private val onMapError: (MapErrorUiModel) -> Unit,
     private val onMapRecovered: () -> Unit,
 ) {
@@ -122,9 +117,6 @@ private class AndroidFoundationMapHost(
             map = readyMap
             readyMap.setMinZoomPreference(MINIMUM_ZOOM)
             readyMap.setMaxZoomPreference(MAXIMUM_ZOOM)
-            readyMap.addOnCameraIdleListener {
-                publishCameraState()
-            }
             readyMap.setStyle(Style.Builder().fromUri(OPEN_FREE_MAP_STYLE_URL)) { loadedStyle ->
                 if (released) return@setStyle
                 style = loadedStyle
@@ -188,13 +180,5 @@ private class AndroidFoundationMapHost(
                 }
             currentMap.animateCamera(update, 350)
         }
-        publishCameraState()
-    }
-
-    private fun publishCameraState() {
-        val currentMap = map ?: return
-        val position = currentMap.cameraPosition
-        val target = position.target ?: return
-        onCameraStateChanged(MapCameraState(target.latitude, target.longitude, position.zoom))
     }
 }

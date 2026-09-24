@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
-import com.pheeeew.domain.model.MapCameraState
 import com.pheeeew.domain.usecase.RefreshLocationUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -41,10 +40,6 @@ class MapViewModel(
 
     fun onEmotionBubbleSelected() {
         _uiModel.value = _uiModel.value.copy(isEmotionSelectorExpanded = false)
-    }
-
-    fun onCameraChanged(cameraState: MapCameraState) {
-        _uiModel.value = _uiModel.value.copy(cameraState = cameraState)
     }
 
     fun onMapError(error: MapErrorUiModel) {

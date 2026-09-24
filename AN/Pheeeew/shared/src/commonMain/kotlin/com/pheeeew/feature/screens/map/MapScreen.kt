@@ -39,7 +39,6 @@ fun MapScreen(
             key(uiModel.mapRevision) {
                 NativeMap(
                     state = uiModel,
-                    onCameraStateChanged = viewModel::onCameraChanged,
                     onMapError = viewModel::onMapError,
                     onMapRecovered = viewModel::onMapRecovered,
                     modifier = mapModifier,

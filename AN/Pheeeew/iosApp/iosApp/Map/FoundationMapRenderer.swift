@@ -29,7 +29,6 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate {
         FoundationCurrentLocationLayer.update(currentLocation: state.currentLocation, source: currentLocationSource)
         applyInitialCameraIfNeeded(state)
         applyCameraCommandIfNeeded(state)
-        publishCameraState()
     }
 
     func releaseResources() {
@@ -51,7 +50,6 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate {
             applyInitialCameraIfNeeded(pendingState)
             applyCameraCommandIfNeeded(pendingState)
         }
-        publishCameraState()
     }
 
     func mapViewDidFailLoadingMap(_ mapView: MLNMapView, withError error: Error) {
@@ -60,10 +58,6 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate {
 
     func mapViewRendererDidError(_ mapView: MLNMapView) {
         eventSink.onStyleLoadFailed()
-    }
-
-    func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
-        publishCameraState()
     }
 
     private func applyInitialCameraIfNeeded(_ state: FoundationIosMapRenderUiModel) {
@@ -77,15 +71,6 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate {
         mapView.setCenter(center, zoomLevel: FoundationMapStyle.initialZoom, animated: false)
         didSetInitialCamera = true
         initialCameraUsedFallback = state.currentLocation == nil
-    }
-
-    private func publishCameraState() {
-        guard styleIsReady else { return }
-        eventSink.onCameraStateChanged(
-            latitude: mapView.centerCoordinate.latitude,
-            longitude: mapView.centerCoordinate.longitude,
-            zoom: mapView.zoomLevel
-        )
     }
 
     private func applyCameraCommandIfNeeded(_ state: FoundationIosMapRenderUiModel) {

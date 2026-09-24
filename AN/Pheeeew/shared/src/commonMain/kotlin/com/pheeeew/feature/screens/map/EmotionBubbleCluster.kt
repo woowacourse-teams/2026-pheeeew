@@ -173,7 +173,6 @@ private fun EmotionBubble(
     idleProgress: Float,
     onEmotionClick: (EmotionTypeUiModel) -> Unit,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
     val emotionCycle = idleProgress * 2f * PI.toFloat() + emotion.ordinal * 2f * PI.toFloat() / 5f
     val idleFloatX = if (isExpanded) 0f else sin(emotionCycle) * 0.9f
     val idleFloatY = if (isExpanded) 0f else cos(emotionCycle) * 0.9f
@@ -182,7 +181,7 @@ private fun EmotionBubble(
         if (isExpanded) {
             emotion.ordinal * 48
         } else {
-            (EmotionTypeUiModel.values().size - emotion.ordinal - 1) * 36
+            (EmotionTypeUiModel.entries.size - emotion.ordinal - 1) * 36
         }
     val animationSpec =
         tween<Dp>(
@@ -209,13 +208,6 @@ private fun EmotionBubble(
         animationSpec = animationSpec,
         label = "emotionBubbleSize",
     )
-    val bubbleWidth by
-    animateDpAsState(
-        targetValue = if (isExpanded) 58.dp else 24.dp,
-        animationSpec = animationSpec,
-        label = "emotionBubbleWidth",
-    )
-
     Column(
         modifier =
             Modifier
@@ -225,11 +217,11 @@ private fun EmotionBubble(
                 ).graphicsLayer {
                     rotationZ = idleRotation
                 }
-                .width(bubbleWidth)
+                .width(iconSize)
                 .then(
                     if (isExpanded) {
                         Modifier.clickable(
-                            interactionSource = interactionSource,
+                            interactionSource = null,
                             indication = null,
                             role = Role.Button,
                             onClickLabel = "${emotion.label} 선택",
