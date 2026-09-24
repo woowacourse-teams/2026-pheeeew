@@ -47,6 +47,7 @@ fun MapOverlay(
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
     onMyLocationClick: () -> Unit,
     isRequestingLocation: Boolean,
+    isMapError: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val promptBottomOffset by
@@ -119,29 +120,31 @@ fun MapOverlay(
                 }
             }
 
-            Box(
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .navigationBarsPadding()
-                        .clip(CircleShape)
-                        .shadow(elevation = 4.dp, shape = CircleShape)
-                        .background(AppColors.Surface)
-                        .clickable(
-                            enabled = !isRequestingLocation,
-                            onClick = onMyLocationClick,
-                        ).padding(horizontal = 10.dp, vertical = 10.dp),
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_my_location),
-                    contentDescription = null,
-                    modifier = Modifier.size(28.dp),
-                    tint = Color(0xff2670F8),
-                )
+            if (!isMapError) {
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .navigationBarsPadding()
+                            .clip(CircleShape)
+                            .shadow(elevation = 4.dp, shape = CircleShape)
+                            .background(AppColors.Surface)
+                            .clickable(
+                                enabled = !isRequestingLocation,
+                                onClick = onMyLocationClick,
+                            ).padding(horizontal = 10.dp, vertical = 10.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_my_location),
+                        contentDescription = null,
+                        modifier = Modifier.size(28.dp),
+                        tint = Color(0xff2670F8),
+                    )
+                }
             }
         }
 
-        if (isEmotionSelectorExpanded) {
+        if (isEmotionSelectorExpanded && !isMapError) {
             Box(
                 modifier =
                     Modifier
@@ -155,19 +158,21 @@ fun MapOverlay(
             )
         }
 
-        Box(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .statusBarsPadding()
-                    .padding(16.dp),
-        ) {
-            EmotionBubbleCluster(
-                isExpanded = isEmotionSelectorExpanded,
-                onToggle = onEmotionSelectorToggle,
-                onEmotionClick = onEmotionBubbleClick,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 56.dp),
-            )
+        if (!isMapError) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .statusBarsPadding()
+                        .padding(16.dp),
+            ) {
+                EmotionBubbleCluster(
+                    isExpanded = isEmotionSelectorExpanded,
+                    onToggle = onEmotionSelectorToggle,
+                    onEmotionClick = onEmotionBubbleClick,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 56.dp),
+                )
+            }
         }
     }
 }
@@ -175,25 +180,32 @@ fun MapOverlay(
 @Preview(name = "접힌 지도 오버레이", widthDp = 402, heightDp = 874, showBackground = true)
 @Composable
 fun MapOverlayPreview() {
-    MapOverlayPreviewContent(isEmotionSelectorExpanded = false, isRequestingLocation = false)
+    MapOverlayPreviewContent(isEmotionSelectorExpanded = false, isRequestingLocation = false, isMapError = false)
 }
 
 @Preview(name = "펼친 지도 오버레이", widthDp = 402, heightDp = 874, showBackground = true)
 @Composable
 fun MapOverlayExpandedPreview() {
-    MapOverlayPreviewContent(isEmotionSelectorExpanded = true, isRequestingLocation = false)
+    MapOverlayPreviewContent(isEmotionSelectorExpanded = true, isRequestingLocation = false, isMapError = false)
 }
 
 @Preview(name = "위치 요청 중 오버레이", widthDp = 402, heightDp = 874, showBackground = true)
 @Composable
 fun MapOverlayRequestingLocationPreview() {
-    MapOverlayPreviewContent(isEmotionSelectorExpanded = false, isRequestingLocation = true)
+    MapOverlayPreviewContent(isEmotionSelectorExpanded = false, isRequestingLocation = true, isMapError = false)
+}
+
+@Preview(name = "지도 오류 오버레이", widthDp = 402, heightDp = 874, showBackground = true)
+@Composable
+fun MapOverlayErrorPreview() {
+    MapOverlayPreviewContent(isEmotionSelectorExpanded = false, isRequestingLocation = false, isMapError = true)
 }
 
 @Composable
 private fun MapOverlayPreviewContent(
     isEmotionSelectorExpanded: Boolean,
     isRequestingLocation: Boolean,
+    isMapError: Boolean,
 ) {
     Box(
         modifier =
@@ -209,6 +221,7 @@ private fun MapOverlayPreviewContent(
             onEmotionBubbleClick = {},
             onMyLocationClick = {},
             isRequestingLocation = isRequestingLocation,
+            isMapError = isMapError,
         )
     }
 }

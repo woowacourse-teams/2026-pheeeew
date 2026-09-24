@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -84,7 +85,13 @@ internal fun MapScreenContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     Text("지도를 불러오지 못했어요", color = Color.White)
-                    Button(onClick = onRetryMap) {
+                    Button(
+                        onClick = onRetryMap,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Black,
+                            contentColor = Color.White,
+                        ),
+                    ) {
                         Text("다시 시도")
                     }
                 }
@@ -99,6 +106,7 @@ internal fun MapScreenContent(
             onEmotionBubbleClick = onEmotionBubbleClick,
             onMyLocationClick = onMyLocationClick,
             isRequestingLocation = uiModel.isRequestingLocation,
+            isMapError = uiModel.mapError != null,
         )
     }
 }
