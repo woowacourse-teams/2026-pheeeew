@@ -18,6 +18,7 @@ fun App(locationDependencies: LocationDependencies) {
         viewModel = mapViewModel,
         onListClick = {},
         onSettingClick = {},
+        onEmotionBubbleClick = {},
         modifier = Modifier.fillMaxSize(),
     )
 }

@@ -10,4 +10,5 @@ data class MapUiModel(
     val mapRevision: Int = 0,
     val cameraCommand: MapCameraCommandUiModel? = null,
     val isRequestingLocation: Boolean = false,
+    val isEmotionSelectorExpanded: Boolean = false,
 )

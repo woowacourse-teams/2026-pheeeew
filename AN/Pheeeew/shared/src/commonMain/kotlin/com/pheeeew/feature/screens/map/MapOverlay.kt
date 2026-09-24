@@ -1,5 +1,8 @@
 package com.pheeeew.feature.screens.map
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,11 +16,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,102 +44,160 @@ import pheeeew.shared.generated.resources.ic_settings
 fun MapOverlay(
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
+    isEmotionSelectorExpanded: Boolean,
+    onEmotionSelectorToggle: () -> Unit,
+    onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
     onMyLocationClick: () -> Unit,
     isRequestingLocation: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    val dismissInteractionSource = remember { MutableInteractionSource() }
+    val promptBottomOffset by
+        animateDpAsState(
+            targetValue = if (isEmotionSelectorExpanded) 320.dp else 190.dp,
+            animationSpec = tween(durationMillis = 440, easing = FastOutSlowInEasing),
+            label = "emotionPromptPosition",
+        )
+
     Box(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .padding(16.dp),
+        modifier = modifier.fillMaxSize(),
     ) {
         Box(
             modifier =
                 Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.TopCenter),
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(16.dp),
         ) {
-            Row(
+            EmotionPromptLabel(
+                isExpanded = isEmotionSelectorExpanded,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = promptBottomOffset),
+            )
+
+            Box(
                 modifier =
                     Modifier
-                        .clip(RoundedCornerShape(100.dp))
-                        .background(AppColors.Surface)
-                        .border(width = 1.dp, color = AppColors.Border, shape = RoundedCornerShape(100.dp))
-                        .clickable(onClick = onListClick)
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
-                        .align(Alignment.Center),
-                verticalAlignment = Alignment.CenterVertically,
+                        .fillMaxWidth()
+                        .align(Alignment.TopCenter),
             ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_menu),
-                    contentDescription = "목록 열기",
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(
-                    text = "주변 목록",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
+                Row(
+                    modifier =
+                        Modifier
+                            .clip(RoundedCornerShape(100.dp))
+                            .background(AppColors.Surface)
+                            .border(width = 1.dp, color = AppColors.Border, shape = RoundedCornerShape(100.dp))
+                            .clickable(onClick = onListClick)
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .align(Alignment.Center),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_menu),
+                        contentDescription = "목록 열기",
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "주변 목록",
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.CenterStart)
+                            .clip(RoundedCornerShape(15.dp))
+                            .background(AppColors.Surface)
+                            .border(width = 1.dp, color = AppColors.Border, shape = RoundedCornerShape(15.dp))
+                            .clickable(onClick = onSettingClick)
+                            .padding(horizontal = 10.dp, vertical = 10.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_settings),
+                        contentDescription = "설정 버튼",
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
 
             Box(
                 modifier =
                     Modifier
-                        .align(Alignment.CenterStart)
-                        .clip(RoundedCornerShape(15.dp))
+                        .align(Alignment.BottomEnd)
+                        .navigationBarsPadding()
+                        .clip(CircleShape)
+                        .shadow(elevation = 4.dp, shape = CircleShape)
                         .background(AppColors.Surface)
-                        .border(width = 1.dp, color = AppColors.Border, shape = RoundedCornerShape(15.dp))
-                        .clickable(onClick = onSettingClick)
-                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                        .clickable(
+                            enabled = !isRequestingLocation,
+                            onClick = onMyLocationClick,
+                        ).padding(horizontal = 10.dp, vertical = 10.dp),
             ) {
                 Icon(
-                    painter = painterResource(Res.drawable.ic_settings),
-                    contentDescription = "설정 버튼",
-                    modifier = Modifier.size(24.dp),
+                    painter = painterResource(Res.drawable.ic_my_location),
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                    tint = Color(0xff2670F8),
                 )
             }
+        }
+
+        if (isEmotionSelectorExpanded) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .clickable(
+                            interactionSource = dismissInteractionSource,
+                            indication = null,
+                            onClickLabel = "감정 선택 닫기",
+                            onClick = onEmotionSelectorToggle,
+                        ),
+            )
         }
 
         Box(
             modifier =
                 Modifier
-                    .align(Alignment.BottomEnd)
-                    .navigationBarsPadding()
-                    .clip(CircleShape)
-                    .shadow(elevation = 4.dp, shape = CircleShape)
-                    .background(AppColors.Surface)
-                    .clickable(
-                        enabled = !isRequestingLocation,
-                        onClick = onMyLocationClick,
-                    ).padding(horizontal = 10.dp, vertical = 10.dp),
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .padding(16.dp),
         ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_my_location),
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-                tint = Color(0xff2670F8),
+            EmotionBubbleCluster(
+                isExpanded = isEmotionSelectorExpanded,
+                onToggle = onEmotionSelectorToggle,
+                onEmotionClick = onEmotionBubbleClick,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 56.dp),
             )
         }
     }
 }
 
-@Preview
+@Preview(name = "접힌 지도 오버레이", widthDp = 402, heightDp = 874, showBackground = true)
 @Composable
-private fun MapOverlayPreview() {
-    MapOverlayPreviewContent(isRequestingLocation = false)
+fun MapOverlayPreview() {
+    MapOverlayPreviewContent(isEmotionSelectorExpanded = false, isRequestingLocation = false)
 }
 
-@Preview
+@Preview(name = "펼친 지도 오버레이", widthDp = 402, heightDp = 874, showBackground = true)
 @Composable
-private fun MapOverlayRequestingLocationPreview() {
-    MapOverlayPreviewContent(isRequestingLocation = true)
+fun MapOverlayExpandedPreview() {
+    MapOverlayPreviewContent(isEmotionSelectorExpanded = true, isRequestingLocation = false)
+}
+
+@Preview(name = "위치 요청 중 오버레이", widthDp = 402, heightDp = 874, showBackground = true)
+@Composable
+fun MapOverlayRequestingLocationPreview() {
+    MapOverlayPreviewContent(isEmotionSelectorExpanded = false, isRequestingLocation = true)
 }
 
 @Composable
-private fun MapOverlayPreviewContent(isRequestingLocation: Boolean) {
+private fun MapOverlayPreviewContent(
+    isEmotionSelectorExpanded: Boolean,
+    isRequestingLocation: Boolean,
+) {
     Box(
         modifier =
             Modifier
@@ -143,6 +207,9 @@ private fun MapOverlayPreviewContent(isRequestingLocation: Boolean) {
         MapOverlay(
             onListClick = {},
             onSettingClick = {},
+            isEmotionSelectorExpanded = isEmotionSelectorExpanded,
+            onEmotionSelectorToggle = {},
+            onEmotionBubbleClick = {},
             onMyLocationClick = {},
             isRequestingLocation = isRequestingLocation,
         )

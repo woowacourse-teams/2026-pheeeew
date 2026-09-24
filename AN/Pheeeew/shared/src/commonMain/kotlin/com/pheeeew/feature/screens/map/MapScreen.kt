@@ -25,6 +25,7 @@ fun MapScreen(
     viewModel: MapViewModel,
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
+    onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(viewModel) {
@@ -47,6 +48,11 @@ fun MapScreen(
         },
         onListClick = onListClick,
         onSettingClick = onSettingClick,
+        onEmotionSelectorToggle = viewModel::onEmotionSelectorToggle,
+        onEmotionBubbleClick = { emotion ->
+            viewModel.onEmotionBubbleSelected()
+            onEmotionBubbleClick(emotion)
+        },
         onMyLocationClick = viewModel::onMyLocationClick,
         onRetryMap = viewModel::retryMap,
         modifier = modifier,
@@ -59,6 +65,8 @@ internal fun MapScreenContent(
     mapContent: @Composable (Modifier) -> Unit,
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
+    onEmotionSelectorToggle: () -> Unit,
+    onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
     onMyLocationClick: () -> Unit,
     onRetryMap: () -> Unit,
     modifier: Modifier,
@@ -87,6 +95,9 @@ internal fun MapScreenContent(
         MapOverlay(
             onListClick = onListClick,
             onSettingClick = onSettingClick,
+            isEmotionSelectorExpanded = uiModel.isEmotionSelectorExpanded,
+            onEmotionSelectorToggle = onEmotionSelectorToggle,
+            onEmotionBubbleClick = onEmotionBubbleClick,
             onMyLocationClick = onMyLocationClick,
             isRequestingLocation = uiModel.isRequestingLocation,
         )
@@ -103,6 +114,8 @@ private fun MapScreenContentPreview() {
         },
         onListClick = {},
         onSettingClick = {},
+        onEmotionSelectorToggle = {},
+        onEmotionBubbleClick = {},
         onMyLocationClick = {},
         onRetryMap = {},
         modifier = Modifier.fillMaxSize(),

@@ -34,6 +34,15 @@ class MapViewModel(
         requestCurrentLocation(moveCamera = true)
     }
 
+    fun onEmotionSelectorToggle() {
+        _uiModel.value =
+            _uiModel.value.copy(isEmotionSelectorExpanded = !_uiModel.value.isEmotionSelectorExpanded)
+    }
+
+    fun onEmotionBubbleSelected() {
+        _uiModel.value = _uiModel.value.copy(isEmotionSelectorExpanded = false)
+    }
+
     fun onCameraChanged(cameraState: MapCameraState) {
         _uiModel.value = _uiModel.value.copy(cameraState = cameraState)
     }
