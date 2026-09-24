@@ -67,6 +67,7 @@ class EmotionCommandServiceSaveIntegrationTest {
         deviceRepository.deleteAllInBatch();
         jdbc.sql("DROP TABLE test_audio_links").update();
         jdbc.sql("ALTER TABLE emotions DROP CONSTRAINT IF EXISTS test_emotion_insert_failure").update();
+        jdbc.sql("ALTER TABLE emotions DROP CONSTRAINT IF EXISTS test_emotion_update_failure").update();
     }
 
     @ParameterizedTest
@@ -165,6 +166,28 @@ class EmotionCommandServiceSaveIntegrationTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(linkCount()).isZero();
         assertThat(emotionRepository.count()).isZero();
+    }
+
+    @Test
+    void 수정_실패시_새_녹음_연결도_롤백하고_기존_내용을_유지한다() {
+        // given
+        Emotion original = save(UUID.randomUUID(), "기존 메모", null);
+        jdbc.sql("ALTER TABLE emotions ADD CONSTRAINT test_emotion_update_failure CHECK (state <> 'ANGRY')").update();
+
+        // when / then
+        assertThatThrownBy(() -> commandService.update(original.getId(), device.getPublicId(), EmotionState.ANGRY,
+                null, "new-upload", false, null)).isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(linkCount()).isZero();
+        Emotion unchanged = emotionRepository.findById(original.getId()).orElseThrow();
+        assertThat(unchanged.getMemo()).isEqualTo("기존 메모");
+        assertThat(unchanged.getState()).isEqualTo(EmotionState.FRUSTRATED);
+        commandService.update(original.getId(), device.getPublicId(), EmotionState.EXHAUSTED,
+                null, "new-upload", false, null);
+        assertThat(linkCount()).isOne();
+        assertThat(emotionRepository.findById(original.getId()).orElseThrow().getContent().getAudio().getObjectKey())
+                .isEqualTo("recordings/new-upload.m4a");
+        assertThat(jdbc.sql("SELECT request_id FROM test_audio_links").query(UUID.class).single())
+                .isEqualTo(original.getRequestId());
     }
 
     private Emotion save(UUID requestId, String memo, String uploadId) {

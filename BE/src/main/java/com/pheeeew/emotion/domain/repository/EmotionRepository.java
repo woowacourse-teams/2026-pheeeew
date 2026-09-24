@@ -23,6 +23,8 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
 
     Optional<Emotion> findByIdAndDeletedAtIsNull(Long id);
 
+    Optional<Emotion> findByIdAndDeviceId(Long id, Long deviceId);
+
     @Query("""
             SELECT emotion
             FROM Emotion emotion

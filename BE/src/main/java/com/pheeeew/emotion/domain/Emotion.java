@@ -49,7 +49,7 @@ public class Emotion extends BaseEntity {
     private EmotionContent content;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20, updatable = false)
+    @Column(length = 20)
     private EmotionState state;
 
     @Column(name = "rotation_degrees", nullable = false, updatable = false)
@@ -85,6 +85,15 @@ public class Emotion extends BaseEntity {
         this.groupStamp = groupStamp;
         this.nickname = requireValidNickname(nickname);
         this.deviceId = deviceId;
+    }
+
+    public void update(EmotionState state, EmotionContent content, GroupStamp groupStamp) {
+        if (state == null || content == null) {
+            throw new IllegalArgumentException("감정 상태와 내용은 필수입니다.");
+        }
+        this.state = state;
+        this.content = content;
+        this.groupStamp = groupStamp;
     }
 
     public void delete() {

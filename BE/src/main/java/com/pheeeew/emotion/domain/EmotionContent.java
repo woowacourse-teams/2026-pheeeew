@@ -17,7 +17,7 @@ public class EmotionContent {
 
     private static final int MAX_MEMO_LENGTH = 200;
 
-    @Column(length = MAX_MEMO_LENGTH, updatable = false)
+    @Column(length = MAX_MEMO_LENGTH)
     private String memo;
 
     @Embedded

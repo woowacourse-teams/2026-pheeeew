@@ -4,6 +4,7 @@ import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REQUEST_ID_CONFLICT;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_REQUIRED;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
@@ -91,6 +92,34 @@ public class EmotionCommandService {
         }
     }
 
+    @Transactional
+    public void update(Long emotionId, UUID devicePublicId, EmotionState state, String memo, String audioUploadId,
+            boolean keepAudio, UUID groupPublicId) {
+        Emotion emotion = findOwnedEmotion(emotionId, devicePublicId);
+        if (emotion.getDeletedAt() != null) {
+            throw new EmotionException(EMOTION_NOT_VISIBLE);
+        }
+        GroupStamp stamp = resolveGroupStamp(groupPublicId, emotion.getDeviceId(), emotion.getGroupStamp());
+        EmotionContent content;
+        if (keepAudio) {
+            if (memo != null || audioUploadId != null) {
+                throw new IllegalArgumentException("녹음 유지와 새 내용은 함께 요청할 수 없습니다.");
+            }
+            if (emotion.getContent().getAudio() == null) {
+                throw new EmotionException(EMOTION_AUDIO_REQUIRED);
+            }
+            content = emotion.getContent();
+        } else {
+            content = contentResolver.resolve(memo, audioUploadId, emotion.getDeviceId(), emotion.getRequestId());
+        }
+        emotion.update(state, content, stamp);
+    }
+
+    @Transactional
+    public void delete(Long emotionId, UUID devicePublicId) {
+        findOwnedEmotion(emotionId, devicePublicId).delete();
+    }
+
     private Emotion saveNewEmotion(
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
             String memo, String audioUploadId, UUID groupPublicId, Long deviceId
@@ -102,9 +131,7 @@ public class EmotionCommandService {
                 || !Double.isFinite(latitude) || latitude < -90 || latitude > 90) {
             throw new IllegalArgumentException("선택 위치는 유효한 WGS84 좌표여야 합니다.");
         }
-        GroupStamp stamp = groupPublicId == null ? null
-                : groupStampRepository.findAvailableByGroupPublicIdAndDeviceId(groupPublicId, deviceId)
-                        .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));
+        GroupStamp stamp = resolveGroupStamp(groupPublicId, deviceId, null);
         EmotionContent content = contentResolver.resolve(memo, audioUploadId, deviceId, requestId);
 
         return emotionRepository.saveAndFlush(Emotion.builder()
@@ -128,5 +155,23 @@ public class EmotionCommandService {
                     }
                     return emotion;
                 });
+    }
+
+    private Emotion findOwnedEmotion(Long emotionId, UUID devicePublicId) {
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId).map(Device::getId)
+                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+        return emotionRepository.findByIdAndDeviceId(emotionId, deviceId)
+                .orElseThrow(() -> new EmotionException(EMOTION_NOT_VISIBLE));
+    }
+
+    private GroupStamp resolveGroupStamp(UUID groupPublicId, Long deviceId, GroupStamp current) {
+        if (groupPublicId == null) {
+            return null;
+        }
+        if (current != null && groupPublicId.equals(current.getGroup().getPublicId())) {
+            return current;
+        }
+        return groupStampRepository.findAvailableByGroupPublicIdAndDeviceId(groupPublicId, deviceId)
+                .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));
     }
 }
