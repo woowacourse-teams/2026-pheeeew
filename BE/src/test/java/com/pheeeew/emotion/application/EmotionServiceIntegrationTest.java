@@ -1,6 +1,7 @@
 package com.pheeeew.emotion.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.emotion.fixture.EmotionEmojiFixture.기본_이모지_빌더;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -20,8 +21,11 @@ import com.pheeeew.emotion.application.dto.EmotionResult;
 import com.pheeeew.emotion.application.dto.EmotionSaveResult;
 import com.pheeeew.emotion.application.like.EmotionLikeService;
 import com.pheeeew.emotion.application.like.dto.EmotionLikeResult;
+import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.domain.EmotionEmoji;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionErrorCode;
@@ -90,6 +94,9 @@ class EmotionServiceIntegrationTest {
     private EmotionRepository emotionRepository;
 
     @Autowired
+    private EmotionEmojiRepository emotionEmojiRepository;
+
+    @Autowired
     private DeviceRepository deviceRepository;
 
     @Autowired
@@ -115,6 +122,7 @@ class EmotionServiceIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        emotionEmojiRepository.deleteAllInBatch();
         jdbcClient.sql("DELETE FROM emotion_blocks").update();
         jdbcClient.sql("DELETE FROM device_blocks").update();
         jdbcClient.sql("DELETE FROM emotion_reports").update();
@@ -225,6 +233,53 @@ class EmotionServiceIntegrationTest {
         // then
         assertThat(found.getMemo()).isEqualTo(memo);
         assertThat(storedMemo).isEqualTo(memo);
+    }
+
+    @Test
+    void 한_기기는_감정에_여섯_종류의_이모지를_각각_저장할_수_있다() {
+        // given
+        Long emotionId = emotionRepository.save(기본_한숨_빌더().build()).getId();
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId).orElseThrow().getId();
+
+        // when
+        for (EmojiType emojiType : EmojiType.values()) {
+            emotionEmojiRepository.saveAndFlush(기본_이모지_빌더()
+                    .emotionId(emotionId)
+                    .deviceId(deviceId)
+                    .emojiType(emojiType)
+                    .build());
+        }
+        List<String> storedTypes = jdbcClient.sql("SELECT emoji_type FROM emotion_emojis WHERE emotion_id = :emotionId")
+                .param("emotionId", emotionId)
+                .query(String.class)
+                .list();
+
+        // then
+        assertThat(emotionEmojiRepository.findAll())
+                .extracting(EmotionEmoji::getEmojiType)
+                .containsExactlyInAnyOrder(EmojiType.values());
+        assertThat(storedTypes).containsExactlyInAnyOrder("HEART", "LAUGH", "CRY", "DIZZY", "RAGE", "SKULL");
+    }
+
+    @Test
+    void 같은_기기는_같은_감정에_같은_이모지를_중복_저장할_수_없다() {
+        // given
+        Long emotionId = emotionRepository.save(기본_한숨_빌더().build()).getId();
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId).orElseThrow().getId();
+        emotionEmojiRepository.saveAndFlush(기본_이모지_빌더()
+                .emotionId(emotionId)
+                .deviceId(deviceId)
+                .build());
+
+        // when
+        Throwable throwable = catchThrowable(() -> emotionEmojiRepository.saveAndFlush(기본_이모지_빌더()
+                .emotionId(emotionId)
+                .deviceId(deviceId)
+                .build()));
+
+        // then
+        assertThat(throwable).isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(emotionEmojiRepository.count()).isOne();
     }
 
     @Test
