@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.map
+package com.pheeeew.feature.screens.map.overlay
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -32,6 +32,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.feature.screens.map.record.EmotionBubbleCluster
+import com.pheeeew.feature.screens.map.record.EmotionPromptLabel
+import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_menu
@@ -69,7 +72,8 @@ fun MapOverlay(
         ) {
             EmotionPromptLabel(
                 isExpanded = isEmotionSelectorExpanded,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = promptBottomOffset),
+                modifier = Modifier.align(Alignment.BottomCenter)
+                    .padding(bottom = promptBottomOffset),
             )
 
             Box(

@@ -1,7 +1,5 @@
-package com.pheeeew.feature.screens.map
+package com.pheeeew.feature.screens.map.record
 
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import org.jetbrains.compose.resources.DrawableResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_emotion_angry

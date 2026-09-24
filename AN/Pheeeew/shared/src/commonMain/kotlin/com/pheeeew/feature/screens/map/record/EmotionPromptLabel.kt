@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.map
+package com.pheeeew.feature.screens.map.record
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
