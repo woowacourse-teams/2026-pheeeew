@@ -64,6 +64,10 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
             WHERE emotion.deleted_at IS NULL
               AND emotion.created_at <= :snapshotAt
               AND (emotion.created_at, emotion.id) < (:lastCreatedAt, :lastId)
+              AND (CAST(:groupId AS UUID) IS NULL OR EXISTS (
+                  SELECT 1 FROM group_stamps stamp JOIN groups stamp_group ON stamp_group.id = stamp.group_id
+                  WHERE stamp.id = emotion.group_stamp_id AND stamp_group.public_id = CAST(:groupId AS UUID)
+              ))
               AND emotion.location && bounds.area
               AND ST_Intersects(emotion.location, bounds.area)
               AND NOT EXISTS (
@@ -85,6 +89,7 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
             @Param("lastCreatedAt") Instant lastCreatedAt,
             @Param("lastId") long lastId,
             @Param("deviceId") Long deviceId,
+            @Param("groupId") UUID groupId,
             @Param("limit") int limit
     );
 

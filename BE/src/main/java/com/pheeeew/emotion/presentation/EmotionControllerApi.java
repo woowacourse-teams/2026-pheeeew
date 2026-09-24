@@ -27,7 +27,9 @@ public interface EmotionControllerApi {
 
     @Operation(summary = "감정 지도·목록 조회", description = """
             첫 페이지에는 minLongitude, minLatitude, maxLongitude, maxLatitude를 전달합니다.
-            다음 페이지에는 반환된 cursor만 전달합니다. 날짜변경선을 넘는 영역은 minLongitude > maxLongitude로 표현합니다.
+            groupId를 생략하면 그룹 없는 감정까지 전체 조회하며, 지정하면 해당 그룹의 스탬프만 조회합니다.
+            그룹 필터는 공개 감정의 조회 조건이며 그룹 가입 여부로 제한하지 않습니다.
+            다음 페이지에는 영역과 그룹 조건이 담긴 cursor만 전달합니다. 날짜변경선을 넘는 영역은 minLongitude > maxLongitude로 표현합니다.
             기간 제한 없이 (createdAt DESC, id DESC) 순으로 최대 20개씩 조회합니다.
             지도는 모든 페이지를 모아 오래된 감정부터 그려 최신 감정이 위에 표시되도록 합니다.
             최초 조회 이후 작성된 감정은 제외하고, 삭제·차단은 매 페이지에 반영합니다.

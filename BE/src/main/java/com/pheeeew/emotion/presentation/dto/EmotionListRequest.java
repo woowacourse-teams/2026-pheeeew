@@ -2,6 +2,7 @@ package com.pheeeew.emotion.presentation.dto;
 
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.util.UUID;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -29,7 +30,10 @@ public record EmotionListRequest(
         Double maxLatitude,
 
         @Schema(description = "다음 페이지 조회에 사용할 서버 발급 커서", example = "opaque-cursor")
-        String cursor
+        String cursor,
+
+        @Schema(description = "첫 페이지에서 선택한 그룹의 공개 ID. 생략하면 그룹 없는 감정까지 전체 조회합니다. 다음 페이지에는 cursor만 전달합니다.")
+        UUID groupId
 ) {
 
     @AssertTrue
@@ -44,7 +48,7 @@ public record EmotionListRequest(
                 && maxLongitude == null
                 && maxLatitude == null;
 
-        return cursor == null ? allBoundsPresent : allBoundsAbsent;
+        return cursor == null ? allBoundsPresent : allBoundsAbsent && groupId == null;
     }
 
     @AssertTrue

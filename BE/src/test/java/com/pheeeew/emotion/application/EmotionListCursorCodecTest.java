@@ -10,6 +10,7 @@ import com.pheeeew.emotion.exception.EmotionException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -40,6 +41,22 @@ class EmotionListCursorCodecTest {
         assertThat(decoded).isEqualTo(cursor);
     }
 
+    @Test
+    void 그룹_필터는_인코딩과_다음_페이지에서도_유지된다() {
+        // given
+        UUID groupId = UUID.randomUUID();
+        var initial = EmotionListCursor.initial(EmotionSearchBounds.of(126, 37, 128, 38),
+                Instant.parse("2026-09-25T00:00:00Z"), groupId);
+
+        // when
+        var next = EmotionListCursorCodec.decode(EmotionListCursorCodec.encode(initial))
+                .next(Instant.parse("2026-09-24T00:00:00Z"), 42L);
+
+        // then
+        assertThat(next.groupId()).isEqualTo(groupId);
+        assertThat(EmotionListCursorCodec.decode(EmotionListCursorCodec.encode(next))).isEqualTo(next);
+    }
+
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" ", "not-a-cursor"})
@@ -51,6 +68,7 @@ class EmotionListCursorCodecTest {
     @ParameterizedTest
     @ValueSource(strings = {
             "2|126.9|37.5|127.1|37.6|2026-09-03T03:00:00Z|2026-09-01T12:00:00Z|42",
+            "2|126.9|37.5|127.1|37.6|2026-09-03T03:00:00Z|2026-09-01T12:00:00Z|42|not-a-group-id",
             "1|126.9|37.5|127.1|37.6|2026-09-03T03:00:00Z|2026-09-01T12:00:00Z",
             "1|126.9|37.5|126.9|37.6|2026-09-03T03:00:00Z|2026-09-01T12:00:00Z|42",
             "1|126.9|37.5|127.1|37.6|2026-09-01T12:00:00Z|2026-09-03T03:00:00Z|42",

@@ -75,13 +75,17 @@ public class EmotionQueryService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
         return emotionRepository.findVisiblePageWithinBounds(
-                bounds, snapshotAt, lastCreatedAt, lastId, deviceId, limit
+                bounds, snapshotAt, lastCreatedAt, lastId, deviceId, null, limit
         ).stream().map(EmotionListItemView::from).toList();
     }
 
     public EmotionPageView findFirstListPage(EmotionSearchBounds bounds, UUID devicePublicId) {
+        return findFirstListPage(bounds, devicePublicId, null);
+    }
+
+    public EmotionPageView findFirstListPage(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId) {
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
-        return findList(EmotionListCursor.initial(bounds, snapshotAt), devicePublicId);
+        return findList(EmotionListCursor.initial(bounds, snapshotAt, groupId), devicePublicId);
     }
 
     public EmotionPageView findNextListPage(String encodedCursor, UUID devicePublicId) {
@@ -116,7 +120,7 @@ public class EmotionQueryService {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
         List<Emotion> found = emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, PAGE_SIZE + 1);
+                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), PAGE_SIZE + 1);
         boolean hasNext = found.size() > PAGE_SIZE;
         List<Emotion> page = hasNext ? found.subList(0, PAGE_SIZE) : found;
         Map<Long, EnumMap<EmojiType, EmotionEmojiResult>> counts = new HashMap<>();

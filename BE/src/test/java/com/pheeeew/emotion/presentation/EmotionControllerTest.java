@@ -163,7 +163,7 @@ class EmotionControllerTest {
         var stamp = new GroupStampResult("모임", "#FFFFFF", "#000000", StampFrame.CIRCLE);
         EmotionDetailView view = EmotionDetailView.of(emotion, List.of(), null, stamp);
         when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(view);
-        when(emotionQueryService.findFirstListPage(any(), eq(DEVICE_PUBLIC_ID)))
+        when(emotionQueryService.findFirstListPage(any(), eq(DEVICE_PUBLIC_ID), any()))
                 .thenReturn(EmotionPageView.of(List.of(view), false, null));
 
         // when / then
@@ -406,7 +406,7 @@ class EmotionControllerTest {
     @Test
     void 목록의_첫_페이지와_다음_페이지를_인증된_기기로_조회한다() {
         EmotionSearchBounds bounds = EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6);
-        when(emotionQueryService.findFirstListPage(bounds, DEVICE_PUBLIC_ID))
+        when(emotionQueryService.findFirstListPage(bounds, DEVICE_PUBLIC_ID, null))
                 .thenReturn(EmotionPageView.of(List.of(detailView()), true, "next"));
         when(emotionQueryService.findNextListPage("next", DEVICE_PUBLIC_ID))
                 .thenReturn(EmotionPageView.of(List.of(), false, null));
@@ -417,7 +417,7 @@ class EmotionControllerTest {
                 .jsonPath("$.hasNext").isEqualTo(true).jsonPath("$.nextCursor").isEqualTo("next");
         request(HttpMethod.GET, "/api/v1/emotions?cursor=next", "access-token")
                 .expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty().jsonPath("$.hasNext").isEqualTo(false);
-        verify(emotionQueryService).findFirstListPage(bounds, DEVICE_PUBLIC_ID);
+        verify(emotionQueryService).findFirstListPage(bounds, DEVICE_PUBLIC_ID, null);
         verify(emotionQueryService).findNextListPage("next", DEVICE_PUBLIC_ID);
     }
 
@@ -434,6 +434,27 @@ class EmotionControllerTest {
     void 목록은_기기_인증이_필수다() {
         request(HttpMethod.GET, "/api/v1/emotions?cursor=next", null).expectStatus().isUnauthorized();
         request(HttpMethod.GET, "/api/v1/emotions?cursor=next", "invalid-token").expectStatus().isUnauthorized();
+        verifyNoInteractions(emotionQueryService);
+    }
+
+    @Test
+    void 목록의_그룹_필터를_전달한다() {
+        // given
+        UUID groupId = UUID.randomUUID();
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+        when(emotionQueryService.findFirstListPage(bounds, DEVICE_PUBLIC_ID, groupId))
+                .thenReturn(EmotionPageView.of(List.of(), false, null));
+
+        // when / then
+        request(HttpMethod.GET, "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38&groupId=" + groupId,
+                "access-token").expectStatus().isOk();
+        verify(emotionQueryService).findFirstListPage(bounds, DEVICE_PUBLIC_ID, groupId);
+    }
+
+    @Test
+    void 다음_페이지에서_그룹_조건을_다시_지정할_수_없다() {
+        request(HttpMethod.GET, "/api/v1/emotions?cursor=next&groupId=" + UUID.randomUUID(), "access-token")
+                .expectStatus().isBadRequest();
         verifyNoInteractions(emotionQueryService);
     }
 

@@ -411,6 +411,48 @@ class EmotionQueryServiceIntegrationTest {
         assertThat(result).extracting(EmotionListItemView::id).containsExactly(west.getId(), east.getId());
     }
 
+    @Test
+    void 그룹_필터는_페이지_제한_전에_적용하고_다음_페이지에서도_유지한다() {
+        // given: 조회 기기는 그룹 멤버가 아니어도 공개 감정을 조회한다.
+        Group group = 기본_그룹_빌더().build();
+        entityManager.persist(group);
+        GroupStamp stamp = 기본_스탬프_빌더(group).build();
+        entityManager.persist(stamp);
+        Emotion deleted = saveEmotionWithStamp(stamp);
+        deleted.delete();
+        Emotion blocked = saveEmotionWithStamp(stamp);
+        emotionBlockRepository.save(EmotionBlock.builder().blockerDeviceId(viewer.getId()).emotionId(blocked.getId()).build());
+        for (int i = 0; i < 21; i++) {
+            saveEmotionWithStamp(stamp);
+        }
+        Group otherGroup = 기본_그룹_빌더().name("다른 그룹").build();
+        entityManager.persist(otherGroup);
+        GroupStamp otherStamp = 기본_스탬프_빌더(otherGroup).build();
+        entityManager.persist(otherStamp);
+        Emotion other = saveEmotionWithStamp(otherStamp);
+        entityManager.flush();
+        jdbcClient.sql("UPDATE emotions SET created_at = '2025-01-01T00:00:00Z'").update();
+        entityManager.clear();
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+
+        // when
+        var first = emotionQueryService.findFirstListPage(bounds, viewer.getPublicId(), group.getPublicId());
+        var second = emotionQueryService.findNextListPage(first.nextCursor(), viewer.getPublicId());
+
+        // then
+        assertThat(first.items()).hasSize(20).allSatisfy(item -> assertThat(item.groupId()).isEqualTo(group.getPublicId()));
+        assertThat(second.items()).hasSize(1).allSatisfy(item -> assertThat(item.groupId()).isEqualTo(group.getPublicId()));
+        assertThat(second.hasNext()).isFalse();
+        assertThat(first.items()).extracting(EmotionDetailView::id).doesNotContain(deleted.getId(), blocked.getId(), other.getId());
+        assertThat(emotionQueryService.findFirstListPage(bounds, viewer.getPublicId(), otherGroup.getPublicId()).items())
+                .extracting(EmotionDetailView::id).containsExactly(other.getId());
+        var all = emotionQueryService.findFirstListPage(bounds, viewer.getPublicId());
+        var allNext = emotionQueryService.findNextListPage(all.nextCursor(), viewer.getPublicId());
+        assertThat(Stream.concat(all.items().stream(), allNext.items().stream()).map(EmotionDetailView::id).toList())
+                .contains(other.getId(), emotion.getId()).hasSize(23);
+        assertThat(emotionQueryService.findFirstListPage(bounds, viewer.getPublicId(), UUID.randomUUID()).items()).isEmpty();
+    }
+
     private static Stream<Arguments> emotionContents() {
         return Stream.of(
                 Arguments.of(null, null),

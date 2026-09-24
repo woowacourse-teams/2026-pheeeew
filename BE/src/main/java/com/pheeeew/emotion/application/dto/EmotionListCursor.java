@@ -3,8 +3,9 @@ package com.pheeeew.emotion.application.dto;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
-public record EmotionListCursor(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId) {
+public record EmotionListCursor(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId, UUID groupId) {
 
     public EmotionListCursor {
         Objects.requireNonNull(bounds);
@@ -19,14 +20,18 @@ public record EmotionListCursor(EmotionSearchBounds bounds, Instant snapshotAt, 
     }
 
     public static EmotionListCursor initial(EmotionSearchBounds bounds, Instant snapshotAt) {
-        return new EmotionListCursor(bounds, snapshotAt, snapshotAt, Long.MAX_VALUE);
+        return initial(bounds, snapshotAt, null);
+    }
+
+    public static EmotionListCursor initial(EmotionSearchBounds bounds, Instant snapshotAt, UUID groupId) {
+        return new EmotionListCursor(bounds, snapshotAt, snapshotAt, Long.MAX_VALUE, groupId);
     }
 
     public static EmotionListCursor of(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId) {
-        return new EmotionListCursor(bounds, snapshotAt, lastItemCreatedAt, lastId);
+        return new EmotionListCursor(bounds, snapshotAt, lastItemCreatedAt, lastId, null);
     }
 
     public EmotionListCursor next(Instant lastItemCreatedAt, long lastId) {
-        return EmotionListCursor.of(bounds, snapshotAt, lastItemCreatedAt, lastId);
+        return new EmotionListCursor(bounds, snapshotAt, lastItemCreatedAt, lastId, groupId);
     }
 }

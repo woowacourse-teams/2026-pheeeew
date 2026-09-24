@@ -45,7 +45,7 @@ public class EmotionController implements EmotionControllerApi {
     ) {
         EmotionPageView page = request.isNextPageRequest()
                 ? emotionQueryService.findNextListPage(request.cursor(), devicePublicId)
-                : emotionQueryService.findFirstListPage(request.toBounds(), devicePublicId);
+                : emotionQueryService.findFirstListPage(request.toBounds(), devicePublicId, request.groupId());
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(CursorResponse.of(page.items().stream().map(EmotionDetailResponse::from).toList(),
                         page.hasNext(), page.nextCursor()));
