@@ -30,7 +30,7 @@ internal fun GroupCreateOverlays(
     }
 
     when (val submission = uiState.submission) {
-        GroupCreateSubmissionState.Confirming ->
+        GroupCreateSubmissionState.Confirming -> {
             CreateConfirmationDialog(
                 isSubmitting = false,
                 groupName = uiState.draft.name,
@@ -38,8 +38,9 @@ internal fun GroupCreateOverlays(
                 onDismiss = onCancelConfirmation,
                 onConfirm = onConfirmCreate,
             )
+        }
 
-        is GroupCreateSubmissionState.Submitting ->
+        is GroupCreateSubmissionState.Submitting -> {
             CreateConfirmationDialog(
                 isSubmitting = true,
                 groupName = uiState.draft.name,
@@ -47,17 +48,19 @@ internal fun GroupCreateOverlays(
                 onDismiss = {},
                 onConfirm = {},
             )
+        }
 
-        is GroupCreateSubmissionState.Failed ->
+        is GroupCreateSubmissionState.Failed -> {
             CreateFailureDialog(
                 unknownOutcome = submission.reason == GroupCreateFailure.OutcomeUnknown,
                 onDismiss = onDismissFailure,
                 onRetry = onRetryFailure,
             )
+        }
 
         GroupCreateSubmissionState.Editing,
         is GroupCreateSubmissionState.Succeeded,
         GroupCreateSubmissionState.Acknowledged,
-        -> Unit
+        -> {}
     }
 }

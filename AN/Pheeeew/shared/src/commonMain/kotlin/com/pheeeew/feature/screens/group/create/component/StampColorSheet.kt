@@ -46,6 +46,7 @@ import com.pheeeew.feature.component.GroupStamp
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.group.create.ColorConversion
 import com.pheeeew.feature.screens.group.create.model.StampColorSelection
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_create_color_apply
@@ -56,7 +57,6 @@ import pheeeew.shared.generated.resources.group_create_color_hex
 import pheeeew.shared.generated.resources.group_create_color_hex_label
 import pheeeew.shared.generated.resources.group_create_color_preview
 import pheeeew.shared.generated.resources.group_create_color_title
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -194,10 +194,11 @@ internal fun StampColorSheet(
                     fontWeight = FontWeight.SemiBold,
                 )
                 Text(
-                    text = stringResource(
-                        Res.string.group_create_color_hex,
-                        ColorConversion.toRgbHex(ColorConversion.toArgb(selection)),
-                    ),
+                    text =
+                        stringResource(
+                            Res.string.group_create_color_hex,
+                            ColorConversion.toRgbHex(ColorConversion.toArgb(selection)),
+                        ),
                     modifier =
                         Modifier
                             .clip(RoundedCornerShape(8.dp))

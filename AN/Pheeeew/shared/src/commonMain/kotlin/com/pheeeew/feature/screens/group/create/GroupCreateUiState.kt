@@ -38,9 +38,13 @@ sealed interface GroupCreateSubmissionState {
 
     data object Confirming : GroupCreateSubmissionState
 
-    data class Submitting(val operationKey: GroupOperationKey) : GroupCreateSubmissionState
+    data class Submitting(
+        val operationKey: GroupOperationKey,
+    ) : GroupCreateSubmissionState
 
-    data class Failed(val reason: GroupCreateFailure) : GroupCreateSubmissionState
+    data class Failed(
+        val reason: GroupCreateFailure,
+    ) : GroupCreateSubmissionState
 
     data class Succeeded(
         val operationKey: GroupOperationKey,

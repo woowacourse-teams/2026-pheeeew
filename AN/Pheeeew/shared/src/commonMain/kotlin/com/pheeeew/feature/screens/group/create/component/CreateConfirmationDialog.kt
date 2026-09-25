@@ -4,9 +4,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -43,12 +43,12 @@ import pheeeew.shared.generated.resources.group_create_confirm_cancel
 import pheeeew.shared.generated.resources.group_create_confirm_group_stamp_summary
 import pheeeew.shared.generated.resources.group_create_confirm_title
 import pheeeew.shared.generated.resources.group_create_failure_close
+import pheeeew.shared.generated.resources.group_create_failure_retry
 import pheeeew.shared.generated.resources.group_create_failure_title
-import pheeeew.shared.generated.resources.group_create_failure_unknown
 import pheeeew.shared.generated.resources.group_create_failure_unavailable
+import pheeeew.shared.generated.resources.group_create_failure_unknown
 import pheeeew.shared.generated.resources.group_create_submitting
 import pheeeew.shared.generated.resources.group_create_submitting_title
-import pheeeew.shared.generated.resources.group_create_failure_retry
 
 private val DialogBorder = BorderStroke(1.5.dp, AppColors.GroupInk)
 
@@ -60,16 +60,18 @@ internal fun CreateConfirmationDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
-    val title = stringResource(
-        if (isSubmitting) Res.string.group_create_submitting_title else Res.string.group_create_confirm_title,
-    )
+    val title =
+        stringResource(
+            if (isSubmitting) Res.string.group_create_submitting_title else Res.string.group_create_confirm_title,
+        )
     Dialog(
         onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            dismissOnBackPress = !isSubmitting,
-            dismissOnClickOutside = !isSubmitting,
-            usePlatformDefaultWidth = false,
-        ),
+        properties =
+            DialogProperties(
+                dismissOnBackPress = !isSubmitting,
+                dismissOnClickOutside = !isSubmitting,
+                usePlatformDefaultWidth = false,
+            ),
     ) {
         Box(
             modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
@@ -135,11 +137,12 @@ internal fun CreateConfirmationDialog(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Text(
-                            text = stringResource(
-                                Res.string.group_create_confirm_group_stamp_summary,
-                                groupName,
-                                stampLabel,
-                            ),
+                            text =
+                                stringResource(
+                                    Res.string.group_create_confirm_group_stamp_summary,
+                                    groupName,
+                                    stampLabel,
+                                ),
                             color = AppColors.RankingSecondaryContent,
                             fontSize = 14.sp,
                             lineHeight = 20.sp,
@@ -177,9 +180,13 @@ internal fun CreateFailureDialog(
     onRetry: () -> Unit,
 ) {
     val title = stringResource(Res.string.group_create_failure_title)
-    val message = stringResource(
-        if (unknownOutcome) Res.string.group_create_failure_unknown else Res.string.group_create_failure_unavailable,
-    )
+    val messageResource =
+        if (unknownOutcome) {
+            Res.string.group_create_failure_unknown
+        } else {
+            Res.string.group_create_failure_unavailable
+        }
+    val message = stringResource(messageResource)
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),

@@ -40,9 +40,9 @@ import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_create_color_choose
 import pheeeew.shared.generated.resources.group_create_color_label
+import pheeeew.shared.generated.resources.group_create_label_error_long
 import pheeeew.shared.generated.resources.group_create_label_error_required
 import pheeeew.shared.generated.resources.group_create_label_error_short
-import pheeeew.shared.generated.resources.group_create_label_error_long
 import pheeeew.shared.generated.resources.group_create_label_label
 import pheeeew.shared.generated.resources.group_create_label_placeholder
 import pheeeew.shared.generated.resources.group_create_shape_circle

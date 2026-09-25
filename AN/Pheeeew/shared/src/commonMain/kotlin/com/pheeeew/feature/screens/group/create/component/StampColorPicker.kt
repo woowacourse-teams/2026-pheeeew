@@ -126,15 +126,20 @@ private fun SaturationValuePlane(
                     )
                 }.semantics {
                     this.contentDescription = contentDescription
-                    stateDescription = "채도 ${(selection.saturation * 100).toInt()}%, 밝기 ${(selection.value * 100).toInt()}%"
+                    stateDescription =
+                        "채도 ${(selection.saturation * 100).toInt()}%, 밝기 ${(selection.value * 100).toInt()}%"
                     customActions =
                         listOf(
                             CustomAccessibilityAction(actionLabels[0]) {
-                                onSelectionChanged(selection.copy(saturation = (selection.saturation + 0.05f).coerceAtMost(1f)))
+                                onSelectionChanged(
+                                    selection.copy(saturation = (selection.saturation + 0.05f).coerceAtMost(1f)),
+                                )
                                 true
                             },
                             CustomAccessibilityAction(actionLabels[1]) {
-                                onSelectionChanged(selection.copy(saturation = (selection.saturation - 0.05f).coerceAtLeast(0f)))
+                                onSelectionChanged(
+                                    selection.copy(saturation = (selection.saturation - 0.05f).coerceAtLeast(0f)),
+                                )
                                 true
                             },
                             CustomAccessibilityAction(actionLabels[2]) {
@@ -190,7 +195,11 @@ private fun HueSlider(
                         },
                         onDrag = { change, _ ->
                             change.consume()
-                            if (size.width > 0) onChange((change.position.x / size.width * 359.999f).coerceIn(0f, 359.999f))
+                            if (size.width >
+                                0
+                            ) {
+                                onChange((change.position.x / size.width * 359.999f).coerceIn(0f, 359.999f))
+                            }
                         },
                     )
                 }.semantics {
@@ -209,7 +218,9 @@ private fun HueSlider(
         drawRoundRect(
             brush = hueBrush,
             topLeft = Offset(left, top),
-            size = androidx.compose.ui.geometry.Size(right - left, barHeight),
+            size =
+                androidx.compose.ui.geometry
+                    .Size(right - left, barHeight),
             cornerRadius = CornerRadius(barHeight / 2f),
         )
         val center = Offset(left + (right - left) * hueDegrees / 360f, size.height / 2f)

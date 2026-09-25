@@ -21,7 +21,9 @@ fun interface GroupCreateErrorReporter {
 }
 
 sealed interface CreateGroupResult {
-    data class Created(val groupId: GroupId) : CreateGroupResult
+    data class Created(
+        val groupId: GroupId,
+    ) : CreateGroupResult
 
     data object DuplicateName : CreateGroupResult
 

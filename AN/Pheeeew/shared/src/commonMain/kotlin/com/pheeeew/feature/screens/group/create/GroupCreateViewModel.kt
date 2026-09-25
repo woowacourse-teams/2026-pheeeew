@@ -55,12 +55,18 @@ class GroupCreateViewModel(
 
     fun onCreateClick() {
         val current = _uiState.value
-        if (current.submission != GroupCreateSubmissionState.Editing || current.colorSheet !is StampColorSheetState.Closed) return
+        if (current.submission != GroupCreateSubmissionState.Editing ||
+            current.colorSheet !is StampColorSheetState.Closed
+        ) {
+            return
+        }
 
         val errors = formRules.validate(current.draft)
         if (errors.hasErrors) {
             _uiState.update { state ->
-                if (state.submission == GroupCreateSubmissionState.Editing && state.colorSheet is StampColorSheetState.Closed) {
+                if (state.submission == GroupCreateSubmissionState.Editing &&
+                    state.colorSheet is StampColorSheetState.Closed
+                ) {
                     state.copy(fieldErrors = errors)
                 } else {
                     state
@@ -68,8 +74,13 @@ class GroupCreateViewModel(
             }
         } else {
             _uiState.update { state ->
-                if (state.submission == GroupCreateSubmissionState.Editing && state.colorSheet is StampColorSheetState.Closed) {
-                    state.copy(submission = GroupCreateSubmissionState.Confirming, fieldErrors = GroupCreateFieldErrors())
+                if (state.submission == GroupCreateSubmissionState.Editing &&
+                    state.colorSheet is StampColorSheetState.Closed
+                ) {
+                    state.copy(
+                        submission = GroupCreateSubmissionState.Confirming,
+                        fieldErrors = GroupCreateFieldErrors(),
+                    )
                 } else {
                     state
                 }
@@ -89,7 +100,11 @@ class GroupCreateViewModel(
 
     fun onConfirmCreate() {
         val current = _uiState.value
-        if (current.submission != GroupCreateSubmissionState.Confirming || current.colorSheet !is StampColorSheetState.Closed) return
+        if (current.submission != GroupCreateSubmissionState.Confirming ||
+            current.colorSheet !is StampColorSheetState.Closed
+        ) {
+            return
+        }
 
         submitDraft(
             draft = current.draft.normalizedForSubmission(),
@@ -141,22 +156,26 @@ class GroupCreateViewModel(
                 if (submitting?.operationKey != operationKey) return@update state
 
                 when (result) {
-                    is CreateGroupResult.Created ->
+                    is CreateGroupResult.Created -> {
                         state.copy(
                             submission = GroupCreateSubmissionState.Succeeded(operationKey, result.groupId),
                         )
+                    }
 
-                    CreateGroupResult.DuplicateName ->
+                    CreateGroupResult.DuplicateName -> {
                         state.copy(
                             submission = GroupCreateSubmissionState.Editing,
                             fieldErrors = state.fieldErrors.copy(name = GroupCreateFieldError.Duplicate),
                         )
+                    }
 
-                    CreateGroupResult.Unavailable ->
+                    CreateGroupResult.Unavailable -> {
                         state.copy(submission = GroupCreateSubmissionState.Failed(GroupCreateFailure.Unavailable))
+                    }
 
-                    CreateGroupResult.OutcomeUnknown ->
+                    CreateGroupResult.OutcomeUnknown -> {
                         state.copy(submission = GroupCreateSubmissionState.Failed(GroupCreateFailure.OutcomeUnknown))
+                    }
                 }
             }
         }
@@ -191,8 +210,13 @@ class GroupCreateViewModel(
                 false
             }
 
-            state.submission == GroupCreateSubmissionState.Editing -> true
-            else -> false
+            state.submission == GroupCreateSubmissionState.Editing -> {
+                true
+            }
+
+            else -> {
+                false
+            }
         }
     }
 
@@ -217,7 +241,9 @@ class GroupCreateViewModel(
 
     fun onColorSelectionChanged(selection: StampColorSelection) {
         _uiState.update { state ->
-            if (state.submission != GroupCreateSubmissionState.Editing || state.colorSheet !is StampColorSheetState.Editing) {
+            if (state.submission != GroupCreateSubmissionState.Editing ||
+                state.colorSheet !is StampColorSheetState.Editing
+            ) {
                 state
             } else {
                 state.copy(colorSheet = StampColorSheetState.Editing(selection))
@@ -233,8 +259,15 @@ class GroupCreateViewModel(
         val fillArgb = ColorConversion.toArgb(selection)
         _uiState.update { state ->
             val activeSelection = (state.colorSheet as? StampColorSheetState.Editing)?.selection
-            if (state.submission != GroupCreateSubmissionState.Editing || activeSelection != selection) return@update state
-            state.copy(draft = state.draft.copy(stamp = state.draft.stamp.copy(fillArgb = fillArgb)), colorSheet = StampColorSheetState.Closed)
+            if (state.submission != GroupCreateSubmissionState.Editing ||
+                activeSelection != selection
+            ) {
+                return@update state
+            }
+            state.copy(
+                draft = state.draft.copy(stamp = state.draft.stamp.copy(fillArgb = fillArgb)),
+                colorSheet = StampColorSheetState.Closed,
+            )
         }
     }
 
@@ -266,7 +299,10 @@ class GroupCreateViewModel(
     ) {
         _uiState.update { state ->
             if (
-                (state.submission != GroupCreateSubmissionState.Editing && state.submission !is GroupCreateSubmissionState.Failed) ||
+                (
+                    state.submission != GroupCreateSubmissionState.Editing &&
+                        state.submission !is GroupCreateSubmissionState.Failed
+                ) ||
                 state.colorSheet !is StampColorSheetState.Closed
             ) {
                 return@update state
@@ -281,7 +317,9 @@ class GroupCreateViewModel(
 
     private fun updateDraft(transform: (GroupCreateDraft) -> GroupCreateDraft) {
         _uiState.update { state ->
-            if (state.submission != GroupCreateSubmissionState.Editing || state.colorSheet !is StampColorSheetState.Closed) {
+            if (state.submission != GroupCreateSubmissionState.Editing ||
+                state.colorSheet !is StampColorSheetState.Closed
+            ) {
                 state
             } else {
                 state.copy(draft = transform(state.draft))

@@ -90,7 +90,9 @@ private fun GroupCreateFieldError?.toNameErrorText(): String? =
         -> stringResource(Res.string.group_create_name_error_required)
 
         GroupCreateFieldError.TooLong -> stringResource(Res.string.group_create_name_error_long)
+
         GroupCreateFieldError.Duplicate -> stringResource(Res.string.group_create_name_error_duplicate)
+
         null -> null
     }
 

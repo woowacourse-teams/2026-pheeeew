@@ -60,15 +60,24 @@ internal object ColorConversion {
             appendHexByte(this, channelByte(argb, 0))
         }
 
-    private fun appendHexByte(target: StringBuilder, value: Int) {
+    private fun appendHexByte(
+        target: StringBuilder,
+        value: Int,
+    ) {
         val digits = "0123456789ABCDEF"
         target.append(digits[value shr 4])
         target.append(digits[value and 0x0F])
     }
 
-    private fun channel(argb: Long, shift: Int): Float = channelByte(argb, shift) / 255f
+    private fun channel(
+        argb: Long,
+        shift: Int,
+    ): Float = channelByte(argb, shift) / 255f
 
-    private fun channelByte(argb: Long, shift: Int): Int = ((argb shr shift) and 0xFFL).toInt()
+    private fun channelByte(
+        argb: Long,
+        shift: Int,
+    ): Int = ((argb shr shift) and 0xFFL).toInt()
 
     private fun normalizeHue(hue: Float): Float = ((hue % 360f) + 360f) % 360f
 }

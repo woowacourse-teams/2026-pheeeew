@@ -16,5 +16,7 @@ data class StampColorSelection(
 sealed interface StampColorSheetState {
     data object Closed : StampColorSheetState
 
-    data class Editing(val selection: StampColorSelection) : StampColorSheetState
+    data class Editing(
+        val selection: StampColorSelection,
+    ) : StampColorSheetState
 }
