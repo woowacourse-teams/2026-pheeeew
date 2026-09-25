@@ -175,11 +175,10 @@ private fun stampFontSize(
     textArea: StampTextArea,
     stampWidth: Dp,
     stampHeight: Dp,
-) =
-    minOf(
-        stampHeight.value * textArea.heightFraction / 1.35f,
-        stampWidth.value * textArea.widthFraction / (label.length.coerceAtLeast(1) * 0.95f),
-    ).coerceIn(minimumValue = 7f, maximumValue = 28f).sp
+) = minOf(
+    stampHeight.value * textArea.heightFraction / 1.35f,
+    stampWidth.value * textArea.widthFraction / (label.length.coerceAtLeast(1) * 0.95f),
+).coerceIn(minimumValue = 7f, maximumValue = 28f).sp
 
 private const val LEGACY_FILL_ARGB = 0xFF9DE8D0L
 private const val LEGACY_TEXT_ARGB = 0xFF15181BL
