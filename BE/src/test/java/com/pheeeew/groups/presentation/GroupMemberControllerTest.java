@@ -177,7 +177,20 @@ class GroupMemberControllerTest {
     }
 
     @Test
-    void 속하지_않은_그룹에서_나가려_하면_404를_반환한다() {
+    void 속하지_않은_그룹에서_나가려_하면_403을_반환한다() {
+        // given
+        doThrow(new GroupException(GroupErrorCode.GROUP_MEMBER_ONLY))
+                .when(groupService).leave(그룹_공개_식별자, 기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = 나간다();
+
+        // then
+        result.expectStatus().isForbidden();
+    }
+
+    @Test
+    void 없는_그룹에서_나가려_하면_404를_반환한다() {
         // given
         doThrow(new GroupException(GroupErrorCode.GROUP_NOT_FOUND))
                 .when(groupService).leave(그룹_공개_식별자, 기기_공개_식별자);

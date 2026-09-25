@@ -230,7 +230,7 @@ class GroupMembershipIntegrationTest {
         Throwable throwable = catchThrowable(() -> groupService.leave(그룹.publicId(), 남.getPublicId()));
 
         // then
-        그룹_오류다(throwable, GroupErrorCode.GROUP_NOT_FOUND);
+        그룹_오류다(throwable, GroupErrorCode.GROUP_MEMBER_ONLY);
     }
 
     @Test

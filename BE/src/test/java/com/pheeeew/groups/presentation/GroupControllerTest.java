@@ -222,7 +222,22 @@ class GroupControllerTest {
     }
 
     @Test
-    void 속하지_않은_그룹을_조회하면_404를_반환한다() {
+    void 속하지_않은_그룹을_조회하면_403을_반환한다() {
+        // given
+        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자))
+                .thenThrow(new GroupException(GroupErrorCode.GROUP_MEMBER_ONLY));
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/" + 그룹_공개_식별자)
+                .exchange();
+
+        // then
+        result.expectStatus().isForbidden();
+    }
+
+    @Test
+    void 없는_그룹을_조회하면_404를_반환한다() {
         // given
         when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자))
                 .thenThrow(new GroupException(GroupErrorCode.GROUP_NOT_FOUND));

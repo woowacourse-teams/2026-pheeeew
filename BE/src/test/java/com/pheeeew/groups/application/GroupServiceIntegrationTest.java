@@ -206,7 +206,7 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
-    void 속하지_않은_그룹은_상세_조회에서_404다() {
+    void 속하지_않은_그룹은_상세_조회에서_403이다() {
         // given
         GroupResult 남의_그룹 = groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, 스탬프("기본"));
         Device 남 = 기기를_저장한다();
@@ -215,7 +215,7 @@ class GroupServiceIntegrationTest {
         Throwable throwable = catchThrowable(() -> groupService.findOne(남의_그룹.publicId(), 남.getPublicId()));
 
         // then
-        그룹_오류다(throwable, GroupErrorCode.GROUP_NOT_FOUND);
+        그룹_오류다(throwable, GroupErrorCode.GROUP_MEMBER_ONLY);
     }
 
     @Test

@@ -3,6 +3,7 @@ package com.pheeeew.groups.application;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_ALREADY_JOINED;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_INVITE_CODE_UNAVAILABLE;
+import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_MEMBER_ONLY;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_MEMBER_REMAINS;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NAME_DUPLICATED;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
@@ -217,7 +218,7 @@ public class GroupService {
         Device device = findDevice(devicePublicId);
 
         return groupMemberRepository.findByGroupIdAndDeviceIdAndLeftAtIsNull(group.getId(), device.getId())
-                .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));
+                .orElseThrow(() -> new GroupException(GROUP_MEMBER_ONLY));
     }
 
     private void requireOwner(Group group, UUID devicePublicId) {

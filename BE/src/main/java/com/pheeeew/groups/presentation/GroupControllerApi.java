@@ -54,7 +54,8 @@ public interface GroupControllerApi {
             description = """
                     그룹 정보와 스탬프, 현재 인원수를 반환합니다.
 
-                    - **멤버만 조회할 수 있습니다.** 속하지 않은 그룹은 403 이 아니라 **404** 입니다.
+                    - **멤버만 조회할 수 있습니다.** 속하지 않은 그룹은 **403** 입니다.
+                      없는 그룹이나 삭제된 그룹만 404 이므로, 클라이언트가 "권한 없음" 과 "사라진 그룹" 을 구분할 수 있습니다.
                       그룹이 존재하는지 자체를 알려주지 않기 위함입니다.
                     - `inviteCode` 는 **모든 멤버**에게 보입니다. 재발급만 그룹장 권한입니다.
                     - `role` 로 요청한 기기가 그룹장인지 알 수 있습니다.
@@ -62,7 +63,8 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 속하지 않은 그룹")
+            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
     })
     GroupResponse findOne(
             UUID groupId,
@@ -85,8 +87,8 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "변경 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹장이 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 속하지 않은 그룹"),
+            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹"),
             @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름")
     })
     GroupResponse update(
@@ -106,8 +108,9 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "재발급 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹장이 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 속하지 않은 그룹")
+            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님"),
+            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
     })
     GroupResponse reissueInviteCode(
             UUID groupId,
@@ -128,8 +131,8 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "삭제 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹장이 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 속하지 않은 그룹"),
+            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹"),
             @ApiResponse(responseCode = "409", description = "다른 멤버가 남아 있음")
     })
     ResponseEntity<Void> delete(

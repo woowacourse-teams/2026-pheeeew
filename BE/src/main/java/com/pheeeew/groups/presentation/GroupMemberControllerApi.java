@@ -49,11 +49,13 @@ public interface GroupMemberControllerApi {
                       다른 멤버가 모두 나간 뒤 그룹을 삭제하는 것이 그룹장이 빠지는 유일한 방법입니다.
                     - 나가도 **그동안 쓴 기록은 그룹에 남고 랭킹에도 계속 집계**됩니다.
                     - 멤버 행을 지우지 않고 나간 시각만 남기므로, 다시 들어오면 새 멤버십이 만들어집니다.
+                    - 멤버가 아니면 403 입니다.
                     """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "나가기 성공"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 속하지 않은 그룹"),
+            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹"),
             @ApiResponse(responseCode = "409", description = "그룹장은 나갈 수 없음")
     })
     ResponseEntity<Void> leave(
