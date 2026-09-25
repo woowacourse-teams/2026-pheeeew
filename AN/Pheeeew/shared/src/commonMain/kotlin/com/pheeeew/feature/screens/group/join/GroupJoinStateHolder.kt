@@ -61,8 +61,13 @@ class GroupJoinStateHolder(
 
         val code =
             when (val validation = GroupCodeRules.validate(current.input)) {
-                GroupCodeValidation.Empty -> return
-                is GroupCodeValidation.Valid -> validation.normalizedCode
+                GroupCodeValidation.Empty -> {
+                    return
+                }
+
+                is GroupCodeValidation.Valid -> {
+                    validation.normalizedCode
+                }
 
                 is GroupCodeValidation.TooLong,
                 is GroupCodeValidation.TooShort,

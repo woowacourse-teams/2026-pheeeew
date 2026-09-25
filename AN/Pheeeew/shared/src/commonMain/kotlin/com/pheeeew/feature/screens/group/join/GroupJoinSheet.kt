@@ -269,7 +269,9 @@ private fun CodeInputFeedback(uiState: GroupJoinUiState) {
     val errorMessage =
         when (uiState.codeValidation) {
             is GroupCodeValidation.TooShort -> stringResource(Res.string.group_join_code_too_short)
+
             is GroupCodeValidation.TooLong -> stringResource(Res.string.group_join_code_too_long)
+
             GroupCodeValidation.InvalidCharacters -> stringResource(Res.string.group_join_code_invalid_characters)
 
             GroupCodeValidation.Empty,

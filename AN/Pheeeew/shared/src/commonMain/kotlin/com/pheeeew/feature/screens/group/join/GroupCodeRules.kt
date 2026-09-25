@@ -39,10 +39,11 @@ internal object GroupCodeRules {
                 GroupCodeValidation.TooLong(trimmedValue.length)
             }
 
-            else -> GroupCodeValidation.Valid(normalize(trimmedValue))
+            else -> {
+                GroupCodeValidation.Valid(normalize(trimmedValue))
+            }
         }
     }
 
-    private fun Char.isAsciiLetterOrDigit(): Boolean =
-        this in 'A'..'Z' || this in 'a'..'z' || this in '0'..'9'
+    private fun Char.isAsciiLetterOrDigit(): Boolean = this in 'A'..'Z' || this in 'a'..'z' || this in '0'..'9'
 }
