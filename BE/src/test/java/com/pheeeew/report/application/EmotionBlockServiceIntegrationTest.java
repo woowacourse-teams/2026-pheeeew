@@ -142,7 +142,7 @@ class EmotionBlockServiceIntegrationTest {
     }
 
     @Test
-    void 존재하지_않는_한숨을_차단하면_예외가_발생하고_행이_생기지_않는다() {
+    void 존재하지_않는_감정을_차단하면_예외가_발생하고_행이_생기지_않는다() {
         // given
         Device 차단자 = 기기를_저장한다();
 
@@ -153,7 +153,7 @@ class EmotionBlockServiceIntegrationTest {
         // then
         assertThat(throwable)
                 .isInstanceOf(EmotionException.class)
-                .hasMessage("한숨을 찾을 수 없습니다.");
+                .hasMessage("감정을 찾을 수 없습니다.");
         assertThat(((EmotionException) throwable).getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND);
         assertThat(emotionBlockRepository.count()).isZero();
     }
@@ -247,6 +247,29 @@ class EmotionBlockServiceIntegrationTest {
         assertThat(result.items())
                 .extracting(BlockResult::emotionId)
                 .containsExactly(차단할_한숨);
+    }
+
+    @Test
+    void 삭제된_감정을_새로_차단하고_재요청하면_최초_차단을_반환한다() {
+        // given
+        Device 차단자 = 기기를_저장한다();
+        Long emotionId = 한숨을_저장한다(null, null);
+        jdbcClient.sql("UPDATE emotions SET deleted_at = NOW() WHERE id = :id")
+                .param("id", emotionId)
+                .update();
+
+        // when
+        BlockSaveResult 최초 = emotionBlockService.save(emotionId, 차단자.getPublicId());
+        BlockSaveResult 재요청 = emotionBlockService.save(emotionId, 차단자.getPublicId());
+
+        // then
+        assertThat(최초.created()).isTrue();
+        assertThat(재요청.created()).isFalse();
+        assertThat(재요청.block().blockId()).isEqualTo(최초.block().blockId());
+        assertThat(emotionBlockRepository.count()).isOne();
+        assertThat(emotionBlockService.findAll(차단자.getPublicId(), null).items())
+                .extracting(BlockResult::emotionId)
+                .containsExactly(emotionId);
     }
 
     @Test

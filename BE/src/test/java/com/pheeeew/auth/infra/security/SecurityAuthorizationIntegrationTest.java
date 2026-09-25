@@ -184,7 +184,7 @@ class SecurityAuthorizationIntegrationTest {
                 .uri("/api/v2/reports")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
-                        {"sighId": 1, "reason": "광고성 게시물입니다"}
+                        {"emotionId": 1, "reason": "광고성 게시물입니다"}
                         """)
                 .exchange();
 
@@ -204,6 +204,14 @@ class SecurityAuthorizationIntegrationTest {
         // then
         인증_필요를_검증한다(result);
         assertThat(차단_행_수()).isZero();
+    }
+
+    @Test
+    void 이전_한숨_차단_경로는_더_이상_제공하지_않는다() {
+        String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+
+        차단_목록을_조회한다(accessToken, "/api/v2/blocks/sighs")
+                .expectStatus().isNotFound();
     }
 
     @ParameterizedTest
@@ -505,21 +513,21 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @Test
-    void 인증한_기기는_한숨_차단과_사용자_차단을_등록하고_조회하고_해제할_수_있다() {
+    void 인증한_기기는_감정_차단과_사용자_차단을_등록하고_조회하고_해제할_수_있다() {
         // given
         String 차단자_토큰 = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
         String 작성자_토큰 = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
         Long emotionId = 한숨을_등록한다(작성자_토큰);
 
         // when / then
-        차단한다(차단자_토큰, "/api/v2/blocks/sighs", emotionId).expectStatus().isCreated();
-        차단_목록을_조회한다(차단자_토큰, "/api/v2/blocks/sighs")
+        차단한다(차단자_토큰, "/api/v2/blocks/emotions", emotionId).expectStatus().isCreated();
+        차단_목록을_조회한다(차단자_토큰, "/api/v2/blocks/emotions")
                 .expectStatus().isOk()
                 .expectBody()
                 .json("""
-                        {"items": [{"sighId": %d}], "hasNext": false, "nextCursor": null}
+                        {"items": [{"emotionId": %d}], "hasNext": false, "nextCursor": null}
                         """.formatted(emotionId), JsonCompareMode.LENIENT);
-        해제한다(차단자_토큰, "/api/v2/blocks/sighs/" + emotionId).expectStatus().isNoContent();
+        해제한다(차단자_토큰, "/api/v2/blocks/emotions/" + emotionId).expectStatus().isNoContent();
 
         차단한다(차단자_토큰, "/api/v2/blocks/devices", emotionId).expectStatus().isCreated();
         Long blockId = jdbcClient.sql("SELECT id FROM device_blocks").query(Long.class).single();
@@ -527,7 +535,7 @@ class SecurityAuthorizationIntegrationTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .json("""
-                        {"items": [{"blockId": %d, "sighId": %d}], "hasNext": false, "nextCursor": null}
+                        {"items": [{"blockId": %d, "emotionId": %d}], "hasNext": false, "nextCursor": null}
                         """.formatted(blockId, emotionId), JsonCompareMode.LENIENT);
         해제한다(차단자_토큰, "/api/v2/blocks/devices/" + blockId).expectStatus().isNoContent();
 
@@ -544,6 +552,30 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isOk();
+    }
+
+    @Test
+    void API_문서는_감정_차단_경로와_감정_식별자_필드를_제공한다() throws JsonProcessingException {
+        String body = client.get().uri("/v3/api-docs")
+                .exchange().expectStatus().isOk()
+                .expectBody(String.class).returnResult().getResponseBody();
+        JsonNode docs = new ObjectMapper().readTree(body);
+
+        assertThat(docs.path("paths").has("/api/v2/blocks/emotions")).isTrue();
+        assertThat(docs.path("paths").has("/api/v2/blocks/emotions/{emotionId}")).isTrue();
+        assertThat(docs.path("paths").has("/api/v2/blocks/sighs")).isFalse();
+
+        JsonNode schemas = docs.path("components").path("schemas");
+        assertThat(schemas.path("BlockCreateRequest").path("properties").has("emotionId")).isTrue();
+        assertThat(schemas.path("EmotionBlockResponse").path("properties").has("emotionId")).isTrue();
+        assertThat(schemas.path("DeviceBlockResponse").path("properties").has("emotionId")).isTrue();
+        assertThat(schemas.has("SighBlockResponse")).isFalse();
+
+        for (String path : List.of("/api/v2/reports", "/api/v2/blocks/emotions", "/api/v2/blocks/devices")) {
+            String operation = docs.path("paths").path(path).path("post").toString();
+            assertThat(operation).contains("EMOTION-011", "감정을 찾을 수 없습니다.")
+                    .doesNotContain("한숨을 찾을 수 없습니다.");
+        }
     }
 
     @Test
@@ -690,7 +722,7 @@ class SecurityAuthorizationIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
-                        {"sighId": 1, "reason": "광고성 게시물입니다"}
+                        {"emotionId": 1, "reason": "광고성 게시물입니다"}
                         """)
                 .exchange();
 
@@ -753,7 +785,11 @@ class SecurityAuthorizationIntegrationTest {
         RestTestClient.ResponseSpec 다시_신고 = 신고한다(accessToken, emotionId);
 
         // then
-        최초_신고.expectStatus().isCreated();
+        최초_신고.expectStatus().isCreated()
+                .expectBody()
+                .json("""
+                        {"emotionId": %d}
+                        """.formatted(emotionId), JsonCompareMode.LENIENT);
         다시_신고.expectStatus().isOk();
 
         Map<String, Object> 저장된_신고 = jdbcClient.sql("SELECT reporter_device_id FROM emotion_reports")
@@ -777,9 +813,9 @@ class SecurityAuthorizationIntegrationTest {
 
     private static Stream<Arguments> 인증이_필요한_차단_경로들() {
         return Stream.of(
-                Arguments.of("POST", "/api/v2/blocks/sighs"),
-                Arguments.of("GET", "/api/v2/blocks/sighs"),
-                Arguments.of("DELETE", "/api/v2/blocks/sighs/1"),
+                Arguments.of("POST", "/api/v2/blocks/emotions"),
+                Arguments.of("GET", "/api/v2/blocks/emotions"),
+                Arguments.of("DELETE", "/api/v2/blocks/emotions/1"),
                 Arguments.of("POST", "/api/v2/blocks/devices"),
                 Arguments.of("GET", "/api/v2/blocks/devices"),
                 Arguments.of("DELETE", "/api/v2/blocks/devices/1")
@@ -871,7 +907,7 @@ class SecurityAuthorizationIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
-                        {"sighId": %d}
+                        {"emotionId": %d}
                         """.formatted(emotionId))
                 .exchange();
     }
@@ -925,7 +961,7 @@ class SecurityAuthorizationIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
-                        {"sighId": %d, "deviceId": "%s", "reason": "광고성 게시물입니다"}
+                        {"emotionId": %d, "deviceId": "%s", "reason": "광고성 게시물입니다"}
                         """.formatted(emotionId, 사칭하려는_기기_식별자))
                 .exchange();
     }

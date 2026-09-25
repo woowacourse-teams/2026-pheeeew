@@ -1,18 +1,15 @@
 package com.pheeeew.report.presentation.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
-@Schema(name = "SighReportCreateRequest")
 public record EmotionReportCreateRequest(
-        @NotNull(message = "신고할 한숨 식별자는 필수입니다.")
-        @Positive(message = "한숨 식별자는 양수여야 합니다.")
-        @Schema(description = "신고할 한숨 ID", minimum = "1", example = "42")
-        @JsonProperty("sighId")
+        @NotNull(message = "신고할 감정 식별자는 필수입니다.")
+        @Positive(message = "감정 식별자는 양수여야 합니다.")
+        @Schema(description = "신고할 감정 ID", minimum = "1", example = "42")
         Long emotionId,
 
         @NotBlank(message = "신고 사유는 필수입니다.")

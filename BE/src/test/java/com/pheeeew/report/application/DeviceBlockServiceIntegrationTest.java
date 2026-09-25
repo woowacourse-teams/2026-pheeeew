@@ -112,6 +112,28 @@ class DeviceBlockServiceIntegrationTest {
     }
 
     @Test
+    void 삭제된_감정의_작성자를_새로_차단하고_재요청하면_최초_차단을_반환한다() {
+        // given
+        Device 차단자 = 기기를_저장한다();
+        Device 작성자 = 기기를_저장한다();
+        Long emotionId = 한숨을_저장한다(작성자.getId(), null);
+        jdbcClient.sql("UPDATE emotions SET deleted_at = NOW() WHERE id = :id")
+                .param("id", emotionId)
+                .update();
+
+        // when
+        BlockSaveResult 최초 = deviceBlockService.save(emotionId, 차단자.getPublicId());
+        BlockSaveResult 재요청 = deviceBlockService.save(emotionId, 차단자.getPublicId());
+
+        // then
+        assertThat(최초.created()).isTrue();
+        assertThat(재요청.created()).isFalse();
+        assertThat(재요청.block().blockId()).isEqualTo(최초.block().blockId());
+        assertThat(재요청.block().emotionId()).isEqualTo(emotionId);
+        assertThat(deviceBlockRepository.count()).isOne();
+    }
+
+    @Test
     void 같은_사용자를_동시에_차단해도_한_건만_저장한다() throws Exception {
         // given
         int requestCount = 6;

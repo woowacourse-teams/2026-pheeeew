@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
-@RequestMapping("/api/v2/blocks/sighs")
+@RequestMapping("/api/v2/blocks/emotions")
 @RestController
 public class EmotionBlockController implements EmotionBlockControllerApi {
 
@@ -62,10 +62,10 @@ public class EmotionBlockController implements EmotionBlockControllerApi {
     }
 
     @Override
-    @DeleteMapping("/{sighId}")
+    @DeleteMapping("/{emotionId}")
     public ResponseEntity<Void> delete(
             @CurrentDevice UUID devicePublicId,
-            @PathVariable("sighId") Long emotionId
+            @PathVariable("emotionId") Long emotionId
     ) {
         emotionBlockService.delete(emotionId, devicePublicId);
 
