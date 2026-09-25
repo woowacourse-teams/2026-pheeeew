@@ -7,6 +7,7 @@ import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
 /** 참여 시트 입력·조회·제출의 화면 상태입니다. 시트 표시 여부는 홈이 소유합니다. */
 data class GroupJoinUiState(
     val input: String = "",
+    val hasAttemptedSearch: Boolean = false,
     val lookup: GroupLookupState = GroupLookupState.Idle,
     val submission: GroupJoinSubmissionState = GroupJoinSubmissionState.Idle,
 ) {
@@ -19,8 +20,20 @@ data class GroupJoinUiState(
     val isLookingUp: Boolean
         get() = lookup is GroupLookupState.Loading
 
+    internal val codeValidation: GroupCodeValidation
+        get() = GroupCodeRules.validate(input)
+
+    val codeLength: Int
+        get() = input.trim().length
+
+    val shouldShowCodeValidationError: Boolean
+        get() =
+            hasAttemptedSearch &&
+                codeValidation !is GroupCodeValidation.Empty &&
+                codeValidation !is GroupCodeValidation.Valid
+
     val canSearch: Boolean
-        get() = !isInteractionLocked && !isLookingUp && GroupCodeRules.isValid(input)
+        get() = !isInteractionLocked && !isLookingUp && codeValidation !is GroupCodeValidation.Empty
 
     val foundGroup: GroupSummaryUiModel?
         get() = (lookup as? GroupLookupState.Found)?.group
@@ -28,6 +41,7 @@ data class GroupJoinUiState(
     val canJoin: Boolean
         get() {
             val found = lookup as? GroupLookupState.Found ?: return false
+            val validation = codeValidation as? GroupCodeValidation.Valid ?: return false
             val retryAllowed =
                 when (val result = submission) {
                     GroupJoinSubmissionState.Idle -> true
@@ -38,7 +52,7 @@ data class GroupJoinUiState(
                     is GroupJoinSubmissionState.Succeeded,
                     -> false
                 }
-            return retryAllowed && GroupCodeRules.normalize(input) == found.requestedCode
+            return retryAllowed && validation.normalizedCode == found.requestedCode
         }
 }
 

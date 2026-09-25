@@ -72,6 +72,11 @@
     <string name="group_join_title">초대코드 참여</string>
     <string name="group_join_description">받은 코드를 입력해 주세요.</string>
     <string name="group_join_code_placeholder">초대 코드를 입력해 주세요</string>
+    <string name="group_join_code_format_hint">영문과 숫자로 된 6자리 코드예요.</string>
+    <string name="group_join_code_count">%1$d/%2$d</string>
+    <string name="group_join_code_too_short">초대 코드는 6자리로 입력해 주세요.</string>
+    <string name="group_join_code_too_long">초대 코드는 6자리까지 입력할 수 있어요.</string>
+    <string name="group_join_code_invalid_characters">영문과 숫자만 입력할 수 있어요.</string>
     <string name="group_join_search">그룹찾기</string>
     <string name="group_join_searching">그룹을 찾는 중이에요.</string>
     <string name="group_join_join">그룹에 참여하기</string>

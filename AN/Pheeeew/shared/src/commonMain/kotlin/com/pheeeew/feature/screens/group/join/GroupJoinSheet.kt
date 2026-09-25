@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -52,7 +53,12 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_join_close
+import pheeeew.shared.generated.resources.group_join_code_count
+import pheeeew.shared.generated.resources.group_join_code_format_hint
+import pheeeew.shared.generated.resources.group_join_code_invalid_characters
 import pheeeew.shared.generated.resources.group_join_code_placeholder
+import pheeeew.shared.generated.resources.group_join_code_too_long
+import pheeeew.shared.generated.resources.group_join_code_too_short
 import pheeeew.shared.generated.resources.group_join_description
 import pheeeew.shared.generated.resources.group_join_failure_outcome_unknown
 import pheeeew.shared.generated.resources.group_join_failure_rejected
@@ -161,6 +167,7 @@ fun GroupJoinSheet(
                 onValueChange = onCodeChanged,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !uiState.isInteractionLocked && !isDismissing,
+                isError = uiState.shouldShowCodeValidationError,
                 placeholder = { Text(stringResource(Res.string.group_join_code_placeholder)) },
                 singleLine = true,
                 shape = JoinInputShape,
@@ -168,6 +175,7 @@ fun GroupJoinSheet(
                     KeyboardOptions(
                         capitalization = KeyboardCapitalization.Characters,
                         imeAction = ImeAction.Search,
+                        keyboardType = KeyboardType.Ascii,
                     ),
                 keyboardActions =
                     KeyboardActions(
@@ -178,9 +186,12 @@ fun GroupJoinSheet(
                     ),
                 colors =
                     OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = AppColors.GroupInk,
-                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor =
+                            if (uiState.shouldShowCodeValidationError) JoinErrorColor else AppColors.GroupInk,
+                        unfocusedBorderColor =
+                            if (uiState.shouldShowCodeValidationError) JoinErrorColor else Color.Transparent,
                         disabledBorderColor = Color.Transparent,
+                        errorBorderColor = JoinErrorColor,
                         focusedContainerColor = Color(0xFFF2F4F3),
                         unfocusedContainerColor = Color(0xFFF2F4F3),
                         disabledContainerColor = Color(0xFFF2F4F3),
@@ -191,6 +202,7 @@ fun GroupJoinSheet(
                     ),
             )
 
+            CodeInputFeedback(uiState = uiState)
             LookupMessage(lookup = uiState.lookup)
             uiState.foundGroup?.let { group ->
                 Spacer(Modifier.height(12.dp))
@@ -249,6 +261,41 @@ fun GroupJoinSheet(
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+@Composable
+private fun CodeInputFeedback(uiState: GroupJoinUiState) {
+    val errorMessage =
+        when (uiState.codeValidation) {
+            is GroupCodeValidation.TooShort -> stringResource(Res.string.group_join_code_too_short)
+            is GroupCodeValidation.TooLong -> stringResource(Res.string.group_join_code_too_long)
+            GroupCodeValidation.InvalidCharacters -> stringResource(Res.string.group_join_code_invalid_characters)
+
+            GroupCodeValidation.Empty,
+            is GroupCodeValidation.Valid,
+            -> null
+        }
+    val message = if (uiState.shouldShowCodeValidationError) errorMessage else null
+    val messageColor = if (message != null) JoinErrorColor else AppColors.RankingSecondaryContent
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = message ?: stringResource(Res.string.group_join_code_format_hint),
+            modifier = Modifier.weight(1f),
+            color = messageColor,
+            fontSize = 11.sp,
+        )
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text = stringResource(Res.string.group_join_code_count, uiState.codeLength, GROUP_INVITATION_CODE_LENGTH),
+            color = if (uiState.shouldShowCodeValidationError) JoinErrorColor else AppColors.RankingSecondaryContent,
+            fontSize = 11.sp,
+        )
     }
 }
 

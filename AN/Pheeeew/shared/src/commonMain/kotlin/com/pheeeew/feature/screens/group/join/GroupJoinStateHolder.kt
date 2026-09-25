@@ -48,6 +48,7 @@ class GroupJoinStateHolder(
         _uiState.update { state ->
             state.copy(
                 input = value,
+                hasAttemptedSearch = false,
                 lookup = GroupLookupState.Idle,
                 submission = GroupJoinSubmissionState.Idle,
             )
@@ -58,13 +59,25 @@ class GroupJoinStateHolder(
         val current = _uiState.value
         if (!isOpen || current.isInteractionLocked || current.isLookingUp) return
 
-        val code = GroupCodeRules.normalize(current.input)
-        if (code.isEmpty()) return
+        val code =
+            when (val validation = GroupCodeRules.validate(current.input)) {
+                GroupCodeValidation.Empty -> return
+                is GroupCodeValidation.Valid -> validation.normalizedCode
+
+                is GroupCodeValidation.TooLong,
+                is GroupCodeValidation.TooShort,
+                GroupCodeValidation.InvalidCharacters,
+                -> {
+                    _uiState.value = current.copy(hasAttemptedSearch = true)
+                    return
+                }
+            }
 
         val requestId = nextRequestGeneration()
         lookupJob?.cancel()
         _uiState.value =
             current.copy(
+                hasAttemptedSearch = true,
                 lookup = GroupLookupState.Loading(requestId, code),
                 submission = GroupJoinSubmissionState.Idle,
             )
