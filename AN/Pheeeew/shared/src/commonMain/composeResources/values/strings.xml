@@ -127,7 +127,8 @@
     <string name="group_detail_membership_changed_title">그룹을 다시 확인해 주세요</string>
     <string name="group_detail_membership_changed_body">참여 정보가 바뀌었어요.</string>
     <string name="group_detail_return_home">내 그룹으로</string>
-    <string name="group_detail_invite_title">그룹 초대코드</string>
+    <string name="group_detail_invite_title">초대코드</string>
+    <string name="group_detail_invite_copy_hint">터치로 복사하세요</string>
     <string name="group_detail_copy_code">코드 복사</string>
     <string name="group_detail_close">닫기</string>
     <string name="group_detail_menu_leave">그룹에서 나가기</string>
