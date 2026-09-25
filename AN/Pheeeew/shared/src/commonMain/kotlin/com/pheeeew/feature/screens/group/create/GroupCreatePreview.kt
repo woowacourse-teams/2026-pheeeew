@@ -1,13 +1,45 @@
 package com.pheeeew.feature.screens.group.create
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
+import com.pheeeew.feature.screens.group.create.model.StampColorSelection
+import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
 import com.pheeeew.feature.screens.group.preview.CreateFixtures
 
 @Preview(name = "그룹 생성 · 입력")
 @Composable
 private fun GroupCreateFormPreview() {
-    GroupCreatePreviewFrame(uiState = GroupCreateUiState())
+    var uiState by remember { mutableStateOf(GroupCreateUiState()) }
+    GroupCreatePreviewFrame(
+        uiState = uiState,
+        onOpenColorSheet = {
+            val selection = ColorConversion.toSelection(uiState.draft.stamp.fillArgb)
+            uiState = uiState.copy(colorSheet = StampColorSheetState.Editing(selection))
+        },
+        onColorSelectionChanged = { selection ->
+            uiState = uiState.copy(colorSheet = StampColorSheetState.Editing(selection))
+        },
+        onCloseColorSheet = {
+            uiState = uiState.copy(colorSheet = StampColorSheetState.Closed)
+        },
+        onApplyColor = {
+            val selection = (uiState.colorSheet as? StampColorSheetState.Editing)?.selection
+            if (selection != null) {
+                uiState =
+                    uiState.copy(
+                        draft =
+                            uiState.draft.copy(
+                                stamp = uiState.draft.stamp.copy(fillArgb = ColorConversion.toArgb(selection)),
+                            ),
+                        colorSheet = StampColorSheetState.Closed,
+                    )
+            }
+        },
+    )
 }
 
 @Preview(name = "그룹 생성 · 입력 완료")
@@ -40,7 +72,7 @@ private fun GroupCreateSubmittingPreview() {
     GroupCreatePreviewFrame(uiState = CreateFixtures.submitting)
 }
 
-@Preview(name = "그룹 생성 · 색상 선택")
+@Preview(name = "그룹 생성 · 색상 바텀시트 표시 상태")
 @Composable
 private fun GroupCreateColorSheetPreview() {
     GroupCreatePreviewFrame(uiState = CreateFixtures.choosingColor)
@@ -59,7 +91,13 @@ private fun GroupCreateUnknownOutcomePreview() {
 }
 
 @Composable
-private fun GroupCreatePreviewFrame(uiState: GroupCreateUiState) {
+private fun GroupCreatePreviewFrame(
+    uiState: GroupCreateUiState,
+    onOpenColorSheet: () -> Unit = {},
+    onColorSelectionChanged: (StampColorSelection) -> Unit = {},
+    onCloseColorSheet: () -> Unit = {},
+    onApplyColor: () -> Unit = {},
+) {
     GroupCreateScreen(
         uiState = uiState,
         formRules = GroupFormRules(),
@@ -73,9 +111,9 @@ private fun GroupCreatePreviewFrame(uiState: GroupCreateUiState) {
         onConfirmCreate = {},
         onDismissFailure = {},
         onRetryFailure = {},
-        onOpenColorSheet = {},
-        onColorSelectionChanged = {},
-        onCloseColorSheet = {},
-        onApplyColor = {},
+        onOpenColorSheet = onOpenColorSheet,
+        onColorSelectionChanged = onColorSelectionChanged,
+        onCloseColorSheet = onCloseColorSheet,
+        onApplyColor = onApplyColor,
     )
 }
