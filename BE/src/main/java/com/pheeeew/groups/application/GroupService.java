@@ -108,7 +108,7 @@ public class GroupService {
 
         return GroupDetailResult.of(
                 toResult(group, member.getRole()),
-                todayPresses(group),
+                pressesOf(group, LocalDate.now(clock)),
                 ranked == null ? 0 : ranked.score(),
                 ranked == null ? null : ranked.rank()
         );
@@ -118,9 +118,10 @@ public class GroupService {
     public GroupPressCountResult press(UUID groupPublicId, UUID devicePublicId, EmotionState state) {
         Group group = findGroup(groupPublicId);
         requireMember(group, devicePublicId);
-        groupDailyPressRepository.increase(group.getId(), LocalDate.now(clock), state.name(), clock.instant());
+        LocalDate today = LocalDate.now(clock);
+        groupDailyPressRepository.increase(group.getId(), today, state.name(), clock.instant());
 
-        return todayPresses(group);
+        return pressesOf(group, today);
     }
 
     @Transactional
@@ -200,13 +201,13 @@ public class GroupService {
         group.delete(Instant.now());
     }
 
-    private GroupPressCountResult todayPresses(Group group) {
+    private GroupPressCountResult pressesOf(Group group, LocalDate date) {
         Map<EmotionState, Long> counts = new EnumMap<>(EmotionState.class);
         for (EmotionState state : EmotionState.values()) {
             counts.put(state, 0L);
         }
-        List<GroupDailyPress> pressed = groupDailyPressRepository
-                .findByGroupIdAndPressDate(group.getId(), LocalDate.now(clock));
+        List<GroupDailyPress> pressed =
+                groupDailyPressRepository.findByGroupIdAndPressDate(group.getId(), date);
         for (GroupDailyPress press : pressed) {
             counts.put(press.getState(), press.getPressCount());
         }
