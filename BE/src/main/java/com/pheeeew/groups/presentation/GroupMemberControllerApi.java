@@ -1,6 +1,7 @@
 package com.pheeeew.groups.presentation;
 
 import com.pheeeew.groups.presentation.dto.GroupJoinRequest;
+import com.pheeeew.groups.presentation.dto.GroupPreviewResponse;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,6 +13,26 @@ import org.springframework.http.ResponseEntity;
 
 @Tag(name = "그룹 참여", description = "초대 코드로 그룹에 들어가고 나갑니다.")
 public interface GroupMemberControllerApi {
+
+    @Operation(
+            summary = "초대 코드로 그룹 찾아보기",
+            description = """
+                    들어가기 전에 **어떤 그룹인지 미리 봅니다.** 참여하지 않습니다.
+
+                    - 코드를 아는 사람만 볼 수 있습니다. 그룹 식별자로는 조회할 수 없습니다.
+                    - 이름, 설명, 현재 인원수, 스탬프를 돌려줍니다. **초대 코드는 응답에 담지 않습니다.**
+                    - 없는 코드이거나 삭제된 그룹이면 404 입니다.
+                    - 대소문자와 혼동되는 글자를 참여와 똑같이 맞춰 읽습니다.
+                      `I`, `L` 은 `1` 로, `O` 는 `0` 으로 바꿉니다.
+
+                    **참여와 같은 요청 수 제한이 걸려 있습니다.** 코드를 무작위로 넣어 그룹을 훑는 것을 막기 위함입니다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "찾음"),
+            @ApiResponse(responseCode = "404", description = "없는 코드이거나 삭제된 그룹")
+    })
+    GroupPreviewResponse findByInviteCode(String inviteCode);
 
     @Operation(
             summary = "초대 코드로 그룹 참여",
@@ -45,11 +66,11 @@ public interface GroupMemberControllerApi {
             description = """
                     요청한 기기를 그룹에서 뺍니다.
 
+                    - 멤버가 아니면 403 입니다.
                     - **그룹장은 나갈 수 없습니다.** 409 이며, 위임 기능이 없으므로
                       다른 멤버가 모두 나간 뒤 그룹을 삭제하는 것이 그룹장이 빠지는 유일한 방법입니다.
                     - 나가도 **그동안 쓴 기록은 그룹에 남고 랭킹에도 계속 집계**됩니다.
                     - 멤버 행을 지우지 않고 나간 시각만 남기므로, 다시 들어오면 새 멤버십이 만들어집니다.
-                    - 멤버가 아니면 403 입니다.
                     """
     )
     @ApiResponses({

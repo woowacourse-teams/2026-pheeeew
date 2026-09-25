@@ -13,6 +13,7 @@ import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_OWNER_ONLY;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.groups.application.dto.GroupPreviewResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.application.dto.GroupStampResult;
@@ -71,6 +72,17 @@ public class GroupService {
                 .sorted(Comparator.comparing(GroupMember::getCreatedAt))
                 .map(member -> toResult(member.getGroup(), member.getRole()))
                 .toList();
+    }
+
+    public GroupPreviewResult findByInviteCode(String inviteCode) {
+        Group group = groupRepository.findByInviteCodeAndDeletedAtIsNull(inviteCode)
+                .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));
+
+        return GroupPreviewResult.of(
+                group,
+                groupMemberRepository.countByGroupIdAndLeftAtIsNull(group.getId()),
+                GroupStampResult.from(findStamp(group))
+        );
     }
 
     public GroupResult findOne(UUID groupPublicId, UUID devicePublicId) {

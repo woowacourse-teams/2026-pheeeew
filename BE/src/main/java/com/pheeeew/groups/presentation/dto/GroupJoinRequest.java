@@ -1,8 +1,8 @@
 package com.pheeeew.groups.presentation.dto;
 
+import com.pheeeew.groups.application.InviteCodeGenerator;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
-import java.util.Locale;
 
 public record GroupJoinRequest(
         @NotBlank(message = "초대 코드는 필수입니다.")
@@ -10,18 +10,6 @@ public record GroupJoinRequest(
         String inviteCode
 ) {
     public GroupJoinRequest {
-        inviteCode = normalize(inviteCode);
-    }
-
-    private static String normalize(String inviteCode) {
-        if (inviteCode == null) {
-            return null;
-        }
-
-        return inviteCode.strip()
-                .toUpperCase(Locale.ROOT)
-                .replace('I', '1')
-                .replace('L', '1')
-                .replace('O', '0');
+        inviteCode = InviteCodeGenerator.normalize(inviteCode);
     }
 }
