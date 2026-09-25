@@ -7,11 +7,15 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
+import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.groups.application.dto.GroupDetailResult;
+import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.StampFrame;
+import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
@@ -54,6 +58,9 @@ class GroupServiceIntegrationTest {
     private GroupMemberRepository groupMemberRepository;
 
     @Autowired
+    private GroupDailyPressRepository groupDailyPressRepository;
+
+    @Autowired
     private DeviceRepository deviceRepository;
 
     @Autowired
@@ -61,6 +68,7 @@ class GroupServiceIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        groupDailyPressRepository.deleteAllInBatch();
         groupMemberRepository.deleteAllInBatch();
         groupStampRepository.deleteAllInBatch();
         groupRepository.deleteAllInBatch();
@@ -81,7 +89,7 @@ class GroupServiceIntegrationTest {
         assertThat(결과.role()).isEqualTo(GroupRole.OWNER);
         assertThat(결과.memberCount()).isOne();
         assertThat(결과.stamp().text()).isEqualTo("기본");
-        assertThat(결과.stamp().frame()).isEqualTo(StampFrame.RIBBON);
+        assertThat(결과.stamp().frame()).isEqualTo(StampFrame.VOUCHER);
     }
 
     @Test
@@ -206,7 +214,155 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
-    void 속하지_않은_그룹은_상세_조회에서_404다() {
+    void 버튼을_누르면_오늘_집계가_올라간다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+
+        // when
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+        GroupPressCountResult 결과 = groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+
+        // then
+        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(2);
+        assertThat(결과.total()).isEqualTo(2);
+    }
+
+    @Test
+    void 아무리_연타해도_감정마다_행이_하나다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+
+        // when
+        for (int 회차 = 0; 회차 < 50; 회차++) {
+            groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+        }
+        GroupPressCountResult 결과 =
+                groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.IRRITATED);
+
+        // then
+        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(50);
+        assertThat(groupDailyPressRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void 여러_멤버가_눌러도_한_그룹의_같은_감정은_한_행에_쌓인다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        Device 멤버 = 기기를_저장한다();
+        groupService.join(멤버.getPublicId(), 그룹.inviteCode());
+
+        // when
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+        GroupPressCountResult 결과 =
+                groupService.press(그룹.publicId(), 멤버.getPublicId(), EmotionState.ANGRY);
+
+        // then
+        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(2);
+        assertThat(groupDailyPressRepository.count()).isOne();
+    }
+
+    @Test
+    void 그룹이_다르면_집계가_섞이지_않는다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 내_그룹 = groupService.save(그룹장.getPublicId(), "내모임", null, 스탬프("기본"));
+        GroupResult 옆_그룹 = groupService.save(그룹장.getPublicId(), "옆모임", null, 스탬프("기본"));
+        groupService.press(옆_그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+
+        // when
+        GroupPressCountResult 결과 =
+                groupService.press(내_그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+
+        // then
+        assertThat(결과.total()).isOne();
+    }
+
+    @Test
+    void 누르지_않은_감정도_영으로_내려준다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+
+        // when
+        GroupPressCountResult 결과 =
+                groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+
+        // then
+        assertThat(결과.counts()).hasSize(EmotionState.values().length);
+        assertThat(결과.counts().get(EmotionState.EXHAUSTED)).isZero();
+    }
+
+    @Test
+    void 날이_바뀌면_어제_집계는_안_보이고_영부터_시작한다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+        어제로_넘긴다(그룹.publicId());
+
+        // when
+        GroupDetailResult 상세 = groupService.findOne(그룹.publicId(), 그룹장.getPublicId());
+
+        // then
+        assertThat(상세.todayPresses().total()).isZero();
+        assertThat(상세.todayPresses().counts()).hasSize(EmotionState.values().length);
+        assertThat(groupDailyPressRepository.count()).isOne();
+    }
+
+    @Test
+    void 멤버가_아니면_버튼을_누를_수_없다() {
+        // given
+        GroupResult 그룹 = groupService.save(
+                기기를_저장한다().getPublicId(), "한숨모임", null, 스탬프("기본")
+        );
+        Device 남 = 기기를_저장한다();
+
+        // when
+        Throwable throwable = catchThrowable(
+                () -> groupService.press(그룹.publicId(), 남.getPublicId(), EmotionState.ANGRY)
+        );
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_MEMBER_ONLY);
+    }
+
+    @Test
+    void 누른_횟수는_이번_주_점수와_순위에_영향을_주지_않는다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.IRRITATED);
+
+        // when
+        GroupDetailResult 상세 = groupService.findOne(그룹.publicId(), 그룹장.getPublicId());
+
+        // then
+        assertThat(상세.todayPresses().total()).isEqualTo(2);
+        assertThat(상세.weeklyScore()).isZero();
+        assertThat(상세.weeklyRank()).isNull();
+    }
+
+    @Test
+    void 상세_조회는_그룹_정보와_오늘_집계를_함께_준다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", "설명", 스탬프("기본"));
+
+        // when
+        GroupDetailResult 상세 = groupService.findOne(그룹.publicId(), 그룹장.getPublicId());
+
+        // then
+        assertThat(상세.group().name()).isEqualTo("한숨모임");
+        assertThat(상세.group().memberCount()).isOne();
+        assertThat(상세.todayPresses().total()).isZero();
+    }
+
+    @Test
+    void 속하지_않은_그룹은_상세_조회에서_403이다() {
         // given
         GroupResult 남의_그룹 = groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, 스탬프("기본"));
         Device 남 = 기기를_저장한다();
@@ -215,7 +371,7 @@ class GroupServiceIntegrationTest {
         Throwable throwable = catchThrowable(() -> groupService.findOne(남의_그룹.publicId(), 남.getPublicId()));
 
         // then
-        그룹_오류다(throwable, GroupErrorCode.GROUP_NOT_FOUND);
+        그룹_오류다(throwable, GroupErrorCode.GROUP_MEMBER_ONLY);
     }
 
     @Test
@@ -250,7 +406,7 @@ class GroupServiceIntegrationTest {
         assertThat(결과.name()).isEqualTo("바뀐모임");
         assertThat(결과.description()).isEqualTo("새 설명");
         assertThat(결과.stamp().text()).isEqualTo("변경");
-        assertThat(결과.stamp().frame()).isEqualTo(StampFrame.RIBBON);
+        assertThat(결과.stamp().frame()).isEqualTo(StampFrame.VOUCHER);
     }
 
     @Test
@@ -388,12 +544,21 @@ class GroupServiceIntegrationTest {
     }
 
     private GroupStampCommand 스탬프(String text) {
-        return GroupStampCommand.of(text, "#000000", "#FFFFFFAA", StampFrame.RIBBON);
+        return GroupStampCommand.of(text, "#000000", "#FFFFFFAA", StampFrame.VOUCHER);
     }
 
     private void 멤버로_넣는다(UUID groupPublicId, Device device) {
         Group group = groupRepository.findByPublicIdAndDeletedAtIsNull(groupPublicId).orElseThrow();
         groupMemberRepository.saveAndFlush(일반_멤버_빌더(group, device).build());
+    }
+
+    private void 어제로_넘긴다(UUID 그룹_공개_식별자) {
+        jdbcClient.sql("""
+                        UPDATE group_daily_presses SET press_date = press_date - 1
+                         WHERE group_id = (SELECT id FROM groups WHERE public_id = ?)
+                        """)
+                .param(그룹_공개_식별자)
+                .update();
     }
 
     private void 나간다(UUID groupPublicId, Long deviceId) {

@@ -1,6 +1,9 @@
 package com.pheeeew.groups.presentation;
 
 import com.pheeeew.groups.presentation.dto.GroupCreateRequest;
+import com.pheeeew.groups.presentation.dto.GroupDetailResponse;
+import com.pheeeew.groups.presentation.dto.GroupPressCountResponse;
+import com.pheeeew.groups.presentation.dto.GroupPressRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -54,17 +57,27 @@ public interface GroupControllerApi {
             description = """
                     그룹 정보와 스탬프, 현재 인원수를 반환합니다.
 
-                    - **멤버만 조회할 수 있습니다.** 속하지 않은 그룹은 403 이 아니라 **404** 입니다.
-                      그룹이 존재하는지 자체를 알려주지 않기 위함입니다.
+                    - **멤버만 조회할 수 있습니다.** 속하지 않은 그룹은 **403** 입니다.
+                      없는 그룹이나 삭제된 그룹만 404 이므로, 클라이언트가 "권한 없음" 과 "사라진 그룹" 을 구분할 수 있습니다.
                     - `inviteCode` 는 **모든 멤버**에게 보입니다. 재발급만 그룹장 권한입니다.
                     - `role` 로 요청한 기기가 그룹장인지 알 수 있습니다.
+
+                    화면에 필요한 숫자 셋을 함께 내려줍니다.
+
+                    - `todayPresses` — **오늘** 그룹 전체가 감정 버튼을 누른 횟수입니다.
+                      다섯 감정을 0 인 것까지 **항상 전부** 담고 `total` 은 그 합입니다. 하루는 한국시간 자정에 바뀝니다.
+                    - `weeklyScore` — 이번 주 그 그룹으로 **지도에 남긴 감정 수**입니다. 그룹 간 랭킹 점수와 같은 값입니다.
+                      **버튼을 누른 횟수는 여기 들어가지 않습니다.**
+                    - `weeklyRank` — 이번 주 전체 그룹 중 순위입니다. 동점은 공동 순위이며,
+                      `weeklyScore` 가 0 이면 순위표에 오르지 않으므로 **`null`** 입니다.
                     """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 속하지 않은 그룹")
+            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
     })
-    GroupResponse findOne(
+    GroupDetailResponse findOne(
             UUID groupId,
             @Parameter(hidden = true) UUID devicePublicId
     );
@@ -85,13 +98,35 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "변경 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹장이 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 속하지 않은 그룹"),
+            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹"),
             @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름")
     })
     GroupResponse update(
             UUID groupId,
             GroupUpdateRequest request,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
+
+    @Operation(
+            summary = "감정 버튼 누르기",
+            description = """
+                    그룹 화면의 감정 버튼을 누릅니다. **그룹 멤버만** 누를 수 있습니다.
+
+                    - 누른 뒤의 **오늘 집계를 바로 돌려줍니다.** 다시 조회할 필요가 없습니다.
+                    - **횟수 제한이 없습니다.** 연타하면 그만큼 올라갑니다. 취소는 없습니다.
+                    - **지도에 감정이 찍히지 않고 그룹 점수와 순위에도 영향이 없습니다.**
+                      점수는 지도에 남긴 감정만 셉니다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "누르기 성공"),
+            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
+    })
+    GroupPressCountResponse press(
+            UUID groupId,
+            GroupPressRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
@@ -106,8 +141,8 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "재발급 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹장이 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 속하지 않은 그룹")
+            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
     })
     GroupResponse reissueInviteCode(
             UUID groupId,
@@ -128,8 +163,8 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "삭제 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹장이 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 속하지 않은 그룹"),
+            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹"),
             @ApiResponse(responseCode = "409", description = "다른 멤버가 남아 있음")
     })
     ResponseEntity<Void> delete(

@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
+import com.pheeeew.groups.application.dto.GroupPreviewResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.domain.GroupRole;
@@ -62,6 +63,45 @@ class GroupMembershipIntegrationTest {
         groupStampRepository.deleteAllInBatch();
         groupRepository.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void 초대_코드로_들어가기_전에_그룹을_미리_본다() {
+        // given
+        GroupResult 그룹 = 그룹을_만든다("한숨모임");
+        groupService.join(기기를_저장한다().getPublicId(), 그룹.inviteCode());
+
+        // when
+        GroupPreviewResult 미리보기 = groupService.findByInviteCode(그룹.inviteCode());
+
+        // then
+        assertThat(미리보기.publicId()).isEqualTo(그룹.publicId());
+        assertThat(미리보기.name()).isEqualTo("한숨모임");
+        assertThat(미리보기.memberCount()).isEqualTo(2);
+        assertThat(미리보기.stamp().text()).isEqualTo("기본");
+    }
+
+    @Test
+    void 없는_초대_코드로는_미리_볼_수_없다() {
+        // when
+        Throwable throwable = catchThrowable(() -> groupService.findByInviteCode("ZZZZZZ"));
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_NOT_FOUND);
+    }
+
+    @Test
+    void 삭제된_그룹은_미리_볼_수_없다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프());
+        groupService.delete(그룹.publicId(), 그룹장.getPublicId());
+
+        // when
+        Throwable throwable = catchThrowable(() -> groupService.findByInviteCode(그룹.inviteCode()));
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_NOT_FOUND);
     }
 
     @Test
@@ -230,7 +270,7 @@ class GroupMembershipIntegrationTest {
         Throwable throwable = catchThrowable(() -> groupService.leave(그룹.publicId(), 남.getPublicId()));
 
         // then
-        그룹_오류다(throwable, GroupErrorCode.GROUP_NOT_FOUND);
+        그룹_오류다(throwable, GroupErrorCode.GROUP_MEMBER_ONLY);
     }
 
     @Test

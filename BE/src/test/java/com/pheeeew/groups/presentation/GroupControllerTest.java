@@ -10,7 +10,9 @@ import static org.mockito.Mockito.when;
 import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.GroupService;
+import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
@@ -18,6 +20,7 @@ import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.exception.GroupErrorCode;
 import com.pheeeew.groups.exception.GroupException;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -222,7 +225,50 @@ class GroupControllerTest {
     }
 
     @Test
-    void 속하지_않은_그룹을_조회하면_404를_반환한다() {
+    void 속하지_않은_그룹을_조회하면_403을_반환한다() {
+        // given
+        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자))
+                .thenThrow(new GroupException(GroupErrorCode.GROUP_MEMBER_ONLY));
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/" + 그룹_공개_식별자)
+                .exchange();
+
+        // then
+        result.expectStatus().isForbidden();
+    }
+
+    @Test
+    void 감정_버튼을_누르면_오늘_집계를_돌려준다() {
+        // given
+        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, EmotionState.ANGRY))
+                .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 2L)));
+
+        // when
+        RestTestClient.ResponseSpec result = 누른다("\"ANGRY\"");
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.counts.ANGRY").isEqualTo(2)
+                .jsonPath("$.total").isEqualTo(2);
+        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, EmotionState.ANGRY);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"null", "\"\"", "\"HAPPY\"", "\"angry\""})
+    void 다루지_않는_감정을_보내면_400이고_서비스를_부르지_않는다(String 보낸_값) {
+        // when
+        RestTestClient.ResponseSpec result = 누른다(보낸_값);
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupService);
+    }
+
+    @Test
+    void 없는_그룹을_조회하면_404를_반환한다() {
         // given
         when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자))
                 .thenThrow(new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
@@ -297,6 +343,16 @@ class GroupControllerTest {
                 .uri(GROUPS_URI + "/" + 그룹_공개_식별자)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
+                .exchange();
+    }
+
+    private RestTestClient.ResponseSpec 누른다(String 보낸_값) {
+        return client.post()
+                .uri(GROUPS_URI + "/" + 그룹_공개_식별자 + "/presses")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"state": %s}
+                        """.formatted(보낸_값))
                 .exchange();
     }
 

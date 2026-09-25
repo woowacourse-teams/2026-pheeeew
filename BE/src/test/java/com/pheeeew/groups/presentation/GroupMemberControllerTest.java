@@ -1,5 +1,6 @@
 package com.pheeeew.groups.presentation;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -9,9 +10,11 @@ import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.groups.application.GroupService;
+import com.pheeeew.groups.application.dto.GroupPreviewResult;
 import com.pheeeew.groups.application.dto.GroupResult;
-import com.pheeeew.groups.application.dto.GroupStampResult;
+
 import com.pheeeew.groups.domain.Group;
+import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.exception.GroupErrorCode;
@@ -67,6 +70,46 @@ class GroupMemberControllerTest {
     @AfterEach
     void tearDown() {
         SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void 초대_코드로_그룹을_찾는다() {
+        // given
+        when(groupService.findByInviteCode(초대_코드)).thenReturn(기본_미리보기());
+
+        // when
+        RestTestClient.ResponseSpec result = 찾는다(초대_코드);
+
+        // then
+        result.expectStatus().isOk();
+        verify(groupService).findByInviteCode(초대_코드);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a1b2c3", "AIBLCO"})
+    void 검색도_참여와_똑같이_코드를_맞춰_읽는다(String 보낸_코드) {
+        // given
+        when(groupService.findByInviteCode(any())).thenReturn(기본_미리보기());
+
+        // when
+        찾는다(보낸_코드);
+
+        // then
+        verify(groupService).findByInviteCode(보낸_코드.toUpperCase()
+                .replace('I', '1').replace('L', '1').replace('O', '0'));
+    }
+
+    @Test
+    void 없는_코드로_찾으면_404다() {
+        // given
+        when(groupService.findByInviteCode(초대_코드))
+                .thenThrow(new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
+
+        // when
+        RestTestClient.ResponseSpec result = 찾는다(초대_코드);
+
+        // then
+        result.expectStatus().isNotFound();
     }
 
     @Test
@@ -177,7 +220,20 @@ class GroupMemberControllerTest {
     }
 
     @Test
-    void 속하지_않은_그룹에서_나가려_하면_404를_반환한다() {
+    void 속하지_않은_그룹에서_나가려_하면_403을_반환한다() {
+        // given
+        doThrow(new GroupException(GroupErrorCode.GROUP_MEMBER_ONLY))
+                .when(groupService).leave(그룹_공개_식별자, 기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = 나간다();
+
+        // then
+        result.expectStatus().isForbidden();
+    }
+
+    @Test
+    void 없는_그룹에서_나가려_하면_404를_반환한다() {
         // given
         doThrow(new GroupException(GroupErrorCode.GROUP_NOT_FOUND))
                 .when(groupService).leave(그룹_공개_식별자, 기기_공개_식별자);
@@ -187,6 +243,22 @@ class GroupMemberControllerTest {
 
         // then
         result.expectStatus().isNotFound();
+    }
+
+    private RestTestClient.ResponseSpec 찾는다(String 코드) {
+        return client.get()
+                .uri(GROUPS_URI + "/search?inviteCode=" + 코드)
+                .exchange();
+    }
+
+    private GroupPreviewResult 기본_미리보기() {
+        return new GroupPreviewResult(
+                그룹_공개_식별자,
+                "한숨모임",
+                null,
+                2,
+                new GroupStampResult("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
+        );
     }
 
     private RestTestClient.ResponseSpec 참여한다(String 코드) {

@@ -26,6 +26,7 @@ import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import com.pheeeew.groups.application.GroupRankingService;
 import com.pheeeew.groups.application.GroupService;
 import com.pheeeew.groups.application.InviteCodeGenerator;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -61,6 +62,7 @@ import org.springframework.test.context.ActiveProfiles;
         PlayIntegrityMetrics.class,
         EmotionReportMetrics.class,
         GroupService.class,
+        GroupRankingService.class,
         InviteCodeGenerator.class,
         EmotionReportService.class,
         EmotionBlockService.class,

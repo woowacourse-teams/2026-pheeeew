@@ -1,8 +1,14 @@
 package com.pheeeew.groups.domain;
 
 public enum StampFrame {
+    SCALLOP,
+    SQUIRCLE,
+    TAG,
+    STUB,
     CIRCLE,
-    SQUARE,
-    RIBBON,
-    SHIELD
+    OVAL,
+    STAMP,
+    PAGE,
+    CLOVER,
+    VOUCHER
 }

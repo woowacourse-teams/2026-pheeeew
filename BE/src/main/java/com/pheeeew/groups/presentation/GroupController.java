@@ -3,8 +3,11 @@ package com.pheeeew.groups.presentation;
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.groups.application.GroupService;
 import com.pheeeew.groups.application.dto.GroupResult;
+import com.pheeeew.groups.presentation.dto.GroupDetailResponse;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.presentation.dto.GroupCreateRequest;
+import com.pheeeew.groups.presentation.dto.GroupPressCountResponse;
+import com.pheeeew.groups.presentation.dto.GroupPressRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampRequest;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
@@ -60,11 +63,11 @@ public class GroupController implements GroupControllerApi {
 
     @Override
     @GetMapping("/{groupId}")
-    public GroupResponse findOne(
+    public GroupDetailResponse findOne(
             @PathVariable UUID groupId,
             @CurrentDevice UUID devicePublicId
     ) {
-        return GroupResponse.from(groupService.findOne(groupId, devicePublicId));
+        return GroupDetailResponse.from(groupService.findOne(groupId, devicePublicId));
     }
 
     @Override
@@ -84,6 +87,18 @@ public class GroupController implements GroupControllerApi {
         );
 
         return GroupResponse.from(result);
+    }
+
+    @Override
+    @PostMapping("/{groupId}/presses")
+    public GroupPressCountResponse press(
+            @PathVariable UUID groupId,
+            @Valid @RequestBody GroupPressRequest request,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        return GroupPressCountResponse.from(
+                groupService.press(groupId, devicePublicId, request.state())
+        );
     }
 
     @Override
