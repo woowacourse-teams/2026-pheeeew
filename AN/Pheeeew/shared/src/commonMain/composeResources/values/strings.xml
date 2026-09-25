@@ -1,0 +1,15 @@
+<resources>
+    <string name="group_home_title">그룹</string>
+    <string name="group_home_my_groups">내 그룹</string>
+    <string name="group_home_group_count">%1$d개</string>
+    <string name="group_home_create">+ 그룹 만들기</string>
+    <string name="group_home_join">코드로 참여</string>
+    <string name="group_home_empty_title">아직 혼자 있나요</string>
+    <string name="group_home_empty_description">그룹을 만들거나 코드로 참여해 보세요.</string>
+    <string name="group_home_error_title">앗, 연결이 끊겼어요</string>
+    <string name="group_home_error_description">연결 상태를 확인하고 다시 눌러 주세요.</string>
+    <string name="group_home_retry">다시 불러오기</string>
+    <string name="group_home_refresh_error">그룹을 새로고침하지 못했어요.</string>
+    <string name="group_home_member_and_weekly_count">%1$d명 · 이번 주 %2$d개</string>
+    <string name="group_home_loading">그룹을 불러오는 중이에요.</string>
+</resources>
