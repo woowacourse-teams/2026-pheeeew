@@ -6,7 +6,7 @@ import com.pheeeew.feature.screens.group.create.GroupCreateDraft
 import com.pheeeew.feature.screens.group.model.GroupId
 import kotlinx.coroutines.delay
 
-/** 프리뷰와 화면 수동 검토용 응답입니다. API나 영구 저장을 사용하지 않습니다. */
+/** 그룹 생성 상태 검증에서 성공·실패 응답과 지연 시간을 제공하는 fake입니다. */
 class ScenarioCreateGroupAction(
     private val outcome: ScenarioCreateOutcome = ScenarioCreateOutcome.Success,
     private val delayMillis: Long = 0L,
