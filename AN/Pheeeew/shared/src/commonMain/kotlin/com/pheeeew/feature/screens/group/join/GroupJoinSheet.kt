@@ -106,8 +106,12 @@ fun GroupJoinSheet(
         if (uiState.isDismissBlocked || isDismissing) return
         isDismissing = true
         scope.launch {
-            sheetState.hide()
-            latestDismiss()
+            try {
+                sheetState.hide()
+                if (!sheetState.isVisible) latestDismiss()
+            } finally {
+                isDismissing = false
+            }
         }
     }
 
