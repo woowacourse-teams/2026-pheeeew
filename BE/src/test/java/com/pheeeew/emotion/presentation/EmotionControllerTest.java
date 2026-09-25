@@ -100,7 +100,7 @@ class EmotionControllerTest {
     @Test
     void 인증된_기기의_감정_상세와_이모지_상태를_GeoJSON으로_반환한다() {
         // given
-        when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(detailView());
+        when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(detailView(42L, true));
 
         // when
         RestTestClient.ResponseSpec result = request(HttpMethod.GET,
@@ -124,6 +124,7 @@ class EmotionControllerTest {
                             "audio":null,
                             "groupStamp":null,
                             "groupId":null,
+                            "isMine":true,
                             "nickname":"먼지구름",
                             "emojis":[
                               {"type":"HEART","count":2,"selected":true},
@@ -409,13 +410,15 @@ class EmotionControllerTest {
     void 목록의_첫_페이지와_다음_페이지를_인증된_기기로_조회한다() {
         EmotionSearchBounds bounds = EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6);
         when(emotionQueryService.findFirstListPage(bounds, DEVICE_PUBLIC_ID, null))
-                .thenReturn(EmotionPageView.of(List.of(detailView()), true, "next"));
+                .thenReturn(EmotionPageView.of(List.of(detailView(42L, true), detailView(43L, false)), true, "next"));
         when(emotionQueryService.findNextListPage("next", DEVICE_PUBLIC_ID))
                 .thenReturn(EmotionPageView.of(List.of(), false, null));
 
         request(HttpMethod.GET, "/api/v1/emotions?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6", "access-token")
                 .expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-cache, private")
                 .expectBody().jsonPath("$.items[0].properties.emojis.length()").isEqualTo(6)
+                .jsonPath("$.items[0].properties.isMine").isEqualTo(true)
+                .jsonPath("$.items[1].properties.isMine").isEqualTo(false)
                 .jsonPath("$.hasNext").isEqualTo(true).jsonPath("$.nextCursor").isEqualTo("next");
         request(HttpMethod.GET, "/api/v1/emotions?cursor=next", "access-token")
                 .expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty().jsonPath("$.hasNext").isEqualTo(false);
@@ -527,7 +530,7 @@ class EmotionControllerTest {
         return request.exchange();
     }
 
-    private EmotionDetailView detailView() {
+    private EmotionDetailView detailView(Long emotionId, boolean isMine) {
         Emotion emotion = Emotion.builder()
                 .requestId(UUID.randomUUID())
                 .location(서울시청_좌표())
@@ -535,8 +538,9 @@ class EmotionControllerTest {
                 .rotationDegrees(35.5)
                 .memo("답답한 하루")
                 .nickname("먼지구름")
+                .deviceId(isMine ? 1L : 2L)
                 .build();
-        ReflectionTestUtils.setField(emotion, "id", 42L);
+        ReflectionTestUtils.setField(emotion, "id", emotionId);
         ReflectionTestUtils.setField(emotion, "createdAt", Instant.parse("2026-09-24T12:00:00Z"));
 
         return EmotionDetailView.of(emotion, List.of(
@@ -546,7 +550,7 @@ class EmotionControllerTest {
                 EmotionEmojiResult.of(EmojiType.DIZZY, 0, false),
                 EmotionEmojiResult.of(EmojiType.RAGE, 0, false),
                 EmotionEmojiResult.of(EmojiType.SKULL, 0, false)
-        ));
+        ), null, null, 1L);
     }
 
     private static Stream<Arguments> updateContents() {

@@ -34,6 +34,7 @@ public interface EmotionControllerApi {
             기간 제한 없이 (createdAt DESC, id DESC) 순으로 최대 20개씩 조회합니다.
             최초 조회 이후 작성된 감정은 제외하고, 삭제·차단은 매 페이지에 반영합니다.
             각 항목은 GeoJSON Feature이며 여섯 이모지 집계와 본인 선택 여부를 포함합니다.
+            각 항목의 properties.isMine은 인증된 기기가 작성했는지 나타내며 작성 기기가 없으면 false입니다.
             contentType으로 녹음 유무를 구분하며 목록의 audio는 null입니다. 재생 URL은 상세 조회에서 발급합니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
@@ -47,7 +48,7 @@ public interface EmotionControllerApi {
 
     @Operation(summary = "지도 스탬프 조회", description = """
             지도 표시에 필요한 감정 ID·좌표·작성 시각·상태·각도·그룹 스탬프만 반환합니다.
-            메모·닉네임·이모지 집계·녹음 재생 URL은 포함하지 않습니다. 바텀시트는 감정 목록 API로 조회합니다.
+            메모·닉네임·이모지 집계·본인 작성 여부·녹음 재생 URL은 포함하지 않습니다. 바텀시트는 감정 목록 API로 조회합니다.
             첫 페이지에는 minLongitude, minLatitude, maxLongitude, maxLatitude를 전달합니다.
             groupId를 생략하면 전체를 조회하며 지정하면 해당 그룹만 조회합니다. 그룹 가입 여부로 제한하지 않습니다.
             다음 페이지에는 반환된 cursor만 전달합니다. 영역이나 그룹을 바꾸면 첫 페이지부터 다시 조회합니다.
@@ -86,6 +87,7 @@ public interface EmotionControllerApi {
 
     @Operation(summary = "감정 상세 조회", description = """
             감정 정보와 여섯 이모지 코드별 전체 선택 수 및 인증된 기기의 선택 여부를 함께 반환합니다.
+            properties.isMine은 인증된 기기가 작성했는지 나타내며, 수정·삭제의 서버 소유권 검사를 대체하지 않습니다.
             조회 기간 제한은 없으며 삭제되거나 인증된 기기가 차단한 감정·작성자의 감정은 반환하지 않습니다.
             녹음이 있으면 audio.playbackUrl과 audio.expiresAt을 반환합니다. URL 만료 시 상세를 다시 조회합니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))

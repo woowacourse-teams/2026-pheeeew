@@ -21,7 +21,8 @@ public record EmotionDetailView(
         boolean hasAudio,
         PlaybackUrl audio,
         GroupStampResult groupStamp,
-        UUID groupId
+        UUID groupId,
+        boolean isMine
 ) {
 
     public static EmotionDetailView of(Emotion emotion, List<EmotionEmojiResult> emojis) {
@@ -34,11 +35,17 @@ public record EmotionDetailView(
 
     public static EmotionDetailView of(Emotion emotion, List<EmotionEmojiResult> emojis, PlaybackUrl audio,
             GroupStampResult groupStamp) {
+        return of(emotion, emojis, audio, groupStamp, null);
+    }
+
+    public static EmotionDetailView of(Emotion emotion, List<EmotionEmojiResult> emojis, PlaybackUrl audio,
+            GroupStampResult groupStamp, Long viewerDeviceId) {
         return new EmotionDetailView(
                 emotion.getId(), emotion.getLongitude(), emotion.getLatitude(), emotion.getCreatedAt(),
                 emotion.getState(), emotion.getRotationDegrees(), emotion.getMemo(), emotion.getNickname(),
                 List.copyOf(emojis), emotion.getContent().getAudio() != null, audio, groupStamp,
-                emotion.getGroupStamp() == null ? null : emotion.getGroupStamp().getGroup().getPublicId()
+                emotion.getGroupStamp() == null ? null : emotion.getGroupStamp().getGroup().getPublicId(),
+                emotion.getDeviceId() != null && emotion.getDeviceId().equals(viewerDeviceId)
         );
     }
 }

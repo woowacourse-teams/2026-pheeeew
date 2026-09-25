@@ -66,7 +66,7 @@ public class EmotionQueryService {
                 .orElseThrow(() -> new EmotionException(EMOTION_NOT_VISIBLE));
 
         return EmotionDetailView.of(emotion, findEmojis(emotionId, deviceId), issuePlaybackUrl(emotion),
-                emotion.getGroupStamp() == null ? null : GroupStampResult.from(emotion.getGroupStamp()));
+                emotion.getGroupStamp() == null ? null : GroupStampResult.from(emotion.getGroupStamp()), deviceId);
     }
 
     List<EmotionListItemView> findVisiblePageWithinBounds(
@@ -145,7 +145,7 @@ public class EmotionQueryService {
         Map<Long, GroupStampResult> stamps = findStamps(page);
         List<EmotionDetailView> items = page.stream().map(emotion -> EmotionDetailView.of(
                 emotion, List.copyOf(counts.get(emotion.getId()).values()), null,
-                emotion.getGroupStamp() == null ? null : stamps.get(emotion.getGroupStamp().getId()))).toList();
+                emotion.getGroupStamp() == null ? null : stamps.get(emotion.getGroupStamp().getId()), deviceId)).toList();
         String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId())) : null;
         return EmotionPageView.of(items, hasNext, nextCursor);

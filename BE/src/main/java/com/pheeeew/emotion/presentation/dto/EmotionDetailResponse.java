@@ -39,7 +39,9 @@ public record EmotionDetailResponse(
             @Schema(description = "연결된 그룹 스탬프의 현재 모양. 선택하지 않았으면 null입니다.", nullable = true)
             GroupStampResponse groupStamp,
             @Schema(description = "선택한 그룹의 공개 ID. 수정 시 기존 스탬프를 유지하려면 이 값을 보냅니다. 그룹 스탬프가 없으면 null입니다.", nullable = true)
-            UUID groupId
+            UUID groupId,
+            @Schema(description = "인증된 기기가 작성한 감정이면 true입니다. 작성 기기가 없으면 false이며, 수정·삭제 권한은 서버가 별도로 검사합니다.", example = "true")
+            boolean isMine
     ) {
 
         public static Properties from(EmotionDetailView view) {
@@ -49,7 +51,7 @@ public record EmotionDetailResponse(
                     view.hasAudio() ? EmotionContentType.AUDIO
                             : view.memo() == null ? EmotionContentType.NONE : EmotionContentType.MEMO,
                     view.audio(), view.groupStamp() == null ? null : GroupStampResponse.from(view.groupStamp()),
-                    view.groupId()
+                    view.groupId(), view.isMine()
             );
         }
     }
