@@ -48,7 +48,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 )
 class EmotionBlockControllerTest {
 
-    private static final String BLOCKS_URI = "/api/v2/blocks/sighs";
+    private static final String BLOCKS_URI = "/api/v2/blocks/emotions";
     private static final Long EMOTION_ID = 42L;
     private static final Long BLOCK_ID = 7L;
     private static final Instant CREATED_AT = Instant.parse("2026-09-14T02:44:00Z");
@@ -93,7 +93,7 @@ class EmotionBlockControllerTest {
     }
 
     @Test
-    void 이미_차단한_한숨을_다시_차단하면_200과_최초_차단을_반환한다() {
+    void 이미_차단한_감정을_다시_차단하면_200과_최초_차단을_반환한다() {
         // given
         when(emotionBlockService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenReturn(BlockSaveResult.of(기본_차단_결과(), false));
@@ -110,7 +110,7 @@ class EmotionBlockControllerTest {
 
     @ParameterizedTest
     @MethodSource("올바르지_않은_차단_요청들")
-    void 차단_대상_한숨_식별자가_올바르지_않으면_400을_반환한다(String body) {
+    void 차단_대상_감정_식별자가_올바르지_않으면_400을_반환한다(String body) {
         // given / when
         RestTestClient.ResponseSpec result = 차단한다(body);
 
@@ -120,7 +120,7 @@ class EmotionBlockControllerTest {
     }
 
     @Test
-    void 차단할_한숨이_없으면_404를_반환한다() {
+    void 차단할_감정이_없으면_404를_반환한다() {
         // given
         when(emotionBlockService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND));
@@ -129,7 +129,7 @@ class EmotionBlockControllerTest {
         RestTestClient.ResponseSpec result = 차단한다(기본_차단_요청());
 
         // then
-        오류를_검증한다(result, 404, "SIGH-002", "한숨을 찾을 수 없습니다.");
+        오류를_검증한다(result, 404, "EMOTION-011", "감정을 찾을 수 없습니다.");
     }
 
     @Test
@@ -209,7 +209,7 @@ class EmotionBlockControllerTest {
     void 차단을_해제하면_204와_빈_본문을_반환한다() {
         // given / when
         RestTestClient.ResponseSpec result = client.delete()
-                .uri(BLOCKS_URI + "/{sighId}", EMOTION_ID)
+                .uri(BLOCKS_URI + "/{emotionId}", EMOTION_ID)
                 .exchange();
 
         // then
@@ -220,10 +220,10 @@ class EmotionBlockControllerTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"not-a-number", "4.2"})
-    void 해제할_한숨_식별자_형식이_올바르지_않으면_400을_반환한다(String emotionId) {
+    void 해제할_감정_식별자_형식이_올바르지_않으면_400을_반환한다(String emotionId) {
         // given / when
         RestTestClient.ResponseSpec result = client.delete()
-                .uri(BLOCKS_URI + "/{sighId}", emotionId)
+                .uri(BLOCKS_URI + "/{emotionId}", emotionId)
                 .exchange();
 
         // then
@@ -264,14 +264,14 @@ class EmotionBlockControllerTest {
 
     private String 기본_차단_요청() {
         return """
-                {"sighId": 42}
+                {"emotionId": 42}
                 """;
     }
 
     private String 기본_차단_응답() {
         return """
                 {
-                  "sighId": 42,
+                  "emotionId": 42,
                   "nickname": "날아가는 고라니",
                   "memo": "오늘은 조금 지쳤다",
                   "createdAt": "2026-09-14T02:44:00Z"
@@ -283,16 +283,19 @@ class EmotionBlockControllerTest {
         return Stream.of(
                 "{}",
                 """
-                        {"sighId": null}
+                        {"emotionId": null}
                         """,
                 """
-                        {"sighId": 0}
+                        {"emotionId": 0}
                         """,
                 """
-                        {"sighId": -1}
+                        {"emotionId": -1}
                         """,
                 """
-                        {"sighId": "마흔둘"}
+                        {"emotionId": "마흔둘"}
+                        """,
+                """
+                        {"sighId": 42}
                         """
         );
     }

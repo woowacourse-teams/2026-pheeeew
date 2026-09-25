@@ -17,6 +17,7 @@ import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.report.application.dto.EmotionReportResult;
 import com.pheeeew.report.domain.EmotionReport;
+import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
 import com.pheeeew.report.exception.EmotionReportErrorCode;
 import com.pheeeew.report.exception.EmotionReportException;
@@ -58,6 +59,12 @@ class EmotionReportServiceIntegrationTest {
     private EmotionReportRepository emotionReportRepository;
 
     @Autowired
+    private EmotionBlockService emotionBlockService;
+
+    @Autowired
+    private EmotionBlockRepository emotionBlockRepository;
+
+    @Autowired
     private EmotionRepository emotionRepository;
 
     @Autowired
@@ -68,6 +75,7 @@ class EmotionReportServiceIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        emotionBlockRepository.deleteAll();
         emotionReportRepository.deleteAll();
         emotionRepository.deleteAll();
         deviceRepository.deleteAll();
@@ -89,6 +97,52 @@ class EmotionReportServiceIntegrationTest {
         assertThat(emotionReportRepository.findByEmotionIdAndReporterDeviceId(emotionId, device.getId()))
                 .isPresent();
         assertThat(emotionReportRepository.count()).isOne();
+    }
+
+    @Test
+    void 삭제된_감정에도_새_신고를_저장하고_기존_신고는_최초_결과를_반환한다() {
+        // given
+        Long emotionId = insertEmotion();
+        Device 기존_신고자 = insertDevice();
+        Device 새_신고자 = insertDevice();
+        EmotionReportResult 최초 = emotionReportService.save(emotionId, 기존_신고자.getPublicId(), 기본_신고_사유());
+        jdbcClient.sql("UPDATE emotions SET deleted_at = NOW() WHERE id = :id")
+                .param("id", emotionId)
+                .update();
+
+        // when
+        EmotionReportResult 새_신고 = emotionReportService.save(emotionId, 새_신고자.getPublicId(), "새 신고 사유");
+        EmotionReportResult 재요청 = emotionReportService.save(emotionId, 기존_신고자.getPublicId(), "변경된 사유");
+
+        // then
+        assertThat(새_신고.created()).isTrue();
+        assertThat(새_신고.id()).isNotEqualTo(최초.id());
+        assertThat(재요청.created()).isFalse();
+        assertThat(재요청.id()).isEqualTo(최초.id());
+        assertThat(재요청.reason()).isEqualTo(기본_신고_사유());
+        assertThat(emotionReportRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void 신고_후_감정을_차단해도_새_신고와_기존_신고_재요청을_받는다() {
+        // given
+        Long emotionId = insertEmotion();
+        Device 기존_신고자 = insertDevice();
+        Device 차단자 = insertDevice();
+        EmotionReportResult 최초 = emotionReportService.save(emotionId, 기존_신고자.getPublicId(), 기본_신고_사유());
+        emotionBlockService.save(emotionId, 차단자.getPublicId());
+
+        // when
+        EmotionReportResult 새_신고 = emotionReportService.save(emotionId, 차단자.getPublicId(), "새 신고 사유");
+        EmotionReportResult 재요청 = emotionReportService.save(emotionId, 기존_신고자.getPublicId(), "변경된 사유");
+
+        // then
+        assertThat(새_신고.created()).isTrue();
+        assertThat(재요청.created()).isFalse();
+        assertThat(재요청.id()).isEqualTo(최초.id());
+        assertThat(재요청.reason()).isEqualTo(기본_신고_사유());
+        assertThat(emotionReportRepository.count()).isEqualTo(2);
+        assertThat(emotionBlockRepository.count()).isOne();
     }
 
     @Test
@@ -191,7 +245,7 @@ class EmotionReportServiceIntegrationTest {
     }
 
     @Test
-    void 존재하지_않는_한숨을_신고하면_한숨_없음_예외가_발생한다() {
+    void 존재하지_않는_감정을_신고하면_감정_없음_예외가_발생한다() {
         // given
         Device device = insertDevice();
 
@@ -203,7 +257,7 @@ class EmotionReportServiceIntegrationTest {
         // then
         assertThat(throwable)
                 .isInstanceOf(EmotionException.class)
-                .hasMessage("한숨을 찾을 수 없습니다.");
+                .hasMessage("감정을 찾을 수 없습니다.");
         assertThat(((EmotionException) throwable).getErrorCode())
                 .isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND);
         assertThat(emotionReportRepository.count()).isZero();

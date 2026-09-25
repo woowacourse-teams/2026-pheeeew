@@ -72,7 +72,7 @@ class EmotionReportControllerTest {
     }
 
     @Test
-    void 한숨을_최초로_신고하면_201과_신고_정보를_반환한다() {
+    void 감정을_최초로_신고하면_201과_신고_정보를_반환한다() {
         // given
         when(emotionReportService.save(EMOTION_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenReturn(EmotionReportResult.of(저장된_기본_신고(REPORT_ID, CREATED_AT), true));
@@ -89,7 +89,7 @@ class EmotionReportControllerTest {
     }
 
     @Test
-    void 이미_신고한_한숨을_다시_신고하면_200과_최초_신고를_반환한다() {
+    void 이미_신고한_감정을_다시_신고하면_200과_최초_신고를_반환한다() {
         // given
         String 다시_보낸_사유 = "나중에 바꾼 사유입니다";
         when(emotionReportService.save(EMOTION_ID, 신고자_기기_공개_식별자(), 다시_보낸_사유))
@@ -97,7 +97,7 @@ class EmotionReportControllerTest {
 
         // when
         RestTestClient.ResponseSpec result = 신고한다("""
-                {"sighId": 42, "reason": "나중에 바꾼 사유입니다"}
+                {"emotionId": 42, "reason": "나중에 바꾼 사유입니다"}
                 """);
 
         // then
@@ -116,7 +116,7 @@ class EmotionReportControllerTest {
 
         // when
         RestTestClient.ResponseSpec result = 신고한다("""
-                {"sighId": 42, "deviceId": "%s", "reason": "광고성 게시물입니다"}
+                {"emotionId": 42, "deviceId": "%s", "reason": "광고성 게시물입니다"}
                 """.formatted(사칭하려는_기기));
 
         // then
@@ -139,7 +139,7 @@ class EmotionReportControllerTest {
 
     @ParameterizedTest
     @MethodSource("올바르지_않은_요청_본문들")
-    void 한숨_식별자나_신고_사유가_올바르지_않으면_400을_반환한다(String body) {
+    void 감정_식별자나_신고_사유가_올바르지_않으면_400을_반환한다(String body) {
         // given / when
         RestTestClient.ResponseSpec result = 신고한다(body);
 
@@ -161,7 +161,7 @@ class EmotionReportControllerTest {
     }
 
     @Test
-    void 신고할_한숨이_없으면_404를_반환한다() {
+    void 신고할_감정이_없으면_404를_반환한다() {
         // given
         when(emotionReportService.save(EMOTION_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND));
@@ -170,7 +170,20 @@ class EmotionReportControllerTest {
         RestTestClient.ResponseSpec result = 신고한다(기본_신고_본문());
 
         // then
-        오류를_검증한다(result, 404, "SIGH-002", "한숨을 찾을 수 없습니다.");
+        오류를_검증한다(result, 404, "EMOTION-011", "감정을 찾을 수 없습니다.");
+    }
+
+    @Test
+    void 자기_감정을_신고하면_409를_반환한다() {
+        // given
+        when(emotionReportService.save(EMOTION_ID, 신고자_기기_공개_식별자(), 기본_신고_사유()))
+                .thenThrow(new EmotionReportException(EmotionReportErrorCode.EMOTION_REPORT_SELF_NOT_ALLOWED));
+
+        // when
+        RestTestClient.ResponseSpec result = 신고한다(기본_신고_본문());
+
+        // then
+        오류를_검증한다(result, 409, "REPORT-002", "자기 감정은 신고할 수 없습니다.");
     }
 
     @Test
@@ -212,7 +225,7 @@ class EmotionReportControllerTest {
 
     private String 기본_신고_본문() {
         return """
-                {"sighId": 42, "reason": "광고성 게시물입니다"}
+                {"emotionId": 42, "reason": "광고성 게시물입니다"}
                 """;
     }
 
@@ -220,7 +233,7 @@ class EmotionReportControllerTest {
         return """
                 {
                   "id": 7,
-                  "sighId": 42,
+                  "emotionId": 42,
                   "reason": "광고성 게시물입니다",
                   "createdAt": "2026-09-01T02:44:00Z"
                 }
@@ -233,23 +246,26 @@ class EmotionReportControllerTest {
                         {"reason": "광고성 게시물입니다"}
                         """,
                 """
-                        {"sighId": 0, "reason": "광고성 게시물입니다"}
+                        {"emotionId": 0, "reason": "광고성 게시물입니다"}
                         """,
                 """
-                        {"sighId": "마흔둘", "reason": "광고성 게시물입니다"}
+                        {"emotionId": "마흔둘", "reason": "광고성 게시물입니다"}
                         """,
                 """
-                        {"sighId": 42}
+                        {"emotionId": 42}
                         """,
                 """
-                        {"sighId": 42, "reason": ""}
+                        {"emotionId": 42, "reason": ""}
                         """,
                 """
-                        {"sighId": 42, "reason": "   "}
+                        {"emotionId": 42, "reason": "   "}
                         """,
                 """
-                        {"sighId": 42, "reason": "%s"}
-                        """.formatted(신고_사유(201))
+                        {"emotionId": 42, "reason": "%s"}
+                        """.formatted(신고_사유(201)),
+                """
+                        {"sighId": 42, "reason": "광고성 게시물입니다"}
+                        """
         );
     }
 }

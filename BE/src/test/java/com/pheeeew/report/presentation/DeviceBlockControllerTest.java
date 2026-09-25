@@ -118,7 +118,7 @@ class DeviceBlockControllerTest {
     }
 
     @Test
-    void 작성자를_알_수_없는_한숨으로_차단하면_409를_반환한다() {
+    void 작성자를_알_수_없는_감정으로_차단하면_409를_반환한다() {
         // given
         when(deviceBlockService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenThrow(new BlockException(BlockErrorCode.BLOCK_AUTHOR_UNKNOWN));
@@ -131,12 +131,12 @@ class DeviceBlockControllerTest {
                 result,
                 409,
                 "BLOCK-003",
-                "작성자를 알 수 없는 한숨은 사용자 차단을 할 수 없습니다."
+                "작성자를 알 수 없는 감정은 사용자 차단을 할 수 없습니다."
         );
     }
 
     @Test
-    void 차단할_한숨이_없으면_404를_반환한다() {
+    void 차단할_감정이_없으면_404를_반환한다() {
         // given
         when(deviceBlockService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND));
@@ -145,13 +145,25 @@ class DeviceBlockControllerTest {
         RestTestClient.ResponseSpec result = 차단한다(기본_차단_요청());
 
         // then
-        오류를_검증한다(result, 404, "SIGH-002", "한숨을 찾을 수 없습니다.");
+        오류를_검증한다(result, 404, "EMOTION-011", "감정을 찾을 수 없습니다.");
     }
 
     @Test
-    void 차단_대상_한숨_식별자가_없으면_400을_반환한다() {
+    void 차단_대상_감정_식별자가_없으면_400을_반환한다() {
         // given / when
         RestTestClient.ResponseSpec result = 차단한다("{}");
+
+        // then
+        오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
+        verifyNoInteractions(deviceBlockService);
+    }
+
+    @Test
+    void 이전_한숨_식별자_필드로_차단하면_400을_반환한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = 차단한다("""
+                {"sighId": 42}
+                """);
 
         // then
         오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
@@ -172,7 +184,7 @@ class DeviceBlockControllerTest {
     }
 
     @Test
-    void 차단_목록은_차단_식별자와_근거_한숨을_함께_반환한다() {
+    void 차단_목록은_차단_식별자와_근거_감정을_함께_반환한다() {
         // given
         when(deviceBlockService.findAll(기기_공개_식별자, "opaque-cursor"))
                 .thenReturn(BlockListResult.of(List.of(기본_차단_결과()), true, "next-cursor"));
@@ -212,7 +224,7 @@ class DeviceBlockControllerTest {
     }
 
     @Test
-    void 차단을_해제할_때는_한숨_식별자가_아니라_차단_식별자를_서비스에_넘긴다() {
+    void 차단을_해제할_때는_감정_식별자가_아니라_차단_식별자를_서비스에_넘긴다() {
         // given / when
         RestTestClient.ResponseSpec result = client.delete()
                 .uri(BLOCKS_URI + "/{blockId}", BLOCK_ID)
@@ -257,7 +269,7 @@ class DeviceBlockControllerTest {
 
     private String 기본_차단_요청() {
         return """
-                {"sighId": 42}
+                {"emotionId": 42}
                 """;
     }
 
@@ -265,7 +277,7 @@ class DeviceBlockControllerTest {
         return """
                 {
                   "blockId": 7,
-                  "sighId": 42,
+                  "emotionId": 42,
                   "nickname": "날아가는 고라니",
                   "memo": "오늘은 조금 지쳤다",
                   "createdAt": "2026-09-14T02:44:00Z"

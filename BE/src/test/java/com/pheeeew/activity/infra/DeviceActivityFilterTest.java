@@ -74,8 +74,8 @@ class DeviceActivityFilterTest {
     @ParameterizedTest
     @CsvSource({"GET,/api/v1/emotions,200", "POST,/api/v1/emotions,200", "GET,/api/v1/emotions/1,200",
             "PUT,/api/v1/emotions/1/emojis/HEART,204", "DELETE,/api/v1/emotions/1/emojis/HEART,204",
-            "POST,/api/v2/reports,201", "GET,/api/v2/blocks/sighs,200", "POST,/api/v2/blocks/devices,201",
-            "DELETE,/api/v2/blocks/sighs/1,204", "DELETE,/api/v2/blocks/devices/1,204"})
+            "POST,/api/v2/reports,201", "GET,/api/v2/blocks/emotions,200", "POST,/api/v2/blocks/devices,201",
+            "DELETE,/api/v2/blocks/emotions/1,204", "DELETE,/api/v2/blocks/devices/1,204"})
     void 빈_조회와_쓰기_성공은_인증된_기기와_요청_시각으로_기록한다(String method, String path, int status) {
         // given / when
         client.method(HttpMethod.valueOf(method))
