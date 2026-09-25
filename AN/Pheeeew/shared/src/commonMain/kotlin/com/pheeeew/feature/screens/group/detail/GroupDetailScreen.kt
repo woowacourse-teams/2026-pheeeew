@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.feature.screens.group.detail.component.GroupDetailNoticeSnackbar
 import com.pheeeew.feature.screens.group.detail.component.InviteCodeDialog
 import com.pheeeew.feature.screens.group.detail.component.LeaveGroupDialog
 import org.jetbrains.compose.resources.painterResource
@@ -116,19 +117,14 @@ fun GroupDetailScreen(
                     GroupDetailNoticeKind.CopyFailed -> stringResource(Res.string.group_detail_copy_failed)
                     GroupDetailNoticeKind.EmotionUnavailable -> stringResource(Res.string.group_detail_emotion_failed)
                 }
-            Text(
-                text = message,
+            GroupDetailNoticeSnackbar(
+                message = message,
+                kind = notice.kind,
+                onDismiss = { actions.onNoticeDismissed(notice.operationKey) },
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(horizontal = 20.dp, vertical = 18.dp)
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(AppColors.GroupInk)
-                        .clickable(role = Role.Button) { actions.onNoticeDismissed(notice.operationKey) }
-                        .padding(horizontal = 18.dp, vertical = 12.dp),
-                color = Color.White,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center,
+                        .padding(start = 24.dp, end = 24.dp, bottom = 24.dp),
             )
         }
     }
