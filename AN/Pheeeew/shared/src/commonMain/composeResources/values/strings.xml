@@ -69,4 +69,20 @@
     <string name="group_create_failure_unknown">요청 결과를 확인할 수 없어요.\n그룹 목록에서 확인해 주세요.</string>
     <string name="group_create_failure_retry">다시 만들기</string>
     <string name="group_create_failure_close">닫기</string>
+    <string name="group_join_title">초대코드 참여</string>
+    <string name="group_join_description">받은 코드를 입력해 주세요.</string>
+    <string name="group_join_code_placeholder">초대 코드를 입력해 주세요</string>
+    <string name="group_join_search">그룹찾기</string>
+    <string name="group_join_searching">그룹을 찾는 중이에요.</string>
+    <string name="group_join_join">그룹에 참여하기</string>
+    <string name="group_join_joining">참여 중이에요.</string>
+    <string name="group_join_hint">초대코드가 있어야 그룹에 참여할 수 있어요.</string>
+    <string name="group_join_member_count">멤버 %1$d명</string>
+    <string name="group_join_close">참여 시트 닫기</string>
+    <string name="group_join_not_found">코드에 해당하는 그룹이 없어요.</string>
+    <string name="group_join_lookup_failure">그룹을 찾지 못했어요. 연결 상태를 확인하고 다시 시도해 주세요.</string>
+    <string name="group_join_failure_rejected">그룹에 참여할 수 없어요. 다시 확인해 주세요.</string>
+    <string name="group_join_failure_unavailable">참여하지 못했어요. 연결 상태를 확인하고 다시 시도해 주세요.</string>
+    <string name="group_join_failure_outcome_unknown">참여 결과를 확인할 수 없어요. 그룹 목록에서 확인해 주세요.</string>
+    <string name="group_join_verify_membership">그룹 목록에서 확인하기</string>
 </resources>
