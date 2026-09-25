@@ -9,6 +9,7 @@ import static com.pheeeew.groups.fixture.GroupFixture.기본_그룹_빌더;
 import static com.pheeeew.groups.fixture.GroupFixture.기본_스탬프_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -100,6 +101,24 @@ class EmotionQueryServiceIntegrationTest {
                 .nickname("먼지구름")
                 .deviceId(author.getId())
                 .build());
+    }
+
+    @Test
+    void 상세는_인증된_작성_기기만_본인으로_판별하고_작성_기기가_없으면_타인으로_본다() {
+        // given
+        Emotion withoutAuthor = emotionRepository.save(기본_한숨_빌더()
+                .state(EmotionState.FRUSTRATED)
+                .build());
+
+        // when
+        EmotionDetailView authorView = emotionQueryService.findById(emotion.getId(), author.getPublicId());
+        EmotionDetailView otherView = emotionQueryService.findById(emotion.getId(), viewer.getPublicId());
+        EmotionDetailView withoutAuthorView = emotionQueryService.findById(withoutAuthor.getId(), viewer.getPublicId());
+
+        // then
+        assertThat(authorView.isMine()).isTrue();
+        assertThat(otherView.isMine()).isFalse();
+        assertThat(withoutAuthorView.isMine()).isFalse();
     }
 
     @Test
@@ -414,6 +433,30 @@ class EmotionQueryServiceIntegrationTest {
         assertThat(result).extracting(EmotionListItemView::id).containsExactly(west.getId(), east.getId());
         assertThat(emotionQueryService.findFirstMapPage(EmotionSearchBounds.of(170, -10, -170, 10),
                 viewer.getPublicId(), null).items()).extracting(EmotionMapItemView::id).containsExactly(west.getId(), east.getId());
+    }
+
+    @Test
+    void 목록은_혼합된_감정마다_인증된_작성_기기_여부를_계산한다() {
+        // given
+        Emotion viewerEmotion = saveEmotion(viewer.getId(), 126.9774, 37.5669);
+        Emotion withoutAuthor = saveEmotion(null, 126.9774, 37.5669);
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+
+        // when
+        List<EmotionDetailView> authorItems = emotionQueryService.findFirstListPage(bounds, author.getPublicId()).items();
+        List<EmotionDetailView> viewerItems = emotionQueryService.findFirstListPage(bounds, viewer.getPublicId()).items();
+
+        // then
+        assertThat(authorItems).extracting(EmotionDetailView::id, EmotionDetailView::isMine)
+                .containsExactlyInAnyOrder(
+                        tuple(emotion.getId(), true),
+                        tuple(viewerEmotion.getId(), false),
+                        tuple(withoutAuthor.getId(), false));
+        assertThat(viewerItems).extracting(EmotionDetailView::id, EmotionDetailView::isMine)
+                .containsExactlyInAnyOrder(
+                        tuple(emotion.getId(), false),
+                        tuple(viewerEmotion.getId(), true),
+                        tuple(withoutAuthor.getId(), false));
     }
 
     @Test
