@@ -135,7 +135,7 @@ class GroupPersistenceIntegrationTest {
     void 스탬프_틀은_이름_그대로_저장된다() {
         // given
         Group 그룹 = groupRepository.saveAndFlush(기본_그룹_빌더().build());
-        groupStampRepository.saveAndFlush(기본_스탬프_빌더(그룹).frame(StampFrame.RIBBON).build());
+        groupStampRepository.saveAndFlush(기본_스탬프_빌더(그룹).frame(StampFrame.VOUCHER).build());
 
         // when
         String 저장된_틀 = jdbcClient.sql("SELECT frame FROM group_stamps WHERE group_id = ?")
@@ -144,7 +144,7 @@ class GroupPersistenceIntegrationTest {
                 .single();
 
         // then
-        assertThat(저장된_틀).isEqualTo("RIBBON");
+        assertThat(저장된_틀).isEqualTo("VOUCHER");
     }
 
     @Test

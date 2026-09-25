@@ -81,7 +81,7 @@ class GroupServiceIntegrationTest {
         assertThat(결과.role()).isEqualTo(GroupRole.OWNER);
         assertThat(결과.memberCount()).isOne();
         assertThat(결과.stamp().text()).isEqualTo("기본");
-        assertThat(결과.stamp().frame()).isEqualTo(StampFrame.RIBBON);
+        assertThat(결과.stamp().frame()).isEqualTo(StampFrame.VOUCHER);
     }
 
     @Test
@@ -250,7 +250,7 @@ class GroupServiceIntegrationTest {
         assertThat(결과.name()).isEqualTo("바뀐모임");
         assertThat(결과.description()).isEqualTo("새 설명");
         assertThat(결과.stamp().text()).isEqualTo("변경");
-        assertThat(결과.stamp().frame()).isEqualTo(StampFrame.RIBBON);
+        assertThat(결과.stamp().frame()).isEqualTo(StampFrame.VOUCHER);
     }
 
     @Test
@@ -388,7 +388,7 @@ class GroupServiceIntegrationTest {
     }
 
     private GroupStampCommand 스탬프(String text) {
-        return GroupStampCommand.of(text, "#000000", "#FFFFFFAA", StampFrame.RIBBON);
+        return GroupStampCommand.of(text, "#000000", "#FFFFFFAA", StampFrame.VOUCHER);
     }
 
     private void 멤버로_넣는다(UUID groupPublicId, Device device) {
