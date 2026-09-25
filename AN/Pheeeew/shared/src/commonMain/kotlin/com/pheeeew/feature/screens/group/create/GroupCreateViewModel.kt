@@ -61,7 +61,8 @@ class GroupCreateViewModel(
             return
         }
 
-        val errors = formRules.validate(current.draft)
+        val normalizedDraft = current.draft.normalizedForSubmission()
+        val errors = formRules.validate(normalizedDraft)
         if (errors.hasErrors) {
             _uiState.update { state ->
                 if (state.submission == GroupCreateSubmissionState.Editing &&
