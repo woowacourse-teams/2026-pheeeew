@@ -4,7 +4,7 @@ import com.pheeeew.feature.screens.group.home.GroupListResult
 import com.pheeeew.feature.screens.group.home.GroupListSource
 import kotlinx.coroutines.delay
 
-/** Preview·개발 host가 조회 결과와 지연 시간을 선택하는 공급 구현입니다. */
+/** 그룹 목록 상태 검증에서 다양한 응답과 지연 시간을 제공하는 fake입니다. */
 class ScenarioGroupListSource(
     private val scenario: GroupListScenario = GroupListScenario.Groups,
     private val delayMillis: Long = 0L,
