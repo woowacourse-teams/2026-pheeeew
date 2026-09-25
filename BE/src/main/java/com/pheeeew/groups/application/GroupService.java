@@ -13,19 +13,29 @@ import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_OWNER_ONLY;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.groups.application.dto.GroupDetailResult;
+import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupPreviewResult;
+import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupMember;
 import com.pheeeew.groups.domain.GroupRole;
+import com.pheeeew.groups.domain.GroupDailyPress;
 import com.pheeeew.groups.domain.GroupStamp;
+import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.exception.GroupException;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -44,8 +54,11 @@ public class GroupService {
     private final GroupRepository groupRepository;
     private final GroupStampRepository groupStampRepository;
     private final GroupMemberRepository groupMemberRepository;
+    private final GroupDailyPressRepository groupDailyPressRepository;
+    private final GroupRankingService groupRankingService;
     private final DeviceRepository deviceRepository;
     private final InviteCodeGenerator inviteCodeGenerator;
+    private final Clock clock;
 
     @Transactional
     public GroupResult save(UUID devicePublicId, String name, String description, GroupStampCommand stampCommand) {
@@ -85,11 +98,29 @@ public class GroupService {
         );
     }
 
-    public GroupResult findOne(UUID groupPublicId, UUID devicePublicId) {
+    public GroupDetailResult findOne(UUID groupPublicId, UUID devicePublicId) {
         Group group = findGroup(groupPublicId);
         GroupMember member = requireMember(group, devicePublicId);
+        GroupRankingItem ranked = groupRankingService.findGroupRanking(0).items().stream()
+                .filter(item -> item.groupPublicId().equals(groupPublicId))
+                .findFirst()
+                .orElse(null);
 
-        return toResult(group, member.getRole());
+        return GroupDetailResult.of(
+                toResult(group, member.getRole()),
+                todayPresses(group),
+                ranked == null ? 0 : ranked.score(),
+                ranked == null ? null : ranked.rank()
+        );
+    }
+
+    @Transactional
+    public GroupPressCountResult press(UUID groupPublicId, UUID devicePublicId, EmotionState state) {
+        Group group = findGroup(groupPublicId);
+        requireMember(group, devicePublicId);
+        groupDailyPressRepository.increase(group.getId(), LocalDate.now(clock), state.name(), clock.instant());
+
+        return todayPresses(group);
     }
 
     @Transactional
@@ -167,6 +198,20 @@ public class GroupService {
         }
 
         group.delete(Instant.now());
+    }
+
+    private GroupPressCountResult todayPresses(Group group) {
+        Map<EmotionState, Long> counts = new EnumMap<>(EmotionState.class);
+        for (EmotionState state : EmotionState.values()) {
+            counts.put(state, 0L);
+        }
+        List<GroupDailyPress> pressed = groupDailyPressRepository
+                .findByGroupIdAndPressDate(group.getId(), LocalDate.now(clock));
+        for (GroupDailyPress press : pressed) {
+            counts.put(press.getState(), press.getPressCount());
+        }
+
+        return GroupPressCountResult.from(counts);
     }
 
     private Device findDevice(UUID devicePublicId) {
