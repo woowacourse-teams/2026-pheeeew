@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.create.model.StampColorSelection
 import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
+import com.pheeeew.feature.screens.group.create.model.StampTextColorOption
+import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import kotlinx.coroutines.CancellationException
@@ -21,6 +23,8 @@ class GroupCreateViewModel(
     private val operationKeyAllocator: GroupOperationKeyAllocator,
     val formRules: GroupFormRules = GroupFormRules(),
     private val requestPolicy: CreateRequestPolicy = CreateRequestPolicy(),
+    private val findCandidatesAction: FindGroupCreateCandidatesAction =
+        FindGroupCreateCandidatesAction { GroupCreateCandidatesResult.Unavailable },
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(GroupCreateUiState())
     val uiState = _uiState.asStateFlow()
@@ -51,6 +55,10 @@ class GroupCreateViewModel(
 
     fun onStampShapeChanged(shape: StampShapeId) {
         updateDraft { draft -> draft.copy(stamp = draft.stamp.copy(shape = shape)) }
+    }
+
+    fun onStampTextColorChanged(color: StampTextColorOption) {
+        updateDraft { draft -> draft.copy(stamp = draft.stamp.copy(textArgb = color.argb)) }
     }
 
     fun onCreateClick() {
@@ -117,8 +125,87 @@ class GroupCreateViewModel(
     fun onRetryFailure() {
         val current = _uiState.value
         val failed = current.submission as? GroupCreateSubmissionState.Failed ?: return
+        if (failed.reason == GroupCreateFailure.OutcomeUnknown ||
+            failed.reason == GroupCreateFailure.RateLimited
+        ) {
+            return
+        }
         if (current.colorSheet !is StampColorSheetState.Closed) return
 
+        submitDraft(
+            draft = current.draft.normalizedForSubmission(),
+            expectedSubmission = failed,
+        )
+    }
+
+    /** Reads current memberships before offering any retry for an uncertain create. */
+    fun onCheckGroupsAfterUnknownOutcome() {
+        val current = _uiState.value
+        val failed = current.submission as? GroupCreateSubmissionState.Failed ?: return
+        if (failed.reason != GroupCreateFailure.OutcomeUnknown || failed.operationKey == null) return
+        if (current.recovery == GroupCreateRecoveryState.Checking) return
+
+        _uiState.update { state ->
+            if (state.submission == failed) state.copy(recovery = GroupCreateRecoveryState.Checking) else state
+        }
+        if (_uiState.value.recovery != GroupCreateRecoveryState.Checking) return
+
+        viewModelScope.launch {
+            val result =
+                try {
+                    findCandidatesAction.findCandidates(current.draft.name.trim())
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (exception: Exception) {
+                    errorReporter.reportUnexpected(exception)
+                    GroupCreateCandidatesResult.Unavailable
+                }
+
+            _uiState.update { state ->
+                if (state.submission != failed || state.recovery != GroupCreateRecoveryState.Checking) {
+                    return@update state
+                }
+                state.copy(
+                    recovery =
+                        when (result) {
+                            is GroupCreateCandidatesResult.Loaded -> {
+                                GroupCreateRecoveryState.Loaded(result.candidates.distinctBy { it.groupId })
+                            }
+
+                            GroupCreateCandidatesResult.Unavailable -> {
+                                GroupCreateRecoveryState.Unavailable
+                            }
+                        },
+                )
+            }
+        }
+    }
+
+    /** A user-selected candidate becomes the completion target; its ID is never inferred. */
+    fun onSelectRecoveryCandidate(groupId: GroupId) {
+        _uiState.update { state ->
+            val failed = state.submission as? GroupCreateSubmissionState.Failed ?: return@update state
+            if (failed.reason != GroupCreateFailure.OutcomeUnknown) return@update state
+            val operationKey = failed.operationKey ?: return@update state
+            val candidates = (state.recovery as? GroupCreateRecoveryState.Loaded)?.candidates ?: return@update state
+            val candidate = candidates.firstOrNull { it.groupId == groupId } ?: return@update state
+            state.copy(
+                submission = GroupCreateSubmissionState.Succeeded(operationKey, candidate.groupId),
+                recovery = GroupCreateRecoveryState.Idle,
+            )
+        }
+    }
+
+    /** A deliberate second POST is available only after a successful membership re-read. */
+    fun onRetryUnknownCreation() {
+        val current = _uiState.value
+        val failed = current.submission as? GroupCreateSubmissionState.Failed ?: return
+        if (failed.reason != GroupCreateFailure.OutcomeUnknown ||
+            current.recovery !is GroupCreateRecoveryState.Loaded ||
+            current.colorSheet !is StampColorSheetState.Closed
+        ) {
+            return
+        }
         submitDraft(
             draft = current.draft.normalizedForSubmission(),
             expectedSubmission = failed,
@@ -170,12 +257,27 @@ class GroupCreateViewModel(
                         )
                     }
 
+                    CreateGroupResult.InvalidInput -> {
+                        state.copy(submission = GroupCreateSubmissionState.Failed(GroupCreateFailure.InvalidInput))
+                    }
+
+                    CreateGroupResult.RateLimited -> {
+                        state.copy(submission = GroupCreateSubmissionState.Failed(GroupCreateFailure.RateLimited))
+                    }
+
                     CreateGroupResult.Unavailable -> {
                         state.copy(submission = GroupCreateSubmissionState.Failed(GroupCreateFailure.Unavailable))
                     }
 
                     CreateGroupResult.OutcomeUnknown -> {
-                        state.copy(submission = GroupCreateSubmissionState.Failed(GroupCreateFailure.OutcomeUnknown))
+                        state.copy(
+                            submission =
+                                GroupCreateSubmissionState.Failed(
+                                    reason = GroupCreateFailure.OutcomeUnknown,
+                                    operationKey = operationKey,
+                                ),
+                            recovery = GroupCreateRecoveryState.Idle,
+                        )
                     }
                 }
             }
@@ -185,7 +287,10 @@ class GroupCreateViewModel(
     fun onDismissFailure() {
         _uiState.update { state ->
             if (state.submission is GroupCreateSubmissionState.Failed) {
-                state.copy(submission = GroupCreateSubmissionState.Editing)
+                state.copy(
+                    submission = GroupCreateSubmissionState.Editing,
+                    recovery = GroupCreateRecoveryState.Idle,
+                )
             } else {
                 state
             }
@@ -312,6 +417,7 @@ class GroupCreateViewModel(
                 draft = transform(state.draft),
                 fieldErrors = clearError(state.fieldErrors),
                 submission = GroupCreateSubmissionState.Editing,
+                recovery = GroupCreateRecoveryState.Idle,
             )
         }
     }

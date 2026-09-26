@@ -1,10 +1,10 @@
 package com.pheeeew.feature.screens.group.create
 
-/** Figma를 기준으로 한 임시 입력 한도입니다. 서버 정책이나 사용자 인지 글자 수를 뜻하지 않습니다. */
+/** API 계약의 이름·설명·스탬프 길이 제한을 적용합니다. 문자열 길이는 Unicode code point 기준입니다. */
 data class GroupFormRules(
-    val groupNameMin: Int = 1,
+    val groupNameMin: Int = 2,
     val groupNameMax: Int = 10,
-    val descriptionMax: Int = 20,
+    val descriptionMax: Int = 100,
     val stampLabelMin: Int = 2,
     val stampLabelMax: Int = 4,
 ) {
