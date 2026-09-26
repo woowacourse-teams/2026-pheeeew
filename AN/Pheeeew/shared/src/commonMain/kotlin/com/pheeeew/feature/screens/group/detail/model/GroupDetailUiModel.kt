@@ -73,12 +73,14 @@ data class GroupDetailUiModel(
     val group: GroupSummaryUiModel,
     val emotionCounts: List<EmotionCountUiModel>,
     val todayTotal: Long,
+    val weeklyScore: Long,
     val rank: GroupRankUiModel,
     val inviteCode: String,
     val presentation: GroupDetailPresentationUiModel,
 ) {
     init {
         require(todayTotal >= 0L) { "오늘 횟수는 음수일 수 없습니다." }
+        require(weeklyScore >= 0L) { "이번 주 점수는 음수일 수 없습니다." }
         require(inviteCode.isNotBlank()) { "초대코드는 비어 있을 수 없습니다." }
         require(emotionCounts.size == EmotionKind.entries.size) { "감정 횟수는 다섯 종류여야 합니다." }
         require(emotionCounts.map { it.kind }.toSet() == EmotionKind.entries.toSet()) {

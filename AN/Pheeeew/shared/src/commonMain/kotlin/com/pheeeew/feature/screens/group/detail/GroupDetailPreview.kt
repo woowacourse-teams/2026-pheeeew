@@ -171,6 +171,7 @@ private fun fixtureDetail(
                 EmotionCountUiModel(emotion, count)
             },
         todayTotal = todayTotal,
+        weeklyScore = if (presentation == GroupDetailPresentationKind.FirstStart) 0L else 128L,
         rank =
             if (presentation ==
                 GroupDetailPresentationKind.FirstStart
