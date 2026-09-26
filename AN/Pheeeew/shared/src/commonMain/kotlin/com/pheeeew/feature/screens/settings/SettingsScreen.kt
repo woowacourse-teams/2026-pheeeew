@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -106,6 +108,7 @@ fun SettingsScreen(
     var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
     val coroutineScope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
+    val snackbarHostState = remember { SnackbarHostState() }
 
     AppTheme {
         Box(modifier = modifier.fillMaxSize()) {
@@ -117,7 +120,9 @@ fun SettingsScreen(
                         onBackClick = onBackClick,
                         onPermissionClick = {
                             coroutineScope.launch {
-                                permissionSettingsLauncher.openAppSettings()
+                                if (!permissionSettingsLauncher.openAppSettings()) {
+                                    snackbarHostState.showSnackbar("설정 화면을 열지 못했어요.")
+                                }
                             }
                         },
                         onPrivacyPolicyClick = {
@@ -127,7 +132,11 @@ fun SettingsScreen(
                             selectedLegalDocument = LegalDocument.OpenSourceLicenses
                         },
                         onContactClick = {
-                            runCatching { uriHandler.openUri("mailto:$SETTINGS_CONTACT_EMAIL") }
+                            if (runCatching { uriHandler.openUri("mailto:$SETTINGS_CONTACT_EMAIL") }.isFailure) {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("메일 앱을 열 수 없어요.")
+                                }
+                            }
                         },
                     )
                 },
@@ -144,6 +153,11 @@ fun SettingsScreen(
                     },
                 )
             }
+
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+            )
         }
     }
 }
