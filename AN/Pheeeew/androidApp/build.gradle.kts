@@ -44,6 +44,11 @@ fun quotedConfig(value: String): String =
             .replace("\r", "\\r")
             .replace("\n", "\\n") + "\""
 
+// Only Debug may opt into proof testing. Release always generates required/prod settings.
+val debugDeviceAttestationMode = providers.gradleProperty("deviceDebugAttestationMode").orElse("platform_only")
+val deviceCloudProjectNumber = providers.gradleProperty("deviceCloudProjectNumber").orElse("87715710427")
+val cloudProjectNumberLiteral = "${deviceCloudProjectNumber.get().toLongOrNull() ?: 0L}L"
+
 android {
     namespace = "com.pheeeew"
     compileSdk =
@@ -79,15 +84,19 @@ android {
     }
     buildTypes {
         debug {
+            buildConfigField("String", "DEVICE_ENVIRONMENT", "\"dev\"")
+            buildConfigField("String", "DEVICE_ATTESTATION_MODE", quotedConfig(debugDeviceAttestationMode.get()))
             buildConfigField("String", "MONITORING_ENVIRONMENT", "\"dev\"")
             buildConfigField(
                 "String",
                 "API_BASE_URL",
                 "\"https://api-dev.pheeeew.com\"",
             )
-            buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", "87715710427L")
+            buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", cloudProjectNumberLiteral)
         }
         release {
+            buildConfigField("String", "DEVICE_ENVIRONMENT", "\"prod\"")
+            buildConfigField("String", "DEVICE_ATTESTATION_MODE", "\"required\"")
             buildConfigField("String", "MONITORING_ENVIRONMENT", "\"prod\"")
             isMinifyEnabled = false
             buildConfigField(
@@ -95,7 +104,7 @@ android {
                 "API_BASE_URL",
                 "\"https://api.pheeeew.com\"",
             )
-            buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", "87715710427L")
+            buildConfigField("long", "DEVICE_CLOUD_PROJECT_NUMBER", cloudProjectNumberLiteral)
             proguardFiles(
                 getDefaultProguardFile(
                     "proguard-android-optimize.txt",
@@ -143,4 +152,71 @@ val validateReleaseMonitoring by tasks.registering {
 }
 tasks.matching { it.name == "preReleaseBuild" || it.name == "generateReleaseBuildConfig" }.configureEach {
     dependsOn(validateReleaseMonitoring)
+}
+
+// Inspect the actual variant fields used by BuildConfig, including flavor/plugin overrides.
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        val suffix = variant.name.replaceFirstChar { it.uppercaseChar() }
+        val release = variant.buildType == "release"
+        val fields = checkNotNull(variant.buildConfigFields) { "Device session requires BuildConfig" }
+        val debuggable = variant.debuggable
+        val validation =
+            tasks.register("validate${suffix}DeviceSession") {
+                inputs.property("release", release)
+                inputs.property("debuggable", debuggable)
+                inputs.property("applicationId", variant.applicationId)
+                inputs.property("cloudProjectInput", deviceCloudProjectNumber)
+                listOf(
+                    "API_BASE_URL",
+                    "DEVICE_ENVIRONMENT",
+                    "DEVICE_ATTESTATION_MODE",
+                    "DEVICE_CLOUD_PROJECT_NUMBER",
+                ).forEach { key ->
+                    inputs.property(key, fields.map { it[key]?.value?.toString() ?: "" })
+                }
+                doLast {
+                    val settings = inputs.properties
+                    val isRelease = settings["release"] as Boolean
+
+                    fun field(key: String) = (settings[key] as String).removeSurrounding("\"")
+                    val mode = field("DEVICE_ATTESTATION_MODE")
+                    check(mode in setOf("platform_only", "required")) { "Unknown DEVICE_ATTESTATION_MODE" }
+                    check(field("DEVICE_ENVIRONMENT") == if (isRelease) "prod" else "dev") {
+                        "Device environment does not match build type"
+                    }
+                    val expectedUrl = if (isRelease) "https://api.pheeeew.com" else "https://api-dev.pheeeew.com"
+                    check(field("API_BASE_URL") == expectedUrl) {
+                        "Device API URL does not match build type"
+                    }
+                    if (isRelease) {
+                        check(settings["debuggable"] == false) { "Release cannot be debuggable" }
+                        check(
+                            settings["applicationId"] == "com.pheeeew",
+                        ) { "Release requires applicationId com.pheeeew" }
+                        check(mode == "required") { "Release requires device attestation" }
+                    }
+                    if (mode == "required") {
+                        val project = field("DEVICE_CLOUD_PROJECT_NUMBER").removeSuffix("L").toLongOrNull()
+                        check(
+                            project != null && project > 0,
+                        ) { "A positive Play Integrity cloud project number is required" }
+                        check((settings["cloudProjectInput"] as String).toLongOrNull() == project) {
+                            "Invalid or inconsistent Play Integrity cloud project configuration"
+                        }
+                    }
+                }
+            }
+        tasks
+            .matching {
+                it.name in
+                    setOf(
+                        "pre${suffix}Build",
+                        "generate${suffix}BuildConfig",
+                        "package$suffix",
+                        "bundle$suffix",
+                        "package${suffix}Bundle",
+                    )
+            }.configureEach { dependsOn(validation) }
+    }
 }

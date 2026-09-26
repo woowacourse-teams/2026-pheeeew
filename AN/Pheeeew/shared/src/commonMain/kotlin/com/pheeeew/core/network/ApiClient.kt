@@ -22,12 +22,14 @@ class ApiClient internal constructor(
 expect fun createPlatformApiClient(
     config: ApiConfig,
     accessTokenProvider: AccessTokenProvider? = null,
+    observer: ApiResponseObserver? = null,
 ): ApiClient
 
 internal fun createApiClient(
     engine: HttpClientEngine,
     config: ApiConfig,
     accessTokenProvider: AccessTokenProvider?,
+    observer: ApiResponseObserver? = null,
 ): ApiClient {
     val json =
         Json {
@@ -46,6 +48,6 @@ internal fun createApiClient(
         }
     return ApiClient(
         client = httpClient,
-        requests = ApiRequestExecutor(httpClient, config, accessTokenProvider, json),
+        requests = ApiRequestExecutor(httpClient, config, accessTokenProvider, json, observer),
     )
 }

@@ -11,6 +11,7 @@ fun interface AccessTokenProvider {
 /** Redacts the token from accidental string interpolation and logs. */
 class AccessToken(
     value: String,
+    val generation: Long = 0,
 ) {
     val value: String =
         value.also {

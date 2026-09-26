@@ -17,6 +17,7 @@ sealed interface NetworkFailure {
 
     data class SessionProviderFailed(
         val mutationCertainty: MutationCertainty,
+        val details: SessionFailureDetails? = null,
     ) : NetworkFailure
 
     data class HttpStatus(

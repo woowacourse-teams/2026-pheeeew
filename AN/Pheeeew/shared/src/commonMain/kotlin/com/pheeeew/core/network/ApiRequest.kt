@@ -19,6 +19,8 @@ data class ApiRequest(
     val authentication: AuthenticationRequirement = AuthenticationRequirement.REQUIRED,
     val queryParameters: Map<String, String> = emptyMap(),
     val body: Any? = null,
+    /** Opt in only for a body that can be transmitted again after a pre-handler AUTH-001. */
+    val replayAfterAuthentication: Boolean = body == null && kind == RequestKind.READ,
 ) {
     init {
         require(path.isNotBlank()) { "API path는 비어 있을 수 없습니다." }

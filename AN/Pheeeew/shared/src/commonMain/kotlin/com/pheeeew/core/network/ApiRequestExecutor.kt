@@ -21,12 +21,13 @@ import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
-/** Executes authenticated API requests without automatic retries. */
+/** Executes authenticated API requests with at most one explicitly replayable AUTH-001 recovery. */
 class ApiRequestExecutor internal constructor(
     private val client: HttpClient,
     private val config: ApiConfig,
     private val accessTokenProvider: AccessTokenProvider?,
     private val json: Json,
+    private val observer: ApiResponseObserver? = null,
 ) {
     /** Decodes a non-empty successful response body with the caller's serializable response DTO. */
     suspend fun <T> execute(
@@ -90,83 +91,120 @@ class ApiRequestExecutor internal constructor(
                         provider.accessToken()
                     } catch (cancelled: CancellationException) {
                         throw cancelled
+                    } catch (failure: SessionAccessException) {
+                        return request.sessionProviderFailure(failure.details)
                     } catch (_: Exception) {
                         return request.sessionProviderFailure()
                     }
                 accessToken ?: return request.sessionUnavailableFailure()
             }
 
-        return try {
-            RequestExecutionResult.Response(
-                client.request(
-                    "${config.baseUrl.trimEnd('/')}/${request.path.trimStart('/')}",
-                ) {
-                    method = request.method
-                    request.queryParameters.forEach { (name, value) -> parameter(name, value) }
-                    token?.let { header(HttpHeaders.Authorization, "Bearer ${it.value}") }
-                    request.body?.let {
-                        contentType(ContentType.Application.Json)
-                        setBody(it)
-                    }
-                },
-            )
-        } catch (cancelled: CancellationException) {
-            throw cancelled
-        } catch (timeout: HttpRequestTimeoutException) {
-            RequestExecutionResult.Failure(
-                ApiResult.Failure(
-                    NetworkFailure.Transport(
-                        reason = TransportFailureReason.TIMEOUT,
-                        mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
-                    ),
-                ),
-            )
-        } catch (timeout: ConnectTimeoutException) {
-            RequestExecutionResult.Failure(
-                ApiResult.Failure(
-                    NetworkFailure.Transport(
-                        reason = TransportFailureReason.TIMEOUT,
-                        mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
-                    ),
-                ),
-            )
-        } catch (timeout: SocketTimeoutException) {
-            RequestExecutionResult.Failure(
-                ApiResult.Failure(
-                    NetworkFailure.Transport(
-                        reason = TransportFailureReason.TIMEOUT,
-                        mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
-                    ),
-                ),
-            )
-        } catch (_: SerializationException) {
-            RequestExecutionResult.Failure(
-                ApiResult.Failure(
-                    NetworkFailure.Contract(
-                        reason = ContractFailureReason.MALFORMED_REQUEST_BODY,
-                        mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = false),
-                    ),
-                ),
-            )
-        } catch (_: IOException) {
-            RequestExecutionResult.Failure(
-                ApiResult.Failure(
-                    NetworkFailure.Transport(
-                        reason = TransportFailureReason.CONNECTION,
-                        mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
-                    ),
-                ),
-            )
-        } catch (exception: Exception) {
-            RequestExecutionResult.Failure(
-                ApiResult.Failure(
-                    NetworkFailure.Unexpected(
-                        exceptionType = exception::class.simpleName ?: "Exception",
-                        mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
-                    ),
-                ),
-            )
+        val first = transmit(request, token)
+        val response = (first as? RequestExecutionResult.Response)?.value ?: return first
+        val recovery = accessTokenProvider as? RecoverableAccessTokenProvider
+        if (token == null || recovery == null || !request.replayAfterAuthentication ||
+            response.status.value != 401
+        ) {
+            return first
         }
+        val failure = response.toHttpFailure(request.kind)
+        if ((failure.reason as? NetworkFailure.HttpStatus)?.error?.code != "AUTH-001") return first
+        val renewed =
+            try {
+                recovery.recover(token)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (failure: SessionAccessException) {
+                return request.sessionProviderFailure(failure.details)
+            } catch (_: Exception) {
+                return request.sessionProviderFailure()
+            }
+        return transmit(request, renewed)
+    }
+
+    private suspend fun transmit(
+        request: ApiRequest,
+        token: AccessToken?,
+    ): RequestExecutionResult {
+        val result =
+            try {
+                RequestExecutionResult.Response(
+                    client.request(
+                        "${config.baseUrl.trimEnd('/')}/${request.path.trimStart('/')}",
+                    ) {
+                        method = request.method
+                        request.queryParameters.forEach { (name, value) -> parameter(name, value) }
+                        token?.let { header(HttpHeaders.Authorization, "Bearer ${it.value}") }
+                        request.body?.let {
+                            contentType(ContentType.Application.Json)
+                            setBody(it)
+                        }
+                    },
+                )
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (timeout: HttpRequestTimeoutException) {
+                RequestExecutionResult.Failure(
+                    ApiResult.Failure(
+                        NetworkFailure.Transport(
+                            reason = TransportFailureReason.TIMEOUT,
+                            mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
+                        ),
+                    ),
+                )
+            } catch (timeout: ConnectTimeoutException) {
+                RequestExecutionResult.Failure(
+                    ApiResult.Failure(
+                        NetworkFailure.Transport(
+                            reason = TransportFailureReason.TIMEOUT,
+                            mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
+                        ),
+                    ),
+                )
+            } catch (timeout: SocketTimeoutException) {
+                RequestExecutionResult.Failure(
+                    ApiResult.Failure(
+                        NetworkFailure.Transport(
+                            reason = TransportFailureReason.TIMEOUT,
+                            mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
+                        ),
+                    ),
+                )
+            } catch (_: SerializationException) {
+                RequestExecutionResult.Failure(
+                    ApiResult.Failure(
+                        NetworkFailure.Contract(
+                            reason = ContractFailureReason.MALFORMED_REQUEST_BODY,
+                            mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = false),
+                        ),
+                    ),
+                )
+            } catch (_: IOException) {
+                RequestExecutionResult.Failure(
+                    ApiResult.Failure(
+                        NetworkFailure.Transport(
+                            reason = TransportFailureReason.CONNECTION,
+                            mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
+                        ),
+                    ),
+                )
+            } catch (exception: Exception) {
+                RequestExecutionResult.Failure(
+                    ApiResult.Failure(
+                        NetworkFailure.Unexpected(
+                            exceptionType = exception::class.simpleName ?: "Exception",
+                            mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
+                        ),
+                    ),
+                )
+            }
+
+        try {
+            observer?.completed((result as? RequestExecutionResult.Response)?.value?.status?.value)
+        } catch (_: Exception) {
+            // Observability must not change the request result.
+        }
+        return result
     }
 
     private sealed interface RequestExecutionResult {
@@ -218,11 +256,14 @@ class ApiRequestExecutor internal constructor(
             ),
         )
 
-    private fun ApiRequest.sessionProviderFailure(): RequestExecutionResult.Failure =
+    private fun ApiRequest.sessionProviderFailure(
+        details: SessionFailureDetails? = null,
+    ): RequestExecutionResult.Failure =
         RequestExecutionResult.Failure(
             ApiResult.Failure(
                 NetworkFailure.SessionProviderFailed(
                     kind.toMutationCertainty(unknownForWrite = false),
+                    details,
                 ),
             ),
         )
