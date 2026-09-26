@@ -3,18 +3,18 @@ package com.pheeeew.feature.screens.map.record
 import org.jetbrains.compose.resources.DrawableResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_emotion_angry
-import pheeeew.shared.generated.resources.ic_emotion_annoyed
+import pheeeew.shared.generated.resources.ic_emotion_discouraged
 import pheeeew.shared.generated.resources.ic_emotion_exhausted
 import pheeeew.shared.generated.resources.ic_emotion_frustrated
-import pheeeew.shared.generated.resources.ic_emotion_stuck
+import pheeeew.shared.generated.resources.ic_emotion_irritated
 
 enum class EmotionTypeUiModel(
     val label: String,
     val icon: DrawableResource,
 ) {
-    Stuck("답답", Res.drawable.ic_emotion_stuck),
-    Annoyed("짜증", Res.drawable.ic_emotion_annoyed),
+    Stuck("답답", Res.drawable.ic_emotion_frustrated),
+    Annoyed("짜증", Res.drawable.ic_emotion_irritated),
     Exhausted("지침", Res.drawable.ic_emotion_exhausted),
-    Frustrated("좌절", Res.drawable.ic_emotion_frustrated),
+    Frustrated("좌절", Res.drawable.ic_emotion_discouraged),
     Angry("분노", Res.drawable.ic_emotion_angry),
 }
