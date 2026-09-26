@@ -22,6 +22,8 @@ class GroupRankingRepositoryImpl(
                 }
             }
 
-            is ApiResult.Failure -> GroupRankingLoadResult.Unavailable
+            is ApiResult.Failure -> {
+                GroupRankingLoadResult.Unavailable
+            }
         }
 }

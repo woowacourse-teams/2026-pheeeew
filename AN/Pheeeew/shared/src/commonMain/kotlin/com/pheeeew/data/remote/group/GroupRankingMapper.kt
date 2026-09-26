@@ -38,7 +38,10 @@ object GroupRankingMapper {
     private fun GroupStampResponseDto.toDomain(): GroupStamp =
         GroupStamp(
             text = text,
-            textColor = StampColor.parseServerValue(textColor) ?: throw GroupRankingContractException("stamp.textColor"),
+            textColor =
+                StampColor.parseServerValue(
+                    textColor,
+                ) ?: throw GroupRankingContractException("stamp.textColor"),
             backgroundColor =
                 StampColor.parseServerValue(backgroundColor)
                     ?: throw GroupRankingContractException("stamp.backgroundColor"),

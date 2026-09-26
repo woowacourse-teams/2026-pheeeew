@@ -75,7 +75,8 @@ class WeeklyRankingViewModel(
 
                         WeeklyRankingLoadResult.Unavailable -> {
                             if (requestId == requestGeneration) {
-                                _uiState.value = WeeklyRankingUiState(weeksAgo = weeksAgo, status = WeeklyRankingStatus.Failed)
+                                _uiState.value =
+                                    WeeklyRankingUiState(weeksAgo = weeksAgo, status = WeeklyRankingStatus.Failed)
                             }
                         }
                     }
@@ -92,9 +93,17 @@ class WeeklyRankingViewModel(
     }
 }
 
-private fun formatWeekRange(startAt: String, endAt: String): String =
-    "${startAt.toKoreanDate()} ~ ${endAt.toKoreanDate()}"
+private fun formatWeekRange(
+    startAt: String,
+    endAt: String,
+): String = "${startAt.toKoreanDate()} ~ ${endAt.toKoreanDate()}"
 
 private fun String.toKoreanDate(): String =
-    runCatching { Instant.parse(this).plus(9.hours).toString().take(10).replace('-', '.') }
-        .getOrElse { take(10).replace('-', '.') }
+    runCatching {
+        Instant
+            .parse(this)
+            .plus(9.hours)
+            .toString()
+            .take(10)
+            .replace('-', '.')
+    }.getOrElse { take(10).replace('-', '.') }

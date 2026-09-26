@@ -37,6 +37,8 @@ class ApiWeeklyRankingSource(
                 )
             }
 
-            GroupRankingLoadResult.Unavailable -> WeeklyRankingLoadResult.Unavailable
+            GroupRankingLoadResult.Unavailable -> {
+                WeeklyRankingLoadResult.Unavailable
+            }
         }
 }
