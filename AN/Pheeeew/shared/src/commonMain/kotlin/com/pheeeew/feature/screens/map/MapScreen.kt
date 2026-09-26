@@ -19,8 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.overlay.MapOverlay
+import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.renderer.NativeMap
 
 @Composable

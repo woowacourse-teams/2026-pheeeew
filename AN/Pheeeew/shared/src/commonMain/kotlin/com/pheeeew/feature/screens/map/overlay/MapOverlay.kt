@@ -72,8 +72,10 @@ fun MapOverlay(
         ) {
             EmotionPromptLabel(
                 isExpanded = isEmotionSelectorExpanded,
-                modifier = Modifier.align(Alignment.BottomCenter)
-                    .padding(bottom = promptBottomOffset),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = promptBottomOffset),
             )
 
             Box(
