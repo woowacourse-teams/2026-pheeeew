@@ -7,6 +7,8 @@ import com.pheeeew.core.network.NetworkFailure
 import com.pheeeew.core.network.TransportFailureReason
 import com.pheeeew.data.local.device.CredentialRead
 import com.pheeeew.data.local.device.DeviceCredentialStorage
+import com.pheeeew.data.local.device.LegacyCredentialPolicy
+import com.pheeeew.data.local.device.migrateLegacyCredentials
 import com.pheeeew.data.remote.device.DeviceAttestationDto
 import com.pheeeew.data.remote.device.DeviceAttestationPolicy
 import com.pheeeew.data.remote.device.DeviceChallengeDto
@@ -37,6 +39,69 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class DeviceSessionRepositoryTest {
+    @Test
+    fun `release upgrade copies legacy token and resumes the same session without registration`() =
+        runTest {
+            val storage = Storage()
+            val imported =
+                migrateLegacyCredentials(
+                    "legacy-refresh",
+                    LegacyCredentialPolicy.IMPORT_CURRENT_ENVIRONMENT,
+                    storage::write,
+                )
+            assertIs<CredentialRead.Found>(imported)
+            val api = Api()
+            repeat(2) {
+                val ready = assertIs<DeviceSessionResult.Ready>(repository(api, storage).prepare())
+                assertEquals(1, ready.access.generation)
+                assertEquals("legacy-refresh", api.refreshUsed)
+            }
+            assertTrue(api.ids.isEmpty())
+            assertEquals(0, api.challenges)
+            assertTrue(checkNotNull(storage.value).preservesLegacyIdentity)
+        }
+
+    @Test
+    fun `legacy migration refuses unknown environment and retries failed persistence`() =
+        runTest {
+            val storage = Storage()
+            assertEquals(
+                CredentialRead.Failure(true),
+                migrateLegacyCredentials("legacy", LegacyCredentialPolicy.UNCONFIRMED, storage::write),
+            )
+            assertNull(storage.value)
+            storage.rejectWrite = true
+            assertIs<CredentialRead.Failure>(
+                migrateLegacyCredentials("legacy", LegacyCredentialPolicy.IMPORT_CURRENT_ENVIRONMENT, storage::write),
+            )
+            assertNull(storage.value)
+            storage.rejectWrite = false
+            assertIs<CredentialRead.Found>(
+                migrateLegacyCredentials("legacy", LegacyCredentialPolicy.IMPORT_CURRENT_ENVIRONMENT, storage::write),
+            )
+            assertEquals("legacy", storage.value?.refreshToken)
+        }
+
+    @Test
+    fun `legacy identity survives server rejection network failure and restart`() =
+        runTest {
+            for (failure in listOf(
+                http(401, "DEVICE-003"),
+                http(401, "DEVICE-004"),
+                http(503, "COMMON-001"),
+                networkFailure(),
+            )) {
+                val storage =
+                    Storage(DeviceCredentials(refreshToken = "legacy", generation = 1, preservesLegacyIdentity = true))
+                val api = Api().apply { refreshResult = failure }
+                repeat(2) { assertIs<DeviceSessionResult.Failed>(repository(api, storage).prepare()) }
+                assertEquals("legacy", storage.value?.refreshToken)
+                assertTrue(checkNotNull(storage.value).preservesLegacyIdentity)
+                assertTrue(api.ids.isEmpty())
+                assertEquals(0, api.challenges)
+            }
+        }
+
     @Test
     fun `required proof is bound to a fresh challenge on retry with the same registration id`() =
         runTest {

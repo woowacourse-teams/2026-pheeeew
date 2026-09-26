@@ -81,6 +81,8 @@ class DeviceSessionRepositoryImpl(
                     if (http?.statusCode != 401 || http.error?.code !in setOf("DEVICE-003", "DEVICE-004")) {
                         return failure(result.reason)
                     }
+                    // An upgraded user's identity must never be replaced by automatic registration.
+                    if (credentials.preservesLegacyIdentity) return failure(result.reason)
                     // Persist invalidation before any new registration. No token deletion on network failure.
                     val cleared = DeviceCredentials(generation = credentials.generation)
                     if (!storage.write(cleared)) return failed(DeviceSessionFailureKind.STORAGE)

@@ -61,13 +61,10 @@ class IosDeviceCredentialStorage(
                     account,
                 )?.let { return@withContext CredentialRead.Found(Json.decodeFromString<DeviceCredentials>(it)) }
                 val legacy = readString("refresh-token")
-                if (legacy == null || legacyPolicy == LegacyCredentialPolicy.BELONGS_TO_OTHER_ENVIRONMENT) {
-                    return@withContext CredentialRead.Missing
+                migrateLegacyCredentials(legacy, legacyPolicy) {
+                    writeString(account, Json.encodeToString(it))
+                    true
                 }
-                if (legacyPolicy == LegacyCredentialPolicy.UNCONFIRMED) return@withContext CredentialRead.Failure(true)
-                val migrated = DeviceCredentials(refreshToken = legacy, generation = 1)
-                writeString(account, Json.encodeToString(migrated))
-                CredentialRead.Found(migrated)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {

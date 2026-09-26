@@ -30,7 +30,10 @@ object IosApiDependencies {
             )
         ApiDependencies.create(
             build,
-            IosDeviceCredentialStorage(ApiConfig(build.baseUrl).deviceStorageEnvironment()),
+            IosDeviceCredentialStorage(
+                ApiConfig(build.baseUrl).deviceStorageEnvironment(),
+                build.legacyCredentialPolicy,
+            ),
             DevicePlatform.IOS,
             createProofProvider = { IosAppAttestProofProvider() },
             diagnostics =

@@ -1,5 +1,6 @@
 package com.pheeeew.core.di
 
+import com.pheeeew.data.local.device.LegacyCredentialPolicy
 import com.pheeeew.data.remote.device.DeviceAttestationDto
 import com.pheeeew.data.remote.device.DeviceAttestationPolicy
 import com.pheeeew.data.remote.device.DeviceProofProvider
@@ -9,6 +10,30 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 
 class DeviceSessionBuildConfigTest {
+    @Test
+    fun `only production release imports published legacy credentials`() {
+        assertEquals(
+            LegacyCredentialPolicy.IMPORT_CURRENT_ENVIRONMENT,
+            DeviceSessionBuildConfig(
+                false,
+                "prod",
+                DeviceSessionBuildConfig.PROD_URL,
+                "required",
+                "1",
+            ).legacyCredentialPolicy,
+        )
+        assertEquals(
+            LegacyCredentialPolicy.UNCONFIRMED,
+            DeviceSessionBuildConfig(
+                true,
+                "dev",
+                DeviceSessionBuildConfig.DEV_URL,
+                "platform_only",
+                "1",
+            ).legacyCredentialPolicy,
+        )
+    }
+
     @Test
     fun `debug platform only never constructs proof provider`() {
         val build = DeviceSessionBuildConfig(true, "dev", DeviceSessionBuildConfig.DEV_URL, "platform_only", "1.1.1+3")

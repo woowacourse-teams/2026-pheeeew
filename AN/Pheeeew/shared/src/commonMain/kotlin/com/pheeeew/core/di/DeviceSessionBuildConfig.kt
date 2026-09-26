@@ -1,5 +1,6 @@
 package com.pheeeew.core.di
 
+import com.pheeeew.data.local.device.LegacyCredentialPolicy
 import com.pheeeew.data.remote.device.DeviceAttestationPolicy
 import com.pheeeew.data.remote.device.DeviceProofProvider
 
@@ -18,6 +19,10 @@ data class DeviceSessionBuildConfig(
         require(isDebug || attestationMode == "required") { "Release requires device attestation" }
         require(version.matches(Regex("[A-Za-z0-9._+-]{1,64}"))) { "Invalid app version" }
     }
+
+    // Published legacy Release builds used PROD_URL. Debug shares no such provenance.
+    val legacyCredentialPolicy: LegacyCredentialPolicy
+        get() = if (isDebug) LegacyCredentialPolicy.UNCONFIRMED else LegacyCredentialPolicy.IMPORT_CURRENT_ENVIRONMENT
 
     fun policy(createProofProvider: () -> DeviceProofProvider): DeviceAttestationPolicy =
         if (attestationMode == "platform_only") {

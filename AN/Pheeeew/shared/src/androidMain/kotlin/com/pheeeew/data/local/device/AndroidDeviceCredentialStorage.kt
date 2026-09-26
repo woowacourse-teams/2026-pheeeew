@@ -35,13 +35,7 @@ class AndroidDeviceCredentialStorage(
                     return@withContext CredentialRead.Found(Json.decodeFromString<DeviceCredentials>(it))
                 }
                 val legacy = prefs.getString("refresh_token", null)
-                if (legacy == null || legacyPolicy == LegacyCredentialPolicy.BELONGS_TO_OTHER_ENVIRONMENT) {
-                    return@withContext CredentialRead.Missing
-                }
-                if (legacyPolicy == LegacyCredentialPolicy.UNCONFIRMED) return@withContext CredentialRead.Failure(true)
-                val migrated = DeviceCredentials(refreshToken = legacy, generation = 1)
-                if (!persist(migrated)) return@withContext CredentialRead.Failure()
-                CredentialRead.Found(migrated)
+                migrateLegacyCredentials(legacy, legacyPolicy) { persist(it) }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (_: Exception) {

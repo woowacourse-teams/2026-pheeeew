@@ -27,7 +27,7 @@ object AndroidApiDependencies {
         return instance ?: ApiDependencies
             .create(
                 build,
-                AndroidDeviceCredentialStorage(context.applicationContext, partition),
+                AndroidDeviceCredentialStorage(context.applicationContext, partition, build.legacyCredentialPolicy),
                 DevicePlatform.ANDROID,
                 createProofProvider = { AndroidPlayIntegrityProofProvider(context, cloudProjectNumber) },
                 diagnostics =
