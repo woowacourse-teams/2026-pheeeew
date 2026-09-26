@@ -5,7 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -31,44 +31,50 @@ fun WeekSelector(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier,
+    canGoPrevious: Boolean = true,
+    canGoNext: Boolean = true,
 ) {
     val fontScale = LocalDensity.current.fontScale
 
     Row(
         modifier =
             modifier
-                .widthIn(max = 230.dp * fontScale)
+                .widthIn(max = 284.dp * fontScale)
                 .fillMaxWidth()
-                .heightIn(min = 44.dp)
+                .height(36.dp)
                 .background(AppColors.RankingSurface, RoundedCornerShape(24.dp)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        WeekArrow(isPrevious = true, onClick = onPrevious)
+        WeekArrow(isPrevious = true, enabled = canGoPrevious, onClick = onPrevious)
         Text(
             text = week,
             color = AppColors.RankingContent,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
-            maxLines = 2,
+            maxLines = 1,
             modifier = Modifier.weight(1f),
         )
-        WeekArrow(isPrevious = false, onClick = onNext)
+        WeekArrow(isPrevious = false, enabled = canGoNext, onClick = onNext)
     }
 }
 
 @Composable
 private fun WeekArrow(
     isPrevious: Boolean,
+    enabled: Boolean,
     onClick: () -> Unit,
 ) {
     val arrowModifier =
         Modifier
-            .size(44.dp)
+            .size(width = 44.dp, height = 36.dp)
             .clickable(
+                enabled = enabled,
                 onClickLabel = if (isPrevious) "이전 주" else "다음 주",
                 onClick = onClick,
-            ).padding(15.dp)
+            ).padding(horizontal = 15.dp, vertical = 11.dp)
+
+    val arrowColor = AppColors.RankingContent.copy(alpha = if (enabled) 1f else 0.35f)
 
     Canvas(arrowModifier) {
         val centerX = size.width / 2f
@@ -78,14 +84,14 @@ private fun WeekArrow(
         val tailX = if (isPrevious) tipX + halfArrow else tipX - halfArrow
         val stroke = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round)
         drawLine(
-            AppColors.RankingContent,
+            arrowColor,
             Offset(tailX, centerY - halfArrow),
             Offset(tipX, centerY),
             stroke.width,
             cap = stroke.cap,
         )
         drawLine(
-            AppColors.RankingContent,
+            arrowColor,
             Offset(tipX, centerY),
             Offset(tailX, centerY + halfArrow),
             stroke.width,

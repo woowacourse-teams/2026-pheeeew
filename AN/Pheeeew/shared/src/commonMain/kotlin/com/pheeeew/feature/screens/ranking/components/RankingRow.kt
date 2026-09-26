@@ -13,7 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,7 +34,6 @@ fun RankingRow(
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .shadow(4.dp, shape)
                 .border(1.dp, AppColors.RankingContent, shape)
                 .background(AppColors.Background, shape)
                 .height(73.dp)
@@ -51,18 +49,18 @@ fun RankingRow(
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
-        GroupStamp("하유", 47.dp)
+        GroupStamp(member.stamp, 47.dp)
         Text(
             member.name,
             Modifier.weight(2f),
             color = AppColors.RankingContent,
-            fontSize = 15.sp,
+            fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
         Column(horizontalAlignment = Alignment.End) {
             Text("톡 개수", color = AppColors.RankingSecondaryContent, fontSize = 11.sp)
-            Text("${member.count}개", color = AppColors.RankingContent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text("${member.score}개", color = AppColors.RankingContent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
