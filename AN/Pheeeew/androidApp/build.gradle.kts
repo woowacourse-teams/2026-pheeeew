@@ -160,7 +160,7 @@ androidComponents {
         val suffix = variant.name.replaceFirstChar { it.uppercaseChar() }
         val release = variant.buildType == "release"
         val fields = checkNotNull(variant.buildConfigFields) { "Device session requires BuildConfig" }
-        val debuggable = android.buildTypes.getByName(checkNotNull(variant.buildType)).isDebuggable
+        val debuggable = variant.debuggable
         val validation =
             tasks.register("validate${suffix}DeviceSession") {
                 inputs.property("release", release)

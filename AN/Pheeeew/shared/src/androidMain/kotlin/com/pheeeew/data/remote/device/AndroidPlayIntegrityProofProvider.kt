@@ -43,7 +43,8 @@ class AndroidPlayIntegrityProofProvider(
                             DeviceProofException((failure as? IntegrityServiceException)?.errorCode),
                         )
                     }.addOnCanceledListener {
-                        continuation.cancel()
+                        // SDK cancellation is a proof failure; coroutine cancellation remains cooperative.
+                        continuation.resumeWithException(DeviceProofException())
                     }
             }
         check(token.isNotBlank()) { "Play Integrity returned an empty proof" }
