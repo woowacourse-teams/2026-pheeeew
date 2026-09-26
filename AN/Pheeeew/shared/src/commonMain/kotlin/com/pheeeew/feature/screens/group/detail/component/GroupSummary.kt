@@ -28,7 +28,7 @@ import pheeeew.shared.generated.resources.group_detail_member_count
 /** 시안의 상단 한 줄: 멤버 수와 초대코드 버튼만 표시합니다. */
 @Composable
 internal fun GroupSummary(
-    memberCount: Int,
+    memberCount: Long,
     onInviteClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
