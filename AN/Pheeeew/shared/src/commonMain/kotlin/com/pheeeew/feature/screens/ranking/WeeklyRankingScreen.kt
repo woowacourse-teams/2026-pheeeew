@@ -39,11 +39,11 @@ fun WeeklyRankingScreen(modifier: Modifier = Modifier) {
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.height(22.dp))
+            Spacer(Modifier.height(24.dp))
             Text(
                 text = "주간 랭킹",
                 color = AppColors.RankingContent,
-                fontSize = 32.sp,
+                fontSize = 24.sp,
                 fontWeight = FontWeight.ExtraBold,
             )
             Spacer(Modifier.height(12.dp))

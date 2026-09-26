@@ -13,7 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -39,7 +38,6 @@ fun RankingMemberCard(
         modifier =
             modifier
                 .height(height)
-                .shadow(5.dp, shape)
                 .border(1.dp, AppColors.RankingContent, shape)
                 .background(AppColors.Background, shape)
                 .padding(
@@ -68,7 +66,7 @@ fun RankingMemberCard(
         Text(
             member.name,
             color = AppColors.RankingContent,
-            fontSize = 13.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
             maxLines = 2,

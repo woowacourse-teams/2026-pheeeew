@@ -5,7 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -37,9 +37,9 @@ fun WeekSelector(
     Row(
         modifier =
             modifier
-                .widthIn(max = 230.dp * fontScale)
+                .widthIn(max = 284.dp * fontScale)
                 .fillMaxWidth()
-                .heightIn(min = 44.dp)
+                .height(36.dp)
                 .background(AppColors.RankingSurface, RoundedCornerShape(24.dp)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -47,8 +47,8 @@ fun WeekSelector(
         Text(
             text = week,
             color = AppColors.RankingContent,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
             textAlign = TextAlign.Center,
             maxLines = 2,
             modifier = Modifier.weight(1f),
@@ -64,11 +64,11 @@ private fun WeekArrow(
 ) {
     val arrowModifier =
         Modifier
-            .size(44.dp)
+            .size(width = 44.dp, height = 36.dp)
             .clickable(
                 onClickLabel = if (isPrevious) "이전 주" else "다음 주",
                 onClick = onClick,
-            ).padding(15.dp)
+            ).padding(horizontal = 15.dp, vertical = 11.dp)
 
     Canvas(arrowModifier) {
         val centerX = size.width / 2f
