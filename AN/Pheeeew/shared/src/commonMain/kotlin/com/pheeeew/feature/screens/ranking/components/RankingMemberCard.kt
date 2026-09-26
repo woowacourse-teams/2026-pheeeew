@@ -62,7 +62,7 @@ fun RankingMemberCard(
                 modifier = Modifier.size(width = 48.dp, height = 24.dp),
             )
         }
-        GroupStamp("히유", if (member.rank == 1) 62.dp else 56.dp)
+        GroupStamp(member.stamp, if (member.rank == 1) 62.dp else 56.dp)
         Text(
             member.name,
             color = AppColors.RankingContent,
@@ -73,7 +73,7 @@ fun RankingMemberCard(
             lineHeight = 17.sp,
         )
         Text(
-            "톡 개수 ${member.count}개",
+            "톡 개수 ${member.score}개",
             color = AppColors.RankingContent,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,

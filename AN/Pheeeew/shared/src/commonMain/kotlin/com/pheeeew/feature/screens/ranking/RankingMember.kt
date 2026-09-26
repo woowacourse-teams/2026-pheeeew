@@ -1,10 +1,22 @@
 package com.pheeeew.feature.screens.ranking
 
+import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
+import com.pheeeew.feature.component.stamp.StampShapeId
+
 data class RankingMember(
     val rank: Int,
     val name: String,
-    val count: Int,
+    val score: Int,
+    val stamp: StampAppearanceUiModel = previewRankingStamp,
 )
+
+private val previewRankingStamp =
+    StampAppearanceUiModel(
+        label = "하유",
+        shape = StampShapeId.CIRCLE,
+        fillArgb = 0xFF9DEBD5,
+        textArgb = 0xFF17191A,
+    )
 
 internal val sampleRankings =
     listOf(

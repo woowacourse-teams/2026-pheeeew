@@ -49,7 +49,7 @@ fun RankingRow(
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
         )
-        GroupStamp("하유", 47.dp)
+        GroupStamp(member.stamp, 47.dp)
         Text(
             member.name,
             Modifier.weight(2f),
@@ -60,7 +60,7 @@ fun RankingRow(
         )
         Column(horizontalAlignment = Alignment.End) {
             Text("톡 개수", color = AppColors.RankingSecondaryContent, fontSize = 11.sp)
-            Text("${member.count}개", color = AppColors.RankingContent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text("${member.score}개", color = AppColors.RankingContent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
