@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.settings.components.ContactCard
+import com.pheeeew.feature.screens.settings.components.SETTINGS_CONTACT_EMAIL
 import com.pheeeew.feature.screens.settings.components.SettingsActionRow
 import com.pheeeew.feature.screens.settings.components.SettingsCard
 import com.pheeeew.feature.screens.settings.components.SettingsColors
@@ -34,10 +35,9 @@ import com.pheeeew.feature.screens.settings.components.SettingsDivider
 import com.pheeeew.feature.screens.settings.components.SettingsHeader
 import com.pheeeew.feature.screens.settings.components.SettingsIcon
 import com.pheeeew.feature.screens.settings.components.SettingsSectionTitle
-import com.pheeeew.feature.screens.settings.components.SETTINGS_CONTACT_EMAIL
 import com.pheeeew.legacy.core.designsystem.theme.AppTheme
-import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 import com.pheeeew.legacy.core.navigation.PredictiveBackContent
+import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 import com.pheeeew.legacy.feature.setting.legal.LegalDocument
 import com.pheeeew.legacy.feature.setting.legal.LegalDocumentRoute
 import kotlinx.coroutines.launch
