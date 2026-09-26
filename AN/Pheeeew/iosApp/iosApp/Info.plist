@@ -13,6 +13,12 @@
 	<key>SENTRY_DSN</key>
 	<string>$(SENTRY_DSN)</string>
 
+	<key>DEVICE_BUILD_CONFIGURATION</key>
+	<string>$(DEVICE_BUILD_CONFIGURATION)</string>
+	<key>DEVICE_ENVIRONMENT</key>
+	<string>$(DEVICE_ENVIRONMENT)</string>
+	<key>DEVICE_ATTESTATION_MODE</key>
+	<string>$(DEVICE_ATTESTATION_MODE)</string>
 	<key>API_BASE_URL</key>
 	<string>$(API_BASE_URL)</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
