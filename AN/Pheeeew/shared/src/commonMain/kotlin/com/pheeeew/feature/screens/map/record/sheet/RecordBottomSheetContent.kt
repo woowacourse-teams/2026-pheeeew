@@ -1,0 +1,448 @@
+package com.pheeeew.feature.screens.map.record.sheet
+
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.audio.VoiceRecorder
+import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
+import com.pheeeew.feature.screens.map.record.noRippleClickable
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import org.jetbrains.compose.resources.painterResource
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun RecordBottomSheet(
+    selectedEmotion: EmotionTypeUiModel,
+    inputMode: RecordInputModeUiModel,
+    memo: String,
+    groupLabel: String,
+    onDismissRequest: () -> Unit,
+    onInputModeChange: (RecordInputModeUiModel) -> Unit,
+    onMemoChange: (String) -> Unit,
+    onGroupClick: () -> Unit,
+    onNext: () -> Unit,
+    onSkip: () -> Unit,
+    modifier: Modifier = Modifier,
+    voiceRecorder: VoiceRecorder? = null,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        modifier = modifier,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        shape = AppShapes.BottomSheet,
+        containerColor = AppColors.Surface,
+        scrimColor = Color.Black.copy(alpha = 0.3f),
+        dragHandle = null,
+    ) {
+        RecordBottomSheetContent(
+            selectedEmotion = selectedEmotion,
+            inputMode = inputMode,
+            memo = memo,
+            groupLabel = groupLabel,
+            onInputModeChange = onInputModeChange,
+            onMemoChange = onMemoChange,
+            onGroupClick = onGroupClick,
+            onNext = onNext,
+            onSkip = onSkip,
+            modifier = Modifier,
+            voiceRecorder = voiceRecorder,
+        )
+    }
+}
+
+@Composable
+private fun RecordBottomSheetContent(
+    selectedEmotion: EmotionTypeUiModel,
+    inputMode: RecordInputModeUiModel,
+    memo: String,
+    groupLabel: String,
+    onInputModeChange: (RecordInputModeUiModel) -> Unit,
+    onMemoChange: (String) -> Unit,
+    onGroupClick: () -> Unit,
+    onNext: () -> Unit,
+    onSkip: () -> Unit,
+    modifier: Modifier,
+    voiceRecorder: VoiceRecorder? = null,
+) {
+    val recordingReady =
+        if (inputMode == RecordInputModeUiModel.Recording) {
+            rememberRecordingReady(voiceRecorder)
+        } else {
+            false
+        }
+    Column(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .clip(AppShapes.BottomSheet)
+                .background(AppColors.Surface)
+                .padding(horizontal = 20.dp, vertical = 16.dp),
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .size(width = 94.dp, height = 3.dp)
+                    .clip(AppShapes.Pill)
+                    .background(AppColors.TextPrimary),
+        )
+
+        Spacer(modifier = Modifier.height(27.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painter = painterResource(selectedEmotion.icon),
+                contentDescription = selectedEmotion.label,
+                modifier = Modifier.size(44.dp),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "${selectedEmotion.label}한 마음,\n조금 더 남길까요?",
+                color = AppColors.TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "메모, 녹음은 선택이에요.",
+            fontSize = 12.sp,
+            color = AppColors.TextSecondary,
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(40.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RecordInputModeToggle(
+                inputMode = inputMode,
+                onInputModeChange = onInputModeChange,
+                modifier = Modifier.weight(1f),
+            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(AppColors.Gray100)
+                            .noRippleClickable(onClick = onGroupClick),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = groupLabel,
+                        color = AppColors.Border,
+                        fontSize = 15.sp,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                Text(
+                    text = "그룹 변경",
+                    fontSize = 10.sp,
+                    color = AppColors.TextSecondary,
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        if (inputMode == RecordInputModeUiModel.Memo) {
+            MemoPanel(
+                memo = memo,
+                onMemoChange = onMemoChange,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        } else {
+            RecordAudioSection(voiceRecorder = voiceRecorder)
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        RecordSheetActions(
+            onNext = onNext,
+            onSkip = onSkip,
+            enabled =
+                when (inputMode) {
+                    RecordInputModeUiModel.Memo -> {
+                        memo.isNotBlank()
+                    }
+
+                    RecordInputModeUiModel.Recording -> {
+                        recordingReady
+                    }
+                },
+        )
+    }
+}
+
+@Composable
+private fun RecordAudioSection(voiceRecorder: VoiceRecorder?) {
+    if (voiceRecorder == null) {
+        RecordAudioContent(
+            audio = VoiceRecordingState(),
+            onStartRecording = {},
+            onStopRecording = {},
+            onPlayback = {},
+            onClearRecording = {},
+        )
+    } else {
+        val audio = voiceRecorder.state.collectAsState().value
+        RecordAudioContent(
+            audio = audio,
+            onStartRecording = { voiceRecorder.start() },
+            onStopRecording = { voiceRecorder.stop() },
+            onPlayback = { voiceRecorder.togglePlayback() },
+            onClearRecording = { voiceRecorder.clear() },
+        )
+    }
+}
+
+@Composable
+private fun rememberRecordingReady(voiceRecorder: VoiceRecorder?): Boolean {
+    if (voiceRecorder == null) return false
+    val recordingReadyFlow =
+        remember(voiceRecorder) {
+            voiceRecorder.state
+                .map { audio -> audio.filePath != null && !audio.recording && !audio.requestingPermission }
+                .distinctUntilChanged()
+        }
+    val initialRecordingReady =
+        voiceRecorder.state.value.let { audio ->
+            audio.filePath != null && !audio.recording && !audio.requestingPermission
+        }
+    return recordingReadyFlow.collectAsState(initial = initialRecordingReady).value
+}
+
+@Composable
+private fun RecordSheetActions(
+    onNext: () -> Unit,
+    onSkip: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .clip(AppShapes.Pill)
+                    .background(AppColors.RecordSheetAction.copy(alpha = if (enabled) 1f else 0.35f))
+                    .noRippleClickable(enabled = enabled, onClick = onNext)
+                    .padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = "다음", color = AppColors.Surface, fontSize = 16.sp, fontWeight = FontWeight.Normal)
+        }
+        Text(
+            text = "건너뛰기",
+            modifier = Modifier.noRippleClickable(onClick = onSkip).padding(horizontal = 16.dp, vertical = 12.dp),
+            color = AppColors.Border,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Normal,
+        )
+    }
+}
+
+@Composable
+private fun MemoPanel(
+    memo: String,
+    onMemoChange: (String) -> Unit,
+    modifier: Modifier,
+) {
+    BasicTextField(
+        value = memo,
+        onValueChange = { value ->
+            if (value.length <= 50) {
+                onMemoChange(value)
+            }
+        },
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .height(140.dp)
+                .clip(AppShapes.Input)
+                .border(width = 1.dp, color = AppColors.Border, shape = AppShapes.Input)
+                .padding(16.dp),
+        textStyle =
+            TextStyle(
+                color = AppColors.TextPrimary,
+                fontSize = 14.sp,
+                lineHeight = 22.sp,
+            ),
+        decorationBox = { innerTextField ->
+            Box(modifier = Modifier.fillMaxSize()) {
+                if (memo.isEmpty()) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(bottom = 20.dp),
+                    ) {
+                        Text(
+                            text = "지금 마음을 짧게 적어보세요",
+                            color = AppColors.Border.copy(alpha = 0.45f),
+                            fontSize = 16.sp,
+                        )
+                    }
+                }
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 20.dp),
+                ) {
+                    innerTextField()
+                }
+                Text(
+                    text = "${memo.length}/50",
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 4.dp),
+                    color = AppColors.TextSecondary,
+                    fontSize = 12.sp,
+                    textAlign = TextAlign.End,
+                )
+            }
+        },
+    )
+}
+
+@Composable
+private fun RecordInputModeToggle(
+    inputMode: RecordInputModeUiModel,
+    onInputModeChange: (RecordInputModeUiModel) -> Unit,
+    modifier: Modifier,
+) {
+    Row(
+        modifier =
+            modifier
+                .height(45.dp)
+                .clip(AppShapes.Pill)
+                .background(AppColors.Gray100)
+                .padding(4.dp),
+    ) {
+        RecordInputModeTab(
+            label = "메모",
+            selected = inputMode == RecordInputModeUiModel.Memo,
+            onClick = { onInputModeChange(RecordInputModeUiModel.Memo) },
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+        )
+        RecordInputModeTab(
+            label = "녹음",
+            selected = inputMode == RecordInputModeUiModel.Recording,
+            onClick = { onInputModeChange(RecordInputModeUiModel.Recording) },
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+        )
+    }
+}
+
+@Composable
+private fun RecordInputModeTab(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier,
+) {
+    Box(
+        modifier =
+            modifier
+                .clip(AppShapes.Pill)
+                .background(if (selected) AppColors.Primary else Color.Transparent)
+                .noRippleClickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = AppColors.TextPrimary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Preview(name = "감정 기록 바텀시트", widthDp = 402, heightDp = 430, showBackground = true)
+@Composable
+private fun RecordBottomSheetContentPreview() {
+    RecordBottomSheetContent(
+        selectedEmotion = EmotionTypeUiModel.Angry,
+        inputMode = RecordInputModeUiModel.Memo,
+        memo = "",
+        groupLabel = "개인",
+        onInputModeChange = {},
+        onMemoChange = {},
+        onGroupClick = {},
+        onNext = {},
+        onSkip = {},
+        modifier = Modifier,
+    )
+}
+
+@Preview(name = "녹음 탭", widthDp = 402, heightDp = 430, showBackground = true)
+@Composable
+private fun RecordBottomSheetRecordingPreview() {
+    RecordBottomSheetContent(
+        selectedEmotion = EmotionTypeUiModel.Exhausted,
+        inputMode = RecordInputModeUiModel.Recording,
+        memo = "",
+        groupLabel = "개인",
+        onInputModeChange = {},
+        onMemoChange = {},
+        onGroupClick = {},
+        onNext = {},
+        onSkip = {},
+        modifier = Modifier,
+    )
+}

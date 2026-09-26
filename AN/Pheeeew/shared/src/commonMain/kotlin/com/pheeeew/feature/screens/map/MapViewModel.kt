@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
-import com.pheeeew.domain.model.MapCameraState
 import com.pheeeew.domain.usecase.RefreshLocationUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -34,8 +33,18 @@ class MapViewModel(
         requestCurrentLocation(moveCamera = true)
     }
 
-    fun onCameraChanged(cameraState: MapCameraState) {
-        _uiModel.value = _uiModel.value.copy(cameraState = cameraState)
+    fun onEmotionSelectorToggle() {
+        _uiModel.value =
+            _uiModel.value.copy(isEmotionSelectorExpanded = !_uiModel.value.isEmotionSelectorExpanded)
+    }
+
+    fun onEmotionBubbleSelected() {
+        _uiModel.value = _uiModel.value.copy(isEmotionSelectorExpanded = false)
+    }
+
+    fun onRecordLocationPickingChanged(isPicking: Boolean) {
+        _uiModel.value = _uiModel.value.copy(isRecordLocationPicking = isPicking)
+        // The renderer initially fits the circle and constrains camera movement around the origin.
     }
 
     fun onMapError(error: MapErrorUiModel) {
