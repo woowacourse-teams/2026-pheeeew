@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 상세 화면 SVG의 원본 경로·색상·은색 받침을 보존합니다. -->
+<vector xmlns:aapt="http://schemas.android.com/aapt" xmlns:android="http://schemas.android.com/apk/res/android" android:width="105dp" android:height="110dp" android:viewportWidth="105" android:viewportHeight="110">
+  <group android:translateX="-859" android:translateY="-2364">
+    <path android:pathData="M911.5 2473.9C940.495 2473.9 964 2450.39 964 2421.4C964 2392.4 940.495 2368.9 911.5 2368.9C882.505 2368.9 859 2392.4 859 2421.4C859 2450.39 882.505 2473.9 911.5 2473.9Z" android:fillColor="#7B818B" />
+    <path android:pathData="M911.5 2471.15C940.081 2471.15 963.25 2447.98 963.25 2419.4C963.25 2390.82 940.081 2367.65 911.5 2367.65C882.919 2367.65 859.75 2390.82 859.75 2419.4C859.75 2447.98 882.919 2471.15 911.5 2471.15Z" android:strokeColor="#252725" android:strokeWidth="1.5">
+      <aapt:attr name="android:fillColor">
+        <gradient android:type="linear" android:startX="870.162" android:startY="2360.36" android:endX="952.838" android:endY="2478.43">
+          <item android:offset="0" android:color="#F6F7F8" />
+          <item android:offset="0.32" android:color="#DFE3E8" />
+          <item android:offset="0.62" android:color="#BDC3CB" />
+          <item android:offset="1" android:color="#E9ECF0" />
+        </gradient>
+      </aapt:attr>
+    </path>
+    <path android:pathData="M911.5 2463.68C936.652 2463.68 957.042 2443.29 957.042 2418.14C957.042 2392.98 936.652 2372.59 911.5 2372.59C886.348 2372.59 865.958 2392.98 865.958 2418.14C865.958 2443.29 886.348 2463.68 911.5 2463.68Z" android:fillColor="#292B2A" />
+    <group>
+      <clip-path android:pathData="M957.042 2366.02H865.958V2457.1H957.042V2366.02Z" />
+      <path android:pathData="M911.501 2456.6C935.815 2456.6 955.525 2436.88 955.525 2412.57C955.525 2388.26 935.815 2368.55 911.501 2368.55C887.187 2368.55 867.477 2388.26 867.477 2412.57C867.477 2436.88 887.187 2456.6 911.501 2456.6Z" android:fillColor="#292B2A" />
+      <path android:pathData="M911.501 2454.57C935.815 2454.57 955.525 2434.86 955.525 2410.55C955.525 2386.23 935.815 2366.52 911.501 2366.52C887.187 2366.52 867.477 2386.23 867.477 2410.55C867.477 2434.86 887.187 2454.57 911.501 2454.57Z" android:fillColor="#CDC7E4" android:strokeColor="#292B2A" android:strokeWidth="1.77108" />
+      <path android:pathData="M880.633 2388.79C884.681 2382.38 890.416 2378.67 897.838 2377.66" android:strokeColor="#FFFFFF" android:strokeWidth="3.03615" android:strokeLineCap="round" />
+      <path android:pathData="M889.235 2423.45C892.309 2423.45 894.801 2422.2 894.801 2420.67C894.801 2419.13 892.309 2417.88 889.235 2417.88C886.161 2417.88 883.669 2419.13 883.669 2420.67C883.669 2422.2 886.161 2423.45 889.235 2423.45Z" android:fillColor="#BC8DA6" android:fillAlpha="0.35" android:strokeAlpha="0.35" />
+      <path android:pathData="M933.765 2423.45C936.84 2423.45 939.332 2422.2 939.332 2420.67C939.332 2419.13 936.84 2417.88 933.765 2417.88C930.691 2417.88 928.199 2419.13 928.199 2420.67C928.199 2422.2 930.691 2423.45 933.765 2423.45Z" android:fillColor="#BC8DA6" android:fillAlpha="0.35" android:strokeAlpha="0.35" />
+      <path android:pathData="M890.754 2398.41C894.127 2400.09 897.67 2400.26 901.38 2398.91M921.621 2398.91C925.332 2400.26 928.874 2400.09 932.248 2398.41" android:strokeColor="#777087" android:strokeWidth="1.77108" android:strokeLineCap="round" />
+      <path android:pathData="M889.741 2407.01C893.789 2410.38 898.006 2410.55 902.392 2407.51M920.609 2407.51C924.994 2410.55 929.211 2410.38 933.259 2407.01" android:strokeColor="#292B2A" android:strokeWidth="2.42892" android:strokeLineCap="round" />
+      <path android:pathData="M896.826 2416.47C899.9 2416.47 902.392 2415.63 902.392 2414.6C902.392 2413.56 899.9 2412.73 896.826 2412.73C893.752 2412.73 891.26 2413.56 891.26 2414.6C891.26 2415.63 893.752 2416.47 896.826 2416.47Z" android:fillColor="#9790B2" android:fillAlpha="0.28" android:strokeAlpha="0.28" />
+      <path android:pathData="M926.176 2416.47C929.25 2416.47 931.742 2415.63 931.742 2414.6C931.742 2413.56 929.25 2412.73 926.176 2412.73C923.102 2412.73 920.609 2413.56 920.609 2414.6C920.609 2415.63 923.102 2416.47 926.176 2416.47Z" android:fillColor="#9790B2" android:fillAlpha="0.28" android:strokeAlpha="0.28" />
+      <path android:pathData="M911.5 2432.82C913.876 2432.82 915.802 2430.55 915.802 2427.76C915.802 2424.96 913.876 2422.7 911.5 2422.7C909.125 2422.7 907.199 2424.96 907.199 2427.76C907.199 2430.55 909.125 2432.82 911.5 2432.82Z" android:fillColor="#292B2A" />
+      <path android:pathData="M909.477 2430.28C910.826 2429.27 912.175 2429.27 913.525 2430.28" android:strokeColor="#D6A4B3" android:strokeWidth="1.51807" android:strokeLineCap="round" />
+    </group>
+  </group>
+</vector>

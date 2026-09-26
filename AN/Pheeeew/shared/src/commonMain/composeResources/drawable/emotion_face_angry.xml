@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 상세 화면 SVG의 원본 경로·색상·은색 받침을 보존합니다. -->
+<vector xmlns:aapt="http://schemas.android.com/aapt" xmlns:android="http://schemas.android.com/apk/res/android" android:width="105dp" android:height="110dp" android:viewportWidth="105" android:viewportHeight="110">
+  <group android:translateX="-796.75" android:translateY="-2541">
+    <path android:pathData="M849.25 2650.9C878.245 2650.9 901.75 2627.39 901.75 2598.4C901.75 2569.4 878.245 2545.9 849.25 2545.9C820.255 2545.9 796.75 2569.4 796.75 2598.4C796.75 2627.39 820.255 2650.9 849.25 2650.9Z" android:fillColor="#7B818B" />
+    <path android:pathData="M849.25 2648.15C877.831 2648.15 901 2624.98 901 2596.4C901 2567.82 877.831 2544.65 849.25 2544.65C820.669 2544.65 797.5 2567.82 797.5 2596.4C797.5 2624.98 820.669 2648.15 849.25 2648.15Z" android:strokeColor="#252725" android:strokeWidth="1.5">
+      <aapt:attr name="android:fillColor">
+        <gradient android:type="linear" android:startX="807.912" android:startY="2537.36" android:endX="890.588" android:endY="2655.43">
+          <item android:offset="0" android:color="#F6F7F8" />
+          <item android:offset="0.32" android:color="#DFE3E8" />
+          <item android:offset="0.62" android:color="#BDC3CB" />
+          <item android:offset="1" android:color="#E9ECF0" />
+        </gradient>
+      </aapt:attr>
+    </path>
+    <path android:pathData="M849.25 2640.68C874.402 2640.68 894.792 2620.29 894.792 2595.14C894.792 2569.98 874.402 2549.59 849.25 2549.59C824.098 2549.59 803.708 2569.98 803.708 2595.14C803.708 2620.29 824.098 2640.68 849.25 2640.68Z" android:fillColor="#292B2A" />
+    <group>
+      <clip-path android:pathData="M803.708,2542.0h91.0844v93.123h-91.0844Z" />
+      <path android:pathData="M849.251 2633.47C873.7 2633.47 893.521 2613.65 893.521 2589.2C893.521 2564.75 873.7 2544.93 849.251 2544.93C824.801 2544.93 804.98 2564.75 804.98 2589.2C804.98 2613.65 824.801 2633.47 849.251 2633.47Z" android:fillColor="#292B2A" android:strokeColor="#292B2A" android:strokeWidth="2.54426" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M849.251 2631.43C873.7 2631.43 893.521 2611.61 893.521 2587.16C893.521 2562.71 873.7 2542.89 849.251 2542.89C824.801 2542.89 804.98 2562.71 804.98 2587.16C804.98 2611.61 824.801 2631.43 849.251 2631.43Z" android:fillColor="#EA9E92" android:strokeColor="#292B2A" android:strokeWidth="1.78098" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M817.192 2566.3C821.602 2558.5 828.048 2554.09 836.529 2553.07" android:strokeColor="#FFFFFF" android:strokeWidth="3.05311" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M826.861 2599.37C830.233 2599.37 832.967 2598.01 832.967 2596.32C832.967 2594.63 830.233 2593.27 826.861 2593.27C823.489 2593.27 820.755 2594.63 820.755 2596.32C820.755 2598.01 823.489 2599.37 826.861 2599.37Z" android:fillColor="#BF797D" android:strokeColor="#292B2A" android:strokeWidth="2.54426" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillAlpha="0.27" android:strokeAlpha="0.27" />
+      <path android:pathData="M871.639 2599.37C875.012 2599.37 877.746 2598.01 877.746 2596.32C877.746 2594.63 875.012 2593.27 871.639 2593.27C868.267 2593.27 865.533 2594.63 865.533 2596.32C865.533 2598.01 868.267 2599.37 871.639 2599.37Z" android:fillColor="#BF797D" android:strokeColor="#292B2A" android:strokeWidth="2.54426" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillAlpha="0.27" android:strokeAlpha="0.27" />
+      <path android:pathData="M825.334 2570.88L840.091 2578.52M858.409 2578.52L873.166 2570.88" android:strokeColor="#292B2A" android:strokeWidth="3.56196" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M834.493 2583.6V2589.71M864.007 2583.6V2589.71" android:strokeColor="#292B2A" android:strokeWidth="3.56196" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M833.984 2601.92C844.161 2595.47 854.338 2595.47 864.515 2601.92L862.48 2612.1C853.66 2609.38 844.84 2609.38 836.02 2612.1L833.984 2601.92Z" android:fillColor="#FFFDFC" android:strokeColor="#292B2A" android:strokeWidth="2.0354" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M836.529 2605.99H861.972" android:strokeColor="#292B2A" android:strokeWidth="1.52655" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M874.692 2556.63V2562.74H880.799M883.852 2563.76H877.745V2569.86" android:strokeColor="#A95E59" android:strokeWidth="2.0354" android:strokeLineCap="round" android:strokeLineJoin="round" />
+    </group>
+  </group>
+</vector>

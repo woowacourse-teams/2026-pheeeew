@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 상세 화면 SVG의 원본 경로·색상·은색 받침을 보존합니다. -->
+<vector xmlns:aapt="http://schemas.android.com/aapt" xmlns:android="http://schemas.android.com/apk/res/android" android:width="105dp" android:height="110dp" android:viewportWidth="105" android:viewportHeight="110">
+  <group android:translateX="-672.25" android:translateY="-2541">
+    <path android:pathData="M724.75 2650.9C753.745 2650.9 777.25 2627.39 777.25 2598.4C777.25 2569.4 753.745 2545.9 724.75 2545.9C695.755 2545.9 672.25 2569.4 672.25 2598.4C672.25 2627.39 695.755 2650.9 724.75 2650.9Z" android:fillColor="#7B818B" />
+    <path android:pathData="M724.75 2648.15C753.331 2648.15 776.5 2624.98 776.5 2596.4C776.5 2567.82 753.331 2544.65 724.75 2544.65C696.169 2544.65 673 2567.82 673 2596.4C673 2624.98 696.169 2648.15 724.75 2648.15Z" android:strokeColor="#252725" android:strokeWidth="1.5">
+      <aapt:attr name="android:fillColor">
+        <gradient android:type="linear" android:startX="683.412" android:startY="2537.36" android:endX="766.088" android:endY="2655.43">
+          <item android:offset="0" android:color="#F6F7F8" />
+          <item android:offset="0.32" android:color="#DFE3E8" />
+          <item android:offset="0.62" android:color="#BDC3CB" />
+          <item android:offset="1" android:color="#E9ECF0" />
+        </gradient>
+      </aapt:attr>
+    </path>
+    <path android:pathData="M724.75 2640.68C749.902 2640.68 770.292 2620.29 770.292 2595.14C770.292 2569.98 749.902 2549.59 724.75 2549.59C699.598 2549.59 679.208 2569.98 679.208 2595.14C679.208 2620.29 699.598 2640.68 724.75 2640.68Z" android:fillColor="#292B2A" />
+    <group>
+      <clip-path android:pathData="M679.208,2542.0h91.0844v93.123h-91.0844Z" />
+      <path android:pathData="M724.751 2633.47C749.2 2633.47 769.021 2613.65 769.021 2589.2C769.021 2564.75 749.2 2544.93 724.751 2544.93C700.301 2544.93 680.48 2564.75 680.48 2589.2C680.48 2613.65 700.301 2633.47 724.751 2633.47Z" android:fillColor="#292B2A" android:strokeColor="#292B2A" android:strokeWidth="2.54426" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M724.751 2631.43C749.2 2631.43 769.021 2611.61 769.021 2587.16C769.021 2562.71 749.2 2542.89 724.751 2542.89C700.301 2542.89 680.48 2562.71 680.48 2587.16C680.48 2611.61 700.301 2631.43 724.751 2631.43Z" android:fillColor="#AFCBDD" android:strokeColor="#292B2A" android:strokeWidth="1.78098" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M692.692 2566.3C697.102 2558.5 703.548 2554.09 712.029 2553.07" android:strokeColor="#FFFFFF" android:strokeWidth="3.05311" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M702.361 2599.37C705.733 2599.37 708.467 2598.01 708.467 2596.32C708.467 2594.63 705.733 2593.27 702.361 2593.27C698.989 2593.27 696.255 2594.63 696.255 2596.32C696.255 2598.01 698.989 2599.37 702.361 2599.37Z" android:fillColor="#BF797D" android:strokeColor="#292B2A" android:strokeWidth="2.54426" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillAlpha="0.27" android:strokeAlpha="0.27" />
+      <path android:pathData="M747.139 2599.37C750.512 2599.37 753.246 2598.01 753.246 2596.32C753.246 2594.63 750.512 2593.27 747.139 2593.27C743.767 2593.27 741.033 2594.63 741.033 2596.32C741.033 2598.01 743.767 2599.37 747.139 2599.37Z" android:fillColor="#BF797D" android:strokeColor="#292B2A" android:strokeWidth="2.54426" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillAlpha="0.27" android:strokeAlpha="0.27" />
+      <path android:pathData="M702.36 2574.95C708.127 2575.29 712.707 2572.75 716.099 2567.32M733.4 2567.32C736.793 2572.75 741.372 2575.29 747.139 2574.95M704.905 2586.66C708.636 2589.71 712.198 2589.71 715.59 2586.66M733.909 2586.66C737.641 2589.71 741.202 2589.71 744.595 2586.66M715.082 2608.03C721.527 2602.6 727.973 2602.6 734.418 2608.03" android:strokeColor="#292B2A" android:strokeWidth="2.54426" android:strokeLineCap="round" android:strokeLineJoin="round" />
+      <path android:pathData="M746.122 2587.16C739.337 2596.04 739.337 2600.99 746.122 2602.04C752.906 2600.99 752.906 2596.04 746.122 2587.16Z" android:fillColor="#6E9BBA" />
+    </group>
+  </group>
+</vector>
