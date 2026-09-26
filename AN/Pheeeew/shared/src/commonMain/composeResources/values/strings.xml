@@ -11,6 +11,7 @@
     <string name="group_home_retry">다시 불러오기</string>
     <string name="group_home_refresh_error">그룹을 새로고침하지 못했어요.</string>
     <string name="group_home_member_and_weekly_count">%1$d명 · 이번 주 %2$d개</string>
+    <string name="group_home_member_count">%1$d명</string>
     <string name="group_home_loading">그룹을 불러오는 중이에요.</string>
     <string name="group_create_title">그룹 만들기</string>
     <string name="group_create_back">뒤로</string>

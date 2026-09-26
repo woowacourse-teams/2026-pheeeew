@@ -33,6 +33,7 @@ import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_home_member_and_weekly_count
+import pheeeew.shared.generated.resources.group_home_member_count
 
 /** 목록 전체를 하나의 그룹 진입 버튼으로 표현합니다. */
 @Composable
@@ -83,11 +84,13 @@ fun GroupListItem(
                 )
                 Text(
                     text =
-                        stringResource(
-                            Res.string.group_home_member_and_weekly_count,
-                            group.memberCount,
-                            group.weeklyStampCount,
-                        ),
+                        group.weeklyStampCount?.let { weeklyCount ->
+                            stringResource(
+                                Res.string.group_home_member_and_weekly_count,
+                                group.memberCount,
+                                weeklyCount,
+                            )
+                        } ?: stringResource(Res.string.group_home_member_count, group.memberCount),
                     color = AppColors.RankingSecondaryContent,
                     fontSize = 11.sp,
                     maxLines = 1,

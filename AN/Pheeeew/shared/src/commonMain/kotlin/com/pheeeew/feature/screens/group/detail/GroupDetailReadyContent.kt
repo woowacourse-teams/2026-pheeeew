@@ -167,7 +167,7 @@ private fun WeeklySummary(detail: GroupDetailUiModel) {
     Row(Modifier.fillMaxWidth().height(69.dp), verticalAlignment = Alignment.CenterVertically) {
         SummaryValue(
             label = stringResource(Res.string.group_detail_weekly_label),
-            value = stringResource(Res.string.group_detail_weekly_value, formatCount(detail.group.weeklyStampCount)),
+            value = stringResource(Res.string.group_detail_weekly_value, formatCount(detail.weeklyScore)),
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(1.dp).height(69.dp).background(Color(0xFFDFE2D9)))
