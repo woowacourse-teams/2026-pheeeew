@@ -1,8 +1,7 @@
 package com.pheeeew.feature.screens.map.overlay
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -41,6 +41,9 @@ import pheeeew.shared.generated.resources.ic_menu
 import pheeeew.shared.generated.resources.ic_my_location
 import pheeeew.shared.generated.resources.ic_settings
 
+private const val EMOTION_PROMPT_DAMPING_RATIO = 0.8205f
+private const val EMOTION_PROMPT_STIFFNESS = 380f
+
 @Composable
 fun MapOverlay(
     onListClick: () -> Unit,
@@ -53,11 +56,16 @@ fun MapOverlay(
     isMapError: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val promptBottomOffset by
-        animateDpAsState(
-            targetValue = if (isEmotionSelectorExpanded) 320.dp else 190.dp,
-            animationSpec = tween(durationMillis = 440, easing = FastOutSlowInEasing),
-            label = "emotionPromptPosition",
+    val promptTranslationY by
+        animateFloatAsState(
+            targetValue = if (isEmotionSelectorExpanded) -125f else 0f,
+            animationSpec =
+                spring(
+                    dampingRatio = EMOTION_PROMPT_DAMPING_RATIO,
+                    stiffness = EMOTION_PROMPT_STIFFNESS,
+                    visibilityThreshold = 0.001f,
+                ),
+            label = "emotionPromptTranslationY",
         )
 
     Box(
@@ -75,7 +83,8 @@ fun MapOverlay(
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = promptBottomOffset),
+                        .padding(bottom = 190.dp)
+                        .graphicsLayer { translationY = promptTranslationY.dp.toPx() },
             )
 
             Box(
