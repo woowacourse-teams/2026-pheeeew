@@ -17,9 +17,9 @@ import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.exception.BlockErrorCode;
 import com.pheeeew.report.exception.BlockException;
-import com.pheeeew.sigh.domain.repository.SighRepository;
-import com.pheeeew.sigh.exception.SighErrorCode;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.emotion.domain.repository.EmotionRepository;
+import com.pheeeew.emotion.exception.EmotionErrorCode;
+import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +56,7 @@ class DeviceBlockServiceIntegrationTest {
     private DeviceBlockRepository deviceBlockRepository;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @Autowired
     private DeviceRepository deviceRepository;
@@ -67,7 +67,7 @@ class DeviceBlockServiceIntegrationTest {
     @AfterEach
     void tearDown() {
         deviceBlockRepository.deleteAll();
-        sighRepository.deleteAll();
+        emotionRepository.deleteAll();
         deviceRepository.deleteAll();
         등록_순번 = 0;
     }
@@ -85,7 +85,7 @@ class DeviceBlockServiceIntegrationTest {
         // then
         assertThat(result.created()).isTrue();
         assertThat(result.block().blockId()).isPositive();
-        assertThat(result.block().sighId()).isEqualTo(근거_한숨);
+        assertThat(result.block().emotionId()).isEqualTo(근거_한숨);
         assertThat(result.block().nickname()).isEqualTo("외로운 회사원");
         assertThat(result.block().memo()).isEqualTo("오늘은 조금 지쳤다");
         assertThat(deviceBlockRepository.count()).isOne();
@@ -106,8 +106,30 @@ class DeviceBlockServiceIntegrationTest {
         // then
         assertThat(다시.created()).isFalse();
         assertThat(다시.block().blockId()).isEqualTo(최초.block().blockId());
-        assertThat(다시.block().sighId()).isEqualTo(최초_근거_한숨);
+        assertThat(다시.block().emotionId()).isEqualTo(최초_근거_한숨);
         assertThat(다시.block().memo()).isEqualTo("최초 근거");
+        assertThat(deviceBlockRepository.count()).isOne();
+    }
+
+    @Test
+    void 삭제된_감정의_작성자를_새로_차단하고_재요청하면_최초_차단을_반환한다() {
+        // given
+        Device 차단자 = 기기를_저장한다();
+        Device 작성자 = 기기를_저장한다();
+        Long emotionId = 한숨을_저장한다(작성자.getId(), null);
+        jdbcClient.sql("UPDATE emotions SET deleted_at = NOW() WHERE id = :id")
+                .param("id", emotionId)
+                .update();
+
+        // when
+        BlockSaveResult 최초 = deviceBlockService.save(emotionId, 차단자.getPublicId());
+        BlockSaveResult 재요청 = deviceBlockService.save(emotionId, 차단자.getPublicId());
+
+        // then
+        assertThat(최초.created()).isTrue();
+        assertThat(재요청.created()).isFalse();
+        assertThat(재요청.block().blockId()).isEqualTo(최초.block().blockId());
+        assertThat(재요청.block().emotionId()).isEqualTo(emotionId);
         assertThat(deviceBlockRepository.count()).isOne();
     }
 
@@ -234,8 +256,8 @@ class DeviceBlockServiceIntegrationTest {
                 catchThrowable(() -> deviceBlockService.save(없는_한숨_식별자, 차단자.getPublicId()));
 
         // then
-        assertThat(throwable).isInstanceOf(SighException.class);
-        assertThat(((SighException) throwable).getErrorCode()).isEqualTo(SighErrorCode.SIGH_NOT_FOUND);
+        assertThat(throwable).isInstanceOf(EmotionException.class);
+        assertThat(((EmotionException) throwable).getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_NOT_FOUND);
         assertThat(deviceBlockRepository.count()).isZero();
     }
 
@@ -288,7 +310,7 @@ class DeviceBlockServiceIntegrationTest {
 
         // then
         assertThat(result.items())
-                .extracting(BlockResult::sighId)
+                .extracting(BlockResult::emotionId)
                 .containsExactly(나중에_차단한_근거_한숨, 먼저_차단한_근거_한숨);
         assertThat(result.items().getFirst().memo()).isEqualTo("나중에 차단");
         assertThat(result.hasNext()).isFalse();
@@ -317,7 +339,7 @@ class DeviceBlockServiceIntegrationTest {
     private Long 한숨을_저장한다(Long deviceId, String memo) {
         등록_순번++;
         return jdbcClient.sql("""
-                        INSERT INTO sighs (request_id, location, nickname, memo, device_id, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, memo, device_id, created_at, updated_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
@@ -339,21 +361,21 @@ class DeviceBlockServiceIntegrationTest {
                 .single();
     }
 
-    private void 차단_행을_직접_넣는다(Long blockerDeviceId, Long blockedDeviceId, Long originSighId) {
+    private void 차단_행을_직접_넣는다(Long blockerDeviceId, Long blockedDeviceId, Long originEmotionId) {
         jdbcClient.sql("""
                         INSERT INTO device_blocks
-                            (blocker_device_id, blocked_device_id, origin_sigh_id, created_at, updated_at)
-                        VALUES (:blockerDeviceId, :blockedDeviceId, :originSighId, NOW(), NOW())
+                            (blocker_device_id, blocked_device_id, origin_emotion_id, created_at, updated_at)
+                        VALUES (:blockerDeviceId, :blockedDeviceId, :originEmotionId, NOW(), NOW())
                         """)
                 .param("blockerDeviceId", blockerDeviceId)
                 .param("blockedDeviceId", blockedDeviceId)
-                .param("originSighId", originSighId)
+                .param("originEmotionId", originEmotionId)
                 .update();
     }
 
     private List<BlockSaveResult> 동시에_차단한다(
             int requestCount,
-            Long sighId,
+            Long emotionId,
             UUID devicePublicId,
             CountDownLatch ready,
             CountDownLatch start
@@ -364,7 +386,7 @@ class DeviceBlockServiceIntegrationTest {
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
                     start.await();
-                    return deviceBlockService.save(sighId, devicePublicId);
+                    return deviceBlockService.save(emotionId, devicePublicId);
                 }));
             }
 

@@ -17,18 +17,18 @@ import com.pheeeew.device.infra.attestation.PlayIntegrityConfig;
 import com.pheeeew.device.infra.attestation.PlayIntegrityDeviceAttestationVerifier;
 import com.pheeeew.device.infra.attestation.PlayIntegrityMetrics;
 import com.pheeeew.report.application.DeviceBlockService;
-import com.pheeeew.report.application.SighBlockService;
-import com.pheeeew.report.application.SighReportMetrics;
-import com.pheeeew.report.application.SighReportService;
-import com.pheeeew.sigh.application.SighService;
-import com.pheeeew.sigh.infra.KoreanSighNicknameGenerator;
-import com.pheeeew.sigh.infra.PostgisSighLocationGenerator;
-import com.pheeeew.sigh.infra.SighLocationConfig;
+import com.pheeeew.report.application.EmotionBlockService;
+import com.pheeeew.report.application.EmotionReportMetrics;
+import com.pheeeew.report.application.EmotionReportService;
+import com.pheeeew.emotion.infra.KoreanEmotionNicknameGenerator;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import com.pheeeew.groups.application.GroupRankingService;
+import com.pheeeew.groups.application.GroupService;
+import com.pheeeew.groups.application.InviteCodeGenerator;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.context.annotation.Import;
@@ -60,14 +60,14 @@ import org.springframework.test.context.ActiveProfiles;
         PlayIntegrityConfig.class,
         PlayIntegrityDeviceAttestationVerifier.class,
         PlayIntegrityMetrics.class,
-        SighReportMetrics.class,
-        SighReportService.class,
-        SighService.class,
-        SighBlockService.class,
+        EmotionReportMetrics.class,
+        GroupService.class,
+        GroupRankingService.class,
+        InviteCodeGenerator.class,
+        EmotionReportService.class,
+        EmotionBlockService.class,
         DeviceBlockService.class,
-        KoreanSighNicknameGenerator.class,
-        PostgisSighLocationGenerator.class,
-        SighLocationConfig.class
+        KoreanEmotionNicknameGenerator.class
 })
 public @interface PostgisDataJpaTest {
 }

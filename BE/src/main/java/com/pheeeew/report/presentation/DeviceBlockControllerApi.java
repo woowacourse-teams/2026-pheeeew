@@ -17,7 +17,7 @@ import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-@Tag(name = "사용자 차단", description = "한 사용자가 올린 한숨 전부를 내 지도와 목록에서 가리는 API")
+@Tag(name = "사용자 차단", description = "한 사용자가 올린 감정 전부를 내 지도와 목록에서 가리는 API")
 public interface DeviceBlockControllerApi {
 
     @Operation(
@@ -30,30 +30,30 @@ public interface DeviceBlockControllerApi {
 
                     ### 차단 대상 지정
 
-                    - `sighId`에는 차단할 사용자가 올린 한숨의 ID를 담습니다. 서버가 그 한숨의 작성자를 찾아 차단합니다.
+                    - `emotionId`에는 차단할 사용자가 올린 감정의 ID를 담습니다. 서버가 그 감정의 작성자를 찾아 차단합니다.
                     - 클라이언트는 작성자 식별자를 알 필요가 없고, 응답에도 담기지 않습니다.
 
                     ### 차단 범위
 
-                    - 그 사용자가 올린 한숨이 지도 조회와 목록 조회에서 전부 사라집니다. 차단한 뒤에 올라오는 한숨도 사라집니다.
+                    - 그 사용자가 올린 감정이 지도 조회와 목록 조회에서 전부 사라집니다. 차단한 뒤에 올라오는 감정도 사라집니다.
                     - 차단은 차단한 기기에서만 적용됩니다. 다른 사용자의 화면은 바뀌지 않습니다.
                     - 조회 요청에 `Authorization` 헤더를 함께 보내야 차단이 적용됩니다.
 
                     ### 차단할 수 없는 경우
 
                     - 자기 자신은 차단할 수 없습니다. 409 `BLOCK-002`를 반환합니다.
-                    - 작성자를 알 수 없는 한숨이 있습니다. 이전 버전에서 등록했거나 `POST /api/v1/sighs`로 등록한 한숨에는 작성자 정보가 없습니다. 이때는 409 `BLOCK-003`을 반환합니다. 그 한숨은 `POST /api/v2/blocks/sighs`로 개별 차단할 수 있습니다.
-                    - 존재하지 않는 한숨이면 404를 반환합니다. 삭제된 한숨의 작성자는 차단할 수 있습니다.
+                    - 작성자를 알 수 없는 감정은 409 `BLOCK-003`을 반환합니다. 그 감정은 `POST /api/v2/blocks/emotions`로 개별 차단할 수 있습니다.
+                    - 존재하지 않는 감정이면 404를 반환합니다. 삭제된 감정의 작성자는 차단할 수 있습니다.
 
                     ### 중복 차단
 
                     - 같은 사용자를 한 번만 차단합니다. 이미 차단한 사용자를 다시 차단하면 새로 저장하지 않고 최초 차단을 200으로 반환합니다.
-                    - 이때 응답의 `sighId`, `nickname`, `memo`는 요청에 담은 한숨이 아니라 최초 차단의 근거가 된 한숨입니다.
+                    - 이때 응답의 `emotionId`, `nickname`, `memo`는 요청에 담은 감정이 아니라 최초 차단의 근거가 된 감정입니다.
 
-                    ### 한숨 차단과의 관계
+                    ### 감정 차단과의 관계
 
-                    - 두 차단은 독립적입니다. 같은 한숨을 개별 차단하고 그 작성자도 차단하면 두 기록이 따로 남습니다.
-                    - 사용자 차단을 해제해도 개별 차단한 한숨은 계속 가려집니다.
+                    - 두 차단은 독립적입니다. 같은 감정을 개별 차단하고 그 작성자도 차단하면 두 기록이 따로 남습니다.
+                    - 사용자 차단을 해제해도 개별 차단한 감정은 계속 가려집니다.
                     """,
             security = @SecurityRequirement(name = "bearerAuth")
     )
@@ -76,7 +76,7 @@ public interface DeviceBlockControllerApi {
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "한숨 식별자가 올바르지 않음",
+                    description = "감정 식별자가 올바르지 않음",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
@@ -98,18 +98,18 @@ public interface DeviceBlockControllerApi {
             ),
             @ApiResponse(
                     responseCode = "404",
-                    description = "차단 대상 한숨이 존재하지 않음",
+                    description = "차단 대상 감정이 존재하지 않음",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(value = """
-                                    {"code":"SIGH-002","message":"한숨을 찾을 수 없습니다."}
+                                    {"code":"EMOTION-011","message":"감정을 찾을 수 없습니다."}
                                     """)
                     )
             ),
             @ApiResponse(
                     responseCode = "409",
-                    description = "자기 자신을 차단하려 했거나 작성자를 알 수 없는 한숨임",
+                    description = "자기 자신을 차단하려 했거나 작성자를 알 수 없는 감정임",
                     content = @Content(
                             mediaType = MediaType.APPLICATION_JSON_VALUE,
                             schema = @Schema(implementation = ErrorResponse.class),
@@ -121,9 +121,9 @@ public interface DeviceBlockControllerApi {
                                                     """
                                     ),
                                     @ExampleObject(
-                                            name = "작성자를 알 수 없는 한숨",
+                                            name = "작성자를 알 수 없는 감정",
                                             value = """
-                                                    {"code":"BLOCK-003","message":"작성자를 알 수 없는 한숨은 사용자 차단을 할 수 없습니다."}
+                                                    {"code":"BLOCK-003","message":"작성자를 알 수 없는 감정은 사용자 차단을 할 수 없습니다."}
                                                     """
                                     )
                             }
@@ -152,10 +152,10 @@ public interface DeviceBlockControllerApi {
 
                     ### 항목
 
-                    - 사용자는 익명이므로 차단 대상을 식별하는 값을 반환하지 않습니다. 대신 차단할 때 근거가 된 한숨을 함께 반환해 어떤 사용자를 차단했는지 알아볼 수 있게 합니다.
-                    - `sighId`, `nickname`, `memo`는 그 근거 한숨의 값입니다. 그 사용자의 다른 한숨이나 최근 활동이 아닙니다.
+                    - 사용자는 익명이므로 차단 대상을 식별하는 값을 반환하지 않습니다. 대신 차단할 때 근거가 된 감정을 함께 반환해 어떤 사용자를 차단했는지 알아볼 수 있게 합니다.
+                    - `emotionId`, `nickname`, `memo`는 그 근거 감정의 값입니다. 그 사용자의 다른 감정이나 최근 활동이 아닙니다.
                     - `createdAt`은 차단한 시각입니다.
-                    - 해제에는 `blockId`를 사용합니다. `sighId`가 아닙니다.
+                    - 해제에는 `blockId`를 사용합니다. `emotionId`가 아닙니다.
 
                     ### 페이지
 
@@ -175,7 +175,7 @@ public interface DeviceBlockControllerApi {
                                       "items": [
                                         {
                                           "blockId": 7,
-                                          "sighId": 42,
+                                          "emotionId": 42,
                                           "nickname": "날아가는 고라니",
                                           "memo": "오늘은 조금 지쳤다",
                                           "createdAt": "2026-09-14T02:44:00Z"
@@ -231,9 +231,9 @@ public interface DeviceBlockControllerApi {
     @Operation(
             summary = "사용자 차단 해제",
             description = """
-                    - 경로의 `blockId`는 `GET /api/v2/blocks/devices` 응답의 `blockId`입니다. 한숨 ID가 아닙니다.
+                    - 경로의 `blockId`는 `GET /api/v2/blocks/devices` 응답의 `blockId`입니다. 감정 ID가 아닙니다.
                     - 내 차단이 아니거나 존재하지 않는 `blockId`를 보내도 204를 반환합니다. 같은 요청을 여러 번 보내도 결과가 같습니다.
-                    - 그 사용자의 한숨을 개별 차단해 두었다면, 이 해제만으로는 다시 보이지 않습니다.
+                    - 그 사용자의 감정을 개별 차단해 두었다면, 이 해제만으로는 다시 보이지 않습니다.
                     """,
             security = @SecurityRequirement(name = "bearerAuth")
     )
@@ -274,7 +274,7 @@ public interface DeviceBlockControllerApi {
             @Parameter(hidden = true) UUID devicePublicId,
 
             @Parameter(
-                    description = "해제할 사용자 차단 ID. 한숨 ID가 아닙니다.",
+                    description = "해제할 사용자 차단 ID. 감정 ID가 아닙니다.",
                     example = "7",
                     schema = @Schema(minimum = "1")
             )

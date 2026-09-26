@@ -21,8 +21,8 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceChallengeRepository;
 import com.pheeeew.device.domain.repository.DeviceRefreshTokenRepository;
 import com.pheeeew.device.domain.repository.DeviceRepository;
-import com.pheeeew.report.domain.repository.SighReportRepository;
-import com.pheeeew.sigh.domain.repository.SighRepository;
+import com.pheeeew.report.domain.repository.EmotionReportRepository;
+import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.support.SharedPostgisTestConfiguration;
 import java.util.List;
 import java.util.Map;
@@ -87,10 +87,10 @@ class SecurityAuthorizationIntegrationTest {
     private DeviceChallengeRepository deviceChallengeRepository;
 
     @Autowired
-    private SighRepository sighRepository;
+    private EmotionRepository emotionRepository;
 
     @Autowired
-    private SighReportRepository sighReportRepository;
+    private EmotionReportRepository emotionReportRepository;
 
     @Autowired
     private JdbcClient jdbcClient;
@@ -110,10 +110,10 @@ class SecurityAuthorizationIntegrationTest {
     @AfterEach
     void tearDown() {
         appVersionRepository.deleteAll();
-        jdbcClient.sql("DELETE FROM sigh_blocks").update();
+        jdbcClient.sql("DELETE FROM emotion_blocks").update();
         jdbcClient.sql("DELETE FROM device_blocks").update();
-        sighReportRepository.deleteAll();
-        sighRepository.deleteAll();
+        emotionReportRepository.deleteAll();
+        emotionRepository.deleteAll();
         deviceRefreshTokenRepository.deleteAll();
         deviceRepository.deleteAll();
         deviceChallengeRepository.deleteAll();
@@ -167,14 +167,14 @@ class SecurityAuthorizationIntegrationTest {
     void 토큰_없이_한숨을_등록하면_401을_반환한다() {
         // given / when
         RestTestClient.ResponseSpec result = client.post()
-                .uri("/api/v2/sighs")
+                .uri("/api/v1/emotions")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(한숨_등록_본문())
                 .exchange();
 
         // then
         인증_필요를_검증한다(result);
-        assertThat(sighRepository.count()).isZero();
+        assertThat(emotionRepository.count()).isZero();
     }
 
     @Test
@@ -184,13 +184,13 @@ class SecurityAuthorizationIntegrationTest {
                 .uri("/api/v2/reports")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
-                        {"sighId": 1, "reason": "광고성 게시물입니다"}
+                        {"emotionId": 1, "reason": "광고성 게시물입니다"}
                         """)
                 .exchange();
 
         // then
         인증_필요를_검증한다(result);
-        assertThat(sighReportRepository.count()).isZero();
+        assertThat(emotionReportRepository.count()).isZero();
     }
 
     @ParameterizedTest(name = "{0} {1}")
@@ -206,8 +206,16 @@ class SecurityAuthorizationIntegrationTest {
         assertThat(차단_행_수()).isZero();
     }
 
+    @Test
+    void 이전_한숨_차단_경로는_더_이상_제공하지_않는다() {
+        String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+
+        차단_목록을_조회한다(accessToken, "/api/v2/blocks/sighs")
+                .expectStatus().isNotFound();
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/sighs", "/api/v2/sighs"})
+    @ValueSource(strings = {"/api/v1/emotions"})
     void 조회_경로에_쓸_수_없는_토큰을_보내면_결과_대신_401을_반환한다(String uri) {
         // given
         String 만료된_토큰 = AccessTokenFixture.만료된_토큰(기기_공개_식별자);
@@ -223,7 +231,7 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/sighs", "/api/v2/sighs"})
+    @ValueSource(strings = {"/api/v1/emotions"})
     void 인증된_기기가_조회하면_차단_필터를_켜고_200을_반환한다(String uri) {
         // given
         String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
@@ -244,7 +252,7 @@ class SecurityAuthorizationIntegrationTest {
     void 쓸_수_없는_토큰은_403이_아니라_401로_거부한다(String 설명, String 토큰) {
         // given / when
         RestTestClient.ResponseSpec result = client.post()
-                .uri("/api/v2/sighs")
+                .uri("/api/v1/emotions")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + 토큰)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(한숨_등록_본문())
@@ -252,7 +260,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         인증_필요를_검증한다(result);
-        assertThat(sighRepository.count()).isZero();
+        assertThat(emotionRepository.count()).isZero();
     }
 
     @ParameterizedTest
@@ -260,7 +268,7 @@ class SecurityAuthorizationIntegrationTest {
     void 인증_헤더_형식이_어긋나면_401을_반환한다(String authorization) {
         // given / when
         RestTestClient.ResponseSpec result = client.post()
-                .uri("/api/v2/sighs")
+                .uri("/api/v1/emotions")
                 .header(HttpHeaders.AUTHORIZATION, authorization)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(한숨_등록_본문())
@@ -268,29 +276,29 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isUnauthorized();
-        assertThat(sighRepository.count()).isZero();
+        assertThat(emotionRepository.count()).isZero();
     }
 
     @Test
-    void 등록된_기기의_유효한_토큰으로_한숨을_등록하면_201이고_같은_요청은_200을_반환한다() {
+    void 등록된_기기의_유효한_토큰으로_감정을_등록하거나_재시도하면_200을_반환한다() {
         // given
         String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
         String requestBody = 한숨_등록_본문();
 
         // when
         RestTestClient.ResponseSpec result = client.post()
-                .uri("/api/v2/sighs")
+                .uri("/api/v1/emotions")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(requestBody)
                 .exchange();
 
         // then
-        result.expectStatus().isCreated();
+        result.expectStatus().isOk();
 
         // when
         RestTestClient.ResponseSpec retried = client.post()
-                .uri("/api/v2/sighs")
+                .uri("/api/v1/emotions")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(requestBody)
@@ -298,7 +306,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         retried.expectStatus().isOk();
-        assertThat(sighRepository.count()).isOne();
+        assertThat(emotionRepository.count()).isOne();
     }
 
     @Test
@@ -308,7 +316,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // when
         RestTestClient.ResponseSpec result = client.post()
-                .uri("/api/v2/sighs")
+                .uri("/api/v1/emotions")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(한숨_등록_본문())
@@ -320,30 +328,30 @@ class SecurityAuthorizationIntegrationTest {
                 .json("""
                         {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
                         """, JsonCompareMode.STRICT);
-        assertThat(sighRepository.count()).isZero();
+        assertThat(emotionRepository.count()).isZero();
     }
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void 등록되지_않은_기기의_토큰으로는_신규_등록과_재요청을_모두_거부한다(boolean existingSigh) {
+    void 등록되지_않은_기기의_토큰으로는_신규_등록과_재요청을_모두_거부한다(boolean existingEmotion) {
         // given
         String requestBody = 한숨_등록_본문();
-        if (existingSigh) {
+        if (existingEmotion) {
             String registeredDeviceToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
             client.post()
-                    .uri("/api/v2/sighs")
+                    .uri("/api/v1/emotions")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + registeredDeviceToken)
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(requestBody)
                     .exchange()
-                    .expectStatus().isCreated();
+                    .expectStatus().isOk();
         }
         String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
-        long originalCount = sighRepository.count();
+        long originalCount = emotionRepository.count();
 
         // when
         RestTestClient.ResponseSpec result = client.post()
-                .uri("/api/v2/sighs")
+                .uri("/api/v1/emotions")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(requestBody)
@@ -355,22 +363,11 @@ class SecurityAuthorizationIntegrationTest {
                 .json("""
                         {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
                         """, JsonCompareMode.STRICT);
-        assertThat(sighRepository.count()).isEqualTo(originalCount);
-    }
-
-    @Test
-    void v1_한숨_목록은_인증_없이_조회할_수_있다() {
-        // given / when
-        RestTestClient.ResponseSpec result = client.get()
-                .uri("/api/v1/sighs" + 지도_영역_질의)
-                .exchange();
-
-        // then
-        result.expectStatus().isOk();
+        assertThat(emotionRepository.count()).isEqualTo(originalCount);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v2/sighs" + 지도_영역_질의, "/api/v2/sighs/42"})
+    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v1/emotions/42"})
     void 토큰_없이_v2_목록이나_단건을_조회하면_401을_반환한다(String uri) {
         // given / when
         RestTestClient.ResponseSpec result = client.get().uri(uri).exchange();
@@ -380,7 +377,7 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v2/sighs" + 지도_영역_질의, "/api/v2/sighs/42"})
+    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v1/emotions/42"})
     void 만료된_토큰으로_v2_목록이나_단건을_조회하면_401을_반환한다(String uri) {
         // given
         String accessToken = AccessTokenFixture.만료된_토큰(기기_공개_식별자);
@@ -399,21 +396,54 @@ class SecurityAuthorizationIntegrationTest {
     void 유효한_토큰으로_v2_목록과_단건을_조회할_수_있다() {
         // given
         String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
-        Long sighId = 한숨을_등록한다(accessToken);
+        Long emotionId = 한숨을_등록한다(accessToken);
 
         // when
         RestTestClient.ResponseSpec listResult = client.get()
-                .uri("/api/v2/sighs" + 지도_영역_질의)
+                .uri("/api/v1/emotions" + 지도_영역_질의)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .exchange();
         RestTestClient.ResponseSpec detailResult = client.get()
-                .uri("/api/v2/sighs/" + sighId)
+                .uri("/api/v1/emotions/" + emotionId)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .exchange();
 
         // then
-        listResult.expectStatus().isOk().expectBody().jsonPath("$.items[0].id").isEqualTo(sighId.intValue());
-        detailResult.expectStatus().isOk().expectBody().jsonPath("$.id").isEqualTo(sighId.intValue());
+        listResult.expectStatus().isOk().expectBody().jsonPath("$.items[0].id").isEqualTo(emotionId.intValue());
+        detailResult.expectStatus().isOk().expectBody().jsonPath("$.id").isEqualTo(emotionId.intValue());
+    }
+
+    @Test
+    void 본인_감정만_수정과_소프트_삭제할_수_있다() {
+        // given
+        String ownerToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        String otherToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        Long id = 한숨을_등록한다(ownerToken);
+        String uri = "/api/v1/emotions/" + id;
+        String body = "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"수정한 메모\"}";
+
+        // when / then
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNotFound();
+        client.delete().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken)
+                .exchange().expectStatus().isNotFound();
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNoContent();
+        client.get().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .exchange().expectStatus().isOk().expectBody()
+                .jsonPath("$.properties.state").isEqualTo("ANGRY")
+                .jsonPath("$.properties.memo").isEqualTo("수정한 메모");
+        for (int retry = 0; retry < 2; retry++) {
+            client.delete().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                    .exchange().expectStatus().isNoContent();
+        }
+        client.get().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .exchange().expectStatus().isNotFound();
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNotFound();
+        client.get().uri("/api/v1/emotions" + 지도_영역_질의).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .exchange().expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty();
+        assertThat(emotionRepository.findById(id).orElseThrow().getDeletedAt()).isNotNull();
     }
 
     @Test
@@ -423,7 +453,7 @@ class SecurityAuthorizationIntegrationTest {
 
         // when
         RestTestClient.ResponseSpec result = client.get()
-                .uri("/api/v2/sighs/" + Long.MAX_VALUE)
+                .uri("/api/v1/emotions/" + Long.MAX_VALUE)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .exchange();
 
@@ -431,7 +461,7 @@ class SecurityAuthorizationIntegrationTest {
         result.expectStatus().isNotFound()
                 .expectBody()
                 .json("""
-                        {"code":"SIGH-002","message":"한숨을 찾을 수 없습니다."}
+                        {"code":"EMOTION-002","message":"감정을 찾을 수 없습니다."}
                         """, JsonCompareMode.STRICT);
     }
 
@@ -440,10 +470,10 @@ class SecurityAuthorizationIntegrationTest {
         // given
         String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
         String registeredDeviceToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
-        Long sighId = 한숨을_등록한다(registeredDeviceToken);
+        Long emotionId = 한숨을_등록한다(registeredDeviceToken);
 
         // when
-        RestTestClient.ResponseSpec result = 신고한다(accessToken, sighId);
+        RestTestClient.ResponseSpec result = 신고한다(accessToken, emotionId);
 
         // then
         result.expectStatus().isUnauthorized()
@@ -451,24 +481,7 @@ class SecurityAuthorizationIntegrationTest {
                 .json("""
                         {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
                         """, JsonCompareMode.STRICT);
-        assertThat(sighReportRepository.count()).isZero();
-    }
-
-    @Test
-    void 폐기_예정인_v1_한숨_등록은_아직_인증_없이_동작한다() {
-        // given / when
-        RestTestClient.ResponseSpec result = client.post()
-                .uri("/api/v1/sighs")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body("""
-                        {"requestId": "%s", "latitude": 37.5664, "longitude": 126.9780}
-                        """.formatted(UUID.randomUUID()))
-                .exchange();
-
-        // then
-        result.expectStatus().isCreated();
-        assertThat(sighRepository.count()).isOne();
-        assertThat(작성자_기기_식별자()).isNull();
+        assertThat(emotionReportRepository.count()).isZero();
     }
 
     @Test
@@ -480,14 +493,14 @@ class SecurityAuthorizationIntegrationTest {
 
         // when
         RestTestClient.ResponseSpec result = client.post()
-                .uri("/api/v2/sighs")
+                .uri("/api/v1/emotions")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(한숨_등록_본문())
                 .exchange();
 
         // then
-        String 응답_본문 = result.expectStatus().isCreated()
+        String 응답_본문 = result.expectStatus().isOk()
                 .expectBody(String.class)
                 .returnResult()
                 .getResponseBody();
@@ -495,35 +508,35 @@ class SecurityAuthorizationIntegrationTest {
                 .doesNotContain(device.getPublicId().toString())
                 .doesNotContain("device");
         assertThat(한숨_속성_이름들(응답_본문))
-                .containsExactlyInAnyOrder("createdAt", "memo", "nickname", "liked", "likeCount");
+                .containsExactly("id");
         assertThat(작성자_기기_식별자()).isEqualTo(device.getId());
     }
 
     @Test
-    void 인증한_기기는_한숨_차단과_사용자_차단을_등록하고_조회하고_해제할_수_있다() {
+    void 인증한_기기는_감정_차단과_사용자_차단을_등록하고_조회하고_해제할_수_있다() {
         // given
         String 차단자_토큰 = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
         String 작성자_토큰 = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
-        Long sighId = 한숨을_등록한다(작성자_토큰);
+        Long emotionId = 한숨을_등록한다(작성자_토큰);
 
         // when / then
-        차단한다(차단자_토큰, "/api/v2/blocks/sighs", sighId).expectStatus().isCreated();
-        차단_목록을_조회한다(차단자_토큰, "/api/v2/blocks/sighs")
+        차단한다(차단자_토큰, "/api/v2/blocks/emotions", emotionId).expectStatus().isCreated();
+        차단_목록을_조회한다(차단자_토큰, "/api/v2/blocks/emotions")
                 .expectStatus().isOk()
                 .expectBody()
                 .json("""
-                        {"items": [{"sighId": %d}], "hasNext": false, "nextCursor": null}
-                        """.formatted(sighId), JsonCompareMode.LENIENT);
-        해제한다(차단자_토큰, "/api/v2/blocks/sighs/" + sighId).expectStatus().isNoContent();
+                        {"items": [{"emotionId": %d}], "hasNext": false, "nextCursor": null}
+                        """.formatted(emotionId), JsonCompareMode.LENIENT);
+        해제한다(차단자_토큰, "/api/v2/blocks/emotions/" + emotionId).expectStatus().isNoContent();
 
-        차단한다(차단자_토큰, "/api/v2/blocks/devices", sighId).expectStatus().isCreated();
+        차단한다(차단자_토큰, "/api/v2/blocks/devices", emotionId).expectStatus().isCreated();
         Long blockId = jdbcClient.sql("SELECT id FROM device_blocks").query(Long.class).single();
         차단_목록을_조회한다(차단자_토큰, "/api/v2/blocks/devices")
                 .expectStatus().isOk()
                 .expectBody()
                 .json("""
-                        {"items": [{"blockId": %d, "sighId": %d}], "hasNext": false, "nextCursor": null}
-                        """.formatted(blockId, sighId), JsonCompareMode.LENIENT);
+                        {"items": [{"blockId": %d, "emotionId": %d}], "hasNext": false, "nextCursor": null}
+                        """.formatted(blockId, emotionId), JsonCompareMode.LENIENT);
         해제한다(차단자_토큰, "/api/v2/blocks/devices/" + blockId).expectStatus().isNoContent();
 
         assertThat(차단_행_수()).isZero();
@@ -539,6 +552,30 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isOk();
+    }
+
+    @Test
+    void API_문서는_감정_차단_경로와_감정_식별자_필드를_제공한다() throws JsonProcessingException {
+        String body = client.get().uri("/v3/api-docs")
+                .exchange().expectStatus().isOk()
+                .expectBody(String.class).returnResult().getResponseBody();
+        JsonNode docs = new ObjectMapper().readTree(body);
+
+        assertThat(docs.path("paths").has("/api/v2/blocks/emotions")).isTrue();
+        assertThat(docs.path("paths").has("/api/v2/blocks/emotions/{emotionId}")).isTrue();
+        assertThat(docs.path("paths").has("/api/v2/blocks/sighs")).isFalse();
+
+        JsonNode schemas = docs.path("components").path("schemas");
+        assertThat(schemas.path("BlockCreateRequest").path("properties").has("emotionId")).isTrue();
+        assertThat(schemas.path("EmotionBlockResponse").path("properties").has("emotionId")).isTrue();
+        assertThat(schemas.path("DeviceBlockResponse").path("properties").has("emotionId")).isTrue();
+        assertThat(schemas.has("SighBlockResponse")).isFalse();
+
+        for (String path : List.of("/api/v2/reports", "/api/v2/blocks/emotions", "/api/v2/blocks/devices")) {
+            String operation = docs.path("paths").path(path).path("post").toString();
+            assertThat(operation).contains("EMOTION-011", "감정을 찾을 수 없습니다.")
+                    .doesNotContain("한숨을 찾을 수 없습니다.");
+        }
     }
 
     @Test
@@ -685,7 +722,7 @@ class SecurityAuthorizationIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
-                        {"sighId": 1, "reason": "광고성 게시물입니다"}
+                        {"emotionId": 1, "reason": "광고성 게시물입니다"}
                         """)
                 .exchange();
 
@@ -714,7 +751,7 @@ class SecurityAuthorizationIntegrationTest {
             // when
             for (String 토큰 : 거부되는_토큰들) {
                 client.post()
-                        .uri("/api/v2/sighs")
+                        .uri("/api/v1/emotions")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + 토큰)
                         .contentType(MediaType.APPLICATION_JSON)
                         .body(한숨_등록_본문())
@@ -724,7 +761,7 @@ class SecurityAuthorizationIntegrationTest {
 
             // then
             String 남은_로그 = 수집한_로그(appender);
-            assertThat(남은_로그).contains("/api/v2/sighs");
+            assertThat(남은_로그).contains("/api/v1/emotions");
             assertThat(남은_로그).doesNotContain(기기_공개_식별자.toString());
             for (String 토큰 : 거부되는_토큰들) {
                 assertThat(남은_로그).doesNotContain(토큰);
@@ -737,32 +774,48 @@ class SecurityAuthorizationIntegrationTest {
     @Test
     void 인증된_기기로_신고하면_본문의_기기_식별자를_무시하고_중복_신고를_막는다() {
         // given
-        Long sighId = 한숨을_등록한다(기기를_등록하고_토큰을_받는다(UUID.randomUUID()));
+        Long emotionId = 한숨을_등록한다(기기를_등록하고_토큰을_받는다(UUID.randomUUID()));
 
         UUID requestId = UUID.randomUUID();
         String accessToken = 기기를_등록하고_토큰을_받는다(requestId);
         Device device = deviceRepository.findByRequestId(requestId).orElseThrow();
 
         // when
-        RestTestClient.ResponseSpec 최초_신고 = 신고한다(accessToken, sighId);
-        RestTestClient.ResponseSpec 다시_신고 = 신고한다(accessToken, sighId);
+        RestTestClient.ResponseSpec 최초_신고 = 신고한다(accessToken, emotionId);
+        RestTestClient.ResponseSpec 다시_신고 = 신고한다(accessToken, emotionId);
 
         // then
-        최초_신고.expectStatus().isCreated();
+        최초_신고.expectStatus().isCreated()
+                .expectBody()
+                .json("""
+                        {"emotionId": %d}
+                        """.formatted(emotionId), JsonCompareMode.LENIENT);
         다시_신고.expectStatus().isOk();
 
-        Map<String, Object> 저장된_신고 = jdbcClient.sql("SELECT reporter_device_id FROM sigh_reports")
+        Map<String, Object> 저장된_신고 = jdbcClient.sql("SELECT reporter_device_id FROM emotion_reports")
                 .query()
                 .singleRow();
         assertThat(저장된_신고.get("reporter_device_id")).isEqualTo(device.getId());
         assertThat(device.getPublicId()).isNotEqualTo(사칭하려는_기기_식별자);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/sighs", "/api/v2/sighs"})
+    void 폐기된_한숨_경로는_유효한_토큰으로도_허용하지_않는다(String uri) {
+        String token = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        client.get().uri(uri + 지도_영역_질의).header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .exchange().expectStatus().isForbidden();
+        client.post().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).body(한숨_등록_본문())
+                .exchange().expectStatus().isForbidden();
+        assertThat(emotionRepository.count()).isZero();
+    }
+
     private static Stream<Arguments> 인증이_필요한_차단_경로들() {
         return Stream.of(
-                Arguments.of("POST", "/api/v2/blocks/sighs"),
-                Arguments.of("GET", "/api/v2/blocks/sighs"),
-                Arguments.of("DELETE", "/api/v2/blocks/sighs/1"),
+                Arguments.of("POST", "/api/v2/blocks/emotions"),
+                Arguments.of("GET", "/api/v2/blocks/emotions"),
+                Arguments.of("DELETE", "/api/v2/blocks/emotions/1"),
                 Arguments.of("POST", "/api/v2/blocks/devices"),
                 Arguments.of("GET", "/api/v2/blocks/devices"),
                 Arguments.of("DELETE", "/api/v2/blocks/devices/1")
@@ -781,7 +834,7 @@ class SecurityAuthorizationIntegrationTest {
 
     private String 한숨_등록_본문() {
         return """
-                {"requestId": "%s", "latitude": 37.5664, "longitude": 126.9780, "memo": "오늘은 조금 지쳤다"}
+                {"requestId": "%s", "latitude": 37.5664, "longitude": 126.9780, "memo": "오늘은 조금 지쳤다", "state": "FRUSTRATED", "rotationDegrees": 0, "contentType": "MEMO"}
                 """.formatted(UUID.randomUUID());
     }
 
@@ -836,26 +889,26 @@ class SecurityAuthorizationIntegrationTest {
 
     private Long 한숨을_등록한다(String accessToken) {
         client.post()
-                .uri("/api/v2/sighs")
+                .uri("/api/v1/emotions")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(한숨_등록_본문())
                 .exchange()
-                .expectStatus().isCreated();
+                .expectStatus().isOk();
 
-        return jdbcClient.sql("SELECT id FROM sighs")
+        return jdbcClient.sql("SELECT id FROM emotions")
                 .query(Long.class)
                 .single();
     }
 
-    private RestTestClient.ResponseSpec 차단한다(String accessToken, String uri, Long sighId) {
+    private RestTestClient.ResponseSpec 차단한다(String accessToken, String uri, Long emotionId) {
         return client.post()
                 .uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
-                        {"sighId": %d}
-                        """.formatted(sighId))
+                        {"emotionId": %d}
+                        """.formatted(emotionId))
                 .exchange();
     }
 
@@ -874,20 +927,20 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     private Object 작성자_기기_식별자() {
-        return jdbcClient.sql("SELECT device_id FROM sighs")
+        return jdbcClient.sql("SELECT device_id FROM emotions")
                 .query()
                 .singleRow()
                 .get("device_id");
     }
 
     private long 차단_행_수() {
-        return jdbcClient.sql("SELECT COUNT(*) FROM sigh_blocks").query(Long.class).single()
+        return jdbcClient.sql("SELECT COUNT(*) FROM emotion_blocks").query(Long.class).single()
                 + jdbcClient.sql("SELECT COUNT(*) FROM device_blocks").query(Long.class).single();
     }
 
     private Long 작성자를_모르는_한숨을_넣는다() {
         return jdbcClient.sql("""
-                        INSERT INTO sighs (request_id, location, nickname, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, created_at, updated_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(126.9780, 37.5664), 4326),
@@ -902,14 +955,14 @@ class SecurityAuthorizationIntegrationTest {
                 .single();
     }
 
-    private RestTestClient.ResponseSpec 신고한다(String accessToken, Long sighId) {
+    private RestTestClient.ResponseSpec 신고한다(String accessToken, Long emotionId) {
         return client.post()
                 .uri("/api/v2/reports")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
-                        {"sighId": %d, "deviceId": "%s", "reason": "광고성 게시물입니다"}
-                        """.formatted(sighId, 사칭하려는_기기_식별자))
+                        {"emotionId": %d, "deviceId": "%s", "reason": "광고성 게시물입니다"}
+                        """.formatted(emotionId, 사칭하려는_기기_식별자))
                 .exchange();
     }
 
@@ -1019,7 +1072,7 @@ class SecurityAuthorizationIntegrationTest {
 
     private Set<String> 한숨_속성_이름들(String 응답_본문) {
         try {
-            JsonNode properties = new ObjectMapper().readTree(응답_본문).get("properties");
+            JsonNode properties = new ObjectMapper().readTree(응답_본문);
             Set<String> 이름들 = new HashSet<>();
             properties.fieldNames().forEachRemaining(이름들::add);
             return 이름들;
