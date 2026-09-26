@@ -6,7 +6,7 @@ import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 data class GroupSummaryUiModel(
     val id: GroupId,
     val name: String,
-    val memberCount: Int,
+    val memberCount: Long,
     val weeklyStampCount: Long,
     val stamp: StampAppearanceUiModel,
 ) {
