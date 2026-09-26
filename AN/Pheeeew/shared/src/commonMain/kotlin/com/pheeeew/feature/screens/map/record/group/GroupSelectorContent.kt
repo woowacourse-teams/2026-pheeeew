@@ -13,7 +13,6 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -53,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.pheeeew.feature.component.GroupStamp
+import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.abs
@@ -132,7 +132,7 @@ fun GroupSelectorContent(
                     Modifier
                         .fillMaxSize()
                         .background(Color(0x47252826))
-                        .clickable(onClick = onDismiss),
+                        .noRippleClickable(onClick = onDismiss),
             )
         }
 
@@ -255,7 +255,7 @@ fun GroupSelectorContent(
                                     scaleY = scale
                                     alpha = if (index == selectedIndex) 1f else 0.58f
                                 }.zIndex(if (index == selectedIndex) 1f else 0f)
-                                .clickable(enabled = abs(index - selectedIndex) <= 2) {
+                                .noRippleClickable(enabled = abs(index - selectedIndex) <= 2) {
                                     if (index != selectedIndex) {
                                         onDialProgressSettleState(index.toFloat())
                                         onSelectedGroupChangeState(group)
@@ -294,7 +294,7 @@ fun GroupSelectorContent(
                             .clip(CircleShape)
                             .background(Color(0xffffe164))
                             .border(width = 1.5.dp, color = Color(0xff252826), shape = CircleShape)
-                            .clickable(onClick = { onComplete(selectedGroup) }),
+                            .noRippleClickable(onClick = { onComplete(selectedGroup) }),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
