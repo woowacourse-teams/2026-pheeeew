@@ -23,6 +23,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.legacy.core.designsystem.theme.AppTheme
 
+internal const val SETTINGS_CONTACT_EMAIL = "contact@pheeeew.com"
+
 @Composable
 internal fun ContactCard(
     onClick: () -> Unit,
@@ -59,7 +61,7 @@ internal fun ContactCard(
                 color = SettingsColors.Ink,
                 style = AppTheme.typography.sectionHeader.copy(fontWeight = FontWeight.Bold),
             )
-            Text("contact@pheeeew.com", color = SettingsColors.Ink, style = AppTheme.typography.caption)
+            Text(SETTINGS_CONTACT_EMAIL, color = SettingsColors.Ink, style = AppTheme.typography.caption)
         }
     }
 }

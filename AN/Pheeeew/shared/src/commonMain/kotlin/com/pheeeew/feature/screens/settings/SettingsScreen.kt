@@ -16,9 +16,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -32,10 +34,13 @@ import com.pheeeew.feature.screens.settings.components.SettingsDivider
 import com.pheeeew.feature.screens.settings.components.SettingsHeader
 import com.pheeeew.feature.screens.settings.components.SettingsIcon
 import com.pheeeew.feature.screens.settings.components.SettingsSectionTitle
+import com.pheeeew.feature.screens.settings.components.SETTINGS_CONTACT_EMAIL
 import com.pheeeew.legacy.core.designsystem.theme.AppTheme
+import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 import com.pheeeew.legacy.core.navigation.PredictiveBackContent
 import com.pheeeew.legacy.feature.setting.legal.LegalDocument
 import com.pheeeew.legacy.feature.setting.legal.LegalDocumentRoute
+import kotlinx.coroutines.launch
 
 @Composable
 fun SettingsScreen(
@@ -95,11 +100,12 @@ fun SettingsScreen(
 fun SettingsScreen(
     appVersion: String,
     onBackClick: () -> Unit,
-    onPermissionClick: () -> Unit,
-    onContactClick: () -> Unit,
+    permissionSettingsLauncher: LocationPermissionSettingsLauncher,
     modifier: Modifier = Modifier,
 ) {
     var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
+    val coroutineScope = rememberCoroutineScope()
+    val uriHandler = LocalUriHandler.current
 
     AppTheme {
         Box(modifier = modifier.fillMaxSize()) {
@@ -109,14 +115,20 @@ fun SettingsScreen(
                     SettingsScreen(
                         appVersion = appVersion,
                         onBackClick = onBackClick,
-                        onPermissionClick = onPermissionClick,
+                        onPermissionClick = {
+                            coroutineScope.launch {
+                                permissionSettingsLauncher.openAppSettings()
+                            }
+                        },
                         onPrivacyPolicyClick = {
                             selectedLegalDocument = LegalDocument.PrivacyPolicy
                         },
                         onOpenSourceLicenseClick = {
                             selectedLegalDocument = LegalDocument.OpenSourceLicenses
                         },
-                        onContactClick = onContactClick,
+                        onContactClick = {
+                            runCatching { uriHandler.openUri("mailto:$SETTINGS_CONTACT_EMAIL") }
+                        },
                     )
                 },
             )
@@ -160,7 +172,12 @@ private fun SettingsScreenStatefulPreview() {
     SettingsScreen(
         appVersion = "1.1.1",
         onBackClick = {},
-        onPermissionClick = {},
-        onContactClick = {},
+        permissionSettingsLauncher = PreviewPermissionSettingsLauncher,
     )
+}
+
+private object PreviewPermissionSettingsLauncher : LocationPermissionSettingsLauncher {
+    override suspend fun openAppSettings(): Boolean = true
+
+    override suspend fun openLocationSettings(): Boolean = true
 }
