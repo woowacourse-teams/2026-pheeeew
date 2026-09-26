@@ -42,6 +42,11 @@ class MapViewModel(
         _uiModel.value = _uiModel.value.copy(isEmotionSelectorExpanded = false)
     }
 
+    fun onRecordLocationPickingChanged(isPicking: Boolean) {
+        _uiModel.value = _uiModel.value.copy(isRecordLocationPicking = isPicking)
+        // The renderer initially fits the circle and constrains camera movement around the origin.
+    }
+
     fun onMapError(error: MapErrorUiModel) {
         _uiModel.value = _uiModel.value.copy(mapError = error)
     }

@@ -10,5 +10,6 @@ internal expect fun NativeMap(
     state: MapUiModel,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
+    onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     modifier: Modifier,
 )

@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.map
 
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationState
 
 data class MapUiModel(
@@ -9,4 +10,6 @@ data class MapUiModel(
     val cameraCommand: MapCameraCommandUiModel? = null,
     val isRequestingLocation: Boolean = false,
     val isEmotionSelectorExpanded: Boolean = false,
+    val isRecordLocationPicking: Boolean = false,
+    val recordOrigin: GeoCoordinate? = null,
 )

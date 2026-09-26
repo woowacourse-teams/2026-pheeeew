@@ -8,6 +8,8 @@ data class FoundationIosMapRenderUiModel(
     val cameraLatitude: Double,
     val cameraLongitude: Double,
     val cameraCommandValue: Double,
+    val isRecordLocationPicking: Boolean,
+    val recordOrigin: FoundationIosMapCoordinateUiModel?,
 ) {
     override fun toString(): String = "FoundationIosMapRenderUiModel([redacted])"
 }

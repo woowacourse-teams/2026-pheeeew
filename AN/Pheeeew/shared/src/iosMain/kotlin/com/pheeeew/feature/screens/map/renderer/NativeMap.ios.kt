@@ -21,10 +21,12 @@ internal actual fun NativeMap(
     state: MapUiModel,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
+    onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     modifier: Modifier,
 ) {
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
+    val currentOnRecordViewportChanged by rememberUpdatedState(onRecordViewportChanged)
     val eventSink =
         remember {
             object : FoundationIosMapEventSink {
@@ -33,6 +35,14 @@ internal actual fun NativeMap(
                 override fun onStyleLoadFailed() = currentOnMapError(MapErrorUiModel.StyleLoadFailed)
 
                 override fun onMapRecovered() = currentOnMapRecovered()
+
+                override fun onRecordViewportChanged(
+                    centerX: Float,
+                    centerY: Float,
+                    radius: Float,
+                ) {
+                    currentOnRecordViewportChanged(centerX, centerY, radius)
+                }
             }
         }
 
@@ -74,5 +84,7 @@ private fun MapUiModel.toFoundationIosRenderUiModel(): FoundationIosMapRenderUiM
         cameraLatitude = cameraCommand?.latitude ?: 0.0,
         cameraLongitude = cameraCommand?.longitude ?: 0.0,
         cameraCommandValue = cameraCommand?.value ?: 0.0,
+        isRecordLocationPicking = isRecordLocationPicking,
+        recordOrigin = recordOrigin?.let { FoundationIosMapCoordinateUiModel(it.latitude, it.longitude) },
     )
 }
