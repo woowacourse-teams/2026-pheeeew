@@ -16,20 +16,20 @@ object GroupResponseMapper {
     fun toDomain(dto: GroupResponseDto): Group =
         Group(
             id = parseId(dto.groupId),
-            name = dto.name,
+            name = parseName(dto.name),
             description = dto.description,
             inviteCode = dto.inviteCode,
             role = parseRole(dto.role),
-            memberCount = dto.memberCount,
+            memberCount = parseMemberCount(dto.memberCount),
             stamp = dto.stamp.toDomain(),
         )
 
     fun toDomain(dto: GroupPreviewResponseDto): GroupPreview =
         GroupPreview(
             id = parseId(dto.groupId),
-            name = dto.name,
+            name = parseName(dto.name),
             description = dto.description,
-            memberCount = dto.memberCount,
+            memberCount = parseMemberCount(dto.memberCount),
             stamp = dto.stamp.toDomain(),
         )
 
@@ -54,6 +54,12 @@ object GroupResponseMapper {
         )
 
     private fun parseId(value: String): GroupId = GroupId.parse(value) ?: throw GroupContractException("groupId")
+
+    private fun parseName(value: String): String =
+        value.takeIf(String::isNotEmpty) ?: throw GroupContractException("name")
+
+    private fun parseMemberCount(value: Long): Long =
+        value.takeIf { it >= 0L } ?: throw GroupContractException("memberCount")
 
     private fun parseRole(value: String): GroupRole =
         GroupRole.entries.firstOrNull { it.name == value }

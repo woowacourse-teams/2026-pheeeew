@@ -38,16 +38,70 @@ class GroupResponseMapperTest {
         }
     }
 
-    private fun groupDto(frame: String) =
-        GroupResponseDto(
-            groupId = "123e4567-e89b-12d3-a456-426614174000",
-            name = "test group",
-            description = null,
-            inviteCode = "invite",
-            role = "OWNER",
-            memberCount = Long.MAX_VALUE,
-            stamp = stampDto(frame),
-        )
+    @Test
+    fun `빈 group name은 field가 포함된 contract 오류로 처리한다`() {
+        val exception =
+            assertFailsWith<GroupContractException> {
+                GroupResponseMapper.toDomain(groupDto(name = ""))
+            }
+
+        assertEquals("name", exception.field)
+    }
+
+    @Test
+    fun `빈 group preview name은 field가 포함된 contract 오류로 처리한다`() {
+        val exception =
+            assertFailsWith<GroupContractException> {
+                GroupResponseMapper.toDomain(previewDto(name = ""))
+            }
+
+        assertEquals("name", exception.field)
+    }
+
+    @Test
+    fun `음수 group member count는 field가 포함된 contract 오류로 처리한다`() {
+        val exception =
+            assertFailsWith<GroupContractException> {
+                GroupResponseMapper.toDomain(groupDto(memberCount = -1L))
+            }
+
+        assertEquals("memberCount", exception.field)
+    }
+
+    @Test
+    fun `음수 group preview member count는 field가 포함된 contract 오류로 처리한다`() {
+        val exception =
+            assertFailsWith<GroupContractException> {
+                GroupResponseMapper.toDomain(previewDto(memberCount = -1L))
+            }
+
+        assertEquals("memberCount", exception.field)
+    }
+
+    private fun groupDto(
+        frame: String = "CIRCLE",
+        name: String = "test group",
+        memberCount: Long = Long.MAX_VALUE,
+    ) = GroupResponseDto(
+        groupId = "123e4567-e89b-12d3-a456-426614174000",
+        name = name,
+        description = null,
+        inviteCode = "invite",
+        role = "OWNER",
+        memberCount = memberCount,
+        stamp = stampDto(frame),
+    )
+
+    private fun previewDto(
+        name: String = "test group",
+        memberCount: Long = Long.MAX_VALUE,
+    ) = GroupPreviewResponseDto(
+        groupId = "123e4567-e89b-12d3-a456-426614174000",
+        name = name,
+        description = null,
+        memberCount = memberCount,
+        stamp = stampDto("CIRCLE"),
+    )
 
     private fun stampDto(frame: String) =
         GroupStampResponseDto(
