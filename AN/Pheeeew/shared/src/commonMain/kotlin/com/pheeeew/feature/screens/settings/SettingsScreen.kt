@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +13,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +33,9 @@ import com.pheeeew.feature.screens.settings.components.SettingsHeader
 import com.pheeeew.feature.screens.settings.components.SettingsIcon
 import com.pheeeew.feature.screens.settings.components.SettingsSectionTitle
 import com.pheeeew.legacy.core.designsystem.theme.AppTheme
+import com.pheeeew.legacy.core.navigation.PredictiveBackContent
+import com.pheeeew.legacy.feature.setting.legal.LegalDocument
+import com.pheeeew.legacy.feature.setting.legal.LegalDocumentRoute
 
 @Composable
 fun SettingsScreen(
@@ -83,6 +91,51 @@ fun SettingsScreen(
     }
 }
 
+@Composable
+fun SettingsScreen(
+    appVersion: String,
+    onBackClick: () -> Unit,
+    onPermissionClick: () -> Unit,
+    onContactClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
+
+    AppTheme {
+        Box(modifier = modifier.fillMaxSize()) {
+            PredictiveBackContent(
+                onBack = onBackClick,
+                content = {
+                    SettingsScreen(
+                        appVersion = appVersion,
+                        onBackClick = onBackClick,
+                        onPermissionClick = onPermissionClick,
+                        onPrivacyPolicyClick = {
+                            selectedLegalDocument = LegalDocument.PrivacyPolicy
+                        },
+                        onOpenSourceLicenseClick = {
+                            selectedLegalDocument = LegalDocument.OpenSourceLicenses
+                        },
+                        onContactClick = onContactClick,
+                    )
+                },
+            )
+
+            selectedLegalDocument?.let { document ->
+                PredictiveBackContent(
+                    onBack = { selectedLegalDocument = null },
+                    content = {
+                        LegalDocumentRoute(
+                            document = document,
+                            onBack = { selectedLegalDocument = null },
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
 @Preview(
     showSystemUi = true,
     device = "spec:width=390dp,height=844dp",
@@ -99,4 +152,15 @@ private fun SettingsScreenPreview() {
             onContactClick = {},
         )
     }
+}
+
+@Preview(showSystemUi = true)
+@Composable
+private fun SettingsScreenStatefulPreview() {
+    SettingsScreen(
+        appVersion = "1.1.1",
+        onBackClick = {},
+        onPermissionClick = {},
+        onContactClick = {},
+    )
 }
