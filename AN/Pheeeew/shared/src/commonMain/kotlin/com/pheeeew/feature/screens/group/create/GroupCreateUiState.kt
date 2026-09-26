@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.group.create
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
+import com.pheeeew.feature.screens.group.create.model.StampTextColorOption
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 
@@ -23,13 +24,14 @@ data class GroupCreateUiState(
     val fieldErrors: GroupCreateFieldErrors = GroupCreateFieldErrors(),
     val submission: GroupCreateSubmissionState = GroupCreateSubmissionState.Editing,
     val colorSheet: StampColorSheetState = StampColorSheetState.Closed,
+    val recovery: GroupCreateRecoveryState = GroupCreateRecoveryState.Idle,
 ) {
     val canOpenColorSheet: Boolean
         get() = submission == GroupCreateSubmissionState.Editing && colorSheet is StampColorSheetState.Closed
 
     private companion object {
         const val DEFAULT_STAMP_FILL = 0xFFA7DCCFL
-        const val DEFAULT_STAMP_TEXT = 0xFF202323L
+        val DEFAULT_STAMP_TEXT = StampTextColorOption.BLACK.argb
     }
 }
 
@@ -44,6 +46,7 @@ sealed interface GroupCreateSubmissionState {
 
     data class Failed(
         val reason: GroupCreateFailure,
+        val operationKey: GroupOperationKey? = null,
     ) : GroupCreateSubmissionState
 
     data class Succeeded(
@@ -57,5 +60,7 @@ sealed interface GroupCreateSubmissionState {
 
 enum class GroupCreateFailure {
     Unavailable,
+    InvalidInput,
+    RateLimited,
     OutcomeUnknown,
 }

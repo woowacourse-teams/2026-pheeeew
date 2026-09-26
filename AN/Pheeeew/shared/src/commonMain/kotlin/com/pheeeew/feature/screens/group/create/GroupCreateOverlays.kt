@@ -3,9 +3,11 @@ package com.pheeeew.feature.screens.group.create
 import androidx.compose.runtime.Composable
 import com.pheeeew.feature.screens.group.create.component.CreateConfirmationDialog
 import com.pheeeew.feature.screens.group.create.component.CreateFailureDialog
+import com.pheeeew.feature.screens.group.create.component.CreateOutcomeUnknownDialog
 import com.pheeeew.feature.screens.group.create.component.StampColorSheet
 import com.pheeeew.feature.screens.group.create.model.StampColorSelection
 import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
+import com.pheeeew.feature.screens.group.model.GroupId
 
 @Composable
 internal fun GroupCreateOverlays(
@@ -14,6 +16,9 @@ internal fun GroupCreateOverlays(
     onConfirmCreate: () -> Unit,
     onDismissFailure: () -> Unit,
     onRetryFailure: () -> Unit,
+    onCheckGroupsAfterUnknownOutcome: () -> Unit,
+    onSelectRecoveryCandidate: (GroupId) -> Unit,
+    onRetryUnknownCreation: () -> Unit,
     onColorSelectionChanged: (StampColorSelection) -> Unit,
     onCloseColorSheet: () -> Unit,
     onApplyColor: () -> Unit,
@@ -51,11 +56,28 @@ internal fun GroupCreateOverlays(
         }
 
         is GroupCreateSubmissionState.Failed -> {
-            CreateFailureDialog(
-                unknownOutcome = submission.reason == GroupCreateFailure.OutcomeUnknown,
-                onDismiss = onDismissFailure,
-                onRetry = onRetryFailure,
-            )
+            when (submission.reason) {
+                GroupCreateFailure.OutcomeUnknown -> {
+                    CreateOutcomeUnknownDialog(
+                        recovery = uiState.recovery,
+                        onDismiss = onDismissFailure,
+                        onCheckGroups = onCheckGroupsAfterUnknownOutcome,
+                        onSelectCandidate = onSelectRecoveryCandidate,
+                        onRetryCreate = onRetryUnknownCreation,
+                    )
+                }
+
+                GroupCreateFailure.Unavailable,
+                GroupCreateFailure.InvalidInput,
+                GroupCreateFailure.RateLimited,
+                -> {
+                    CreateFailureDialog(
+                        failure = submission.reason,
+                        onDismiss = onDismissFailure,
+                        onRetry = onRetryFailure,
+                    )
+                }
+            }
         }
 
         GroupCreateSubmissionState.Editing,

@@ -27,10 +27,44 @@ sealed interface CreateGroupResult {
 
     data object DuplicateName : CreateGroupResult
 
+    /** The server rejected the draft with a validation response. */
+    data object InvalidInput : CreateGroupResult
+
+    data object RateLimited : CreateGroupResult
+
     data object Unavailable : CreateGroupResult
 
     /** 요청 제한 시간이 끝나 서버 반영 여부를 알 수 없는 상태입니다. 자동 재요청하면 안 됩니다. */
     data object OutcomeUnknown : CreateGroupResult
+}
+
+data class GroupCreateCandidate(
+    val groupId: GroupId,
+    val name: String,
+)
+
+fun interface FindGroupCreateCandidatesAction {
+    suspend fun findCandidates(groupName: String): GroupCreateCandidatesResult
+}
+
+sealed interface GroupCreateCandidatesResult {
+    data class Loaded(
+        val candidates: List<GroupCreateCandidate>,
+    ) : GroupCreateCandidatesResult
+
+    data object Unavailable : GroupCreateCandidatesResult
+}
+
+sealed interface GroupCreateRecoveryState {
+    data object Idle : GroupCreateRecoveryState
+
+    data object Checking : GroupCreateRecoveryState
+
+    data class Loaded(
+        val candidates: List<GroupCreateCandidate>,
+    ) : GroupCreateRecoveryState
+
+    data object Unavailable : GroupCreateRecoveryState
 }
 
 /** 서버 전송 직전 한 곳에서 입력을 정규화합니다. */
