@@ -34,6 +34,8 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.create.model.StampColorSelection
 import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
+import com.pheeeew.feature.screens.group.create.model.StampTextColorOption
+import com.pheeeew.feature.screens.group.model.GroupId
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -52,11 +54,15 @@ fun GroupCreateScreen(
     onDescriptionChanged: (String) -> Unit,
     onStampLabelChanged: (String) -> Unit,
     onStampShapeChanged: (StampShapeId) -> Unit,
+    onStampTextColorChanged: (StampTextColorOption) -> Unit,
     onCreateClick: () -> Unit,
     onCancelConfirmation: () -> Unit,
     onConfirmCreate: () -> Unit,
     onDismissFailure: () -> Unit,
     onRetryFailure: () -> Unit,
+    onCheckGroupsAfterUnknownOutcome: () -> Unit = {},
+    onSelectRecoveryCandidate: (GroupId) -> Unit = {},
+    onRetryUnknownCreation: () -> Unit = {},
     onOpenColorSheet: () -> Unit,
     onColorSelectionChanged: (StampColorSelection) -> Unit,
     onCloseColorSheet: () -> Unit,
@@ -85,6 +91,7 @@ fun GroupCreateScreen(
             onDescriptionChanged = onDescriptionChanged,
             onStampLabelChanged = onStampLabelChanged,
             onStampShapeChanged = onStampShapeChanged,
+            onStampTextColorChanged = onStampTextColorChanged,
             onOpenColorSheet = onOpenColorSheet,
             modifier = Modifier.weight(1f),
         )
@@ -112,6 +119,9 @@ fun GroupCreateScreen(
         onConfirmCreate = onConfirmCreate,
         onDismissFailure = onDismissFailure,
         onRetryFailure = onRetryFailure,
+        onCheckGroupsAfterUnknownOutcome = onCheckGroupsAfterUnknownOutcome,
+        onSelectRecoveryCandidate = onSelectRecoveryCandidate,
+        onRetryUnknownCreation = onRetryUnknownCreation,
         onColorSelectionChanged = onColorSelectionChanged,
         onCloseColorSheet = onCloseColorSheet,
         onApplyColor = onApplyColor,

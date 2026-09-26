@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.feature.screens.group.create.GroupCreateFailure
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_create_confirm
@@ -43,6 +44,9 @@ import pheeeew.shared.generated.resources.group_create_confirm_cancel
 import pheeeew.shared.generated.resources.group_create_confirm_group_stamp_summary
 import pheeeew.shared.generated.resources.group_create_confirm_title
 import pheeeew.shared.generated.resources.group_create_failure_close
+import pheeeew.shared.generated.resources.group_create_failure_edit
+import pheeeew.shared.generated.resources.group_create_failure_invalid_input
+import pheeeew.shared.generated.resources.group_create_failure_rate_limited
 import pheeeew.shared.generated.resources.group_create_failure_retry
 import pheeeew.shared.generated.resources.group_create_failure_title
 import pheeeew.shared.generated.resources.group_create_failure_unavailable
@@ -175,16 +179,17 @@ internal fun CreateConfirmationDialog(
 
 @Composable
 internal fun CreateFailureDialog(
-    unknownOutcome: Boolean,
+    failure: GroupCreateFailure,
     onDismiss: () -> Unit,
     onRetry: () -> Unit,
 ) {
     val title = stringResource(Res.string.group_create_failure_title)
     val messageResource =
-        if (unknownOutcome) {
-            Res.string.group_create_failure_unknown
-        } else {
-            Res.string.group_create_failure_unavailable
+        when (failure) {
+            GroupCreateFailure.InvalidInput -> Res.string.group_create_failure_invalid_input
+            GroupCreateFailure.Unavailable -> Res.string.group_create_failure_unavailable
+            GroupCreateFailure.RateLimited -> Res.string.group_create_failure_rate_limited
+            GroupCreateFailure.OutcomeUnknown -> Res.string.group_create_failure_unknown
         }
     val message = stringResource(messageResource)
     Dialog(
@@ -226,14 +231,25 @@ internal fun CreateFailureDialog(
                 )
                 Spacer(Modifier.weight(1f))
                 DialogPrimaryAction(
-                    text = stringResource(Res.string.group_create_failure_retry),
-                    onClick = onRetry,
+                    text =
+                        stringResource(
+                            if (failure == GroupCreateFailure.InvalidInput) {
+                                Res.string.group_create_failure_edit
+                            } else if (failure == GroupCreateFailure.RateLimited) {
+                                Res.string.group_create_failure_close
+                            } else {
+                                Res.string.group_create_failure_retry
+                            },
+                        ),
+                    onClick = if (failure == GroupCreateFailure.Unavailable) onRetry else onDismiss,
                 )
-                Spacer(Modifier.height(10.dp))
-                DialogSecondaryAction(
-                    text = stringResource(Res.string.group_create_failure_close),
-                    onClick = onDismiss,
-                )
+                if (failure != GroupCreateFailure.RateLimited) {
+                    Spacer(Modifier.height(10.dp))
+                    DialogSecondaryAction(
+                        text = stringResource(Res.string.group_create_failure_close),
+                        onClick = onDismiss,
+                    )
+                }
                 Spacer(Modifier.height(42.dp))
             }
         }

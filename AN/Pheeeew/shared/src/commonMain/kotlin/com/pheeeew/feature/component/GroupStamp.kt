@@ -87,6 +87,7 @@ private fun AppearanceGroupStamp(
     val shape = StampShapeCatalog[appearance.shape]
     val fillColor = Color(appearance.fillArgb.toInt())
     val textColor = Color(appearance.textArgb.toInt())
+    val textLayout = appearance.label.toStampTextLayout()
 
     BoxWithConstraints(
         modifier = modifier.size(size),
@@ -127,14 +128,14 @@ private fun AppearanceGroupStamp(
             val textY = maxHeight * textArea.centerY - textHeight / 2
 
             Text(
-                text = appearance.label,
+                text = textLayout.text,
                 modifier =
                     Modifier
                         .align(Alignment.TopStart)
                         .offset(x = textX, y = textY)
                         .size(width = textWidth, height = textHeight),
                 color = textColor,
-                fontSize = stampFontSize(appearance.label, textArea, maxWidth, maxHeight),
+                fontSize = stampFontSize(textLayout, textArea, maxWidth, maxHeight),
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
                 maxLines = 2,
@@ -171,14 +172,47 @@ private fun LegacyCircleStamp(
 }
 
 private fun stampFontSize(
-    label: String,
+    layout: StampTextLayout,
     textArea: StampTextArea,
     stampWidth: Dp,
     stampHeight: Dp,
 ) = minOf(
-    stampHeight.value * textArea.heightFraction / 1.35f,
-    stampWidth.value * textArea.widthFraction / (label.length.coerceAtLeast(1) * 0.95f),
+    stampHeight.value * textArea.heightFraction / (layout.lineCount * 1.35f),
+    stampWidth.value * textArea.widthFraction / (layout.longestLineLength.coerceAtLeast(1) * 0.95f),
 ).coerceIn(minimumValue = 7f, maximumValue = 28f).sp
+
+private data class StampTextLayout(
+    val text: String,
+    val lineCount: Int,
+    val longestLineLength: Int,
+)
+
+/** Four code points are laid out as two deliberate rows to keep group stamps readable. */
+private fun String.toStampTextLayout(): StampTextLayout {
+    val codePointOffsets = mutableListOf<Int>()
+    var index = 0
+    while (index < length) {
+        codePointOffsets += index
+        val isSurrogatePair =
+            this[index] in HIGH_SURROGATES && index + 1 < length && this[index + 1] in LOW_SURROGATES
+        index += if (isSurrogatePair) 2 else 1
+    }
+
+    if (codePointOffsets.size != FOUR_CHARACTER_LABEL_LENGTH) {
+        return StampTextLayout(text = this, lineCount = 1, longestLineLength = codePointOffsets.size)
+    }
+
+    val splitIndex = codePointOffsets[2]
+    return StampTextLayout(
+        text = "${substring(0, splitIndex)}\n${substring(splitIndex)}",
+        lineCount = 2,
+        longestLineLength = FOUR_CHARACTER_LABEL_LENGTH / 2,
+    )
+}
+
+private const val FOUR_CHARACTER_LABEL_LENGTH = 4
+private val HIGH_SURROGATES = '\uD800'..'\uDBFF'
+private val LOW_SURROGATES = '\uDC00'..'\uDFFF'
 
 private const val LEGACY_FILL_ARGB = 0xFF9DE8D0L
 private const val LEGACY_TEXT_ARGB = 0xFF15181BL
