@@ -1,6 +1,6 @@
 package com.pheeeew.feature.screens.group.detail.component
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,7 +23,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -33,10 +33,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.theme.AppColors
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_detail_close
 import pheeeew.shared.generated.resources.group_detail_copy_code
+import pheeeew.shared.generated.resources.group_detail_copy_icon
 import pheeeew.shared.generated.resources.group_detail_invite_copy_hint
 import pheeeew.shared.generated.resources.group_detail_invite_title
 
@@ -131,36 +133,9 @@ internal fun InviteCodeDialog(
 
 @Composable
 private fun CopyCodeIcon() {
-    Canvas(Modifier.width(20.dp).height(20.dp)) {
-        val strokeWidth = 1.8.dp.toPx()
-        val left = size.width * 0.3f
-        val top = size.height * 0.12f
-        val edge = size.width * 0.58f
-        drawRoundRect(
-            color = AppColors.GroupInk,
-            topLeft =
-                androidx.compose.ui.geometry
-                    .Offset(left, top),
-            size =
-                androidx.compose.ui.geometry
-                    .Size(edge, edge),
-            cornerRadius =
-                androidx.compose.ui.geometry
-                    .CornerRadius(2.dp.toPx()),
-            style = Stroke(strokeWidth),
-        )
-        drawRoundRect(
-            color = AppColors.GroupInk,
-            topLeft =
-                androidx.compose.ui.geometry
-                    .Offset(size.width * 0.1f, size.height * 0.3f),
-            size =
-                androidx.compose.ui.geometry
-                    .Size(edge, edge),
-            cornerRadius =
-                androidx.compose.ui.geometry
-                    .CornerRadius(2.dp.toPx()),
-            style = Stroke(strokeWidth),
-        )
-    }
+    Image(
+        painter = painterResource(Res.drawable.group_detail_copy_icon),
+        contentDescription = null,
+        modifier = Modifier.size(20.dp),
+    )
 }

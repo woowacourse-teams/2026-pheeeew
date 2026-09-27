@@ -3,7 +3,6 @@ package com.pheeeew.feature.screens.group.detail
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,11 +15,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,18 +45,21 @@ import pheeeew.shared.generated.resources.group_detail_hero_active
 import pheeeew.shared.generated.resources.group_detail_hero_active_subtitle
 import pheeeew.shared.generated.resources.group_detail_hero_first
 import pheeeew.shared.generated.resources.group_detail_hero_first_subtitle
-import pheeeew.shared.generated.resources.group_detail_invite_share
+import pheeeew.shared.generated.resources.group_detail_hero_neutral
+import pheeeew.shared.generated.resources.group_detail_hero_neutral_subtitle
 import pheeeew.shared.generated.resources.group_detail_load_error_body
-import pheeeew.shared.generated.resources.group_detail_loading
+import pheeeew.shared.generated.resources.group_detail_press_check
+import pheeeew.shared.generated.resources.group_detail_press_checking
+import pheeeew.shared.generated.resources.group_detail_press_unknown
 import pheeeew.shared.generated.resources.group_detail_rank_empty
 import pheeeew.shared.generated.resources.group_detail_rank_label
 import pheeeew.shared.generated.resources.group_detail_rank_number
-import pheeeew.shared.generated.resources.group_detail_rank_view
 import pheeeew.shared.generated.resources.group_detail_retry
 import pheeeew.shared.generated.resources.group_detail_summary_angry
 import pheeeew.shared.generated.resources.group_detail_summary_annoyed
 import pheeeew.shared.generated.resources.group_detail_summary_blocked
 import pheeeew.shared.generated.resources.group_detail_summary_defeated
+import pheeeew.shared.generated.resources.group_detail_summary_neutral
 import pheeeew.shared.generated.resources.group_detail_summary_tired
 import pheeeew.shared.generated.resources.group_detail_today_total
 import pheeeew.shared.generated.resources.group_detail_total_count
@@ -68,18 +70,20 @@ import pheeeew.shared.generated.resources.group_detail_weekly_value
 @Composable
 internal fun GroupDetailReadyContent(
     detail: GroupDetailUiModel,
-    isRefreshing: Boolean,
     hasRefreshError: Boolean,
     canTapEmotion: Boolean,
+    pressStatus: GroupPressStatus,
+    confirmedPressFeedback: GroupPressFeedback?,
     onInviteClick: () -> Unit,
-    onInviteShareClick: () -> Unit,
     onRetry: () -> Unit,
     onEmotionTap: (EmotionKind) -> Boolean,
+    onResolvePressOutcome: () -> Unit,
+    fixtureFeedbackOnAcceptedPress: Boolean = false,
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-            if (isRefreshing || hasRefreshError) {
-                RefreshBanner(hasError = hasRefreshError, onRetry = onRetry)
+            if (hasRefreshError) {
+                RefreshBanner(onRetry = onRetry)
             }
             GroupSummary(memberCount = detail.group.memberCount, onInviteClick = onInviteClick)
             Spacer(Modifier.height(8.dp))
@@ -98,27 +102,62 @@ internal fun GroupDetailReadyContent(
                 lineHeight = 20.sp,
             )
             Spacer(Modifier.height(36.dp))
-            EmotionPad(counts = detail.emotionCounts, enabled = canTapEmotion, onEmotionTap = onEmotionTap)
+            PressStatusNotice(status = pressStatus, onResolveOutcome = onResolvePressOutcome)
+            EmotionPad(
+                counts = detail.emotionCounts,
+                enabled = canTapEmotion,
+                onEmotionTap = onEmotionTap,
+                confirmedPress = confirmedPressFeedback,
+                fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
+                preserveFeedbackWhileDisabled = pressStatus != GroupPressStatus.Idle,
+            )
             Spacer(Modifier.height(20.dp))
             TodayTotal(detail)
             Spacer(Modifier.height(24.dp))
             WeeklySummary(detail)
             Spacer(Modifier.height(16.dp))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            DetailOutlineButton(
-                text = stringResource(Res.string.group_detail_rank_view),
-                onClick = {},
-                enabled = false,
-                modifier = Modifier.weight(1f),
-            )
-            DetailOutlineButton(
-                text = stringResource(Res.string.group_detail_invite_share),
-                onClick = onInviteShareClick,
-                modifier = Modifier.weight(1f),
+    }
+}
+
+@Composable
+private fun PressStatusNotice(
+    status: GroupPressStatus,
+    onResolveOutcome: () -> Unit,
+) {
+    when (status) {
+        GroupPressStatus.Idle,
+        is GroupPressStatus.Sending,
+        -> {
+            Unit
+        }
+
+        is GroupPressStatus.Reconciling -> {
+            val message = stringResource(Res.string.group_detail_press_checking)
+            Text(
+                text = message,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                color = Color(0xFF7B817B),
+                fontSize = 13.sp,
             )
         }
-        Spacer(Modifier.height(24.dp))
+
+        is GroupPressStatus.OutcomeUnknown -> {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(Res.string.group_detail_press_unknown),
+                    modifier = Modifier.weight(1f),
+                    color = Color(0xFF7B817B),
+                    fontSize = 13.sp,
+                )
+                TextButton(onClick = onResolveOutcome) {
+                    Text(text = stringResource(Res.string.group_detail_press_check), color = AppColors.GroupInk)
+                }
+            }
+        }
     }
 }
 
@@ -163,11 +202,12 @@ private fun TodayTotal(detail: GroupDetailUiModel) {
 
 @Composable
 private fun WeeklySummary(detail: GroupDetailUiModel) {
+    val weeklyScore = requireNotNull(detail.group.weeklyStampCount)
     HorizontalDivider(color = Color(0xFFDFE2D9), thickness = 1.dp)
     Row(Modifier.fillMaxWidth().height(69.dp), verticalAlignment = Alignment.CenterVertically) {
         SummaryValue(
             label = stringResource(Res.string.group_detail_weekly_label),
-            value = stringResource(Res.string.group_detail_weekly_value, formatCount(detail.weeklyScore)),
+            value = stringResource(Res.string.group_detail_weekly_value, formatCount(weeklyScore)),
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(1.dp).height(69.dp).background(Color(0xFFDFE2D9)))
@@ -233,16 +273,18 @@ private fun GroupDetailCopyKey.toStringResource() =
         GroupDetailCopyKey.FirstStartHeroSubtitle -> Res.string.group_detail_hero_first_subtitle
         GroupDetailCopyKey.ActiveHeroTitle -> Res.string.group_detail_hero_active
         GroupDetailCopyKey.ActiveHeroSubtitle -> Res.string.group_detail_hero_active_subtitle
+        GroupDetailCopyKey.NeutralHeroTitle -> Res.string.group_detail_hero_neutral
+        GroupDetailCopyKey.NeutralHeroSubtitle -> Res.string.group_detail_hero_neutral_subtitle
         GroupDetailCopyKey.SummaryBlocked -> Res.string.group_detail_summary_blocked
         GroupDetailCopyKey.SummaryAnnoyed -> Res.string.group_detail_summary_annoyed
         GroupDetailCopyKey.SummaryTired -> Res.string.group_detail_summary_tired
         GroupDetailCopyKey.SummaryDefeated -> Res.string.group_detail_summary_defeated
         GroupDetailCopyKey.SummaryAngry -> Res.string.group_detail_summary_angry
+        GroupDetailCopyKey.SummaryNeutral -> Res.string.group_detail_summary_neutral
     }
 
 @Composable
 private fun RefreshBanner(
-    hasError: Boolean,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -252,28 +294,21 @@ private fun RefreshBanner(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFFF3F4F2))
-                .clickable(enabled = hasError, role = Role.Button, onClick = onRetry)
+                .clickable(role = Role.Button, onClick = onRetry)
                 .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text =
-                if (hasError) {
-                    stringResource(Res.string.group_detail_load_error_body)
-                } else {
-                    stringResource(Res.string.group_detail_loading)
-                },
+            text = stringResource(Res.string.group_detail_load_error_body),
             modifier = Modifier.weight(1f),
             color = AppColors.RankingSecondaryContent,
             fontSize = 12.sp,
         )
-        if (hasError) {
-            Text(
-                text = stringResource(Res.string.group_detail_retry),
-                color = AppColors.GroupInk,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+        Text(
+            text = stringResource(Res.string.group_detail_retry),
+            color = AppColors.GroupInk,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }

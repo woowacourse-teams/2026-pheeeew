@@ -6,7 +6,7 @@ import com.pheeeew.domain.model.device.DeviceAccess
 import com.pheeeew.domain.model.device.DeviceSessionFailure
 import com.pheeeew.domain.model.device.DeviceSessionFailureKind
 import com.pheeeew.domain.model.device.DeviceSessionResult
-import com.pheeeew.domain.repository.DeviceSessionRepository
+import com.pheeeew.domain.repository.device.DeviceSessionRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runCurrent

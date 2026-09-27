@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.domain.model.GeoCoordinate
-import com.pheeeew.feature.component.GroupStamp
+import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlin.math.atan2
 import kotlin.math.cos

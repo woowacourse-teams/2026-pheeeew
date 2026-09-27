@@ -60,14 +60,20 @@ import pheeeew.shared.generated.resources.group_join_code_placeholder
 import pheeeew.shared.generated.resources.group_join_code_too_long
 import pheeeew.shared.generated.resources.group_join_code_too_short
 import pheeeew.shared.generated.resources.group_join_description
+import pheeeew.shared.generated.resources.group_join_failure_already_member
 import pheeeew.shared.generated.resources.group_join_failure_outcome_unknown
+import pheeeew.shared.generated.resources.group_join_failure_rate_limited
+import pheeeew.shared.generated.resources.group_join_failure_rate_limited_wait
 import pheeeew.shared.generated.resources.group_join_failure_rejected
 import pheeeew.shared.generated.resources.group_join_failure_unavailable
 import pheeeew.shared.generated.resources.group_join_hint
 import pheeeew.shared.generated.resources.group_join_join
 import pheeeew.shared.generated.resources.group_join_joining
 import pheeeew.shared.generated.resources.group_join_lookup_failure
+import pheeeew.shared.generated.resources.group_join_lookup_rate_limited
+import pheeeew.shared.generated.resources.group_join_lookup_rate_limited_wait
 import pheeeew.shared.generated.resources.group_join_not_found
+import pheeeew.shared.generated.resources.group_join_preview_stale
 import pheeeew.shared.generated.resources.group_join_search
 import pheeeew.shared.generated.resources.group_join_searching
 import pheeeew.shared.generated.resources.group_join_title
@@ -208,6 +214,23 @@ fun GroupJoinSheet(
 
             CodeInputFeedback(uiState = uiState)
             LookupMessage(lookup = uiState.lookup)
+            val hasInlineRateLimitMessage =
+                when (uiState.rateLimit?.operation) {
+                    GroupJoinRateLimitOperation.Lookup -> {
+                        uiState.lookup is GroupLookupState.RateLimited
+                    }
+
+                    GroupJoinRateLimitOperation.Join -> {
+                        (uiState.submission as? GroupJoinSubmissionState.Failed)?.reason == GroupJoinFailure.RateLimited
+                    }
+
+                    null -> {
+                        true
+                    }
+                }
+            if (uiState.rateLimit != null && !hasInlineRateLimitMessage) {
+                RateLimitMessage(operation = uiState.rateLimit.operation)
+            }
             uiState.foundGroup?.let { group ->
                 Spacer(Modifier.height(12.dp))
                 GroupJoinPreviewCard(group = group)
@@ -216,22 +239,24 @@ fun GroupJoinSheet(
 
             Spacer(Modifier.height(18.dp))
             val joining = uiState.submission is GroupJoinSubmissionState.Submitting
-            val unknownOutcome =
-                (uiState.submission as? GroupJoinSubmissionState.Failed)?.reason == GroupJoinFailure.OutcomeUnknown
-            val showJoinAction = uiState.canJoin
+            val needsMembershipVerification = uiState.needsMembershipVerification
+            val showJoinAction = uiState.hasJoinTarget
             val buttonText =
                 when {
                     joining -> stringResource(Res.string.group_join_joining)
-                    unknownOutcome -> stringResource(Res.string.group_join_verify_membership)
+                    needsMembershipVerification -> stringResource(Res.string.group_join_verify_membership)
+                    uiState.isJoinRetryBlocked -> stringResource(Res.string.group_join_failure_rate_limited_wait)
                     showJoinAction -> stringResource(Res.string.group_join_join)
+                    uiState.isLookupRetryBlocked -> stringResource(Res.string.group_join_lookup_rate_limited_wait)
                     uiState.isLookingUp -> stringResource(Res.string.group_join_searching)
                     else -> stringResource(Res.string.group_join_search)
                 }
             val buttonEnabled =
                 !isDismissing &&
                     when {
+                        needsMembershipVerification -> true
                         joining -> false
-                        unknownOutcome -> true
+                        uiState.isJoinRetryBlocked || uiState.isLookupRetryBlocked -> false
                         showJoinAction -> uiState.canJoin
                         else -> uiState.canSearch
                     }
@@ -241,7 +266,7 @@ fun GroupJoinSheet(
                 isLoading = joining || uiState.isLookingUp,
                 onClick = {
                     when {
-                        unknownOutcome -> {
+                        needsMembershipVerification -> {
                             dismissSheet()
                         }
 
@@ -311,6 +336,10 @@ private fun LookupMessage(lookup: GroupLookupState) {
         when (lookup) {
             is GroupLookupState.NotFound -> stringResource(Res.string.group_join_not_found)
 
+            is GroupLookupState.PreviewStale -> stringResource(Res.string.group_join_preview_stale)
+
+            is GroupLookupState.RateLimited -> stringResource(Res.string.group_join_lookup_rate_limited)
+
             is GroupLookupState.Failed -> stringResource(Res.string.group_join_lookup_failure)
 
             GroupLookupState.Idle,
@@ -329,6 +358,21 @@ private fun LookupMessage(lookup: GroupLookupState) {
 }
 
 @Composable
+private fun RateLimitMessage(operation: GroupJoinRateLimitOperation) {
+    val message =
+        when (operation) {
+            GroupJoinRateLimitOperation.Lookup -> stringResource(Res.string.group_join_lookup_rate_limited)
+            GroupJoinRateLimitOperation.Join -> stringResource(Res.string.group_join_failure_rate_limited)
+        }
+    Text(
+        text = message,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        color = JoinErrorColor,
+        fontSize = 12.sp,
+    )
+}
+
+@Composable
 private fun SubmissionMessage(submission: GroupJoinSubmissionState) {
     val message =
         when (submission) {
@@ -336,6 +380,8 @@ private fun SubmissionMessage(submission: GroupJoinSubmissionState) {
                 when (submission.reason) {
                     GroupJoinFailure.Rejected -> stringResource(Res.string.group_join_failure_rejected)
                     GroupJoinFailure.Unavailable -> stringResource(Res.string.group_join_failure_unavailable)
+                    GroupJoinFailure.AlreadyMember -> stringResource(Res.string.group_join_failure_already_member)
+                    GroupJoinFailure.RateLimited -> stringResource(Res.string.group_join_failure_rate_limited)
                     GroupJoinFailure.OutcomeUnknown -> stringResource(Res.string.group_join_failure_outcome_unknown)
                 }
             }

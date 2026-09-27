@@ -9,6 +9,12 @@ fun interface LeaveGroupAction {
 sealed interface LeaveGroupResult {
     data object Left : LeaveGroupResult
 
+    data object MembershipChanged : LeaveGroupResult
+
+    data object NotFound : LeaveGroupResult
+
+    data object OwnerCannotLeave : LeaveGroupResult
+
     /** 서버 반영 여부를 판단할 수 없는 결과입니다. 나가기 요청을 자동 재전송하지 않습니다. */
     data object OutcomeUnknown : LeaveGroupResult
 

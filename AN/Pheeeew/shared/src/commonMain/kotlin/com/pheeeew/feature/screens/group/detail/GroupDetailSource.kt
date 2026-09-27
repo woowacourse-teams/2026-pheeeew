@@ -16,7 +16,15 @@ sealed interface GroupDetailLoadResult {
     /** 이미 탈퇴한 그룹의 이전 화면에 재진입한 경우도 포함합니다. 통신 오류와 구분합니다. */
     data object MembershipChanged : GroupDetailLoadResult
 
+    /** 그룹이 없거나 삭제됐습니다. MembershipChanged와 다른 문구를 표시합니다. */
+    data object NotFound : GroupDetailLoadResult
+
     data object Unavailable : GroupDetailLoadResult
+}
+
+enum class GroupDetailAccessLoss {
+    MembershipChanged,
+    NotFound,
 }
 
 fun interface GroupDetailErrorReporter {

@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -75,14 +74,19 @@ fun GroupHomeScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding(),
     ) {
-        Text(
-            text = stringResource(Res.string.group_home_title),
-            modifier = Modifier.fillMaxWidth().padding(top = 44.dp, bottom = 38.dp),
-            color = AppColors.GroupInk,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
-        )
+        Box(
+            modifier = Modifier.fillMaxWidth().height(54.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = stringResource(Res.string.group_home_title),
+                color = AppColors.GroupInk,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(16.dp))
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
@@ -122,7 +126,6 @@ fun GroupHomeScreen(
             is GroupHomeContent.Ready -> {
                 GroupListContent(
                     groups = content.groups,
-                    isRefreshing = uiState.isRefreshing,
                     hasRefreshError = uiState.hasRefreshError,
                     onGroupClick = onGroupClick,
                     onRetry = onRetry,
@@ -273,22 +276,14 @@ private fun FailedContent(
 @Composable
 private fun GroupListContent(
     groups: List<GroupSummaryUiModel>,
-    isRefreshing: Boolean,
     hasRefreshError: Boolean,
     onGroupClick: (GroupId) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        if (isRefreshing) {
-            LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth(),
-                color = AppColors.RankingAccent,
-                trackColor = AppColors.RankingSurface,
-            )
-        }
+    Box(modifier = modifier.fillMaxWidth()) {
         LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
             verticalArrangement = Arrangement.spacedBy(17.dp),
         ) {

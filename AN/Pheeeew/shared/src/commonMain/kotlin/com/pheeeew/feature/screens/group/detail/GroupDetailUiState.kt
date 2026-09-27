@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.group.detail
 
+import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 
@@ -10,6 +11,9 @@ data class GroupDetailUiState(
     val copyRequest: GroupCopyCodeRequest? = null,
     val notice: GroupDetailNotice? = null,
     val groupName: String? = null,
+    val pressStatus: GroupPressStatus = GroupPressStatus.Idle,
+    val confirmedPressFeedback: GroupPressFeedback? = null,
+    val membershipEvent: GroupDetailMembershipEvent? = null,
 ) {
     val detail: GroupDetailUiModel?
         get() = (content as? GroupDetailContent.Ready)?.detail
@@ -21,7 +25,7 @@ data class GroupDetailUiState(
         get() = refreshStatus == GroupDetailRefreshStatus.Failed
 
     val canTapEmotion: Boolean
-        get() = detail != null && overlay == GroupDetailOverlay.None
+        get() = detail != null && overlay == GroupDetailOverlay.None && pressStatus == GroupPressStatus.Idle
 
     init {
         require(content is GroupDetailContent.Ready || refreshStatus == GroupDetailRefreshStatus.Idle) {
@@ -44,6 +48,8 @@ sealed interface GroupDetailContent {
 
     /** 이미 나간 그룹으로 돌아온 경우를 포함해, 현재 참여 중이 아닌 상태입니다. */
     data object MembershipChanged : GroupDetailContent
+
+    data object NotFound : GroupDetailContent
 }
 
 enum class GroupDetailRefreshStatus {
@@ -51,6 +57,30 @@ enum class GroupDetailRefreshStatus {
     Refreshing,
     Failed,
 }
+
+sealed interface GroupPressStatus {
+    data object Idle : GroupPressStatus
+
+    data class Sending(
+        val operationKey: GroupOperationKey,
+        val emotion: EmotionKind,
+    ) : GroupPressStatus
+
+    data class Reconciling(
+        val operationKey: GroupOperationKey,
+        val emotion: EmotionKind,
+    ) : GroupPressStatus
+
+    data class OutcomeUnknown(
+        val operationKey: GroupOperationKey,
+        val emotion: EmotionKind,
+    ) : GroupPressStatus
+}
+
+data class GroupPressFeedback(
+    val operationKey: GroupOperationKey,
+    val emotion: EmotionKind,
+)
 
 sealed interface GroupDetailOverlay {
     data object None : GroupDetailOverlay
@@ -66,6 +96,10 @@ sealed interface GroupDetailOverlay {
     ) : GroupDetailOverlay
 
     data object LeaveFailed : GroupDetailOverlay
+
+    data object LeaveStillMember : GroupDetailOverlay
+
+    data object OwnerCannotLeave : GroupDetailOverlay
 
     /** 나가기 요청 결과가 시간 초과 등으로 불명확합니다. 재전송 대신 멤버십을 다시 확인합니다. */
     data object LeaveOutcomeUnknown : GroupDetailOverlay
@@ -83,10 +117,19 @@ data class GroupCopyCodeRequest(
 data class GroupDetailNotice(
     val operationKey: GroupOperationKey,
     val kind: GroupDetailNoticeKind,
+    val retryAfterMillis: Long? = null,
 )
 
 enum class GroupDetailNoticeKind {
     CopySucceeded,
     CopyFailed,
-    EmotionUnavailable,
+    PressRejected,
+    PressUnavailable,
+    PressRateLimited,
+    PressBlockedWhilePending,
 }
+
+data class GroupDetailMembershipEvent(
+    val operationKey: GroupOperationKey,
+    val reason: GroupDetailAccessLoss,
+)
