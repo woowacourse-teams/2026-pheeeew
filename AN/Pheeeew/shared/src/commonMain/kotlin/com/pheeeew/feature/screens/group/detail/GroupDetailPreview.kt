@@ -8,6 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.screens.group.detail.model.EmotionCountUiModel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailCopyKey
@@ -134,7 +135,6 @@ private fun previewActions(onEmotionTap: (EmotionKind) -> Boolean = { true }) =
         onRetry = {},
         onMoreClick = {},
         onInviteClick = {},
-        onInviteShareClick = {},
         onCopyCodeClick = {},
         onDismissOverlay = {},
         onLeaveMenuClick = {},
@@ -158,6 +158,7 @@ private fun fixtureDetail(
                     group.copy(name = "우테코 8기 히유", memberCount = 12, weeklyStampCount = 128L)
                 }
             },
+        role = GroupRole.MEMBER,
         emotionCounts =
             EmotionKind.entries.mapIndexed { index, emotion ->
                 val count =
@@ -171,7 +172,6 @@ private fun fixtureDetail(
                 EmotionCountUiModel(emotion, count)
             },
         todayTotal = todayTotal,
-        weeklyScore = if (presentation == GroupDetailPresentationKind.FirstStart) 0L else 128L,
         rank =
             if (presentation ==
                 GroupDetailPresentationKind.FirstStart

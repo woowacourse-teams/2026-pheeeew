@@ -10,6 +10,8 @@ data class GroupDetailUiState(
     val copyRequest: GroupCopyCodeRequest? = null,
     val notice: GroupDetailNotice? = null,
     val groupName: String? = null,
+    val emotionTapsEnabled: Boolean = true,
+    val membershipEvent: GroupDetailMembershipEvent? = null,
 ) {
     val detail: GroupDetailUiModel?
         get() = (content as? GroupDetailContent.Ready)?.detail
@@ -21,7 +23,7 @@ data class GroupDetailUiState(
         get() = refreshStatus == GroupDetailRefreshStatus.Failed
 
     val canTapEmotion: Boolean
-        get() = detail != null && overlay == GroupDetailOverlay.None
+        get() = emotionTapsEnabled && detail != null && overlay == GroupDetailOverlay.None
 
     init {
         require(content is GroupDetailContent.Ready || refreshStatus == GroupDetailRefreshStatus.Idle) {
@@ -44,6 +46,8 @@ sealed interface GroupDetailContent {
 
     /** 이미 나간 그룹으로 돌아온 경우를 포함해, 현재 참여 중이 아닌 상태입니다. */
     data object MembershipChanged : GroupDetailContent
+
+    data object NotFound : GroupDetailContent
 }
 
 enum class GroupDetailRefreshStatus {
@@ -66,6 +70,10 @@ sealed interface GroupDetailOverlay {
     ) : GroupDetailOverlay
 
     data object LeaveFailed : GroupDetailOverlay
+
+    data object LeaveStillMember : GroupDetailOverlay
+
+    data object OwnerCannotLeave : GroupDetailOverlay
 
     /** 나가기 요청 결과가 시간 초과 등으로 불명확합니다. 재전송 대신 멤버십을 다시 확인합니다. */
     data object LeaveOutcomeUnknown : GroupDetailOverlay
@@ -90,3 +98,8 @@ enum class GroupDetailNoticeKind {
     CopyFailed,
     EmotionUnavailable,
 }
+
+data class GroupDetailMembershipEvent(
+    val operationKey: GroupOperationKey,
+    val reason: GroupDetailAccessLoss,
+)

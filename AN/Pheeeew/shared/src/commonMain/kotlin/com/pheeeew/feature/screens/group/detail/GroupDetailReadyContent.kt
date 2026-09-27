@@ -3,7 +3,6 @@ package com.pheeeew.feature.screens.group.detail
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
@@ -46,18 +44,19 @@ import pheeeew.shared.generated.resources.group_detail_hero_active
 import pheeeew.shared.generated.resources.group_detail_hero_active_subtitle
 import pheeeew.shared.generated.resources.group_detail_hero_first
 import pheeeew.shared.generated.resources.group_detail_hero_first_subtitle
-import pheeeew.shared.generated.resources.group_detail_invite_share
+import pheeeew.shared.generated.resources.group_detail_hero_neutral
+import pheeeew.shared.generated.resources.group_detail_hero_neutral_subtitle
 import pheeeew.shared.generated.resources.group_detail_load_error_body
 import pheeeew.shared.generated.resources.group_detail_loading
 import pheeeew.shared.generated.resources.group_detail_rank_empty
 import pheeeew.shared.generated.resources.group_detail_rank_label
 import pheeeew.shared.generated.resources.group_detail_rank_number
-import pheeeew.shared.generated.resources.group_detail_rank_view
 import pheeeew.shared.generated.resources.group_detail_retry
 import pheeeew.shared.generated.resources.group_detail_summary_angry
 import pheeeew.shared.generated.resources.group_detail_summary_annoyed
 import pheeeew.shared.generated.resources.group_detail_summary_blocked
 import pheeeew.shared.generated.resources.group_detail_summary_defeated
+import pheeeew.shared.generated.resources.group_detail_summary_neutral
 import pheeeew.shared.generated.resources.group_detail_summary_tired
 import pheeeew.shared.generated.resources.group_detail_today_total
 import pheeeew.shared.generated.resources.group_detail_total_count
@@ -72,7 +71,6 @@ internal fun GroupDetailReadyContent(
     hasRefreshError: Boolean,
     canTapEmotion: Boolean,
     onInviteClick: () -> Unit,
-    onInviteShareClick: () -> Unit,
     onRetry: () -> Unit,
     onEmotionTap: (EmotionKind) -> Boolean,
 ) {
@@ -105,20 +103,6 @@ internal fun GroupDetailReadyContent(
             WeeklySummary(detail)
             Spacer(Modifier.height(16.dp))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            DetailOutlineButton(
-                text = stringResource(Res.string.group_detail_rank_view),
-                onClick = {},
-                enabled = false,
-                modifier = Modifier.weight(1f),
-            )
-            DetailOutlineButton(
-                text = stringResource(Res.string.group_detail_invite_share),
-                onClick = onInviteShareClick,
-                modifier = Modifier.weight(1f),
-            )
-        }
-        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -163,11 +147,12 @@ private fun TodayTotal(detail: GroupDetailUiModel) {
 
 @Composable
 private fun WeeklySummary(detail: GroupDetailUiModel) {
+    val weeklyScore = requireNotNull(detail.group.weeklyStampCount)
     HorizontalDivider(color = Color(0xFFDFE2D9), thickness = 1.dp)
     Row(Modifier.fillMaxWidth().height(69.dp), verticalAlignment = Alignment.CenterVertically) {
         SummaryValue(
             label = stringResource(Res.string.group_detail_weekly_label),
-            value = stringResource(Res.string.group_detail_weekly_value, formatCount(detail.weeklyScore)),
+            value = stringResource(Res.string.group_detail_weekly_value, formatCount(weeklyScore)),
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(1.dp).height(69.dp).background(Color(0xFFDFE2D9)))
@@ -233,11 +218,14 @@ private fun GroupDetailCopyKey.toStringResource() =
         GroupDetailCopyKey.FirstStartHeroSubtitle -> Res.string.group_detail_hero_first_subtitle
         GroupDetailCopyKey.ActiveHeroTitle -> Res.string.group_detail_hero_active
         GroupDetailCopyKey.ActiveHeroSubtitle -> Res.string.group_detail_hero_active_subtitle
+        GroupDetailCopyKey.NeutralHeroTitle -> Res.string.group_detail_hero_neutral
+        GroupDetailCopyKey.NeutralHeroSubtitle -> Res.string.group_detail_hero_neutral_subtitle
         GroupDetailCopyKey.SummaryBlocked -> Res.string.group_detail_summary_blocked
         GroupDetailCopyKey.SummaryAnnoyed -> Res.string.group_detail_summary_annoyed
         GroupDetailCopyKey.SummaryTired -> Res.string.group_detail_summary_tired
         GroupDetailCopyKey.SummaryDefeated -> Res.string.group_detail_summary_defeated
         GroupDetailCopyKey.SummaryAngry -> Res.string.group_detail_summary_angry
+        GroupDetailCopyKey.SummaryNeutral -> Res.string.group_detail_summary_neutral
     }
 
 @Composable

@@ -9,4 +9,5 @@ data class GroupDetailDependencies(
     val errorReporter: GroupDetailErrorReporter,
     val operationKeyAllocator: GroupOperationKeyAllocator,
     val requestPolicy: GroupDetailRequestPolicy = GroupDetailRequestPolicy(),
+    val emotionTapsEnabled: Boolean = true,
 )
