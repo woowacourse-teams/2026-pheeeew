@@ -56,16 +56,16 @@ fun MapOverlay(
     modifier: Modifier = Modifier,
 ) {
     val promptTranslationY by
-    animateFloatAsState(
-        targetValue = if (isEmotionSelectorExpanded) -125f else 0f,
-        animationSpec =
-            spring(
-                dampingRatio = EMOTION_PROMPT_DAMPING_RATIO,
-                stiffness = EMOTION_PROMPT_STIFFNESS,
-                visibilityThreshold = 0.001f,
-            ),
-        label = "emotionPromptTranslationY",
-    )
+        animateFloatAsState(
+            targetValue = if (isEmotionSelectorExpanded) -125f else 0f,
+            animationSpec =
+                spring(
+                    dampingRatio = EMOTION_PROMPT_DAMPING_RATIO,
+                    stiffness = EMOTION_PROMPT_STIFFNESS,
+                    visibilityThreshold = 0.001f,
+                ),
+            label = "emotionPromptTranslationY",
+        )
 
     Box(
         modifier = modifier.fillMaxSize(),
