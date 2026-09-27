@@ -137,16 +137,9 @@ class GroupJoinStateHolder(
                     if (submitting?.operationKey != operationKey) return@update state
                     when (result) {
                         is GroupJoinResult.Joined -> {
-                            if (result.groupId.value.equals(found.group.id.value, ignoreCase = true)) {
-                                state.copy(
-                                    submission = GroupJoinSubmissionState.Succeeded(operationKey, result.groupId),
-                                )
-                            } else {
-                                state.copy(
-                                    lookup = GroupLookupState.PreviewStale(found.requestedCode),
-                                    submission = GroupJoinSubmissionState.Idle,
-                                )
-                            }
+                            state.copy(
+                                submission = GroupJoinSubmissionState.Succeeded(operationKey, result.groupId),
+                            )
                         }
 
                         GroupJoinResult.InviteCodeNotFound -> {

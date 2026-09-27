@@ -5,7 +5,9 @@ import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.join.GroupJoinDependencies
 import com.pheeeew.feature.screens.group.join.GroupJoinErrorReporter
 import com.pheeeew.feature.screens.group.join.GroupJoinResult
+import com.pheeeew.feature.screens.group.join.GroupJoinSubmissionState
 import com.pheeeew.feature.screens.group.join.GroupLookupResult
+import com.pheeeew.feature.screens.group.join.GroupLookupState
 import com.pheeeew.feature.screens.group.join.JoinGroupAction
 import com.pheeeew.feature.screens.group.join.LookupGroupAction
 import com.pheeeew.feature.screens.group.model.GroupId
@@ -22,6 +24,7 @@ import kotlinx.coroutines.test.setMain
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupHomeViewModelTest {
@@ -122,6 +125,58 @@ class GroupHomeViewModelTest {
                 runCurrent()
 
                 assertEquals(GroupHomeContent.Ready(listOf(currentGroup)), viewModel.uiState.value.content)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `joining a different group than the preview reports the joined group and refreshes membership`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val joinedGroupId = GroupId("joined-group")
+                val refreshedGroups = CompletableDeferred<GroupListResult>()
+                val source =
+                    QueuedGroupListSource(
+                        CompletableDeferred(GroupListResult.Success(emptyList())),
+                        refreshedGroups,
+                    )
+                val viewModel =
+                    GroupHomeViewModel(
+                        groupListSource = source,
+                        groupJoinDependencies =
+                            GroupJoinDependencies(
+                                lookupGroupAction = { GroupLookupResult.Found(group("preview-group")) },
+                                joinGroupAction = { _, _ -> GroupJoinResult.Joined(joinedGroupId) },
+                                errorReporter = GroupJoinErrorReporter {},
+                                operationKeyAllocator = GroupOperationKeyAllocator("join-mismatch-test"),
+                            ),
+                    )
+
+                runCurrent()
+                viewModel.openJoinSheet()
+                viewModel.onJoinCodeChanged("ABC123")
+                viewModel.onJoinSearchClick()
+                runCurrent()
+                assertIs<GroupLookupState.Found>(viewModel.joinUiState.value.lookup)
+
+                viewModel.onJoinClick()
+                runCurrent()
+
+                val succeeded = assertIs<GroupJoinSubmissionState.Succeeded>(viewModel.joinUiState.value.submission)
+                assertEquals(joinedGroupId, succeeded.groupId)
+                assertTrue(viewModel.consumeJoinAndClose(succeeded.operationKey))
+
+                viewModel.refreshIfDirty()
+                runCurrent()
+                assertEquals(2, source.calls)
+
+                val joinedGroup = group(joinedGroupId.value)
+                refreshedGroups.complete(GroupListResult.Success(listOf(joinedGroup)))
+                runCurrent()
+
+                assertEquals(GroupHomeContent.Ready(listOf(joinedGroup)), viewModel.uiState.value.content)
             } finally {
                 Dispatchers.resetMain()
             }
