@@ -6,7 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
 import com.pheeeew.core.di.AndroidApiDependencies
-import com.pheeeew.core.di.DeviceSessionBuildConfig
+import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.data.location.platform.android.LocationDependenciesHolder
 import com.pheeeew.data.location.platform.android.createAndroidLocationDependencies
 

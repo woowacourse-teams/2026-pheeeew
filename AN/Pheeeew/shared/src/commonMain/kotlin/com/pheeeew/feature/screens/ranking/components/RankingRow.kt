@@ -19,7 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.feature.component.GroupStamp
+import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.ranking.RankingMember
 import com.pheeeew.feature.screens.ranking.sampleRankings
 

@@ -10,6 +10,7 @@ data class GroupJoinUiState(
     val hasAttemptedSearch: Boolean = false,
     val lookup: GroupLookupState = GroupLookupState.Idle,
     val submission: GroupJoinSubmissionState = GroupJoinSubmissionState.Idle,
+    val rateLimit: GroupJoinRateLimit? = null,
 ) {
     val isInteractionLocked: Boolean
         get() = submission is GroupJoinSubmissionState.Submitting || submission is GroupJoinSubmissionState.Succeeded
@@ -28,32 +29,77 @@ data class GroupJoinUiState(
 
     val shouldShowCodeValidationError: Boolean
         get() =
-            hasAttemptedSearch &&
-                codeValidation !is GroupCodeValidation.Empty &&
-                codeValidation !is GroupCodeValidation.Valid
+            codeValidation is GroupCodeValidation.TooLong ||
+                (
+                    hasAttemptedSearch &&
+                        codeValidation !is GroupCodeValidation.Empty &&
+                        codeValidation !is GroupCodeValidation.Valid
+                )
 
     val canSearch: Boolean
-        get() = !isInteractionLocked && !isLookingUp && codeValidation !is GroupCodeValidation.Empty
+        get() =
+            !isInteractionLocked &&
+                !isLookingUp &&
+                !isRetryBlocked &&
+                codeValidation !is GroupCodeValidation.Empty
 
-    val foundGroup: GroupSummaryUiModel?
-        get() = (lookup as? GroupLookupState.Found)?.group
+    val isLookupRetryBlocked: Boolean
+        get() = rateLimit?.let { it.operation == GroupJoinRateLimitOperation.Lookup } == true
 
-    val canJoin: Boolean
+    val isJoinRetryBlocked: Boolean
+        get() = rateLimit?.let { it.operation == GroupJoinRateLimitOperation.Join } == true
+
+    val isRetryBlocked: Boolean
+        get() = rateLimit != null
+
+    val hasJoinTarget: Boolean
         get() {
             val found = lookup as? GroupLookupState.Found ?: return false
             val validation = codeValidation as? GroupCodeValidation.Valid ?: return false
             val retryAllowed =
                 when (val result = submission) {
-                    GroupJoinSubmissionState.Idle -> true
+                    GroupJoinSubmissionState.Idle -> {
+                        true
+                    }
 
-                    is GroupJoinSubmissionState.Failed -> result.reason != GroupJoinFailure.OutcomeUnknown
+                    is GroupJoinSubmissionState.Failed -> {
+                        result.reason != GroupJoinFailure.AlreadyMember &&
+                            result.reason != GroupJoinFailure.OutcomeUnknown
+                    }
 
                     is GroupJoinSubmissionState.Submitting,
                     is GroupJoinSubmissionState.Succeeded,
-                    -> false
+                    -> {
+                        false
+                    }
                 }
             return retryAllowed && validation.normalizedCode == found.requestedCode
         }
+
+    val foundGroup: GroupSummaryUiModel?
+        get() = (lookup as? GroupLookupState.Found)?.group
+
+    val needsMembershipVerification: Boolean
+        get() =
+            when ((submission as? GroupJoinSubmissionState.Failed)?.reason) {
+                GroupJoinFailure.AlreadyMember,
+                GroupJoinFailure.OutcomeUnknown,
+                -> true
+
+                else -> false
+            }
+
+    val canJoin: Boolean
+        get() = hasJoinTarget && !isRetryBlocked
+}
+
+data class GroupJoinRateLimit(
+    val operation: GroupJoinRateLimitOperation,
+)
+
+enum class GroupJoinRateLimitOperation {
+    Lookup,
+    Join,
 }
 
 sealed interface GroupLookupState {
@@ -70,6 +116,14 @@ sealed interface GroupLookupState {
     ) : GroupLookupState
 
     data class NotFound(
+        val requestedCode: String,
+    ) : GroupLookupState
+
+    data class RateLimited(
+        val requestedCode: String,
+    ) : GroupLookupState
+
+    data class PreviewStale(
         val requestedCode: String,
     ) : GroupLookupState
 
@@ -99,5 +153,7 @@ sealed interface GroupJoinSubmissionState {
 enum class GroupJoinFailure {
     Rejected,
     Unavailable,
+    AlreadyMember,
+    RateLimited,
     OutcomeUnknown,
 }

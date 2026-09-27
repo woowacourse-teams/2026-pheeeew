@@ -1,14 +1,15 @@
 package com.pheeeew.core.di
 
+import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.network.ApiClient
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ApiResponseObserver
 import com.pheeeew.core.network.createPlatformApiClient
 import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.local.device.DeviceCredentialStorage
-import com.pheeeew.data.remote.device.DeviceProofProvider
-import com.pheeeew.data.remote.device.KtorDeviceSessionApi
-import com.pheeeew.data.repository.DeviceSessionRepositoryImpl
+import com.pheeeew.data.remote.device.api.KtorDeviceSessionApi
+import com.pheeeew.data.remote.device.attestation.DeviceProofProvider
+import com.pheeeew.data.repository.device.DeviceSessionRepositoryImpl
 import com.pheeeew.domain.model.device.DeviceDiagnosticOutcome
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.model.device.DeviceSessionDiagnostic

@@ -5,6 +5,7 @@ import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -23,11 +24,14 @@ class GroupJoinStateHolder(
     private var requestGeneration = 0L
     private var lookupJob: Job? = null
     private var joinJob: Job? = null
+    private var rateLimitJob: Job? = null
+    private var rateLimitGeneration = 0L
+    private var activeRateLimit: GroupJoinRateLimit? = null
 
     fun open() {
         if (isOpen) return
         isOpen = true
-        _uiState.value = GroupJoinUiState()
+        _uiState.value = GroupJoinUiState(rateLimit = activeRateLimit)
     }
 
     /** 처리 중에는 화면 닫기를 거부하고, 조회 중에는 해당 요청도 취소합니다. */
@@ -37,7 +41,7 @@ class GroupJoinStateHolder(
 
         invalidateRequests()
         isOpen = false
-        _uiState.value = GroupJoinUiState()
+        _uiState.value = GroupJoinUiState(rateLimit = activeRateLimit)
         return true
     }
 
@@ -57,7 +61,7 @@ class GroupJoinStateHolder(
 
     fun onSearchClick() {
         val current = _uiState.value
-        if (!isOpen || current.isInteractionLocked || current.isLookingUp) return
+        if (!isOpen || !current.canSearch) return
 
         val code =
             when (val validation = GroupCodeRules.validate(current.input)) {
@@ -99,9 +103,13 @@ class GroupJoinStateHolder(
                             when (result) {
                                 is GroupLookupResult.Found -> GroupLookupState.Found(code, result.group)
                                 GroupLookupResult.NotFound -> GroupLookupState.NotFound(code)
+                                is GroupLookupResult.RateLimited -> GroupLookupState.RateLimited(code)
                                 GroupLookupResult.Unavailable -> GroupLookupState.Failed(code)
                             },
                     )
+                }
+                (result as? GroupLookupResult.RateLimited)?.let { rateLimited ->
+                    startRateLimitWindow(GroupJoinRateLimitOperation.Lookup, rateLimited.retryAfterMillis)
                 }
                 if (requestId == requestGeneration) lookupJob = null
             }
@@ -127,26 +135,43 @@ class GroupJoinStateHolder(
                 _uiState.update { state ->
                     val submitting = state.submission as? GroupJoinSubmissionState.Submitting
                     if (submitting?.operationKey != operationKey) return@update state
-                    state.copy(
-                        submission =
-                            when (result) {
-                                is GroupJoinResult.Joined -> {
-                                    GroupJoinSubmissionState.Succeeded(operationKey, result.groupId)
-                                }
+                    when (result) {
+                        is GroupJoinResult.Joined -> {
+                            state.copy(
+                                submission = GroupJoinSubmissionState.Succeeded(operationKey, result.groupId),
+                            )
+                        }
 
-                                GroupJoinResult.Rejected -> {
-                                    GroupJoinSubmissionState.Failed(GroupJoinFailure.Rejected)
-                                }
+                        GroupJoinResult.InviteCodeNotFound -> {
+                            state.copy(
+                                lookup = GroupLookupState.NotFound(found.requestedCode),
+                                submission = GroupJoinSubmissionState.Idle,
+                            )
+                        }
 
-                                GroupJoinResult.Unavailable -> {
-                                    GroupJoinSubmissionState.Failed(GroupJoinFailure.Unavailable)
-                                }
+                        GroupJoinResult.AlreadyMember -> {
+                            state.copy(submission = GroupJoinSubmissionState.Failed(GroupJoinFailure.AlreadyMember))
+                        }
 
-                                GroupJoinResult.OutcomeUnknown -> {
-                                    GroupJoinSubmissionState.Failed(GroupJoinFailure.OutcomeUnknown)
-                                }
-                            },
-                    )
+                        is GroupJoinResult.RateLimited -> {
+                            state.copy(submission = GroupJoinSubmissionState.Failed(GroupJoinFailure.RateLimited))
+                        }
+
+                        GroupJoinResult.Rejected -> {
+                            state.copy(submission = GroupJoinSubmissionState.Failed(GroupJoinFailure.Rejected))
+                        }
+
+                        GroupJoinResult.Unavailable -> {
+                            state.copy(submission = GroupJoinSubmissionState.Failed(GroupJoinFailure.Unavailable))
+                        }
+
+                        GroupJoinResult.OutcomeUnknown -> {
+                            state.copy(submission = GroupJoinSubmissionState.Failed(GroupJoinFailure.OutcomeUnknown))
+                        }
+                    }
+                }
+                (result as? GroupJoinResult.RateLimited)?.let { rateLimited ->
+                    startRateLimitWindow(GroupJoinRateLimitOperation.Join, rateLimited.retryAfterMillis)
                 }
                 if (requestId == requestGeneration) joinJob = null
             }
@@ -159,7 +184,7 @@ class GroupJoinStateHolder(
 
         invalidateRequests()
         isOpen = false
-        _uiState.value = GroupJoinUiState()
+        _uiState.value = GroupJoinUiState(rateLimit = activeRateLimit)
         return true
     }
 
@@ -218,6 +243,53 @@ class GroupJoinStateHolder(
         lookupJob = null
         joinJob?.cancel()
         joinJob = null
+    }
+
+    private fun startRateLimitWindow(
+        operation: GroupJoinRateLimitOperation,
+        retryAfterMillis: Long?,
+    ) {
+        val delayMillis = retryAfterMillis?.takeIf { it > 0L } ?: return
+        check(rateLimitGeneration < Long.MAX_VALUE) { "요청 제한 세대를 더 이상 올릴 수 없습니다." }
+        rateLimitGeneration += 1L
+        val generation = rateLimitGeneration
+        val rateLimit = GroupJoinRateLimit(operation)
+        activeRateLimit = rateLimit
+        rateLimitJob?.cancel()
+        _uiState.update { state -> state.copy(rateLimit = rateLimit) }
+        rateLimitJob =
+            scope.launch {
+                delay(delayMillis)
+                if (generation != rateLimitGeneration) return@launch
+                activeRateLimit = null
+                _uiState.update { state ->
+                    if (state.rateLimit != rateLimit) {
+                        state
+                    } else {
+                        state.copy(
+                            lookup =
+                                if (operation == GroupJoinRateLimitOperation.Lookup &&
+                                    state.lookup is GroupLookupState.RateLimited
+                                ) {
+                                    GroupLookupState.Idle
+                                } else {
+                                    state.lookup
+                                },
+                            submission =
+                                if (operation == GroupJoinRateLimitOperation.Join &&
+                                    (state.submission as? GroupJoinSubmissionState.Failed)?.reason ==
+                                    GroupJoinFailure.RateLimited
+                                ) {
+                                    GroupJoinSubmissionState.Idle
+                                } else {
+                                    state.submission
+                                },
+                            rateLimit = null,
+                        )
+                    }
+                }
+                if (generation == rateLimitGeneration) rateLimitJob = null
+            }
     }
 
     private fun nextRequestGeneration(): Long {

@@ -1,5 +1,6 @@
 package com.pheeeew.data.remote.group
 
+import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
 import com.pheeeew.domain.model.group.GroupId
 import com.pheeeew.domain.model.group.GroupStamp
 import com.pheeeew.domain.model.group.GroupStampFrame

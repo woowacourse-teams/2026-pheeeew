@@ -1,8 +1,9 @@
 package com.pheeeew.core.di
 
+import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.data.local.device.IosDeviceCredentialStorage
-import com.pheeeew.data.remote.device.IosAppAttestProofProvider
+import com.pheeeew.data.remote.device.attestation.IosAppAttestProofProvider
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.model.device.DeviceSessionDiagnostics
 import platform.Foundation.NSBundle

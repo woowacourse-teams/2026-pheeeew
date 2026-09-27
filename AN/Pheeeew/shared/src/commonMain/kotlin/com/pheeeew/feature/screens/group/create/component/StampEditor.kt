@@ -31,7 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.feature.component.GroupStamp
+import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.create.GroupCreateFieldError
