@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.feature.screens.settings.SettingsTheme
 import com.pheeeew.legacy.core.designsystem.theme.AppTheme
 
 @Composable
@@ -59,7 +60,7 @@ internal fun SettingsDivider(modifier: Modifier = Modifier) {
 @Preview
 @Composable
 private fun SettingsSectionTitlePreview() {
-    AppTheme {
+    SettingsTheme {
         Column(Modifier.background(AppColors.Background)) {
             SettingsSectionTitle("이용 안내")
         }
@@ -69,7 +70,7 @@ private fun SettingsSectionTitlePreview() {
 @Preview
 @Composable
 private fun SettingsCardPreview() {
-    AppTheme {
+    SettingsTheme {
         SettingsCard {
             SettingsActionRow("접근 권한 설정", SettingsIcon.Tune, highlighted = true, onClick = {})
         }
@@ -79,7 +80,7 @@ private fun SettingsCardPreview() {
 @Preview
 @Composable
 private fun SettingsDividerPreview() {
-    AppTheme {
+    SettingsTheme {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
             SettingsDivider()
         }

@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.pheeeew.feature.screens.settings.SettingsTheme
 import com.pheeeew.legacy.core.designsystem.theme.AppTheme
 
 internal const val SETTINGS_CONTACT_EMAIL = "contact@pheeeew.com"
@@ -69,7 +70,7 @@ internal fun ContactCard(
 @Preview
 @Composable
 private fun ContactCardPreview() {
-    AppTheme {
+    SettingsTheme {
         ContactCard(onClick = {}, modifier = Modifier.padding(20.dp))
     }
 }
