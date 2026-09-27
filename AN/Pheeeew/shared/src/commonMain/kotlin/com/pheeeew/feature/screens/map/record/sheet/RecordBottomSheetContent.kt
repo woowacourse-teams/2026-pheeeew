@@ -417,7 +417,7 @@ private fun RecordInputModeTab(
 @Composable
 private fun RecordBottomSheetContentPreview() {
     RecordBottomSheetContent(
-        selectedEmotion = EmotionTypeUiModel.Angry,
+        selectedEmotion = EmotionTypeUiModel.ANGRY,
         inputMode = RecordInputModeUiModel.Memo,
         memo = "",
         groupLabel = "개인",
@@ -434,7 +434,7 @@ private fun RecordBottomSheetContentPreview() {
 @Composable
 private fun RecordBottomSheetRecordingPreview() {
     RecordBottomSheetContent(
-        selectedEmotion = EmotionTypeUiModel.Exhausted,
+        selectedEmotion = EmotionTypeUiModel.EXHAUSTED,
         inputMode = RecordInputModeUiModel.Recording,
         memo = "",
         groupLabel = "개인",

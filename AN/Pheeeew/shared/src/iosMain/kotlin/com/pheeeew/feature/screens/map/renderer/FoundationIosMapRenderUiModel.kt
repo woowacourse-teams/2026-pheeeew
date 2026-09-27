@@ -10,6 +10,23 @@ data class FoundationIosMapRenderUiModel(
     val cameraCommandValue: Double,
     val isRecordLocationPicking: Boolean,
     val recordOrigin: FoundationIosMapCoordinateUiModel?,
+    val emotionPinCoordinates: List<FoundationIosEmotionPinCoordinateUiModel>,
+    val emotionPinSymbolImages: List<FoundationIosMapSymbolImageUiModel>,
 ) {
     override fun toString(): String = "FoundationIosMapRenderUiModel([redacted])"
 }
+
+data class FoundationIosEmotionPinCoordinateUiModel(
+    val id: Long,
+    val latitude: Double,
+    val longitude: Double,
+    val imageKey: String,
+    val rotationDegrees: Double,
+)
+
+data class FoundationIosMapSymbolImageUiModel(
+    val key: String,
+    val width: Int,
+    val height: Int,
+    val rgba: ByteArray,
+)

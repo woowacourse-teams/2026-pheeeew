@@ -477,11 +477,11 @@ private fun EmotionTypeUiModel.offset(isExpanded: Boolean): DpOffset =
         DpOffset(x = (3 + ordinal * 67).dp, y = 12.dp)
     } else {
         when (this) {
-            EmotionTypeUiModel.Stuck -> DpOffset(x = 127.dp, y = 180.dp)
-            EmotionTypeUiModel.Annoyed -> DpOffset(x = 156.dp, y = 173.dp)
-            EmotionTypeUiModel.Exhausted -> DpOffset(x = 185.dp, y = 180.dp)
-            EmotionTypeUiModel.Frustrated -> DpOffset(x = 141.dp, y = 207.dp)
-            EmotionTypeUiModel.Angry -> DpOffset(x = 171.dp, y = 207.dp)
+            EmotionTypeUiModel.FRUSTRATED -> DpOffset(x = 127.dp, y = 180.dp)
+            EmotionTypeUiModel.IRRITATED -> DpOffset(x = 156.dp, y = 173.dp)
+            EmotionTypeUiModel.EXHAUSTED -> DpOffset(x = 185.dp, y = 180.dp)
+            EmotionTypeUiModel.DISCOURAGED -> DpOffset(x = 141.dp, y = 207.dp)
+            EmotionTypeUiModel.ANGRY -> DpOffset(x = 171.dp, y = 207.dp)
         }
     }
 
