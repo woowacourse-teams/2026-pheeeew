@@ -47,10 +47,12 @@ internal actual fun NativeMap(
     onMapRecovered: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapBounds) -> Unit,
+    onEmotionPinClick: (Long) -> Unit,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val hostResult =
@@ -66,6 +68,7 @@ internal actual fun NativeMap(
                     onMapRecovered = currentOnMapRecovered,
                     onRecordViewportChanged = onRecordViewportChanged,
                     onViewportChanged = onViewportChanged,
+                    onEmotionPinClick = { currentOnEmotionPinClick(it) },
                 )
             }
         }
@@ -109,6 +112,7 @@ private class AndroidFoundationMapHost(
     private val onMapRecovered: () -> Unit,
     private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     private val onViewportChanged: (EmotionMapBounds) -> Unit,
+    private val onEmotionPinClick: (Long) -> Unit,
 ) {
     private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
     private var map: MapLibreMap? = null
@@ -132,6 +136,18 @@ private class AndroidFoundationMapHost(
         mapView.getMapAsync { readyMap ->
             if (released) return@getMapAsync
             map = readyMap
+            readyMap.addOnMapClickListener { coordinate ->
+                if (released || latestState?.isRecordLocationPicking == true) return@addOnMapClickListener false
+                val point = readyMap.projection.toScreenLocation(coordinate)
+                val id =
+                    readyMap
+                        .queryRenderedFeatures(point, "emotion-pin-symbol-layer")
+                        .firstOrNull()
+                        ?.id()
+                        ?.toLongOrNull()
+                if (id != null) onEmotionPinClick(id)
+                id != null
+            }
             readyMap.setMinZoomPreference(MINIMUM_ZOOM)
             readyMap.setMaxZoomPreference(MAXIMUM_ZOOM)
             readyMap.addOnCameraMoveListener {

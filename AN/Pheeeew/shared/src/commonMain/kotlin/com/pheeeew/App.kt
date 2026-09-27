@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -12,10 +13,14 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.di.ApiDependencies
 import com.pheeeew.core.di.LocationDependencies
+import com.pheeeew.core.di.createEmotionAudioRepository
+import com.pheeeew.core.di.createEmotionDetailRepository
 import com.pheeeew.core.di.createEmotionMapDependencies
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
+import com.pheeeew.feature.screens.map.detail.EmotionDetailOverlay
+import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.settings.SettingsScreen
@@ -58,16 +63,30 @@ fun App(
         viewModel {
             MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase())
         }
+    val detailRepository = remember(apiDependencies.client) { createEmotionDetailRepository(apiDependencies.client) }
+    val detailViewModel: EmotionDetailViewModel =
+        viewModel { EmotionDetailViewModel(detailRepository) }
+    val detailState by detailViewModel.uiModel.collectAsState()
+    val audioRepository = remember { createEmotionAudioRepository() }
     var isSettingsVisible by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         MapScreen(
             viewModel = mapViewModel,
             recordViewModel = mapRecordViewModel,
+            onEmotionPinClick = detailViewModel::open,
             onListClick = {},
             onSettingClick = { isSettingsVisible = true },
             onEmotionBubbleClick = {},
             modifier = Modifier.fillMaxSize(),
+        )
+
+        EmotionDetailOverlay(
+            detailState,
+            detailViewModel::dismiss,
+            detailViewModel::retry,
+            audioRepository,
+            detailViewModel::toggleReaction,
         )
 
         if (isSettingsVisible) {

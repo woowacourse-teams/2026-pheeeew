@@ -48,6 +48,7 @@ import com.pheeeew.feature.screens.map.renderer.NativeMap
 fun MapScreen(
     viewModel: MapViewModel,
     recordViewModel: MapRecordViewModel,
+    onEmotionPinClick: (Long) -> Unit,
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
@@ -108,6 +109,7 @@ fun MapScreen(
                         if (recordViewport != viewport) recordViewport = viewport
                     },
                     onViewportChanged = viewModel::onViewportChanged,
+                    onEmotionPinClick = onEmotionPinClick,
                     modifier = mapModifier,
                 )
             }

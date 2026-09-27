@@ -4,7 +4,7 @@ import UIKit
 import CoreGraphics
 import Foundation
 
-final class FoundationMapRenderer: NSObject, MLNMapViewDelegate {
+final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerDelegate {
     let mapView: MLNMapView
     private let eventSink: FoundationIosMapEventSink
     private var pendingState: FoundationIosMapRenderUiModel?
@@ -24,10 +24,27 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate {
         mapView = MLNMapView(frame: .zero, styleURL: FoundationMapStyle.styleURL)
         super.init()
         mapView.delegate = self
+        let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleEmotionPinTap(_:)))
+        tapRecognizer.cancelsTouchesInView = false
+        tapRecognizer.delegate = self
+        mapView.addGestureRecognizer(tapRecognizer)
         mapView.minimumZoomLevel = FoundationMapStyle.minimumZoom
         mapView.maximumZoomLevel = FoundationMapStyle.maximumZoom
         mapView.allowsScrolling = true
         mapView.allowsZooming = true
+    }
+
+    @objc private func handleEmotionPinTap(_ recognizer: UITapGestureRecognizer) {
+        guard recognizer.state == .ended, styleIsReady, pendingState?.isRecordLocationPicking != true else { return }
+        let point = recognizer.location(in: mapView)
+        let features = mapView.visibleFeatures(at: point, styleLayerIdentifiers: Set(["foundation-emotion-pin-layer"]))
+        if let id = features.first?.identifier as? NSNumber {
+            eventSink.onEmotionPinClick(id: id.int64Value)
+        }
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool {
+        true
     }
 
     func update(state: FoundationIosMapRenderUiModel) {
