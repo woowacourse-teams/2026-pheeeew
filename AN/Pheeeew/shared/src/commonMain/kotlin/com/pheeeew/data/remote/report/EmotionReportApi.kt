@@ -12,7 +12,13 @@ class EmotionReportApi(
 ) {
     suspend fun create(request: EmotionReportCreateRequestDto): ApiResult<EmotionReportResponseDto> =
         requests.execute(
-            ApiRequest(HttpMethod.Post, PATH, RequestKind.WRITE, body = request),
+            ApiRequest(
+                HttpMethod.Post,
+                PATH,
+                RequestKind.WRITE,
+                body = request,
+                monitoringEndpoint = "emotion_report",
+            ),
         ) { response -> response.body<EmotionReportResponseDto>() }
 
     private companion object {

@@ -1,7 +1,7 @@
 package com.pheeeew.legacy.di
 
+import com.pheeeew.feature.monitoring.compat.Monitoring
 import com.pheeeew.legacy.core.geo.GeodesicSighLocationObfuscator
-import com.pheeeew.legacy.core.monitoring.Monitoring
 import com.pheeeew.legacy.core.network.ApiConfig
 import com.pheeeew.legacy.core.network.createPlatformHttpClient
 import com.pheeeew.legacy.data.local.device.AccessTokenStore

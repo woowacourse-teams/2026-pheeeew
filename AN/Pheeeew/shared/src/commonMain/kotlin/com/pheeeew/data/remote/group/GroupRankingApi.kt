@@ -18,6 +18,7 @@ class GroupRankingApi(
                 path = PATH,
                 kind = RequestKind.READ,
                 queryParameters = mapOf("weeksAgo" to weeksAgo.toString()),
+                monitoringEndpoint = "group_ranking",
             ),
         ) { response -> response.body<GroupRankingResponseDto>() }
     }

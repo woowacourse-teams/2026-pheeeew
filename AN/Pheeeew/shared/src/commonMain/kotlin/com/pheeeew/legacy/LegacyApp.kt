@@ -19,10 +19,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pheeeew.feature.monitoring.compat.Monitoring
 import com.pheeeew.legacy.core.designsystem.component.AppDialog
 import com.pheeeew.legacy.core.designsystem.component.ConfirmDialog
 import com.pheeeew.legacy.core.designsystem.theme.AppTheme
-import com.pheeeew.legacy.core.monitoring.Monitoring
 import com.pheeeew.legacy.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.legacy.core.navigation.PredictiveBackContent
 import com.pheeeew.legacy.core.navigation.Screen

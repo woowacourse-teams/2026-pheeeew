@@ -44,6 +44,7 @@ class MainActivity : ComponentActivity() {
                         ),
                         BuildConfig.APPLICATION_ID,
                         BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
+                        monitoring = (application as PheeeewApplication).monitoring,
                     ),
             )
         }

@@ -20,6 +20,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlin.time.TimeSource
 
 /** Executes authenticated API requests with at most one explicitly replayable AUTH-001 recovery. */
 class ApiRequestExecutor internal constructor(
@@ -28,6 +29,7 @@ class ApiRequestExecutor internal constructor(
     private val accessTokenProvider: AccessTokenProvider?,
     private val json: Json,
     private val observer: ApiResponseObserver? = null,
+    private val attemptObserver: ApiAttemptObserver? = null,
 ) {
     /** Decodes a non-empty successful response body with the caller's serializable response DTO. */
     suspend fun <T> execute(
@@ -126,6 +128,18 @@ class ApiRequestExecutor internal constructor(
         request: ApiRequest,
         token: AccessToken?,
     ): RequestExecutionResult {
+        val attempt =
+            request.monitoringEndpoint?.let { endpoint ->
+                runCatching { attemptObserver?.started(endpoint, request.method.value) }.getOrNull()
+            }
+        val started = TimeSource.Monotonic.markNow()
+
+        fun finish(
+            outcome: HttpAttemptOutcome,
+            status: Int? = null,
+        ) {
+            runCatching { attempt?.completed(outcome, status, started.elapsedNow().inWholeMilliseconds) }
+        }
         val result =
             try {
                 RequestExecutionResult.Response(
@@ -142,6 +156,7 @@ class ApiRequestExecutor internal constructor(
                     },
                 )
             } catch (cancelled: CancellationException) {
+                finish(HttpAttemptOutcome.CANCELLED)
                 throw cancelled
             } catch (timeout: HttpRequestTimeoutException) {
                 RequestExecutionResult.Failure(
@@ -199,6 +214,35 @@ class ApiRequestExecutor internal constructor(
                 )
             }
 
+        val outcome =
+            when (result) {
+                is RequestExecutionResult.Response -> {
+                    HttpAttemptOutcome.RESPONSE
+                }
+
+                is RequestExecutionResult.Failure -> {
+                    when (val reason = result.value.reason) {
+                        is NetworkFailure.Transport -> {
+                            if (reason.reason ==
+                                TransportFailureReason.TIMEOUT
+                            ) {
+                                HttpAttemptOutcome.TIMEOUT
+                            } else {
+                                HttpAttemptOutcome.CONNECTION
+                            }
+                        }
+
+                        is NetworkFailure.Contract -> {
+                            HttpAttemptOutcome.CONTRACT
+                        }
+
+                        else -> {
+                            HttpAttemptOutcome.UNEXPECTED
+                        }
+                    }
+                }
+            }
+        finish(outcome, (result as? RequestExecutionResult.Response)?.value?.status?.value)
         try {
             observer?.completed((result as? RequestExecutionResult.Response)?.value?.status?.value)
         } catch (_: Exception) {
