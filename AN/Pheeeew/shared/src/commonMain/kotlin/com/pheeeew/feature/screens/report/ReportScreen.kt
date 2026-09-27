@@ -73,6 +73,7 @@ fun ReportScreen(
                 .imePadding(),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
+            Spacer(Modifier.height(28.dp))
             ReportHeader(onBack = onBack, enabled = !uiState.isSubmitting)
 
             Column(
@@ -84,7 +85,7 @@ fun ReportScreen(
             ) {
                 ReportStampPrompt(emotionStamp = uiState.emotionStamp)
 
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     reportReasons.forEach { reason ->
                         ReportReasonOption(
                             reason = reason,

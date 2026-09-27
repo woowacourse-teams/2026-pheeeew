@@ -29,7 +29,7 @@ fun ReportStampPrompt(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 18.dp),
+        modifier = modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Image(
