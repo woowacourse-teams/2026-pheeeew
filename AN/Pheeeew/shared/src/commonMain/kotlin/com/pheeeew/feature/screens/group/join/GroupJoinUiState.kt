@@ -30,9 +30,11 @@ data class GroupJoinUiState(
     val shouldShowCodeValidationError: Boolean
         get() =
             codeValidation is GroupCodeValidation.TooLong ||
-                (hasAttemptedSearch &&
-                    codeValidation !is GroupCodeValidation.Empty &&
-                    codeValidation !is GroupCodeValidation.Valid)
+                (
+                    hasAttemptedSearch &&
+                        codeValidation !is GroupCodeValidation.Empty &&
+                        codeValidation !is GroupCodeValidation.Valid
+                )
 
     val canSearch: Boolean
         get() =
@@ -56,15 +58,20 @@ data class GroupJoinUiState(
             val validation = codeValidation as? GroupCodeValidation.Valid ?: return false
             val retryAllowed =
                 when (val result = submission) {
-                    GroupJoinSubmissionState.Idle -> true
+                    GroupJoinSubmissionState.Idle -> {
+                        true
+                    }
 
-                    is GroupJoinSubmissionState.Failed ->
+                    is GroupJoinSubmissionState.Failed -> {
                         result.reason != GroupJoinFailure.AlreadyMember &&
                             result.reason != GroupJoinFailure.OutcomeUnknown
+                    }
 
                     is GroupJoinSubmissionState.Submitting,
                     is GroupJoinSubmissionState.Succeeded,
-                    -> false
+                    -> {
+                        false
+                    }
                 }
             return retryAllowed && validation.normalizedCode == found.requestedCode
         }

@@ -216,11 +216,17 @@ fun GroupJoinSheet(
             LookupMessage(lookup = uiState.lookup)
             val hasInlineRateLimitMessage =
                 when (uiState.rateLimit?.operation) {
-                    GroupJoinRateLimitOperation.Lookup -> uiState.lookup is GroupLookupState.RateLimited
-                    GroupJoinRateLimitOperation.Join ->
-                        (uiState.submission as? GroupJoinSubmissionState.Failed)?.reason == GroupJoinFailure.RateLimited
+                    GroupJoinRateLimitOperation.Lookup -> {
+                        uiState.lookup is GroupLookupState.RateLimited
+                    }
 
-                    null -> true
+                    GroupJoinRateLimitOperation.Join -> {
+                        (uiState.submission as? GroupJoinSubmissionState.Failed)?.reason == GroupJoinFailure.RateLimited
+                    }
+
+                    null -> {
+                        true
+                    }
                 }
             if (uiState.rateLimit != null && !hasInlineRateLimitMessage) {
                 RateLimitMessage(operation = uiState.rateLimit.operation)

@@ -104,7 +104,6 @@ class GroupJoinStateHolder(
                                 is GroupLookupResult.Found -> GroupLookupState.Found(code, result.group)
                                 GroupLookupResult.NotFound -> GroupLookupState.NotFound(code)
                                 is GroupLookupResult.RateLimited -> GroupLookupState.RateLimited(code)
-
                                 GroupLookupResult.Unavailable -> GroupLookupState.Failed(code)
                             },
                     )
@@ -161,8 +160,9 @@ class GroupJoinStateHolder(
                             state.copy(submission = GroupJoinSubmissionState.Failed(GroupJoinFailure.AlreadyMember))
                         }
 
-                        is GroupJoinResult.RateLimited ->
+                        is GroupJoinResult.RateLimited -> {
                             state.copy(submission = GroupJoinSubmissionState.Failed(GroupJoinFailure.RateLimited))
+                        }
 
                         GroupJoinResult.Rejected -> {
                             state.copy(submission = GroupJoinSubmissionState.Failed(GroupJoinFailure.Rejected))

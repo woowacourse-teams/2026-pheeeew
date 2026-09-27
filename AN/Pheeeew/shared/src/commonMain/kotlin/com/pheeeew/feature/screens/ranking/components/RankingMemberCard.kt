@@ -20,7 +20,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.feature.component.GroupStamp
+import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.ranking.RankingMember
 import com.pheeeew.feature.screens.ranking.sampleRankings
 import org.jetbrains.compose.resources.painterResource
