@@ -36,6 +36,7 @@ import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.create.GroupCreateFieldError
 import com.pheeeew.feature.screens.group.create.GroupFormRules
+import com.pheeeew.feature.screens.group.create.model.StampTextColorOption
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_create_color_choose
@@ -57,6 +58,9 @@ import pheeeew.shared.generated.resources.group_create_shape_ticket
 import pheeeew.shared.generated.resources.group_create_shape_vertical_memo
 import pheeeew.shared.generated.resources.group_create_stamp_preview
 import pheeeew.shared.generated.resources.group_create_stamp_shape
+import pheeeew.shared.generated.resources.group_create_text_color_black
+import pheeeew.shared.generated.resources.group_create_text_color_label
+import pheeeew.shared.generated.resources.group_create_text_color_white
 
 @Composable
 internal fun StampEditor(
@@ -67,6 +71,7 @@ internal fun StampEditor(
     enabled: Boolean,
     onLabelChanged: (String) -> Unit,
     onShapeChanged: (StampShapeId) -> Unit,
+    onTextColorChanged: (StampTextColorOption) -> Unit,
     onColorClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -133,6 +138,28 @@ internal fun StampEditor(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
+                text = stringResource(Res.string.group_create_text_color_label),
+                color = AppColors.GroupInk,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.weight(1f))
+            StampTextColorOption.entries.forEach { option ->
+                StampTextColorChip(
+                    option = option,
+                    selected = stamp.textArgb == option.argb,
+                    enabled = enabled,
+                    onClick = { onTextColorChanged(option) },
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
                 text = stringResource(Res.string.group_create_color_label),
                 color = AppColors.GroupInk,
                 fontSize = 14.sp,
@@ -152,6 +179,36 @@ internal fun StampEditor(
             )
         }
     }
+}
+
+@Composable
+private fun StampTextColorChip(
+    option: StampTextColorOption,
+    selected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val chipShape = RoundedCornerShape(percent = 50)
+    val label = stringResource(option.labelResource())
+    Box(
+        modifier =
+            modifier
+                .size(width = 40.dp, height = 26.dp)
+                .clip(chipShape)
+                .background(if (selected) Color(0xFFE8F7F2) else Color.Transparent)
+                .border(
+                    width = if (selected) 1.5.dp else 1.dp,
+                    color = if (selected) AppColors.GroupInk else Color(0xFFDCE1DC),
+                    shape = chipShape,
+                ).clickable(enabled = enabled, role = Role.RadioButton, onClick = onClick)
+                .semantics {
+                    contentDescription = label
+                    this.selected = selected
+                }.padding(3.dp)
+                .clip(chipShape)
+                .background(Color(option.argb.toInt())),
+    )
 }
 
 @Composable
@@ -205,4 +262,10 @@ private fun StampShapeId.labelResource() =
         StampShapeId.VERTICAL_MEMO -> Res.string.group_create_shape_vertical_memo
         StampShapeId.FOUR_LEAF -> Res.string.group_create_shape_four_leaf
         StampShapeId.FOLDED_MEMO -> Res.string.group_create_shape_folded_memo
+    }
+
+private fun StampTextColorOption.labelResource() =
+    when (this) {
+        StampTextColorOption.BLACK -> Res.string.group_create_text_color_black
+        StampTextColorOption.WHITE -> Res.string.group_create_text_color_white
     }

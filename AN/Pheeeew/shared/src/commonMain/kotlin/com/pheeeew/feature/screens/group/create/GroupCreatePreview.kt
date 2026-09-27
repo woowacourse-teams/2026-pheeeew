@@ -106,6 +106,7 @@ private fun GroupCreatePreviewFrame(
         onDescriptionChanged = {},
         onStampLabelChanged = {},
         onStampShapeChanged = {},
+        onStampTextColorChanged = {},
         onCreateClick = {},
         onCancelConfirmation = {},
         onConfirmCreate = {},
