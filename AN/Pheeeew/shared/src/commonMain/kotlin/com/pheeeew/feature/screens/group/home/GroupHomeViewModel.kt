@@ -62,13 +62,18 @@ class GroupHomeViewModel(
     /** 닫기 중 요청을 무효화하고, 결과가 불명확했다면 홈 목록을 다시 확인합니다. */
     fun closeJoinSheet(): Boolean {
         val joinState = groupJoinStateHolder.uiState.value
-        val hadUnknownOutcome =
-            (joinState.submission as? GroupJoinSubmissionState.Failed)?.reason ==
-                GroupJoinFailure.OutcomeUnknown
+        val needsMembershipVerification =
+            when ((joinState.submission as? GroupJoinSubmissionState.Failed)?.reason) {
+                GroupJoinFailure.AlreadyMember,
+                GroupJoinFailure.OutcomeUnknown,
+                -> true
+
+                else -> false
+            }
         if (!groupJoinStateHolder.close()) return false
 
         _isJoinSheetVisible.value = false
-        if (hadUnknownOutcome) {
+        if (needsMembershipVerification) {
             invalidateMembership()
             refresh()
         }
