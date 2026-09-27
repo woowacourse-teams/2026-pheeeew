@@ -57,7 +57,7 @@ private val onboardingPages =
             illustration = Res.drawable.ic_emotion_discouraged,
         ),
         OnboardingPage(
-            message = "괜찮은 척하기도\n이제 지쳤어요.",
+            message = "힘든 척하기도\n이제 지쳤어요.",
             illustration = Res.drawable.ic_emotion_exhausted,
         ),
         OnboardingPage(
@@ -99,7 +99,7 @@ fun OnboardingScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = "히유",
+                text = "PHEEEW!",
                 color = Color(0xFF202323),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
