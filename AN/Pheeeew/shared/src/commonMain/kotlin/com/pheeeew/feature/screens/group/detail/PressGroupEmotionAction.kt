@@ -5,6 +5,7 @@ import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailCopyKey
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
+import com.pheeeew.feature.screens.group.detail.model.dominantEmotionSummary
 import com.pheeeew.feature.screens.group.model.GroupId
 
 fun interface PressGroupEmotionAction {
@@ -52,7 +53,7 @@ fun GroupDetailUiModel.withPressSnapshot(snapshot: GroupPressSnapshotUiModel): G
     val counts = snapshot.emotionCounts.toList()
     val hasPresses = counts.any { it.count > 0L }
     val kind = if (hasPresses) GroupDetailPresentationKind.Active else GroupDetailPresentationKind.Neutral
-    val summary = if (hasPresses) counts.maxBy { it.count }.kind.toSummaryKey() else GroupDetailCopyKey.SummaryNeutral
+    val summary = counts.dominantEmotionSummary(presentation.summaryMessage)
     val title = if (hasPresses) GroupDetailCopyKey.ActiveHeroTitle else GroupDetailCopyKey.NeutralHeroTitle
     val subtitle = if (hasPresses) GroupDetailCopyKey.ActiveHeroSubtitle else GroupDetailCopyKey.NeutralHeroSubtitle
 
@@ -62,12 +63,3 @@ fun GroupDetailUiModel.withPressSnapshot(snapshot: GroupPressSnapshotUiModel): G
         presentation = presentation.copy(kind = kind, heroTitle = title, heroSubtitle = subtitle, summaryMessage = summary),
     )
 }
-
-private fun EmotionKind.toSummaryKey(): GroupDetailCopyKey =
-    when (this) {
-        EmotionKind.Blocked -> GroupDetailCopyKey.SummaryBlocked
-        EmotionKind.Annoyed -> GroupDetailCopyKey.SummaryAnnoyed
-        EmotionKind.Tired -> GroupDetailCopyKey.SummaryTired
-        EmotionKind.Defeated -> GroupDetailCopyKey.SummaryDefeated
-        EmotionKind.Angry -> GroupDetailCopyKey.SummaryAngry
-    }

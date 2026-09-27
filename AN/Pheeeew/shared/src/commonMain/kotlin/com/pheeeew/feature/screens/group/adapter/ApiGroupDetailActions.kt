@@ -16,6 +16,7 @@ import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationKin
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupRankUiModel
+import com.pheeeew.feature.screens.group.detail.model.dominantEmotionSummary
 import com.pheeeew.feature.screens.group.mapper.toSummaryUiModel
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.domain.model.group.GroupId as DomainGroupId
@@ -63,12 +64,7 @@ private fun GroupDetail.toUiModel(): GroupDetailUiModel {
             )
         }
     val hasRecordedPress = emotionCounts.any { it.count > 0L }
-    val summary =
-        if (hasRecordedPress) {
-            emotionCounts.maxBy { it.count }.kind.toSummaryKey()
-        } else {
-            GroupDetailCopyKey.SummaryNeutral
-        }
+    val summary = emotionCounts.dominantEmotionSummary()
     val presentationKind =
         if (hasRecordedPress) GroupDetailPresentationKind.Active else GroupDetailPresentationKind.Neutral
 
@@ -106,13 +102,4 @@ private fun GroupPressState.toUiKind(): EmotionKind =
         GroupPressState.EXHAUSTED -> EmotionKind.Tired
         GroupPressState.DISCOURAGED -> EmotionKind.Defeated
         GroupPressState.ANGRY -> EmotionKind.Angry
-    }
-
-private fun EmotionKind.toSummaryKey(): GroupDetailCopyKey =
-    when (this) {
-        EmotionKind.Blocked -> GroupDetailCopyKey.SummaryBlocked
-        EmotionKind.Annoyed -> GroupDetailCopyKey.SummaryAnnoyed
-        EmotionKind.Tired -> GroupDetailCopyKey.SummaryTired
-        EmotionKind.Defeated -> GroupDetailCopyKey.SummaryDefeated
-        EmotionKind.Angry -> GroupDetailCopyKey.SummaryAngry
     }

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
+import com.pheeeew.feature.screens.group.detail.model.withDominantEmotionSummary
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -370,7 +371,10 @@ class GroupDetailViewModel(
                     _uiState.update { state ->
                         when (result) {
                             is GroupDetailLoadResult.Loaded -> {
-                                val detail = result.detail.ownedSnapshot()
+                                val detail =
+                                    result.detail
+                                        .withDominantEmotionSummary(state.detail?.presentation?.summaryMessage)
+                                        .ownedSnapshot()
                                 if (detail.group.id != groupId) {
                                     state.copy(
                                         content =
