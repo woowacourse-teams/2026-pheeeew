@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.group.data
 
 import com.pheeeew.domain.model.group.Group
+import com.pheeeew.domain.model.group.GroupPreview
 import com.pheeeew.domain.model.group.GroupStamp
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.toUiShape
@@ -13,6 +14,15 @@ fun Group.toSummaryUiModel(weeklyStampCount: Long? = null): GroupSummaryUiModel 
         name = name,
         memberCount = memberCount,
         weeklyStampCount = weeklyStampCount,
+        stamp = stamp.toAppearanceUiModel(),
+    )
+
+fun GroupPreview.toSummaryUiModel(): GroupSummaryUiModel =
+    GroupSummaryUiModel(
+        id = GroupId(id.value),
+        name = name,
+        memberCount = memberCount,
+        weeklyStampCount = null,
         stamp = stamp.toAppearanceUiModel(),
     )
 

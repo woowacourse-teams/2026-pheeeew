@@ -14,5 +14,9 @@ sealed interface GroupLookupResult {
 
     data object NotFound : GroupLookupResult
 
+    data class RateLimited(
+        val retryAfterMillis: Long?,
+    ) : GroupLookupResult
+
     data object Unavailable : GroupLookupResult
 }

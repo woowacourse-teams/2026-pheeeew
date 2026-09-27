@@ -15,6 +15,16 @@ sealed interface GroupJoinResult {
         val groupId: GroupId,
     ) : GroupJoinResult
 
+    /** The code was valid at lookup time but was deleted or reissued before submission. */
+    data object InviteCodeNotFound : GroupJoinResult
+
+    /** The server says the user is already a member; the adapter could not confirm it in the list. */
+    data object AlreadyMember : GroupJoinResult
+
+    data class RateLimited(
+        val retryAfterMillis: Long?,
+    ) : GroupJoinResult
+
     data object Rejected : GroupJoinResult
 
     /** 참여 요청이 전달됐는지 알 수 없는 결과입니다. 자동 재전송하면 안 됩니다. */
