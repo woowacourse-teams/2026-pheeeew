@@ -180,7 +180,7 @@ private fun fixtureDetail(
             } else {
                 GroupRankUiModel.Ranked(2)
             },
-        inviteCode = "HIYU26",
+        inviteCode = "H1Y226",
         presentation =
             GroupDetailPresentationUiModel(
                 kind = presentation,

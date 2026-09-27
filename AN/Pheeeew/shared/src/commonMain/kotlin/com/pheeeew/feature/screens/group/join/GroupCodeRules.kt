@@ -21,29 +21,39 @@ internal sealed interface GroupCodeValidation {
     ) : GroupCodeValidation
 }
 
-/** 초대 코드는 영문자와 숫자 6자리이며, 대소문자를 구분하지 않습니다. */
+/** Normalizes the ambiguous letters accepted by the server before checking its canonical alphabet. */
 internal object GroupCodeRules {
-    fun normalize(value: String): String = value.trim().uppercase()
+    fun normalize(value: String): String =
+        value
+            .trim()
+            .uppercase()
+            .map { character ->
+                when (character) {
+                    'I', 'L' -> '1'
+                    'O' -> '0'
+                    else -> character
+                }
+            }.joinToString(separator = "")
 
     fun validate(value: String): GroupCodeValidation {
-        val trimmedValue = value.trim()
-        if (trimmedValue.isEmpty()) return GroupCodeValidation.Empty
-        if (trimmedValue.any { !it.isAsciiLetterOrDigit() }) return GroupCodeValidation.InvalidCharacters
+        val normalizedCode = normalize(value)
+        if (normalizedCode.isEmpty()) return GroupCodeValidation.Empty
+        if (normalizedCode.any { it !in ALLOWED_CHARACTERS }) return GroupCodeValidation.InvalidCharacters
 
         return when {
-            trimmedValue.length < GROUP_INVITATION_CODE_LENGTH -> {
-                GroupCodeValidation.TooShort(trimmedValue.length)
+            normalizedCode.length < GROUP_INVITATION_CODE_LENGTH -> {
+                GroupCodeValidation.TooShort(normalizedCode.length)
             }
 
-            trimmedValue.length > GROUP_INVITATION_CODE_LENGTH -> {
-                GroupCodeValidation.TooLong(trimmedValue.length)
+            normalizedCode.length > GROUP_INVITATION_CODE_LENGTH -> {
+                GroupCodeValidation.TooLong(normalizedCode.length)
             }
 
             else -> {
-                GroupCodeValidation.Valid(normalize(trimmedValue))
+                GroupCodeValidation.Valid(normalizedCode)
             }
         }
     }
 
-    private fun Char.isAsciiLetterOrDigit(): Boolean = this in 'A'..'Z' || this in 'a'..'z' || this in '0'..'9'
+    private const val ALLOWED_CHARACTERS = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 }
