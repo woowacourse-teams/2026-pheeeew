@@ -20,7 +20,7 @@ import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import com.pheeeew.feature.component.GroupStamp
+import com.pheeeew.feature.component.stamp.GroupStamp
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
