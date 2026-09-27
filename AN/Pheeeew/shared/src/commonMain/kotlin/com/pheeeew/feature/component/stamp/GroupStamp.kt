@@ -171,7 +171,7 @@ private fun LegacyCircleStamp(
     }
 }
 
-private fun stampFontSize(
+internal fun stampFontSize(
     layout: StampTextLayout,
     textArea: StampTextArea,
     stampWidth: Dp,
@@ -181,14 +181,14 @@ private fun stampFontSize(
     stampWidth.value * textArea.widthFraction / (layout.longestLineLength.coerceAtLeast(1) * 0.95f),
 ).coerceIn(minimumValue = 7f, maximumValue = 28f).sp
 
-private data class StampTextLayout(
+internal data class StampTextLayout(
     val text: String,
     val lineCount: Int,
     val longestLineLength: Int,
 )
 
 /** Four code points are laid out as two deliberate rows to keep group stamps readable. */
-private fun String.toStampTextLayout(): StampTextLayout {
+internal fun String.toStampTextLayout(): StampTextLayout {
     val codePointOffsets = mutableListOf<Int>()
     var index = 0
     while (index < length) {

@@ -1,9 +1,5 @@
 package com.pheeeew.feature.screens.map
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -11,24 +7,36 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.withFrameNanos
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Canvas
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.layer.drawLayer
-import androidx.compose.ui.graphics.rememberGraphicsLayer
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.toPixelMap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
-import com.pheeeew.feature.component.stamp.GroupStamp
+import com.pheeeew.feature.component.stamp.StampShapeCatalog
+import com.pheeeew.feature.component.stamp.stampFontSize
+import com.pheeeew.feature.component.stamp.toStampTextLayout
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
 
 private val EMOTION_PIN_SIZE = 40.dp
-private const val SYMBOL_IMAGE_CAPTURE_DELAY_MILLIS = 80L
+private const val SYMBOL_RESOURCE_RETRY_MILLIS = 80L
 
-/** Raster icon passed to the native map renderer and registered as a MapLibre style image. */
+/** Raster icon registered as a native MapLibre style image. */
 data class EmotionPinSymbolImage(
     val key: String,
     val width: Int,
@@ -37,84 +45,83 @@ data class EmotionPinSymbolImage(
     val rgba: ByteArray,
 )
 
-private data class PinSymbolAppearance(
-    val key: String,
-    val pin: EmotionPinUiModel,
-)
-
 @Composable
 internal fun rememberEmotionPinSymbolImages(pins: List<EmotionPinUiModel>): List<EmotionPinSymbolImage> {
-    val appearances =
-        remember(pins) {
-            pins
-                .distinctBy(EmotionPinUiModel::symbolImageKey)
-                .map { PinSymbolAppearance(it.symbolImageKey(), it) }
-        }
+    val appearances = remember(pins) { pins.distinctBy(EmotionPinUiModel::symbolImageKey) }
     val captured = remember { mutableStateMapOf<String, EmotionPinSymbolImage>() }
-    val desiredKeys = remember(appearances) { appearances.mapTo(mutableSetOf(), PinSymbolAppearance::key) }
-
-    LaunchedEffect(desiredKeys) {
-        captured.keys.retainAll(desiredKeys)
-    }
-
-    appearances.forEach { appearance ->
-        key(appearance.key) {
-            CapturePinSymbolImage(
-                appearance = appearance,
-                onCaptured = { image -> captured[image.key] = image },
-            )
+    val desiredKeys = remember(appearances) { appearances.mapTo(mutableSetOf(), EmotionPinUiModel::symbolImageKey) }
+    LaunchedEffect(desiredKeys) { captured.keys.retainAll(desiredKeys) }
+    appearances.forEach { pin ->
+        key(pin.symbolImageKey()) {
+            RasterizePinSymbol(pin) { captured[it.key] = it }
         }
     }
-
-    return appearances.mapNotNull { captured[it.key] }
+    return appearances.mapNotNull { captured[it.symbolImageKey()] }
 }
 
+/** Draws resources directly, independent of AndroidView occlusion and on-screen draw callbacks. */
 @Composable
-private fun CapturePinSymbolImage(
-    appearance: PinSymbolAppearance,
-    onCaptured: (EmotionPinSymbolImage) -> Unit,
-) {
-    val graphicsLayer = rememberGraphicsLayer()
+private fun RasterizePinSymbol(pin: EmotionPinUiModel, onRasterized: (EmotionPinSymbolImage) -> Unit) {
+    val density = LocalDensity.current
+    val layoutDirection = LocalLayoutDirection.current
+    val pixels = with(density) { EMOTION_PIN_SIZE.roundToPx() }
+    val emotionPainter = painterResource(pin.emotion.icon)
+    val stamp = pin.stamp
+    val shape = stamp?.let { StampShapeCatalog[it.shape] }
+    val backdrop = shape?.let { painterResource(it.backdrop) }
+    val fill = shape?.let { painterResource(it.fill) }
+    val overlay = shape?.overlay?.let { painterResource(it) }
+    val textMeasurer = rememberTextMeasurer()
 
-    Box(
-        modifier =
-            Modifier
-                .size(EMOTION_PIN_SIZE)
-                // Keep this renderer out of the visible map while still composing the exact pin UI.
-                .offset(x = (-512).dp, y = (-512).dp)
-                .drawWithContent {
-                    graphicsLayer.record(
-                        density = this,
-                        layoutDirection = layoutDirection,
-                        size = IntSize(size.width.roundToInt(), size.height.roundToInt()),
-                    ) {
-                        this@drawWithContent.drawContent()
+    LaunchedEffect(pin.symbolImageKey(), pixels, density, layoutDirection, emotionPainter, backdrop, fill, overlay) {
+        repeat(10) {
+            val bitmap = ImageBitmap(pixels, pixels)
+            CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(pixels.toFloat(), pixels.toFloat())) {
+                if (stamp == null || shape == null || backdrop == null || fill == null) {
+                    val intrinsic = emotionPainter.intrinsicSize
+                    val ratio = if (intrinsic.width.isFinite() && intrinsic.height > 0) intrinsic.width / intrinsic.height else 1f
+                    val fitted = if (ratio >= 1f) Size(size.width, size.height / ratio) else Size(size.width * ratio, size.height)
+                    translate((size.width - fitted.width) / 2, (size.height - fitted.height) / 2) {
+                        with(emotionPainter) { draw(fitted) }
                     }
-                    drawLayer(graphicsLayer)
-                },
-    ) {
-        val stamp = appearance.pin.stamp
-        if (stamp != null) {
-            GroupStamp(appearance = stamp, size = EMOTION_PIN_SIZE)
-        } else {
-            Image(
-                painter = painterResource(appearance.pin.emotion.icon),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit,
-            )
-        }
-    }
-
-    LaunchedEffect(appearance.key, graphicsLayer) {
-        // Wait until the first draw has recorded a non-empty layer before reading its pixels.
-        while (graphicsLayer.size == IntSize.Zero) {
+                } else {
+                    val fitted = if (shape.aspectRatio >= 1f) Size(size.width, size.height / shape.aspectRatio)
+                        else Size(size.width * shape.aspectRatio, size.height)
+                    translate((size.width - fitted.width) / 2, (size.height - fitted.height) / 2) {
+                        with(backdrop) { draw(fitted) }
+                        with(fill) { draw(fitted, colorFilter = ColorFilter.tint(Color(stamp.fillArgb.toInt()))) }
+                        overlay?.let { with(it) { draw(fitted) } }
+                        val area = shape.textArea
+                        val layout = stamp.label.toStampTextLayout()
+                        val stampWidth = with(density) { fitted.width.toDp() }
+                        val stampHeight = with(density) { fitted.height.toDp() }
+                        val text = textMeasurer.measure(
+                            layout.text,
+                            style = TextStyle(color = Color(stamp.textArgb.toInt()),
+                                fontSize = stampFontSize(layout, area, stampWidth, stampHeight),
+                                fontWeight = FontWeight.Bold, textAlign = TextAlign.Center),
+                            overflow = TextOverflow.Ellipsis, maxLines = 2,
+                            constraints = Constraints(
+                                minWidth = (fitted.width * area.widthFraction).roundToInt(),
+                                maxWidth = (fitted.width * area.widthFraction).roundToInt(),
+                                maxHeight = (fitted.height * area.heightFraction).roundToInt(),
+                            ),
+                        )
+                        drawText(text, topLeft = Offset(
+                            fitted.width * (area.centerX - area.widthFraction / 2),
+                            fitted.height * (area.centerY - area.heightFraction / 2),
+                        ))
+                    }
+                }
+            }
+            val image = bitmap.toSymbolImage(pin.symbolImageKey())
+            if ((3 until image.rgba.size step 4).any { image.rgba[it].toInt() and 0xff > 0 }) {
+                onRasterized(image)
+                return@LaunchedEffect
+            }
+            delay(SYMBOL_RESOURCE_RETRY_MILLIS)
             withFrameNanos { }
         }
-        // Compose resources may resolve asynchronously on iOS; capture after their first draw settles.
-        delay(SYMBOL_IMAGE_CAPTURE_DELAY_MILLIS)
-        withFrameNanos { }
-        onCaptured(graphicsLayer.toImageBitmap().toSymbolImage(appearance.key))
     }
 }
 
@@ -157,4 +164,41 @@ private fun String.stableImageHash(): String {
         hash = (hash xor (byte.toLong() and 0xff)) * 1_099_511_628_211L
     }
     return hash.toULong().toString(16)
+}
+
+@androidx.compose.ui.tooling.preview.Preview(name = "지도 핀 비트맵", widthDp = 120, heightDp = 120, showBackground = true)
+@Composable
+private fun EmotionPinSymbolImagePreview() {
+    val pins = listOf(
+        EmotionPinUiModel(
+            id = 1, latitude = 37.4409230460675, longitude = 127.147538132656,
+            createdAt = "2026-09-27T17:17:25Z", rotationDegrees = 0.0,
+            emotion = com.pheeeew.feature.screens.map.record.EmotionTypeUiModel.IRRITATED, stamp = null,
+        ),
+    )
+    val image = rememberEmotionPinSymbolImages(pins).firstOrNull()
+    androidx.compose.foundation.Canvas(
+        androidx.compose.ui.Modifier.size(80.dp),
+    ) {
+        if (image != null) {
+            val pixelWidth = size.width / image.width
+            val pixelHeight = size.height / image.height
+            for (y in 0 until image.height) {
+                for (x in 0 until image.width) {
+                    val index = (y * image.width + x) * 4
+                    val alpha = image.rgba[index + 3].toInt() and 0xff
+                    if (alpha != 0) drawRect(
+                        color = Color(
+                            red = (image.rgba[index].toInt() and 0xff) / 255f,
+                            green = (image.rgba[index + 1].toInt() and 0xff) / 255f,
+                            blue = (image.rgba[index + 2].toInt() and 0xff) / 255f,
+                            alpha = alpha / 255f,
+                        ),
+                        topLeft = Offset(x * pixelWidth, y * pixelHeight),
+                        size = Size(pixelWidth, pixelHeight),
+                    )
+                }
+            }
+        }
+    }
 }
