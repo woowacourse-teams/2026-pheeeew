@@ -20,7 +20,6 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertTrue
 
 class EmotionMapApiTest {
     @Test
@@ -146,11 +145,16 @@ class EmotionMapApiTest {
         }
 
     @Test
-    fun `임시 한숨 핀은 지정된 위치 주변에서 API 없이 반환된다`() =
+    fun `API 조회에 실패하면 임시 핀을 대신 반환하지 않는다`() =
         runTest {
+            var requestCount = 0
             val client =
                 createApiClient(
-                    engine = MockEngine { error("Temporary repository must not call the API") },
+                    engine =
+                        MockEngine {
+                            requestCount++
+                            error("API unavailable")
+                        },
                     config = ApiConfig("https://api-dev.pheeeew.com"),
                     accessTokenProvider = AccessTokenProvider { AccessToken("test-token") },
                 )
@@ -164,15 +168,8 @@ class EmotionMapApiTest {
                         cursor = null,
                     )
 
-                val page = assertIs<EmotionMapPageResult.Success>(result).page
-                assertEquals(5, page.pins.size)
-                assertEquals(127.147538132656, page.pins.first().longitude)
-                assertEquals(37.4409230460675, page.pins.first().latitude)
-                assertTrue(page.pins.all { it.longitude in 127.145..127.150 && it.latitude in 37.439..37.443 })
-                assertTrue(page.pins.any { it.groupStamp == null })
-                assertTrue(page.pins.any { it.groupStamp != null })
-                assertEquals(false, page.hasNext)
-                assertEquals(null, page.nextCursor)
+                assertIs<EmotionMapPageResult.Failure>(result)
+                assertEquals(1, requestCount)
             } finally {
                 client.close()
             }

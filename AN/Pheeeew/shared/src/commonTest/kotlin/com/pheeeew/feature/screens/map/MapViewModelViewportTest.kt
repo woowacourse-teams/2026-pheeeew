@@ -7,6 +7,7 @@ import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapPage
 import com.pheeeew.domain.model.emotion.EmotionMapPageResult
 import com.pheeeew.domain.model.emotion.EmotionMapPin
+import com.pheeeew.domain.model.emotion.EmotionMapSnapshot
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.repository.EmotionMapRepository
 import com.pheeeew.domain.repository.LocationRepository
@@ -242,6 +243,7 @@ class MapViewModelViewportTest {
         private vararg val responses: CompletableDeferred<EmotionMapPageResult>,
     ) : EmotionMapRepository {
         val requestedBounds = mutableListOf<EmotionMapBounds?>()
+        private val cachedRegions = mutableListOf<CachedRegion>()
         var maximumConcurrentRequests = 0
             private set
         private var activeRequests = 0
@@ -252,11 +254,23 @@ class MapViewModelViewportTest {
             cursor: String?,
             forceRefresh: Boolean,
         ): EmotionMapPageResult {
+            if (!forceRefresh && cursor == null && bounds != null) {
+                cachedRegions.lastOrNull { it.complete && it.bounds.contains(bounds) }?.let { cached ->
+                    return EmotionMapPageResult.Success(
+                        cached.page.copy(pins = cached.page.pins.filter { bounds.contains(it.longitude, it.latitude) }),
+                    )
+                }
+            }
             requestedBounds += bounds
             activeRequests++
             maximumConcurrentRequests = maxOf(maximumConcurrentRequests, activeRequests)
             return try {
-                responses[requestedBounds.lastIndex].await()
+                val result = responses[requestedBounds.lastIndex].await()
+                if (bounds != null && cursor == null && result is EmotionMapPageResult.Success) {
+                    cachedRegions.removeAll { it.bounds == bounds }
+                    cachedRegions += CachedRegion(bounds, result.page, complete = !result.page.hasNext)
+                }
+                result
             } finally {
                 activeRequests--
             }
@@ -265,6 +279,31 @@ class MapViewModelViewportTest {
         override fun findSnapshot(
             bounds: EmotionMapBounds,
             groupId: String?,
-        ) = null
+        ) = cachedRegions
+            .filter { it.bounds.intersects(bounds) }
+            .flatMap { it.page.pins }
+            .filter { bounds.contains(it.longitude, it.latitude) }
+            .distinctBy { it.id }
+            .takeIf { it.isNotEmpty() }
+            ?.let(::EmotionMapSnapshot)
+
+        private data class CachedRegion(
+            val bounds: EmotionMapBounds,
+            val page: EmotionMapPage,
+            val complete: Boolean,
+        )
     }
 }
+
+private fun EmotionMapBounds.contains(other: EmotionMapBounds): Boolean =
+    minLongitude <= other.minLongitude && minLatitude <= other.minLatitude &&
+        maxLongitude >= other.maxLongitude && maxLatitude >= other.maxLatitude
+
+private fun EmotionMapBounds.intersects(other: EmotionMapBounds): Boolean =
+    minLongitude <= other.maxLongitude && maxLongitude >= other.minLongitude &&
+        minLatitude <= other.maxLatitude && maxLatitude >= other.minLatitude
+
+private fun EmotionMapBounds.contains(
+    longitude: Double,
+    latitude: Double,
+): Boolean = longitude in minLongitude..maxLongitude && latitude in minLatitude..maxLatitude
