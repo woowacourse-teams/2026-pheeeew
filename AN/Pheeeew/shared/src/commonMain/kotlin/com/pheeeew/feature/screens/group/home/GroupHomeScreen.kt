@@ -74,14 +74,19 @@ fun GroupHomeScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding(),
     ) {
-        Text(
-            text = stringResource(Res.string.group_home_title),
-            modifier = Modifier.fillMaxWidth().padding(top = 44.dp, bottom = 38.dp),
-            color = AppColors.GroupInk,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
-        )
+        Box(
+            modifier = Modifier.fillMaxWidth().height(54.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = stringResource(Res.string.group_home_title),
+                color = AppColors.GroupInk,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(16.dp))
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp),
             horizontalArrangement = Arrangement.spacedBy(24.dp),
