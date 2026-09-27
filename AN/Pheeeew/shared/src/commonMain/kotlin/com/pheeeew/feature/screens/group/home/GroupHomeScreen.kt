@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -122,7 +121,6 @@ fun GroupHomeScreen(
             is GroupHomeContent.Ready -> {
                 GroupListContent(
                     groups = content.groups,
-                    isRefreshing = uiState.isRefreshing,
                     hasRefreshError = uiState.hasRefreshError,
                     onGroupClick = onGroupClick,
                     onRetry = onRetry,
@@ -273,22 +271,14 @@ private fun FailedContent(
 @Composable
 private fun GroupListContent(
     groups: List<GroupSummaryUiModel>,
-    isRefreshing: Boolean,
     hasRefreshError: Boolean,
     onGroupClick: (GroupId) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
-        if (isRefreshing) {
-            LinearProgressIndicator(
-                modifier = Modifier.fillMaxWidth(),
-                color = AppColors.RankingAccent,
-                trackColor = AppColors.RankingSurface,
-            )
-        }
+    Box(modifier = modifier.fillMaxWidth()) {
         LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
             verticalArrangement = Arrangement.spacedBy(17.dp),
         ) {

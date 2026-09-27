@@ -109,7 +109,6 @@ fun GroupDetailScreen(
                 is GroupDetailContent.Ready -> {
                     GroupDetailReadyContent(
                         detail = content.detail,
-                        isRefreshing = uiState.isRefreshing,
                         hasRefreshError = uiState.hasRefreshError,
                         canTapEmotion = uiState.canTapEmotion,
                         pressStatus = uiState.pressStatus,

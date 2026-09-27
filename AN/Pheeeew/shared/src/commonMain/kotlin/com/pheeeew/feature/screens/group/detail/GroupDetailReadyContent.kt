@@ -48,7 +48,6 @@ import pheeeew.shared.generated.resources.group_detail_hero_first_subtitle
 import pheeeew.shared.generated.resources.group_detail_hero_neutral
 import pheeeew.shared.generated.resources.group_detail_hero_neutral_subtitle
 import pheeeew.shared.generated.resources.group_detail_load_error_body
-import pheeeew.shared.generated.resources.group_detail_loading
 import pheeeew.shared.generated.resources.group_detail_press_check
 import pheeeew.shared.generated.resources.group_detail_press_checking
 import pheeeew.shared.generated.resources.group_detail_press_unknown
@@ -71,7 +70,6 @@ import pheeeew.shared.generated.resources.group_detail_weekly_value
 @Composable
 internal fun GroupDetailReadyContent(
     detail: GroupDetailUiModel,
-    isRefreshing: Boolean,
     hasRefreshError: Boolean,
     canTapEmotion: Boolean,
     pressStatus: GroupPressStatus,
@@ -84,8 +82,8 @@ internal fun GroupDetailReadyContent(
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
-            if (isRefreshing || hasRefreshError) {
-                RefreshBanner(hasError = hasRefreshError, onRetry = onRetry)
+            if (hasRefreshError) {
+                RefreshBanner(onRetry = onRetry)
             }
             GroupSummary(memberCount = detail.group.memberCount, onInviteClick = onInviteClick)
             Spacer(Modifier.height(8.dp))
@@ -287,7 +285,6 @@ private fun GroupDetailCopyKey.toStringResource() =
 
 @Composable
 private fun RefreshBanner(
-    hasError: Boolean,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -297,28 +294,21 @@ private fun RefreshBanner(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFFF3F4F2))
-                .clickable(enabled = hasError, role = Role.Button, onClick = onRetry)
+                .clickable(role = Role.Button, onClick = onRetry)
                 .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text =
-                if (hasError) {
-                    stringResource(Res.string.group_detail_load_error_body)
-                } else {
-                    stringResource(Res.string.group_detail_loading)
-                },
+            text = stringResource(Res.string.group_detail_load_error_body),
             modifier = Modifier.weight(1f),
             color = AppColors.RankingSecondaryContent,
             fontSize = 12.sp,
         )
-        if (hasError) {
-            Text(
-                text = stringResource(Res.string.group_detail_retry),
-                color = AppColors.GroupInk,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
+        Text(
+            text = stringResource(Res.string.group_detail_retry),
+            color = AppColors.GroupInk,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
     }
 }
