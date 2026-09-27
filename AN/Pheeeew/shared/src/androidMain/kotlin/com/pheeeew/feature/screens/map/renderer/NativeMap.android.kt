@@ -15,6 +15,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationState
+import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
@@ -36,8 +37,8 @@ private const val OPEN_FREE_MAP_STYLE_URL = "https://tiles.openfreemap.org/style
 private const val INITIAL_ZOOM = 11.0
 private const val MINIMUM_ZOOM = 2.0
 private const val MAXIMUM_ZOOM = 20.0
-private const val FALLBACK_LATITUDE = 37.5665
-private const val FALLBACK_LONGITUDE = 126.9780
+private const val FALLBACK_LATITUDE = 37.4409230460675
+private const val FALLBACK_LONGITUDE = 127.147538132656
 
 @Composable
 internal actual fun NativeMap(
@@ -45,6 +46,7 @@ internal actual fun NativeMap(
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
+    onViewportChanged: (EmotionMapBounds) -> Unit,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
@@ -63,6 +65,7 @@ internal actual fun NativeMap(
                     onMapError = currentOnMapError,
                     onMapRecovered = currentOnMapRecovered,
                     onRecordViewportChanged = onRecordViewportChanged,
+                    onViewportChanged = onViewportChanged,
                 )
             }
         }
@@ -105,7 +108,9 @@ private class AndroidFoundationMapHost(
     private val onMapError: (MapErrorUiModel) -> Unit,
     private val onMapRecovered: () -> Unit,
     private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
+    private val onViewportChanged: (EmotionMapBounds) -> Unit,
 ) {
+    private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
     private var map: MapLibreMap? = null
     private var style: Style? = null
     private var released = false
@@ -134,21 +139,25 @@ private class AndroidFoundationMapHost(
             }
             readyMap.addOnCameraIdleListener {
                 publishRecordViewport()
+                publishViewport()
             }
             mapView.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
                 val sizeChanged = right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop
-                if (sizeChanged && latestState?.isRecordLocationPicking == true) {
-                    fittedOrigin = null
+                if (sizeChanged) {
+                    if (latestState?.isRecordLocationPicking == true) fittedOrigin = null
                     renderLatestState()
+                    publishViewport()
                 }
             }
             readyMap.setStyle(Style.Builder().fromUri(OPEN_FREE_MAP_STYLE_URL)) { loadedStyle ->
                 if (released) return@setStyle
                 style = loadedStyle
                 AndroidCurrentLocationLayer.install(loadedStyle)
+                emotionPinSymbolLayer.install(loadedStyle)
                 styleLoaded = true
                 onMapRecovered()
                 renderLatestState()
+                publishViewport()
             }
         }
     }
@@ -156,6 +165,7 @@ private class AndroidFoundationMapHost(
     fun render(state: MapUiModel) {
         latestState = state
         renderLatestState()
+        publishViewport()
     }
 
     fun release() {
@@ -175,6 +185,15 @@ private class AndroidFoundationMapHost(
         val state = latestState ?: return
         val currentLocation = (state.locationState as? LocationState.Available)?.location
         AndroidCurrentLocationLayer.update(style, currentLocation)
+        style?.let { loadedStyle ->
+            emotionPinSymbolLayer.update(
+                style = loadedStyle,
+                pins = state.emotionPins,
+                images = state.emotionPinSymbolImages,
+                visible = !state.isRecordLocationPicking,
+                densityDpi = mapView.resources.displayMetrics.densityDpi,
+            )
+        }
         val point =
             currentLocation?.let { LatLng(it.latitude, it.longitude) }
                 ?: LatLng(FALLBACK_LATITUDE, FALLBACK_LONGITUDE)
@@ -279,5 +298,19 @@ private class AndroidFoundationMapHost(
         if (radius > 0 && radius.isFinite()) {
             onRecordViewportChanged(center.x / density, center.y / density, radius)
         }
+    }
+
+    private fun publishViewport() {
+        val currentMap = map ?: return
+        if (!styleLoaded || released || mapView.width <= 0 || mapView.height <= 0) return
+        val bounds = currentMap.projection.visibleRegion.latLngBounds
+        val queryBounds =
+            EmotionMapBounds(
+                minLongitude = bounds.longitudeWest,
+                minLatitude = bounds.latitudeSouth,
+                maxLongitude = bounds.longitudeEast,
+                maxLatitude = bounds.latitudeNorth,
+            )
+        if (queryBounds.isValid()) onViewportChanged(queryBounds)
     }
 }

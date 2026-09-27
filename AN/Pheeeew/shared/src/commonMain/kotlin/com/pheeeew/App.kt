@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.di.ApiDependencies
 import com.pheeeew.core.di.LocationDependencies
+import com.pheeeew.core.di.createEmotionMapDependencies
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
@@ -41,9 +42,17 @@ fun App(
     }
 
     LaunchedEffect(apiDependencies) { apiDependencies.prepareSession() }
+    val emotionMapDependencies =
+        remember(apiDependencies.client) {
+            createEmotionMapDependencies(apiDependencies.client)
+        }
     val mapViewModel: MapViewModel =
         viewModel {
-            MapViewModel.create(locationDependencies)
+            MapViewModel.create(
+                locationDependencies,
+                emotionMapDependencies.findPage,
+                emotionMapDependencies.findSnapshot,
+            )
         }
     val mapRecordViewModel: MapRecordViewModel =
         viewModel {
