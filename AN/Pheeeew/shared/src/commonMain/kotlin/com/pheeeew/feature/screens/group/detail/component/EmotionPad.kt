@@ -69,6 +69,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.pheeeew.feature.screens.group.detail.GroupPressFeedback
 import com.pheeeew.feature.screens.group.detail.model.EmotionCountUiModel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
@@ -104,7 +105,7 @@ internal fun EmotionPad(
     var tick by remember { mutableIntStateOf(0) }
     // Read the frame clock only inside graphicsLayer to avoid recomposing the pad per frame.
     val frameTime = remember { mutableStateOf(0.0) }
-    var running by remember { mutableStateOf(false) }
+    val frameRequests = remember { Channel<Unit>(Channel.CONFLATED) }
     var padPosition by remember { mutableStateOf(Offset.Zero) }
     var rootWidth by remember { mutableStateOf(402.0) }
     val density = LocalDensity.current
@@ -124,13 +125,12 @@ internal fun EmotionPad(
     fun refresh() {
         frameTime.value = now()
         tick++
-        running = true
+        frameRequests.trySend(Unit)
     }
 
     fun settle() {
         feedback.clear()
         motions.values.forEach { it.reset() }
-        running = false
         frameTime.value = now()
         tick++
     }
@@ -151,16 +151,22 @@ internal fun EmotionPad(
             motions.values.forEach { it.reset() }
         }
     }
-    LaunchedEffect(running) {
-        while (running && isActive) {
-            withFrameNanos { }
-            val time = now()
-            val previousParticleCount = feedback.particles.size
-            feedback.advance(time)
-            motions.values.forEach { it.sample(time) }
-            frameTime.value = time
-            if (feedback.particles.size != previousParticleCount) tick++
-            running = feedback.particles.isNotEmpty() || motions.values.any { it.isRunning(time) }
+    // Keep one consumer alive: a new tap must wake it even as the last animation finishes.
+    // A Boolean effect key can lose a false -> true transition within one composition.
+    LaunchedEffect(frameRequests) {
+        for (request in frameRequests) {
+            do {
+                withFrameNanos { }
+                val time = now()
+                val previousParticleCount = feedback.particles.size
+                feedback.advance(time)
+                motions.values.forEach { it.sample(time) }
+                frameTime.value = time
+                if (feedback.particles.size != previousParticleCount) tick++
+            } while (
+                isActive &&
+                (feedback.particles.isNotEmpty() || motions.values.any { it.isRunning(frameTime.value) })
+            )
         }
     }
 

@@ -81,11 +81,14 @@ class GroupHomeViewModel(
     }
 
     /** 성공 콜백이 상세 이동을 처리한 뒤에만 참여 결과를 소비합니다. */
-    fun consumeJoinAndClose(operationKey: GroupOperationKey): Boolean {
+    fun consumeJoinAndClose(
+        operationKey: GroupOperationKey,
+        membershipAlreadyInvalidated: Boolean = false,
+    ): Boolean {
         if (!groupJoinStateHolder.consumeAndClose(operationKey)) return false
 
         _isJoinSheetVisible.value = false
-        invalidateMembership()
+        if (!membershipAlreadyInvalidated) invalidateMembership()
         return true
     }
 
