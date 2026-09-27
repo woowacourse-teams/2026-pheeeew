@@ -5,10 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,8 +17,10 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -117,34 +119,39 @@ fun OnboardingScreen(
             modifier = Modifier.weight(1f).fillMaxWidth(),
         ) { page ->
             val item = onboardingPages[page]
-            Column(
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                Spacer(Modifier.fillMaxHeight(0.25f))
-                Image(
-                    painter = painterResource(item.illustration),
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.align(Alignment.CenterHorizontally).size(170.dp),
-                )
-                Spacer(Modifier.height(76.dp))
-                Text(
-                    text = item.message,
-                    color = Color(0xFF202323),
-                    fontSize = 24.sp,
-                    lineHeight = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
-                )
-                item.supportingText?.let { supportingText ->
-                    Spacer(Modifier.height(12.dp))
+            BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+                val topSpacing = minOf(maxHeight * 0.25f, 170.dp)
+                val illustrationTextSpacing = minOf(maxHeight * 0.11f, 76.dp)
+
+                Column(
+                    modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                ) {
+                    Spacer(Modifier.height(topSpacing))
+                    Image(
+                        painter = painterResource(item.illustration),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier.align(Alignment.CenterHorizontally).size(170.dp),
+                    )
+                    Spacer(Modifier.height(illustrationTextSpacing))
                     Text(
-                        text = supportingText,
-                        color = Color(0xFF777777),
-                        fontSize = 12.sp,
-                        lineHeight = 22.sp,
+                        text = item.message,
+                        color = Color(0xFF202323),
+                        fontSize = 24.sp,
+                        lineHeight = 32.sp,
+                        fontWeight = FontWeight.Bold,
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
                     )
+                    item.supportingText?.let { supportingText ->
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = supportingText,
+                            color = Color(0xFF777777),
+                            fontSize = 12.sp,
+                            lineHeight = 22.sp,
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                        )
+                    }
                 }
             }
         }
