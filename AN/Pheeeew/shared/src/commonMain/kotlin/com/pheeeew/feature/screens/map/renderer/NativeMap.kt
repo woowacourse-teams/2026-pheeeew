@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.map.renderer
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
 
@@ -10,6 +11,7 @@ internal expect fun NativeMap(
     state: MapUiModel,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
+    onViewportChanged: (EmotionBounds) -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     modifier: Modifier,
 )

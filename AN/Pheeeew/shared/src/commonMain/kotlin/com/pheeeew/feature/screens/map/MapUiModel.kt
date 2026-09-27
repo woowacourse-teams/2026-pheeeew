@@ -4,6 +4,7 @@ import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationState
 
 data class MapUiModel(
+    val hiddenEmotionIds: Set<Long> = emptySet(),
     val locationState: LocationState = LocationState.Loading,
     val mapError: MapErrorUiModel? = null,
     val mapRevision: Int = 0,

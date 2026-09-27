@@ -1,5 +1,6 @@
 package com.pheeeew
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -11,9 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.di.ApiDependencies
 import com.pheeeew.core.di.LocationDependencies
+import com.pheeeew.core.di.emotion.createNearbyEmotionViewModel
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
+import com.pheeeew.feature.screens.map.nearby.NearbyEmotionSheet
+import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 
@@ -44,12 +48,21 @@ fun App(
         viewModel {
             MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase())
         }
-    MapScreen(
-        viewModel = mapViewModel,
-        recordViewModel = mapRecordViewModel,
-        onListClick = {},
-        onSettingClick = {},
-        onEmotionBubbleClick = {},
-        modifier = Modifier.fillMaxSize(),
-    )
+    val nearbyViewModel: NearbyEmotionViewModel = viewModel { createNearbyEmotionViewModel(apiDependencies.client) }
+    Box(Modifier.fillMaxSize()) {
+        MapScreen(
+            viewModel = mapViewModel,
+            recordViewModel = mapRecordViewModel,
+            onListClick = nearbyViewModel::toggle,
+            onViewportChanged = nearbyViewModel::onViewportChanged,
+            onSettingClick = {},
+            onEmotionBubbleClick = {},
+            modifier = Modifier.fillMaxSize(),
+        )
+        NearbyEmotionSheet(
+            nearbyViewModel,
+            onEmotionHidden = mapViewModel::onEmotionHidden,
+            onLeaveEmotion = mapViewModel::onEmotionSelectorOpen,
+        )
+    }
 }

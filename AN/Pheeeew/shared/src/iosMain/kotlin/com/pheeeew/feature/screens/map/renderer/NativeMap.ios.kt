@@ -9,6 +9,7 @@ import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.pheeeew.domain.model.LocationState
+import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
@@ -21,15 +22,27 @@ internal actual fun NativeMap(
     state: MapUiModel,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
+    onViewportChanged: (EmotionBounds) -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     modifier: Modifier,
 ) {
+    val currentOnViewportChanged by rememberUpdatedState(onViewportChanged)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val currentOnRecordViewportChanged by rememberUpdatedState(onRecordViewportChanged)
     val eventSink =
         remember {
             object : FoundationIosMapEventSink {
+                override fun onViewportChanged(
+                    west: Double,
+                    south: Double,
+                    east: Double,
+                    north: Double,
+                ) {
+                    val bounds = runCatching { EmotionBounds(west, south, east, north) }.getOrNull() ?: return
+                    currentOnViewportChanged(bounds)
+                }
+
                 override fun onRendererUnavailable() = currentOnMapError(MapErrorUiModel.RendererUnavailable)
 
                 override fun onStyleLoadFailed() = currentOnMapError(MapErrorUiModel.StyleLoadFailed)

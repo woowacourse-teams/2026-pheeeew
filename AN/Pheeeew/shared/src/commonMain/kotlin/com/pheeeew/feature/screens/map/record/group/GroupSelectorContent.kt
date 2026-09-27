@@ -263,7 +263,13 @@ fun GroupSelectorContent(
                                 },
                         contentAlignment = Alignment.Center,
                     ) {
-                        GroupStamp(label = group.stampLabel, size = DIAL_ITEM_SIZE)
+                        if (!group.showStamp) {
+                            Text(group.name, color = Color(0xFF252826), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                        } else if (group.appearance != null) {
+                            GroupStamp(appearance = group.appearance, size = DIAL_ITEM_SIZE)
+                        } else {
+                            GroupStamp(label = group.stampLabel, size = DIAL_ITEM_SIZE)
+                        }
                     }
                 }
 

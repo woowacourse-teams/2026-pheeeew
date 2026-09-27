@@ -15,6 +15,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationState
+import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
@@ -44,9 +45,11 @@ internal actual fun NativeMap(
     state: MapUiModel,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
+    onViewportChanged: (EmotionBounds) -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     modifier: Modifier,
 ) {
+    val currentOnViewportChanged by rememberUpdatedState(onViewportChanged)
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnMapError by rememberUpdatedState(onMapError)
@@ -63,6 +66,7 @@ internal actual fun NativeMap(
                     onMapError = currentOnMapError,
                     onMapRecovered = currentOnMapRecovered,
                     onRecordViewportChanged = onRecordViewportChanged,
+                    onViewportChanged = { currentOnViewportChanged(it) },
                 )
             }
         }
@@ -104,6 +108,7 @@ private class AndroidFoundationMapHost(
     val mapView: MapView,
     private val onMapError: (MapErrorUiModel) -> Unit,
     private val onMapRecovered: () -> Unit,
+    private val onViewportChanged: (EmotionBounds) -> Unit,
     private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
 ) {
     private var map: MapLibreMap? = null
@@ -133,6 +138,7 @@ private class AndroidFoundationMapHost(
                 publishRecordViewport()
             }
             readyMap.addOnCameraIdleListener {
+                publishViewport()
                 publishRecordViewport()
             }
             mapView.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
@@ -149,8 +155,20 @@ private class AndroidFoundationMapHost(
                 styleLoaded = true
                 onMapRecovered()
                 renderLatestState()
+                publishViewport()
             }
         }
+    }
+
+    private fun publishViewport() {
+        if (released || latestState?.isRecordLocationPicking == true || mapView.width == 0) return
+        val bounds = map?.projection?.visibleRegion?.latLngBounds ?: return
+        val value =
+            runCatching {
+                EmotionBounds(bounds.longitudeWest, bounds.latitudeSouth, bounds.longitudeEast, bounds.latitudeNorth)
+            }.getOrNull()
+                ?: return
+        onViewportChanged(value)
     }
 
     fun render(state: MapUiModel) {

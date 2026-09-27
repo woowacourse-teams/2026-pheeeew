@@ -29,8 +29,16 @@ class MapViewModel(
         requestCurrentLocation(moveCamera = false)
     }
 
+    fun onEmotionHidden(id: Long) {
+        _uiModel.value = _uiModel.value.copy(hiddenEmotionIds = _uiModel.value.hiddenEmotionIds + id)
+    }
+
     fun onMyLocationClick() {
         requestCurrentLocation(moveCamera = true)
+    }
+
+    fun onEmotionSelectorOpen() {
+        _uiModel.value = _uiModel.value.copy(isEmotionSelectorExpanded = true)
     }
 
     fun onEmotionSelectorToggle() {

@@ -65,6 +65,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate {
 
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
         publishRecordViewport()
+        publishViewport()
     }
 
     func mapViewRegionIsChanging(_ mapView: MLNMapView) {
@@ -78,6 +79,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate {
     }
 
     func mapViewDidFinishRenderingFrame(_ mapView: MLNMapView, fullyRendered: Bool) {
+        if fullyRendered { publishViewport() }
         if let state = pendingState, state.isRecordLocationPicking {
             _ = applyRecordCamera(state)
         }
@@ -125,6 +127,14 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate {
         }
         publishRecordViewport()
         return true
+    }
+
+    private func publishViewport() {
+        guard styleIsReady, pendingState?.isRecordLocationPicking != true,
+              mapView.bounds.width > 0, mapView.bounds.height > 0 else { return }
+        let bounds = mapView.visibleCoordinateBounds
+        eventSink.onViewportChanged(west: bounds.sw.longitude, south: bounds.sw.latitude,
+                                   east: bounds.ne.longitude, north: bounds.ne.latitude)
     }
 
     private func publishRecordViewport() {

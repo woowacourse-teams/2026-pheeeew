@@ -31,6 +31,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.rememberVoiceRecorder
 import com.pheeeew.domain.model.LocationState
+import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.feature.screens.map.overlay.MapOverlay
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
@@ -51,6 +52,7 @@ fun MapScreen(
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
+    onViewportChanged: (EmotionBounds) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(viewModel) {
@@ -103,6 +105,7 @@ fun MapScreen(
                     state = uiModel.copy(recordOrigin = recordUiModel.origin),
                     onMapError = viewModel::onMapError,
                     onMapRecovered = viewModel::onMapRecovered,
+                    onViewportChanged = onViewportChanged,
                     onRecordViewportChanged = { centerX, centerY, radius ->
                         val viewport = RecordMapViewport(centerX, centerY, radius)
                         if (recordViewport != viewport) recordViewport = viewport
