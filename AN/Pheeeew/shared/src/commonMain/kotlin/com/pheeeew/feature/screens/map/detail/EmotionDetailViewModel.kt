@@ -118,7 +118,7 @@ class EmotionDetailViewModel(
                         val requestedSelection = mutation.desiredSelected
                         val success =
                             try {
-                        repository.setReactionSelected(id, type, requestedSelection)
+                                repository.setReactionSelected(id, type, requestedSelection)
                             } catch (cancelled: CancellationException) {
                                 throw cancelled
                             } catch (_: Exception) {

@@ -90,7 +90,6 @@ fun EmotionDetailOverlay(
     }
 }
 
-
 @Preview(name = "감정 상세 오버레이", widthDp = 424, heightDp = 640)
 @Composable
 private fun EmotionDetailOverlayPreview() {

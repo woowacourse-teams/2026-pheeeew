@@ -6,5 +6,9 @@ import com.pheeeew.domain.model.emotion.EmotionReactionType
 interface EmotionDetailRepository {
     suspend fun findById(id: Long): EmotionDetailResult
 
-    suspend fun setReactionSelected(emotionId: Long, type: EmotionReactionType, selected: Boolean): Boolean
+    suspend fun setReactionSelected(
+        emotionId: Long,
+        type: EmotionReactionType,
+        selected: Boolean,
+    ): Boolean
 }
