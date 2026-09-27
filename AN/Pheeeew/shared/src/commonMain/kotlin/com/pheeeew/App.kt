@@ -12,12 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.di.ApiDependencies
 import com.pheeeew.core.di.LocationDependencies
-import com.pheeeew.core.di.emotion.createNearbyEmotionViewModel
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionSheet
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
+import com.pheeeew.feature.screens.map.nearby.mock.createNearbyEmotionMockViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 
@@ -48,7 +48,7 @@ fun App(
         viewModel {
             MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase())
         }
-    val nearbyViewModel: NearbyEmotionViewModel = viewModel { createNearbyEmotionViewModel(apiDependencies.client) }
+    val nearbyViewModel: NearbyEmotionViewModel = viewModel { createNearbyEmotionMockViewModel() }
     Box(Modifier.fillMaxSize()) {
         MapScreen(
             viewModel = mapViewModel,
