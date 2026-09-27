@@ -5,8 +5,6 @@ import com.pheeeew.domain.model.group.GroupPressState
 import com.pheeeew.domain.repository.group.GroupDetailLookupResult
 import com.pheeeew.domain.repository.group.GroupDetailRepository
 import com.pheeeew.domain.repository.group.GroupLeaveResult
-import com.pheeeew.feature.screens.group.detail.EmotionTapAction
-import com.pheeeew.feature.screens.group.detail.EmotionTapResult
 import com.pheeeew.feature.screens.group.detail.GroupDetailLoadResult
 import com.pheeeew.feature.screens.group.detail.GroupDetailSource
 import com.pheeeew.feature.screens.group.detail.LeaveGroupAction
@@ -54,14 +52,6 @@ class ApiLeaveGroupAction(
             GroupLeaveResult.Unavailable -> LeaveGroupResult.Unavailable
         }
     }
-}
-
-/** API detail mode keeps the future press endpoint disconnected and the buttons disabled. */
-object ApiDetailEmotionTapDisabled : EmotionTapAction {
-    override fun apply(
-        groupId: GroupId,
-        emotion: EmotionKind,
-    ): EmotionTapResult = EmotionTapResult.Unavailable
 }
 
 private fun GroupDetail.toUiModel(): GroupDetailUiModel {

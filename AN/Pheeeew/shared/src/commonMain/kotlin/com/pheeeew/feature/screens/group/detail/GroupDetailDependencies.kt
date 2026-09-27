@@ -4,10 +4,9 @@ import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 
 data class GroupDetailDependencies(
     val source: GroupDetailSource,
-    val emotionTapAction: EmotionTapAction,
+    val pressGroupEmotionAction: PressGroupEmotionAction,
     val leaveGroupAction: LeaveGroupAction,
     val errorReporter: GroupDetailErrorReporter,
     val operationKeyAllocator: GroupOperationKeyAllocator,
     val requestPolicy: GroupDetailRequestPolicy = GroupDetailRequestPolicy(),
-    val emotionTapsEnabled: Boolean = true,
 )
