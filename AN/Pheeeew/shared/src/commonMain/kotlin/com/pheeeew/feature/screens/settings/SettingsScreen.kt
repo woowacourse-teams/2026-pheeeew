@@ -110,7 +110,7 @@ fun SettingsScreen(
     val uriHandler = LocalUriHandler.current
     val snackbarHostState = remember { SnackbarHostState() }
 
-    AppTheme {
+    SettingsTheme {
         Box(modifier = modifier.fillMaxSize()) {
             PredictiveBackContent(
                 onBack = onBackClick,
@@ -168,7 +168,7 @@ fun SettingsScreen(
 )
 @Composable
 private fun SettingsScreenPreview() {
-    AppTheme {
+    SettingsTheme {
         SettingsScreen(
             appVersion = "1.1.1",
             onBackClick = {},
@@ -180,7 +180,7 @@ private fun SettingsScreenPreview() {
     }
 }
 
-@Preview(showSystemUi = true)
+@Preview
 @Composable
 private fun SettingsScreenStatefulPreview() {
     SettingsScreen(

@@ -1,5 +1,6 @@
 package com.pheeeew
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -16,11 +17,15 @@ import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
+import com.pheeeew.feature.screens.settings.SettingsScreen
+import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 
 @Composable
 fun App(
     locationDependencies: LocationDependencies,
     apiDependencies: ApiDependencies,
+    appVersion: String,
+    permissionSettingsLauncher: LocationPermissionSettingsLauncher,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
 ) {
@@ -44,12 +49,25 @@ fun App(
         viewModel {
             MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase())
         }
-    MapScreen(
-        viewModel = mapViewModel,
-        recordViewModel = mapRecordViewModel,
-        onListClick = {},
-        onSettingClick = {},
-        onEmotionBubbleClick = {},
-        modifier = Modifier.fillMaxSize(),
-    )
+    var isSettingsVisible by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        MapScreen(
+            viewModel = mapViewModel,
+            recordViewModel = mapRecordViewModel,
+            onListClick = {},
+            onSettingClick = { isSettingsVisible = true },
+            onEmotionBubbleClick = {},
+            modifier = Modifier.fillMaxSize(),
+        )
+
+        if (isSettingsVisible) {
+            SettingsScreen(
+                appVersion = appVersion,
+                onBackClick = { isSettingsVisible = false },
+                permissionSettingsLauncher = permissionSettingsLauncher,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
 }

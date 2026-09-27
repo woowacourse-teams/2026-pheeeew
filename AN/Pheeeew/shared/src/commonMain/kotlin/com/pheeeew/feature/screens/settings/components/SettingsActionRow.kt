@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.pheeeew.feature.screens.settings.SettingsTheme
 import com.pheeeew.legacy.core.designsystem.theme.AppTheme
 
 @Composable
@@ -55,7 +56,7 @@ internal fun SettingsActionRow(
 @Preview
 @Composable
 private fun SettingsActionRowPreview() {
-    AppTheme {
+    SettingsTheme {
         androidx.compose.foundation.layout.Column {
             SettingsActionRow("접근 권한 설정", SettingsIcon.Tune, highlighted = true, onClick = {})
             SettingsDivider()
