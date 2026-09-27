@@ -26,17 +26,23 @@ internal fun GroupDetailUiModel.withDominantEmotionSummary(
 private fun GroupDetailCopyKey.toEmotionKind(): EmotionKind? =
     when (this) {
         GroupDetailCopyKey.SummaryBlocked -> EmotionKind.Blocked
+
         GroupDetailCopyKey.SummaryAnnoyed -> EmotionKind.Annoyed
+
         GroupDetailCopyKey.SummaryTired -> EmotionKind.Tired
+
         GroupDetailCopyKey.SummaryDefeated -> EmotionKind.Defeated
+
         GroupDetailCopyKey.SummaryAngry -> EmotionKind.Angry
+
         GroupDetailCopyKey.FirstStartHeroTitle,
         GroupDetailCopyKey.FirstStartHeroSubtitle,
         GroupDetailCopyKey.ActiveHeroTitle,
         GroupDetailCopyKey.ActiveHeroSubtitle,
         GroupDetailCopyKey.NeutralHeroTitle,
         GroupDetailCopyKey.NeutralHeroSubtitle,
-        GroupDetailCopyKey.SummaryNeutral -> null
+        GroupDetailCopyKey.SummaryNeutral,
+        -> null
     }
 
 private fun EmotionKind.toSummaryKey(): GroupDetailCopyKey =

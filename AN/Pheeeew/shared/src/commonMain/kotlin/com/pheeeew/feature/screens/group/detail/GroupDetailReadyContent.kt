@@ -49,13 +49,13 @@ import pheeeew.shared.generated.resources.group_detail_hero_neutral
 import pheeeew.shared.generated.resources.group_detail_hero_neutral_subtitle
 import pheeeew.shared.generated.resources.group_detail_load_error_body
 import pheeeew.shared.generated.resources.group_detail_loading
+import pheeeew.shared.generated.resources.group_detail_press_check
+import pheeeew.shared.generated.resources.group_detail_press_checking
+import pheeeew.shared.generated.resources.group_detail_press_unknown
 import pheeeew.shared.generated.resources.group_detail_rank_empty
 import pheeeew.shared.generated.resources.group_detail_rank_label
 import pheeeew.shared.generated.resources.group_detail_rank_number
 import pheeeew.shared.generated.resources.group_detail_retry
-import pheeeew.shared.generated.resources.group_detail_press_check
-import pheeeew.shared.generated.resources.group_detail_press_checking
-import pheeeew.shared.generated.resources.group_detail_press_unknown
 import pheeeew.shared.generated.resources.group_detail_summary_angry
 import pheeeew.shared.generated.resources.group_detail_summary_annoyed
 import pheeeew.shared.generated.resources.group_detail_summary_blocked
@@ -130,7 +130,9 @@ private fun PressStatusNotice(
     when (status) {
         GroupPressStatus.Idle,
         is GroupPressStatus.Sending,
-        -> Unit
+        -> {
+            Unit
+        }
 
         is GroupPressStatus.Reconciling -> {
             val message = stringResource(Res.string.group_detail_press_checking)

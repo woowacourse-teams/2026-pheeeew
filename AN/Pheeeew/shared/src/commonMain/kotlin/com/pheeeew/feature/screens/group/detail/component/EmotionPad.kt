@@ -69,7 +69,6 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import com.pheeeew.feature.screens.group.detail.GroupPressFeedback
 import com.pheeeew.feature.screens.group.detail.model.EmotionCountUiModel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
-import kotlin.time.TimeSource
 import kotlinx.coroutines.isActive
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
@@ -81,6 +80,7 @@ import pheeeew.shared.generated.resources.tap_face_defeated
 import pheeeew.shared.generated.resources.tap_face_tired
 import pheeeew.shared.generated.resources.tap_noto_700
 import pheeeew.shared.generated.resources.tap_noto_900
+import kotlin.time.TimeSource
 
 /** Five emotion buttons and the independent reactions created by accepted presses. */
 @Composable
@@ -200,12 +200,13 @@ internal fun EmotionPad(
         ) {
             val reaction = TapCatalog.pick(kind, random)
             val measured =
-                measurer.measure(
-                    reaction.value,
-                    stickerStyle(reaction, font),
-                    maxLines = 1,
-                    softWrap = false,
-                ).size
+                measurer
+                    .measure(
+                        reaction.value,
+                        stickerStyle(reaction, font),
+                        maxLines = 1,
+                        softWrap = false,
+                    ).size
             val width =
                 when (reaction.kind) {
                     TapReactionKind.Face -> 52.0
@@ -287,8 +288,7 @@ internal fun EmotionPad(
                             translationY = transform.y.toFloat() * density.density
                             scaleX = transform.scale.toFloat()
                             scaleY = scaleX
-                        }
-                        .testTag("emotion-${kind.name}")
+                        }.testTag("emotion-${kind.name}")
                         .pointerInput(reduce) {
                             try {
                                 awaitEachGesture {
@@ -313,16 +313,14 @@ internal fun EmotionPad(
                                 motion.reset()
                                 pointer = null
                             }
-                        }
-                        .onFocusChanged { focusState ->
+                        }.onFocusChanged { focusState ->
                             if (!focusState.isFocused) {
                                 keys.clear()
                                 keyboardActivation = false
                                 motion.release(now(), reduce)
                                 refresh()
                             }
-                        }
-                        .onPreviewKeyEvent { event ->
+                        }.onPreviewKeyEvent { event ->
                             val activation =
                                 event.key in
                                     setOf(
@@ -353,11 +351,12 @@ internal fun EmotionPad(
                                         false
                                     }
 
-                                    else -> false
+                                    else -> {
+                                        false
+                                    }
                                 }
                             }
-                        }
-                        .clickable(
+                        }.clickable(
                             interactionSource = interactions,
                             indication = null,
                             enabled = enabled,
@@ -378,8 +377,7 @@ internal fun EmotionPad(
                             pointer = null
                             keyboardActivation = false
                             refresh()
-                        }
-                        .semantics {
+                        }.semantics {
                             contentDescription = "${emotion.label} 표현하기, ${formatCount(count)}번"
                         }
 

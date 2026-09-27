@@ -24,14 +24,13 @@ internal data class TapTransform(
     fun between(
         other: TapTransform,
         t: Double,
-    ) =
-        TapTransform(
-            x + (other.x - x) * t,
-            y + (other.y - y) * t,
-            scale + (other.scale - scale) * t,
-            rotation + (other.rotation - rotation) * t,
-            alpha + (other.alpha - alpha) * t,
-        )
+    ) = TapTransform(
+        x + (other.x - x) * t,
+        y + (other.y - y) * t,
+        scale + (other.scale - scale) * t,
+        rotation + (other.rotation - rotation) * t,
+        alpha + (other.alpha - alpha) * t,
+    )
 }
 
 /** Solves x(t) before evaluating y(t), including the original release overshoot. */

@@ -1,7 +1,7 @@
 package com.pheeeew.feature.screens.group.detail
 
-import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
+import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 
 data class GroupDetailUiState(

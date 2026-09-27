@@ -60,6 +60,12 @@ fun GroupDetailUiModel.withPressSnapshot(snapshot: GroupPressSnapshotUiModel): G
     return copy(
         emotionCounts = counts,
         todayTotal = snapshot.total,
-        presentation = presentation.copy(kind = kind, heroTitle = title, heroSubtitle = subtitle, summaryMessage = summary),
+        presentation =
+            presentation.copy(
+                kind = kind,
+                heroTitle = title,
+                heroSubtitle = subtitle,
+                summaryMessage = summary,
+            ),
     )
 }

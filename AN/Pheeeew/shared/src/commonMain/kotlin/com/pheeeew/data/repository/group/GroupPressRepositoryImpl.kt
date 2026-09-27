@@ -33,29 +33,52 @@ class GroupPressRepositoryImpl(
                 }
             }
 
-            is ApiResult.Failure -> result.reason.toPressResult()
+            is ApiResult.Failure -> {
+                result.reason.toPressResult()
+            }
         }
 
     private fun NetworkFailure.toPressResult(): GroupPressResult =
         when (this) {
             is NetworkFailure.HttpStatus -> {
                 when {
-                    statusCode == FORBIDDEN_STATUS -> GroupPressResult.MembershipChanged
-                    statusCode == NOT_FOUND_STATUS -> GroupPressResult.NotFound
-                    statusCode == RATE_LIMIT_STATUS -> GroupPressResult.RateLimited(retryAfter.toDelayMillis())
+                    statusCode == FORBIDDEN_STATUS -> {
+                        GroupPressResult.MembershipChanged
+                    }
+
+                    statusCode == NOT_FOUND_STATUS -> {
+                        GroupPressResult.NotFound
+                    }
+
+                    statusCode == RATE_LIMIT_STATUS -> {
+                        GroupPressResult.RateLimited(retryAfter.toDelayMillis())
+                    }
+
                     statusCode == REQUEST_TIMEOUT_STATUS || statusCode == TOO_EARLY_STATUS || statusCode >= 500 -> {
                         GroupPressResult.OutcomeUnknown
                     }
 
-                    statusCode == UNAUTHORIZED_STATUS -> GroupPressResult.Unavailable
-                    statusCode in CLIENT_ERROR_RANGE -> GroupPressResult.Rejected
-                    else -> mutationCertainty.toPressFailure()
+                    statusCode == UNAUTHORIZED_STATUS -> {
+                        GroupPressResult.Unavailable
+                    }
+
+                    statusCode in CLIENT_ERROR_RANGE -> {
+                        GroupPressResult.Rejected
+                    }
+
+                    else -> {
+                        mutationCertainty.toPressFailure()
+                    }
                 }
             }
 
-            is NetworkFailure.Transport -> mutationCertainty.toPressFailure()
+            is NetworkFailure.Transport -> {
+                mutationCertainty.toPressFailure()
+            }
 
-            is NetworkFailure.Unexpected -> mutationCertainty.toPressFailure()
+            is NetworkFailure.Unexpected -> {
+                mutationCertainty.toPressFailure()
+            }
 
             is NetworkFailure.Contract -> {
                 if (reason == ContractFailureReason.MALFORMED_REQUEST_BODY) {
@@ -65,9 +88,13 @@ class GroupPressRepositoryImpl(
                 }
             }
 
-            is NetworkFailure.SessionUnavailable -> GroupPressResult.Unavailable
+            is NetworkFailure.SessionUnavailable -> {
+                GroupPressResult.Unavailable
+            }
 
-            is NetworkFailure.SessionProviderFailed -> GroupPressResult.Unavailable
+            is NetworkFailure.SessionProviderFailed -> {
+                GroupPressResult.Unavailable
+            }
         }
 
     private fun MutationCertainty.toPressFailure(): GroupPressResult =

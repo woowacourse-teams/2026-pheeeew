@@ -33,12 +33,29 @@ class ApiGroupPressAction(
                 )
             }
 
-            GroupPressResult.MembershipChanged -> PressGroupEmotionResult.MembershipChanged
-            GroupPressResult.NotFound -> PressGroupEmotionResult.NotFound
-            is GroupPressResult.RateLimited -> PressGroupEmotionResult.RateLimited(result.retryAfterMillis)
-            GroupPressResult.Rejected -> PressGroupEmotionResult.Rejected
-            GroupPressResult.Unavailable -> PressGroupEmotionResult.Unavailable
-            GroupPressResult.OutcomeUnknown -> PressGroupEmotionResult.OutcomeUnknown
+            GroupPressResult.MembershipChanged -> {
+                PressGroupEmotionResult.MembershipChanged
+            }
+
+            GroupPressResult.NotFound -> {
+                PressGroupEmotionResult.NotFound
+            }
+
+            is GroupPressResult.RateLimited -> {
+                PressGroupEmotionResult.RateLimited(result.retryAfterMillis)
+            }
+
+            GroupPressResult.Rejected -> {
+                PressGroupEmotionResult.Rejected
+            }
+
+            GroupPressResult.Unavailable -> {
+                PressGroupEmotionResult.Unavailable
+            }
+
+            GroupPressResult.OutcomeUnknown -> {
+                PressGroupEmotionResult.OutcomeUnknown
+            }
         }
     }
 }

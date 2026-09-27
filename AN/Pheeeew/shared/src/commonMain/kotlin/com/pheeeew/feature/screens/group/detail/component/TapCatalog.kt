@@ -33,7 +33,7 @@ internal data class TapEmotion(
 internal object TapCatalog {
     fun emotion(kind: EmotionKind): TapEmotion =
         when (kind) {
-            EmotionKind.Blocked ->
+            EmotionKind.Blocked -> {
                 TapEmotion(
                     label = "답답",
                     color = Color(0xFFF8D3C0),
@@ -41,8 +41,9 @@ internal object TapCatalog {
                     texts = listOf("아오!!", "으아아", "꽉 막혔어", "후우…"),
                     emojis = listOf("😮‍💨", "😤"),
                 )
+            }
 
-            EmotionKind.Annoyed ->
+            EmotionKind.Annoyed -> {
                 TapEmotion(
                     label = "짜증",
                     color = Color(0xFFF3C7D6),
@@ -50,8 +51,9 @@ internal object TapCatalog {
                     texts = listOf("아 진짜!", "으으…", "또?!", "그만 좀!"),
                     emojis = listOf("💢", "🙄", "😑"),
                 )
+            }
 
-            EmotionKind.Tired ->
+            EmotionKind.Tired -> {
                 TapEmotion(
                     label = "지침",
                     color = Color(0xFFE1D9F0),
@@ -59,8 +61,9 @@ internal object TapCatalog {
                     texts = listOf("ㅠㅠ", "방전…", "기력 0", "눕고 싶다"),
                     emojis = listOf("🫠", "🥱", "🪫"),
                 )
+            }
 
-            EmotionKind.Defeated ->
+            EmotionKind.Defeated -> {
                 TapEmotion(
                     label = "좌절",
                     color = Color(0xFFCCE5F2),
@@ -68,8 +71,9 @@ internal object TapCatalog {
                     texts = listOf("ㅠㅠ", "털썩…", "안 돼…", "와르르"),
                     emojis = listOf("😭", "🥲", "💧"),
                 )
+            }
 
-            EmotionKind.Angry ->
+            EmotionKind.Angry -> {
                 TapEmotion(
                     label = "분노",
                     color = Color(0xFFF5BEB3),
@@ -77,6 +81,7 @@ internal object TapCatalog {
                     texts = listOf("으아악!!", "부글부글", "폭발 직전", "!!!"),
                     emojis = listOf("😡", "🤬", "🔥"),
                 )
+            }
         }
 
     fun pick(

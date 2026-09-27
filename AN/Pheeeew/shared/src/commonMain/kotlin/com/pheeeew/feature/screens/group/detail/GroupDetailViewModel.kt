@@ -61,14 +61,18 @@ class GroupDetailViewModel(
         when (state.pressStatus) {
             is GroupPressStatus.Sending,
             is GroupPressStatus.Reconciling,
-            -> return
+            -> {
+                return
+            }
 
             is GroupPressStatus.OutcomeUnknown -> {
                 onResolvePressOutcome()
                 return
             }
 
-            GroupPressStatus.Idle -> Unit
+            GroupPressStatus.Idle -> {
+                Unit
+            }
         }
         loadDetail()
     }
@@ -318,8 +322,10 @@ class GroupDetailViewModel(
         if (loadJob?.isActive == true) return
         val currentPressStatus = _uiState.value.pressStatus
         if (currentPressStatus is GroupPressStatus.Sending ||
-            (currentPressStatus is GroupPressStatus.Reconciling &&
-                currentPressStatus.operationKey != reconcilePressOperationKey)
+            (
+                currentPressStatus is GroupPressStatus.Reconciling &&
+                    currentPressStatus.operationKey != reconcilePressOperationKey
+            )
         ) {
             return
         }
@@ -391,14 +397,22 @@ class GroupDetailViewModel(
                                             } else {
                                                 GroupDetailRefreshStatus.Failed
                                             },
-                                        pressStatus = state.pressStatus.afterPressReconciliation(reconcilePressOperationKey, false),
+                                        pressStatus =
+                                            state.pressStatus.afterPressReconciliation(
+                                                reconcilePressOperationKey,
+                                                false,
+                                            ),
                                     )
                                 } else {
                                     state.copy(
                                         content = GroupDetailContent.Ready(detail),
                                         groupName = detail.group.name,
                                         refreshStatus = GroupDetailRefreshStatus.Idle,
-                                        pressStatus = state.pressStatus.afterPressReconciliation(reconcilePressOperationKey, true),
+                                        pressStatus =
+                                            state.pressStatus.afterPressReconciliation(
+                                                reconcilePressOperationKey,
+                                                true,
+                                            ),
                                         overlay =
                                             if (reconcileLeaveOutcome &&
                                                 state.overlay == GroupDetailOverlay.LeaveOutcomeUnknown
@@ -418,7 +432,11 @@ class GroupDetailViewModel(
                                     overlay = GroupDetailOverlay.None,
                                     copyRequest = null,
                                     membershipEvent = membershipEvent,
-                                    pressStatus = state.pressStatus.afterPressReconciliation(reconcilePressOperationKey, true),
+                                    pressStatus =
+                                        state.pressStatus.afterPressReconciliation(
+                                            reconcilePressOperationKey,
+                                            true,
+                                        ),
                                 )
                             }
 
@@ -429,7 +447,11 @@ class GroupDetailViewModel(
                                     overlay = GroupDetailOverlay.None,
                                     copyRequest = null,
                                     membershipEvent = membershipEvent,
-                                    pressStatus = state.pressStatus.afterPressReconciliation(reconcilePressOperationKey, true),
+                                    pressStatus =
+                                        state.pressStatus.afterPressReconciliation(
+                                            reconcilePressOperationKey,
+                                            true,
+                                        ),
                                 )
                             }
 
@@ -449,7 +471,11 @@ class GroupDetailViewModel(
                                         } else {
                                             GroupDetailRefreshStatus.Failed
                                         },
-                                    pressStatus = state.pressStatus.afterPressReconciliation(reconcilePressOperationKey, false),
+                                    pressStatus =
+                                        state.pressStatus.afterPressReconciliation(
+                                            reconcilePressOperationKey,
+                                            false,
+                                        ),
                                 )
                             }
                         }
@@ -613,7 +639,9 @@ class GroupDetailViewModel(
     ) {
         val isCurrentRequest =
             (_uiState.value.pressStatus as? GroupPressStatus.Sending)?.operationKey == operationKey &&
-                _uiState.value.detail?.group?.id == groupId
+                _uiState.value.detail
+                    ?.group
+                    ?.id == groupId
         if (!isCurrentRequest) return
 
         when (result) {
