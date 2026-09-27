@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.create.component.CreateTextField
 import com.pheeeew.feature.screens.group.create.component.StampEditor
+import com.pheeeew.feature.screens.group.create.model.StampTextColorOption
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_create_description_error_long
@@ -21,6 +22,7 @@ import pheeeew.shared.generated.resources.group_create_description_placeholder
 import pheeeew.shared.generated.resources.group_create_name_error_duplicate
 import pheeeew.shared.generated.resources.group_create_name_error_long
 import pheeeew.shared.generated.resources.group_create_name_error_required
+import pheeeew.shared.generated.resources.group_create_name_error_short
 import pheeeew.shared.generated.resources.group_create_name_label
 import pheeeew.shared.generated.resources.group_create_name_placeholder
 
@@ -33,6 +35,7 @@ internal fun GroupCreateForm(
     onDescriptionChanged: (String) -> Unit,
     onStampLabelChanged: (String) -> Unit,
     onStampShapeChanged: (StampShapeId) -> Unit,
+    onStampTextColorChanged: (StampTextColorOption) -> Unit,
     onOpenColorSheet: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -77,6 +80,7 @@ internal fun GroupCreateForm(
             enabled = enabled,
             onLabelChanged = onStampLabelChanged,
             onShapeChanged = onStampShapeChanged,
+            onTextColorChanged = onStampTextColorChanged,
             onColorClick = onOpenColorSheet,
         )
     }
@@ -86,8 +90,9 @@ internal fun GroupCreateForm(
 private fun GroupCreateFieldError?.toNameErrorText(): String? =
     when (this) {
         GroupCreateFieldError.Required,
-        GroupCreateFieldError.TooShort,
         -> stringResource(Res.string.group_create_name_error_required)
+
+        GroupCreateFieldError.TooShort -> stringResource(Res.string.group_create_name_error_short)
 
         GroupCreateFieldError.TooLong -> stringResource(Res.string.group_create_name_error_long)
 

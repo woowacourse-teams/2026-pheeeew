@@ -2,9 +2,10 @@ package com.pheeeew.core.di
 
 import android.content.Context
 import android.util.Log
+import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.data.local.device.AndroidDeviceCredentialStorage
-import com.pheeeew.data.remote.device.AndroidPlayIntegrityProofProvider
+import com.pheeeew.data.remote.device.attestation.AndroidPlayIntegrityProofProvider
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.model.device.DeviceSessionDiagnostics
 

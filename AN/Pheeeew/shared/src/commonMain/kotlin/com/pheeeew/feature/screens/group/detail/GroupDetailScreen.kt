@@ -55,6 +55,12 @@ import pheeeew.shared.generated.resources.group_detail_membership_changed_body
 import pheeeew.shared.generated.resources.group_detail_membership_changed_title
 import pheeeew.shared.generated.resources.group_detail_menu_leave
 import pheeeew.shared.generated.resources.group_detail_more
+import pheeeew.shared.generated.resources.group_detail_not_found_body
+import pheeeew.shared.generated.resources.group_detail_not_found_title
+import pheeeew.shared.generated.resources.group_detail_press_blocked
+import pheeeew.shared.generated.resources.group_detail_press_failed
+import pheeeew.shared.generated.resources.group_detail_press_rate_limited
+import pheeeew.shared.generated.resources.group_detail_press_rate_limited_retry
 import pheeeew.shared.generated.resources.group_detail_retry
 import pheeeew.shared.generated.resources.group_detail_return_home
 import pheeeew.shared.generated.resources.group_home_error_illustration
@@ -66,6 +72,7 @@ fun GroupDetailScreen(
     uiState: GroupDetailUiState,
     actions: GroupDetailActions,
     modifier: Modifier = Modifier,
+    fixtureFeedbackOnAcceptedPress: Boolean = false,
 ) {
     val title = uiState.detail?.group?.name ?: uiState.groupName ?: stringResource(Res.string.group_home_title)
     Box(
@@ -95,16 +102,22 @@ fun GroupDetailScreen(
                     MembershipChangedContent(onReturnHome = actions.onReturnHome)
                 }
 
+                GroupDetailContent.NotFound -> {
+                    NotFoundContent(onReturnHome = actions.onReturnHome)
+                }
+
                 is GroupDetailContent.Ready -> {
                     GroupDetailReadyContent(
                         detail = content.detail,
-                        isRefreshing = uiState.isRefreshing,
                         hasRefreshError = uiState.hasRefreshError,
                         canTapEmotion = uiState.canTapEmotion,
+                        pressStatus = uiState.pressStatus,
+                        confirmedPressFeedback = uiState.confirmedPressFeedback,
                         onInviteClick = actions.onInviteClick,
-                        onInviteShareClick = actions.onInviteShareClick,
                         onRetry = actions.onRetry,
                         onEmotionTap = actions.onEmotionTap,
+                        onResolvePressOutcome = actions.onResolvePressOutcome,
+                        fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
                     )
                 }
             }
@@ -113,9 +126,38 @@ fun GroupDetailScreen(
         uiState.notice?.let { notice ->
             val message =
                 when (notice.kind) {
-                    GroupDetailNoticeKind.CopySucceeded -> stringResource(Res.string.group_detail_copy_succeeded)
-                    GroupDetailNoticeKind.CopyFailed -> stringResource(Res.string.group_detail_copy_failed)
-                    GroupDetailNoticeKind.EmotionUnavailable -> stringResource(Res.string.group_detail_emotion_failed)
+                    GroupDetailNoticeKind.CopySucceeded -> {
+                        stringResource(Res.string.group_detail_copy_succeeded)
+                    }
+
+                    GroupDetailNoticeKind.CopyFailed -> {
+                        stringResource(Res.string.group_detail_copy_failed)
+                    }
+
+                    GroupDetailNoticeKind.PressRejected -> {
+                        stringResource(Res.string.group_detail_press_failed)
+                    }
+
+                    GroupDetailNoticeKind.PressUnavailable -> {
+                        stringResource(Res.string.group_detail_emotion_failed)
+                    }
+
+                    GroupDetailNoticeKind.PressBlockedWhilePending -> {
+                        stringResource(Res.string.group_detail_press_blocked)
+                    }
+
+                    GroupDetailNoticeKind.PressRateLimited -> {
+                        val retryAfterMillis = notice.retryAfterMillis
+                        if (retryAfterMillis == null) {
+                            stringResource(Res.string.group_detail_press_rate_limited)
+                        } else {
+                            val retryAfterSeconds =
+                                (retryAfterMillis / 1_000L + if (retryAfterMillis % 1_000L == 0L) 0L else 1L)
+                                    .coerceAtMost(Int.MAX_VALUE.toLong())
+                                    .toInt()
+                            stringResource(Res.string.group_detail_press_rate_limited_retry, retryAfterSeconds)
+                        }
+                    }
                 }
             GroupDetailNoticeSnackbar(
                 message = message,
@@ -144,6 +186,8 @@ fun GroupDetailScreen(
 
         GroupDetailOverlay.LeaveConfirm,
         GroupDetailOverlay.LeaveFailed,
+        GroupDetailOverlay.LeaveStillMember,
+        GroupDetailOverlay.OwnerCannotLeave,
         GroupDetailOverlay.LeaveOutcomeUnknown,
         is GroupDetailOverlay.Leaving,
         is GroupDetailOverlay.Left,
@@ -279,6 +323,16 @@ private fun MembershipChangedContent(onReturnHome: () -> Unit) {
     DetailUnavailableContent(
         title = stringResource(Res.string.group_detail_membership_changed_title),
         body = stringResource(Res.string.group_detail_membership_changed_body),
+        actionLabel = stringResource(Res.string.group_detail_return_home),
+        onAction = onReturnHome,
+    )
+}
+
+@Composable
+private fun NotFoundContent(onReturnHome: () -> Unit) {
+    DetailUnavailableContent(
+        title = stringResource(Res.string.group_detail_not_found_title),
+        body = stringResource(Res.string.group_detail_not_found_body),
         actionLabel = stringResource(Res.string.group_detail_return_home),
         onAction = onReturnHome,
     )

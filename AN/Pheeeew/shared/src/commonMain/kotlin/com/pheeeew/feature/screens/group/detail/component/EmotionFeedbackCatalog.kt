@@ -6,10 +6,10 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.emotion_face_angry
-import pheeeew.shared.generated.resources.emotion_face_annoyed
-import pheeeew.shared.generated.resources.emotion_face_blocked
-import pheeeew.shared.generated.resources.emotion_face_defeated
-import pheeeew.shared.generated.resources.emotion_face_tired
+import pheeeew.shared.generated.resources.emotion_face_discouraged
+import pheeeew.shared.generated.resources.emotion_face_exhausted
+import pheeeew.shared.generated.resources.emotion_face_frustrated
+import pheeeew.shared.generated.resources.emotion_face_irritated
 import pheeeew.shared.generated.resources.group_detail_emoji_angry_1
 import pheeeew.shared.generated.resources.group_detail_emoji_angry_2
 import pheeeew.shared.generated.resources.group_detail_emoji_angry_3
@@ -89,10 +89,10 @@ internal object EmotionFeedbackCatalog {
 
     fun face(emotion: EmotionKind): DrawableResource =
         when (emotion) {
-            EmotionKind.Blocked -> Res.drawable.emotion_face_blocked
-            EmotionKind.Annoyed -> Res.drawable.emotion_face_annoyed
-            EmotionKind.Tired -> Res.drawable.emotion_face_tired
-            EmotionKind.Defeated -> Res.drawable.emotion_face_defeated
+            EmotionKind.Blocked -> Res.drawable.emotion_face_frustrated
+            EmotionKind.Annoyed -> Res.drawable.emotion_face_irritated
+            EmotionKind.Tired -> Res.drawable.emotion_face_exhausted
+            EmotionKind.Defeated -> Res.drawable.emotion_face_discouraged
             EmotionKind.Angry -> Res.drawable.emotion_face_angry
         }
 

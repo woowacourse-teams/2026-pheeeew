@@ -1,5 +1,6 @@
 package com.pheeeew.data.remote.group
 
+import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
 import kotlinx.serialization.Serializable
 
 @Serializable

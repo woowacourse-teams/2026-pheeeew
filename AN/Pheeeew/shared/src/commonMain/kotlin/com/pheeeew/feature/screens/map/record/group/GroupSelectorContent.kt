@@ -51,7 +51,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.pheeeew.feature.component.GroupStamp
+import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.launch
 import kotlin.math.PI
