@@ -2,8 +2,6 @@ package com.pheeeew.data.remote.device.attestation
 
 import com.pheeeew.data.remote.device.dto.DeviceAttestationDto
 import com.pheeeew.domain.model.device.DevicePlatform
-import kotlin.coroutines.resume
-import kotlin.coroutines.resumeWithException
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -20,6 +18,8 @@ import platform.Foundation.NSData
 import platform.Foundation.NSError
 import platform.Foundation.base64EncodedStringWithOptions
 import platform.Foundation.create
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /** Registration attestation only; access-token refresh never generates a new key. */
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)

@@ -6,9 +6,9 @@ import com.google.android.play.core.integrity.IntegrityServiceException
 import com.google.android.play.core.integrity.IntegrityTokenRequest
 import com.pheeeew.data.remote.device.dto.DeviceAttestationDto
 import com.pheeeew.domain.model.device.DevicePlatform
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlinx.coroutines.suspendCancellableCoroutine
 
 /** Classic requests use the server challenge unchanged as their nonce. */
 class AndroidPlayIntegrityProofProvider(
