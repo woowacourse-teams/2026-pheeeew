@@ -10,6 +10,7 @@ import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.data.location.platform.android.LocationDependenciesHolder
 import com.pheeeew.data.location.platform.android.createAndroidLocationDependencies
 import com.pheeeew.feature.screens.onboarding.WELCOME_ONBOARDING_COMPLETED_KEY
+import com.pheeeew.legacy.core.permission.AndroidLocationPermissionSettingsLauncher
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,6 +33,8 @@ class MainActivity : ComponentActivity() {
                 onOnboardingCompleted = {
                     onboardingPreferences.edit().putBoolean(WELCOME_ONBOARDING_COMPLETED_KEY, true).apply()
                 },
+                appVersion = BuildConfig.VERSION_NAME,
+                permissionSettingsLauncher = AndroidLocationPermissionSettingsLauncher(this@MainActivity),
                 apiDependencies =
                     AndroidApiDependencies.get(
                         applicationContext,
