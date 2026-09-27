@@ -1,289 +1,525 @@
 package com.pheeeew.feature.screens.group.detail.component
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.LinearOutSlowInEasing
-import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Text
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.MotionDurationScale
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.pheeeew.feature.screens.group.detail.GroupPressFeedback
 import com.pheeeew.feature.screens.group.detail.model.EmotionCountUiModel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
+import kotlinx.coroutines.isActive
+import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
-import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.group_detail_emotion_accessibility
-import pheeeew.shared.generated.resources.group_detail_emotion_count
-import pheeeew.shared.generated.resources.group_detail_feedback_plus_one
+import pheeeew.shared.generated.resources.tap_face_angry
+import pheeeew.shared.generated.resources.tap_face_annoyed
+import pheeeew.shared.generated.resources.tap_face_blocked
+import pheeeew.shared.generated.resources.tap_face_defeated
+import pheeeew.shared.generated.resources.tap_face_tired
+import pheeeew.shared.generated.resources.tap_noto_700
+import pheeeew.shared.generated.resources.tap_noto_900
+import kotlin.time.TimeSource
 
-/** 다섯 감정 버튼과 각 탭에서 발생한 개별 피드백 애니메이션을 표시합니다. */
+/** Five emotion buttons and the independent reactions created by accepted presses. */
 @Composable
 internal fun EmotionPad(
     counts: List<EmotionCountUiModel>,
     enabled: Boolean,
     onEmotionTap: (EmotionKind) -> Boolean,
+    confirmedPress: GroupPressFeedback? = null,
+    fixtureFeedbackOnAcceptedPress: Boolean = false,
+    preserveFeedbackWhileDisabled: Boolean = false,
     modifier: Modifier = Modifier,
+    reducedMotion: Boolean = rememberTapReducedMotion(),
 ) {
-    val activeBursts = remember { mutableStateListOf<EmotionBurst>() }
-    var nextBurstId by remember { mutableLongStateOf(0L) }
-    val countsByKind = remember(counts) { counts.associateBy { it.kind } }
+    val mark = remember { TimeSource.Monotonic.markNow() }
 
-    fun showFeedback(emotion: EmotionKind) {
-        val burstId = ++nextBurstId
-        activeBursts.add(EmotionFeedbackCatalog.create(burstId, emotion))
+    fun now(): Double = mark.elapsedNow().inWholeNanoseconds / 1_000_000.0
+
+    val feedback = remember { TapFeedbackState<EmotionKind>() }
+    val motions = remember { EmotionKind.entries.associateWith { TapButtonMotion() } }
+    val random = remember { TapRandom() }
+    var tick by remember { mutableIntStateOf(0) }
+    // Read the frame clock only inside graphicsLayer to avoid recomposing the pad per frame.
+    val frameTime = remember { mutableStateOf(0.0) }
+    var running by remember { mutableStateOf(false) }
+    var padPosition by remember { mutableStateOf(Offset.Zero) }
+    var rootWidth by remember { mutableStateOf(402.0) }
+    val density = LocalDensity.current
+    val boldFont = Font(Res.font.tap_noto_700, FontWeight.Bold)
+    val blackFont = Font(Res.font.tap_noto_900, FontWeight.Black)
+    val font = remember(boldFont, blackFont) { FontFamily(boldFont, blackFont) }
+    val measurer = rememberTextMeasurer()
+    val scope = rememberCoroutineScope()
+    val reduce = reducedMotion || scope.coroutineContext[MotionDurationScale]?.scaleFactor == 0f
+    val focused = LocalWindowInfo.current.isWindowFocused
+    val callback by rememberUpdatedState(onEmotionTap)
+    val inputEnabled by rememberUpdatedState(enabled)
+    val byKind = remember(counts) { counts.associateBy { it.kind } }
+    var pendingOrigin by remember { mutableStateOf<PendingTapOrigin?>(null) }
+    var lastHandledPressKey by remember { mutableStateOf(confirmedPress?.operationKey) }
+
+    fun refresh() {
+        frameTime.value = now()
+        tick++
+        running = true
     }
 
-    val emotions = EmotionKind.entries
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            emotions.take(3).forEach { emotion ->
-                EmotionButton(
-                    emotion = emotion,
-                    count = countsByKind.getValue(emotion).count,
-                    enabled = enabled,
-                    activeBursts = activeBursts.filter { it.emotion == emotion },
-                    onClick = { if (onEmotionTap(emotion)) showFeedback(emotion) },
-                    onBurstFinished = { burstId -> activeBursts.removeAll { it.id == burstId } },
-                )
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(19.5.dp, Alignment.CenterHorizontally),
-        ) {
-            emotions.drop(3).forEach { emotion ->
-                EmotionButton(
-                    emotion = emotion,
-                    count = countsByKind.getValue(emotion).count,
-                    enabled = enabled,
-                    activeBursts = activeBursts.filter { it.emotion == emotion },
-                    onClick = { if (onEmotionTap(emotion)) showFeedback(emotion) },
-                    onBurstFinished = { burstId -> activeBursts.removeAll { it.id == burstId } },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmotionButton(
-    emotion: EmotionKind,
-    count: Long,
-    enabled: Boolean,
-    activeBursts: List<EmotionBurst>,
-    onClick: () -> Unit,
-    onBurstFinished: (Long) -> Unit,
-) {
-    val emotionName = stringResource(EmotionFeedbackCatalog.name(emotion))
-    val countText = formatCount(count)
-    val accessibilityText =
-        stringResource(
-            Res.string.group_detail_emotion_accessibility,
-            emotionName,
-            formatCount(count),
-        )
-
-    Box(modifier = Modifier.size(width = 105.dp, height = 167.dp)) {
-        Column(
-            modifier = Modifier.align(Alignment.TopCenter),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Top,
-        ) {
-            Box(
-                modifier =
-                    Modifier
-                        .size(width = 105.dp, height = 110.dp)
-                        .clip(CircleShape)
-                        .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-                        .semantics { contentDescription = accessibilityText },
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painter = painterResource(EmotionFeedbackCatalog.face(emotion)),
-                    contentDescription = null,
-                    modifier = Modifier.size(width = 105.dp, height = 110.dp),
-                )
-            }
-            Text(
-                text = emotionName,
-                modifier = Modifier.padding(top = 8.dp),
-                color = AppColors.GroupInk,
-                fontSize = 16.sp,
-                lineHeight = 20.sp,
-                fontWeight = FontWeight.Bold,
-            )
-            Text(
-                text = countText,
-                modifier = Modifier.padding(top = 2.dp),
-                color = Color(0xFF7B817B),
-                fontSize = 20.sp,
-                lineHeight = 24.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-        }
-
-        activeBursts.forEach { burst ->
-            key(burst.id) {
-                FloatingEmotionFeedback(
-                    burst = burst,
-                    onFinished = { onBurstFinished(burst.id) },
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun FloatingEmotionFeedback(
-    burst: EmotionBurst,
-    onFinished: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val progress = remember(burst.id) { Animatable(0f) }
-    LaunchedEffect(burst.id) {
-        progress.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(durationMillis = FEEDBACK_DURATION_MILLIS, easing = LinearOutSlowInEasing),
-        )
-        onFinished()
+    fun settle() {
+        feedback.clear()
+        motions.values.forEach { it.reset() }
+        running = false
+        frameTime.value = now()
+        tick++
     }
 
-    val amount = progress.value
-    val alpha =
-        when {
-            amount < FADE_IN_END -> amount / FADE_IN_END
-            amount > FADE_OUT_START -> (1f - amount) / (1f - FADE_OUT_START)
-            else -> 1f
-        }.coerceIn(0f, 1f)
+    LaunchedEffect(enabled, preserveFeedbackWhileDisabled) {
+        if (!enabled && !preserveFeedbackWhileDisabled) {
+            feedback.clear()
+            tick++
+        }
+    }
+    LaunchedEffect(reduce, focused) {
+        if (reduce || !focused) settle()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { settle() }
+    DisposableEffect(Unit) {
+        onDispose {
+            feedback.clear()
+            motions.values.forEach { it.reset() }
+        }
+    }
+    LaunchedEffect(running) {
+        while (running && isActive) {
+            withFrameNanos { }
+            val time = now()
+            val previousParticleCount = feedback.particles.size
+            feedback.advance(time)
+            motions.values.forEach { it.sample(time) }
+            frameTime.value = time
+            if (feedback.particles.size != previousParticleCount) tick++
+            running = feedback.particles.isNotEmpty() || motions.values.any { it.isRunning(time) }
+        }
+    }
 
-    Box(
+    BoxWithConstraints(
         modifier =
             modifier
-                .offset(
-                    x = burst.horizontalDrift.dp,
-                    y = (burst.verticalLaunchOffset - amount * FLOAT_DISTANCE_DP).dp,
-                ).graphicsLayer {
-                    this.alpha = alpha
-                    scaleX = 0.86f + amount * 0.14f
-                    scaleY = 0.86f + amount * 0.14f
+                .fillMaxWidth()
+                .testTag("emotion-pad")
+                .onGloballyPositioned { coordinates ->
+                    padPosition = coordinates.positionInRoot() / density.density
+                    rootWidth =
+                        coordinates.findRootCoordinates().size.width / density.density.toDouble()
                 },
-        contentAlignment = Alignment.Center,
     ) {
-        when (burst.stickerKind) {
-            EmotionStickerKind.PlusOne -> {
-                FloatingTextSticker(
-                    text = stringResource(Res.string.group_detail_feedback_plus_one),
-                    fillColor = PLUS_ONE_COLOR,
-                    rotationDegrees = burst.rotationDegrees,
-                    fontSize = 14.sp,
+        val unit = (maxWidth.value / 354f).coerceAtMost(1f)
+        val inset = (maxWidth.value - 354 * unit) / 2
+        val particles = remember(tick) { feedback.particles.toList() }
+        val origins = listOf(0f to 0f, 124.5f to 0f, 249f to 0f, 62.25f to 177f, 186.75f to 177f)
+
+        fun rootPoint(
+            originX: Float,
+            originY: Float,
+            pointer: Offset?,
+        ): TapPoint? {
+            if (pointer == null) return null
+            return TapPoint(
+                (padPosition.x + originX + pointer.x / density.density).toDouble(),
+                (padPosition.y + originY + pointer.y / density.density).toDouble(),
+            )
+        }
+
+        fun addReaction(
+            kind: EmotionKind,
+            originX: Float,
+            originY: Float,
+            pointer: Offset?,
+        ) {
+            val reaction = TapCatalog.pick(kind, random)
+            val measured =
+                measurer
+                    .measure(
+                        reaction.value,
+                        stickerStyle(reaction, font),
+                        maxLines = 1,
+                        softWrap = false,
+                    ).size
+            val width =
+                when (reaction.kind) {
+                    TapReactionKind.Face -> 52.0
+                    TapReactionKind.Emoji -> measured.width / density.density.toDouble()
+                    TapReactionKind.Text -> measured.width / density.density + 28.0
+                    TapReactionKind.Plus -> measured.width / density.density + 22.0
+                }
+            val height =
+                when (reaction.kind) {
+                    TapReactionKind.Face -> 54.0
+                    TapReactionKind.Emoji -> 42.0 * density.fontScale
+                    TapReactionKind.Text -> 20.9 * density.fontScale + 18
+                    TapReactionKind.Plus -> 20.9 * density.fontScale + 17
+                }
+            val button =
+                TapRect(
+                    left = (padPosition.x + originX).toDouble(),
+                    top = (padPosition.y + originY).toDouble(),
+                    width = 105.0 * unit,
+                    height = 109.4277 * unit,
                 )
+            val timeOfTap = now()
+            val combo = feedback.combo(kind, timeOfTap)
+            val flight =
+                TapTrajectory.create(
+                    random = random,
+                    button = button,
+                    pointer = rootPoint(originX, originY, pointer),
+                    viewportWidth = rootWidth,
+                    width = width,
+                    height = height,
+                    combo = combo,
+                    reduced = reduce,
+                )
+            feedback.add(kind, reaction, flight, timeOfTap, width, height)
+            refresh()
+        }
+
+        LaunchedEffect(confirmedPress?.operationKey) {
+            val press = confirmedPress ?: return@LaunchedEffect
+            if (lastHandledPressKey == press.operationKey) return@LaunchedEffect
+            lastHandledPressKey = press.operationKey
+            val origin = pendingOrigin?.takeIf { it.emotion == press.emotion }
+            pendingOrigin = null
+            val index = EmotionKind.entries.indexOf(press.emotion)
+            addReaction(
+                kind = press.emotion,
+                originX = origin?.x ?: (inset + origins[index].first * unit),
+                originY = origin?.y ?: (origins[index].second * unit),
+                pointer = origin?.pointer,
+            )
+        }
+
+        Box(Modifier.fillMaxWidth().height((345 * unit).dp)) {
+            EmotionKind.entries.forEachIndexed { index, kind ->
+                val emotion = TapCatalog.emotion(kind)
+                val motion = motions.getValue(kind)
+                val (originX, originY) = origins[index]
+                val x = inset + originX * unit
+                val y = originY * unit
+                var pointer by remember(kind) { mutableStateOf<Offset?>(null) }
+                val interactions = remember(kind) { MutableInteractionSource() }
+                val keys = remember(kind) { mutableSetOf<Key>() }
+                var keyboardActivation by remember(kind) { mutableStateOf(false) }
+
+                LaunchedEffect(enabled, reduce, focused) {
+                    keys.clear()
+                    keyboardActivation = false
+                    pointer = null
+                }
+
+                val count = byKind[kind]?.count ?: 0L
+                val buttonModifier =
+                    Modifier
+                        .size((105 * unit).dp, (110 * unit).dp)
+                        .graphicsLayer {
+                            val transform = motion.sample(frameTime.value)
+                            transformOrigin = TransformOrigin(.5f, .8f)
+                            translationY = transform.y.toFloat() * density.density
+                            scaleX = transform.scale.toFloat()
+                            scaleY = scaleX
+                        }.testTag("emotion-${kind.name}")
+                        .pointerInput(reduce) {
+                            try {
+                                awaitEachGesture {
+                                    val down =
+                                        awaitFirstDown(
+                                            requireUnconsumed = false,
+                                            pass = PointerEventPass.Initial,
+                                        )
+                                    if (!inputEnabled) {
+                                        waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                                        return@awaitEachGesture
+                                    }
+                                    pointer = down.position
+                                    motion.press(now(), reduce)
+                                    refresh()
+                                    val up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
+                                    motion.release(now(), reduce)
+                                    if (up == null) pointer = null
+                                    refresh()
+                                }
+                            } finally {
+                                motion.reset()
+                                pointer = null
+                            }
+                        }.onFocusChanged { focusState ->
+                            if (!focusState.isFocused) {
+                                keys.clear()
+                                keyboardActivation = false
+                                motion.release(now(), reduce)
+                                refresh()
+                            }
+                        }.onPreviewKeyEvent { event ->
+                            val activation =
+                                event.key in
+                                    setOf(
+                                        Key.Enter,
+                                        Key.NumPadEnter,
+                                        Key.Spacebar,
+                                        Key.DirectionCenter,
+                                    )
+                            if (!enabled || !activation) {
+                                false
+                            } else {
+                                when (event.type) {
+                                    KeyEventType.KeyDown -> {
+                                        if (!keys.add(event.key)) {
+                                            true
+                                        } else {
+                                            keyboardActivation = true
+                                            motion.press(now(), reduce)
+                                            refresh()
+                                            false
+                                        }
+                                    }
+
+                                    KeyEventType.KeyUp -> {
+                                        keys.remove(event.key)
+                                        if (keys.isEmpty()) motion.release(now(), reduce)
+                                        refresh()
+                                        false
+                                    }
+
+                                    else -> {
+                                        false
+                                    }
+                                }
+                            }
+                        }.clickable(
+                            interactionSource = interactions,
+                            indication = null,
+                            enabled = enabled,
+                            role = Role.Button,
+                        ) {
+                            if (pointer == null && !keyboardActivation && !motion.pressed) {
+                                motion.tap(now(), reduce)
+                            } else {
+                                motion.release(now(), reduce)
+                            }
+                            if (callback(kind)) {
+                                if (fixtureFeedbackOnAcceptedPress) {
+                                    addReaction(kind, x, y, pointer)
+                                } else {
+                                    pendingOrigin = PendingTapOrigin(kind, x, y, pointer)
+                                }
+                            }
+                            pointer = null
+                            keyboardActivation = false
+                            refresh()
+                        }.semantics {
+                            contentDescription = "${emotion.label} 표현하기, ${formatCount(count)}번"
+                        }
+
+                Box(Modifier.offset(x.dp, y.dp).size((105 * unit).dp, (168 * unit).dp)) {
+                    Box(
+                        modifier = buttonModifier,
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Image(
+                            painter = painterResource(EmotionFeedbackCatalog.face(kind)),
+                            contentDescription = null,
+                            modifier =
+                                Modifier
+                                    .size((105 * unit).dp, (110 * unit).dp)
+                                    .testTag("emotion-surface-${kind.name}"),
+                        )
+                    }
+                    BasicText(
+                        text = emotion.label,
+                        modifier = Modifier.offset(0.dp, (116 * unit).dp).fillMaxWidth(),
+                        style =
+                            TextStyle(
+                                color = TapInk,
+                                fontFamily = font,
+                                fontSize = (16 * unit).sp,
+                                lineHeight = (19 * unit).sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                            ),
+                    )
+                    BasicText(
+                        text = formatCount(count),
+                        modifier =
+                            Modifier
+                                .offset((-10 * unit).dp, (138.6016f * unit).dp)
+                                .width((125 * unit).dp),
+                        style =
+                            TextStyle(
+                                color = Color(0xFF777C78),
+                                fontFamily = font,
+                                fontSize = (20 * unit).sp,
+                                lineHeight = (24 * unit).sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                            ),
+                    )
+                }
             }
 
-            EmotionStickerKind.Text -> {
-                FloatingTextSticker(
-                    text = stringResource(EmotionFeedbackCatalog.stickerText(burst.emotion, burst.stickerVariant)),
-                    fillColor = EmotionFeedbackCatalog.color(burst.emotion),
-                    rotationDegrees = burst.rotationDegrees,
-                    fontSize = 13.sp,
-                )
-            }
+            particles.forEach { particle ->
+                key(particle.id) {
+                    val reaction = particle.reaction
+                    val emotion = TapCatalog.emotion(particle.key)
+                    Box(
+                        modifier =
+                            Modifier
+                                .requiredSize(particle.width.dp, particle.height.dp)
+                                .graphicsLayer {
+                                    val transform = particle.flight.sample(frameTime.value - particle.started)
+                                    translationX =
+                                        ((particle.flight.left - padPosition.x + transform.x) * density.density)
+                                            .toFloat()
+                                    translationY =
+                                        ((particle.flight.top - padPosition.y + transform.y) * density.density)
+                                            .toFloat()
+                                    scaleX = transform.scale.toFloat()
+                                    scaleY = scaleX
+                                    rotationZ = transform.rotation.toFloat()
+                                    alpha = transform.alpha.toFloat()
+                                }.testTag("tap-particle"),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        when (reaction.kind) {
+                            TapReactionKind.Face -> {
+                                Image(painterResource(emotion.face), null, Modifier.fillMaxSize())
+                            }
 
-            EmotionStickerKind.Emoji -> {
-                FloatingEmojiSticker(
-                    text = stringResource(EmotionFeedbackCatalog.emoji(burst.emotion, burst.stickerVariant)),
-                    rotationDegrees = burst.rotationDegrees,
-                )
-            }
+                            TapReactionKind.Emoji -> {
+                                BasicText(reaction.value, style = stickerStyle(reaction, font))
+                            }
 
-            EmotionStickerKind.Face -> {
-                Image(
-                    painter = painterResource(EmotionFeedbackCatalog.face(burst.emotion)),
-                    contentDescription = null,
-                    modifier = Modifier.size(42.dp).rotate(burst.rotationDegrees),
-                )
+                            TapReactionKind.Text,
+                            TapReactionKind.Plus,
+                            -> {
+                                Canvas(Modifier.fillMaxSize()) {
+                                    val d = density.density
+                                    val radius = CornerRadius(12 * d)
+                                    drawRoundRect(TapInk, Offset(1 * d, 4 * d), size, radius)
+                                    drawRoundRect(
+                                        if (reaction.kind == TapReactionKind.Plus) Color(0xFFFFE36E) else emotion.color,
+                                        cornerRadius = radius,
+                                    )
+                                    drawRoundRect(
+                                        TapInk,
+                                        Offset(d, d),
+                                        Size(size.width - 2 * d, size.height - 2 * d),
+                                        CornerRadius(11 * d),
+                                        style = Stroke(2 * d),
+                                    )
+                                }
+                                BasicText(
+                                    text = reaction.value,
+                                    modifier =
+                                        Modifier.offset(
+                                            y = if (reaction.kind == TapReactionKind.Plus) (-.5).dp else (-1).dp,
+                                        ),
+                                    style = stickerStyle(reaction, font),
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
 
-@Composable
-private fun FloatingTextSticker(
-    text: String,
-    fillColor: Color,
-    rotationDegrees: Float,
-    fontSize: androidx.compose.ui.unit.TextUnit,
-) {
-    val shape = RoundedCornerShape(11.dp)
-    Text(
-        text = text,
-        modifier =
-            Modifier
-                .rotate(rotationDegrees)
-                .shadow(3.dp, shape)
-                .background(fillColor, shape)
-                .border(1.5.dp, AppColors.GroupInk, shape)
-                .padding(horizontal = 8.dp, vertical = 5.dp),
-        color = AppColors.GroupInk,
-        fontSize = fontSize,
-        fontWeight = FontWeight.Bold,
-        maxLines = 1,
-    )
-}
+private data class PendingTapOrigin(
+    val emotion: EmotionKind,
+    val x: Float,
+    val y: Float,
+    val pointer: Offset?,
+)
 
-@Composable
-private fun FloatingEmojiSticker(
-    text: String,
-    rotationDegrees: Float,
-) {
-    Box(
-        modifier =
-            Modifier
-                .size(42.dp)
-                .rotate(rotationDegrees)
-                .shadow(3.dp, CircleShape)
-                .background(Color.White, CircleShape)
-                .border(1.5.dp, AppColors.GroupInk, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(text = text, fontSize = 23.sp, lineHeight = 25.sp)
+private val TapInk = Color(0xFF242725)
+
+private fun stickerStyle(
+    reaction: TapReaction,
+    font: FontFamily,
+): TextStyle =
+    if (reaction.kind == TapReactionKind.Emoji) {
+        TextStyle(fontSize = 35.sp, lineHeight = 42.sp)
+    } else {
+        TextStyle(
+            color = TapInk,
+            fontFamily = font,
+            fontWeight = FontWeight.Black,
+            fontSize = 19.sp,
+            lineHeight = 20.9.sp,
+            letterSpacing = (-.6).sp,
+        )
     }
-}
 
 internal fun formatCount(value: Long): String =
     value
@@ -292,9 +528,3 @@ internal fun formatCount(value: Long): String =
         .chunked(3)
         .joinToString(",")
         .reversed()
-
-private const val FEEDBACK_DURATION_MILLIS = 1_080
-private const val FLOAT_DISTANCE_DP = 104f
-private const val FADE_IN_END = 0.1f
-private const val FADE_OUT_START = 0.72f
-private val PLUS_ONE_COLOR = Color(0xFFFFE55C)

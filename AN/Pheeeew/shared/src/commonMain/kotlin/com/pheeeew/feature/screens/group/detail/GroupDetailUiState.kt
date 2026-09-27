@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.group.detail
 
+import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 
@@ -10,7 +11,8 @@ data class GroupDetailUiState(
     val copyRequest: GroupCopyCodeRequest? = null,
     val notice: GroupDetailNotice? = null,
     val groupName: String? = null,
-    val emotionTapsEnabled: Boolean = true,
+    val pressStatus: GroupPressStatus = GroupPressStatus.Idle,
+    val confirmedPressFeedback: GroupPressFeedback? = null,
     val membershipEvent: GroupDetailMembershipEvent? = null,
 ) {
     val detail: GroupDetailUiModel?
@@ -23,7 +25,7 @@ data class GroupDetailUiState(
         get() = refreshStatus == GroupDetailRefreshStatus.Failed
 
     val canTapEmotion: Boolean
-        get() = emotionTapsEnabled && detail != null && overlay == GroupDetailOverlay.None
+        get() = detail != null && overlay == GroupDetailOverlay.None && pressStatus == GroupPressStatus.Idle
 
     init {
         require(content is GroupDetailContent.Ready || refreshStatus == GroupDetailRefreshStatus.Idle) {
@@ -55,6 +57,30 @@ enum class GroupDetailRefreshStatus {
     Refreshing,
     Failed,
 }
+
+sealed interface GroupPressStatus {
+    data object Idle : GroupPressStatus
+
+    data class Sending(
+        val operationKey: GroupOperationKey,
+        val emotion: EmotionKind,
+    ) : GroupPressStatus
+
+    data class Reconciling(
+        val operationKey: GroupOperationKey,
+        val emotion: EmotionKind,
+    ) : GroupPressStatus
+
+    data class OutcomeUnknown(
+        val operationKey: GroupOperationKey,
+        val emotion: EmotionKind,
+    ) : GroupPressStatus
+}
+
+data class GroupPressFeedback(
+    val operationKey: GroupOperationKey,
+    val emotion: EmotionKind,
+)
 
 sealed interface GroupDetailOverlay {
     data object None : GroupDetailOverlay
@@ -91,12 +117,16 @@ data class GroupCopyCodeRequest(
 data class GroupDetailNotice(
     val operationKey: GroupOperationKey,
     val kind: GroupDetailNoticeKind,
+    val retryAfterMillis: Long? = null,
 )
 
 enum class GroupDetailNoticeKind {
     CopySucceeded,
     CopyFailed,
-    EmotionUnavailable,
+    PressRejected,
+    PressUnavailable,
+    PressRateLimited,
+    PressBlockedWhilePending,
 }
 
 data class GroupDetailMembershipEvent(

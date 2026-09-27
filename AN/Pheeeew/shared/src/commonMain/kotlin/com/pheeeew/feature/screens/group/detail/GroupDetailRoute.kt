@@ -103,6 +103,7 @@ fun GroupDetailRoute(
                 onRetryLeave = viewModel::onRetryLeave,
                 onResolveLeaveOutcome = viewModel::onResolveLeaveOutcome,
                 onEmotionTap = viewModel::onEmotionTap,
+                onResolvePressOutcome = viewModel::onResolvePressOutcome,
                 onNoticeDismissed = viewModel::acknowledgeNotice,
             ),
         modifier = modifier,

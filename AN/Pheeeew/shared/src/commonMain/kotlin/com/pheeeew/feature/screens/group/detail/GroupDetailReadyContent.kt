@@ -19,6 +19,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +49,9 @@ import pheeeew.shared.generated.resources.group_detail_hero_neutral
 import pheeeew.shared.generated.resources.group_detail_hero_neutral_subtitle
 import pheeeew.shared.generated.resources.group_detail_load_error_body
 import pheeeew.shared.generated.resources.group_detail_loading
+import pheeeew.shared.generated.resources.group_detail_press_check
+import pheeeew.shared.generated.resources.group_detail_press_checking
+import pheeeew.shared.generated.resources.group_detail_press_unknown
 import pheeeew.shared.generated.resources.group_detail_rank_empty
 import pheeeew.shared.generated.resources.group_detail_rank_label
 import pheeeew.shared.generated.resources.group_detail_rank_number
@@ -70,9 +74,13 @@ internal fun GroupDetailReadyContent(
     isRefreshing: Boolean,
     hasRefreshError: Boolean,
     canTapEmotion: Boolean,
+    pressStatus: GroupPressStatus,
+    confirmedPressFeedback: GroupPressFeedback?,
     onInviteClick: () -> Unit,
     onRetry: () -> Unit,
     onEmotionTap: (EmotionKind) -> Boolean,
+    onResolvePressOutcome: () -> Unit,
+    fixtureFeedbackOnAcceptedPress: Boolean = false,
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
@@ -96,12 +104,61 @@ internal fun GroupDetailReadyContent(
                 lineHeight = 20.sp,
             )
             Spacer(Modifier.height(36.dp))
-            EmotionPad(counts = detail.emotionCounts, enabled = canTapEmotion, onEmotionTap = onEmotionTap)
+            PressStatusNotice(status = pressStatus, onResolveOutcome = onResolvePressOutcome)
+            EmotionPad(
+                counts = detail.emotionCounts,
+                enabled = canTapEmotion,
+                onEmotionTap = onEmotionTap,
+                confirmedPress = confirmedPressFeedback,
+                fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
+                preserveFeedbackWhileDisabled = pressStatus != GroupPressStatus.Idle,
+            )
             Spacer(Modifier.height(20.dp))
             TodayTotal(detail)
             Spacer(Modifier.height(24.dp))
             WeeklySummary(detail)
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun PressStatusNotice(
+    status: GroupPressStatus,
+    onResolveOutcome: () -> Unit,
+) {
+    when (status) {
+        GroupPressStatus.Idle,
+        is GroupPressStatus.Sending,
+        -> {
+            Unit
+        }
+
+        is GroupPressStatus.Reconciling -> {
+            val message = stringResource(Res.string.group_detail_press_checking)
+            Text(
+                text = message,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                color = Color(0xFF7B817B),
+                fontSize = 13.sp,
+            )
+        }
+
+        is GroupPressStatus.OutcomeUnknown -> {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(Res.string.group_detail_press_unknown),
+                    modifier = Modifier.weight(1f),
+                    color = Color(0xFF7B817B),
+                    fontSize = 13.sp,
+                )
+                TextButton(onClick = onResolveOutcome) {
+                    Text(text = stringResource(Res.string.group_detail_press_check), color = AppColors.GroupInk)
+                }
+            }
         }
     }
 }

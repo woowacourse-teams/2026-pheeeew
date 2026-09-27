@@ -111,6 +111,7 @@ private fun GroupDetailInteractivePreview() {
                 true
             }),
         modifier = Modifier.fillMaxSize(),
+        fixtureFeedbackOnAcceptedPress = true,
     )
 }
 
@@ -142,6 +143,7 @@ private fun previewActions(onEmotionTap: (EmotionKind) -> Boolean = { true }) =
         onRetryLeave = {},
         onResolveLeaveOutcome = {},
         onEmotionTap = onEmotionTap,
+        onResolvePressOutcome = {},
         onNoticeDismissed = {},
     )
 

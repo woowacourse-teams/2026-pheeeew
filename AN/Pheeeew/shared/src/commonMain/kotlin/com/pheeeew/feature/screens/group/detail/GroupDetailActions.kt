@@ -17,5 +17,6 @@ data class GroupDetailActions(
     val onRetryLeave: () -> Unit,
     val onResolveLeaveOutcome: () -> Unit,
     val onEmotionTap: (EmotionKind) -> Boolean,
+    val onResolvePressOutcome: () -> Unit,
     val onNoticeDismissed: (GroupOperationKey) -> Unit,
 )
