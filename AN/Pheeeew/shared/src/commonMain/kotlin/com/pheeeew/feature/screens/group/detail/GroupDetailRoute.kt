@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.collect
 
 /**
  * 상태 수집과 그룹 내부 콜백 연결을 담당합니다. 앱 navigation은 호출자가 소유합니다.
- * [onReturnHome]은 이전 화면으로 pop하는 대신 그룹 목록까지 이동하고 탈퇴한 그룹의 경로를 제거합니다.
+ * [onReturnHome]은 이전 화면으로 pop하는 대신 그룹 목록까지 이동하고 탈퇴한 그룹 경로를 제거합니다.
  */
 @Composable
 fun GroupDetailRoute(
@@ -25,8 +25,13 @@ fun GroupDetailRoute(
     isCurrentDestination: Boolean = true,
     onBack: () -> Unit,
     onReturnHome: () -> Unit,
-    onInviteClick: (GroupId) -> Unit,
     onLeft: (groupId: GroupId, operationKey: GroupOperationKey) -> Unit,
+    /** Invalidate the home snapshot and remove this ID before the view model acknowledges the event. */
+    onMembershipUnavailable: (
+        groupId: GroupId,
+        reason: GroupDetailAccessLoss,
+        operationKey: GroupOperationKey,
+    ) -> Unit,
     onCopyCode: suspend (code: String, operationKey: GroupOperationKey) -> GroupCopyCodeResult,
     modifier: Modifier = Modifier,
 ) {
@@ -34,8 +39,8 @@ fun GroupDetailRoute(
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnBack by rememberUpdatedState(onBack)
     val currentOnReturnHome by rememberUpdatedState(onReturnHome)
-    val currentOnInviteClick by rememberUpdatedState(onInviteClick)
     val currentOnLeft by rememberUpdatedState(onLeft)
+    val currentOnMembershipUnavailable by rememberUpdatedState(onMembershipUnavailable)
     val currentOnCopyCode by rememberUpdatedState(onCopyCode)
 
     LaunchedEffect(lifecycleOwner, viewModel, isCurrentDestination) {
@@ -43,9 +48,14 @@ fun GroupDetailRoute(
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             viewModel.onRefresh()
             viewModel.uiState.collect { state ->
-                val result = state.overlay as? GroupDetailOverlay.Left ?: return@collect
-                currentOnLeft(viewModel.groupId, result.operationKey)
-                viewModel.acknowledgeLeft(result.operationKey)
+                state.membershipEvent?.let { event ->
+                    currentOnMembershipUnavailable(viewModel.groupId, event.reason, event.operationKey)
+                    viewModel.acknowledgeMembershipEvent(event.operationKey)
+                }
+                (state.overlay as? GroupDetailOverlay.Left)?.let { result ->
+                    currentOnLeft(viewModel.groupId, result.operationKey)
+                    viewModel.acknowledgeLeft(result.operationKey)
+                }
             }
         }
     }
@@ -86,7 +96,6 @@ fun GroupDetailRoute(
                 onRetry = viewModel::onRetry,
                 onMoreClick = viewModel::onMoreClick,
                 onInviteClick = viewModel::onInviteClick,
-                onInviteShareClick = { currentOnInviteClick(viewModel.groupId) },
                 onCopyCodeClick = viewModel::onCopyCodeClick,
                 onDismissOverlay = viewModel::onDismissOverlay,
                 onLeaveMenuClick = viewModel::onLeaveMenuClick,

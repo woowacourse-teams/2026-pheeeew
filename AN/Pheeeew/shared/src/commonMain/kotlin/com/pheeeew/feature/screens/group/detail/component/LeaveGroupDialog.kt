@@ -37,10 +37,14 @@ import pheeeew.shared.generated.resources.group_detail_leave_error_body
 import pheeeew.shared.generated.resources.group_detail_leave_error_title
 import pheeeew.shared.generated.resources.group_detail_leave_failure_close
 import pheeeew.shared.generated.resources.group_detail_leave_retry
+import pheeeew.shared.generated.resources.group_detail_leave_still_member_body
+import pheeeew.shared.generated.resources.group_detail_leave_still_member_title
 import pheeeew.shared.generated.resources.group_detail_leave_title
 import pheeeew.shared.generated.resources.group_detail_leave_unknown_body
 import pheeeew.shared.generated.resources.group_detail_leave_unknown_reconcile
 import pheeeew.shared.generated.resources.group_detail_leave_unknown_title
+import pheeeew.shared.generated.resources.group_detail_owner_leave_body
+import pheeeew.shared.generated.resources.group_detail_owner_leave_title
 import pheeeew.shared.generated.resources.group_detail_leaving_body
 import pheeeew.shared.generated.resources.group_detail_leaving_title
 
@@ -112,6 +116,41 @@ internal fun LeaveGroupDialog(
                             enabled = true,
                             isPrimary = true,
                             onClick = onResolveOutcome,
+                        )
+                        Spacer(Modifier.height(28.dp))
+                    }
+
+                    overlay == GroupDetailOverlay.LeaveStillMember -> {
+                        Spacer(Modifier.height(30.dp))
+                        DialogTitle(stringResource(Res.string.group_detail_leave_still_member_title))
+                        DialogBody(stringResource(Res.string.group_detail_leave_still_member_body))
+                        Spacer(Modifier.height(26.dp))
+                        DetailDialogButton(
+                            text = stringResource(Res.string.group_detail_leave_retry),
+                            enabled = true,
+                            isPrimary = true,
+                            onClick = onRetry,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        DetailDialogButton(
+                            text = stringResource(Res.string.group_detail_leave_failure_close),
+                            enabled = true,
+                            isPrimary = false,
+                            onClick = onDismiss,
+                        )
+                        Spacer(Modifier.height(28.dp))
+                    }
+
+                    overlay == GroupDetailOverlay.OwnerCannotLeave -> {
+                        Spacer(Modifier.height(30.dp))
+                        DialogTitle(stringResource(Res.string.group_detail_owner_leave_title))
+                        DialogBody(stringResource(Res.string.group_detail_owner_leave_body))
+                        Spacer(Modifier.height(26.dp))
+                        DetailDialogButton(
+                            text = stringResource(Res.string.group_detail_leave_failure_close),
+                            enabled = true,
+                            isPrimary = true,
+                            onClick = onDismiss,
                         )
                         Spacer(Modifier.height(28.dp))
                     }

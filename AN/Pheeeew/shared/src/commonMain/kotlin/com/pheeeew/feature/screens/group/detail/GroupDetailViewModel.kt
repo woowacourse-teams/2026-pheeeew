@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.group.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.model.GroupId
@@ -21,7 +22,13 @@ class GroupDetailViewModel(
     private val dependencies: GroupDetailDependencies,
     initialGroupName: String? = null,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(GroupDetailUiState(groupName = initialGroupName))
+    private val _uiState =
+        MutableStateFlow(
+            GroupDetailUiState(
+                groupName = initialGroupName,
+                emotionTapsEnabled = dependencies.emotionTapsEnabled,
+            ),
+        )
     val uiState = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
@@ -34,12 +41,21 @@ class GroupDetailViewModel(
 
     fun onRetry() {
         val state = _uiState.value
-        if (state.overlay != GroupDetailOverlay.None || state.content is GroupDetailContent.MembershipChanged) return
+        if (state.overlay != GroupDetailOverlay.None || state.content is GroupDetailContent.MembershipChanged ||
+            state.content is GroupDetailContent.NotFound
+        ) {
+            return
+        }
         loadDetail()
     }
 
     fun onRefresh() {
-        if (_uiState.value.overlay != GroupDetailOverlay.None) return
+        val state = _uiState.value
+        if (state.overlay != GroupDetailOverlay.None || state.content is GroupDetailContent.MembershipChanged ||
+            state.content is GroupDetailContent.NotFound
+        ) {
+            return
+        }
         loadDetail()
     }
 
@@ -109,8 +125,11 @@ class GroupDetailViewModel(
 
     fun onLeaveMenuClick() {
         _uiState.update { state ->
-            if (state.detail == null || state.overlay != GroupDetailOverlay.Menu) {
+            val detail = state.detail
+            if (detail == null || state.overlay != GroupDetailOverlay.Menu) {
                 state
+            } else if (detail.role == GroupRole.OWNER) {
+                state.copy(overlay = GroupDetailOverlay.OwnerCannotLeave)
             } else {
                 state.copy(overlay = GroupDetailOverlay.LeaveConfirm)
             }
@@ -124,6 +143,8 @@ class GroupDetailViewModel(
                 GroupDetailOverlay.InviteCode,
                 GroupDetailOverlay.LeaveConfirm,
                 GroupDetailOverlay.LeaveFailed,
+                GroupDetailOverlay.LeaveStillMember,
+                GroupDetailOverlay.OwnerCannotLeave,
                 -> {
                     state.copy(overlay = GroupDetailOverlay.None, copyRequest = null)
                 }
@@ -150,6 +171,8 @@ class GroupDetailViewModel(
             GroupDetailOverlay.InviteCode,
             GroupDetailOverlay.LeaveConfirm,
             GroupDetailOverlay.LeaveFailed,
+            GroupDetailOverlay.LeaveStillMember,
+            GroupDetailOverlay.OwnerCannotLeave,
             -> {
                 onDismissOverlay()
                 false
@@ -217,20 +240,19 @@ class GroupDetailViewModel(
     }
 
     fun onRetryLeave() {
-        submitLeave(expectedOverlay = GroupDetailOverlay.LeaveFailed)
+        when (val overlay = _uiState.value.overlay) {
+            GroupDetailOverlay.LeaveFailed,
+            GroupDetailOverlay.LeaveStillMember,
+            -> submitLeave(expectedOverlay = overlay)
+
+            else -> Unit
+        }
     }
 
     /** 결과가 불명확할 때 쓰기 요청을 재전송하지 않고 상세/멤버십을 다시 조회합니다. */
     fun onResolveLeaveOutcome() {
         if (_uiState.value.overlay != GroupDetailOverlay.LeaveOutcomeUnknown) return
-        _uiState.update { state ->
-            if (state.overlay == GroupDetailOverlay.LeaveOutcomeUnknown) {
-                state.copy(overlay = GroupDetailOverlay.None)
-            } else {
-                state
-            }
-        }
-        loadDetail()
+        loadDetail(reconcileLeaveOutcome = true)
     }
 
     fun acknowledgeLeft(operationKey: GroupOperationKey) {
@@ -243,7 +265,13 @@ class GroupDetailViewModel(
         }
     }
 
-    private fun loadDetail() {
+    fun acknowledgeMembershipEvent(operationKey: GroupOperationKey) {
+        _uiState.update { state ->
+            if (state.membershipEvent?.operationKey == operationKey) state.copy(membershipEvent = null) else state
+        }
+    }
+
+    private fun loadDetail(reconcileLeaveOutcome: Boolean = false) {
         if (loadJob?.isActive == true) return
 
         val requestId = ++loadGeneration
@@ -266,6 +294,27 @@ class GroupDetailViewModel(
                             IllegalStateException("상세 공급자가 요청한 그룹과 다른 ID를 반환했습니다."),
                         )
                     }
+
+                    val membershipEvent =
+                        when (result) {
+                            GroupDetailLoadResult.MembershipChanged -> {
+                                GroupDetailMembershipEvent(
+                                    operationKey = dependencies.operationKeyAllocator.next(),
+                                    reason = GroupDetailAccessLoss.MembershipChanged,
+                                )
+                            }
+
+                            GroupDetailLoadResult.NotFound -> {
+                                GroupDetailMembershipEvent(
+                                    operationKey = dependencies.operationKeyAllocator.next(),
+                                    reason = GroupDetailAccessLoss.NotFound,
+                                )
+                            }
+
+                            is GroupDetailLoadResult.Loaded,
+                            GroupDetailLoadResult.Unavailable,
+                            -> null
+                        }
 
                     _uiState.update { state ->
                         when (result) {
@@ -293,6 +342,14 @@ class GroupDetailViewModel(
                                         content = GroupDetailContent.Ready(detail),
                                         groupName = detail.group.name,
                                         refreshStatus = GroupDetailRefreshStatus.Idle,
+                                        overlay =
+                                            if (reconcileLeaveOutcome &&
+                                                state.overlay == GroupDetailOverlay.LeaveOutcomeUnknown
+                                            ) {
+                                                GroupDetailOverlay.LeaveStillMember
+                                            } else {
+                                                state.overlay
+                                            },
                                     )
                                 }
                             }
@@ -303,6 +360,17 @@ class GroupDetailViewModel(
                                     refreshStatus = GroupDetailRefreshStatus.Idle,
                                     overlay = GroupDetailOverlay.None,
                                     copyRequest = null,
+                                    membershipEvent = membershipEvent,
+                                )
+                            }
+
+                            GroupDetailLoadResult.NotFound -> {
+                                state.copy(
+                                    content = GroupDetailContent.NotFound,
+                                    refreshStatus = GroupDetailRefreshStatus.Idle,
+                                    overlay = GroupDetailOverlay.None,
+                                    copyRequest = null,
+                                    membershipEvent = membershipEvent,
                                 )
                             }
 
@@ -346,6 +414,16 @@ class GroupDetailViewModel(
 
     private fun submitLeave(expectedOverlay: GroupDetailOverlay) {
         val current = _uiState.value
+        if (current.detail?.role == GroupRole.OWNER) {
+            _uiState.update { state ->
+                if (state.overlay == expectedOverlay) {
+                    state.copy(overlay = GroupDetailOverlay.OwnerCannotLeave)
+                } else {
+                    state
+                }
+            }
+            return
+        }
         if (current.detail == null || current.overlay != expectedOverlay || leaveJob?.isActive == true) return
 
         invalidateLoad()
@@ -385,6 +463,42 @@ class GroupDetailViewModel(
                                         content = GroupDetailContent.MembershipChanged,
                                         groupName = state.detail?.group?.name ?: state.groupName,
                                         overlay = GroupDetailOverlay.Left(operationKey),
+                                        membershipEvent = null,
+                                    )
+                                }
+
+                                LeaveGroupResult.MembershipChanged -> {
+                                    state.copy(
+                                        content = GroupDetailContent.MembershipChanged,
+                                        groupName = state.detail?.group?.name ?: state.groupName,
+                                        overlay = GroupDetailOverlay.None,
+                                        membershipEvent =
+                                            GroupDetailMembershipEvent(
+                                                operationKey,
+                                                GroupDetailAccessLoss.MembershipChanged,
+                                            ),
+                                    )
+                                }
+
+                                LeaveGroupResult.NotFound -> {
+                                    state.copy(
+                                        content = GroupDetailContent.NotFound,
+                                        groupName = state.detail?.group?.name ?: state.groupName,
+                                        overlay = GroupDetailOverlay.None,
+                                        membershipEvent =
+                                            GroupDetailMembershipEvent(operationKey, GroupDetailAccessLoss.NotFound),
+                                    )
+                                }
+
+                                LeaveGroupResult.OwnerCannotLeave -> {
+                                    val detail = state.detail
+                                    state.copy(
+                                        content =
+                                            detail?.let {
+                                                GroupDetailContent.Ready(it.copy(role = GroupRole.OWNER))
+                                            }
+                                            ?: state.content,
+                                        overlay = GroupDetailOverlay.OwnerCannotLeave,
                                     )
                                 }
 

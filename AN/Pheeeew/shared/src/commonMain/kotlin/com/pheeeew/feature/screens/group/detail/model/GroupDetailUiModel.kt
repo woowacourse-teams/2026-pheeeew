@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.group.detail.model
 
+import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
 
 data class EmotionCountUiModel(
@@ -28,6 +29,7 @@ sealed interface GroupRankUiModel {
 enum class GroupDetailPresentationKind {
     FirstStart,
     Active,
+    Neutral,
 }
 
 data class GroupDetailPresentationUiModel(
@@ -38,16 +40,16 @@ data class GroupDetailPresentationUiModel(
 ) {
     init {
         val expectedTitle =
-            if (kind == GroupDetailPresentationKind.FirstStart) {
-                GroupDetailCopyKey.FirstStartHeroTitle
-            } else {
-                GroupDetailCopyKey.ActiveHeroTitle
+            when (kind) {
+                GroupDetailPresentationKind.FirstStart -> GroupDetailCopyKey.FirstStartHeroTitle
+                GroupDetailPresentationKind.Active -> GroupDetailCopyKey.ActiveHeroTitle
+                GroupDetailPresentationKind.Neutral -> GroupDetailCopyKey.NeutralHeroTitle
             }
         val expectedSubtitle =
-            if (kind == GroupDetailPresentationKind.FirstStart) {
-                GroupDetailCopyKey.FirstStartHeroSubtitle
-            } else {
-                GroupDetailCopyKey.ActiveHeroSubtitle
+            when (kind) {
+                GroupDetailPresentationKind.FirstStart -> GroupDetailCopyKey.FirstStartHeroSubtitle
+                GroupDetailPresentationKind.Active -> GroupDetailCopyKey.ActiveHeroSubtitle
+                GroupDetailPresentationKind.Neutral -> GroupDetailCopyKey.NeutralHeroSubtitle
             }
         require(heroTitle == expectedTitle && heroSubtitle == expectedSubtitle) {
             "상세 표시 상태와 헤드라인 문구가 일치해야 합니다."
@@ -61,26 +63,29 @@ enum class GroupDetailCopyKey {
     FirstStartHeroSubtitle,
     ActiveHeroTitle,
     ActiveHeroSubtitle,
+    NeutralHeroTitle,
+    NeutralHeroSubtitle,
     SummaryBlocked,
     SummaryAnnoyed,
     SummaryTired,
     SummaryDefeated,
     SummaryAngry,
+    SummaryNeutral,
 }
 
 /** 상세 화면이 공급자에서 받아 표시하는 스냅샷입니다. 카운트를 다시 계산하지 않습니다. */
 data class GroupDetailUiModel(
     val group: GroupSummaryUiModel,
+    val role: GroupRole,
     val emotionCounts: List<EmotionCountUiModel>,
     val todayTotal: Long,
-    val weeklyScore: Long,
     val rank: GroupRankUiModel,
     val inviteCode: String,
     val presentation: GroupDetailPresentationUiModel,
 ) {
     init {
         require(todayTotal >= 0L) { "오늘 횟수는 음수일 수 없습니다." }
-        require(weeklyScore >= 0L) { "이번 주 점수는 음수일 수 없습니다." }
+        require(group.weeklyStampCount != null) { "상세에는 이번 주 점수가 포함되어야 합니다." }
         require(inviteCode.isNotBlank()) { "초대코드는 비어 있을 수 없습니다." }
         require(emotionCounts.size == EmotionKind.entries.size) { "감정 횟수는 다섯 종류여야 합니다." }
         require(emotionCounts.map { it.kind }.toSet() == EmotionKind.entries.toSet()) {

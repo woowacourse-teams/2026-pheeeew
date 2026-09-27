@@ -55,6 +55,8 @@ import pheeeew.shared.generated.resources.group_detail_membership_changed_body
 import pheeeew.shared.generated.resources.group_detail_membership_changed_title
 import pheeeew.shared.generated.resources.group_detail_menu_leave
 import pheeeew.shared.generated.resources.group_detail_more
+import pheeeew.shared.generated.resources.group_detail_not_found_body
+import pheeeew.shared.generated.resources.group_detail_not_found_title
 import pheeeew.shared.generated.resources.group_detail_retry
 import pheeeew.shared.generated.resources.group_detail_return_home
 import pheeeew.shared.generated.resources.group_home_error_illustration
@@ -95,6 +97,10 @@ fun GroupDetailScreen(
                     MembershipChangedContent(onReturnHome = actions.onReturnHome)
                 }
 
+                GroupDetailContent.NotFound -> {
+                    NotFoundContent(onReturnHome = actions.onReturnHome)
+                }
+
                 is GroupDetailContent.Ready -> {
                     GroupDetailReadyContent(
                         detail = content.detail,
@@ -102,7 +108,6 @@ fun GroupDetailScreen(
                         hasRefreshError = uiState.hasRefreshError,
                         canTapEmotion = uiState.canTapEmotion,
                         onInviteClick = actions.onInviteClick,
-                        onInviteShareClick = actions.onInviteShareClick,
                         onRetry = actions.onRetry,
                         onEmotionTap = actions.onEmotionTap,
                     )
@@ -144,6 +149,8 @@ fun GroupDetailScreen(
 
         GroupDetailOverlay.LeaveConfirm,
         GroupDetailOverlay.LeaveFailed,
+        GroupDetailOverlay.LeaveStillMember,
+        GroupDetailOverlay.OwnerCannotLeave,
         GroupDetailOverlay.LeaveOutcomeUnknown,
         is GroupDetailOverlay.Leaving,
         is GroupDetailOverlay.Left,
@@ -279,6 +286,16 @@ private fun MembershipChangedContent(onReturnHome: () -> Unit) {
     DetailUnavailableContent(
         title = stringResource(Res.string.group_detail_membership_changed_title),
         body = stringResource(Res.string.group_detail_membership_changed_body),
+        actionLabel = stringResource(Res.string.group_detail_return_home),
+        onAction = onReturnHome,
+    )
+}
+
+@Composable
+private fun NotFoundContent(onReturnHome: () -> Unit) {
+    DetailUnavailableContent(
+        title = stringResource(Res.string.group_detail_not_found_title),
+        body = stringResource(Res.string.group_detail_not_found_body),
         actionLabel = stringResource(Res.string.group_detail_return_home),
         onAction = onReturnHome,
     )
