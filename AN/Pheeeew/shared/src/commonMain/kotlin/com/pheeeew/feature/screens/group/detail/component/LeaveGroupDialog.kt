@@ -43,10 +43,10 @@ import pheeeew.shared.generated.resources.group_detail_leave_title
 import pheeeew.shared.generated.resources.group_detail_leave_unknown_body
 import pheeeew.shared.generated.resources.group_detail_leave_unknown_reconcile
 import pheeeew.shared.generated.resources.group_detail_leave_unknown_title
-import pheeeew.shared.generated.resources.group_detail_owner_leave_body
-import pheeeew.shared.generated.resources.group_detail_owner_leave_title
 import pheeeew.shared.generated.resources.group_detail_leaving_body
 import pheeeew.shared.generated.resources.group_detail_leaving_title
+import pheeeew.shared.generated.resources.group_detail_owner_leave_body
+import pheeeew.shared.generated.resources.group_detail_owner_leave_title
 
 @Composable
 internal fun LeaveGroupDialog(

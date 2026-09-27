@@ -1,7 +1,6 @@
 package com.pheeeew.feature.screens.group.adapter
 
 import com.pheeeew.domain.model.group.GroupDetail
-import com.pheeeew.domain.model.group.GroupId as DomainGroupId
 import com.pheeeew.domain.model.group.GroupPressState
 import com.pheeeew.domain.repository.group.GroupDetailLookupResult
 import com.pheeeew.domain.repository.group.GroupDetailRepository
@@ -21,13 +20,15 @@ import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupRankUiModel
 import com.pheeeew.feature.screens.group.mapper.toSummaryUiModel
 import com.pheeeew.feature.screens.group.model.GroupId
+import com.pheeeew.domain.model.group.GroupId as DomainGroupId
 
 class ApiGroupDetailSource(
     private val repository: GroupDetailRepository,
 ) : GroupDetailSource {
     override suspend fun load(groupId: GroupId): GroupDetailLoadResult {
-        val domainGroupId = DomainGroupId.parse(groupId.value)
-            ?: return GroupDetailLoadResult.Unavailable
+        val domainGroupId =
+            DomainGroupId.parse(groupId.value)
+                ?: return GroupDetailLoadResult.Unavailable
         return when (val result = repository.findById(domainGroupId)) {
             is GroupDetailLookupResult.Found -> GroupDetailLoadResult.Loaded(result.detail.toUiModel())
             GroupDetailLookupResult.MembershipChanged -> GroupDetailLoadResult.MembershipChanged
@@ -41,8 +42,9 @@ class ApiLeaveGroupAction(
     private val repository: GroupDetailRepository,
 ) : LeaveGroupAction {
     override suspend fun leave(groupId: GroupId): LeaveGroupResult {
-        val domainGroupId = DomainGroupId.parse(groupId.value)
-            ?: return LeaveGroupResult.Unavailable
+        val domainGroupId =
+            DomainGroupId.parse(groupId.value)
+                ?: return LeaveGroupResult.Unavailable
         return when (repository.leave(domainGroupId)) {
             GroupLeaveResult.Left -> LeaveGroupResult.Left
             GroupLeaveResult.MembershipChanged -> LeaveGroupResult.MembershipChanged

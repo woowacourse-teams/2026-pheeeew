@@ -20,7 +20,9 @@ class GroupDetailRepositoryImpl(
             is ApiResult.Success -> {
                 try {
                     val detail = GroupDetailResponseMapper.toDomain(result.value)
-                    if (!detail.group.id.value.equals(groupId.value, ignoreCase = true)) {
+                    if (!detail.group.id.value
+                            .equals(groupId.value, ignoreCase = true)
+                    ) {
                         GroupDetailLookupResult.Unavailable
                     } else {
                         GroupDetailLookupResult.Found(detail)
@@ -32,7 +34,9 @@ class GroupDetailRepositoryImpl(
                 }
             }
 
-            is ApiResult.Failure -> result.reason.toLookupResult()
+            is ApiResult.Failure -> {
+                result.reason.toLookupResult()
+            }
         }
 
     override suspend fun leave(groupId: GroupId): GroupLeaveResult =
@@ -65,14 +69,25 @@ class GroupDetailRepositoryImpl(
         when (this) {
             is NetworkFailure.HttpStatus -> {
                 when {
-                    statusCode == FORBIDDEN_STATUS -> GroupLeaveResult.MembershipChanged
-                    statusCode == NOT_FOUND_STATUS -> GroupLeaveResult.NotFound
-                    statusCode == CONFLICT_STATUS -> GroupLeaveResult.OwnerCannotLeave
+                    statusCode == FORBIDDEN_STATUS -> {
+                        GroupLeaveResult.MembershipChanged
+                    }
+
+                    statusCode == NOT_FOUND_STATUS -> {
+                        GroupLeaveResult.NotFound
+                    }
+
+                    statusCode == CONFLICT_STATUS -> {
+                        GroupLeaveResult.OwnerCannotLeave
+                    }
+
                     statusCode == REQUEST_TIMEOUT_STATUS || statusCode == TOO_EARLY_STATUS || statusCode >= 500 -> {
                         GroupLeaveResult.OutcomeUnknown
                     }
 
-                    else -> GroupLeaveResult.Unavailable
+                    else -> {
+                        GroupLeaveResult.Unavailable
+                    }
                 }
             }
 

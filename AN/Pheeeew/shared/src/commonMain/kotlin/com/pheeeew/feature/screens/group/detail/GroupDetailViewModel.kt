@@ -313,7 +313,9 @@ class GroupDetailViewModel(
 
                             is GroupDetailLoadResult.Loaded,
                             GroupDetailLoadResult.Unavailable,
-                            -> null
+                            -> {
+                                null
+                            }
                         }
 
                     _uiState.update { state ->
@@ -497,7 +499,7 @@ class GroupDetailViewModel(
                                             detail?.let {
                                                 GroupDetailContent.Ready(it.copy(role = GroupRole.OWNER))
                                             }
-                                            ?: state.content,
+                                                ?: state.content,
                                         overlay = GroupDetailOverlay.OwnerCannotLeave,
                                     )
                                 }
