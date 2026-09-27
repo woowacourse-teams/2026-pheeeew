@@ -2,7 +2,6 @@ package com.pheeeew.feature.screens.map.detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,13 +13,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.feature.screens.map.record.noRippleClickable
 
 @Composable
 internal fun EmotionReactionGrid(
@@ -50,7 +49,7 @@ internal fun EmotionReactionGrid(
                                     Modifier
                                 },
                             ).padding(vertical = 8.dp, horizontal = 16.dp)
-                            .clickable(enabled = enabled, role = Role.Button) { onReactionClick(reaction.id) },
+                            .noRippleClickable(enabled) { onReactionClick(reaction.id) },
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.CenterHorizontally),
                     ) {
