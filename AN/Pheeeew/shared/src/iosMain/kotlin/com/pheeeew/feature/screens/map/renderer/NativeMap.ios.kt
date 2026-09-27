@@ -25,8 +25,10 @@ internal actual fun NativeMap(
     onMapRecovered: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapBounds) -> Unit,
+    onEmotionPinClick: (Long) -> Unit,
     modifier: Modifier,
 ) {
+    val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val currentOnRecordViewportChanged by rememberUpdatedState(onRecordViewportChanged)
@@ -34,6 +36,8 @@ internal actual fun NativeMap(
     val eventSink =
         remember {
             object : FoundationIosMapEventSink {
+                override fun onEmotionPinClick(id: Long) = currentOnEmotionPinClick(id)
+
                 override fun onRendererUnavailable() = currentOnMapError(MapErrorUiModel.RendererUnavailable)
 
                 override fun onStyleLoadFailed() = currentOnMapError(MapErrorUiModel.StyleLoadFailed)

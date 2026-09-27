@@ -12,7 +12,6 @@ import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.group.GroupStampFrame
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
-import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.headersOf
@@ -175,5 +174,5 @@ class EmotionMapApiTest {
             }
         }
 
-    private fun jsonHeaders() = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+    private fun jsonHeaders() = headersOf(HttpHeaders.ContentType, "application/geo+json")
 }

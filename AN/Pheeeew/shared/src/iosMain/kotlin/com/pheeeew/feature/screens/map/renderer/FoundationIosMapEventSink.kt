@@ -3,6 +3,8 @@ package com.pheeeew.feature.screens.map.renderer
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 
 interface FoundationIosMapEventSink {
+    fun onEmotionPinClick(id: Long)
+
     fun onRendererUnavailable()
 
     fun onStyleLoadFailed()

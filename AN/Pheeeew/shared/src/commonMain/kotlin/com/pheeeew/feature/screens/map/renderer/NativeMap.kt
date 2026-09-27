@@ -13,5 +13,6 @@ internal expect fun NativeMap(
     onMapRecovered: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapBounds) -> Unit,
+    onEmotionPinClick: (Long) -> Unit,
     modifier: Modifier,
 )

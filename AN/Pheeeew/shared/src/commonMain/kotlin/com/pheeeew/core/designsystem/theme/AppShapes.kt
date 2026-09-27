@@ -9,4 +9,6 @@ object AppShapes {
     val Input = RoundedCornerShape(20.dp)
 
     val Button = RoundedCornerShape(20.dp)
+
+    val DetailDialog = RoundedCornerShape(20.dp)
 }
