@@ -61,8 +61,8 @@ internal fun LeaveGroupDialog(
         onDismissRequest = onDismiss,
         properties =
             DialogProperties(
-                dismissOnBackPress = !isWorking && overlay != GroupDetailOverlay.LeaveOutcomeUnknown,
-                dismissOnClickOutside = !isWorking && overlay != GroupDetailOverlay.LeaveOutcomeUnknown,
+                dismissOnBackPress = !isWorking,
+                dismissOnClickOutside = !isWorking,
                 usePlatformDefaultWidth = false,
             ),
     ) {
@@ -116,6 +116,13 @@ internal fun LeaveGroupDialog(
                             enabled = true,
                             isPrimary = true,
                             onClick = onResolveOutcome,
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        DetailDialogButton(
+                            text = stringResource(Res.string.group_detail_leave_failure_close),
+                            enabled = true,
+                            isPrimary = false,
+                            onClick = onDismiss,
                         )
                         Spacer(Modifier.height(28.dp))
                     }

@@ -145,12 +145,12 @@ class GroupDetailViewModel(
                 GroupDetailOverlay.LeaveFailed,
                 GroupDetailOverlay.LeaveStillMember,
                 GroupDetailOverlay.OwnerCannotLeave,
+                GroupDetailOverlay.LeaveOutcomeUnknown,
                 -> {
                     state.copy(overlay = GroupDetailOverlay.None, copyRequest = null)
                 }
 
                 GroupDetailOverlay.None,
-                GroupDetailOverlay.LeaveOutcomeUnknown,
                 is GroupDetailOverlay.Leaving,
                 is GroupDetailOverlay.Left,
                 -> {
@@ -173,13 +173,13 @@ class GroupDetailViewModel(
             GroupDetailOverlay.LeaveFailed,
             GroupDetailOverlay.LeaveStillMember,
             GroupDetailOverlay.OwnerCannotLeave,
+            GroupDetailOverlay.LeaveOutcomeUnknown,
             -> {
                 onDismissOverlay()
                 false
             }
 
             is GroupDetailOverlay.Leaving,
-            GroupDetailOverlay.LeaveOutcomeUnknown,
             is GroupDetailOverlay.Left,
             -> {
                 false
