@@ -177,6 +177,14 @@
     <string name="group_detail_copy_succeeded">초대코드를 복사했어요.</string>
     <string name="group_detail_copy_failed">초대코드를 복사하지 못했어요.</string>
     <string name="group_detail_emotion_failed">감정을 보내지 못했어요. 다시 눌러 주세요.</string>
+    <string name="group_detail_press_sending">감정을 보내고 있어요.</string>
+    <string name="group_detail_press_checking">서버에 기록됐는지 확인하고 있어요.</string>
+    <string name="group_detail_press_unknown">전송 결과를 확인하지 못했어요. 중복 전송을 막기 위해 기록을 먼저 확인해 주세요.</string>
+    <string name="group_detail_press_check">기록 확인</string>
+    <string name="group_detail_press_failed">감정을 기록하지 못했어요.</string>
+    <string name="group_detail_press_rate_limited">요청이 많아요. 잠시 후 다시 눌러 주세요.</string>
+    <string name="group_detail_press_rate_limited_retry">요청이 많아요. %1$d초 후 다시 눌러 주세요.</string>
+    <string name="group_detail_press_blocked">감정 전송이 끝난 뒤 그룹을 나갈 수 있어요.</string>
     <string name="group_detail_feedback_plus_one">+1</string>
     <string name="group_detail_sticker_blocked_1">으아!!</string>
     <string name="group_detail_sticker_blocked_2">꽉 막혔어</string>

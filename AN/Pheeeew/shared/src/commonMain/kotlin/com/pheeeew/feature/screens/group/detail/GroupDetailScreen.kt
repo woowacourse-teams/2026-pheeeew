@@ -48,6 +48,10 @@ import pheeeew.shared.generated.resources.group_detail_back
 import pheeeew.shared.generated.resources.group_detail_copy_failed
 import pheeeew.shared.generated.resources.group_detail_copy_succeeded
 import pheeeew.shared.generated.resources.group_detail_emotion_failed
+import pheeeew.shared.generated.resources.group_detail_press_failed
+import pheeeew.shared.generated.resources.group_detail_press_rate_limited
+import pheeeew.shared.generated.resources.group_detail_press_rate_limited_retry
+import pheeeew.shared.generated.resources.group_detail_press_blocked
 import pheeeew.shared.generated.resources.group_detail_load_error_body
 import pheeeew.shared.generated.resources.group_detail_load_error_title
 import pheeeew.shared.generated.resources.group_detail_loading
@@ -68,6 +72,7 @@ fun GroupDetailScreen(
     uiState: GroupDetailUiState,
     actions: GroupDetailActions,
     modifier: Modifier = Modifier,
+    fixtureFeedbackOnAcceptedPress: Boolean = false,
 ) {
     val title = uiState.detail?.group?.name ?: uiState.groupName ?: stringResource(Res.string.group_home_title)
     Box(
@@ -107,9 +112,13 @@ fun GroupDetailScreen(
                         isRefreshing = uiState.isRefreshing,
                         hasRefreshError = uiState.hasRefreshError,
                         canTapEmotion = uiState.canTapEmotion,
+                        pressStatus = uiState.pressStatus,
+                        confirmedPressFeedback = uiState.confirmedPressFeedback,
                         onInviteClick = actions.onInviteClick,
                         onRetry = actions.onRetry,
                         onEmotionTap = actions.onEmotionTap,
+                        onResolvePressOutcome = actions.onResolvePressOutcome,
+                        fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
                     )
                 }
             }
@@ -120,7 +129,21 @@ fun GroupDetailScreen(
                 when (notice.kind) {
                     GroupDetailNoticeKind.CopySucceeded -> stringResource(Res.string.group_detail_copy_succeeded)
                     GroupDetailNoticeKind.CopyFailed -> stringResource(Res.string.group_detail_copy_failed)
-                    GroupDetailNoticeKind.EmotionUnavailable -> stringResource(Res.string.group_detail_emotion_failed)
+                    GroupDetailNoticeKind.PressRejected -> stringResource(Res.string.group_detail_press_failed)
+                    GroupDetailNoticeKind.PressUnavailable -> stringResource(Res.string.group_detail_emotion_failed)
+                    GroupDetailNoticeKind.PressBlockedWhilePending -> stringResource(Res.string.group_detail_press_blocked)
+                    GroupDetailNoticeKind.PressRateLimited -> {
+                        val retryAfterMillis = notice.retryAfterMillis
+                        if (retryAfterMillis == null) {
+                            stringResource(Res.string.group_detail_press_rate_limited)
+                        } else {
+                            val retryAfterSeconds =
+                                (retryAfterMillis / 1_000L + if (retryAfterMillis % 1_000L == 0L) 0L else 1L)
+                                    .coerceAtMost(Int.MAX_VALUE.toLong())
+                                    .toInt()
+                            stringResource(Res.string.group_detail_press_rate_limited_retry, retryAfterSeconds)
+                        }
+                    }
                 }
             GroupDetailNoticeSnackbar(
                 message = message,
