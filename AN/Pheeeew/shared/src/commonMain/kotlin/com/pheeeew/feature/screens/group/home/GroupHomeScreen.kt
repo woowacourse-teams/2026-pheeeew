@@ -149,7 +149,7 @@ private fun GroupHomeActionButton(
             modifier
                 .height(50.dp)
                 .clip(shape)
-                .background(if (isPrimary) AppColors.GroupInk else Color.White)
+                .background(if (isPrimary) AppColors.Primary else Color.White)
                 .then(if (isPrimary) Modifier else Modifier.border(1.dp, AppColors.GroupInk, shape))
                 .clickable(role = Role.Button, onClick = onClick)
                 .padding(horizontal = 12.dp),
@@ -157,7 +157,7 @@ private fun GroupHomeActionButton(
     ) {
         Text(
             text = text,
-            color = if (isPrimary) Color.White else AppColors.GroupInk,
+            color = if (isPrimary) AppColors.TextPrimary else AppColors.GroupInk,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,

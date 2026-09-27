@@ -417,7 +417,7 @@ private fun JoinPrimaryButton(
                 .fillMaxWidth()
                 .height(50.dp)
                 .clip(JoinButtonShape)
-                .background(if (enabled) AppColors.GroupInk else Color(0xFFE3E8E5))
+                .background(if (enabled) AppColors.Primary else Color(0xFFE3E8E5))
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
                 .semantics { contentDescription = text },
         contentAlignment = Alignment.Center,
@@ -429,14 +429,14 @@ private fun JoinPrimaryButton(
             if (isLoading) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(17.dp),
-                    color = if (enabled) Color.White else AppColors.GroupInk,
+                    color = if (enabled) AppColors.TextPrimary else AppColors.GroupInk,
                     strokeWidth = 2.dp,
                 )
                 Spacer(Modifier.size(8.dp))
             }
             Text(
                 text = text,
-                color = if (enabled) Color.White else AppColors.RankingSecondaryContent,
+                color = if (enabled) AppColors.TextPrimary else AppColors.RankingSecondaryContent,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
             )
