@@ -22,6 +22,8 @@ import com.pheeeew.feature.screens.map.MapUiModel
 import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
 import com.pheeeew.feature.screens.map.record.location.destination
 import com.pheeeew.feature.screens.map.record.location.recordCameraBounds
+import org.json.JSONArray
+import org.json.JSONObject
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -34,6 +36,10 @@ import kotlin.math.PI
 import kotlin.math.hypot
 
 private const val OPEN_FREE_MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
+private const val MAP_FONT_REGULAR_ASSET_URL =
+    "asset://composeResources/pheeeew.shared.generated.resources/font/tap_noto_700.ttf"
+private const val MAP_FONT_BOLD_ASSET_URL =
+    "asset://composeResources/pheeeew.shared.generated.resources/font/tap_noto_900.ttf"
 private const val INITIAL_ZOOM = 11.0
 private const val MINIMUM_ZOOM = 2.0
 private const val MAXIMUM_ZOOM = 20.0
@@ -125,6 +131,7 @@ private class AndroidFoundationMapHost(
     private var lastAppliedCameraCommandId = 0L
     private var fittedOrigin: GeoCoordinate? = null
     private var cameraBoundsInstalled = false
+    private var didConfigureKoreanFontFaces = false
 
     private val mapLoadFailureListener =
         MapView.OnDidFailLoadingMapListener {
@@ -167,13 +174,20 @@ private class AndroidFoundationMapHost(
             }
             readyMap.setStyle(Style.Builder().fromUri(OPEN_FREE_MAP_STYLE_URL)) { loadedStyle ->
                 if (released) return@setStyle
-                style = loadedStyle
-                AndroidCurrentLocationLayer.install(loadedStyle)
-                emotionPinSymbolLayer.install(loadedStyle)
-                styleLoaded = true
-                onMapRecovered()
-                renderLatestState()
-                publishViewport()
+                if (!didConfigureKoreanFontFaces) {
+                    didConfigureKoreanFontFaces = true
+                    val styleJson = withKoreanFontFaces(loadedStyle.json)
+                    if (styleJson != null) {
+                        readyMap.setStyle(Style.Builder().fromJson(styleJson)) configuredStyle@{ configuredStyle ->
+                            if (released) return@configuredStyle
+                            installLoadedStyle(configuredStyle)
+                        }
+                    } else {
+                        installLoadedStyle(loadedStyle)
+                    }
+                } else {
+                    installLoadedStyle(loadedStyle)
+                }
             }
         }
     }
@@ -193,6 +207,40 @@ private class AndroidFoundationMapHost(
         mapView.onDestroy()
         map = null
         style = null
+    }
+
+    private fun withKoreanFontFaces(styleJson: String): String? =
+        runCatching {
+            val style = JSONObject(styleJson)
+            val fontFaces = JSONObject()
+            mapOf(
+                "Noto Sans Regular" to MAP_FONT_REGULAR_ASSET_URL,
+                "Noto Sans Italic" to MAP_FONT_REGULAR_ASSET_URL,
+                "Noto Sans Bold" to MAP_FONT_BOLD_ASSET_URL,
+            ).forEach { (fontName, fontUrl) ->
+                val face =
+                    JSONObject()
+                        .put("url", fontUrl)
+                        .put("unicode-range", JSONArray(KOREAN_UNICODE_RANGES))
+                fontFaces.put(fontName, JSONArray().put(face))
+            }
+            style.put("font-faces", fontFaces)
+            style.toString()
+        }.getOrNull()
+
+    private fun installLoadedStyle(loadedStyle: Style) {
+        style = loadedStyle
+        AndroidCurrentLocationLayer.install(loadedStyle)
+        emotionPinSymbolLayer.install(loadedStyle)
+        styleLoaded = true
+        onMapRecovered()
+        renderLatestState()
+        publishViewport()
+    }
+
+    private companion object {
+        val KOREAN_UNICODE_RANGES =
+            listOf("U+1100-11FF", "U+3130-318F", "U+A960-A97F", "U+AC00-D7AF", "U+D7B0-D7FF")
     }
 
     private fun renderLatestState() {

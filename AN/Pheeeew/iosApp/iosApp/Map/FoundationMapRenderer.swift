@@ -18,6 +18,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private var fittedOrigin: CLLocationCoordinate2D?
     private var fittedSize: CGSize = .zero
     private var recordCameraBounds: RecordCameraBounds?
+    private var didConfigureKoreanFontFaces = false
 
     init(eventSink: FoundationIosMapEventSink) {
         self.eventSink = eventSink
@@ -66,7 +67,40 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         lastEmotionPinImageKeys.removeAll()
     }
 
+    private func styleJSON(_ style: MLNStyle, addingKoreanFonts fonts: (regular: URL, bold: URL)) -> String? {
+        guard var styleJSON = (try? JSONSerialization.jsonObject(with: Data(style.styleJSON.utf8))) as? [String: Any] else {
+            return nil
+        }
+
+        let fontFace: (URL) -> [[String: Any]] = { fontURL in [[
+            "url": fontURL.absoluteString,
+            "unicode-range": ["U+1100-11FF", "U+3130-318F", "U+A960-A97F", "U+AC00-D7AF", "U+D7B0-D7FF"],
+        ]] }
+        styleJSON["font-faces"] = [
+            "Noto Sans Regular": fontFace(fonts.regular),
+            "Noto Sans Italic": fontFace(fonts.regular),
+            "Noto Sans Bold": fontFace(fonts.bold),
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: styleJSON) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private func koreanFontURLs() -> (regular: URL, bold: URL)? {
+        let resourcePath = "compose-resources/composeResources/pheeeew.shared.generated.resources/font"
+        guard let regular = Bundle.main.url(forResource: "tap_noto_700", withExtension: "ttf", subdirectory: resourcePath) ?? Bundle.main.url(forResource: "tap_noto_700", withExtension: "ttf"),
+              let bold = Bundle.main.url(forResource: "tap_noto_900", withExtension: "ttf", subdirectory: resourcePath) ?? Bundle.main.url(forResource: "tap_noto_900", withExtension: "ttf")
+        else { return nil }
+        return (regular, bold)
+    }
+
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+        if !didConfigureKoreanFontFaces {
+            didConfigureKoreanFontFaces = true
+            if let fontURLs = koreanFontURLs(), let styleJSON = styleJSON(style, addingKoreanFonts: fontURLs) {
+                mapView.styleJSON = styleJSON
+                return
+            }
+        }
         styleIsReady = true
         currentLocationSource = FoundationCurrentLocationLayer.install(on: style)
         emotionPinSource = installEmotionPinLayer(on: style)
