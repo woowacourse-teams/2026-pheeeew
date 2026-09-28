@@ -56,7 +56,8 @@ class WeeklyRankingViewModel(
     private fun load(weeksAgo: Int) {
         requestJob?.cancel()
         val requestId = ++requestGeneration
-        _uiState.value = WeeklyRankingUiState(weeksAgo = weeksAgo)
+        val currentWeekLabel = _uiState.value.weekLabel
+        _uiState.value = WeeklyRankingUiState(weeksAgo = weeksAgo, weekLabel = currentWeekLabel)
         requestJob =
             viewModelScope.launch {
                 try {
@@ -76,7 +77,11 @@ class WeeklyRankingViewModel(
                         WeeklyRankingLoadResult.Unavailable -> {
                             if (requestId == requestGeneration) {
                                 _uiState.value =
-                                    WeeklyRankingUiState(weeksAgo = weeksAgo, status = WeeklyRankingStatus.Failed)
+                                    WeeklyRankingUiState(
+                                        weeksAgo = weeksAgo,
+                                        weekLabel = currentWeekLabel,
+                                        status = WeeklyRankingStatus.Failed,
+                                    )
                             }
                         }
                     }
@@ -84,7 +89,12 @@ class WeeklyRankingViewModel(
                     throw cancelled
                 } catch (_: Exception) {
                     if (requestId == requestGeneration) {
-                        _uiState.value = WeeklyRankingUiState(weeksAgo = weeksAgo, status = WeeklyRankingStatus.Failed)
+                        _uiState.value =
+                            WeeklyRankingUiState(
+                                weeksAgo = weeksAgo,
+                                weekLabel = currentWeekLabel,
+                                status = WeeklyRankingStatus.Failed,
+                            )
                     }
                 } finally {
                     if (requestId == requestGeneration) requestJob = null
