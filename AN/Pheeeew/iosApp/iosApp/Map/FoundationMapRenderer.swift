@@ -101,6 +101,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
                 return
             }
         }
+        FoundationMapStyle.applyMutedPalette(to: style)
         styleIsReady = true
         currentLocationSource = FoundationCurrentLocationLayer.install(on: style)
         emotionPinSource = installEmotionPinLayer(on: style)

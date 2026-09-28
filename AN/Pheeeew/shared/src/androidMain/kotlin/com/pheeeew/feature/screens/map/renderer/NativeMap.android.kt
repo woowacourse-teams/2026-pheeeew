@@ -230,6 +230,7 @@ private class AndroidFoundationMapHost(
 
     private fun installLoadedStyle(loadedStyle: Style) {
         style = loadedStyle
+        AndroidMapAppearance.apply(loadedStyle)
         AndroidCurrentLocationLayer.install(loadedStyle)
         emotionPinSymbolLayer.install(loadedStyle)
         styleLoaded = true
