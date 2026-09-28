@@ -261,7 +261,7 @@ class MapViewModel(
                                             isLoadingEmotionPins = false,
                                             isLoadingMoreEmotionPins = false,
                                             hasPartialEmotionPins = !firstPage,
-                                            emotionPinsError = "감정 핀을 불러오지 못했어",
+                                            emotionPinsError = "감정 핀을 불러오지 못했어요",
                                         )
                                 }
                                 return@launch
@@ -308,7 +308,7 @@ class MapViewModel(
                                         _uiModel.value.copy(
                                             isLoadingMoreEmotionPins = false,
                                             hasPartialEmotionPins = true,
-                                            emotionPinsError = "감정 핀 목록을 완전히 불러오지 못했어",
+                                            emotionPinsError = "감정 핀 목록을 완전히 불러오지 못했어요",
                                         )
                                     return@launch
                                 }
@@ -329,7 +329,7 @@ class MapViewModel(
                                 isLoadingEmotionPins = false,
                                 isLoadingMoreEmotionPins = false,
                                 hasPartialEmotionPins = !firstPage,
-                                emotionPinsError = "감정 핀을 불러오지 못했어",
+                                emotionPinsError = "감정 핀을 불러오지 못했어요",
                             )
                     }
                 } finally {

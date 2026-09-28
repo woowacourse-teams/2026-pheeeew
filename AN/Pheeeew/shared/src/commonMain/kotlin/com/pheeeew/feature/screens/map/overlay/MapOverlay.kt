@@ -117,7 +117,7 @@ fun MapOverlay(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "감정 목록",
+                        text = "주변 감정",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                     )

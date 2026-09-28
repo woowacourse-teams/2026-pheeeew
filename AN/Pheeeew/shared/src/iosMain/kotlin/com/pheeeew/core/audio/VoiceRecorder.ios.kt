@@ -153,7 +153,7 @@ private class IosVoiceRecorder : VoiceRecorder {
                 }
         } catch (_: Exception) {
             clear()
-            mutable.value = state.value.copy(error = "녹음할 수 없어. 마이크를 확인하고 다시 시도해.")
+            mutable.value = state.value.copy(error = "녹음할 수 없어요. 마이크를 확인하고 다시 시도해주세요")
         }
     }
 
@@ -175,7 +175,7 @@ private class IosVoiceRecorder : VoiceRecorder {
             mutable.value = state.value.copy(recording = false, filePath = url?.path)
         } else {
             clear()
-            mutable.value = state.value.copy(error = "녹음이 너무 짧아. 다시 녹음해줘.")
+            mutable.value = state.value.copy(error = "녹음이 너무 짧아요. 다시 녹음해주세요")
         }
     }
 
@@ -210,7 +210,7 @@ private class IosVoiceRecorder : VoiceRecorder {
                 }
         } catch (_: Exception) {
             pause()
-            mutable.value = state.value.copy(error = "녹음을 재생할 수 없어")
+            mutable.value = state.value.copy(error = "녹음을 재생할 수 없어요")
         }
     }
 

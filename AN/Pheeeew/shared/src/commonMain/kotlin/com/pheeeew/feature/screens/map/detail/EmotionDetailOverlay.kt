@@ -153,7 +153,7 @@ private fun EmotionDetailReadyOverlay(
                     throw cancelled
                 } catch (_: Exception) {
                     load?.finish("failed")
-                    loadError = "녹음을 불러올 수 없어. 다시 시도해."
+                    loadError = "녹음을 불러올 수 없어요. 다시 시도해주세요"
                 } finally {
                     preparing = false
                 }
@@ -206,8 +206,8 @@ private fun EmotionDetailReadyOverlay(
     }
     if (showBlockConfirmation) {
         ConfirmDialog(
-            title = "해당 사용자를 차단할까?",
-            content = "차단하면 이 사용자가 올린 감정은 더 이상 보이지 않아.",
+            title = "해당 사용자를 차단할까요?",
+            content = "차단 이후 해당 사용자가 올린 감정은 더 이상 보이지 않아요.",
             confirmText = "차단하기",
             cancelText = "취소",
             onConfirm = {
@@ -236,8 +236,8 @@ private fun EmotionDetailReadyOverlay(
     }
     if (showDeleteConfirmation && state.isMine) {
         ConfirmDialog(
-            title = "해당 감정을 삭제할까?",
-            content = "삭제한 감정은 지도와 목록에서 더 이상 보이지 않아.",
+            title = "해당 감정을 삭제할까요?",
+            content = "삭제한 감정은 지도와 목록에서 더 이상 보이지 않아요.",
             confirmText = "삭제하기",
             cancelText = "취소",
             onConfirm = {
@@ -268,18 +268,18 @@ private fun EmotionDetailReadyOverlay(
 
 private fun EmotionModerationResult.blockMessage(): String =
     when (this) {
-        EmotionModerationResult.OwnEmotion -> "내가 작성한 감정은 사용자 차단을 할 수 없어."
-        EmotionModerationResult.AuthorUnknown -> "작성자 정보를 알 수 없어 사용자 차단을 할 수 없어."
-        EmotionModerationResult.NotFound -> "차단할 감정을 찾을 수 없어."
-        EmotionModerationResult.NetworkUnavailable -> "인터넷 연결 상태를 확인해."
-        else -> "차단하지 못했어. 잠시 후 다시 시도해."
+        EmotionModerationResult.OwnEmotion -> "내가 작성한 감정은 사용자 차단을 할 수 없어요."
+        EmotionModerationResult.AuthorUnknown -> "작성자 정보를 알 수 없어 사용자 차단을 할 수 없어요."
+        EmotionModerationResult.NotFound -> "차단할 감정을 찾을 수 없어요."
+        EmotionModerationResult.NetworkUnavailable -> "인터넷 연결 상태를 확인해주세요."
+        else -> "차단에 실패했어요. 잠시 후 다시 시도해주세요."
     }
 
 private fun EmotionModerationResult.deleteMessage(): String =
     when (this) {
-        EmotionModerationResult.NotFound -> "삭제할 감정을 찾을 수 없거나 삭제 권한이 없어."
-        EmotionModerationResult.NetworkUnavailable -> "인터넷 연결 상태를 확인해."
-        else -> "삭제하지 못했어. 잠시 후 다시 시도해."
+        EmotionModerationResult.NotFound -> "삭제할 감정을 찾을 수 없거나 삭제 권한이 없어요."
+        EmotionModerationResult.NetworkUnavailable -> "인터넷 연결 상태를 확인해주세요."
+        else -> "삭제에 실패했어요. 잠시 후 다시 시도해주세요."
     }
 
 @Preview(name = "감정 상세 오버레이", widthDp = 424, heightDp = 640)

@@ -62,8 +62,8 @@ private fun ConfirmDialogContent(
 @Composable
 private fun ConfirmDialogPreview() {
     ConfirmDialogContent(
-        "작성 중인 내용이 있어.",
-        "지금까지 작성하던 내용은 저장되지 않아.\n나갈까?",
+        "작성 중인 내용이 있어요.",
+        "지금까지 작성하던 내용이 저장되지 않아요.\n나갈까요?",
         "나가기",
         "취소",
         {},
