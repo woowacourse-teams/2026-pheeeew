@@ -207,7 +207,7 @@ fun NearbyEmotionSheet(
                 state = scroll,
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 if (state.items.isEmpty() &&
                     state.error == null
