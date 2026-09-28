@@ -154,7 +154,9 @@ private fun RecordBottomSheetContent(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "${selectedEmotion.label}한 마음,\n조금 더 남길까요?",
+                text = selectedEmotion.recordPrompt,
+                modifier = Modifier.weight(1f),
+                lineHeight = 22.sp,
                 color = AppColors.TextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
