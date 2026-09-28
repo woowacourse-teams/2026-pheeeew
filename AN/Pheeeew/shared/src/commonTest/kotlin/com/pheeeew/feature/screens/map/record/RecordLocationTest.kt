@@ -58,7 +58,7 @@ class RecordLocationTest {
         model.onConfirmLocation()
         val confirmed = assertNotNull(model.uiModel.value.confirmedRecord)
         assertEquals("기록", confirmed.memo)
-        assertEquals(EmotionTypeUiModel.Stuck, confirmed.emotion)
+        assertEquals(EmotionTypeUiModel.FRUSTRATED, confirmed.emotion)
         assertTrue(distance(origin, confirmed.coordinate) <= 500.0)
         model.onLocationSelected(origin.latitude, origin.longitude)
         assertEquals(confirmed.coordinate, model.uiModel.value.selectedCoordinate)
@@ -69,7 +69,7 @@ class RecordLocationTest {
     @Test
     fun confirmationRequiresOriginAndRejectsInvalidCoordinates() {
         val model = MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase())
-        model.open(EmotionTypeUiModel.Stuck)
+        model.open(EmotionTypeUiModel.FRUSTRATED)
         model.onInputModeChange(RecordInputModeUiModel.Recording)
         model.onNext(null, "/tmp/voice.m4a")
         model.onConfirmLocation()
@@ -86,7 +86,7 @@ class RecordLocationTest {
 
     private fun initializedModel(): MapRecordViewModel =
         MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase()).also {
-            it.open(EmotionTypeUiModel.Stuck)
+            it.open(EmotionTypeUiModel.FRUSTRATED)
             it.onNext(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L), null)
         }
 }

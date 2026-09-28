@@ -49,6 +49,7 @@ import com.pheeeew.feature.screens.map.renderer.NativeMap
 fun MapScreen(
     viewModel: MapViewModel,
     recordViewModel: MapRecordViewModel,
+    onEmotionPinClick: (Long) -> Unit,
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
@@ -99,17 +100,24 @@ fun MapScreen(
         recordViewport = recordViewport,
         onRecordCoordinateSelected = recordViewModel::onLocationSelected,
         groupOptions = recordViewModel.groupOptions,
-        mapContent = { mapModifier ->
+        mapContent = { renderUiModel, mapModifier ->
             key(uiModel.mapRevision) {
                 NativeMap(
-                    state = uiModel.copy(recordOrigin = recordUiModel.origin),
+                    state = renderUiModel.copy(
+                        recordOrigin = recordUiModel.origin,
+                        emotionPins = renderUiModel.emotionPins.filterNot { it.id in renderUiModel.hiddenEmotionIds },
+                    ),
                     onMapError = viewModel::onMapError,
                     onMapRecovered = viewModel::onMapRecovered,
-                    onViewportChanged = onViewportChanged,
                     onRecordViewportChanged = { centerX, centerY, radius ->
                         val viewport = RecordMapViewport(centerX, centerY, radius)
                         if (recordViewport != viewport) recordViewport = viewport
                     },
+                    onViewportChanged = { bounds ->
+                        viewModel.onViewportChanged(bounds)
+                        onViewportChanged(EmotionBounds(bounds.minLongitude, bounds.minLatitude, bounds.maxLongitude, bounds.maxLatitude))
+                    },
+                    onEmotionPinClick = onEmotionPinClick,
                     modifier = mapModifier,
                 )
             }
@@ -145,7 +153,7 @@ internal fun MapScreenContent(
     uiModel: MapUiModel,
     recordUiModel: RecordBottomSheetUiModel,
     groupOptions: List<GroupSelectorGroupUiModel>,
-    mapContent: @Composable (Modifier) -> Unit,
+    mapContent: @Composable (MapUiModel, Modifier) -> Unit,
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
     onEmotionSelectorToggle: () -> Unit,
@@ -171,7 +179,11 @@ internal fun MapScreenContent(
     onRecordCoordinateSelected: (Double, Double) -> Unit = { _, _ -> },
 ) {
     Box(modifier = modifier.fillMaxSize()) {
-        mapContent(Modifier.fillMaxSize())
+        val symbolImages = rememberEmotionPinSymbolImages(uiModel.emotionPins)
+        mapContent(
+            uiModel.copy(emotionPinSymbolImages = symbolImages),
+            Modifier.fillMaxSize(),
+        )
 
         if (uiModel.mapError != null) {
             Box(
@@ -212,14 +224,12 @@ internal fun MapScreenContent(
         }
 
         when (recordUiModel.step) {
-            RecordFlowStepUiModel.Closed -> {
-                Unit
-            }
+            RecordFlowStepUiModel.Closed -> {}
 
             RecordFlowStepUiModel.Input -> {
                 RecordBottomSheet(
                     onDismissRequest = onRecordBottomSheetDismiss,
-                    selectedEmotion = recordUiModel.selectedEmotion ?: EmotionTypeUiModel.Stuck,
+                    selectedEmotion = recordUiModel.selectedEmotion ?: EmotionTypeUiModel.FRUSTRATED,
                     inputMode = recordUiModel.inputMode,
                     memo = recordUiModel.memo,
                     voiceRecorder = voiceRecorder,
@@ -283,7 +293,7 @@ private fun MapScreenContentPreview() {
                 GroupSelectorGroupUiModel("personal", "개인", "개인"),
                 GroupSelectorGroupUiModel("none", "그룹 없음", "없음"),
             ),
-        mapContent = { modifier -> Box(modifier.background(Color(0xFFECEAE5))) },
+        mapContent = { _, modifier -> Box(modifier.background(Color(0xFFECEAE5))) },
         onListClick = {},
         onSettingClick = {},
         onEmotionSelectorToggle = {},

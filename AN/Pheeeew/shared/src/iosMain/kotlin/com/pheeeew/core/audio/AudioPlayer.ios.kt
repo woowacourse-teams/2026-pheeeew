@@ -39,7 +39,7 @@ actual fun rememberAudioPlayer(): AudioPlayer {
 }
 
 internal class IosAudioPlayer : AudioPlayer {
-    private val mutableState = MutableStateFlow(AudioPlaybackState())
+    private val mutableState = MutableStateFlow(AudioPlayerState())
     override val state = mutableState.asStateFlow()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var monitor: Job? = null
@@ -63,13 +63,13 @@ internal class IosAudioPlayer : AudioPlayer {
         if (!session.setCategory(AVAudioSessionCategoryPlayback, error = null) ||
             !session.setActive(true, error = null)
         ) {
-            mutableState.value = AudioPlaybackState(error = "녹음을 재생하지 못했어요. 다시 눌러 주세요.")
+            mutableState.value = AudioPlayerState(error = "녹음을 재생하지 못했어요. 다시 눌러 주세요.")
             return
         }
         ownsSession = true
         val next = if (resume) player!! else AVPlayer(uRL = address)
         player = next
-        mutableState.value = AudioPlaybackState(source, playing = true, loading = true)
+        mutableState.value = AudioPlayerState(source, playing = true, loading = true)
         completion?.let { NSNotificationCenter.defaultCenter.removeObserver(it) }
         completion =
             NSNotificationCenter.defaultCenter.addObserverForName(
@@ -92,7 +92,7 @@ internal class IosAudioPlayer : AudioPlayer {
                     }
                     if (next.currentItem?.status == AVPlayerItemStatusFailed || (!started && ticks > 120)) {
                         stop()
-                        mutableState.value = AudioPlaybackState(error = "녹음을 재생하지 못했어요. 다시 눌러 주세요.")
+                        mutableState.value = AudioPlayerState(error = "녹음을 재생하지 못했어요. 다시 눌러 주세요.")
                         break
                     }
                 }
@@ -116,7 +116,7 @@ internal class IosAudioPlayer : AudioPlayer {
         player = null
         if (ownsSession) AVAudioSession.sharedInstance().setActive(false, error = null)
         ownsSession = false
-        mutableState.value = AudioPlaybackState()
+        mutableState.value = AudioPlayerState()
     }
 
     override fun release() {

@@ -1,6 +1,6 @@
 package com.pheeeew.feature.screens.map.nearby
 
-import com.pheeeew.domain.model.emotion.EmotionReaction
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.EmotionState
 import org.jetbrains.compose.resources.DrawableResource
 import pheeeew.shared.generated.resources.Res
@@ -10,23 +10,23 @@ import pheeeew.shared.generated.resources.ic_emotion_exhausted
 import pheeeew.shared.generated.resources.ic_emotion_frustrated
 import pheeeew.shared.generated.resources.ic_emotion_irritated
 
-internal val EmotionReaction.glyph: String get() =
+internal val EmotionReactionType.glyph: String get() =
     when (this) {
-        EmotionReaction.HEART -> "❤️"
-        EmotionReaction.LAUGH -> "🤣"
-        EmotionReaction.CRY -> "😭"
-        EmotionReaction.DIZZY -> "😵‍💫"
-        EmotionReaction.RAGE -> "🤬"
-        EmotionReaction.SKULL -> "☠️"
+        EmotionReactionType.HEART -> "❤️"
+        EmotionReactionType.LAUGH -> "🤣"
+        EmotionReactionType.CRY -> "😭"
+        EmotionReactionType.DIZZY -> "😵‍💫"
+        EmotionReactionType.RAGE -> "🤬"
+        EmotionReactionType.SKULL -> "☠️"
     }
-internal val EmotionReaction.label: String get() =
+internal val EmotionReactionType.label: String get() =
     when (this) {
-        EmotionReaction.HEART -> "하트"
-        EmotionReaction.LAUGH -> "웃음"
-        EmotionReaction.CRY -> "눈물"
-        EmotionReaction.DIZZY -> "어지러움"
-        EmotionReaction.RAGE -> "분노"
-        EmotionReaction.SKULL -> "해골"
+        EmotionReactionType.HEART -> "하트"
+        EmotionReactionType.LAUGH -> "웃음"
+        EmotionReactionType.CRY -> "눈물"
+        EmotionReactionType.DIZZY -> "어지러움"
+        EmotionReactionType.RAGE -> "분노"
+        EmotionReactionType.SKULL -> "해골"
     }
 internal val EmotionState.face: DrawableResource get() =
     when (this) {

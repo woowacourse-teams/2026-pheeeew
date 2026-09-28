@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionPage
-import com.pheeeew.domain.model.emotion.EmotionReaction
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.repository.emotion.EmotionFailure
 import com.pheeeew.domain.repository.emotion.EmotionRepository
 import com.pheeeew.domain.repository.emotion.EmotionResult
@@ -171,7 +171,7 @@ class NearbyEmotionViewModel(
 
     fun react(
         id: Long,
-        type: EmotionReaction,
+        type: EmotionReactionType,
     ) {
         val item = state.value.items.find { it.id == id } ?: return
         if (id in state.value.pendingIds) return

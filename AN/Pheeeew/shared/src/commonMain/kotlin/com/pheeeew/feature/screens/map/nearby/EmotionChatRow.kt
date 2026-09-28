@@ -45,7 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.domain.model.emotion.EmotionContentType
-import com.pheeeew.domain.model.emotion.EmotionReaction
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import org.jetbrains.compose.resources.painterResource
 import kotlin.time.Clock
 
@@ -58,7 +58,7 @@ internal fun EmotionChatRow(
     audioLoading: Boolean,
     onSelect: () -> Unit,
     onDismissMenu: () -> Unit,
-    onReact: (EmotionReaction) -> Unit,
+    onReact: (EmotionReactionType) -> Unit,
     onBlock: () -> Unit,
     onReport: (() -> Unit)?,
     onPlay: () -> Unit,
@@ -215,11 +215,11 @@ private fun EmotionActionsMenu(
     showActions: Boolean,
     isMine: Boolean,
     busy: Boolean,
-    reactions: List<Pair<EmotionReaction, Boolean>>,
+    reactions: List<Pair<EmotionReactionType, Boolean>>,
     onDismiss: () -> Unit,
     onBlock: () -> Unit,
     onReport: (() -> Unit)?,
-    onReact: (EmotionReaction) -> Unit,
+    onReact: (EmotionReactionType) -> Unit,
 ) {
     val cardShape = RoundedCornerShape(12.dp)
     DropdownMenu(
@@ -255,7 +255,7 @@ private fun EmotionActionsMenu(
                     .padding(horizontal = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                EmotionReaction.entries.forEach { type ->
+                EmotionReactionType.entries.forEach { type ->
                     val selected = reactions.any { it.first == type && it.second }
                     val actionLabel = if (selected) "취소" else "공감"
                     Box(

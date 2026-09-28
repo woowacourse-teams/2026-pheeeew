@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.group.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -22,16 +23,26 @@ import com.pheeeew.feature.screens.group.home.GroupHomeRoute
 import com.pheeeew.feature.screens.group.home.GroupHomeViewModel
 import com.pheeeew.feature.screens.group.model.GroupId
 
-/** Owns the group-only back stack. The app-level navigation bar can host this feature later. */
+/** Owns the group-only back stack and reports when its detail destination is active. */
 @Composable
 @Suppress("DEPRECATION")
 fun GroupFeatureHost(
     dependencies: GroupDependencies,
     modifier: Modifier = Modifier,
+    onGroupDetailVisibilityChanged: (Boolean) -> Unit = {},
+    onGroupCreateVisibilityChanged: (Boolean) -> Unit = {},
 ) {
     val navController = rememberNavController()
     val currentBackStackEntry = navController.currentBackStackEntryAsState().value
     val clipboardManager = LocalClipboardManager.current
+
+    LaunchedEffect(currentBackStackEntry?.destination?.route) {
+        val detailRoute = GroupDetailDestination::class.qualifiedName.orEmpty()
+        val currentRoute = currentBackStackEntry?.destination?.route.orEmpty()
+        onGroupDetailVisibilityChanged(currentRoute.startsWith(detailRoute))
+        val createRoute = GroupCreateDestination::class.qualifiedName.orEmpty()
+        onGroupCreateVisibilityChanged(currentRoute.startsWith(createRoute))
+    }
 
     NavHost(
         navController = navController,

@@ -4,14 +4,14 @@ import com.pheeeew.domain.model.emotion.Emotion
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionPage
-import com.pheeeew.domain.model.emotion.EmotionReaction
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.ReactionCount
 import com.pheeeew.domain.repository.emotion.EmotionFailure
 import com.pheeeew.domain.repository.emotion.EmotionRepository
 import com.pheeeew.domain.repository.emotion.EmotionResult
-import com.pheeeew.domain.repository.group.GroupListLoadResult
-import com.pheeeew.domain.repository.group.GroupListRepository
+import com.pheeeew.domain.repository.group.GroupStampListLoadResult
+import com.pheeeew.domain.repository.group.GroupStampListRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -90,7 +90,7 @@ class NearbyEmotionViewModelTest {
                 vm.onViewportChanged(BOUNDS)
                 vm.open()
                 advanceUntilIdle()
-                vm.react(1, EmotionReaction.HEART)
+                vm.react(1, EmotionReactionType.HEART)
                 advanceUntilIdle()
                 assertTrue(
                     vm.state.value.items
@@ -177,8 +177,8 @@ class NearbyEmotionViewModelTest {
     private fun viewModel(repo: FakeRepository) =
         NearbyEmotionViewModel(
             repo,
-            GroupListRepository {
-                GroupListLoadResult.Unavailable
+            GroupStampListRepository {
+                GroupStampListLoadResult.Unavailable
             },
         )
 
@@ -204,7 +204,7 @@ class NearbyEmotionViewModelTest {
 
         override suspend fun react(
             id: Long,
-            type: EmotionReaction,
+            type: EmotionReactionType,
             selected: Boolean,
         ) = EmotionResult.Success(Unit)
 
@@ -225,7 +225,7 @@ class NearbyEmotionViewModelTest {
                 false,
                 EmotionContentType.MEMO,
                 "메모",
-                EmotionReaction.entries.map { ReactionCount(it, 0, false) },
+                EmotionReactionType.entries.map { ReactionCount(it, 0, false) },
                 null,
                 null,
             )

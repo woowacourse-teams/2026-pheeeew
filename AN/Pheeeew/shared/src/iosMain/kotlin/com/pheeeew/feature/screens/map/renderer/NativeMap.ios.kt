@@ -9,39 +9,34 @@ import androidx.compose.ui.viewinterop.UIKitInteropInteractionMode
 import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.pheeeew.domain.model.LocationState
-import com.pheeeew.domain.model.emotion.EmotionBounds
+import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
+import com.pheeeew.feature.screens.map.symbolImageKey
 
-private const val FALLBACK_LATITUDE = 37.5665
-private const val FALLBACK_LONGITUDE = 126.9780
+private const val FALLBACK_LATITUDE = 37.4409230460675
+private const val FALLBACK_LONGITUDE = 127.147538132656
 
 @Composable
 internal actual fun NativeMap(
     state: MapUiModel,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
-    onViewportChanged: (EmotionBounds) -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
+    onViewportChanged: (EmotionMapBounds) -> Unit,
+    onEmotionPinClick: (Long) -> Unit,
     modifier: Modifier,
 ) {
-    val currentOnViewportChanged by rememberUpdatedState(onViewportChanged)
+    val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val currentOnRecordViewportChanged by rememberUpdatedState(onRecordViewportChanged)
+    val currentOnViewportChanged by rememberUpdatedState(onViewportChanged)
     val eventSink =
         remember {
             object : FoundationIosMapEventSink {
-                override fun onViewportChanged(
-                    west: Double,
-                    south: Double,
-                    east: Double,
-                    north: Double,
-                ) {
-                    val bounds = runCatching { EmotionBounds(west, south, east, north) }.getOrNull() ?: return
-                    currentOnViewportChanged(bounds)
-                }
+                override fun onEmotionPinClick(id: Long) = currentOnEmotionPinClick(id)
 
                 override fun onRendererUnavailable() = currentOnMapError(MapErrorUiModel.RendererUnavailable)
 
@@ -55,6 +50,10 @@ internal actual fun NativeMap(
                     radius: Float,
                 ) {
                     currentOnRecordViewportChanged(centerX, centerY, radius)
+                }
+
+                override fun onViewportChanged(bounds: EmotionMapBounds) {
+                    currentOnViewportChanged(bounds)
                 }
             }
         }
@@ -99,5 +98,23 @@ private fun MapUiModel.toFoundationIosRenderUiModel(): FoundationIosMapRenderUiM
         cameraCommandValue = cameraCommand?.value ?: 0.0,
         isRecordLocationPicking = isRecordLocationPicking,
         recordOrigin = recordOrigin?.let { FoundationIosMapCoordinateUiModel(it.latitude, it.longitude) },
+        emotionPinCoordinates =
+            if (isRecordLocationPicking) {
+                emptyList()
+            } else {
+                emotionPins.map {
+                    FoundationIosEmotionPinCoordinateUiModel(
+                        id = it.id,
+                        latitude = it.latitude,
+                        longitude = it.longitude,
+                        imageKey = it.symbolImageKey(),
+                        rotationDegrees = it.rotationDegrees,
+                    )
+                }
+            },
+        emotionPinSymbolImages =
+            emotionPinSymbolImages.map {
+                FoundationIosMapSymbolImageUiModel(it.key, it.width, it.height, it.rgba)
+            },
     )
 }

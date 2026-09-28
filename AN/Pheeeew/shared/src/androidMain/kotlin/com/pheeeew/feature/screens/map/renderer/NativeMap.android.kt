@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.map.renderer
 
 import android.graphics.Color
+import android.view.Gravity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -10,18 +11,22 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationState
-import com.pheeeew.domain.model.emotion.EmotionBounds
+import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
 import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
 import com.pheeeew.feature.screens.map.record.location.destination
 import com.pheeeew.feature.screens.map.record.location.recordCameraBounds
+import org.json.JSONArray
+import org.json.JSONObject
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -32,26 +37,32 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import kotlin.math.PI
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 
 private const val OPEN_FREE_MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
+private const val MAP_FONT_REGULAR_ASSET_URL =
+    "asset://composeResources/pheeeew.shared.generated.resources/font/tap_noto_700.ttf"
+private const val MAP_FONT_BOLD_ASSET_URL =
+    "asset://composeResources/pheeeew.shared.generated.resources/font/tap_noto_900.ttf"
 private const val INITIAL_ZOOM = 11.0
 private const val MINIMUM_ZOOM = 2.0
 private const val MAXIMUM_ZOOM = 20.0
-private const val FALLBACK_LATITUDE = 37.5665
-private const val FALLBACK_LONGITUDE = 126.9780
+private const val FALLBACK_LATITUDE = 37.4409230460675
+private const val FALLBACK_LONGITUDE = 127.147538132656
 
 @Composable
 internal actual fun NativeMap(
     state: MapUiModel,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
-    onViewportChanged: (EmotionBounds) -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
+    onViewportChanged: (EmotionMapBounds) -> Unit,
+    onEmotionPinClick: (Long) -> Unit,
     modifier: Modifier,
 ) {
-    val currentOnViewportChanged by rememberUpdatedState(onViewportChanged)
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val hostResult =
@@ -66,7 +77,8 @@ internal actual fun NativeMap(
                     onMapError = currentOnMapError,
                     onMapRecovered = currentOnMapRecovered,
                     onRecordViewportChanged = onRecordViewportChanged,
-                    onViewportChanged = { currentOnViewportChanged(it) },
+                    onViewportChanged = onViewportChanged,
+                    onEmotionPinClick = { currentOnEmotionPinClick(it) },
                 )
             }
         }
@@ -108,9 +120,11 @@ private class AndroidFoundationMapHost(
     val mapView: MapView,
     private val onMapError: (MapErrorUiModel) -> Unit,
     private val onMapRecovered: () -> Unit,
-    private val onViewportChanged: (EmotionBounds) -> Unit,
     private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
+    private val onViewportChanged: (EmotionMapBounds) -> Unit,
+    private val onEmotionPinClick: (Long) -> Unit,
 ) {
+    private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
     private var map: MapLibreMap? = null
     private var style: Style? = null
     private var released = false
@@ -121,64 +135,118 @@ private class AndroidFoundationMapHost(
     private var lastAppliedCameraCommandId = 0L
     private var fittedOrigin: GeoCoordinate? = null
     private var cameraBoundsInstalled = false
+    private var statusBarInsetPx = 0
+    private var navigationBarInsetPx = 0
+    private var didConfigureKoreanFontFaces = false
+    private var pendingOriginalStyleJson: String? = null
+    private var isRestoringOriginalStyle = false
 
     private val mapLoadFailureListener =
         MapView.OnDidFailLoadingMapListener {
-            if (!released) onMapError(MapErrorUiModel.StyleLoadFailed)
+            val originalStyleJson = pendingOriginalStyleJson
+            val currentMap = map
+            if (!released && originalStyleJson != null && !isRestoringOriginalStyle && currentMap != null) {
+                isRestoringOriginalStyle = true
+                currentMap.setStyle(Style.Builder().fromJson(originalStyleJson)) { restoredStyle ->
+                    if (released) return@setStyle
+                    pendingOriginalStyleJson = null
+                    isRestoringOriginalStyle = false
+                    installLoadedStyle(restoredStyle)
+                }
+            } else if (!released) {
+                pendingOriginalStyleJson = null
+                isRestoringOriginalStyle = false
+                onMapError(MapErrorUiModel.StyleLoadFailed)
+            }
         }
 
     init {
+        ViewCompat.setOnApplyWindowInsetsListener(mapView) { _, insets ->
+            statusBarInsetPx = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            navigationBarInsetPx = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            applyCompassMargins()
+            applyAttributionMargins()
+            insets
+        }
+        ViewCompat.requestApplyInsets(mapView)
         mapView.addOnDidFailLoadingMapListener(mapLoadFailureListener)
         mapView.getMapAsync { readyMap ->
             if (released) return@getMapAsync
             map = readyMap
+            readyMap.addOnMapClickListener { coordinate ->
+                if (released || latestState?.isRecordLocationPicking == true) return@addOnMapClickListener false
+                val point = readyMap.projection.toScreenLocation(coordinate)
+                val id =
+                    readyMap
+                        .queryRenderedFeatures(point, "emotion-pin-symbol-layer")
+                        .firstOrNull()
+                        ?.id()
+                        ?.toLongOrNull()
+                if (id != null) onEmotionPinClick(id)
+                id != null
+            }
             readyMap.setMinZoomPreference(MINIMUM_ZOOM)
             readyMap.setMaxZoomPreference(MAXIMUM_ZOOM)
+            readyMap.uiSettings.apply {
+                isLogoEnabled = false
+                isAttributionEnabled = true
+                attributionGravity = Gravity.BOTTOM or Gravity.START
+                setAttributionTintColor(Color.WHITE)
+                isCompassEnabled = true
+                compassGravity = Gravity.TOP or Gravity.END
+                setCompassFadeFacingNorth(true)
+            }
+            applyCompassMargins()
+            applyAttributionMargins()
             readyMap.addOnCameraMoveListener {
                 publishRecordViewport()
             }
             readyMap.addOnCameraIdleListener {
-                publishViewport()
                 publishRecordViewport()
+                publishViewport()
             }
             mapView.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
                 val sizeChanged = right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop
-                if (sizeChanged && latestState?.isRecordLocationPicking == true) {
-                    fittedOrigin = null
+                if (sizeChanged) {
+                    if (latestState?.isRecordLocationPicking == true) fittedOrigin = null
                     renderLatestState()
+                    publishViewport()
                 }
             }
             readyMap.setStyle(Style.Builder().fromUri(OPEN_FREE_MAP_STYLE_URL)) { loadedStyle ->
                 if (released) return@setStyle
-                style = loadedStyle
-                AndroidCurrentLocationLayer.install(loadedStyle)
-                styleLoaded = true
-                onMapRecovered()
-                renderLatestState()
-                publishViewport()
+                if (!didConfigureKoreanFontFaces) {
+                    didConfigureKoreanFontFaces = true
+                    val originalStyleJson = loadedStyle.json
+                    val styleJson = withKoreanFontFaces(originalStyleJson)
+                    if (styleJson != null) {
+                        pendingOriginalStyleJson = originalStyleJson
+                        isRestoringOriginalStyle = false
+                        readyMap.setStyle(Style.Builder().fromJson(styleJson)) configuredStyle@{ configuredStyle ->
+                            if (released) return@configuredStyle
+                            pendingOriginalStyleJson = null
+                            installLoadedStyle(configuredStyle)
+                        }
+                    } else {
+                        installLoadedStyle(loadedStyle)
+                    }
+                } else {
+                    installLoadedStyle(loadedStyle)
+                }
             }
         }
-    }
-
-    private fun publishViewport() {
-        if (released || latestState?.isRecordLocationPicking == true || mapView.width == 0) return
-        val bounds = map?.projection?.visibleRegion?.latLngBounds ?: return
-        val value =
-            runCatching {
-                EmotionBounds(bounds.longitudeWest, bounds.latitudeSouth, bounds.longitudeEast, bounds.latitudeNorth)
-            }.getOrNull()
-                ?: return
-        onViewportChanged(value)
     }
 
     fun render(state: MapUiModel) {
         latestState = state
         renderLatestState()
+        publishViewport()
     }
 
     fun release() {
         if (released) return
         released = true
+        ViewCompat.setOnApplyWindowInsetsListener(mapView, null)
         mapView.removeOnDidFailLoadingMapListener(mapLoadFailureListener)
         mapView.onPause()
         mapView.onStop()
@@ -187,12 +255,137 @@ private class AndroidFoundationMapHost(
         style = null
     }
 
+    private fun withKoreanFontFaces(styleJson: String): String? =
+        runCatching {
+            val style = JSONObject(styleJson)
+            val fontFaces = JSONObject()
+            mapOf(
+                "Noto Sans Regular" to MAP_FONT_REGULAR_ASSET_URL,
+                "Noto Sans Italic" to MAP_FONT_REGULAR_ASSET_URL,
+                "Noto Sans Bold" to MAP_FONT_BOLD_ASSET_URL,
+            ).forEach { (fontName, fontUrl) ->
+                val face =
+                    JSONObject()
+                        .put("url", fontUrl)
+                        .put("unicode-range", JSONArray(KOREAN_UNICODE_RANGES))
+                fontFaces.put(fontName, JSONArray().put(face))
+            }
+            style.put("font-faces", fontFaces)
+
+            val layers = style.optJSONArray("layers") ?: return@runCatching style.toString()
+            for (index in 0 until layers.length()) {
+                val layer = layers.optJSONObject(index) ?: continue
+                if (layer.optString("type") != "symbol") continue
+                val layerId = layer.optString("id")
+                val layout = layer.optJSONObject("layout") ?: continue
+                if (layerId.startsWith("highway-shield-") || layerId.startsWith("road_shield_")) {
+                    layout.put("visibility", "none")
+                }
+                val sizeScale =
+                    when {
+                        layerId.startsWith("label_country_") -> 0.76
+                        layerId in CITY_LABEL_LAYER_IDS -> 1.0
+                        layerId == "label_other" -> 1.05
+                        else -> 0.92
+                    }
+                scaleTextSize(layout, sizeScale)
+                if (layerId.startsWith("label_country_")) layer.put("maxzoom", 12)
+                if (layerId == "label_other") {
+                    layer.put("minzoom", 7)
+                    layout.remove("text-transform")
+                }
+                layout.optJSONArray("text-font")?.let { fonts ->
+                    for (fontIndex in 0 until fonts.length()) {
+                        if (fonts.optString(fontIndex) == "Noto Sans Bold" ||
+                            (layerId == "label_other" && fonts.optString(fontIndex) == "Noto Sans Italic")
+                        ) {
+                            fonts.put(fontIndex, "Noto Sans Regular")
+                        }
+                    }
+                }
+            }
+            style.toString()
+        }.getOrNull()
+
+    private fun scaleTextSize(
+        layout: JSONObject,
+        scale: Double,
+    ) {
+        when (val textSize = layout.opt("text-size")) {
+            is Number -> {
+                layout.put("text-size", textSize.toDouble() * scale)
+            }
+
+            is JSONArray -> {
+                when (textSize.optString(0)) {
+                    "interpolate", "interpolate-hcl", "interpolate-lab" -> {
+                        for (index in 4 until textSize.length() step 2) {
+                            val output = textSize.opt(index)
+                            if (output is Number) textSize.put(index, output.toDouble() * scale)
+                        }
+                    }
+
+                    "step" -> {
+                        for (index in 2 until textSize.length() step 2) {
+                            val output = textSize.opt(index)
+                            if (output is Number) textSize.put(index, output.toDouble() * scale)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun installLoadedStyle(loadedStyle: Style) {
+        style = loadedStyle
+        AndroidMapAppearance.apply(loadedStyle)
+        AndroidCurrentLocationLayer.install(loadedStyle)
+        emotionPinSymbolLayer.install(loadedStyle)
+        styleLoaded = true
+        onMapRecovered()
+        renderLatestState()
+        publishViewport()
+    }
+
+    private companion object {
+        val CITY_LABEL_LAYER_IDS = setOf("label_city", "label_city_capital", "label_town", "label_village")
+        val KOREAN_UNICODE_RANGES =
+            listOf("U+1100-11FF", "U+3130-318F", "U+A960-A97F", "U+AC00-D7AF", "U+D7B0-D7FF")
+    }
+
+    private fun applyCompassMargins() {
+        map?.uiSettings?.setCompassMargins(
+            0,
+            statusBarInsetPx + (16f * mapView.resources.displayMetrics.density).roundToInt(),
+            (16f * mapView.resources.displayMetrics.density).roundToInt(),
+            0,
+        )
+    }
+
+    private fun applyAttributionMargins() {
+        map?.uiSettings?.setAttributionMargins(
+            (16f * mapView.resources.displayMetrics.density).roundToInt(),
+            0,
+            0,
+            navigationBarInsetPx + (16f * mapView.resources.displayMetrics.density).roundToInt(),
+        )
+    }
+
     private fun renderLatestState() {
         if (!styleLoaded || released) return
         val currentMap = map ?: return
         val state = latestState ?: return
         val currentLocation = (state.locationState as? LocationState.Available)?.location
         AndroidCurrentLocationLayer.update(style, currentLocation)
+        style?.let { loadedStyle ->
+            emotionPinSymbolLayer.update(
+                style = loadedStyle,
+                pins = state.emotionPins,
+                images = state.emotionPinSymbolImages,
+                visible = !state.isRecordLocationPicking,
+                densityDpi = mapView.resources.displayMetrics.densityDpi,
+            )
+        }
         val point =
             currentLocation?.let { LatLng(it.latitude, it.longitude) }
                 ?: LatLng(FALLBACK_LATITUDE, FALLBACK_LONGITUDE)
@@ -297,5 +490,19 @@ private class AndroidFoundationMapHost(
         if (radius > 0 && radius.isFinite()) {
             onRecordViewportChanged(center.x / density, center.y / density, radius)
         }
+    }
+
+    private fun publishViewport() {
+        val currentMap = map ?: return
+        if (!styleLoaded || released || mapView.width <= 0 || mapView.height <= 0) return
+        val bounds = currentMap.projection.visibleRegion.latLngBounds
+        val queryBounds =
+            EmotionMapBounds(
+                minLongitude = bounds.longitudeWest,
+                minLatitude = bounds.latitudeSouth,
+                maxLongitude = bounds.longitudeEast,
+                maxLatitude = bounds.latitudeNorth,
+            )
+        if (queryBounds.isValid()) onViewportChanged(queryBounds)
     }
 }

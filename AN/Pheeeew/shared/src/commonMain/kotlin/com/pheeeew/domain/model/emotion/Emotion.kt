@@ -16,14 +16,10 @@ data class EmotionBounds(
     }
 }
 
-enum class EmotionState { FRUSTRATED, IRRITATED, EXHAUSTED, DISCOURAGED, ANGRY }
-
 enum class EmotionContentType { NONE, MEMO, AUDIO }
 
-enum class EmotionReaction { HEART, LAUGH, CRY, DIZZY, RAGE, SKULL }
-
 data class ReactionCount(
-    val type: EmotionReaction,
+    val type: EmotionReactionType,
     val count: Long,
     val selected: Boolean,
 )

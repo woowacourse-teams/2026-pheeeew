@@ -4,7 +4,7 @@ import com.pheeeew.domain.model.emotion.Emotion
 import com.pheeeew.domain.model.emotion.EmotionAudio
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionPage
-import com.pheeeew.domain.model.emotion.EmotionReaction
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.ReactionCount
 import com.pheeeew.domain.model.group.GroupStamp
@@ -24,7 +24,7 @@ internal object EmotionResponseMapper {
         val reactions =
             p.emojis.map {
                 require(it.count >= 0)
-                ReactionCount(EmotionReaction.valueOf(it.type), it.count, it.selected)
+                ReactionCount(EmotionReactionType.valueOf(it.type), it.count, it.selected)
             }
         require(reactions.map { it.type }.distinct().size == reactions.size)
         val audio =
@@ -40,7 +40,7 @@ internal object EmotionResponseMapper {
             p.isMine,
             EmotionContentType.valueOf(p.contentType),
             p.memo,
-            EmotionReaction.entries.map { type -> reactions.find { it.type == type } ?: ReactionCount(type, 0, false) },
+            EmotionReactionType.entries.map { type -> reactions.find { it.type == type } ?: ReactionCount(type, 0, false) },
             p.groupStamp?.let {
                 GroupStamp(
                     it.text,

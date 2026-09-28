@@ -23,7 +23,7 @@ actual fun rememberAudioPlayer(): AudioPlayer {
 internal class AndroidAudioPlayer(
     context: Context,
 ) : AudioPlayer {
-    private val mutable = MutableStateFlow(AudioPlaybackState())
+    private val mutable = MutableStateFlow(AudioPlayerState())
     override val state = mutable.asStateFlow()
     private var player: MediaPlayer? = null
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -52,7 +52,7 @@ internal class AndroidAudioPlayer(
             check(audioManager.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
             val next = MediaPlayer()
             player = next
-            mutable.value = AudioPlaybackState(source, loading = true)
+            mutable.value = AudioPlayerState(source, loading = true)
             next.setAudioAttributes(attributes)
             next.setOnPreparedListener {
                 if (player === it) {
@@ -80,7 +80,7 @@ internal class AndroidAudioPlayer(
 
     private fun fail() {
         stop()
-        mutable.value = AudioPlaybackState(error = "녹음을 재생할 수 없어요. 다시 시도해주세요")
+        mutable.value = AudioPlayerState(error = "녹음을 재생할 수 없어요. 다시 시도해주세요")
     }
 
     override fun pause() {
@@ -98,7 +98,7 @@ internal class AndroidAudioPlayer(
         player = null
         previous?.release()
         audioManager.abandonAudioFocusRequest(focus)
-        mutable.value = AudioPlaybackState()
+        mutable.value = AudioPlayerState()
     }
 
     override fun release() = stop()

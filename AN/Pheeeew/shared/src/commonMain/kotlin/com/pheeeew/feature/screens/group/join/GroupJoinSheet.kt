@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -47,6 +46,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.group.join.component.GroupJoinPreviewCard
@@ -429,7 +429,7 @@ private fun JoinPrimaryButton(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (isLoading) {
-                CircularProgressIndicator(
+                CircularLoadingIndicator(
                     modifier = Modifier.size(17.dp),
                     color = if (enabled) AppColors.TextPrimary else AppColors.GroupInk,
                     strokeWidth = 2.dp,

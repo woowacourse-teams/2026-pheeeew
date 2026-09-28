@@ -12,9 +12,9 @@ enum class EmotionTypeUiModel(
     val label: String,
     val icon: DrawableResource,
 ) {
-    Stuck("답답", Res.drawable.ic_emotion_frustrated),
-    Annoyed("짜증", Res.drawable.ic_emotion_irritated),
-    Exhausted("지침", Res.drawable.ic_emotion_exhausted),
-    Frustrated("좌절", Res.drawable.ic_emotion_discouraged),
-    Angry("분노", Res.drawable.ic_emotion_angry),
+    FRUSTRATED("답답", Res.drawable.ic_emotion_frustrated),
+    IRRITATED("짜증", Res.drawable.ic_emotion_irritated),
+    EXHAUSTED("지침", Res.drawable.ic_emotion_exhausted),
+    DISCOURAGED("좌절", Res.drawable.ic_emotion_discouraged),
+    ANGRY("분노", Res.drawable.ic_emotion_angry),
 }

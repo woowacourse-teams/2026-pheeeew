@@ -13,7 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.pheeeew.legacy.core.designsystem.theme.AppTheme
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
+import com.pheeeew.feature.screens.settings.SettingsTheme
 
 @Composable
 internal fun SettingsActionRow(
@@ -28,8 +30,14 @@ internal fun SettingsActionRow(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(76.dp)
-                .let { row -> if (onClick == null) row else row.clickable(onClick = onClick) },
+                .height(64.dp)
+                .let { row ->
+                    if (onClick == null) {
+                        row
+                    } else {
+                        row.clickable(interactionSource = null, indication = null, onClick = onClick)
+                    }
+                },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SettingsIconBadge(icon = icon, highlighted = highlighted)
@@ -37,14 +45,19 @@ internal fun SettingsActionRow(
         Text(
             text = title,
             color = SettingsColors.Ink,
-            style = AppTheme.typography.menuItem.copy(fontWeight = FontWeight.SemiBold),
+            fontFamily = notoSansKrFontFamily(),
+            fontSize = 14.sp,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f),
         )
         if (trailingText != null) {
             Text(
                 text = trailingText,
                 color = SettingsColors.Secondary,
-                style = AppTheme.typography.caption,
+                fontFamily = notoSansKrFontFamily(),
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
             )
         } else if (onClick != null) {
             SettingsChevron()
@@ -55,7 +68,7 @@ internal fun SettingsActionRow(
 @Preview
 @Composable
 private fun SettingsActionRowPreview() {
-    AppTheme {
+    SettingsTheme {
         androidx.compose.foundation.layout.Column {
             SettingsActionRow("접근 권한 설정", SettingsIcon.Tune, highlighted = true, onClick = {})
             SettingsDivider()

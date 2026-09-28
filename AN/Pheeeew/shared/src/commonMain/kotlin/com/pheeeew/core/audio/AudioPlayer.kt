@@ -3,7 +3,7 @@ package com.pheeeew.core.audio
 import androidx.compose.runtime.Composable
 import kotlinx.coroutines.flow.StateFlow
 
-data class AudioPlaybackState(
+data class AudioPlayerState(
     val source: String? = null,
     val playing: Boolean = false,
     val loading: Boolean = false,
@@ -12,7 +12,7 @@ data class AudioPlaybackState(
 
 /** Shared playback for a recorded local file or a remote audio URL. */
 interface AudioPlayer {
-    val state: StateFlow<AudioPlaybackState>
+    val state: StateFlow<AudioPlayerState>
 
     fun play(source: String)
 

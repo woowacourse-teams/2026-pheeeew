@@ -1,12 +1,9 @@
 package com.pheeeew.feature.screens.map.renderer
 
+import com.pheeeew.domain.model.emotion.EmotionMapBounds
+
 interface FoundationIosMapEventSink {
-    fun onViewportChanged(
-        west: Double,
-        south: Double,
-        east: Double,
-        north: Double,
-    )
+    fun onEmotionPinClick(id: Long)
 
     fun onRendererUnavailable()
 
@@ -19,4 +16,6 @@ interface FoundationIosMapEventSink {
         centerY: Float,
         radius: Float,
     )
+
+    fun onViewportChanged(bounds: EmotionMapBounds)
 }

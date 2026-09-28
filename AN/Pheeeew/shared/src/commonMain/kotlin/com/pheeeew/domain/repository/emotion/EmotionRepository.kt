@@ -3,7 +3,7 @@ package com.pheeeew.domain.repository.emotion
 import com.pheeeew.domain.model.emotion.Emotion
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionPage
-import com.pheeeew.domain.model.emotion.EmotionReaction
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 
 sealed interface EmotionResult<out T> {
     data class Success<T>(
@@ -29,7 +29,7 @@ interface EmotionRepository {
 
     suspend fun react(
         id: Long,
-        type: EmotionReaction,
+        type: EmotionReactionType,
         selected: Boolean,
     ): EmotionResult<Unit>
 

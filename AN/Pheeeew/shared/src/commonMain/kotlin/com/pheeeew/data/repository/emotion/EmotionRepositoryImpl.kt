@@ -5,7 +5,7 @@ import com.pheeeew.core.network.NetworkFailure
 import com.pheeeew.data.remote.emotion.EmotionApi
 import com.pheeeew.data.remote.emotion.EmotionResponseMapper
 import com.pheeeew.domain.model.emotion.EmotionBounds
-import com.pheeeew.domain.model.emotion.EmotionReaction
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.repository.emotion.EmotionFailure
 import com.pheeeew.domain.repository.emotion.EmotionRepository
 import com.pheeeew.domain.repository.emotion.EmotionResult
@@ -35,7 +35,7 @@ internal class EmotionRepositoryImpl(
 
     override suspend fun react(
         id: Long,
-        type: EmotionReaction,
+        type: EmotionReactionType,
         selected: Boolean,
     ) = api.react(id, type.name, selected).mapped {
         it

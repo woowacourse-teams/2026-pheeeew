@@ -23,4 +23,6 @@ object AppColors {
     val RecordSheetInputSurface = Color(0xFFECECEC)
     val RecordSheetAction = Color(0xFF202323)
     val RecordSheetRecording = Color(0xFFE26962)
+
+    val Error = Color(0xFFE26962)
 }

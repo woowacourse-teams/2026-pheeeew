@@ -24,13 +24,13 @@ internal data class EmotionPropertiesDto(
     val isMine: Boolean,
     val contentType: String,
     val memo: String? = null,
-    val emojis: List<EmotionEmojiDto>,
+    val emojis: List<NearbyEmotionEmojiDto>,
     val groupStamp: GroupStampResponseDto? = null,
     val audio: EmotionAudioDto? = null,
 )
 
 @Serializable
-internal data class EmotionEmojiDto(
+internal data class NearbyEmotionEmojiDto(
     val type: String,
     val count: Long,
     val selected: Boolean,

@@ -5,7 +5,7 @@ import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createApiClient
 import com.pheeeew.data.remote.emotion.EmotionApi
 import com.pheeeew.domain.model.emotion.EmotionBounds
-import com.pheeeew.domain.model.emotion.EmotionReaction
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.repository.emotion.EmotionResult
 import io.ktor.client.engine.mock.MockEngine
@@ -80,8 +80,8 @@ class EmotionRepositoryTest {
                 )
             try {
                 val repository = EmotionRepositoryImpl(EmotionApi(client.requests))
-                assertIs<EmotionResult.Success<Unit>>(repository.react(42, EmotionReaction.DIZZY, true))
-                assertIs<EmotionResult.Success<Unit>>(repository.react(42, EmotionReaction.DIZZY, false))
+                assertIs<EmotionResult.Success<Unit>>(repository.react(42, EmotionReactionType.DIZZY, true))
+                assertIs<EmotionResult.Success<Unit>>(repository.react(42, EmotionReactionType.DIZZY, false))
                 assertEquals(listOf(HttpMethod.Put, HttpMethod.Delete), methods)
             } finally {
                 client.close()

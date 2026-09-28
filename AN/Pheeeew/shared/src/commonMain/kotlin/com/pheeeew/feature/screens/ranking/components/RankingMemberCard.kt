@@ -73,7 +73,7 @@ fun RankingMemberCard(
             lineHeight = 17.sp,
         )
         Text(
-            "톡 개수 ${member.score}개",
+            "감정 개수 ${member.score}개",
             color = AppColors.RankingContent,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
