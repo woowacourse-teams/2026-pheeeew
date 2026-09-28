@@ -51,7 +51,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import com.pheeeew.feature.component.stamp.GroupStamp
+import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
+import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.launch
 import kotlin.math.PI
@@ -263,7 +264,7 @@ fun GroupSelectorContent(
                                 },
                         contentAlignment = Alignment.Center,
                     ) {
-                        GroupStamp(label = group.stampLabel, size = DIAL_ITEM_SIZE)
+                        GroupSelectionStamp(stamp = group.stamp, size = DIAL_ITEM_SIZE)
                     }
                 }
 
@@ -315,11 +316,17 @@ private fun GroupSelectorContentPreview() {
     var selectedGroupId by remember { mutableStateOf("baemin") }
     val selectedIndex =
         listOf(
-            GroupSelectorGroupUiModel("baemin", "배민", "배민"),
-            GroupSelectorGroupUiModel("megabox", "메가박스", "메박"),
-            GroupSelectorGroupUiModel("nol", "NOL", "NOL"),
-            GroupSelectorGroupUiModel("maker", "메이커", "메이커"),
-            GroupSelectorGroupUiModel("none", "없음", "없음"),
+            GroupSelectorGroupUiModel("none", "없음", null),
+            GroupSelectorGroupUiModel(
+                "baemin",
+                "배민",
+                StampAppearanceUiModel("배민", StampShapeId.TICKET, 0xFFFFE164, 0xFF252826),
+            ),
+            GroupSelectorGroupUiModel(
+                "megabox",
+                "메가박스",
+                StampAppearanceUiModel("메박", StampShapeId.FLOWER, 0xFFACD9EE, 0xFF252826),
+            ),
         ).indexOfFirst { it.id == selectedGroupId }.coerceAtLeast(0)
     val dialProgress = remember { Animatable(selectedIndex.toFloat()) }
     val coroutineScope = rememberCoroutineScope()
@@ -331,11 +338,17 @@ private fun GroupSelectorContentPreview() {
             isVisible = true,
             groups =
                 listOf(
-                    GroupSelectorGroupUiModel("baemin", "배민", "배민"),
-                    GroupSelectorGroupUiModel("megabox", "메가박스", "메박"),
-                    GroupSelectorGroupUiModel("nol", "NOL", "NOL"),
-                    GroupSelectorGroupUiModel("maker", "메이커", "메이커"),
-                    GroupSelectorGroupUiModel("none", "없음", "없음"),
+                    GroupSelectorGroupUiModel("none", "없음", null),
+                    GroupSelectorGroupUiModel(
+                        "baemin",
+                        "배민",
+                        StampAppearanceUiModel("배민", StampShapeId.TICKET, 0xFFFFE164, 0xFF252826),
+                    ),
+                    GroupSelectorGroupUiModel(
+                        "megabox",
+                        "메가박스",
+                        StampAppearanceUiModel("메박", StampShapeId.FLOWER, 0xFFACD9EE, 0xFF252826),
+                    ),
                 ),
             selectedGroupId = selectedGroupId,
             dialProgress = dialProgress.value,

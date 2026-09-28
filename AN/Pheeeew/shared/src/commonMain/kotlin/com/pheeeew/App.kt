@@ -17,7 +17,9 @@ import com.pheeeew.core.di.createEmotionAudioRepository
 import com.pheeeew.core.di.createEmotionDetailRepository
 import com.pheeeew.core.di.createEmotionMapDependencies
 import com.pheeeew.core.di.createEmotionRegistrationRepository
+import com.pheeeew.core.di.group.createGroupStampListRepository
 import com.pheeeew.core.permission.AppSettingsLauncher
+import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
@@ -32,6 +34,7 @@ import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 fun App(
     locationDependencies: LocationDependencies,
     apiDependencies: ApiDependencies,
+    lastRecordedGroupRepository: LastRecordedGroupRepository,
     appVersion: String,
     permissionSettingsLauncher: LocationPermissionSettingsLauncher,
     appSettingsLauncher: AppSettingsLauncher,
@@ -64,9 +67,16 @@ fun App(
         }
     val registrationRepository =
         remember(apiDependencies.client) { createEmotionRegistrationRepository(apiDependencies.client) }
+    val groupStampListRepository =
+        remember(apiDependencies.client) { createGroupStampListRepository(apiDependencies.client) }
     val mapRecordViewModel: MapRecordViewModel =
         viewModel {
-            MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase(), registrationRepository)
+            MapRecordViewModel(
+                IsWithinEmotionRecordRadiusUseCase(),
+                registrationRepository,
+                groupStampListRepository,
+                lastRecordedGroupRepository,
+            )
         }
     val detailRepository = remember(apiDependencies.client) { createEmotionDetailRepository(apiDependencies.client) }
     val detailViewModel: EmotionDetailViewModel =

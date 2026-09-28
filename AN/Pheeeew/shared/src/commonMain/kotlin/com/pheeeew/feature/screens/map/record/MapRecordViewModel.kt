@@ -9,13 +9,18 @@ import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
+import com.pheeeew.domain.repository.group.GroupStampListLoadResult
+import com.pheeeew.domain.repository.group.GroupStampListRepository
+import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
+import com.pheeeew.feature.screens.map.record.group.toSelectorUiModel
 import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheetUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -26,6 +31,8 @@ import kotlin.uuid.Uuid
 class MapRecordViewModel(
     private val isWithinRecordRadius: IsWithinEmotionRecordRadiusUseCase,
     private val registrationRepository: EmotionRegistrationRepository,
+    private val groupStampListRepository: GroupStampListRepository,
+    private val lastRecordedGroupRepository: LastRecordedGroupRepository,
 ) : ViewModel() {
     private val _uiModel = MutableStateFlow(RecordBottomSheetUiModel())
     val uiModel: StateFlow<RecordBottomSheetUiModel> = _uiModel.asStateFlow()
@@ -38,23 +45,25 @@ class MapRecordViewModel(
         _notice.value = null
     }
 
-    val groupOptions =
-        listOf(
-            GroupSelectorGroupUiModel(id = PERSONAL_GROUP_ID, name = "개인", stampLabel = "개인"),
-            GroupSelectorGroupUiModel(id = NO_GROUP_ID, name = "그룹 없음", stampLabel = "없음"),
-        )
+    private val _groupOptions = MutableStateFlow(listOf(GroupSelectorGroupUiModel(NO_GROUP_ID, "없음", null)))
+    val groupOptions: StateFlow<List<GroupSelectorGroupUiModel>> = _groupOptions.asStateFlow()
+    private var groupLoadJob: Job? = null
 
     fun open(emotion: EmotionTypeUiModel) {
+        groupLoadJob?.cancel()
         pendingRegistration = null
         _uiModel.value =
             RecordBottomSheetUiModel(
                 step = RecordFlowStepUiModel.Input,
                 selectedEmotion = emotion,
+                isGroupSelectionLoading = true,
             )
+        loadMyGroups(restoreLastGroup = true)
     }
 
     fun dismiss() {
         if (_uiModel.value.isSubmitting) return
+        groupLoadJob?.cancel()
         pendingRegistration = null
         _uiModel.value = RecordBottomSheetUiModel()
     }
@@ -71,11 +80,13 @@ class MapRecordViewModel(
         currentLocation: CurrentLocation?,
         recordingFilePath: String?,
     ) {
+        if (_uiModel.value.isGroupSelectionLoading) return
         _uiModel.value = _uiModel.value.copy(recordingFilePath = recordingFilePath)
         moveToLocationSelection(currentLocation)
     }
 
     fun onSkip(currentLocation: CurrentLocation?) {
+        if (_uiModel.value.isGroupSelectionLoading) return
         _uiModel.value = _uiModel.value.copy(memo = "", recordingFilePath = null)
         moveToLocationSelection(currentLocation)
     }
@@ -86,8 +97,6 @@ class MapRecordViewModel(
         _uiModel.value =
             _uiModel.value.copy(
                 step = RecordFlowStepUiModel.Input,
-                locationMessage = null,
-                submissionMessage = null,
             )
     }
 
@@ -112,12 +121,6 @@ class MapRecordViewModel(
             _uiModel.value.copy(
                 selectedCoordinate = candidate,
                 isSelectedCoordinateInRange = isInRange,
-                locationMessage =
-                    when {
-                        isInRange -> null
-                        else -> "원 안으로 옮겨주세요"
-                    },
-                submissionMessage = null,
             )
     }
 
@@ -130,7 +133,6 @@ class MapRecordViewModel(
                 origin = origin,
                 selectedCoordinate = origin,
                 isSelectedCoordinateInRange = true,
-                locationMessage = null,
             )
     }
 
@@ -164,11 +166,11 @@ class MapRecordViewModel(
                 state = EmotionState.valueOf(emotion.name),
                 coordinate = coordinate,
                 rotationDegrees = 0.0,
-                groupId = state.selectedGroupId.takeUnless { it == PERSONAL_GROUP_ID || it == NO_GROUP_ID },
+                groupId = state.selectedGroupId.takeUnless { it == NO_GROUP_ID },
                 content = content,
             ).also { pendingRegistration = it }
         _notice.value = null
-        _uiModel.value = state.copy(isSubmitting = true, submissionMessage = "감정을 등록하고 있어요")
+        _uiModel.value = state.copy(isSubmitting = true)
         viewModelScope.launch {
             val result =
                 try {
@@ -180,19 +182,34 @@ class MapRecordViewModel(
                 }
             when (result) {
                 is EmotionRegistrationResult.Success -> {
+                    try {
+                        lastRecordedGroupRepository.writeGroupId(registration.groupId)
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        // Registration succeeded even if remembering its group failed.
+                    }
                     _uiModel.value = RecordBottomSheetUiModel()
                     pendingRegistration = null
                     _notice.value = RecordNoticeUiModel("선택한 위치에 감정을 남겼어요", false)
                 }
 
                 else -> {
-                    _uiModel.value = _uiModel.value.copy(isSubmitting = false, submissionMessage = null)
+                    _uiModel.value = _uiModel.value.copy(isSubmitting = false)
                     _notice.value =
                         RecordNoticeUiModel(
-                            if (result == EmotionRegistrationResult.AudioUnavailable) {
-                                "녹음 등록은 아직 사용할 수 없어요. 잠시 후 다시 시도해 주세요"
-                            } else {
-                                "감정을 등록하지 못했어요. 다시 시도해 주세요"
+                            when (result) {
+                                EmotionRegistrationResult.AudioUnavailable -> {
+                                    "녹음 파일을 확인할 수 없어요. 다시 녹음해 주세요"
+                                }
+
+                                EmotionRegistrationResult.AudioUploadFailed -> {
+                                    "녹음을 업로드하지 못했어요. 다시 시도해 주세요"
+                                }
+
+                                else -> {
+                                    "감정을 등록하지 못했어요. 다시 시도해 주세요"
+                                }
                             },
                             true,
                         )
@@ -202,16 +219,19 @@ class MapRecordViewModel(
     }
 
     fun onGroupSelectorOpen() {
+        if (_uiModel.value.isGroupSelectionLoading) return
         _uiModel.value =
             _uiModel.value.copy(
-                isGroupSelectorVisible = true,
+                isGroupSelectionLoading = true,
+                isGroupSelectorVisible = false,
                 pendingGroupId = _uiModel.value.selectedGroupId,
                 groupDialProgress =
-                    groupOptions
+                    _groupOptions.value
                         .indexOfFirst { it.id == _uiModel.value.selectedGroupId }
                         .coerceAtLeast(0)
                         .toFloat(),
             )
+        loadMyGroups(restoreLastGroup = false)
     }
 
     fun onGroupSelectorDismiss() {
@@ -220,7 +240,7 @@ class MapRecordViewModel(
                 isGroupSelectorVisible = false,
                 pendingGroupId = _uiModel.value.selectedGroupId,
                 groupDialProgress =
-                    groupOptions
+                    _groupOptions.value
                         .indexOfFirst { it.id == _uiModel.value.selectedGroupId }
                         .coerceAtLeast(0)
                         .toFloat(),
@@ -232,8 +252,8 @@ class MapRecordViewModel(
     }
 
     fun onGroupDialProgressSettle(progress: Float) {
-        val index = progress.roundToInt().coerceIn(groupOptions.indices)
-        val group = groupOptions[index]
+        val index = progress.roundToInt().coerceIn(_groupOptions.value.indices)
+        val group = _groupOptions.value[index]
         _uiModel.value =
             _uiModel.value.copy(
                 groupDialProgress = index.toFloat(),
@@ -245,19 +265,25 @@ class MapRecordViewModel(
         _uiModel.value =
             _uiModel.value.copy(
                 pendingGroupId = group.id,
-                groupDialProgress = groupOptions.indexOfFirst { it.id == group.id }.coerceAtLeast(0).toFloat(),
+                groupDialProgress =
+                    _groupOptions.value
+                        .indexOfFirst { it.id == group.id }
+                        .coerceAtLeast(0)
+                        .toFloat(),
             )
     }
 
     fun onGroupSelectionComplete(group: GroupSelectorGroupUiModel) {
-        val label = if (group.id == NO_GROUP_ID) "없음" else group.name
         _uiModel.value =
             _uiModel.value.copy(
                 isGroupSelectorVisible = false,
                 selectedGroupId = group.id,
                 pendingGroupId = group.id,
-                groupLabel = label,
-                groupDialProgress = groupOptions.indexOfFirst { it.id == group.id }.coerceAtLeast(0).toFloat(),
+                groupDialProgress =
+                    _groupOptions.value
+                        .indexOfFirst { it.id == group.id }
+                        .coerceAtLeast(0)
+                        .toFloat(),
             )
     }
 
@@ -273,14 +299,85 @@ class MapRecordViewModel(
                 origin = origin,
                 selectedCoordinate = origin,
                 isSelectedCoordinateInRange = origin != null,
-                locationMessage = if (origin == null) "현재 위치를 확인하고 있어요" else null,
-                submissionMessage = null,
             )
+    }
+
+    private fun loadMyGroups(restoreLastGroup: Boolean) {
+        groupLoadJob?.cancel()
+        groupLoadJob =
+            viewModelScope.launch {
+                val storedId =
+                    if (restoreLastGroup) {
+                        try {
+                            lastRecordedGroupRepository.readGroupId()
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            null
+                        }
+                    } else {
+                        null
+                    }
+                val result =
+                    try {
+                        groupStampListRepository.findMyStamps()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        GroupStampListLoadResult.Unavailable
+                    }
+                when (result) {
+                    is GroupStampListLoadResult.Loaded -> {
+                        val options =
+                            listOf(GroupSelectorGroupUiModel(NO_GROUP_ID, "없음", null)) +
+                                result.groups.map { it.toSelectorUiModel() }
+                        _groupOptions.value = options
+                        val current = _uiModel.value
+                        val selectedId =
+                            (if (restoreLastGroup) storedId else current.selectedGroupId)
+                                ?.takeIf { id -> options.any { it.id == id } } ?: NO_GROUP_ID
+                        if (restoreLastGroup && storedId != null && selectedId == NO_GROUP_ID) {
+                            clearStoredGroup()
+                        } else if (!restoreLastGroup && current.selectedGroupId != NO_GROUP_ID &&
+                            selectedId == NO_GROUP_ID
+                        ) {
+                            clearStoredGroup()
+                        }
+                        val pendingId =
+                            current.pendingGroupId.takeIf { id -> options.any { it.id == id } } ?: selectedId
+                        val dialId = if (restoreLastGroup) selectedId else pendingId
+                        _uiModel.value =
+                            current.copy(
+                                selectedGroupId = selectedId,
+                                pendingGroupId = dialId,
+                                isGroupSelectionLoading = false,
+                                isGroupSelectorVisible =
+                                    !restoreLastGroup && current.step == RecordFlowStepUiModel.Input,
+                                groupDialProgress = options.indexOfFirst { it.id == dialId }.toFloat(),
+                            )
+                    }
+
+                    GroupStampListLoadResult.Unavailable -> {
+                        _uiModel.value =
+                            _uiModel.value.copy(isGroupSelectorVisible = false, isGroupSelectionLoading = false)
+                        _notice.value = RecordNoticeUiModel("그룹 목록을 불러오지 못했어요. 다시 시도해 주세요", true)
+                    }
+                }
+            }
+    }
+
+    private suspend fun clearStoredGroup() {
+        try {
+            lastRecordedGroupRepository.writeGroupId(null)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            // Keep the safe no-group selection even if local cleanup fails.
+        }
     }
 
     private companion object {
         const val MAX_MEMO_LENGTH = 50
-        const val PERSONAL_GROUP_ID = "personal"
         const val NO_GROUP_ID = "none"
     }
 }

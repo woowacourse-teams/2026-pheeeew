@@ -10,7 +10,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -19,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -407,7 +407,7 @@ private fun EmotionBubble(
                         EMOTION_EASE_IN_OUT.transform(phase * 2f)
                     } else {
                         1f - EMOTION_EASE_IN_OUT.transform((phase - 0.5f) * 2f)
-                }
+                    }
             }
         }
     }
@@ -441,13 +441,12 @@ private fun EmotionBubble(
                         translationX = -scaleCompensation.dp.toPx() + floating.dp.toPx()
                         translationY =
                             -scaleCompensation.dp.toPx() -
-                                (5f * floating).dp.toPx() +
-                                faceHoverY.dp.toPx()
+                            (5f * floating).dp.toPx() +
+                            faceHoverY.dp.toPx()
                         scaleX = scale.value * interactionScale
                         scaleY = scale.value * interactionScale
                         rotationZ = if (isExpanded) 0f else -3f + floating * 7f
-                    }
-                    .clip(CircleShape)
+                    }.clip(CircleShape)
                     .hoverable(interactionSource, enabled = isExpanded)
                     .then(
                         if (isExpanded) {
@@ -490,7 +489,7 @@ private fun EmotionBubble(
 
 private fun EmotionTypeUiModel.offset(isExpanded: Boolean): DpOffset =
     if (isExpanded) {
-        DpOffset(x = (3 + ordinal * 67).dp, y = 24.dp)
+        DpOffset(x = (3 + ordinal * 67).dp, y = 53.dp)
     } else {
         when (this) {
             EmotionTypeUiModel.FRUSTRATED -> DpOffset(x = 127.dp, y = 180.dp)

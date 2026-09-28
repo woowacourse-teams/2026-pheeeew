@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,7 +40,9 @@ import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.VoiceRecordingState
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
+import com.pheeeew.feature.screens.map.record.group.GroupSelectionStamp
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -53,7 +54,8 @@ fun RecordBottomSheet(
     selectedEmotion: EmotionTypeUiModel,
     inputMode: RecordInputModeUiModel,
     memo: String,
-    groupLabel: String,
+    selectedGroupStamp: StampAppearanceUiModel?,
+    isGroupSelectionLoading: Boolean,
     onDismissRequest: () -> Unit,
     onInputModeChange: (RecordInputModeUiModel) -> Unit,
     onMemoChange: (String) -> Unit,
@@ -87,7 +89,8 @@ fun RecordBottomSheet(
             selectedEmotion = selectedEmotion,
             inputMode = inputMode,
             memo = memo,
-            groupLabel = groupLabel,
+            selectedGroupStamp = selectedGroupStamp,
+            isGroupSelectionLoading = isGroupSelectionLoading,
             onInputModeChange = onInputModeChange,
             onMemoChange = onMemoChange,
             onGroupClick = onGroupClick,
@@ -104,7 +107,8 @@ private fun RecordBottomSheetContent(
     selectedEmotion: EmotionTypeUiModel,
     inputMode: RecordInputModeUiModel,
     memo: String,
-    groupLabel: String,
+    selectedGroupStamp: StampAppearanceUiModel?,
+    isGroupSelectionLoading: Boolean,
     onInputModeChange: (RecordInputModeUiModel) -> Unit,
     onMemoChange: (String) -> Unit,
     onGroupClick: () -> Unit,
@@ -183,20 +187,13 @@ private fun RecordBottomSheetContent(
                     modifier =
                         Modifier
                             .size(44.dp)
-                            .clip(CircleShape)
-                            .background(AppColors.Gray100)
-                            .noRippleClickable(onClick = onGroupClick),
+                            .noRippleClickable(enabled = !isGroupSelectionLoading, onClick = onGroupClick),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = groupLabel,
-                        color = AppColors.Border,
-                        fontSize = 15.sp,
-                        textAlign = TextAlign.Center,
-                    )
+                    GroupSelectionStamp(stamp = selectedGroupStamp, size = 44.dp)
                 }
                 Text(
-                    text = "그룹 변경",
+                    text = if (isGroupSelectionLoading) "그룹 확인 중" else "그룹 변경",
                     fontSize = 10.sp,
                     color = AppColors.TextSecondary,
                 )
@@ -219,16 +216,18 @@ private fun RecordBottomSheetContent(
         RecordSheetActions(
             onNext = onNext,
             onSkip = onSkip,
+            canSkip = !isGroupSelectionLoading,
             enabled =
-                when (inputMode) {
-                    RecordInputModeUiModel.Memo -> {
-                        memo.isNotBlank()
-                    }
+                !isGroupSelectionLoading &&
+                    when (inputMode) {
+                        RecordInputModeUiModel.Memo -> {
+                            memo.isNotBlank()
+                        }
 
-                    RecordInputModeUiModel.Recording -> {
-                        recordingReady
-                    }
-                },
+                        RecordInputModeUiModel.Recording -> {
+                            recordingReady
+                        }
+                    },
         )
     }
 }
@@ -275,6 +274,7 @@ private fun rememberRecordingReady(voiceRecorder: VoiceRecorder?): Boolean {
 private fun RecordSheetActions(
     onNext: () -> Unit,
     onSkip: () -> Unit,
+    canSkip: Boolean,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
@@ -287,21 +287,29 @@ private fun RecordSheetActions(
             modifier =
                 Modifier
                     .weight(1f)
+                    .height(48.dp)
                     .clip(AppShapes.Pill)
                     .background(AppColors.RecordSheetAction.copy(alpha = if (enabled) 1f else 0.35f))
-                    .noRippleClickable(enabled = enabled, onClick = onNext)
-                    .padding(vertical = 12.dp),
+                    .noRippleClickable(enabled = enabled, onClick = onNext),
             contentAlignment = Alignment.Center,
         ) {
             Text(text = "다음", color = AppColors.Surface, fontSize = 16.sp, fontWeight = FontWeight.Normal)
         }
-        Text(
-            text = "건너뛰기",
-            modifier = Modifier.noRippleClickable(onClick = onSkip).padding(horizontal = 16.dp, vertical = 12.dp),
-            color = AppColors.Border,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
-        )
+        Box(
+            modifier =
+                Modifier
+                    .height(48.dp)
+                    .noRippleClickable(enabled = canSkip, onClick = onSkip)
+                    .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "건너뛰기",
+                color = AppColors.Border,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+            )
+        }
     }
 }
 
@@ -311,64 +319,65 @@ private fun MemoPanel(
     onMemoChange: (String) -> Unit,
     modifier: Modifier,
 ) {
-    BasicTextField(
-        value = memo,
-        onValueChange = { value ->
-            if (value.length <= 50) {
-                onMemoChange(value)
-            }
-        },
-        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(140.dp)
-                .clip(AppShapes.Input)
-                .border(width = 1.dp, color = AppColors.Border, shape = AppShapes.Input)
-                .padding(16.dp),
-        textStyle =
-            TextStyle(
-                color = AppColors.TextPrimary,
-                fontSize = 14.sp,
-                lineHeight = 22.sp,
-            ),
-        decorationBox = { innerTextField ->
-            Box(modifier = Modifier.fillMaxSize()) {
-                if (memo.isEmpty()) {
+    Column {
+        BasicTextField(
+            value = memo,
+            onValueChange = { value ->
+                if (value.length <= 50) {
+                    onMemoChange(value)
+                }
+            },
+            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
+            modifier =
+                modifier
+                    .fillMaxWidth()
+                    .height(105.dp)
+                    .clip(AppShapes.Input)
+                    .border(width = 1.dp, color = AppColors.Border, shape = AppShapes.Input)
+                    .padding(16.dp),
+            textStyle =
+                TextStyle(
+                    color = AppColors.TextPrimary,
+                    fontSize = 14.sp,
+                    lineHeight = 22.sp,
+                ),
+            decorationBox = { innerTextField ->
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (memo.isEmpty()) {
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 20.dp),
+                        ) {
+                            Text(
+                                text = "지금 마음을 짧게 적어보세요",
+                                color = AppColors.Border.copy(alpha = 0.45f),
+                                fontSize = 16.sp,
+                            )
+                        }
+                    }
                     Box(
                         modifier =
                             Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 20.dp),
+                                .fillMaxWidth(),
                     ) {
-                        Text(
-                            text = "지금 마음을 짧게 적어보세요",
-                            color = AppColors.Border.copy(alpha = 0.45f),
-                            fontSize = 16.sp,
-                        )
+                        innerTextField()
                     }
                 }
-                Box(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 20.dp),
-                ) {
-                    innerTextField()
-                }
-                Text(
-                    text = "${memo.length}/50",
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 4.dp),
-                    color = AppColors.TextSecondary,
-                    fontSize = 12.sp,
-                    textAlign = TextAlign.End,
-                )
-            }
-        },
-    )
+            },
+        )
+        Text(
+            text = "${memo.length}/50",
+            modifier =
+                Modifier
+                    .padding(end = 4.dp)
+                    .align(Alignment.End),
+            color = AppColors.TextSecondary,
+            fontSize = 12.sp,
+            textAlign = TextAlign.End,
+        )
+    }
 }
 
 @Composable
@@ -425,14 +434,15 @@ private fun RecordInputModeTab(
     }
 }
 
-@Preview(name = "감정 기록 바텀시트", widthDp = 402, heightDp = 430, showBackground = true)
+@Preview(name = "감정 기록 바텀시트", widthDp = 402, heightDp = 430)
 @Composable
 private fun RecordBottomSheetContentPreview() {
     RecordBottomSheetContent(
         selectedEmotion = EmotionTypeUiModel.ANGRY,
         inputMode = RecordInputModeUiModel.Memo,
         memo = "",
-        groupLabel = "개인",
+        selectedGroupStamp = null,
+        isGroupSelectionLoading = false,
         onInputModeChange = {},
         onMemoChange = {},
         onGroupClick = {},
@@ -442,14 +452,15 @@ private fun RecordBottomSheetContentPreview() {
     )
 }
 
-@Preview(name = "녹음 탭", widthDp = 402, heightDp = 430, showBackground = true)
+@Preview(name = "녹음 탭", widthDp = 402, heightDp = 430)
 @Composable
 private fun RecordBottomSheetRecordingPreview() {
     RecordBottomSheetContent(
         selectedEmotion = EmotionTypeUiModel.EXHAUSTED,
         inputMode = RecordInputModeUiModel.Recording,
         memo = "",
-        groupLabel = "개인",
+        selectedGroupStamp = null,
+        isGroupSelectionLoading = false,
         onInputModeChange = {},
         onMemoChange = {},
         onGroupClick = {},

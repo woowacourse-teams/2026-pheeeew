@@ -6,6 +6,8 @@ import com.pheeeew.domain.model.emotion.EmotionRegistration
 import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
+import com.pheeeew.domain.repository.group.GroupStampListLoadResult
+import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
 import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
@@ -30,6 +32,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class RecordLocationTest {
     private val origin = GeoCoordinate(37.5665, 126.9780)
+    private val unusedGroups = GroupStampListRepository { GroupStampListLoadResult.Loaded(emptyList()) }
 
     @Test
     fun clampsOutsideCoordinatesTo500Meters() {
@@ -68,6 +71,8 @@ class RecordLocationTest {
             try {
                 val repository = FakeRegistrationRepository()
                 val model = initializedModel(repository)
+                advanceUntilIdle()
+                model.onNext(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L), null)
                 model.onMemoChange("기록")
                 val outside = destination(origin, 800.0, 1.0)
                 model.onLocationSelected(outside.latitude, outside.longitude)
@@ -89,8 +94,15 @@ class RecordLocationTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 val repository = FakeRegistrationRepository()
-                val model = MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase(), repository)
+                val model =
+                    MapRecordViewModel(
+                        IsWithinEmotionRecordRadiusUseCase(),
+                        repository,
+                        unusedGroups,
+                        InMemoryLastRecordedGroupRepository(),
+                    )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
+                advanceUntilIdle()
                 model.onInputModeChange(RecordInputModeUiModel.Recording)
                 model.onNext(null, "/tmp/voice.m4a")
                 model.onConfirmLocation()
@@ -110,9 +122,13 @@ class RecordLocationTest {
         }
 
     private fun initializedModel(repository: EmotionRegistrationRepository): MapRecordViewModel =
-        MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase(), repository).also {
+        MapRecordViewModel(
+            IsWithinEmotionRecordRadiusUseCase(),
+            repository,
+            unusedGroups,
+            InMemoryLastRecordedGroupRepository(),
+        ).also {
             it.open(EmotionTypeUiModel.FRUSTRATED)
-            it.onNext(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L), null)
         }
 
     private class FakeRegistrationRepository : EmotionRegistrationRepository {

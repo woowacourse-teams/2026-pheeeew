@@ -85,10 +85,10 @@ private fun RecordAudioPanel(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .height(140.dp)
+                .height(105.dp)
                 .clip(AppShapes.Input)
                 .border(width = 1.dp, color = AppColors.Border, shape = AppShapes.Input)
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
         when (panelState) {
@@ -193,7 +193,7 @@ private fun AdioRecordingPanel(
             )
         }
         Row(
-            modifier = Modifier.fillMaxHeight(),
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             AudioWaveform(
@@ -283,7 +283,7 @@ private fun AdioCompletedPanel(
             }
         }
         Row(
-            modifier = Modifier.fillMaxHeight(),
+            modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             PlaybackButton(

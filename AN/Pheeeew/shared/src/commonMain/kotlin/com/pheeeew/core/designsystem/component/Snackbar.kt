@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
@@ -51,6 +52,7 @@ fun Snackbar(
     message: String?,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    isError: Boolean = false,
 ) {
     var lastMessage by remember { mutableStateOf(message) }
 
@@ -84,16 +86,29 @@ fun Snackbar(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Box(
-                    modifier =
+                if (isError) {
+                    Box(
                         Modifier
-                            .size(18.dp)
-                            .background(Color(0xFFFFE36E), CircleShape)
-                            .border(1.dp, AppColors.TextPrimary, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    SuccessCheckMark()
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .border(width = 1.dp, color = AppColors.Border, shape = CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(painterResource(Res.drawable.ic_error), null, Modifier.size(24.dp), tint = AppColors.Error)
+                    }
+                } else {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(18.dp)
+                                .background(Color(0xFFFFE36E), CircleShape)
+                                .border(1.dp, AppColors.TextPrimary, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        SuccessCheckMark()
+                    }
                 }
+
                 Text(
                     text = lastMessage.orEmpty(),
                     color = AppColors.TextPrimary,
@@ -131,65 +146,4 @@ private fun SnackbarPreview() {
         message = "신고가 접수되었습니다.",
         onDismiss = {},
     )
-}
-
-@Composable
-fun Snackbar(
-    message: String?,
-    isError: Boolean,
-    onDismiss: () -> Unit,
-    modifier: Modifier,
-) {
-    var lastMessage by remember { mutableStateOf(message) }
-    var lastError by remember { mutableStateOf(isError) }
-    LaunchedEffect(message, isError) {
-        if (message != null) {
-            lastMessage = message
-            lastError = isError
-            delay(REPORT_SNACKBAR_DURATION_MILLIS)
-            onDismiss()
-        }
-    }
-    AnimatedVisibility(
-        visible = message != null,
-        enter = fadeIn() + slideInVertically { -it },
-        exit = fadeOut() + slideOutVertically { -it },
-        modifier = modifier,
-    ) {
-        StatusSnackbarContent(lastMessage.orEmpty(), lastError)
-    }
-}
-
-@Composable
-private fun StatusSnackbarContent(
-    message: String,
-    isError: Boolean,
-) {
-    Row(
-        Modifier.fillMaxWidth().background(AppColors.GroupInk).padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        if (isError) {
-            Icon(painterResource(Res.drawable.ic_error), null, Modifier.size(24.dp), tint = Color.Red)
-        } else {
-            Box(
-                Modifier.size(24.dp).background(AppColors.RankingAccent, CircleShape),
-                contentAlignment = Alignment.Center,
-            ) { SuccessCheckMark() }
-        }
-        Text(message, color = Color.White, fontSize = 14.sp)
-    }
-}
-
-@Preview(name = "등록 성공 스낵바", widthDp = 376)
-@Composable
-private fun RegistrationSnackbarPreview() {
-    StatusSnackbarContent("선택한 위치에 감정을 남겼어요", false)
-}
-
-@Preview(name = "등록 실패 스낵바", widthDp = 376)
-@Composable
-private fun RegistrationErrorSnackbarPreview() {
-    StatusSnackbarContent("감정을 등록하지 못했어요. 다시 시도해 주세요", true)
 }

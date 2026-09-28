@@ -113,6 +113,7 @@ fun MapScreen(
     }
     val uiModel by viewModel.uiModel.collectAsState()
     val recordUiModel by recordViewModel.uiModel.collectAsState()
+    val groupOptions by recordViewModel.groupOptions.collectAsState()
     val notice by recordViewModel.notice.collectAsState()
     var showDiscardDialog by remember { mutableStateOf(false) }
     val leaveInput = {
@@ -161,7 +162,7 @@ fun MapScreen(
             voiceRecorder = voiceRecorder,
             recordViewport = recordViewport,
             onRecordCoordinateSelected = recordViewModel::onLocationSelected,
-            groupOptions = recordViewModel.groupOptions,
+            groupOptions = groupOptions,
             mapContent = { renderUiModel, mapModifier ->
                 key(uiModel.mapRevision) {
                     NativeMap(
@@ -239,9 +240,9 @@ fun MapScreen(
         )
         Snackbar(
             message = notice?.message,
-            isError = notice?.isError == true,
             onDismiss = recordViewModel::dismissNotice,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 16.dp, end = 16.dp),
+            isError = notice?.isError == true,
         )
     }
     if (showDiscardDialog) {
@@ -377,7 +378,8 @@ internal fun MapScreenContent(
                     inputMode = recordUiModel.inputMode,
                     memo = recordUiModel.memo,
                     voiceRecorder = voiceRecorder,
-                    groupLabel = recordUiModel.groupLabel,
+                    selectedGroupStamp = groupOptions.firstOrNull { it.id == recordUiModel.selectedGroupId }?.stamp,
+                    isGroupSelectionLoading = recordUiModel.isGroupSelectionLoading,
                     onInputModeChange = onRecordInputModeChange,
                     onMemoChange = onRecordMemoChange,
                     onGroupClick = onRecordGroupClick,
@@ -411,9 +413,9 @@ internal fun MapScreenContent(
                     selectedCoordinate = recordUiModel.selectedCoordinate,
                     viewport = recordViewport,
                     onCoordinateSelected = onRecordCoordinateSelected,
-                    groupLabel = recordUiModel.groupLabel,
-                    locationMessage = recordUiModel.locationMessage,
-                    submissionMessage = recordUiModel.submissionMessage,
+                    selectedEmotion = recordUiModel.selectedEmotion ?: EmotionTypeUiModel.FRUSTRATED,
+                    selectedGroupStamp = groupOptions.firstOrNull { it.id == recordUiModel.selectedGroupId }?.stamp,
+                    isSubmitting = recordUiModel.isSubmitting,
                     canConfirm =
                         recordUiModel.isSelectedCoordinateInRange && recordViewport != null &&
                             uiModel.mapError == null && !recordUiModel.isSubmitting,
@@ -434,8 +436,7 @@ private fun MapScreenContentPreview() {
         recordUiModel = RecordBottomSheetUiModel(),
         groupOptions =
             listOf(
-                GroupSelectorGroupUiModel("personal", "개인", "개인"),
-                GroupSelectorGroupUiModel("none", "그룹 없음", "없음"),
+                GroupSelectorGroupUiModel("none", "없음", null),
             ),
         mapContent = { _, modifier -> Box(modifier.background(Color(0xFFECEAE5))) },
         onListClick = {},
