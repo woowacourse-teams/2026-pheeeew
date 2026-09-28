@@ -138,10 +138,26 @@ private class AndroidFoundationMapHost(
     private var statusBarInsetPx = 0
     private var navigationBarInsetPx = 0
     private var didConfigureKoreanFontFaces = false
+    private var pendingOriginalStyleJson: String? = null
+    private var isRestoringOriginalStyle = false
 
     private val mapLoadFailureListener =
         MapView.OnDidFailLoadingMapListener {
-            if (!released) onMapError(MapErrorUiModel.StyleLoadFailed)
+            val originalStyleJson = pendingOriginalStyleJson
+            val currentMap = map
+            if (!released && originalStyleJson != null && !isRestoringOriginalStyle && currentMap != null) {
+                isRestoringOriginalStyle = true
+                currentMap.setStyle(Style.Builder().fromJson(originalStyleJson)) { restoredStyle ->
+                    if (released) return@setStyle
+                    pendingOriginalStyleJson = null
+                    isRestoringOriginalStyle = false
+                    installLoadedStyle(restoredStyle)
+                }
+            } else if (!released) {
+                pendingOriginalStyleJson = null
+                isRestoringOriginalStyle = false
+                onMapError(MapErrorUiModel.StyleLoadFailed)
+            }
         }
 
     init {
@@ -201,10 +217,14 @@ private class AndroidFoundationMapHost(
                 if (released) return@setStyle
                 if (!didConfigureKoreanFontFaces) {
                     didConfigureKoreanFontFaces = true
-                    val styleJson = withKoreanFontFaces(loadedStyle.json)
+                    val originalStyleJson = loadedStyle.json
+                    val styleJson = withKoreanFontFaces(originalStyleJson)
                     if (styleJson != null) {
+                        pendingOriginalStyleJson = originalStyleJson
+                        isRestoringOriginalStyle = false
                         readyMap.setStyle(Style.Builder().fromJson(styleJson)) configuredStyle@{ configuredStyle ->
                             if (released) return@configuredStyle
+                            pendingOriginalStyleJson = null
                             installLoadedStyle(configuredStyle)
                         }
                     } else {
