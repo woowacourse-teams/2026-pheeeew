@@ -178,6 +178,11 @@ fun App(
                             mapViewModel.refreshEmotionPins()
                         },
                         onLeaveEmotion = mapViewModel::onEmotionSelectorOpen,
+                        onOpenEmotionOnMap = mapViewModel::focusOnEmotion,
+                        blockUser = moderation.block,
+                        onReportEmotion = { id, stamp ->
+                            reportTarget = id to stamp
+                        },
                     )
 
                     EmotionDetailOverlay(

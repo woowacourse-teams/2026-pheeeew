@@ -56,6 +56,19 @@ class MapViewModel(
         requestCurrentLocation(moveCamera = true, requestPermission = true)
     }
 
+    fun focusOnEmotion(id: Long): Boolean {
+        val pin =
+            _uiModel.value.emotionPins.firstOrNull { it.id == id && it.id !in _uiModel.value.hiddenEmotionIds }
+                ?: return false
+        sendCameraCommand(
+            action = MapCameraActionUiModel.MoveToCoordinate,
+            latitude = pin.latitude,
+            longitude = pin.longitude,
+            value = LOCATION_FOCUS_ZOOM,
+        )
+        return true
+    }
+
     fun onEmotionSelectorOpen() {
         _uiModel.value = _uiModel.value.copy(isEmotionSelectorExpanded = true)
     }

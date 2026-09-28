@@ -32,14 +32,14 @@ internal fun EmotionPromptLabel(
                 .clip(shape)
                 .background(Color.White)
                 .border(width = 1.dp, color = Color(0xFF292B2A), shape = shape)
-                .padding(horizontal = 16.dp, vertical = 5.dp),
+                .padding(horizontal = 24.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = if (isExpanded) "지금 내 감정은 어떤가요?" else "터치해서 감정을 꺼내보세요",
             color = Color(0xFF292B2A),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
         )
     }
 }
