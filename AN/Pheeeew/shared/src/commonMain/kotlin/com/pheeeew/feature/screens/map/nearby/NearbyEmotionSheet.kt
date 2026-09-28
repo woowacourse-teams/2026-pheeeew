@@ -46,6 +46,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.audio.rememberEmotionAudioPlayer
 import com.pheeeew.core.designsystem.component.ConfirmDialog
+import com.pheeeew.core.navigation.PredictiveBackEffect
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.feature.component.stamp.GroupStamp
@@ -53,7 +54,6 @@ import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import com.pheeeew.feature.screens.map.record.noRippleClickable
-import com.pheeeew.legacy.core.navigation.PredictiveBackEffect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import org.jetbrains.compose.resources.DrawableResource

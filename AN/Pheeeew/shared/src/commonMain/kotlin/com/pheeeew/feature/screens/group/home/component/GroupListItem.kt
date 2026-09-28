@@ -57,7 +57,7 @@ fun GroupListItem(
                         size = Size(size.width, size.height - shadowOffset),
                         cornerRadius = CornerRadius(18.dp.toPx()),
                     )
-                }.clickable(role = Role.Button, onClick = onClick),
+                },
     ) {
         Row(
             modifier =
@@ -67,12 +67,13 @@ fun GroupListItem(
                     .clip(shape)
                     .background(Color.White)
                     .border(width = AppBorders.Standard, color = AppColors.GroupInk, shape = shape)
-                    .padding(horizontal = 28.dp),
+                    .clickable(role = Role.Button, onClick = onClick)
+                    .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             GroupStamp(appearance = group.stamp, size = 52.dp)
             Column(
-                modifier = Modifier.weight(1f).padding(start = 6.dp),
+                modifier = Modifier.weight(1f).padding(start = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(

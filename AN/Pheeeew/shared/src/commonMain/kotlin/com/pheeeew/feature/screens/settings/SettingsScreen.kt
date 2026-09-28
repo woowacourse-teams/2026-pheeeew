@@ -29,6 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
+import com.pheeeew.core.navigation.PredictiveBackContent
+import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.monitoring.product.labels
@@ -43,8 +45,6 @@ import com.pheeeew.feature.screens.settings.components.SettingsIcon
 import com.pheeeew.feature.screens.settings.components.SettingsSectionTitle
 import com.pheeeew.feature.screens.settings.legal.LegalDocument
 import com.pheeeew.feature.screens.settings.legal.LegalDocumentRoute
-import com.pheeeew.legacy.core.navigation.PredictiveBackContent
-import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 import kotlinx.coroutines.launch
 
 @Composable
@@ -98,7 +98,7 @@ fun SettingsScreen(
 fun SettingsScreen(
     appVersion: String,
     onBackClick: () -> Unit,
-    permissionSettingsLauncher: LocationPermissionSettingsLauncher,
+    permissionSettingsLauncher: AppSettingsLauncher,
     monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
     modifier: Modifier = Modifier,
 ) {
@@ -210,7 +210,7 @@ private fun SettingsScreenStatefulPreview() {
     )
 }
 
-private object PreviewPermissionSettingsLauncher : LocationPermissionSettingsLauncher {
+private object PreviewPermissionSettingsLauncher : AppSettingsLauncher {
     override suspend fun openAppSettings(): Boolean = true
 
     override suspend fun openLocationSettings(): Boolean = true

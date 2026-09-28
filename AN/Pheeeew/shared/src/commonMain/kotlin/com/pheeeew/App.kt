@@ -54,10 +54,16 @@ import com.pheeeew.core.di.createEmotionRegistrationRepository
 import com.pheeeew.core.di.emotion.createNearbyEmotionViewModel
 import com.pheeeew.core.di.group.createGroupDependencies
 import com.pheeeew.core.di.group.createGroupStampListRepository
+import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.GroupRootDestination
 import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
+import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.permission.AppSettingsLauncher
+import com.pheeeew.data.remote.version.AppVersionApi
+import com.pheeeew.data.remote.version.toPolicy
+import com.pheeeew.domain.model.version.AppVersionDecision
+import com.pheeeew.domain.model.version.evaluateAppVersion
 import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.component.AppBottomNavigationBar
@@ -78,13 +84,6 @@ import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
-import com.pheeeew.legacy.core.navigation.DoubleBackToExitHandler
-import com.pheeeew.legacy.core.network.ConnectivityObserver
-import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
-import com.pheeeew.legacy.data.remote.version.AppVersionApi
-import com.pheeeew.legacy.data.remote.version.toPolicy
-import com.pheeeew.legacy.domain.model.version.AppVersionDecision
-import com.pheeeew.legacy.domain.model.version.evaluateAppVersion
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeout
 import org.jetbrains.compose.resources.DrawableResource
@@ -96,7 +95,7 @@ fun App(
     lastRecordedGroupRepository: LastRecordedGroupRepository,
     appVersion: String,
     appVersionApi: AppVersionApi,
-    permissionSettingsLauncher: LocationPermissionSettingsLauncher,
+    permissionSettingsLauncher: AppSettingsLauncher,
     appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
@@ -126,7 +125,7 @@ private fun AppContent(
     appVersion: String,
     appVersionApi: AppVersionApi,
     connectivityObserver: ConnectivityObserver,
-    permissionSettingsLauncher: LocationPermissionSettingsLauncher,
+    permissionSettingsLauncher: AppSettingsLauncher,
     appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
