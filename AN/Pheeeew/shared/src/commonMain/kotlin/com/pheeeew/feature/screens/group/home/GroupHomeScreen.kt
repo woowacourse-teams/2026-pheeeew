@@ -7,7 +7,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -87,25 +86,11 @@ fun GroupHomeScreen(
                 textAlign = TextAlign.Center,
             )
         }
-        Spacer(Modifier.height(16.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
-        ) {
-            GroupHomeActionButton(
-                text = stringResource(Res.string.group_home_create),
-                isPrimary = true,
-                onClick = onCreateClick,
-                modifier = Modifier.weight(1f),
-            )
-            GroupHomeActionButton(
-                text = stringResource(Res.string.group_home_join),
-                isPrimary = false,
-                onClick = onJoinClick,
-                modifier = Modifier.weight(1f),
-            )
+        if (uiState.content !is GroupHomeContent.Ready) {
+            Spacer(Modifier.height(16.dp))
+            GroupHomeActions(onCreateClick = onCreateClick, onJoinClick = onJoinClick)
+            Spacer(Modifier.height(28.dp))
         }
-        Spacer(Modifier.height(28.dp))
 
         when (val content = uiState.content) {
             GroupHomeContent.Loading -> {
@@ -128,12 +113,38 @@ fun GroupHomeScreen(
                 GroupListContent(
                     groups = content.groups,
                     hasRefreshError = uiState.hasRefreshError,
+                    onCreateClick = onCreateClick,
+                    onJoinClick = onJoinClick,
                     onGroupClick = onGroupClick,
                     onRetry = onRetry,
                     modifier = Modifier.weight(1f),
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun GroupHomeActions(
+    onCreateClick: () -> Unit,
+    onJoinClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        GroupHomeActionButton(
+            text = stringResource(Res.string.group_home_create),
+            isPrimary = true,
+            onClick = onCreateClick,
+            modifier = Modifier.weight(1f),
+        )
+        GroupHomeActionButton(
+            text = stringResource(Res.string.group_home_join),
+            isPrimary = false,
+            onClick = onJoinClick,
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
@@ -280,6 +291,8 @@ private fun FailedContent(
 private fun GroupListContent(
     groups: List<GroupSummaryUiModel>,
     hasRefreshError: Boolean,
+    onCreateClick: () -> Unit,
+    onJoinClick: () -> Unit,
     onGroupClick: (GroupId) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -287,12 +300,16 @@ private fun GroupListContent(
     Box(modifier = modifier.fillMaxWidth()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
             verticalArrangement = Arrangement.spacedBy(17.dp),
         ) {
+            item(key = "home:actions", contentType = "actions") {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 11.dp)) {
+                    GroupHomeActions(onCreateClick = onCreateClick, onJoinClick = onJoinClick)
+                }
+            }
             item(key = "home:list-header", contentType = "list-header") {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 2.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -311,7 +328,7 @@ private fun GroupListContent(
             }
             if (hasRefreshError) {
                 item(key = "home:refresh-error", contentType = "refresh-error") {
-                    RefreshErrorBanner(onRetry = onRetry)
+                    RefreshErrorBanner(onRetry = onRetry, modifier = Modifier.padding(horizontal = 24.dp))
                 }
             }
             items(
@@ -319,7 +336,11 @@ private fun GroupListContent(
                 key = { group -> "group:${group.id.value}" },
                 contentType = { "group-row" },
             ) { group ->
-                GroupListItem(group = group, onClick = { onGroupClick(group.id) })
+                GroupListItem(
+                    group = group,
+                    onClick = { onGroupClick(group.id) },
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
             }
         }
     }
