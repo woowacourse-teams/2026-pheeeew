@@ -518,6 +518,7 @@ internal fun MapScreenContent(
 
         if (recordUiModel.step != RecordFlowStepUiModel.LocationSelection) {
             MapOverlay(
+                showNavigationButtons = recordUiModel.step == RecordFlowStepUiModel.Closed,
                 onListClick = onListClick,
                 onSettingClick = onSettingClick,
                 isEmotionSelectorExpanded = uiModel.isEmotionSelectorExpanded,
@@ -570,6 +571,8 @@ internal fun MapScreenContent(
 
             RecordFlowStepUiModel.LocationSelection -> {
                 RecordLocationSelectionContent(
+                    onMyLocationClick = onMyLocationClick,
+                    isRequestingLocation = uiModel.isRequestingLocation,
                     origin = recordUiModel.origin,
                     selectedCoordinate = recordUiModel.selectedCoordinate,
                     viewport = recordViewport,
