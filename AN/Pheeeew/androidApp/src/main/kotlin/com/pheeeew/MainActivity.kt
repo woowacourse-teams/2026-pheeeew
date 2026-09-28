@@ -7,15 +7,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
 import com.pheeeew.core.di.AndroidApiDependencies
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.network.AndroidConnectivityObserver
 import com.pheeeew.core.permission.AndroidAppSettingsLauncher
 import com.pheeeew.data.local.group.AndroidLastRecordedGroupRepository
 import com.pheeeew.data.location.platform.android.LocationDependenciesHolder
 import com.pheeeew.data.location.platform.android.createAndroidLocationDependencies
+import com.pheeeew.data.remote.version.AppVersionApi
 import com.pheeeew.feature.screens.onboarding.WELCOME_ONBOARDING_COMPLETED_KEY
-import com.pheeeew.legacy.AndroidConnectivityObserver
-import com.pheeeew.legacy.core.permission.AndroidLocationPermissionSettingsLauncher
-import com.pheeeew.legacy.data.remote.version.createAppVersionApi
-import com.pheeeew.legacy.core.network.ApiConfig as LegacyApiConfig
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,9 +29,23 @@ class MainActivity : ComponentActivity() {
         val onboardingPreferences = getSharedPreferences("pheeeew_preferences", MODE_PRIVATE)
         val hasCompletedOnboarding = onboardingPreferences.getBoolean(WELCOME_ONBOARDING_COMPLETED_KEY, false)
         val lastRecordedGroupRepository = AndroidLastRecordedGroupRepository(applicationContext)
-        val appVersionApi = createAppVersionApi(LegacyApiConfig(BuildConfig.API_BASE_URL), "android")
-
+        val apiDependencies =
+            AndroidApiDependencies.get(
+                applicationContext,
+                DeviceSessionBuildConfig(
+                    BuildConfig.DEBUG,
+                    BuildConfig.DEVICE_ENVIRONMENT,
+                    BuildConfig.API_BASE_URL,
+                    BuildConfig.DEVICE_ATTESTATION_MODE,
+                    "${BuildConfig.VERSION_NAME}+${BuildConfig.VERSION_CODE}",
+                ),
+                BuildConfig.APPLICATION_ID,
+                BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
+                monitoring = (application as PheeeewApplication).monitoring,
+            )
+        val appVersionApi = AppVersionApi(apiDependencies.client.requests, "android")
         val connectivityObserver = AndroidConnectivityObserver(applicationContext)
+        val appSettingsLauncher = AndroidAppSettingsLauncher(this@MainActivity)
 
         setContent {
             App(
@@ -46,22 +58,9 @@ class MainActivity : ComponentActivity() {
                 },
                 appVersion = BuildConfig.VERSION_NAME,
                 appVersionApi = appVersionApi,
-                permissionSettingsLauncher = AndroidLocationPermissionSettingsLauncher(this@MainActivity),
-                appSettingsLauncher = AndroidAppSettingsLauncher(this@MainActivity),
-                apiDependencies =
-                    AndroidApiDependencies.get(
-                        applicationContext,
-                        DeviceSessionBuildConfig(
-                            BuildConfig.DEBUG,
-                            BuildConfig.DEVICE_ENVIRONMENT,
-                            BuildConfig.API_BASE_URL,
-                            BuildConfig.DEVICE_ATTESTATION_MODE,
-                            "${BuildConfig.VERSION_NAME}+${BuildConfig.VERSION_CODE}",
-                        ),
-                        BuildConfig.APPLICATION_ID,
-                        BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
-                        monitoring = (application as PheeeewApplication).monitoring,
-                    ),
+                permissionSettingsLauncher = appSettingsLauncher,
+                appSettingsLauncher = appSettingsLauncher,
+                apiDependencies = apiDependencies,
             )
         }
     }

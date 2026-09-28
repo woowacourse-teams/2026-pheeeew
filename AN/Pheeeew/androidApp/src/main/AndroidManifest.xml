@@ -29,12 +29,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!--TODO: legacy 정리할 때 제거-->
-        <activity
-            android:exported="false"
-            android:name=".legacy.LegacyMainActivity"
-            android:screenOrientation="portrait"
-            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>
