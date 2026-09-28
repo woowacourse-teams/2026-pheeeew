@@ -54,6 +54,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: S3 Variables 확인
+        env:
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+          S3_KEY_PREFIX: ${{ vars.S3_KEY_PREFIX }}
+          S3_REGION: ${{ vars.S3_REGION }}
+        run: |
+          set -eu
+          for key in S3_BUCKET S3_KEY_PREFIX S3_REGION; do
+            value="${!key:-}"
+            if [[ -z "$value" || ! "$value" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+              echo "::error::production Variables의 $key 값은 영문, 숫자, 점, 밑줄, 슬래시, 하이픈으로 지정해야 합니다."
+              exit 1
+            fi
+          done
+
       - name: Alloy Secrets 확인 및 환경 파일 생성
         env:
           GRAFANA_METRICS_URL: ${{ secrets.GRAFANA_METRICS_URL }}
@@ -175,6 +190,9 @@ jobs:
           JWT_PUBLIC_KEY_BASE64: ${{ secrets.JWT_PUBLIC_KEY_BASE64 }}
           PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64: ${{ secrets.PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64 }}
           PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
+          S3_BUCKET: ${{ vars.S3_BUCKET }}
+          S3_KEY_PREFIX: ${{ vars.S3_KEY_PREFIX }}
+          S3_REGION: ${{ vars.S3_REGION }}
         run: |
           set -eu
           umask 077
@@ -187,6 +205,7 @@ jobs:
             echo "JWT_PUBLIC_KEY_BASE64=$JWT_PUBLIC_KEY_BASE64"
             echo "PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64=$PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64"
             echo "PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER=$PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER"
+            printf '%s\n' "S3_BUCKET=$S3_BUCKET" "S3_KEY_PREFIX=$S3_KEY_PREFIX" "S3_REGION=$S3_REGION"
           } > env.tmp
           scp -F ~/.ssh/config env.tmp target:/opt/pheeeew/.env.new
           ssh -F ~/.ssh/config target 'set -eu; umask 077; cd /opt/pheeeew; [ -f .env ] && cp .env .env.prev && chmod 600 .env.prev || true; chmod 600 .env.new; mv .env.new .env'

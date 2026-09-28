@@ -44,7 +44,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
 
 @PostgisDataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -182,7 +181,8 @@ class DeviceAttestationRoutingIntegrationTest {
         PlayIntegrityDeviceAttestationVerifier playIntegrityVerifier = new PlayIntegrityDeviceAttestationVerifier(
                 new PlayIntegrityTokenDecoder(
                         가짜_구글.이_서버를_향하는_클라이언트(),
-                        new GoogleAccessTokenProvider(RestClient.builder().build(), playIntegrityProperties),
+                        new GoogleAccessTokenProvider(
+                                new PlayIntegrityConfig().googleApiRestClient(), playIntegrityProperties),
                         playIntegrityProperties
                 ),
                 deviceChallengeService,

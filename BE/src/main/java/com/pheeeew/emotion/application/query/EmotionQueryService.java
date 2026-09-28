@@ -6,8 +6,8 @@ import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_INVALID_CUR
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE;
 
 import com.pheeeew.device.domain.Device;
-import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer;
-import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer.PlaybackUrl;
+import com.pheeeew.emotion.application.AudioUrlIssuer;
+import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
@@ -51,7 +51,7 @@ public class EmotionQueryService {
     private static final int PAGE_SIZE = 20;
     private static final int MAP_PAGE_SIZE = 200;
 
-    private final ObjectProvider<AudioPlaybackUrlIssuer> playbackUrlIssuer;
+    private final ObjectProvider<AudioUrlIssuer> audioUrlIssuer;
     private final Clock clock;
     private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
@@ -108,12 +108,12 @@ public class EmotionQueryService {
         if (emotion.getContent().getAudio() == null) {
             return null;
         }
-        AudioPlaybackUrlIssuer issuer = playbackUrlIssuer.getIfAvailable();
+        AudioUrlIssuer issuer = audioUrlIssuer.getIfAvailable();
         if (issuer == null) {
             throw new EmotionException(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE);
         }
         try {
-            PlaybackUrl result = issuer.issue(emotion.getContent().getAudio().getObjectKey());
+            PlaybackUrl result = issuer.issuePlayback(emotion.getContent().getAudio().getObjectKey());
             if (result == null || result.playbackUrl() == null || result.playbackUrl().isBlank()
                     || result.expiresAt() == null || !result.expiresAt().isAfter(Instant.now(clock))) {
                 throw new IllegalStateException("유효한 재생 URL과 만료 시각이 필요합니다.");

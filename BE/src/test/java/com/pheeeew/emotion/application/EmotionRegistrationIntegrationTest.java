@@ -1,7 +1,9 @@
 package com.pheeeew.emotion.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.emotion.fixture.AudioUploadFixture.기본_업로드_빌더;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_UPLOAD_NOT_READY;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_UPLOAD_ALREADY_USED;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REQUEST_ID_CONFLICT;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
 import static com.pheeeew.groups.fixture.GroupFixture.기본_그룹_빌더;
@@ -11,18 +13,22 @@ import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.command.EmotionContentResolver;
+import com.pheeeew.emotion.domain.AudioUpload;
+import com.pheeeew.emotion.infra.S3ObjectVerifier;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.domain.repository.AudioUploadRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -37,6 +43,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -65,9 +73,11 @@ class EmotionRegistrationIntegrationTest {
     @Autowired
     private DeviceRepository devices;
     @Autowired
+    private AudioUploadRepository uploads;
+    @Autowired
     private JdbcClient jdbc;
     @MockitoBean
-    private AudioUploadLinker linker;
+    private S3ObjectVerifier objectVerifier;
 
     @Autowired
     private GroupRepository groups;
@@ -77,10 +87,12 @@ class EmotionRegistrationIntegrationTest {
     private GroupStampRepository stamps;
 
     private Device device;
+    private AudioUpload upload;
 
     @BeforeEach
     void setUp() {
         device = devices.save(기본_기기_빌더().build());
+        upload = saveUpload(device);
     }
 
     @AfterEach
@@ -89,6 +101,7 @@ class EmotionRegistrationIntegrationTest {
         members.deleteAllInBatch();
         stamps.deleteAllInBatch();
         groups.deleteAllInBatch();
+        uploads.deleteAllInBatch();
         devices.deleteAllInBatch();
     }
 
@@ -113,7 +126,7 @@ class EmotionRegistrationIntegrationTest {
         assertThat(retried.getId()).isEqualTo(saved.getId());
         assertThat(retried.getGroupStamp().getId()).isEqualTo(stamp.getId());
         assertThat(emotions.count()).isOne();
-        verifyNoInteractions(linker);
+        verifyNoInteractions(objectVerifier);
     }
 
     @ParameterizedTest
@@ -137,11 +150,11 @@ class EmotionRegistrationIntegrationTest {
 
         // when / then
         assertThatThrownBy(() -> service.save(UUID.randomUUID(), EmotionState.FRUSTRATED, 126.97, 37.56, 0,
-                null, "upload", groupId, device.getPublicId()))
+                null, upload.getUploadId(), groupId, device.getPublicId()))
                 .isInstanceOfSatisfying(GroupException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(GROUP_NOT_FOUND));
         assertThat(emotions.count()).isZero();
-        verifyNoInteractions(linker);
+        verifyNoInteractions(objectVerifier);
     }
 
     @ParameterizedTest
@@ -149,11 +162,10 @@ class EmotionRegistrationIntegrationTest {
     void 재요청은_내용을_바꾸거나_녹음을_다시_확인하지_않는다(String contentType) {
         // given
         UUID requestId = UUID.randomUUID();
-        when(linker.claim("upload", device.getId(), requestId)).thenReturn("recordings/original.m4a");
         Emotion original = service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
                 contentType.equals("MEMO") ? "최초 메모" : null,
-                contentType.equals("AUDIO") ? "upload" : null, null, device.getPublicId());
-        clearInvocations(linker);
+                contentType.equals("AUDIO") ? upload.getUploadId() : null, null, device.getPublicId());
+        clearInvocations(objectVerifier);
 
         // when
         Emotion retried = service.save(requestId, EmotionState.ANGRY, 129.07, 35.17, 90,
@@ -171,7 +183,7 @@ class EmotionRegistrationIntegrationTest {
         assertThat(retried.getContent().getAudio()).isEqualTo(original.getContent().getAudio());
         assertThat(retried.getNickname()).isEqualTo(original.getNickname());
         assertThat(emotions.count()).isOne();
-        verifyNoInteractions(linker);
+        verifyNoInteractions(objectVerifier);
     }
 
     @Test
@@ -186,7 +198,7 @@ class EmotionRegistrationIntegrationTest {
         assertThat(retried.getId()).isEqualTo(original.getId());
         assertThat(retried.getDeletedAt()).isNotNull();
         assertThat(emotions.count()).isOne();
-        verifyNoInteractions(linker);
+        verifyNoInteractions(objectVerifier);
     }
 
     @Test
@@ -197,7 +209,7 @@ class EmotionRegistrationIntegrationTest {
 
         assertThatThrownBy(() -> saveAudio(requestId, other)).isInstanceOfSatisfying(EmotionException.class,
                 error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_REQUEST_ID_CONFLICT));
-        verifyNoInteractions(linker);
+        verifyNoInteractions(objectVerifier);
     }
 
     @ParameterizedTest
@@ -206,21 +218,27 @@ class EmotionRegistrationIntegrationTest {
         // 두 요청 모두 선조회를 통과한 뒤 실제 DB 유니크 제약에서 경합하도록 한다.
         UUID requestId = UUID.randomUUID();
         Device second = differentDevice ? devices.save(기본_기기_빌더().build()) : device;
+        AudioUpload secondUpload = saveUpload(second);
         CyclicBarrier ready = new CyclicBarrier(2);
-        when(linker.claim(anyString(), anyLong(), any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             ready.await(5, TimeUnit.SECONDS);
-            return "recordings/" + invocation.getArgument(1) + ".m4a";
-        });
+            return null;
+        }).when(objectVerifier).verify(any());
 
         List<Object> results;
         try (var executor = Executors.newFixedThreadPool(2)) {
-            Future<Object> first = executor.submit(() -> outcome(requestId, device));
-            Future<Object> other = executor.submit(() -> outcome(requestId, second));
+            Future<Object> first = executor.submit(() -> outcome(requestId, device, upload.getUploadId()));
+            Future<Object> other = executor.submit(() -> outcome(requestId, second, secondUpload.getUploadId()));
             results = List.of(first.get(10, TimeUnit.SECONDS), other.get(10, TimeUnit.SECONDS));
         }
 
         assertThat(emotions.count()).isOne();
         Emotion stored = emotions.findAll().getFirst();
+        assertThat(uploads.findAll()).filteredOn(value -> value.getClaimedRequestId() != null)
+                .singleElement().satisfies(value -> {
+                    assertThat(value.getClaimedRequestId()).isEqualTo(requestId);
+                    assertThat(value.getObjectKey()).isEqualTo(stored.getContent().getAudio().getObjectKey());
+                });
         assertThat(results).filteredOn(Emotion.class::isInstance).hasSize(differentDevice ? 1 : 2)
                 .allSatisfy(result -> {
                     Emotion saved = (Emotion) result;
@@ -234,10 +252,63 @@ class EmotionRegistrationIntegrationTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 같은_업로드의_동시_연결은_잠금_후_최초_요청에만_허용한다(boolean sameRequest) throws Exception {
+        // given: 첫 요청이 객체를 검증하는 동안 업로드 행 잠금을 유지한다.
+        UUID requestId = UUID.randomUUID();
+        UUID secondRequestId = sameRequest ? requestId : UUID.randomUUID();
+        CountDownLatch verifying = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AtomicInteger firstBackendPid = new AtomicInteger();
+        doAnswer(invocation -> {
+            firstBackendPid.set(jdbc.sql("SELECT pg_backend_pid()").query(Integer.class).single());
+            verifying.countDown();
+            assertThat(release.await(10, TimeUnit.SECONDS)).isTrue();
+            return null;
+        }).when(objectVerifier).verify(any());
+
+        List<Object> results;
+        try (var executor = Executors.newFixedThreadPool(2)) {
+            Future<Object> first = executor.submit(() -> outcome(requestId, device, upload.getUploadId()));
+            try {
+                assertThat(verifying.await(5, TimeUnit.SECONDS)).isTrue();
+                Future<Object> second = executor.submit(() -> outcome(secondRequestId, device, upload.getUploadId()));
+                // 스레드 시작 여부가 아니라 PostgreSQL에서 실제 잠금 대기를 확인한다.
+                long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+                boolean waiting;
+                do {
+                    waiting = jdbc.sql("SELECT EXISTS (SELECT 1 FROM pg_stat_activity WHERE :pid = ANY(pg_blocking_pids(pid)))")
+                            .param("pid", firstBackendPid.get()).query(Boolean.class).single();
+                    if (!waiting) {
+                        Thread.sleep(10);
+                    }
+                } while (!waiting && System.nanoTime() < deadline);
+                assertThat(waiting).isTrue();
+                release.countDown();
+                results = List.of(first.get(5, TimeUnit.SECONDS), second.get(5, TimeUnit.SECONDS));
+            } finally {
+                release.countDown();
+            }
+        }
+
+        // then
+        assertThat(emotions.count()).isOne();
+        Emotion stored = emotions.findAll().getFirst();
+        assertThat(results).filteredOn(Emotion.class::isInstance).hasSize(sameRequest ? 2 : 1)
+                .allSatisfy(value -> assertThat(((Emotion) value).getId()).isEqualTo(stored.getId()));
+        if (!sameRequest) {
+            assertThat(results).filteredOn(EmotionException.class::isInstance).singleElement().satisfies(value ->
+                    assertThat(((EmotionException) value).getErrorCode()).isEqualTo(EMOTION_AUDIO_UPLOAD_ALREADY_USED));
+        }
+        assertThat(uploads.findByUploadId(upload.getUploadId()).orElseThrow().getClaimedRequestId()).isEqualTo(requestId);
+        verify(objectVerifier, times(1)).verify(any());
+    }
+
     @Test
     void 최초_감정이_없는_저장_실패는_성공으로_처리하지_않는다() {
         DataIntegrityViolationException failure = new DataIntegrityViolationException("link constraint");
-        when(linker.claim(anyString(), anyLong(), any())).thenThrow(failure);
+        doThrow(failure).when(objectVerifier).verify(any());
 
         assertThatThrownBy(() -> saveAudio(UUID.randomUUID(), device))
                 .isInstanceOfSatisfying(EmotionException.class, error -> {
@@ -249,21 +320,31 @@ class EmotionRegistrationIntegrationTest {
 
     @Test
     void 업로드_검증_오류는_그대로_전달한다() {
-        when(linker.claim(anyString(), anyLong(), any())).thenThrow(new EmotionException(EMOTION_AUDIO_UPLOAD_NOT_READY));
+        doThrow(new EmotionException(EMOTION_AUDIO_UPLOAD_NOT_READY)).when(objectVerifier).verify(any());
         assertThatThrownBy(() -> saveAudio(UUID.randomUUID(), device))
                 .isInstanceOfSatisfying(EmotionException.class,
                         error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_AUDIO_UPLOAD_NOT_READY));
         assertThat(emotions.count()).isZero();
     }
 
-    private Emotion saveAudio(UUID requestId, Device author) {
-        return service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
-                null, "upload", null, author.getPublicId());
+    private AudioUpload saveUpload(Device author) {
+        return uploads.save(기본_업로드_빌더().deviceId(author.getId())
+                .objectKey("recordings/" + UUID.randomUUID() + ".m4a")
+                .expiresAt(Instant.now().plusSeconds(3600)).build());
     }
 
-    private Object outcome(UUID requestId, Device author) {
+    private Emotion saveAudio(UUID requestId, Device author) {
+        return saveAudio(requestId, author, upload.getUploadId());
+    }
+
+    private Emotion saveAudio(UUID requestId, Device author, String uploadId) {
+        return service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
+                null, uploadId, null, author.getPublicId());
+    }
+
+    private Object outcome(UUID requestId, Device author, String uploadId) {
         try {
-            return saveAudio(requestId, author);
+            return saveAudio(requestId, author, uploadId);
         } catch (EmotionException exception) {
             return exception;
         }

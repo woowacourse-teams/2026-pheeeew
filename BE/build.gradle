@@ -34,6 +34,8 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-resource-server'
     implementation 'org.springframework.security:spring-security-oauth2-jose'
     implementation 'io.github.moduggagi:korean-nickname-generator:0.1.1'
+    implementation platform('software.amazon.awssdk:bom:2.55.6')
+    implementation 'software.amazon.awssdk:s3'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
