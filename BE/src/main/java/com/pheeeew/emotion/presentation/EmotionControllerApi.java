@@ -35,12 +35,14 @@ public interface EmotionControllerApi {
             최초 조회 이후 작성된 감정은 제외하고, 삭제·차단은 매 페이지에 반영합니다.
             각 항목은 GeoJSON Feature이며 여섯 이모지 집계와 본인 선택 여부를 포함합니다.
             각 항목의 properties.isMine은 인증된 기기가 작성했는지 나타내며 작성 기기가 없으면 false입니다.
-            contentType으로 녹음 유무를 구분하며 목록의 audio는 null입니다. 재생 URL은 상세 조회에서 발급합니다.
+            contentType이 AUDIO이면 audio.playbackUrl과 audio.expiresAt을 함께 반환합니다.
+            재생 URL은 1시간 동안 유효하며 만료되면 목록 또는 상세를 다시 조회합니다. MEMO와 NONE의 audio는 null입니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "감정 목록과 다음 커서"),
             @ApiResponse(responseCode = "400", description = "영역 또는 커서가 올바르지 않음"),
-            @ApiResponse(responseCode = "401", description = "인증할 수 없음")
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
+            @ApiResponse(responseCode = "503", description = "녹음 재생 URL을 발급할 수 없음")
     })
     ResponseEntity<CursorResponse<EmotionDetailResponse>> findAll(@Valid EmotionListRequest request,
             @Parameter(hidden = true) UUID devicePublicId);
@@ -89,7 +91,7 @@ public interface EmotionControllerApi {
             감정 정보와 여섯 이모지 코드별 전체 선택 수 및 인증된 기기의 선택 여부를 함께 반환합니다.
             properties.isMine은 인증된 기기가 작성했는지 나타내며, 수정·삭제의 서버 소유권 검사를 대체하지 않습니다.
             조회 기간 제한은 없으며 삭제되거나 인증된 기기가 차단한 감정·작성자의 감정은 반환하지 않습니다.
-            녹음이 있으면 audio.playbackUrl과 audio.expiresAt을 반환합니다. URL 만료 시 상세를 다시 조회합니다.
+            녹음이 있으면 1시간 동안 유효한 audio.playbackUrl과 audio.expiresAt을 반환합니다. URL 만료 시 상세를 다시 조회합니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "감정 상세 조회 성공",

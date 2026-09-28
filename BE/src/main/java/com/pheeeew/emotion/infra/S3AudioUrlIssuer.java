@@ -26,7 +26,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 @Component
 public class S3AudioUrlIssuer implements AudioUrlIssuer {
 
-    private static final Duration PLAYBACK_URL_VALIDITY = Duration.ofMinutes(5);
+    private static final Duration PLAYBACK_URL_VALIDITY = Duration.ofHours(1);
 
     private final S3Presigner s3Presigner;
     private final S3Properties s3Properties;

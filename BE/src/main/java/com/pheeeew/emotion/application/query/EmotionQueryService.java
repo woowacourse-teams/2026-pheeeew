@@ -144,7 +144,7 @@ public class EmotionQueryService {
         }
         Map<Long, GroupStampResult> stamps = findStamps(page);
         List<EmotionDetailView> items = page.stream().map(emotion -> EmotionDetailView.of(
-                emotion, List.copyOf(counts.get(emotion.getId()).values()), null,
+                emotion, List.copyOf(counts.get(emotion.getId()).values()), issuePlaybackUrl(emotion),
                 emotion.getGroupStamp() == null ? null : stamps.get(emotion.getGroupStamp().getId()), deviceId)).toList();
         String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId())) : null;

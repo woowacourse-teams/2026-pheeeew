@@ -77,7 +77,7 @@ class S3AudioUrlIssuerTest {
     }
 
     @Test
-    void 재생_URL은_같은_객체_키로_5분간_유효하며_업로드_헤더를_요구하지_않는다() {
+    void 재생_URL은_같은_객체_키로_1시간_유효하며_업로드_헤더를_요구하지_않는다() {
         // given
         S3Properties properties = new S3Properties("pheeeew-test", "pheeeew/development/", "ap-northeast-2");
         String objectKey = 기본_업로드_빌더().build().getObjectKey();
@@ -97,11 +97,11 @@ class S3AudioUrlIssuerTest {
             assertThat(url.getScheme()).isEqualTo("https");
             assertThat(url.getHost()).isEqualTo("pheeeew-test.s3.ap-northeast-2.amazonaws.com");
             assertThat(url.getPath()).isEqualTo("/" + objectKey);
-            assertThat(query.get("X-Amz-Expires")).isEqualTo("300");
+            assertThat(query.get("X-Amz-Expires")).isEqualTo("3600");
             assertThat(query.get("X-Amz-SignedHeaders")).isEqualTo("host");
             Instant signedAt = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'")
                     .withZone(ZoneOffset.UTC).parse(query.get("X-Amz-Date"), Instant::from);
-            assertThat(result.expiresAt()).isBetween(signedAt.plusSeconds(300), signedAt.plusSeconds(301));
+            assertThat(result.expiresAt()).isBetween(signedAt.plusSeconds(3600), signedAt.plusSeconds(3601));
         }
     }
 
