@@ -25,6 +25,7 @@ import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
 import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
+import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
 import com.pheeeew.feature.screens.map.record.location.destination
 import com.pheeeew.feature.screens.map.record.location.recordCameraBounds
 import com.pheeeew.feature.screens.map.symbolImageKey
@@ -454,12 +455,12 @@ private class AndroidFoundationMapHost(
             isQuickZoomGesturesEnabled = true
         }
         if (picking) {
-            state.cameraCommand?.let { lastAppliedCameraCommandId = it.id }
             val origin = state.recordOrigin ?: return
             if (fittedOrigin != origin && mapView.width > 0 && mapView.height > 0) {
                 fittedOrigin = origin
                 currentMap.setLatLngBoundsForCameraTarget(null)
                 cameraBoundsInstalled = false
+                state.cameraCommand?.let { lastAppliedCameraCommandId = it.id }
                 currentMap.setMinZoomPreference(MINIMUM_ZOOM)
                 val north = destination(origin, RECORD_RADIUS_METERS, 0.0)
                 val south = destination(origin, RECORD_RADIUS_METERS, PI)
@@ -487,12 +488,21 @@ private class AndroidFoundationMapHost(
                         (mapView.height * 0.22).toInt(),
                     ),
                 )
-                currentMap.setMinZoomPreference(currentMap.cameraPosition.zoom - 1.0)
+                currentMap.setMinZoomPreference(currentMap.cameraPosition.zoom)
                 val cameraBounds = recordCameraBounds(origin)
                 currentMap.setLatLngBoundsForCameraTarget(
                     LatLngBounds.from(cameraBounds.north, cameraBounds.east, cameraBounds.south, cameraBounds.west),
                 )
                 cameraBoundsInstalled = true
+            }
+            state.cameraCommand?.takeIf { it.id > lastAppliedCameraCommandId }?.let { command ->
+                lastAppliedCameraCommandId = command.id
+                if (command.action == MapCameraActionUiModel.MoveToCoordinate) {
+                    val target = constrainToRecordRadius(origin, GeoCoordinate(command.latitude, command.longitude))
+                    currentMap.animateCamera(
+                        CameraUpdateFactory.newLatLng(LatLng(target.latitude, target.longitude)),
+                    )
+                }
             }
             publishRecordViewport()
             return

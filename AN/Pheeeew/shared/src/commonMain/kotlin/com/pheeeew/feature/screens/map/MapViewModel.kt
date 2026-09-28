@@ -150,7 +150,7 @@ class MapViewModel(
 
     fun onRecordLocationPickingChanged(isPicking: Boolean) {
         _uiModel.value = _uiModel.value.copy(isRecordLocationPicking = isPicking)
-        // The renderer initially fits the circle and constrains camera movement around the origin.
+        // The renderer fits the 500m circle and uses that zoom as the zoom-out limit.
     }
 
     fun onViewportChanged(bounds: EmotionMapBounds) {

@@ -257,15 +257,16 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             recordCameraBounds = nil
             return false
         }
-        lastAppliedCameraCommandId = state.cameraCommandId
         guard let origin = state.recordOrigin, mapView.bounds.width > 0, mapView.bounds.height > 0 else { return true }
         let center = CLLocationCoordinate2D(latitude: origin.latitude, longitude: origin.longitude)
-        if fittedOrigin?.latitude != center.latitude || fittedOrigin?.longitude != center.longitude || fittedSize != mapView.bounds.size {
+        let isNewOrigin = fittedOrigin?.latitude != center.latitude || fittedOrigin?.longitude != center.longitude
+        if isNewOrigin || fittedSize != mapView.bounds.size {
             fittedOrigin = center
             fittedSize = mapView.bounds.size
             recordCameraBounds = RecordMapGeometryKt.recordCameraBounds(
                 origin: GeoCoordinate(latitude: center.latitude, longitude: center.longitude)
             )
+            lastAppliedCameraCommandId = state.cameraCommandId
             mapView.minimumZoomLevel = FoundationMapStyle.minimumZoom
             let latitudeDelta = 500.0 / 6_371_000.0 * 180.0 / .pi
             let longitudeDelta = latitudeDelta / cos(center.latitude * .pi / 180.0)
@@ -283,7 +284,20 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
                 animated: false,
                 completionHandler: nil
             )
-            mapView.minimumZoomLevel = mapView.zoomLevel - 1.0
+            mapView.minimumZoomLevel = mapView.zoomLevel
+        }
+        if state.cameraCommandId > lastAppliedCameraCommandId {
+            lastAppliedCameraCommandId = state.cameraCommandId
+            if state.cameraCommandType == 1 {
+                let target = RecordMapGeometryKt.constrainToRecordRadius(
+                    origin: GeoCoordinate(latitude: center.latitude, longitude: center.longitude),
+                    target: GeoCoordinate(latitude: state.cameraLatitude, longitude: state.cameraLongitude)
+                )
+                mapView.setCenter(
+                    CLLocationCoordinate2D(latitude: target.latitude, longitude: target.longitude),
+                    animated: true
+                )
+            }
         }
         publishHighlightedPinPosition()
         publishRecordViewport()
