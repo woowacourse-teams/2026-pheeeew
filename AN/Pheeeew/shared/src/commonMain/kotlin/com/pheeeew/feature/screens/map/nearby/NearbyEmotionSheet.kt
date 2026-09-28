@@ -29,7 +29,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -95,7 +94,7 @@ fun NearbyEmotionSheet(
     LaunchedEffect(atEnd, state.nextCursor, state.loading, state.loadingMore, state.error) {
         if (atEnd && !state.loading && !state.loadingMore && state.error == null) viewModel.loadMore()
     }
-    NearbySheetLayout(state.visible, scroll, viewModel::dismiss) { bottomPadding, nestedScroll ->
+    NearbySheetLayout(state.visible, viewModel::dismiss) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp),
             horizontalArrangement = Arrangement.End,
@@ -109,14 +108,14 @@ fun NearbyEmotionSheet(
         playback.error?.let { NearbyNotice(it, player::stop) }
         if (state.loading) {
             Box(
-                Modifier.fillMaxWidth().weight(1f).padding(bottom = bottomPadding),
+                Modifier.fillMaxWidth().weight(1f).padding(bottom = 16.dp),
                 contentAlignment = Alignment.Center,
             ) { CircularProgressIndicator() }
         } else {
             LazyColumn(
                 state = scroll,
-                modifier = Modifier.fillMaxWidth().weight(1f).nestedScroll(nestedScroll),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = bottomPadding),
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp),
             ) {
                 if (state.items.isEmpty() &&

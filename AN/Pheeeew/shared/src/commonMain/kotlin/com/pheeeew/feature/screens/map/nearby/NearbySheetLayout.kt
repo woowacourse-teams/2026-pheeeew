@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -31,24 +30,17 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 
 /** Non-modal sheet: uses the legacy SighListSheet middle ratio and drag thresholds. */
 @Composable
 internal fun NearbySheetLayout(
     visible: Boolean,
-    scroll: LazyListState,
     onDismiss: () -> Unit,
-    content: @Composable ColumnScope.(bottomPadding: Dp, nestedScroll: NestedScrollConnection) -> Unit,
+    content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
         AnimatedVisibility(
@@ -56,13 +48,12 @@ internal fun NearbySheetLayout(
             enter = slideInVertically(tween(260)) { it },
             exit = slideOutVertically(tween(220)) { it },
         ) {
-            BoxWithConstraints(Modifier.fillMaxSize()) {
+            BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                 val density = LocalDensity.current
                 val availableHeightPx = constraints.maxHeight.toFloat()
                 val middleOffset = availableHeightPx * 0.55f
                 var expanded by remember { mutableStateOf(false) }
                 var dragging by remember { mutableStateOf(false) }
-                var listDragging by remember { mutableStateOf(false) }
                 var draggedOffset by remember { mutableFloatStateOf(0f) }
                 var totalDrag by remember { mutableFloatStateOf(0f) }
                 val offset by animateFloatAsState(
@@ -97,40 +88,11 @@ internal fun NearbySheetLayout(
                             totalDrag = 0f
                         }
                     }
-                val nestedScroll =
-                    remember(scroll, availableHeightPx) {
-                        object : NestedScrollConnection {
-                            override fun onPreScroll(
-                                available: Offset,
-                                source: NestedScrollSource,
-                            ): Offset {
-                                if (source != NestedScrollSource.UserInput) return Offset.Zero
-                                val atTop =
-                                    scroll.firstVisibleItemIndex == 0 && scroll.firstVisibleItemScrollOffset == 0
-                                if (!listDragging && !(expanded && atTop && available.y > 0f)) return Offset.Zero
-                                if (!listDragging) {
-                                    listDragging = true
-                                    dragging = true
-                                    draggedOffset = 0f
-                                    totalDrag = 0f
-                                }
-                                val next = (draggedOffset + available.y).coerceIn(0f, availableHeightPx)
-                                val consumed = next - draggedOffset
-                                draggedOffset = next
-                                totalDrag += consumed
-                                return Offset(0f, consumed)
-                            }
-
-                            override suspend fun onPreFling(available: Velocity): Velocity {
-                                if (!listDragging) return Velocity.Zero
-                                listDragging = false
-                                finishDrag.value()
-                                return Velocity(0f, available.y)
-                            }
-                        }
-                    }
                 Surface(
-                    modifier = Modifier.fillMaxSize().graphicsLayer { translationY = offset },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(with(density) { (availableHeightPx - offset).coerceAtLeast(0f).toDp() }),
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                     color = Color(0xFFFFFCF6),
                     shadowElevation = 12.dp,
@@ -145,7 +107,6 @@ internal fun NearbySheetLayout(
                             Modifier.fillMaxWidth().height(28.dp).pointerInput(availableHeightPx) {
                                 detectVerticalDragGestures(
                                     onDragStart = {
-                                        listDragging = false
                                         dragging = true
                                         draggedOffset = offset
                                         totalDrag = 0f
@@ -166,7 +127,7 @@ internal fun NearbySheetLayout(
                         ) {
                             Box(Modifier.size(36.dp, 4.dp).background(Color(0xFFD9D8D1), RoundedCornerShape(2.dp)))
                         }
-                        content(16.dp + with(density) { offset.toDp() }, nestedScroll)
+                        content()
                     }
                 }
             }
