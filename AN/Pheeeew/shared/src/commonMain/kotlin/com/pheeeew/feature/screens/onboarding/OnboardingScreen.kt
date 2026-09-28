@@ -76,7 +76,7 @@ private val onboardingPages =
         OnboardingPage(
             message = "내가 제일 힘들다는 걸\n이 공간에서 표출해봐!!",
             illustration = Res.drawable.ic_emotion_angry,
-            supportingText = "참았던 마음을 지도에 뿜어봐\n매일 50자, 목소리 30초\n아무것도 없이 남겨도 좋아",
+            supportingText = "참았던 감정을 지도에 뿜어봐\n매일 50자, 목소리 30초\n아무것도 없이 남겨도 좋아",
         ),
     )
 

@@ -185,7 +185,7 @@ private fun MemoBottomSheet(
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     Text(
-                        text = "한숨에 담아 보낼 마음",
+                        text = "한숨에 담아 보낼 감정",
                         style = AppTheme.typography.screenTitle,
                     )
                     Text(

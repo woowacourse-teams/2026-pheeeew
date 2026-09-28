@@ -52,7 +52,7 @@ internal fun NearbyEmptyState(
                     )
                 }
         }
-        Text("여기에 첫 마음을 남겨볼까요?", color = FeedbackInk, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text("여기에 첫 감정을 남겨볼까요?", color = FeedbackInk, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         Text(
             "아직 이곳에 보이는 스탬프가 없어요.\n지금의 감정을 가볍게 찍어보세요.",
             color = FeedbackSecondary,

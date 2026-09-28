@@ -43,7 +43,7 @@ internal fun Onboarding2() {
         Spacer(modifier = Modifier.height(50.dp))
 
         SupportingText(
-            text = "한숨에 마음을 담아봐요",
+            text = "한숨에 감정을 담아봐요",
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(130.dp))

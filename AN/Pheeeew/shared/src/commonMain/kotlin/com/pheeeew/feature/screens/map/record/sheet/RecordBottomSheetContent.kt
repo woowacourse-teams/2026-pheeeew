@@ -155,7 +155,7 @@ private fun RecordBottomSheetContent(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "${selectedEmotion.recordPhrase} 마음\n${selectedEmotion.recordPrompt}",
+                text = "${selectedEmotion.recordPhrase} 감정\n${selectedEmotion.recordPrompt}",
                 modifier = Modifier.weight(1f),
                 lineHeight = 22.sp,
                 color = AppColors.TextPrimary,
