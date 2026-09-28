@@ -103,10 +103,14 @@ fun MapScreen(
         mapContent = { renderUiModel, mapModifier ->
             key(uiModel.mapRevision) {
                 NativeMap(
-                    state = renderUiModel.copy(
-                        recordOrigin = recordUiModel.origin,
-                        emotionPins = renderUiModel.emotionPins.filterNot { it.id in renderUiModel.hiddenEmotionIds },
-                    ),
+                    state =
+                        renderUiModel.copy(
+                            recordOrigin = recordUiModel.origin,
+                            emotionPins =
+                                renderUiModel.emotionPins.filterNot {
+                                    it.id in renderUiModel.hiddenEmotionIds
+                                },
+                        ),
                     onMapError = viewModel::onMapError,
                     onMapRecovered = viewModel::onMapRecovered,
                     onRecordViewportChanged = { centerX, centerY, radius ->
@@ -115,7 +119,14 @@ fun MapScreen(
                     },
                     onViewportChanged = { bounds ->
                         viewModel.onViewportChanged(bounds)
-                        onViewportChanged(EmotionBounds(bounds.minLongitude, bounds.minLatitude, bounds.maxLongitude, bounds.maxLatitude))
+                        onViewportChanged(
+                            EmotionBounds(
+                                bounds.minLongitude,
+                                bounds.minLatitude,
+                                bounds.maxLongitude,
+                                bounds.maxLatitude,
+                            ),
+                        )
                     },
                     onEmotionPinClick = onEmotionPinClick,
                     modifier = mapModifier,

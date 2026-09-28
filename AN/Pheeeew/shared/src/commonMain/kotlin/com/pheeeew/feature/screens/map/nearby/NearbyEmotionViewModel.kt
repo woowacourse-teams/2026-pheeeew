@@ -358,12 +358,16 @@ class NearbyEmotionViewModel(
         val ticket = generation
         val version = contentVersion
         val currentAudio = item.audio
-        if (currentAudio != null && currentAudio.expiresAt > kotlin.time.Clock.System.now()) {
+        if (currentAudio != null && currentAudio.expiresAt >
+            kotlin.time.Clock.System
+                .now()
+        ) {
             mutableState.update { it.copy(selectedId = null, audioLoadingId = null) }
-            audioJob = viewModelScope.launch {
-                val event = NearbyEmotionEvent.Play(id, currentAudio.url, ticket)
-                if (canPlay(event)) eventChannel.send(event)
-            }
+            audioJob =
+                viewModelScope.launch {
+                    val event = NearbyEmotionEvent.Play(id, currentAudio.url, ticket)
+                    if (canPlay(event)) eventChannel.send(event)
+                }
             return
         }
         mutableState.update { it.copy(audioLoadingId = id, selectedId = null) }

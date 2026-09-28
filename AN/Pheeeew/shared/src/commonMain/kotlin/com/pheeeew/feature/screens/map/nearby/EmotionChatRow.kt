@@ -1,11 +1,11 @@
 package com.pheeeew.feature.screens.map.nearby
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,9 +26,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -101,8 +101,7 @@ internal fun EmotionChatRow(
                                 reactionOnly = false
                                 onSelect()
                             },
-                        )
-                        .padding(12.dp),
+                        ).padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -177,7 +176,12 @@ internal fun EmotionChatRow(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(reaction.type.glyph, fontSize = 17.sp)
-                    Text(reaction.count.toString(), color = Color.Black, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        reaction.count.toString(),
+                        color = Color.Black,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
                 }
             }
             Box(
@@ -188,8 +192,7 @@ internal fun EmotionChatRow(
                     .clickable(enabled = !busy, role = Role.Button) {
                         reactionOnly = true
                         onSelect()
-                    }
-                    .semantics { contentDescription = "공감 추가" },
+                    }.semantics { contentDescription = "공감 추가" },
                 contentAlignment = Alignment.Center,
             ) {
                 Text("+", color = Color.Black, fontSize = 20.sp)
@@ -300,17 +303,18 @@ private fun EmotionWarningIcon() {
     Canvas(Modifier.size(18.dp)) {
         val w = size.width
         val h = size.height
-        val outline = Path().apply {
-            moveTo(w * 0.3f, h * 0.08f)
-            lineTo(w * 0.7f, h * 0.08f)
-            lineTo(w * 0.92f, h * 0.3f)
-            lineTo(w * 0.92f, h * 0.7f)
-            lineTo(w * 0.7f, h * 0.92f)
-            lineTo(w * 0.3f, h * 0.92f)
-            lineTo(w * 0.08f, h * 0.7f)
-            lineTo(w * 0.08f, h * 0.3f)
-            close()
-        }
+        val outline =
+            Path().apply {
+                moveTo(w * 0.3f, h * 0.08f)
+                lineTo(w * 0.7f, h * 0.08f)
+                lineTo(w * 0.92f, h * 0.3f)
+                lineTo(w * 0.92f, h * 0.7f)
+                lineTo(w * 0.7f, h * 0.92f)
+                lineTo(w * 0.3f, h * 0.92f)
+                lineTo(w * 0.08f, h * 0.7f)
+                lineTo(w * 0.08f, h * 0.3f)
+                close()
+            }
         drawPath(outline, red, style = Stroke(width = 1.8.dp.toPx()))
         drawLine(
             red,

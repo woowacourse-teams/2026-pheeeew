@@ -22,6 +22,8 @@ class GroupStampListRepositoryImpl(
                 }
             }
 
-            is ApiResult.Failure -> GroupStampListLoadResult.Unavailable
+            is ApiResult.Failure -> {
+                GroupStampListLoadResult.Unavailable
+            }
         }
 }

@@ -40,7 +40,10 @@ internal object EmotionResponseMapper {
             p.isMine,
             EmotionContentType.valueOf(p.contentType),
             p.memo,
-            EmotionReactionType.entries.map { type -> reactions.find { it.type == type } ?: ReactionCount(type, 0, false) },
+            EmotionReactionType.entries.map { type ->
+                reactions.find { it.type == type }
+                    ?: ReactionCount(type, 0, false)
+            },
             p.groupStamp?.let {
                 GroupStamp(
                     it.text,
