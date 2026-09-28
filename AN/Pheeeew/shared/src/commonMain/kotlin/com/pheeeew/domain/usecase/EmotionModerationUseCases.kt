@@ -15,6 +15,15 @@ class BlockEmotionUseCase(
     }
 }
 
+class DeleteEmotionUseCase(
+    private val repository: EmotionModerationRepository,
+) {
+    suspend operator fun invoke(emotionId: Long): EmotionModerationResult {
+        require(emotionId > 0)
+        return repository.delete(emotionId)
+    }
+}
+
 class ReportEmotionUseCase(
     private val repository: EmotionModerationRepository,
 ) {

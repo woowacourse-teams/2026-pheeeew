@@ -10,6 +10,7 @@ interface EmotionModerationRepository {
 
     suspend fun blockUser(emotionId: Long): EmotionModerationResult
 
+    suspend fun delete(emotionId: Long): EmotionModerationResult
 }
 
 sealed interface EmotionModerationResult {

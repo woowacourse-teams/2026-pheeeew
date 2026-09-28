@@ -4,6 +4,7 @@ import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.NetworkFailure
 import com.pheeeew.data.remote.block.EmotionBlockApi
 import com.pheeeew.data.remote.block.UserBlockApi
+import com.pheeeew.data.remote.emotion.EmotionDeleteApi
 import com.pheeeew.data.remote.report.EmotionReportApi
 import com.pheeeew.data.remote.report.EmotionReportCreateRequestDto
 import com.pheeeew.domain.repository.EmotionModerationRepository
@@ -13,6 +14,7 @@ class EmotionModerationRepositoryImpl(
     private val reportApi: EmotionReportApi,
     private val emotionBlockApi: EmotionBlockApi,
     private val userBlockApi: UserBlockApi,
+    private val deleteApi: EmotionDeleteApi,
 ) : EmotionModerationRepository {
     override suspend fun report(
         emotionId: Long,
@@ -24,6 +26,9 @@ class EmotionModerationRepositoryImpl(
 
     override suspend fun blockUser(emotionId: Long): EmotionModerationResult =
         userBlockApi.create(emotionId).toModerationResult()
+
+    override suspend fun delete(emotionId: Long): EmotionModerationResult =
+        deleteApi.delete(emotionId).toModerationResult()
 
     private fun ApiResult<*>.toModerationResult(): EmotionModerationResult =
         when (this) {

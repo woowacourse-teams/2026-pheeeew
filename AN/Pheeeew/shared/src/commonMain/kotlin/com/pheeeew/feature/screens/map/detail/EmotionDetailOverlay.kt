@@ -31,6 +31,7 @@ import com.pheeeew.domain.repository.EmotionModerationRepository
 import com.pheeeew.domain.repository.EmotionModerationResult
 import com.pheeeew.domain.repository.audio.EmotionAudioRepository
 import com.pheeeew.domain.usecase.BlockEmotionUseCase
+import com.pheeeew.domain.usecase.DeleteEmotionUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
@@ -43,8 +44,10 @@ fun EmotionDetailOverlay(
     audioRepository: EmotionAudioRepository,
     onReactionClick: (String) -> Unit,
     blockEmotion: BlockEmotionUseCase,
+    deleteEmotion: DeleteEmotionUseCase,
     onReportClick: (Long, DrawableResource) -> Unit,
     onBlockSucceeded: () -> Unit,
+    onDeleteSucceeded: () -> Unit,
 ) {
     when (state) {
         EmotionDetailLoadUiModel.Closed -> {
@@ -60,8 +63,10 @@ fun EmotionDetailOverlay(
                     audioRepository = audioRepository,
                     onReactionClick = onReactionClick,
                     blockEmotion = blockEmotion,
+                    deleteEmotion = deleteEmotion,
                     onReportClick = onReportClick,
                     onBlockSucceeded = onBlockSucceeded,
+                    onDeleteSucceeded = onDeleteSucceeded,
                 )
             }
         }
@@ -80,12 +85,16 @@ private fun EmotionDetailReadyOverlay(
     audioRepository: EmotionAudioRepository,
     onReactionClick: (String) -> Unit,
     blockEmotion: BlockEmotionUseCase,
+    deleteEmotion: DeleteEmotionUseCase,
     onReportClick: (Long, DrawableResource) -> Unit,
     onBlockSucceeded: () -> Unit,
+    onDeleteSucceeded: () -> Unit,
 ) {
     var showActions by remember { mutableStateOf(false) }
     var showBlockConfirmation by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
     var isBlocking by remember { mutableStateOf(false) }
+    var isDeleting by remember { mutableStateOf(false) }
     var actionMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val audio = state.detail.content as? EmotionDetailContentUiModel.Audio
@@ -93,7 +102,7 @@ private fun EmotionDetailReadyOverlay(
         EmotionDetailDialog(
             state.detail,
             onDismiss,
-            { if (!isBlocking) showActions = true },
+            { if (!isBlocking && !isDeleting) showActions = true },
             {},
             onReactionClick,
             notice = actionMessage,
@@ -130,7 +139,7 @@ private fun EmotionDetailReadyOverlay(
             EmotionDetailDialog(
                 state.detail.copy(content = content),
                 onDismiss,
-                { if (!isBlocking) showActions = true },
+                { if (!isBlocking && !isDeleting) showActions = true },
                 { if (error != null) onRetry() else playback.togglePlayback() },
                 onReactionClick,
                 notice = actionMessage,
@@ -141,6 +150,7 @@ private fun EmotionDetailReadyOverlay(
 
     if (showActions) {
         EmotionActionSheet(
+            isMine = state.isMine,
             onReportClick = {
                 showActions = false
                 onReportClick(state.id, state.detail.emotion.icon)
@@ -148,6 +158,10 @@ private fun EmotionDetailReadyOverlay(
             onBlockClick = {
                 showActions = false
                 showBlockConfirmation = true
+            },
+            onDeleteClick = {
+                showActions = false
+                showDeleteConfirmation = true
             },
             onCancelClick = { showActions = false },
         )
@@ -187,6 +201,36 @@ private fun EmotionDetailReadyOverlay(
             onCancel = { showBlockConfirmation = false },
         )
     }
+    if (showDeleteConfirmation && state.isMine) {
+        ConfirmDialog(
+            title = "해당 감정을 삭제하시겠습니까?",
+            content = "삭제한 감정은 지도와 목록에서 더 이상 보이지 않습니다.",
+            confirmText = "삭제하기",
+            cancelText = "취소",
+            onConfirm = {
+                if (!isDeleting) {
+                    showDeleteConfirmation = false
+                    isDeleting = true
+                    scope.launch {
+                        val result =
+                            try {
+                                deleteEmotion(state.id)
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (_: Exception) {
+                                EmotionModerationResult.Unavailable
+                            }
+                        isDeleting = false
+                        when (result) {
+                            EmotionModerationResult.Success -> onDeleteSucceeded()
+                            else -> actionMessage = result.deleteMessage()
+                        }
+                    }
+                }
+            },
+            onCancel = { showDeleteConfirmation = false },
+        )
+    }
 }
 
 private fun EmotionModerationResult.blockMessage(): String =
@@ -196,6 +240,13 @@ private fun EmotionModerationResult.blockMessage(): String =
         EmotionModerationResult.NotFound -> "차단할 감정을 찾을 수 없습니다."
         EmotionModerationResult.NetworkUnavailable -> "인터넷 연결 상태를 확인해주세요."
         else -> "차단에 실패했습니다. 잠시 후 다시 시도해주세요."
+    }
+
+private fun EmotionModerationResult.deleteMessage(): String =
+    when (this) {
+        EmotionModerationResult.NotFound -> "삭제할 감정을 찾을 수 없거나 삭제 권한이 없습니다."
+        EmotionModerationResult.NetworkUnavailable -> "인터넷 연결 상태를 확인해주세요."
+        else -> "삭제에 실패했습니다. 잠시 후 다시 시도해주세요."
     }
 
 @Preview(name = "감정 상세 오버레이", widthDp = 424, heightDp = 640)
@@ -213,8 +264,10 @@ private fun EmotionDetailOverlayPreview() {
         audioRepository = EmotionAudioRepository { error("Preview does not fetch audio") },
         onReactionClick = {},
         blockEmotion = BlockEmotionUseCase(PreviewModerationRepository),
+        deleteEmotion = DeleteEmotionUseCase(PreviewModerationRepository),
         onReportClick = { _, _ -> },
         onBlockSucceeded = {},
+        onDeleteSucceeded = {},
     )
 }
 
@@ -228,4 +281,5 @@ private object PreviewModerationRepository : EmotionModerationRepository {
 
     override suspend fun blockUser(emotionId: Long) = EmotionModerationResult.Success
 
+    override suspend fun delete(emotionId: Long) = EmotionModerationResult.Success
 }

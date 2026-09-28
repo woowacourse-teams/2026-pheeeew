@@ -28,8 +28,10 @@ import com.pheeeew.core.designsystem.theme.AppColors
 
 @Composable
 internal fun EmotionActionSheet(
+    isMine: Boolean,
     onReportClick: () -> Unit,
     onBlockClick: () -> Unit,
+    onDeleteClick: () -> Unit,
     onCancelClick: () -> Unit,
 ) {
     Dialog(onDismissRequest = onCancelClick, properties = DialogProperties(usePlatformDefaultWidth = false)) {
@@ -46,6 +48,10 @@ internal fun EmotionActionSheet(
                         ActionItem("신고하기", AppColors.Error, onReportClick)
                         HorizontalDivider(color = AppColors.Gray100)
                         ActionItem("차단하기", AppColors.GroupInk, onBlockClick)
+                        if (isMine) {
+                            HorizontalDivider(color = AppColors.Gray100)
+                            ActionItem("삭제하기", Color(0xFFE26962), onDeleteClick)
+                        }
                     }
                 }
                 Spacer(Modifier.height(10.dp))
@@ -76,5 +82,5 @@ private fun ActionItem(text: String, color: Color, onClick: () -> Unit) {
 @Composable
 @Preview
 private fun EmotionActionSheetPreview() {
-    EmotionActionSheet(onReportClick = {}, onBlockClick = {}, onCancelClick = {})
+    EmotionActionSheet(isMine = true, onReportClick = {}, onBlockClick = {}, onDeleteClick = {}, onCancelClick = {})
 }

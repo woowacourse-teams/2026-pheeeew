@@ -100,6 +100,7 @@ fun App(
             audioRepository,
             detailViewModel::toggleReaction,
             moderation.block,
+            moderation.delete,
             onReportClick = { id, stamp ->
                 detailViewModel.dismiss()
                 reportTarget = id to stamp
@@ -108,6 +109,11 @@ fun App(
                 detailViewModel.dismiss()
                 mapViewModel.refreshEmotionPins()
                 moderationMessage = "차단되었습니다."
+            },
+            onDeleteSucceeded = {
+                detailViewModel.dismiss()
+                mapViewModel.refreshEmotionPins()
+                moderationMessage = "삭제되었습니다."
             },
         )
 
