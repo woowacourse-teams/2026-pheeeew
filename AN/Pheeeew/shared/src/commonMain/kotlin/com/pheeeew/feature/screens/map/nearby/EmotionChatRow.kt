@@ -25,7 +25,10 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,6 +64,7 @@ internal fun EmotionChatRow(
     onPlay: () -> Unit,
 ) {
     val alignment = if (item.isMine) Alignment.End else Alignment.Start
+    var reactionOnly by remember(item.id) { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = alignment) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (!item.isMine) EmotionProfile(item)
@@ -93,7 +97,10 @@ internal fun EmotionChatRow(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = {},
-                            onLongClick = onSelect,
+                            onLongClick = {
+                                reactionOnly = false
+                                onSelect()
+                            },
                         )
                         .padding(12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -134,7 +141,8 @@ internal fun EmotionChatRow(
                     }
                 }
                 EmotionActionsMenu(
-                    expanded = selected,
+                    expanded = selected && !reactionOnly,
+                    showActions = true,
                     isMine = item.isMine,
                     busy = busy,
                     reactions = item.reactions.map { it.type to it.selected },
@@ -177,10 +185,26 @@ internal fun EmotionChatRow(
                     .size(32.dp)
                     .clip(RoundedCornerShape(50))
                     .background(Color(0xFFF2F2F2))
-                    .clickable(enabled = !busy, role = Role.Button, onClick = onSelect)
+                    .clickable(enabled = !busy, role = Role.Button) {
+                        reactionOnly = true
+                        onSelect()
+                    }
                     .semantics { contentDescription = "공감 추가" },
                 contentAlignment = Alignment.Center,
-            ) { Text("+", color = Color.Black, fontSize = 20.sp) }
+            ) {
+                Text("+", color = Color.Black, fontSize = 20.sp)
+                EmotionActionsMenu(
+                    expanded = selected && reactionOnly,
+                    showActions = false,
+                    isMine = item.isMine,
+                    busy = busy,
+                    reactions = item.reactions.map { it.type to it.selected },
+                    onDismiss = onDismissMenu,
+                    onBlock = onBlock,
+                    onReport = onReport,
+                    onReact = onReact,
+                )
+            }
         }
     }
 }
@@ -188,6 +212,7 @@ internal fun EmotionChatRow(
 @Composable
 private fun EmotionActionsMenu(
     expanded: Boolean,
+    showActions: Boolean,
     isMine: Boolean,
     busy: Boolean,
     reactions: List<Pair<EmotionReaction, Boolean>>,
@@ -206,8 +231,8 @@ private fun EmotionActionsMenu(
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
-        Column {
-            if (!isMine) {
+        Column(Modifier.padding(8.dp)) {
+            if (showActions && !isMine) {
                 Column(
                     Modifier
                         .fillMaxWidth()
