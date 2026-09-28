@@ -32,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.screens.map.record.EmotionBubbleCluster
 import com.pheeeew.feature.screens.map.record.EmotionPromptLabel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
@@ -42,6 +43,7 @@ import pheeeew.shared.generated.resources.ic_my_location
 
 private const val EMOTION_PROMPT_DAMPING_RATIO = 0.8205f
 private const val EMOTION_PROMPT_STIFFNESS = 380f
+private val MAP_BOTTOM_BAR_LIFT = AppBottomNavigationBarOverlaySpace - 56.dp
 
 @Composable
 fun MapOverlay(
@@ -82,7 +84,7 @@ fun MapOverlay(
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 190.dp)
+                        .padding(bottom = 190.dp + MAP_BOTTOM_BAR_LIFT)
                         .graphicsLayer { translationY = promptTranslationY.dp.toPx() },
             )
 
@@ -128,6 +130,7 @@ fun MapOverlay(
                         Modifier
                             .align(Alignment.BottomEnd)
                             .navigationBarsPadding()
+                            .padding(bottom = AppBottomNavigationBarOverlaySpace)
                             .clip(CircleShape)
                             .shadow(elevation = 4.dp, shape = CircleShape)
                             .background(AppColors.Surface)
@@ -172,7 +175,10 @@ fun MapOverlay(
                     isExpanded = isEmotionSelectorExpanded,
                     onToggle = onEmotionSelectorToggle,
                     onEmotionClick = onEmotionBubbleClick,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 56.dp),
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = AppBottomNavigationBarOverlaySpace),
                 )
             }
         }
