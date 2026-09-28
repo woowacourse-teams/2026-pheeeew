@@ -2,6 +2,7 @@ package com.pheeeew
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -9,20 +10,37 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.pheeeew.core.di.ApiDependencies
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.di.createEmotionAudioRepository
 import com.pheeeew.core.di.createEmotionDetailRepository
 import com.pheeeew.core.di.createEmotionMapDependencies
+import com.pheeeew.core.di.createWeeklyRankingViewModel
+import com.pheeeew.core.di.group.createGroupDependencies
+import com.pheeeew.core.navigation.GroupRootDestination
+import com.pheeeew.core.navigation.MapRootDestination
+import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
+import com.pheeeew.feature.component.AppBottomNavigationBar
+import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
+import com.pheeeew.feature.component.AppDestination
+import com.pheeeew.feature.screens.group.navigation.GroupFeatureHost
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailOverlay
 import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
+import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
+import com.pheeeew.feature.screens.ranking.WeeklyRankingViewModel
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 
@@ -68,26 +86,69 @@ fun App(
         viewModel { EmotionDetailViewModel(detailRepository) }
     val detailState by detailViewModel.uiModel.collectAsState()
     val audioRepository = remember { createEmotionAudioRepository() }
+    val groupDependencies = remember(apiDependencies.client) { createGroupDependencies(apiDependencies.client) }
+    val rankingViewModel: WeeklyRankingViewModel =
+        viewModel { createWeeklyRankingViewModel(apiDependencies.client) }
+    val navController = rememberNavController()
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val selectedDestination =
+        when {
+            currentBackStackEntry?.destination?.route == MapRootDestination::class.qualifiedName -> {
+                AppDestination.Map
+            }
+
+            currentBackStackEntry?.destination?.route == GroupRootDestination::class.qualifiedName -> {
+                AppDestination.Group
+            }
+
+            currentBackStackEntry?.destination?.route == RankingRootDestination::class.qualifiedName -> {
+                AppDestination.Ranking
+            }
+
+            else -> {
+                AppDestination.Map
+            }
+        }
     var isSettingsVisible by remember { mutableStateOf(false) }
+    var isGroupDetailVisible by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        MapScreen(
-            viewModel = mapViewModel,
-            recordViewModel = mapRecordViewModel,
-            onEmotionPinClick = detailViewModel::open,
-            onListClick = {},
-            onSettingClick = { isSettingsVisible = true },
-            onEmotionBubbleClick = {},
+        NavHost(
+            navController = navController,
+            startDestination = MapRootDestination,
             modifier = Modifier.fillMaxSize(),
-        )
-
-        EmotionDetailOverlay(
-            detailState,
-            detailViewModel::dismiss,
-            detailViewModel::retry,
-            audioRepository,
-            detailViewModel::toggleReaction,
-        )
+        ) {
+            composable<MapRootDestination> {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    MapScreen(
+                        viewModel = mapViewModel,
+                        recordViewModel = mapRecordViewModel,
+                        onEmotionPinClick = detailViewModel::open,
+                        onListClick = {},
+                        onSettingClick = { isSettingsVisible = true },
+                        onEmotionBubbleClick = {},
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                    EmotionDetailOverlay(
+                        detailState,
+                        detailViewModel::dismiss,
+                        detailViewModel::retry,
+                        audioRepository,
+                        detailViewModel::toggleReaction,
+                    )
+                }
+            }
+            composable<GroupRootDestination> {
+                GroupFeatureHost(
+                    dependencies = groupDependencies,
+                    modifier = Modifier.fillMaxSize(),
+                    onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
+                )
+            }
+            composable<RankingRootDestination> {
+                WeeklyRankingRoute(rankingViewModel, Modifier.fillMaxSize())
+            }
+        }
 
         if (isSettingsVisible) {
             SettingsScreen(
@@ -95,6 +156,24 @@ fun App(
                 onBackClick = { isSettingsVisible = false },
                 permissionSettingsLauncher = permissionSettingsLauncher,
                 modifier = Modifier.fillMaxSize(),
+            )
+        } else if (selectedDestination != AppDestination.Group || !isGroupDetailVisible) {
+            AppBottomNavigationBar(
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = AppBottomNavigationBarBottomSpacing),
+                selectedDestination = selectedDestination,
+                onDestinationSelected = { destination ->
+                    val route =
+                        when (destination) {
+                            AppDestination.Map -> MapRootDestination
+                            AppDestination.Group -> GroupRootDestination
+                            AppDestination.Ranking -> RankingRootDestination
+                        }
+                    navController.navigate(route) {
+                        popUpTo<MapRootDestination> { saveState = true }
+                        launchSingleTop = true
+                        restoreState = true
+                    }
+                },
             )
         }
     }
