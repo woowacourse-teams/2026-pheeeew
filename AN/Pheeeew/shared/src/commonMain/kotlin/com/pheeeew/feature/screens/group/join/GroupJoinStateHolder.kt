@@ -57,7 +57,7 @@ class GroupJoinStateHolder(
         invalidateRequests()
         _uiState.update { state ->
             state.copy(
-                input = value,
+                input = value.uppercase(),
                 hasAttemptedSearch = false,
                 lookup = GroupLookupState.Idle,
                 submission = GroupJoinSubmissionState.Idle,
