@@ -1,5 +1,8 @@
 package com.pheeeew.feature.screens.map.record
 
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
+import com.pheeeew.feature.screens.map.monitoring.RecordFunnelMonitoring
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.domain.model.CurrentLocation
@@ -33,7 +36,10 @@ class MapRecordViewModel(
     private val registrationRepository: EmotionRegistrationRepository,
     private val groupStampListRepository: GroupStampListRepository,
     private val lastRecordedGroupRepository: LastRecordedGroupRepository,
+    monitoring: Monitoring = NoOpMonitoring,
 ) : ViewModel() {
+    val funnel = RecordFunnelMonitoring(monitoring)
+
     private val _uiModel = MutableStateFlow(RecordBottomSheetUiModel())
     val uiModel: StateFlow<RecordBottomSheetUiModel> = _uiModel.asStateFlow()
 
@@ -49,7 +55,8 @@ class MapRecordViewModel(
     val groupOptions: StateFlow<List<GroupSelectorGroupUiModel>> = _groupOptions.asStateFlow()
     private var groupLoadJob: Job? = null
 
-    fun open(emotion: EmotionTypeUiModel) {
+    fun open(emotion: EmotionTypeUiModel, selectorId: String? = null) {
+        funnel.start(selectorId)
         groupLoadJob?.cancel()
         pendingRegistration = null
         _uiModel.value =
@@ -64,6 +71,7 @@ class MapRecordViewModel(
     fun dismiss() {
         if (_uiModel.value.isSubmitting) return
         groupLoadJob?.cancel()
+        funnel.clearFlow()
         pendingRegistration = null
         _uiModel.value = RecordBottomSheetUiModel()
     }
@@ -73,6 +81,7 @@ class MapRecordViewModel(
     }
 
     fun onMemoChange(memo: String) {
+        if (memo.isNotBlank()) funnel.inputStarted("text")
         _uiModel.value = _uiModel.value.copy(memo = memo.take(MAX_MEMO_LENGTH))
     }
 
@@ -81,12 +90,21 @@ class MapRecordViewModel(
         recordingFilePath: String?,
     ) {
         if (_uiModel.value.isGroupSelectionLoading) return
+        if (_uiModel.value.step != RecordFlowStepUiModel.Input) return
+        funnel.inputFinished(
+            if (_uiModel.value.inputMode == RecordInputModeUiModel.Recording) {
+                if (recordingFilePath != null) "voice" else "none"
+            } else if (_uiModel.value.memo.isNotBlank()) "text" else "none",
+            skipped = false,
+        )
         _uiModel.value = _uiModel.value.copy(recordingFilePath = recordingFilePath)
         moveToLocationSelection(currentLocation)
     }
 
     fun onSkip(currentLocation: CurrentLocation?) {
         if (_uiModel.value.isGroupSelectionLoading) return
+        if (_uiModel.value.step != RecordFlowStepUiModel.Input) return
+        funnel.inputFinished("none", skipped = true)
         _uiModel.value = _uiModel.value.copy(memo = "", recordingFilePath = null)
         moveToLocationSelection(currentLocation)
     }
@@ -169,6 +187,15 @@ class MapRecordViewModel(
                 groupId = state.selectedGroupId.takeUnless { it == NO_GROUP_ID },
                 content = content,
             ).also { pendingRegistration = it }
+        funnel.submit(
+            registration.requestId,
+            when (registration.content) {
+                is EmotionRegistrationContent.Memo -> "text"
+                is EmotionRegistrationContent.Audio -> "voice"
+                EmotionRegistrationContent.None -> "none"
+            },
+            registration.groupId != null,
+        )
         _notice.value = null
         _uiModel.value = state.copy(isSubmitting = true)
         viewModelScope.launch {

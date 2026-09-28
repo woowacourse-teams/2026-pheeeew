@@ -18,6 +18,7 @@ import com.pheeeew.feature.monitoring.compat.MONITORING_PROPERTIES
 import com.pheeeew.feature.monitoring.compat.MonitoringEventNames
 import com.pheeeew.feature.monitoring.compat.MonitoringTicker
 import com.pheeeew.feature.monitoring.network.ApiMonitoringEvents
+import com.pheeeew.feature.screens.map.monitoring.RecordFunnelEvents
 import com.pheeeew.feature.screens.group.monitoring.GroupMonitoringEvents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -47,7 +48,7 @@ fun appMonitoringRegistry(): EventRegistry {
         }
     return EventRegistry(
         compatibility + LifecycleEvents.definitions + ApiMonitoringEvents.definitions +
-            GroupMonitoringEvents.definitions,
+            GroupMonitoringEvents.definitions + RecordFunnelEvents.definitions,
         setOf(
             "splash",
             "map",

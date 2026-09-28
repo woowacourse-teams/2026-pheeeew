@@ -100,6 +100,20 @@ fun MapScreen(
             )
         }
     val lifecycleOwner = LocalLifecycleOwner.current
+    var monitoringResumed by remember(lifecycleOwner) {
+        mutableStateOf(lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED))
+    }
+    DisposableEffect(lifecycleOwner, recordViewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) monitoringResumed = true
+            if (event == Lifecycle.Event.ON_PAUSE || event == Lifecycle.Event.ON_STOP) monitoringResumed = false
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            recordViewModel.funnel.screenHidden()
+        }
+    }
     DisposableEffect(lifecycleOwner, voiceRecorder) {
         val observer =
             LifecycleEventObserver { _, event ->
@@ -117,6 +131,30 @@ fun MapScreen(
     val recordUiModel by recordViewModel.uiModel.collectAsState()
     val groupOptions by recordViewModel.groupOptions.collectAsState()
     val notice by recordViewModel.notice.collectAsState()
+    LaunchedEffect(recordViewModel, monitoringResumed) {
+        if (monitoringResumed) recordViewModel.funnel.screenShown()
+        else recordViewModel.funnel.screenHidden()
+    }
+    LaunchedEffect(recordViewModel, monitoringResumed, uiModel.isEmotionSelectorExpanded, recordUiModel.step, isRequestingBubblePermission) {
+        recordViewModel.funnel.selectorVisibility(
+            monitoringResumed && !isRequestingBubblePermission && uiModel.isEmotionSelectorExpanded && recordUiModel.step == RecordFlowStepUiModel.Closed,
+        )
+    }
+    LaunchedEffect(recordViewModel, monitoringResumed, recordUiModel.step, recordUiModel.isGroupSelectorVisible) {
+        recordViewModel.funnel.stepShown(
+            if (!monitoringResumed) null else when {
+                recordUiModel.isGroupSelectorVisible -> "group"
+                recordUiModel.step == RecordFlowStepUiModel.Input -> "input"
+                recordUiModel.step == RecordFlowStepUiModel.LocationSelection -> "location"
+                else -> null
+            },
+        )
+    }
+    LaunchedEffect(voiceRecorder, recordViewModel) {
+        voiceRecorder.state.map { it.recording }.distinctUntilChanged().collect { recording ->
+            if (recording) recordViewModel.funnel.inputStarted("voice")
+        }
+    }
     var showDiscardDialog by remember { mutableStateOf(false) }
     val leaveInput = {
         recordFlowCoordinator.dismiss()
@@ -204,7 +242,9 @@ fun MapScreen(
             onEmotionBubbleClick = { emotion ->
                 if (!isRequestingBubblePermission) {
                     isRequestingBubblePermission = true
+                    val selectorId = recordViewModel.funnel.selected()
                     coroutineScope.launch {
+                        var requestedPermission = false
                         try {
                             val status = locationPermissionController.currentStatus()
                             val result =
@@ -213,12 +253,23 @@ fun MapScreen(
                                 ) {
                                     status
                                 } else {
-                                    locationPermissionController.requestPermission()
+                                    requestedPermission = true
+                                    locationPermissionController.requestPermission().also { permission ->
+                                        recordViewModel.funnel.permissionFinished(
+                                            selectorId,
+                                            when (permission) {
+                                                LocationPermissionStatus.Granted -> "granted"
+                                                LocationPermissionStatus.ServicesDisabled -> "services_disabled"
+                                                else -> "denied"
+                                            },
+                                        )
+                                    }
                                 }
+                            requestedPermission = false
                             when (result) {
                                 LocationPermissionStatus.Granted -> {
                                     viewModel.onMyLocationClick()
-                                    recordFlowCoordinator.onEmotionSelected(emotion)
+                                    recordFlowCoordinator.onEmotionSelected(emotion, selectorId)
                                     onEmotionBubbleClick(emotion)
                                 }
 
@@ -231,8 +282,10 @@ fun MapScreen(
                                 }
                             }
                         } catch (cancellation: CancellationException) {
+                            if (requestedPermission) recordViewModel.funnel.permissionFinished(selectorId, "cancelled")
                             throw cancellation
                         } catch (_: Exception) {
+                            if (requestedPermission) recordViewModel.funnel.permissionFinished(selectorId, "unknown")
                             permissionDialog = PermissionDialogUiModel.Location
                         } finally {
                             isRequestingBubblePermission = false

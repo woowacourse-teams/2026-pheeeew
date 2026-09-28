@@ -105,6 +105,7 @@ fun App(
                 registrationRepository,
                 groupStampListRepository,
                 lastRecordedGroupRepository,
+                apiDependencies.client.monitoring,
             )
         }
 
