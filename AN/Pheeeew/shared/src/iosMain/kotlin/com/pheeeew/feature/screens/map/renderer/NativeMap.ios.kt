@@ -115,6 +115,8 @@ private fun MapUiModel.toFoundationIosRenderUiModel(): FoundationIosMapRenderUiM
         isRecordLocationPicking = isRecordLocationPicking,
         recordOrigin = recordOrigin?.let { FoundationIosMapCoordinateUiModel(it.latitude, it.longitude) },
         highlightedEmotionId = highlightedEmotionId,
+        pressedEmotionId = pressedEmotionId,
+        pressedEmotionScale = pressedEmotionScale,
         focusedEmotionId = focusedEmotionId,
         emotionPinCoordinates =
             emotionPins.map {

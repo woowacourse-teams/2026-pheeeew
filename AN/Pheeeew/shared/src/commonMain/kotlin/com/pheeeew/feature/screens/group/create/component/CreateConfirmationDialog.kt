@@ -217,7 +217,6 @@ internal fun CreateFailureDialog(
                     Modifier
                         .fillMaxWidth()
                         .widthIn(max = 420.dp)
-                        .height(294.dp)
                         .clip(RoundedCornerShape(24.dp))
                         .background(Color.White)
                         .border(DialogBorder, RoundedCornerShape(24.dp))
@@ -235,13 +234,13 @@ internal fun CreateFailureDialog(
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text = message,
-                    modifier = Modifier.fillMaxWidth().height(40.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     color = AppColors.RankingSecondaryContent,
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
                     textAlign = TextAlign.Center,
                 )
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.height(20.dp))
                 DialogPrimaryAction(
                     text =
                         stringResource(

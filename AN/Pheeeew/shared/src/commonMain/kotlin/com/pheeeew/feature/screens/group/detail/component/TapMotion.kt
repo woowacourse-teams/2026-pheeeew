@@ -199,16 +199,19 @@ internal data class TapFlight(
 ) {
     fun sample(elapsed: Double): TapTransform {
         val t = (elapsed / duration).coerceIn(0.0, 1.0)
-        if (frames.size == 3) {
-            return if (t <= .2) {
+        val transform =
+            if (frames.size == 3 && t <= .2) {
                 frames[0].between(frames[1], t / .2)
-            } else {
+            } else if (frames.size == 3) {
                 frames[1].between(frames[2], (t - .2) / .8)
+            } else {
+                val p = t * 32
+                val i = floor(p).toInt().coerceAtMost(31)
+                frames[i].between(frames[i + 1], p - i)
             }
-        }
-        val p = t * 32
-        val i = floor(p).toInt().coerceAtMost(31)
-        return frames[i].between(frames[i + 1], p - i)
+        val fadeProgress = ((t - .7) / .3).coerceIn(0.0, 1.0)
+        val fade = 1 - fadeProgress * fadeProgress * (3 - 2 * fadeProgress)
+        return transform.copy(alpha = transform.alpha * fade)
     }
 }
 

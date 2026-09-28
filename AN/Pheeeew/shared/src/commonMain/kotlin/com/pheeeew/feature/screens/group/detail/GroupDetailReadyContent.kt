@@ -49,14 +49,13 @@ import pheeeew.shared.generated.resources.group_detail_hero_first
 import pheeeew.shared.generated.resources.group_detail_hero_first_subtitle
 import pheeeew.shared.generated.resources.group_detail_hero_neutral
 import pheeeew.shared.generated.resources.group_detail_hero_neutral_subtitle
-import pheeeew.shared.generated.resources.group_detail_load_error_body
 import pheeeew.shared.generated.resources.group_detail_press_check
 import pheeeew.shared.generated.resources.group_detail_press_checking
 import pheeeew.shared.generated.resources.group_detail_press_unknown
 import pheeeew.shared.generated.resources.group_detail_rank_empty
 import pheeeew.shared.generated.resources.group_detail_rank_label
 import pheeeew.shared.generated.resources.group_detail_rank_number
-import pheeeew.shared.generated.resources.group_detail_retry
+import pheeeew.shared.generated.resources.group_detail_refresh_error_pull
 import pheeeew.shared.generated.resources.group_detail_summary_angry
 import pheeeew.shared.generated.resources.group_detail_summary_annoyed
 import pheeeew.shared.generated.resources.group_detail_summary_blocked
@@ -309,7 +308,8 @@ private fun RefreshBanner(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Text(
+        text = stringResource(Res.string.group_detail_refresh_error_pull),
         modifier =
             modifier
                 .fillMaxWidth()
@@ -317,19 +317,7 @@ private fun RefreshBanner(
                 .background(Color(0xFFF3F4F2))
                 .clickable(role = Role.Button, onClick = onRetry)
                 .padding(horizontal = 14.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(Res.string.group_detail_load_error_body),
-            modifier = Modifier.weight(1f),
-            color = AppColors.RankingSecondaryContent,
-            fontSize = 12.sp,
-        )
-        Text(
-            text = stringResource(Res.string.group_detail_retry),
-            color = AppColors.GroupInk,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
+        color = AppColors.RankingSecondaryContent,
+        fontSize = 12.sp,
+    )
 }

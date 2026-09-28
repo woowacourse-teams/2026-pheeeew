@@ -30,6 +30,8 @@ internal class EmotionPinSymbolLayer {
     private var lastRenderedPins: List<EmotionPinUiModel>? = null
     private var layerVisible: Boolean? = null
     private var lastMonitoringLoadId: String? = null
+    private var lastPressedId: Long? = null
+    private var lastPressedScale = 1f
     private var lastFocusedId: Long? = null
 
     fun install(style: Style) {
@@ -37,6 +39,8 @@ internal class EmotionPinSymbolLayer {
         lastRenderedPins = null
         layerVisible = null
         lastMonitoringLoadId = null
+        lastPressedId = null
+        lastPressedScale = 1f
         lastFocusedId = null
         if (style.getSource(SOURCE_ID) == null) {
             style.addSource(GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(emptyList())))
@@ -100,6 +104,7 @@ internal class EmotionPinSymbolLayer {
                         addProperty("monitoring-load-id", monitoringLoadId)
                         addProperty(IMAGE_KEY_PROPERTY, pin.symbolImageKey())
                         addProperty(ROTATION_PROPERTY, pin.rotationDegrees)
+                        addProperty(PIN_ID_PROPERTY, pin.id)
                         addProperty(SCALE_PROPERTY, if (pin.id == focusedId) 1.3 else 1.0)
                         addProperty(PRIORITY_PROPERTY, if (pin.id == focusedId) 1 else 0)
                     }
@@ -113,6 +118,28 @@ internal class EmotionPinSymbolLayer {
         lastRenderedPins = renderedPins
         lastMonitoringLoadId = monitoringLoadId
         lastFocusedId = focusedId
+    }
+
+    fun updatePress(
+        style: Style,
+        pressedId: Long?,
+        scale: Float,
+    ) {
+        if (pressedId == lastPressedId && scale == lastPressedScale) return
+        val layer = style.getLayer(LAYER_ID) ?: return
+        val size =
+            if (pressedId == null) {
+                Expression.get(SCALE_PROPERTY)
+            } else {
+                Expression.switchCase(
+                    Expression.eq(Expression.get(PIN_ID_PROPERTY), Expression.literal(pressedId)),
+                    Expression.literal(scale),
+                    Expression.get(SCALE_PROPERTY),
+                )
+            }
+        layer.setProperties(iconSize(size))
+        lastPressedId = pressedId
+        lastPressedScale = scale
     }
 
     private fun EmotionPinSymbolImage.toAndroidBitmap(densityDpi: Int): Bitmap {
@@ -136,6 +163,7 @@ internal class EmotionPinSymbolLayer {
         const val LAYER_ID = "emotion-pin-symbol-layer"
         const val IMAGE_KEY_PROPERTY = "image-key"
         const val ROTATION_PROPERTY = "rotation-degrees"
+        const val PIN_ID_PROPERTY = "pin-id"
         const val SCALE_PROPERTY = "focus-scale"
         const val PRIORITY_PROPERTY = "focus-priority"
     }

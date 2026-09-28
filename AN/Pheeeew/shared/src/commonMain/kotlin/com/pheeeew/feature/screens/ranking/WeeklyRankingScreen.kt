@@ -14,10 +14,14 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,6 +59,7 @@ fun WeeklyRankingRoute(
         onPreviousWeek = viewModel::onPreviousWeek,
         onNextWeek = viewModel::onNextWeek,
         onRetry = viewModel::onRetry,
+        onRefresh = viewModel::onRefresh,
         modifier = modifier,
     )
 }
@@ -65,69 +70,93 @@ fun WeeklyRankingScreen(
     onPreviousWeek: () -> Unit,
     onNextWeek: () -> Unit,
     onRetry: () -> Unit,
+    onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val pullState = rememberPullToRefreshState()
+    val pullDistance = with(LocalDensity.current) { 56.dp.toPx() }
     Column(
         modifier = modifier.fillMaxSize().background(AppColors.Background).statusBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(
-            modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = onRefresh,
+            state = pullState,
+            enabled = uiState.status != WeeklyRankingStatus.Loading,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
         ) {
-            BasicTopBar(
-                title = "주간 랭킹",
-                titleColor = AppColors.RankingContent,
-            )
-            Spacer(Modifier.height(12.dp))
-            WeekSelector(
-                week = uiState.weekLabel.ifBlank { "주간 랭킹" },
-                onPrevious = onPreviousWeek,
-                onNext = onNextWeek,
-                modifier = Modifier.padding(horizontal = 24.dp),
-                canGoPrevious = uiState.status == WeeklyRankingStatus.Ready && uiState.hasPrevious,
-                canGoNext = uiState.status == WeeklyRankingStatus.Ready && uiState.weeksAgo > 0,
-            )
-            Spacer(Modifier.height(22.dp))
-            when (uiState.status) {
-                WeeklyRankingStatus.Loading -> {
-                    Spacer(Modifier.height(48.dp))
-                    CircularLoadingIndicator(color = AppColors.RankingContent)
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            translationY = pullState.distanceFraction.coerceIn(0f, 1f) * pullDistance
+                        }.verticalScroll(rememberScrollState()),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                BasicTopBar(
+                    title = "주간 랭킹",
+                    titleColor = AppColors.RankingContent,
+                )
+                Spacer(Modifier.height(12.dp))
+                WeekSelector(
+                    week = uiState.weekLabel.ifBlank { "주간 랭킹" },
+                    onPrevious = onPreviousWeek,
+                    onNext = onNextWeek,
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                    canGoPrevious = uiState.status == WeeklyRankingStatus.Ready && uiState.hasPrevious,
+                    canGoNext = uiState.status == WeeklyRankingStatus.Ready && uiState.weeksAgo > 0,
+                )
+                Spacer(Modifier.height(22.dp))
+                if (uiState.hasRefreshError) {
+                    Text(
+                        "새로고침에 실패했어요. 다시 아래로 당겨 주세요.",
+                        modifier = Modifier.padding(bottom = 12.dp),
+                        color = AppColors.RankingSecondaryContent,
+                        fontSize = 13.sp,
+                    )
                 }
-
-                WeeklyRankingStatus.Failed -> {
-                    Column(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text("랭킹을 불러오지 못했어요.", color = AppColors.RankingContent, fontSize = 14.sp)
-                        Button(onClick = onRetry) { Text("다시 시도") }
+                when (uiState.status) {
+                    WeeklyRankingStatus.Loading -> {
+                        Spacer(Modifier.height(48.dp))
+                        CircularLoadingIndicator(color = AppColors.RankingContent)
                     }
-                }
 
-                WeeklyRankingStatus.Ready -> {
-                    if (uiState.rankings.isEmpty()) {
-                        Text(
-                            "해당 주에 랭킹이 없어요.",
-                            modifier = Modifier.padding(vertical = 48.dp),
-                            color = AppColors.RankingSecondaryContent,
-                            fontSize = 14.sp,
-                        )
-                    } else if (uiState.rankings.size >= 3) {
-                        TopThreeRanking(members = uiState.rankings.take(3))
-                        Spacer(Modifier.height(22.dp))
-                        uiState.rankings.drop(3).forEach { member ->
-                            RankingRow(member = member, modifier = Modifier.padding(bottom = 14.dp))
-                        }
-                    } else {
-                        uiState.rankings.forEach { member ->
-                            RankingRow(member = member, modifier = Modifier.padding(bottom = 14.dp))
+                    WeeklyRankingStatus.Failed -> {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text("랭킹을 불러오지 못했어요.", color = AppColors.RankingContent, fontSize = 14.sp)
+                            Button(onClick = onRetry) { Text("다시 시도") }
                         }
                     }
+
+                    WeeklyRankingStatus.Ready -> {
+                        if (uiState.rankings.isEmpty()) {
+                            Text(
+                                "해당 주에 랭킹이 없어요.",
+                                modifier = Modifier.padding(vertical = 48.dp),
+                                color = AppColors.RankingSecondaryContent,
+                                fontSize = 14.sp,
+                            )
+                        } else if (uiState.rankings.size >= 3) {
+                            TopThreeRanking(members = uiState.rankings.take(3))
+                            Spacer(Modifier.height(22.dp))
+                            uiState.rankings.drop(3).forEach { member ->
+                                RankingRow(member = member, modifier = Modifier.padding(bottom = 14.dp))
+                            }
+                        } else {
+                            uiState.rankings.forEach { member ->
+                                RankingRow(member = member, modifier = Modifier.padding(bottom = 14.dp))
+                            }
+                        }
+                    }
                 }
+                Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
             }
-            Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
         }
     }
 }
@@ -147,5 +176,6 @@ private fun WeeklyRankingScreenPreview() {
         onPreviousWeek = {},
         onNextWeek = {},
         onRetry = {},
+        onRefresh = {},
     )
 }

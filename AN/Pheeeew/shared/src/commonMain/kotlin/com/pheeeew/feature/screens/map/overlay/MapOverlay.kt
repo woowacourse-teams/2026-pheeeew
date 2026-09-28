@@ -5,7 +5,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -42,11 +44,13 @@ import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_menu
 import pheeeew.shared.generated.resources.ic_my_location
+import pheeeew.shared.generated.resources.ic_refresh
 
 private const val EMOTION_PROMPT_DAMPING_RATIO = 0.8205f
 private const val EMOTION_PROMPT_STIFFNESS = 380f
 private val MAP_CONTROL_BOTTOM_SPACE = AppBottomNavigationBarOverlaySpace + 24.dp
 private val MAP_BOTTOM_BAR_LIFT = MAP_CONTROL_BOTTOM_SPACE - 56.dp
+private val MAP_CONTROL_TINT = Color(0xFF2670F8)
 
 @Composable
 fun MapOverlay(
@@ -55,6 +59,7 @@ fun MapOverlay(
     isEmotionSelectorExpanded: Boolean,
     onEmotionSelectorToggle: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
+    onRefreshClick: () -> Unit,
     onMyLocationClick: () -> Unit,
     isRequestingLocation: Boolean,
     isMapError: Boolean,
@@ -134,25 +139,25 @@ fun MapOverlay(
             }
 
             if (!isMapError) {
-                Box(
+                Column(
                     modifier =
                         Modifier
                             .align(Alignment.BottomEnd)
                             .navigationBarsPadding()
-                            .padding(bottom = MAP_CONTROL_BOTTOM_SPACE)
-                            .clip(CircleShape)
-                            .shadow(elevation = 4.dp, shape = CircleShape)
-                            .background(AppColors.Surface)
-                            .clickable(
-                                enabled = !isRequestingLocation,
-                                onClick = onMyLocationClick,
-                            ).padding(12.dp),
+                            .padding(bottom = MAP_CONTROL_BOTTOM_SPACE),
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_my_location),
-                        contentDescription = null,
-                        modifier = Modifier.size(24.dp),
-                        tint = Color(0xFF2670F8),
+                    MapControlButton(
+                        icon = Res.drawable.ic_refresh,
+                        contentDescription = "지도 새로고침",
+                        onClick = onRefreshClick,
+                    )
+                    MapControlButton(
+                        icon = Res.drawable.ic_my_location,
+                        contentDescription = "내 위치로 이동",
+                        enabled = !isRequestingLocation,
+                        onClick = onMyLocationClick,
                     )
                 }
             }
@@ -216,7 +221,7 @@ internal fun MapControlButton(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             modifier = Modifier.size(24.dp),
-            tint = Color(0xFF2670F8),
+            tint = MAP_CONTROL_TINT,
         )
     }
 }
@@ -263,6 +268,7 @@ private fun MapOverlayPreviewContent(
             isEmotionSelectorExpanded = isEmotionSelectorExpanded,
             onEmotionSelectorToggle = {},
             onEmotionBubbleClick = {},
+            onRefreshClick = {},
             onMyLocationClick = {},
             isRequestingLocation = isRequestingLocation,
             isMapError = isMapError,

@@ -1,5 +1,7 @@
 package com.pheeeew.feature.screens.map
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -49,6 +51,7 @@ import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
 import com.pheeeew.feature.screens.map.renderer.NativeMap
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -88,6 +91,9 @@ fun MapScreen(
             recordViewModel.funnel,
         )
     val coroutineScope = rememberCoroutineScope()
+    val pinPressScale = remember { Animatable(1f) }
+    var pressedPinId by remember { mutableStateOf<Long?>(null) }
+    var pinPressJob by remember { mutableStateOf<Job?>(null) }
     var permissionDialog by remember { mutableStateOf<PermissionDialogUiModel?>(null) }
     var isRequestingBubblePermission by remember { mutableStateOf(false) }
     LaunchedEffect(voiceRecorder) {
@@ -281,6 +287,8 @@ fun MapScreen(
                                 renderUiModel.copy(
                                     recordOrigin = recordUiModel.origin,
                                     highlightedEmotionId = highlightedId,
+                                    pressedEmotionId = pressedPinId,
+                                    pressedEmotionScale = pinPressScale.value,
                                     emotionContentLoad = renderUiModel.emotionContentLoad.takeIf { contentVisible },
                                     emotionPins =
                                         renderUiModel.emotionPins.filterNot {
@@ -306,7 +314,17 @@ fun MapScreen(
                             },
                             onEmotionPinClick = { id ->
                                 clearHighlight()
-                                onEmotionPinClick(id)
+                                pinPressJob?.cancel()
+                                pinPressJob =
+                                    coroutineScope.launch {
+                                        pressedPinId = id
+                                        pinPressScale.snapTo(1f)
+                                        pinPressScale.animateTo(0.9f, tween(durationMillis = 70))
+                                        pinPressScale.animateTo(1.1f, tween(durationMillis = 110))
+                                        pinPressScale.animateTo(1f, tween(durationMillis = 100))
+                                        pressedPinId = null
+                                        onEmotionPinClick(id)
+                                    }
                             },
                             onContentPresented = viewModel::contentPresented,
                             onHighlightedPinPositionChanged = { position ->
@@ -390,6 +408,7 @@ fun MapScreen(
                 }
             },
             onMyLocationClick = viewModel::onMyLocationClick,
+            onMapRefreshClick = viewModel::refreshEmotionPins,
             onRecordBottomSheetDismiss = requestInputBack,
             onRecordInputModeChange = recordFlowCoordinator::changeInputMode,
             onRecordMemoChange = recordViewModel::onMemoChange,
@@ -502,6 +521,7 @@ internal fun MapScreenContent(
     onEmotionSelectorToggle: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
     onMyLocationClick: () -> Unit,
+    onMapRefreshClick: () -> Unit,
     onRecordBottomSheetDismiss: () -> Unit,
     onRecordInputModeChange: (RecordInputModeUiModel) -> Unit,
     onRecordMemoChange: (String) -> Unit,
@@ -535,6 +555,7 @@ internal fun MapScreenContent(
                 isEmotionSelectorExpanded = uiModel.isEmotionSelectorExpanded,
                 onEmotionSelectorToggle = onEmotionSelectorToggle,
                 onEmotionBubbleClick = onEmotionBubbleClick,
+                onRefreshClick = onMapRefreshClick,
                 onMyLocationClick = onMyLocationClick,
                 isRequestingLocation = uiModel.isRequestingLocation,
                 isMapError = uiModel.mapError != null,
@@ -620,6 +641,7 @@ private fun MapScreenContentPreview() {
         onEmotionSelectorToggle = {},
         onEmotionBubbleClick = {},
         onMyLocationClick = {},
+        onMapRefreshClick = {},
         onRecordBottomSheetDismiss = {},
         onRecordInputModeChange = {},
         onRecordMemoChange = {},

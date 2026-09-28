@@ -20,6 +20,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,6 +42,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.pheeeew.core.audio.rememberVoiceRecorder
 import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
@@ -86,6 +88,8 @@ import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.feature.screens.splash.SplashScreen
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import org.jetbrains.compose.resources.DrawableResource
 
@@ -207,9 +211,25 @@ private fun AppContent(
     }
 
     if (!onboardingCompleted) {
+        val onboardingRecorder = rememberVoiceRecorder()
         OnboardingScreen(
             monitoring = apiDependencies.client.monitoring,
             onFinished = {
+                try {
+                    locationDependencies.permissionController.requestPermission()
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    // A failed permission request must not block onboarding.
+                }
+                try {
+                    onboardingRecorder.requestMicrophonePermission()
+                    onboardingRecorder.state.first { !it.requestingPermission }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    // Recording can request permission again when the user needs it.
+                }
                 onOnboardingCompleted()
                 onboardingCompleted = true
             },

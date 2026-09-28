@@ -22,6 +22,8 @@ interface VoiceRecorder {
 
     fun refreshPermissionStatus()
 
+    fun requestMicrophonePermission()
+
     fun start()
 
     fun stop()

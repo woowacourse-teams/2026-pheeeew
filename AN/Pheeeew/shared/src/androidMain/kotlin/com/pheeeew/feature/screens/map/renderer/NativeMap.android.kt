@@ -433,6 +433,7 @@ private class AndroidFoundationMapHost(
                 monitoringLoadId = state.emotionContentLoad?.loadId,
                 focusedId = state.focusedEmotionId,
             )
+            emotionPinSymbolLayer.updatePress(loadedStyle, state.pressedEmotionId, state.pressedEmotionScale)
         }
         val point =
             currentLocation?.let { LatLng(it.latitude, it.longitude) }

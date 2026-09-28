@@ -16,6 +16,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private var emotionPinSource: MLNShapeSource?
     private var lastEmotionPinImageKeys = Set<String>()
     private var lastEmotionPinCoordinates: [FoundationIosEmotionPinCoordinateUiModel]?
+    private var lastPressedEmotionId: Int64?
+    private var lastPressedEmotionScale: Float = 1
     private var lastFocusedEmotionId: Int64?
     private var fittedOrigin: CLLocationCoordinate2D?
     private var fittedSize: CGSize = .zero
@@ -63,6 +65,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         guard styleIsReady else { return }
         FoundationCurrentLocationLayer.update(currentLocation: state.currentLocation, source: currentLocationSource)
         updateEmotionPins(state)
+        updateEmotionPinPress(state)
         applyInitialCameraIfNeeded(state)
         if !applyRecordCamera(state) { applyCameraCommandIfNeeded(state) }
         publishViewportIfReady()
@@ -76,6 +79,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         emotionPinSource = nil
         lastEmotionPinImageKeys.removeAll()
         lastEmotionPinCoordinates = nil
+        lastPressedEmotionId = nil
+        lastPressedEmotionScale = 1
     }
 
     private func styleJSON(_ style: MLNStyle, addingKoreanFonts fonts: (regular: URL, bold: URL)) -> String? {
@@ -185,6 +190,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         emotionPinSource = installEmotionPinLayer(on: style)
         lastEmotionPinImageKeys.removeAll()
         lastEmotionPinCoordinates = nil
+        lastPressedEmotionId = nil
+        lastPressedEmotionScale = 1
         eventSink.onMapRecovered()
         if let pendingState {
             FoundationCurrentLocationLayer.update(
@@ -194,6 +201,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             applyInitialCameraIfNeeded(pendingState)
             if !applyRecordCamera(pendingState) { applyCameraCommandIfNeeded(pendingState) }
             updateEmotionPins(pendingState)
+            updateEmotionPinPress(pendingState)
             publishViewportIfReady()
         }
     }
@@ -397,6 +405,26 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         emotionPinSource.shape = MLNShapeCollectionFeature(shapes: features)
         lastEmotionPinCoordinates = coordinates
         lastFocusedEmotionId = focusedId
+    }
+
+    private func updateEmotionPinPress(_ state: FoundationIosMapRenderUiModel) {
+        let pressedId = state.pressedEmotionId?.int64Value
+        guard pressedId != lastPressedEmotionId ||
+                state.pressedEmotionScale != lastPressedEmotionScale,
+              let layer = mapView.style?.layer(withIdentifier: "foundation-emotion-pin-layer") as? MLNSymbolStyleLayer
+        else { return }
+        if let pressedId {
+            layer.iconScale = NSExpression(mglJSONObject: [
+                "case",
+                ["==", ["get", "id"], NSNumber(value: pressedId)],
+                Double(state.pressedEmotionScale),
+                ["get", "focusScale"],
+            ])
+        } else {
+            layer.iconScale = NSExpression(forKeyPath: "focusScale")
+        }
+        lastPressedEmotionId = pressedId
+        lastPressedEmotionScale = state.pressedEmotionScale
     }
 
     private func applyInitialCameraIfNeeded(_ state: FoundationIosMapRenderUiModel) {

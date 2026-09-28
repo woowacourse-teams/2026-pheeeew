@@ -23,6 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,7 +83,7 @@ private val onboardingPages =
 
 @Composable
 fun OnboardingScreen(
-    onFinished: () -> Unit,
+    onFinished: suspend () -> Unit,
     modifier: Modifier = Modifier,
     initialPage: Int = 0,
     monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
@@ -105,15 +107,23 @@ fun OnboardingScreen(
             )
         }
     }
-    val completed = androidx.compose.runtime.remember { booleanArrayOf(false) }
+    val completed = remember { mutableStateOf(false) }
+    val isFinishing = remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     fun finish(outcome: String) {
-        if (completed[0]) return
-        completed[0] = true
-        telemetry.emit("onboarding_finished", labels("outcome" to outcome))
-        onFinished()
+        if (completed.value || isFinishing.value) return
+        isFinishing.value = true
+        coroutineScope.launch {
+            try {
+                onFinished()
+                telemetry.emit("onboarding_finished", labels("outcome" to outcome))
+                completed.value = true
+            } finally {
+                isFinishing.value = false
+            }
+        }
     }
-    val coroutineScope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == onboardingPages.lastIndex
 
     Column(
@@ -121,11 +131,15 @@ fun OnboardingScreen(
             modifier
                 .fillMaxSize()
                 .background(Color(0xFFFFFEFE))
-                .safeDrawingPadding()
-                .padding(horizontal = 16.dp),
+                .safeDrawingPadding(),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().height(48.dp).padding(top = 12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
@@ -169,7 +183,7 @@ fun OnboardingScreen(
                         fontSize = 24.sp,
                         lineHeight = 32.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
                     )
                     item.supportingText?.let { supportingText ->
                         Spacer(Modifier.height(12.dp))
@@ -178,7 +192,7 @@ fun OnboardingScreen(
                             color = Color(0xFF777777),
                             fontSize = 12.sp,
                             lineHeight = 22.sp,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp),
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 28.dp),
                         )
                     }
                 }
@@ -205,6 +219,7 @@ fun OnboardingScreen(
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
                     .height(52.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color(0xFF202323))

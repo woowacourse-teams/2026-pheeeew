@@ -17,6 +17,8 @@ data class MapUiModel(
     val isEmotionSelectorExpanded: Boolean = false,
     val isRecordLocationPicking: Boolean = false,
     val highlightedEmotionId: Long? = null,
+    val pressedEmotionId: Long? = null,
+    val pressedEmotionScale: Float = 1f,
     val focusedEmotionId: Long? = null,
     val recordOrigin: GeoCoordinate? = null,
     val emotionPins: List<EmotionPinUiModel> = emptyList(),

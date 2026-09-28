@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
@@ -93,6 +94,7 @@ fun RecordBottomSheet(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    var showOtherInputDialog by remember { mutableStateOf(false) }
     val handleDismissRequest by rememberUpdatedState<() -> Unit> {
         if (isKeyboardVisible) {
             keyboardController?.hide()
@@ -129,10 +131,32 @@ fun RecordBottomSheet(
             onInputModeChange = onInputModeChange,
             onMemoChange = onMemoChange,
             onGroupClick = onGroupClick,
-            onNext = onNext,
+            onNext = {
+                val hasOtherInput =
+                    when (inputMode) {
+                        RecordInputModeUiModel.Memo -> voiceRecorder?.state?.value?.filePath != null
+                        RecordInputModeUiModel.Recording -> memo.isNotBlank()
+                    }
+                if (hasOtherInput) showOtherInputDialog = true else onNext()
+            },
             onSkip = onSkip,
             modifier = Modifier,
             voiceRecorder = voiceRecorder,
+        )
+    }
+    if (showOtherInputDialog) {
+        val selectedInput = if (inputMode == RecordInputModeUiModel.Memo) "메모" else "녹음"
+        val excludedInput = if (inputMode == RecordInputModeUiModel.Memo) "녹음" else "메모"
+        ConfirmDialog(
+            title = "작성한 내용이 제외돼.",
+            content = "이번 등록에는 ${selectedInput}만 포함되고 ${excludedInput}은 저장되지 않아.\n계속할까?",
+            confirmText = "${selectedInput}만 등록",
+            cancelText = "계속 작성",
+            onConfirm = {
+                showOtherInputDialog = false
+                onNext()
+            },
+            onCancel = { showOtherInputDialog = false },
         )
     }
 }
@@ -207,7 +231,7 @@ private fun RecordBottomSheetContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "메모, 녹음은 선택이에요.",
+            text = "메모와 녹음 중 선택한 한 가지만 등록돼요.",
             fontSize = 12.sp,
             color = AppColors.TextSecondary,
         )
