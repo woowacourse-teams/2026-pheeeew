@@ -2,6 +2,8 @@ package com.pheeeew.feature.screens.ranking
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.resultLabel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +28,9 @@ enum class WeeklyRankingStatus {
 
 class WeeklyRankingViewModel(
     private val source: WeeklyRankingSource,
+    monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
 ) : ViewModel() {
+    val telemetry = ProductMonitoring(monitoring, "ranking")
     private val _uiState = MutableStateFlow(WeeklyRankingUiState())
     val uiState = _uiState.asStateFlow()
 
@@ -40,12 +44,34 @@ class WeeklyRankingViewModel(
     fun onPreviousWeek() {
         val state = _uiState.value
         if (state.status != WeeklyRankingStatus.Ready || !state.hasPrevious) return
+        telemetry.emit(
+            "ranking_week_changed",
+            mapOf(
+                "from_weeks_ago" to
+                    com.pheeeew.core.monitoring.EventValue
+                        .Integer(state.weeksAgo.toLong()),
+                "weeks_ago" to
+                    com.pheeeew.core.monitoring.EventValue
+                        .Integer((state.weeksAgo + 1).toLong()),
+            ),
+        )
         load(state.weeksAgo + 1)
     }
 
     fun onNextWeek() {
         val state = _uiState.value
         if (state.status != WeeklyRankingStatus.Ready || state.weeksAgo == 0) return
+        telemetry.emit(
+            "ranking_week_changed",
+            mapOf(
+                "from_weeks_ago" to
+                    com.pheeeew.core.monitoring.EventValue
+                        .Integer(state.weeksAgo.toLong()),
+                "weeks_ago" to
+                    com.pheeeew.core.monitoring.EventValue
+                        .Integer((state.weeksAgo - 1).toLong()),
+            ),
+        )
         load(state.weeksAgo - 1)
     }
 
@@ -61,7 +87,18 @@ class WeeklyRankingViewModel(
         requestJob =
             viewModelScope.launch {
                 try {
-                    when (val result = source.load(weeksAgo)) {
+                    when (
+                        val result =
+                            telemetry
+                                .operation(
+                                    "ranking_load_finished",
+                                    mapOf(
+                                        "weeks_ago" to
+                                            com.pheeeew.core.monitoring.EventValue
+                                                .Integer(weeksAgo.toLong()),
+                                    ),
+                                ).observe(::resultLabel) { source.load(weeksAgo) }
+                    ) {
                         is WeeklyRankingLoadResult.Loaded -> {
                             if (requestId != requestGeneration) return@launch
                             _uiState.value =

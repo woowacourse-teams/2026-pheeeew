@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 
 @Composable
@@ -32,7 +33,7 @@ fun ReportDescriptionInput(
             modifier
                 .fillMaxWidth()
                 .heightIn(min = 84.dp, max = 144.dp)
-                .border(2.dp, AppColors.GroupInk, RoundedCornerShape(14.dp))
+                .border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(14.dp))
                 .padding(horizontal = 14.dp, vertical = 14.dp),
         textStyle = LocalTextStyle.current.copy(color = AppColors.GroupInk, fontSize = 14.sp),
         maxLines = 5,
@@ -40,7 +41,7 @@ fun ReportDescriptionInput(
             Box(modifier = Modifier.fillMaxWidth()) {
                 if (value.isEmpty()) {
                     Text(
-                        text = "상황을 짧게 알려주면 더 빨리 확인해요.",
+                        text = "상황을 짧게 알려주면 더 빨리 확인할 수 있어.",
                         color = AppColors.TextSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,

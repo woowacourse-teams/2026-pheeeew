@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.map.nearby
 
+import com.pheeeew.feature.screens.map.monitoring.ContentLoad
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 
 data class NearbyEmotionUiState(
@@ -22,6 +23,7 @@ data class NearbyEmotionUiState(
     val message: String? = null,
     val revision: Long = 0,
     val audioLoadingId: Long? = null,
+    val contentLoad: ContentLoad? = null,
 )
 
 internal const val ALL_GROUPS = "all"

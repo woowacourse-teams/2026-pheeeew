@@ -9,6 +9,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
+import com.pheeeew.feature.monitoring.product.ProductScreen
+import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -35,6 +38,7 @@ fun GroupDetailRoute(
     onCopyCode: suspend (code: String, operationKey: GroupOperationKey) -> GroupCopyCodeResult,
     modifier: Modifier = Modifier,
 ) {
+    ProductScreen(viewModel.telemetry, isCurrentDestination)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnBack by rememberUpdatedState(onBack)
@@ -85,7 +89,20 @@ fun GroupDetailRoute(
         }
     }
 
+    val foreground =
+        com.pheeeew.feature.screens.map.monitoring
+            .rememberMonitoringForeground() &&
+            LocalProductMonitoringVisible.current
     GroupDetailScreen(
+        feedbackOperationKey = { viewModel.lastAcceptedPressKey },
+        onFeedbackShown = { key ->
+            if (isCurrentDestination && foreground) {
+                viewModel.telemetry.emit(
+                    "group_emotion_feedback_viewed",
+                    labels("group_operation_key" to "${key.ownerInstanceId}:${key.sequence}"),
+                )
+            }
+        },
         uiState = uiState,
         actions =
             GroupDetailActions(

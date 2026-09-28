@@ -30,6 +30,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
@@ -173,7 +174,7 @@ internal fun StampEditor(
                         .clip(CircleShape)
                         .clickable(enabled = enabled, role = Role.Button, onClick = onColorClick)
                         .semantics { contentDescription = colorPickerLabel }
-                        .border(1.dp, AppColors.GroupInk, CircleShape)
+                        .border(AppBorders.Standard, AppColors.GroupInk, CircleShape)
                         .padding(4.dp)
                         .background(Color(stamp.fillArgb.toInt()), CircleShape),
             )
@@ -198,7 +199,7 @@ private fun StampTextColorChip(
                 .clip(chipShape)
                 .background(if (selected) Color(0xFFE8F7F2) else Color.Transparent)
                 .border(
-                    width = if (selected) 1.5.dp else 1.dp,
+                    width = AppBorders.Standard,
                     color = if (selected) AppColors.GroupInk else Color(0xFFDCE1DC),
                     shape = chipShape,
                 ).clickable(enabled = enabled, role = Role.RadioButton, onClick = onClick)
@@ -227,7 +228,7 @@ private fun StampShapeOption(
                 .clip(RoundedCornerShape(10.dp))
                 .background(if (selected) Color(0xFFE8F7F2) else Color(0xFFF8F9F9))
                 .border(
-                    width = if (selected) 1.5.dp else 1.dp,
+                    width = AppBorders.Standard,
                     color = if (selected) AppColors.GroupInk else Color(0xFFE2E6E5),
                     shape = RoundedCornerShape(10.dp),
                 ).clickable(enabled = enabled, role = Role.RadioButton, onClick = onClick)

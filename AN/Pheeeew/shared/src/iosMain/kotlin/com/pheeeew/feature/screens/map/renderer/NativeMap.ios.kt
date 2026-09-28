@@ -28,9 +28,11 @@ internal actual fun NativeMap(
     onViewportChanged: (EmotionMapBounds) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
+    onContentPresented: (String, List<String>) -> Unit,
     modifier: Modifier,
 ) {
     val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
+    val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
@@ -42,6 +44,11 @@ internal actual fun NativeMap(
                 override fun onHighlightedPinPositionChanged(position: HighlightedPinPosition?) {
                     currentOnHighlightPosition(position)
                 }
+
+                override fun onContentPresented(
+                    loadId: String,
+                    entryIds: List<String>,
+                ) = currentOnContentPresented(loadId, entryIds)
 
                 override fun onEmotionPinClick(id: Long) = currentOnEmotionPinClick(id)
 
@@ -88,6 +95,7 @@ private fun MapUiModel.toFoundationIosRenderUiModel(): FoundationIosMapRenderUiM
     val latitude = currentLocation?.latitude ?: FALLBACK_LATITUDE
     val longitude = currentLocation?.longitude ?: FALLBACK_LONGITUDE
     return FoundationIosMapRenderUiModel(
+        monitoringLoadId = emotionContentLoad?.loadId,
         currentLocation =
             currentLocation?.let {
                 FoundationIosCurrentLocationUiModel(it.latitude, it.longitude, it.accuracyMeters.toDouble())

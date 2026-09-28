@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
@@ -204,7 +205,9 @@ private fun RecordBottomSheetContent(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "${selectedEmotion.label}한 마음,\n조금 더 남길까요?",
+                text = "${selectedEmotion.recordPhrase} 마음\n${selectedEmotion.recordPrompt}",
+                modifier = Modifier.weight(1f),
+                lineHeight = 22.sp,
                 color = AppColors.TextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -214,7 +217,7 @@ private fun RecordBottomSheetContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "메모, 녹음은 선택이에요.",
+            text = "메모와 녹음은 선택이야.",
             fontSize = 12.sp,
             color = AppColors.TextSecondary,
         )
@@ -383,7 +386,7 @@ private fun MemoPanel(
                     .fillMaxWidth()
                     .height(105.dp)
                     .clip(AppShapes.Input)
-                    .border(width = 1.dp, color = AppColors.Border, shape = AppShapes.Input)
+                    .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
                     .padding(16.dp),
             textStyle =
                 LocalTextStyle.current.copy(
@@ -401,7 +404,7 @@ private fun MemoPanel(
                                     .padding(bottom = 20.dp),
                         ) {
                             Text(
-                                text = "지금 마음을 짧게 적어보세요",
+                                text = "지금 마음을 짧게 적어봐",
                                 color = AppColors.Border.copy(alpha = 0.45f),
                                 fontSize = 16.sp,
                             )
@@ -436,6 +439,7 @@ private fun RecordInputModeToggle(
                 .height(45.dp)
                 .clip(AppShapes.Pill)
                 .background(AppColors.Gray100)
+                .border(AppBorders.Standard, AppColors.Border, AppShapes.Pill)
                 .padding(4.dp),
     ) {
         val tabWidth = maxWidth / 2

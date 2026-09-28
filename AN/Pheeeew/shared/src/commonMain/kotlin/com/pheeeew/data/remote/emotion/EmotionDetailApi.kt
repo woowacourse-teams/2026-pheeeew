@@ -16,7 +16,9 @@ class EmotionDetailApi(
     suspend fun findById(id: Long): ApiResult<EmotionDetailDto> {
         require(id > 0)
         // The server returns application/geo+json, which is decoded explicitly.
-        return requests.execute(ApiRequest(HttpMethod.Get, "/api/v1/emotions/$id", RequestKind.READ)) {
+        return requests.execute(
+            ApiRequest(HttpMethod.Get, "/api/v1/emotions/$id", RequestKind.READ, monitoringEndpoint = "emotion_detail"),
+        ) {
             json.decodeFromString<EmotionDetailDto>(it.bodyAsText())
         }
     }

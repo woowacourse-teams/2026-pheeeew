@@ -30,6 +30,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,10 +49,13 @@ import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.feature.component.stamp.GroupStamp
+import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import com.pheeeew.legacy.core.navigation.PredictiveBackEffect
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
@@ -64,10 +69,21 @@ fun NearbyEmotionSheet(
     onOpenEmotionOnMap: (Long, GeoCoordinate?) -> Boolean,
     blockUser: BlockUserUseCase,
     onReportEmotion: (Long, DrawableResource) -> Unit,
+    monitoringVisible: Boolean = true,
 ) {
     val state by viewModel.state.collectAsState()
     var expanded by remember(state.visible) { mutableStateOf(false) }
-    val player = rememberEmotionAudioPlayer()
+    val foreground = rememberMonitoringForeground()
+    val contentVisible =
+        monitoringVisible && foreground && state.visible && !state.groupSelectorVisible && state.blockId == null
+    DisposableEffect(viewModel, contentVisible) {
+        viewModel.contentVisibility(contentVisible)
+        onDispose { viewModel.contentVisibility(false) }
+    }
+    val player =
+        com.pheeeew.feature.monitoring.product.rememberObservedEmotionPlayer(viewModel.telemetry) {
+            viewModel.exploration.viewId
+        }
     val playback by player.state.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, player) {
@@ -98,6 +114,63 @@ fun NearbyEmotionSheet(
     }
     val scroll = rememberLazyListState()
     LaunchedEffect(state.revision) { scroll.scrollToItem(0) }
+    LaunchedEffect(state.contentLoad, contentVisible, state.loading) {
+        val load = state.contentLoad ?: return@LaunchedEffect
+        if (!contentVisible || state.loading) return@LaunchedEffect
+        withFrameNanos { }
+        snapshotFlow {
+            val layout = scroll.layoutInfo
+            val ids = state.items.mapTo(mutableSetOf()) { it.id }
+            val count =
+                layout.visibleItemsInfo.count { item ->
+                    item.key in ids && item.offset < layout.viewportEndOffset &&
+                        item.offset + item.size > layout.viewportStartOffset
+                }
+            // Ignore pre-layout frames; they must not finalize a nonempty page with a spurious zero.
+            count.takeIf { layout.viewportEndOffset > layout.viewportStartOffset && (ids.isEmpty() || count > 0) }
+        }.filterNotNull().distinctUntilChanged().collect { count -> viewModel.contentPresented(load, count) }
+    }
+    LaunchedEffect(contentVisible, state.revision, state.items) {
+        if (!contentVisible) return@LaunchedEffect
+        // Track each item's uninterrupted qualifying interval independently while scrolling.
+        val starts = mutableMapOf<Long, kotlin.time.TimeSource.Monotonic.ValueTimeMark>()
+        while (true) {
+            val layout = scroll.layoutInfo
+            val visible =
+                layout.visibleItemsInfo
+                    .mapNotNull { item ->
+                        val id = item.key as? Long ?: return@mapNotNull null
+                        val overlap =
+                            (
+                                minOf(item.offset + item.size, layout.viewportEndOffset) -
+                                    maxOf(item.offset, layout.viewportStartOffset)
+                            ).coerceAtLeast(0)
+                        id.takeIf { item.size > 0 && overlap.toDouble() / item.size >= 0.5 }
+                    }.toSet()
+            starts.keys.retainAll(visible)
+            visible.forEach { id ->
+                val start =
+                    starts.getOrPut(id) {
+                        kotlin.time.TimeSource.Monotonic
+                            .markNow()
+                    }
+                if (start.elapsedNow().inWholeMilliseconds >=
+                    1000
+                ) {
+                    viewModel.exploration.itemVisible(
+                        id,
+                        isOwn = state.items.firstOrNull { it.id == id }?.isMine,
+                        body =
+                            state.items.any {
+                                it.id == id &&
+                                    !it.memo.isNullOrBlank()
+                            },
+                    )
+                }
+            }
+            kotlinx.coroutines.delay(100)
+        }
+    }
     val atEnd by remember {
         derivedStateOf {
             val layout = scroll.layoutInfo
@@ -198,7 +271,8 @@ fun NearbyEmotionSheet(
                             ) {
                                 player.stop()
                             } else {
-                                player.stop()
+                                com.pheeeew.feature.monitoring.product
+                                    .stopForReplacement(player)
                                 viewModel.play(emotion.id)
                             }
                         },
@@ -249,9 +323,9 @@ fun NearbyEmotionSheet(
                         shape = RoundedCornerShape(16.dp),
                     ) {
                         if (state.groupsLoading) {
-                            Text("가입 그룹을 불러오는 중이에요", Modifier.padding(16.dp))
+                            Text("가입 그룹을 불러오는 중이야", Modifier.padding(16.dp))
                         } else {
-                            TextButton(onClick = viewModel::loadGroups) { Text("그룹을 불러오지 못했어요 · 다시 시도") }
+                            TextButton(onClick = viewModel::loadGroups) { Text("그룹을 불러오지 못했어 · 다시 시도") }
                         }
                     }
                 }

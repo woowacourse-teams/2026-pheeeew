@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import org.jetbrains.compose.resources.painterResource
@@ -90,7 +91,7 @@ internal fun EmotionChatRow(
                     Modifier
                         .fillMaxWidth()
                         .border(
-                            1.dp,
+                            AppBorders.Standard,
                             Color(0xFFE8E8E8),
                             RoundedCornerShape(16.dp),
                         ).background(Color.White, RoundedCornerShape(16.dp))

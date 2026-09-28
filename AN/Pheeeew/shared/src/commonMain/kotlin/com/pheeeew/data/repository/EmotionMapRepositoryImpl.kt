@@ -41,12 +41,17 @@ class EmotionMapRepositoryImpl(
     ): EmotionMapPageResult {
         if (forceRefresh && cursor == null) {
             cacheGeneration++
-            cache.clear()
+            if (bounds == null) {
+                cache.clear()
+            } else {
+                // Remove only overlapping regions; stale requests cannot repopulate the cache.
+                cache.invalidate(bounds, groupId)
+            }
         }
         val generation = cacheGeneration
         if (!forceRefresh && cursor == null && bounds != null) {
             cache.completePage(bounds, groupId)?.let { page ->
-                return EmotionMapPageResult.Success(page)
+                return EmotionMapPageResult.Success(page, fromCache = true)
             }
         }
         return try {

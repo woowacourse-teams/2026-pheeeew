@@ -30,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.map.drawPlaybackWaveform
 import com.pheeeew.feature.screens.map.record.noRippleClickable
@@ -45,7 +46,7 @@ internal fun EmotionAudioPlayer(
             Modifier
                 .fillMaxWidth()
                 .height(80.dp)
-                .border(1.dp, AppColors.GroupInk, RoundedCornerShape(12.dp))
+                .border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(12.dp))
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -139,7 +140,7 @@ private fun EmotionAudioPlayerPreparingPreview() {
 @Composable
 private fun EmotionAudioPlayerErrorPreview() {
     EmotionAudioPlayer(
-        EmotionDetailPreviewData.audio.copy(durationMillis = null, error = "녹음을 불러올 수 없어요. 다시 시도해주세요"),
+        EmotionDetailPreviewData.audio.copy(durationMillis = null, error = "녹음을 불러올 수 없어. 다시 시도해."),
         {},
         Modifier.fillMaxWidth(),
     )

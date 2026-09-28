@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.detail.component.EmotionPad
 import com.pheeeew.feature.screens.group.detail.component.GroupSummary
@@ -80,6 +81,8 @@ internal fun GroupDetailReadyContent(
     onEmotionTap: (EmotionKind) -> Boolean,
     onResolvePressOutcome: () -> Unit,
     fixtureFeedbackOnAcceptedPress: Boolean = false,
+    feedbackOperationKey: () -> com.pheeeew.feature.screens.group.model.GroupOperationKey? = { null },
+    onFeedbackShown: (com.pheeeew.feature.screens.group.model.GroupOperationKey) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
@@ -110,6 +113,8 @@ internal fun GroupDetailReadyContent(
                 enabled = canTapEmotion,
                 onEmotionTap = onEmotionTap,
                 fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
+                feedbackOperationKey = feedbackOperationKey,
+                onFeedbackShown = onFeedbackShown,
                 preserveFeedbackWhileDisabled = pressStatus != GroupPressStatus.Idle,
             )
             Spacer(Modifier.height(20.dp))
@@ -269,7 +274,7 @@ internal fun DetailOutlineButton(
         enabled = enabled,
         modifier = modifier.height(50.dp),
         shape = CircleShape,
-        border = BorderStroke(1.5.dp, AppColors.GroupInk),
+        border = BorderStroke(AppBorders.Standard, AppColors.GroupInk),
         colors =
             ButtonDefaults.outlinedButtonColors(
                 contentColor = AppColors.GroupInk,

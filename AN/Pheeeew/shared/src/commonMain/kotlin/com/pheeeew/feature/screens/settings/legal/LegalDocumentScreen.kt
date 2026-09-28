@@ -92,7 +92,7 @@ private fun LegalDocumentLoading(modifier: Modifier = Modifier) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularLoadingIndicator(color = AppColors.GroupInk)
             Text(
-                text = "문서를 불러오는 중입니다.",
+                text = "문서를 불러오는 중이야.",
                 fontFamily = notoSansKrFontFamily(),
                 fontSize = 14.sp,
                 color = AppColors.GroupInk,
@@ -119,7 +119,7 @@ private fun LegalDocumentErrorContent(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = "문서를 불러오지 못했습니다.",
+            text = "문서를 불러오지 못했어.",
             fontFamily = notoSansKrFontFamily(),
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
@@ -166,7 +166,7 @@ private fun BoxScope.LegalDocumentBlockedNavigationNotice(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "이 화면에서는 다른 페이지를 열 수 없습니다.",
+                text = "이 화면에서는 다른 페이지를 열 수 없어.",
                 fontFamily = notoSansKrFontFamily(),
                 fontSize = 14.sp,
                 color = AppColors.GroupInk,
@@ -187,10 +187,10 @@ private fun BoxScope.LegalDocumentBlockedNavigationNotice(
 
 private fun LegalDocumentError.message(): String =
     when (this) {
-        LegalDocumentError.Network -> "네트워크 연결을 확인한 뒤 다시 시도해 주세요."
-        LegalDocumentError.Tls -> "안전한 연결을 확인할 수 없습니다."
-        LegalDocumentError.InvalidInitialUrl -> "문서 주소가 올바르지 않습니다."
-        LegalDocumentError.Unknown -> "잠시 후 다시 시도해 주세요."
+        LegalDocumentError.Network -> "네트워크 연결을 확인한 뒤 다시 시도해."
+        LegalDocumentError.Tls -> "안전한 연결을 확인할 수 없어."
+        LegalDocumentError.InvalidInitialUrl -> "문서 주소가 올바르지 않아."
+        LegalDocumentError.Unknown -> "잠시 후 다시 시도해."
     }
 
 @Preview

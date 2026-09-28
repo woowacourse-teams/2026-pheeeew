@@ -47,6 +47,7 @@ fun EmotionDetailOverlay(
     onReportClick: (Long, DrawableResource) -> Unit,
     onBlockSucceeded: () -> Unit,
     onDeleteSucceeded: () -> Unit,
+    monitoringVisible: Boolean = true,
 ) {
     when (state) {
         EmotionDetailLoadUiModel.Closed -> {
@@ -66,6 +67,7 @@ fun EmotionDetailOverlay(
                     onReportClick = onReportClick,
                     onBlockSucceeded = onBlockSucceeded,
                     onDeleteSucceeded = onDeleteSucceeded,
+                    monitoringVisible = monitoringVisible,
                 )
             }
         }
@@ -88,6 +90,7 @@ private fun EmotionDetailReadyOverlay(
     onReportClick: (Long, DrawableResource) -> Unit,
     onBlockSucceeded: () -> Unit,
     onDeleteSucceeded: () -> Unit,
+    monitoringVisible: Boolean = true,
 ) {
     var showActions by remember { mutableStateOf(false) }
     var showBlockConfirmation by remember { mutableStateOf(false) }
@@ -106,20 +109,51 @@ private fun EmotionDetailReadyOverlay(
             onReactionClick,
             notice = actionMessage,
             onNoticeDismiss = { actionMessage = null },
+            presentationKey = state.visit,
+            monitoringVisible = monitoringVisible && !showActions && !showBlockConfirmation && !showDeleteConfirmation,
+            onShown = { state.visit?.shown() },
+            onContentShown = { state.visit?.contentShown() },
         )
     } else {
         key(audio.playbackUrl) {
             val playback = rememberAudioPlayback()
+            val telemetry = remember(state.visit) { state.visit?.productMonitoring() }
+            val fields = remember(state.visit) { state.visit?.eventFields().orEmpty() }
+            val audioMonitoring =
+                remember(playback, state.visit) {
+                    telemetry?.let {
+                        com.pheeeew.feature.monitoring.product
+                            .AudioMonitoring(it, fields)
+                    }
+                }
+            androidx.compose.runtime.DisposableEffect(
+                audioMonitoring,
+            ) { onDispose { audioMonitoring?.finish("stopped") } }
+            LaunchedEffect(playback, audioMonitoring) {
+                playback.state.collect { value ->
+                    audioMonitoring?.update(
+                        value.isPlaying,
+                        value.durationMillis,
+                        value.durationMillis > 0 && value.positionMillis >= value.durationMillis,
+                        value.error != null,
+                        value.positionMillis,
+                    )
+                }
+            }
             val playbackState by playback.state.collectAsState()
             var preparing by remember { mutableStateOf(true) }
             var loadError by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(playback, audio.playbackUrl) {
+                val load = telemetry?.operation("emotion_audio_load_finished", fields)
                 try {
                     playback.prepare(audioRepository.download(audio.playbackUrl))
+                    load?.finish(if (playback.state.value.error == null) "success" else "failed")
                 } catch (cancelled: CancellationException) {
+                    load?.finish("cancelled")
                     throw cancelled
                 } catch (_: Exception) {
-                    loadError = "녹음을 불러올 수 없어요. 다시 시도해주세요"
+                    load?.finish("failed")
+                    loadError = "녹음을 불러올 수 없어. 다시 시도해."
                 } finally {
                     preparing = false
                 }
@@ -143,6 +177,11 @@ private fun EmotionDetailReadyOverlay(
                 onReactionClick,
                 notice = actionMessage,
                 onNoticeDismiss = { actionMessage = null },
+                presentationKey = state.visit,
+                monitoringVisible =
+                    monitoringVisible && !showActions && !showBlockConfirmation && !showDeleteConfirmation,
+                onShown = { state.visit?.shown() },
+                onContentShown = { state.visit?.contentShown() },
             )
         }
     }
@@ -167,8 +206,8 @@ private fun EmotionDetailReadyOverlay(
     }
     if (showBlockConfirmation) {
         ConfirmDialog(
-            title = "해당 사용자를 차단하시겠습니까?",
-            content = "차단 이후 해당 사용자가 올린 감정은 더 이상 보이지 않습니다.",
+            title = "해당 사용자를 차단할까?",
+            content = "차단하면 이 사용자가 올린 감정은 더 이상 보이지 않아.",
             confirmText = "차단하기",
             cancelText = "취소",
             onConfirm = {
@@ -197,8 +236,8 @@ private fun EmotionDetailReadyOverlay(
     }
     if (showDeleteConfirmation && state.isMine) {
         ConfirmDialog(
-            title = "해당 감정을 삭제하시겠습니까?",
-            content = "삭제한 감정은 지도와 목록에서 더 이상 보이지 않습니다.",
+            title = "해당 감정을 삭제할까?",
+            content = "삭제한 감정은 지도와 목록에서 더 이상 보이지 않아.",
             confirmText = "삭제하기",
             cancelText = "취소",
             onConfirm = {
@@ -229,18 +268,18 @@ private fun EmotionDetailReadyOverlay(
 
 private fun EmotionModerationResult.blockMessage(): String =
     when (this) {
-        EmotionModerationResult.OwnEmotion -> "내가 작성한 감정은 사용자 차단을 할 수 없어요."
-        EmotionModerationResult.AuthorUnknown -> "작성자 정보를 알 수 없어 사용자 차단을 할 수 없어요."
-        EmotionModerationResult.NotFound -> "차단할 감정을 찾을 수 없습니다."
-        EmotionModerationResult.NetworkUnavailable -> "인터넷 연결 상태를 확인해주세요."
-        else -> "차단에 실패했습니다. 잠시 후 다시 시도해주세요."
+        EmotionModerationResult.OwnEmotion -> "내가 작성한 감정은 사용자 차단을 할 수 없어."
+        EmotionModerationResult.AuthorUnknown -> "작성자 정보를 알 수 없어 사용자 차단을 할 수 없어."
+        EmotionModerationResult.NotFound -> "차단할 감정을 찾을 수 없어."
+        EmotionModerationResult.NetworkUnavailable -> "인터넷 연결 상태를 확인해."
+        else -> "차단하지 못했어. 잠시 후 다시 시도해."
     }
 
 private fun EmotionModerationResult.deleteMessage(): String =
     when (this) {
-        EmotionModerationResult.NotFound -> "삭제할 감정을 찾을 수 없거나 삭제 권한이 없습니다."
-        EmotionModerationResult.NetworkUnavailable -> "인터넷 연결 상태를 확인해주세요."
-        else -> "삭제에 실패했습니다. 잠시 후 다시 시도해주세요."
+        EmotionModerationResult.NotFound -> "삭제할 감정을 찾을 수 없거나 삭제 권한이 없어."
+        EmotionModerationResult.NetworkUnavailable -> "인터넷 연결 상태를 확인해."
+        else -> "삭제하지 못했어. 잠시 후 다시 시도해."
     }
 
 @Preview(name = "감정 상세 오버레이", widthDp = 424, heightDp = 640)

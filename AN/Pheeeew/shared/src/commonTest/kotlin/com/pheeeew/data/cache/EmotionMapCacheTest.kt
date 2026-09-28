@@ -67,6 +67,27 @@ class EmotionMapCacheTest {
         assertNull(cache.completePage(bounds, null))
     }
 
+    @Test
+    fun `새로고침은 겹치는 이전 영역을 제거해 등록 전 캐시가 다시 사용되지 않는다`() {
+        val cache = EmotionMapCache()
+        val outer = EmotionMapBounds(127.0, 37.0, 128.0, 38.0)
+        val inner = EmotionMapBounds(127.1, 37.1, 127.3, 37.3)
+        val distant = EmotionMapBounds(129.0, 37.0, 130.0, 38.0)
+        val empty = EmotionMapPage(emptyList(), false, null, 0)
+        cache.appendPage(outer, null, null, empty)
+        cache.appendPage(outer, "group", null, empty)
+        cache.appendPage(distant, null, null, empty)
+
+        cache.invalidate(inner, null)
+        cache.appendPage(inner, null, null, empty.copy(pins = listOf(pin(42, 127.2))))
+
+        assertNull(cache.completePage(outer, null))
+        assertEquals(listOf(42L), cache.snapshot(outer, null)?.pins?.map { it.id })
+        assertEquals(listOf(42L), cache.completePage(inner, null)?.pins?.map { it.id })
+        assertNotNull(cache.completePage(outer, "group"))
+        assertNotNull(cache.completePage(distant, null))
+    }
+
     private fun pin(
         id: Long,
         longitude: Double,

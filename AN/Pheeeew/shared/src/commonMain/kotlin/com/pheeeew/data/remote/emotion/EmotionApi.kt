@@ -11,12 +11,18 @@ internal class EmotionApi(
 ) {
     suspend fun list(query: Map<String, String>) =
         requests.execute(
-            ApiRequest(HttpMethod.Get, PATH, RequestKind.READ, queryParameters = query),
+            ApiRequest(
+                HttpMethod.Get,
+                PATH,
+                RequestKind.READ,
+                monitoringEndpoint = "emotion_list",
+                queryParameters = query,
+            ),
         ) { it.body<EmotionPageDto>() }
 
     suspend fun detail(id: Long) =
         requests.execute(
-            ApiRequest(HttpMethod.Get, "$PATH/$id", RequestKind.READ),
+            ApiRequest(HttpMethod.Get, "$PATH/$id", RequestKind.READ, monitoringEndpoint = "emotion_detail"),
         ) { it.body<EmotionDto>() }
 
     suspend fun react(
@@ -28,6 +34,7 @@ internal class EmotionApi(
             if (selected) HttpMethod.Put else HttpMethod.Delete,
             "$PATH/$id/emojis/$type",
             RequestKind.WRITE,
+            monitoringEndpoint = "emotion_reaction",
             replayAfterAuthentication = true,
         ),
     )
@@ -39,6 +46,7 @@ internal class EmotionApi(
                 "/api/v2/blocks/emotions",
                 RequestKind.WRITE,
                 body = EmotionBlockRequest(id),
+                monitoringEndpoint = "emotion_block",
                 replayAfterAuthentication = true,
             ),
         ) { Unit }

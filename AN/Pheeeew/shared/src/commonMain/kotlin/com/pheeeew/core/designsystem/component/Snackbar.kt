@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -26,7 +26,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
@@ -53,14 +56,19 @@ fun Snackbar(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     isError: Boolean = false,
+    maxLines: Int = 1,
+    presentationKey: Any? = message,
+    onShown: () -> Unit = {},
 ) {
     var lastMessage by remember { mutableStateOf(message) }
 
-    LaunchedEffect(message) {
+    val currentOnShown by rememberUpdatedState(onShown)
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    LaunchedEffect(message, presentationKey) {
         if (message != null) {
             lastMessage = message
             delay(REPORT_SNACKBAR_DURATION_MILLIS)
-            onDismiss()
+            currentOnDismiss()
         }
     }
 
@@ -70,19 +78,25 @@ fun Snackbar(
         exit = fadeOut() + slideOutVertically { it / 2 },
         modifier = modifier,
     ) {
+        LaunchedEffect(message, presentationKey) {
+            if (message != null) {
+                withFrameNanos { }
+                currentOnShown()
+            }
+        }
         Surface(
             modifier =
                 Modifier
                     .fillMaxWidth()
                     .widthIn(max = 354.dp)
-                    .height(48.dp),
+                    .heightIn(min = 48.dp),
             shape = RoundedCornerShape(1.dp),
             color = AppColors.Background,
             contentColor = AppColors.TextPrimary,
-            border = androidx.compose.foundation.BorderStroke(1.dp, AppColors.TextPrimary),
+            border = androidx.compose.foundation.BorderStroke(AppBorders.Standard, AppColors.TextPrimary),
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -91,7 +105,7 @@ fun Snackbar(
                         Modifier
                             .size(24.dp)
                             .clip(CircleShape)
-                            .border(width = 1.dp, color = AppColors.Border, shape = CircleShape),
+                            .border(width = AppBorders.Standard, color = AppColors.Border, shape = CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(painterResource(Res.drawable.ic_error), null, Modifier.size(24.dp), tint = AppColors.Error)
@@ -102,7 +116,7 @@ fun Snackbar(
                             Modifier
                                 .size(18.dp)
                                 .background(Color(0xFFFFE36E), CircleShape)
-                                .border(1.dp, AppColors.TextPrimary, CircleShape),
+                                .border(AppBorders.Standard, AppColors.TextPrimary, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         SuccessCheckMark()
@@ -114,7 +128,7 @@ fun Snackbar(
                     color = AppColors.TextPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1,
+                    maxLines = maxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
@@ -143,7 +157,7 @@ private fun SuccessCheckMark() {
 @Composable
 private fun SnackbarPreview() {
     Snackbar(
-        message = "신고가 접수되었습니다.",
+        message = "신고가 접수됐어.",
         onDismiss = {},
     )
 }

@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 
 @Composable
 internal fun EmotionPromptLabel(
@@ -31,12 +32,12 @@ internal fun EmotionPromptLabel(
                 .animateContentSize(animationSpec = tween(durationMillis = 220))
                 .clip(shape)
                 .background(Color.White)
-                .border(width = 1.dp, color = Color(0xFF292B2A), shape = shape)
-                .padding(horizontal = 18.dp, vertical = 6.dp),
+                .border(width = AppBorders.Standard, color = Color(0xFF292B2A), shape = shape)
+                .padding(horizontal = 16.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = if (isExpanded) "지금 내 감정은 어떤가요?" else "터치해서 감정을 꺼내보세요",
+            text = if (isExpanded) "지금 감정이 어때?" else "터치해서 감정을 꺼내봐",
             color = Color(0xFF292B2A),
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,

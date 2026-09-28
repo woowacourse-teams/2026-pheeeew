@@ -14,6 +14,7 @@ import org.maplibre.android.style.layers.PropertyFactory.iconAnchor
 import org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement
 import org.maplibre.android.style.layers.PropertyFactory.iconImage
 import org.maplibre.android.style.layers.PropertyFactory.iconRotate
+import org.maplibre.android.style.layers.PropertyFactory.visibility
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
@@ -24,10 +25,14 @@ import org.maplibre.geojson.Point
 internal class EmotionPinSymbolLayer {
     private val registeredImageKeys = mutableSetOf<String>()
     private var lastRenderedPins: List<EmotionPinUiModel>? = null
+    private var layerVisible: Boolean? = null
+    private var lastMonitoringLoadId: String? = null
 
     fun install(style: Style) {
         registeredImageKeys.clear()
         lastRenderedPins = null
+        layerVisible = null
+        lastMonitoringLoadId = null
         if (style.getSource(SOURCE_ID) == null) {
             style.addSource(GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(emptyList())))
         }
@@ -51,6 +56,7 @@ internal class EmotionPinSymbolLayer {
         images: List<EmotionPinSymbolImage>,
         visible: Boolean,
         densityDpi: Int,
+        monitoringLoadId: String?,
     ) {
         val source = style.getSourceAs<GeoJsonSource>(SOURCE_ID) ?: return
         val requiredImageKeys = images.mapTo(mutableSetOf(), EmotionPinSymbolImage::key)
@@ -66,14 +72,19 @@ internal class EmotionPinSymbolLayer {
         registeredImageKeys.clear()
         registeredImageKeys.addAll(requiredImageKeys)
 
+        if (layerVisible != visible) {
+            style.getLayer(LAYER_ID)?.setProperties(visibility(if (visible) Property.VISIBLE else Property.NONE))
+            layerVisible = visible
+        }
         // A pin must not enter the source until its asynchronously rasterized icon is ready.
-        val renderedPins = if (visible) pins.filter { it.symbolImageKey() in registeredImageKeys } else emptyList()
+        val renderedPins = pins.filter { it.symbolImageKey() in registeredImageKeys }
         // Loading, notices and other Compose state changes do not change the map's features.
-        if (renderedPins == lastRenderedPins) return
+        if (renderedPins == lastRenderedPins && monitoringLoadId == lastMonitoringLoadId) return
         val features: List<Feature> =
             renderedPins.map { pin ->
                 val properties =
                     JsonObject().apply {
+                        addProperty("monitoring-load-id", monitoringLoadId)
                         addProperty(IMAGE_KEY_PROPERTY, pin.symbolImageKey())
                         addProperty(ROTATION_PROPERTY, pin.rotationDegrees)
                     }
@@ -85,6 +96,7 @@ internal class EmotionPinSymbolLayer {
             }
         source.setGeoJson(FeatureCollection.fromFeatures(features))
         lastRenderedPins = renderedPins
+        lastMonitoringLoadId = monitoringLoadId
     }
 
     private fun EmotionPinSymbolImage.toAndroidBitmap(densityDpi: Int): Bitmap {

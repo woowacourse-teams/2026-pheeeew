@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.detail.GroupDetailNoticeKind
 
@@ -48,7 +49,7 @@ internal fun GroupDetailNoticeSnackbar(
                 .shadow(elevation = 8.dp, shape = shape)
                 .clip(shape)
                 .background(Color.White)
-                .border(width = 1.dp, color = AppColors.GroupInk.copy(alpha = 0.76f), shape = shape)
+                .border(width = AppBorders.Standard, color = AppColors.GroupInk.copy(alpha = 0.76f), shape = shape)
                 .clickable(onClick = onDismiss)
                 .semantics { liveRegion = LiveRegionMode.Polite }
                 .padding(horizontal = 14.dp, vertical = 10.dp),

@@ -1,6 +1,6 @@
 package com.pheeeew.legacy.data.remote.sigh.api
 
-import com.pheeeew.legacy.core.monitoring.Monitoring
+import com.pheeeew.feature.monitoring.compat.Monitoring
 import com.pheeeew.legacy.data.local.device.AccessTokenStore
 import com.pheeeew.legacy.data.remote.common.executeRequest
 import com.pheeeew.legacy.data.remote.sigh.dto.SighCreateV2RequestDto

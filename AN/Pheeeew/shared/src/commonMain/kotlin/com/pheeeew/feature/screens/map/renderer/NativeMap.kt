@@ -16,5 +16,6 @@ internal expect fun NativeMap(
     onViewportChanged: (EmotionMapBounds) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
+    onContentPresented: (String, List<String>) -> Unit,
     modifier: Modifier,
 )

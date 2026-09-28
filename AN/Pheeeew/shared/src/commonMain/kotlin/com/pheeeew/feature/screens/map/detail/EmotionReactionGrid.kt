@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.screens.map.record.noRippleClickable
@@ -44,7 +45,7 @@ internal fun EmotionReactionGrid(
                             .then(
                                 if (reaction.isSelected) {
                                     Modifier.border(
-                                        1.dp,
+                                        AppBorders.Standard,
                                         AppColors.GroupInk,
                                         AppShapes.Pill,
                                     )

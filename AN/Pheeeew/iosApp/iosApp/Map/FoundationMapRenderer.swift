@@ -227,6 +227,18 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         return bounds.contains(coordinate: GeoCoordinate(latitude: center.latitude, longitude: center.longitude))
     }
 
+    func mapViewDidBecomeIdle(_ mapView: MLNMapView) {
+        guard styleIsReady, let state = pendingState,
+              !state.isRecordLocationPicking, let token = state.monitoringLoadId,
+              !mapView.bounds.isEmpty else { return }
+        let imageKeys = Set(state.emotionPinSymbolImages.map(\.key))
+        guard state.emotionPinCoordinates.allSatisfy({ imageKeys.contains($0.imageKey) }) else { return }
+        let features = mapView.visibleFeatures(in: mapView.bounds, styleLayerIdentifiers: Set(["foundation-emotion-pin-layer"]))
+        guard features.allSatisfy({ ($0.attribute(forKey: "monitoring-load-id") as? String) == token }) else { return }
+        let ids = Set(features.compactMap { ($0.identifier as? NSNumber)?.int64Value })
+        eventSink.onContentPresented(loadId: token, entryIds: ids.map { String($0) })
+    }
+
     func mapViewDidFinishRenderingFrame(_ mapView: MLNMapView, fullyRendered: Bool) {
         if let state = pendingState, state.isRecordLocationPicking {
             _ = applyRecordCamera(state)
@@ -356,6 +368,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             feature.identifier = NSNumber(value: pin.id)
             feature.attributes = [
                 "id": pin.id,
+                "monitoring-load-id": state.monitoringLoadId ?? "",
                 "imageKey": pin.imageKey,
                 "rotationDegrees": pin.rotationDegrees,
             ]

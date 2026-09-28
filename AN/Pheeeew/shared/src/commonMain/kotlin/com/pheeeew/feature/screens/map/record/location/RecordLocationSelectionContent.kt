@@ -43,6 +43,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.domain.model.GeoCoordinate
@@ -190,7 +191,7 @@ fun RecordLocationSelectionContent(
             }
         }
         Text(
-            text = "원하는 위치로 스탬프를 옮겨주세요!",
+            text = "원하는 위치에 남겨봐!",
             modifier =
                 Modifier
                     .align(Alignment.TopCenter)
@@ -222,7 +223,7 @@ fun RecordLocationSelectionContent(
                     Modifier
                         .width(140.dp)
                         .height(48.dp)
-                        .border(width = 2.5.dp, color = AppColors.Border, shape = AppShapes.Button)
+                        .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Button)
                         .background(
                             AppColors.Primary,
                             AppShapes.Button,

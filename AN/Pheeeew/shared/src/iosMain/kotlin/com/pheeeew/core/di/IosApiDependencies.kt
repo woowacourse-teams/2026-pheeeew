@@ -36,6 +36,7 @@ object IosApiDependencies {
                 build.legacyCredentialPolicy,
             ),
             DevicePlatform.IOS,
+            monitoring = IosMonitoring.instance,
             createProofProvider = { IosAppAttestProofProvider() },
             diagnostics =
                 DeviceSessionDiagnostics { event ->

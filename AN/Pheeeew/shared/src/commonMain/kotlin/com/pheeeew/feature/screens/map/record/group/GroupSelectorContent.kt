@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.map.record.noRippleClickable
@@ -307,7 +308,7 @@ fun GroupSelectorContent(
                             .size(width = 235.dp, height = 41.dp)
                             .clip(CircleShape)
                             .background(Color(0xffffe164))
-                            .border(width = 1.5.dp, color = Color(0xff252826), shape = CircleShape)
+                            .border(width = AppBorders.Standard, color = Color(0xff252826), shape = CircleShape)
                             .noRippleClickable(onClick = { onComplete(selectedGroup) }),
                     contentAlignment = Alignment.Center,
                 ) {

@@ -33,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.screens.map.drawPlaybackWaveform
@@ -88,7 +89,7 @@ private fun RecordAudioPanel(
                 .fillMaxWidth()
                 .height(105.dp)
                 .clip(AppShapes.Input)
-                .border(width = 1.dp, color = AppColors.Border, shape = AppShapes.Input)
+                .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -131,12 +132,20 @@ private fun AudioReadyPanel(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Text(
+            text = "목소리로 남겨볼까?",
+            modifier = Modifier.fillMaxWidth(),
+            color = AppColors.TextPrimary,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+
         Box(
             modifier =
                 Modifier
                     .size(52.dp)
                     .clip(CircleShape)
-                    .border(2.dp, AppColors.TextPrimary, CircleShape)
+                    .border(AppBorders.Standard, AppColors.TextPrimary, CircleShape)
                     .background(AppColors.Primary),
             contentAlignment = Alignment.Center,
         ) {
@@ -204,7 +213,7 @@ private fun AdioRecordingPanel(
                     Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .border(width = 1.dp, color = Color.Black, shape = CircleShape)
+                        .border(width = AppBorders.Standard, color = Color.Black, shape = CircleShape)
                         .background(AppColors.Surface)
                         .padding(12.dp),
             ) {
@@ -433,7 +442,7 @@ private fun RecordAudioPlayingPreview() {
 @Preview(name = "녹음 오류", widthDp = 402, showBackground = true)
 @Composable
 private fun RecordAudioErrorPreview() {
-    RecordAudioPreview(VoiceRecordingState(error = "설정에서 마이크 권한을 허용해주세요"))
+    RecordAudioPreview(VoiceRecordingState(error = "설정에서 마이크 권한을 허용해줘"))
 }
 
 @Preview(name = "무음 녹음 중", widthDp = 402, showBackground = true)

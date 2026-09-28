@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 
 private val selectedReasonColor = Color(0xFFFFF8DA)
@@ -53,7 +54,7 @@ fun ReportReasonOption(
                     .height(54.dp)
                     .clip(shape)
                     .background(if (selected) selectedReasonColor else AppColors.Background)
-                    .border(2.dp, AppColors.GroupInk, shape)
+                    .border(AppBorders.Standard, AppColors.GroupInk, shape)
                     .clickable(enabled = enabled, role = Role.RadioButton, onClick = onClick)
                     .semantics { this.selected = selected }
                     .padding(horizontal = 14.dp),

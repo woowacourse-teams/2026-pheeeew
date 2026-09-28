@@ -19,6 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.ranking.RankingMember
@@ -38,7 +39,7 @@ fun RankingMemberCard(
         modifier =
             modifier
                 .height(height)
-                .border(1.dp, AppColors.RankingContent, shape)
+                .border(AppBorders.Standard, AppColors.RankingContent, shape)
                 .background(AppColors.Background, shape)
                 .padding(
                     start = 8.dp,

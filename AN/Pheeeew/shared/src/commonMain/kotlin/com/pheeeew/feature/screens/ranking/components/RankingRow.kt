@@ -18,6 +18,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.ranking.RankingMember
@@ -34,7 +35,7 @@ fun RankingRow(
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .border(1.dp, AppColors.RankingContent, shape)
+                .border(AppBorders.Standard, AppColors.RankingContent, shape)
                 .background(AppColors.Background, shape)
                 .height(73.dp)
                 .padding(horizontal = 16.dp),

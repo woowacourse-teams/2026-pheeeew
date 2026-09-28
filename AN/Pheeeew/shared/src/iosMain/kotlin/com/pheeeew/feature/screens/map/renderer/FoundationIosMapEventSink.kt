@@ -6,6 +6,11 @@ import com.pheeeew.feature.screens.map.HighlightedPinPosition
 interface FoundationIosMapEventSink {
     fun onHighlightedPinPositionChanged(position: HighlightedPinPosition?)
 
+    fun onContentPresented(
+        loadId: String,
+        entryIds: List<String>,
+    )
+
     fun onEmotionPinClick(id: Long)
 
     fun onRendererUnavailable()

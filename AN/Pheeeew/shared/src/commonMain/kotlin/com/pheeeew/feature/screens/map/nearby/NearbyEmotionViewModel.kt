@@ -2,6 +2,8 @@ package com.pheeeew.feature.screens.map.nearby
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionContentType
@@ -16,7 +18,13 @@ import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.toUiShape
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.labels
+import com.pheeeew.feature.monitoring.product.resultLabel
+import com.pheeeew.feature.screens.map.monitoring.ContentLoad
+import com.pheeeew.feature.screens.map.monitoring.ContentMonitoring
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,15 +36,39 @@ import kotlinx.coroutines.launch
 class NearbyEmotionViewModel(
     private val repository: EmotionRepository,
     private val groups: GroupStampListRepository,
+    monitoring: Monitoring = NoOpMonitoring,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(NearbyEmotionUiState())
     val state = mutableState.asStateFlow()
     private val eventChannel = Channel<NearbyEmotionEvent>(Channel.BUFFERED)
     val events = eventChannel.receiveAsFlow()
+    val telemetry = ProductMonitoring(monitoring, "map")
+    val exploration = ContentMonitoring(monitoring, viewModelScope, "list")
+
+    fun contentVisibility(visible: Boolean) {
+        if (exploration.visibility(visible) && state.value.contentLoad != null && !state.value.loading) {
+            val load = exploration.load("resume", "cache", state.value.contentLoad?.loadId).also { it.ready() }
+            mutableState.update { it.copy(contentLoad = load) }
+        }
+    }
+
+    override fun onCleared() {
+        exploration.close()
+        super.onCleared()
+    }
+
+    fun contentPresented(
+        load: ContentLoad,
+        count: Int,
+    ) {
+        if (state.value.visible && state.value.contentLoad === load) exploration.presented(load, count)
+    }
+
     private var viewport: EmotionBounds? = null
     private var queryBounds: EmotionBounds? = null
     private var pageJob: Job? = null
     private var groupJob: Job? = null
+    private var groupGeneration = 0L
     private var audioJob: Job? = null
     private var generation = 0L
     private var contentVersion = 0L
@@ -64,6 +96,7 @@ class NearbyEmotionViewModel(
     }
 
     fun dismiss() {
+        contentVisibility(false)
         generation++
         pageJob?.cancel()
         audioJob?.cancel()
@@ -83,13 +116,14 @@ class NearbyEmotionViewModel(
     fun refresh() {
         val bounds =
             queryBounds ?: run {
-                mutableState.update { it.copy(error = "지도 영역을 확인하고 있어요. 잠시 후 다시 시도해 주세요.", loading = false) }
+                mutableState.update { it.copy(error = "지도 영역을 확인하고 있어. 잠시 후 다시 시도해.", loading = false) }
                 return
             }
         val ticket = ++generation
         pageJob?.cancel()
         audioJob?.cancel()
         changed.clear()
+        state.value.contentLoad?.hidden()
         val groupId = state.value.groupId.takeUnless { it == ALL_GROUPS }
         mutableState.update {
             it.copy(
@@ -105,9 +139,8 @@ class NearbyEmotionViewModel(
         }
         pageJob =
             viewModelScope.launch {
-                val result = repository.firstPage(bounds, groupId)
-                if (ticket != generation) return@launch
-                applyPage(result, append = false)
+                val observation = exploration.load(if (state.value.revision == 1L) "initial" else "refresh")
+                loadPage(observation, ticket, append = false) { repository.firstPage(bounds, groupId) }
             }
     }
 
@@ -124,10 +157,41 @@ class NearbyEmotionViewModel(
         mutableState.update { it.copy(loadingMore = true, error = null) }
         pageJob =
             viewModelScope.launch {
-                val result = repository.nextPage(cursor)
-                if (ticket != generation) return@launch
-                applyPage(result, append = true, requestedCursor = cursor)
+                val observation = exploration.load("pagination")
+                loadPage(observation, ticket, append = true, cursor = cursor) { repository.nextPage(cursor) }
             }
+    }
+
+    private suspend fun loadPage(
+        observation: ContentLoad,
+        ticket: Long,
+        append: Boolean,
+        cursor: String? = null,
+        request: suspend () -> EmotionResult<EmotionPage>,
+    ) {
+        try {
+            val result = request()
+            if (ticket != generation) {
+                observation.hidden()
+                if (result is EmotionResult.Success) observation.ready() else observation.failed()
+                return
+            }
+            if (result is EmotionResult.Success) {
+                state.value.contentLoad?.hidden()
+                val displayLoad = exploration.display(observation)
+                applyPage(result, append, cursor)
+                mutableState.update { it.copy(contentLoad = displayLoad) }
+            } else {
+                observation.failed()
+                applyPage(result, append, cursor)
+            }
+        } catch (cancelled: CancellationException) {
+            observation.cancelled()
+            throw cancelled
+        } catch (_: Exception) {
+            observation.failed()
+            if (ticket == generation) applyPage(EmotionResult.Failure(EmotionFailure.UNAVAILABLE), append, cursor)
+        }
     }
 
     private fun applyPage(
@@ -157,7 +221,7 @@ class NearbyEmotionViewModel(
                     current.copy(
                         loading = false,
                         loadingMore = false,
-                        error = if (append) "더 불러오지 못했어요. 다시 시도해 주세요." else result.reason.message(),
+                        error = if (append) "더 불러오지 못했어. 다시 시도해." else result.reason.message(),
                     )
                 }
             }
@@ -197,7 +261,25 @@ class NearbyEmotionViewModel(
         contentVersion++
         mutableState.update { it.copy(pendingIds = it.pendingIds + id, selectedId = null) }
         viewModelScope.launch {
-            when (val result = repository.react(id, type, selected)) {
+            when (
+                val result =
+                    telemetry
+                        .operation(
+                            "emotion_reaction_finished",
+                            labels(
+                                "entry_key" to id.toString(),
+                                "entry_source" to "list",
+                                "view_id" to exploration.viewId,
+                                "action" to if (selected) "add" else "remove",
+                            ) +
+                                mapOf(
+                                    "is_own" to
+                                        com.pheeeew.core.monitoring.EventValue
+                                            .Flag(item.isMine),
+                                ),
+                            "emotion_reaction_started",
+                        ).observe(::resultLabel) { repository.react(id, type, selected) }
+            ) {
                 is EmotionResult.Success -> {
                     // Confirmed write; a later failed read must not roll this selection back.
                     val updated =
@@ -273,24 +355,34 @@ class NearbyEmotionViewModel(
         mutableState.update { it.copy(blockId = null, pendingIds = it.pendingIds + id) }
         viewModelScope.launch {
             val result =
-                try {
-                    if (blockUser != null) {
-                        blockUser(id)
-                    } else {
-                        when (repository.block(id)) {
-                            is EmotionResult.Success -> EmotionModerationResult.Success
-                            is EmotionResult.Failure -> EmotionModerationResult.Unavailable
+                telemetry
+                    .operation(
+                        "emotion_block_finished",
+                        labels(
+                            "entry_key" to id.toString(),
+                            "entry_source" to "list",
+                            "action" to if (blockUser == null) "block_emotion" else "block_user",
+                        ),
+                    ).observe(::resultLabel) {
+                        try {
+                            if (blockUser != null) {
+                                blockUser(id)
+                            } else {
+                                when (repository.block(id)) {
+                                    is EmotionResult.Success -> EmotionModerationResult.Success
+                                    is EmotionResult.Failure -> EmotionModerationResult.Unavailable
+                                }
+                            }
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            EmotionModerationResult.Unavailable
                         }
                     }
-                } catch (cancelled: kotlinx.coroutines.CancellationException) {
-                    throw cancelled
-                } catch (_: Exception) {
-                    EmotionModerationResult.Unavailable
-                }
             when (result) {
                 EmotionModerationResult.Success -> {
                     removeItem(id)
-                    mutableState.update { it.copy(message = "차단되었습니다.") }
+                    mutableState.update { it.copy(message = "해당 사용자를 차단했어.") }
                     if (blockUser != null) refresh()
                 }
 
@@ -311,12 +403,31 @@ class NearbyEmotionViewModel(
             else -> "차단에 실패했습니다. 잠시 후 다시 시도해주세요."
         }
 
+    fun onMembershipChanged() {
+        groupJob?.cancel()
+        groupJob = null
+        mutableState.update {
+            it.copy(groups = listOf(ALL_GROUP_OPTION), pendingGroupId = ALL_GROUPS, dialProgress = 0f)
+        }
+        loadGroups()
+    }
+
     fun loadGroups() {
         if (groupJob?.isActive == true) return
+        val ticket = ++groupGeneration
         mutableState.update { it.copy(groupsLoading = true, groupsError = false) }
         groupJob =
             viewModelScope.launch {
-                when (val result = groups.findMyStamps()) {
+                val result =
+                    try {
+                        groups.findMyStamps()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        GroupStampListLoadResult.Unavailable
+                    }
+                if (ticket != groupGeneration) return@launch
+                when (result) {
                     is GroupStampListLoadResult.Loaded -> {
                         val options =
                             listOf(ALL_GROUP_OPTION) +
@@ -334,10 +445,16 @@ class NearbyEmotionViewModel(
                                 }
                         val disappeared = options.none { it.id == state.value.groupId }
                         mutableState.update {
+                            val selectedId = if (disappeared) ALL_GROUPS else it.groupId
+                            val pendingId =
+                                it.pendingGroupId.takeIf { id -> options.any { option -> option.id == id } }
+                                    ?: selectedId
                             it.copy(
                                 groups = options,
                                 groupsLoading = false,
-                                groupId = if (disappeared) ALL_GROUPS else it.groupId,
+                                groupId = selectedId,
+                                pendingGroupId = pendingId,
+                                dialProgress = options.indexOfFirst { option -> option.id == pendingId }.toFloat(),
                             )
                         }
                         if (disappeared && state.value.visible) refresh()
@@ -383,6 +500,10 @@ class NearbyEmotionViewModel(
     fun completeGroup(group: GroupSelectorGroupUiModel) {
         if (state.value.groups.none { it.id == group.id }) return
         val changedGroup = state.value.groupId != group.id
+        telemetry.emit(
+            "nearby_filter_applied",
+            labels("group_selection" to if (group.id == ALL_GROUPS) "all" else "group"),
+        )
         mutableState.update { it.copy(groupId = group.id, groupSelectorVisible = false) }
         if (changedGroup) refresh()
     }
@@ -414,33 +535,63 @@ class NearbyEmotionViewModel(
         mutableState.update { it.copy(audioLoadingId = id, selectedId = null) }
         audioJob =
             viewModelScope.launch {
-                when (val result = repository.detail(id)) {
-                    is EmotionResult.Success -> {
-                        if (ticket != generation || !state.value.visible || id in blocked) return@launch
-                        if (version == contentVersion &&
-                            id !in state.value.pendingIds
-                        ) {
-                            replaceItem(result.value.toUiModel())
+                // URL refresh precedes native playback. Only failed/cancelled preparation emits here;
+                // successful handoff is completed once by the observed native player.
+                val preparation =
+                    telemetry.operation(
+                        "emotion_audio_load_finished",
+                        labels(
+                            "entry_key" to id.toString(),
+                            "entry_source" to "list",
+                            "view_id" to exploration.viewId,
+                        ) +
+                            mapOf(
+                                "is_own" to
+                                    com.pheeeew.core.monitoring.EventValue
+                                        .Flag(item.isMine),
+                            ),
+                    )
+                var handedOff = false
+                try {
+                    when (val result = repository.detail(id)) {
+                        is EmotionResult.Success -> {
+                            if (ticket != generation || !state.value.visible || id in blocked) return@launch
+                            if (version == contentVersion && id !in state.value.pendingIds) {
+                                replaceItem(result.value.toUiModel())
+                            }
+                            val audio = result.value.audio
+                            if (audio != null && audio.expiresAt >
+                                kotlin.time.Clock.System
+                                    .now()
+                            ) {
+                                eventChannel.send(NearbyEmotionEvent.Play(id, audio.url, ticket))
+                                handedOff = true
+                            } else {
+                                preparation.finish("failed")
+                                mutableState.update { it.copy(message = "녹음을 불러오지 못했어. 다시 시도해.") }
+                            }
                         }
-                        val audio = result.value.audio
-                        if (audio != null && audio.expiresAt >
-                            kotlin.time.Clock.System
-                                .now()
-                        ) {
-                            eventChannel.send(NearbyEmotionEvent.Play(id, audio.url, ticket))
-                        } else {
-                            mutableState.update { it.copy(message = "녹음을 불러오지 못했어요. 다시 시도해 주세요.") }
-                        }
-                    }
 
-                    is EmotionResult.Failure -> {
-                        if (ticket == generation) {
-                            if (result.reason == EmotionFailure.NOT_FOUND) removeItem(id)
-                            mutableState.update { it.copy(message = result.reason.message()) }
+                        is EmotionResult.Failure -> {
+                            preparation.finish("failed")
+                            if (ticket == generation) {
+                                if (result.reason == EmotionFailure.NOT_FOUND) removeItem(id)
+                                mutableState.update { it.copy(message = result.reason.message()) }
+                            }
                         }
                     }
+                } catch (cancelled: CancellationException) {
+                    preparation.finish("cancelled")
+                    throw cancelled
+                } catch (_: Exception) {
+                    preparation.finish("failed")
+                    if (ticket == generation) {
+                        mutableState.update { it.copy(message = "녹음을 불러오지 못했어. 다시 시도해.") }
+                    }
+                } finally {
+                    if (!handedOff) preparation.finish("cancelled")
+                    if (ticket == generation) mutableState.update { it.copy(audioLoadingId = null) }
                 }
-                if (ticket == generation) mutableState.update { it.copy(audioLoadingId = null) }
             }
     }
 }
@@ -459,9 +610,9 @@ sealed interface NearbyEmotionEvent {
 
 private fun EmotionFailure.message(): String =
     when (this) {
-        EmotionFailure.NOT_FOUND -> "삭제되었거나 더 이상 볼 수 없는 감정이에요."
-        EmotionFailure.AUTHENTICATION -> "기기 인증을 확인하지 못했어요. 다시 시도해 주세요."
-        EmotionFailure.INVALID_REQUEST -> "요청을 처리하지 못했어요. 새로고침해 주세요."
-        EmotionFailure.FORBIDDEN -> "이 감정에는 해당 동작을 할 수 없어요."
-        EmotionFailure.UNAVAILABLE -> "연결을 확인하고 다시 시도해 주세요."
+        EmotionFailure.NOT_FOUND -> "삭제됐거나 더 이상 볼 수 없는 감정이야."
+        EmotionFailure.AUTHENTICATION -> "기기 인증을 확인하지 못했어. 다시 시도해."
+        EmotionFailure.INVALID_REQUEST -> "요청을 처리하지 못했어. 새로고침해."
+        EmotionFailure.FORBIDDEN -> "이 감정에는 해당 동작을 할 수 없어."
+        EmotionFailure.UNAVAILABLE -> "연결을 확인하고 다시 시도해."
     }

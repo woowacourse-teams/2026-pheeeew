@@ -13,7 +13,9 @@ class GroupListApi(
     private val requests: ApiRequestExecutor,
 ) {
     suspend fun findMine(): ApiResult<List<GroupResponseDto>> =
-        requests.execute(ApiRequest(HttpMethod.Get, PATH, RequestKind.READ)) { response ->
+        requests.execute(
+            ApiRequest(HttpMethod.Get, PATH, RequestKind.READ, monitoringEndpoint = "group_list"),
+        ) { response ->
             response.body<List<GroupResponseDto>>()
         }
 
