@@ -23,6 +23,8 @@ import io.ktor.http.headersOf
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -440,11 +442,12 @@ class KtorSighV2ApiTest {
     fun `access token이 없는 동시 요청은 기기 등록을 한 번만 수행한다`() =
         runTest {
             val store = TestAccessTokenStore(accessToken = null)
+            val requestCountMutex = Mutex()
             var requestCount = 0
             var registrationCount = 0
             val engine =
                 MockEngine { request ->
-                    requestCount++
+                    requestCountMutex.withLock { requestCount++ }
                     assertEquals("Bearer registered", request.headers[HttpHeaders.Authorization])
                     respondJson(FEATURE_RESPONSE, HttpStatusCode.Created)
                 }
@@ -464,7 +467,7 @@ class KtorSighV2ApiTest {
                 }.awaitAll()
 
             assertEquals(1, registrationCount)
-            assertEquals(2, requestCount)
+            assertEquals(2, requestCountMutex.withLock { requestCount })
             client.close()
         }
 

@@ -12,6 +12,9 @@ import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.Url
+import io.ktor.http.content.OutgoingContent
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.CancellationException
@@ -80,6 +83,82 @@ class ApiRequestExecutor internal constructor(
                 mutationCertainty = request.kind.toMutationCertainty(unknownForWrite = true),
             ),
         )
+    }
+
+    /** Sends bytes to an HTTPS signed URL without API authentication or URL rewriting. */
+    suspend fun putSignedBinary(
+        url: String,
+        signedHeaders: Map<String, List<String>>,
+        bytes: ByteArray,
+    ): ApiResult<Unit> {
+        val contentTypeValue =
+            signedHeaders.entries
+                .firstOrNull { it.key.equals(HttpHeaders.ContentType, ignoreCase = true) }
+                ?.value
+                ?.singleOrNull()
+        val contentLength =
+            signedHeaders.entries
+                .firstOrNull { it.key.equals(HttpHeaders.ContentLength, ignoreCase = true) }
+                ?.value
+                ?.singleOrNull()
+                ?.toLongOrNull()
+        if (contentTypeValue == null || contentLength != bytes.size.toLong()) {
+            return ApiResult.Failure(
+                NetworkFailure.Contract(
+                    reason = ContractFailureReason.MALFORMED_REQUEST_BODY,
+                    mutationCertainty = MutationCertainty.NOT_APPLIED,
+                ),
+            )
+        }
+        val isHttps = runCatching { Url(url).protocol.name == "https" }.getOrDefault(false)
+        if (!isHttps) {
+            return ApiResult.Failure(
+                NetworkFailure.Contract(
+                    reason = ContractFailureReason.MALFORMED_REQUEST_BODY,
+                    mutationCertainty = MutationCertainty.NOT_APPLIED,
+                ),
+            )
+        }
+
+        val response =
+            try {
+                client.request(url) {
+                    method = HttpMethod.Put
+                    setBody(
+                        object : OutgoingContent.ByteArrayContent() {
+                            override val contentType: ContentType = ContentType.parse(contentTypeValue)
+                            override val contentLength: Long = bytes.size.toLong()
+
+                            override fun bytes(): ByteArray = bytes
+                        },
+                    )
+                    signedHeaders.forEach { (name, values) ->
+                        if (!name.equals(HttpHeaders.ContentType, ignoreCase = true)) {
+                            values.forEach { value -> header(name, value) }
+                        }
+                    }
+                }
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (timeout: HttpRequestTimeoutException) {
+                return signedUploadFailure(TransportFailureReason.TIMEOUT)
+            } catch (timeout: ConnectTimeoutException) {
+                return signedUploadFailure(TransportFailureReason.TIMEOUT)
+            } catch (timeout: SocketTimeoutException) {
+                return signedUploadFailure(TransportFailureReason.TIMEOUT)
+            } catch (_: IOException) {
+                return signedUploadFailure(TransportFailureReason.CONNECTION)
+            } catch (exception: Exception) {
+                return ApiResult.Failure(
+                    NetworkFailure.Unexpected(
+                        exceptionType = exception::class.simpleName ?: "Exception",
+                        mutationCertainty = MutationCertainty.UNKNOWN,
+                    ),
+                )
+            }
+
+        if (response.status.value == SIGNED_UPLOAD_SUCCESS) return ApiResult.Success(Unit)
+        return response.toHttpFailure(RequestKind.WRITE)
     }
 
     private suspend fun executeRequest(request: ApiRequest): RequestExecutionResult {
@@ -312,6 +391,14 @@ class ApiRequestExecutor internal constructor(
             ),
         )
 
+    private fun signedUploadFailure(reason: TransportFailureReason): ApiResult.Failure =
+        ApiResult.Failure(
+            NetworkFailure.Transport(
+                reason = reason,
+                mutationCertainty = MutationCertainty.UNKNOWN,
+            ),
+        )
+
     @Serializable
     private data class ApiErrorDto(
         val code: String? = null,
@@ -320,5 +407,6 @@ class ApiRequestExecutor internal constructor(
 
     private companion object {
         const val NO_CONTENT = 204
+        const val SIGNED_UPLOAD_SUCCESS = 200
     }
 }

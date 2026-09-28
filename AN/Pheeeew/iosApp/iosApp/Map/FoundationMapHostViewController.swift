@@ -18,6 +18,11 @@ final class FoundationMapHostViewController: UIViewController {
         view = renderer.mapView
     }
 
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        renderer.mapViewDidLayoutSubviews()
+    }
+
     func update(state: FoundationIosMapRenderUiModel) {
         renderer.update(state: state)
     }

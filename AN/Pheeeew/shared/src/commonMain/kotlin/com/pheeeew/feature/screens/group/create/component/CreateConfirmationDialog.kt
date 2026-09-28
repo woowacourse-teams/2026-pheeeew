@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.create.GroupCreateFailure
 import org.jetbrains.compose.resources.stringResource
@@ -137,7 +137,7 @@ internal fun CreateConfirmationDialog(
                         text = stringResource(Res.string.group_create_confirm_cancel),
                         onClick = onDismiss,
                     )
-                    Spacer(Modifier.height(42.dp))
+                    Spacer(Modifier.height(32.dp))
                 }
             }
         }
@@ -163,7 +163,7 @@ private fun SubmittingProgressCard(title: String) {
             modifier = Modifier.size(56.dp).clip(CircleShape).background(Color(0xFFEAF7F2)),
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator(
+            CircularLoadingIndicator(
                 modifier = Modifier.size(28.dp),
                 color = AppColors.GroupInk,
                 strokeWidth = 2.5.dp,
@@ -261,7 +261,7 @@ internal fun CreateFailureDialog(
                         onClick = onDismiss,
                     )
                 }
-                Spacer(Modifier.height(42.dp))
+                Spacer(Modifier.height(32.dp))
             }
         }
     }

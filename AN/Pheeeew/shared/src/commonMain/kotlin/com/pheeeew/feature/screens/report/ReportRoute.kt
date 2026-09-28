@@ -6,6 +6,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.pheeeew.domain.repository.EmotionModerationResult
+import com.pheeeew.domain.usecase.ReportEmotionUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
@@ -14,7 +16,7 @@ import org.jetbrains.compose.resources.DrawableResource
 fun ReportRoute(
     emotionId: Long,
     emotionStamp: DrawableResource,
-    dependencies: ReportDependencies,
+    reportEmotion: ReportEmotionUseCase,
     onBack: () -> Unit,
 ) {
     var uiState by remember(emotionId, emotionStamp) { mutableStateOf(ReportScreenUiState(emotionStamp)) }
@@ -46,23 +48,23 @@ fun ReportRoute(
             coroutineScope.launch {
                 val result =
                     try {
-                        dependencies.reportAction.report(emotionId, reason)
+                        reportEmotion(emotionId, reason)
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (_: Exception) {
-                        ReportResult.Failed
+                        EmotionModerationResult.Unavailable
                     }
                 uiState =
                     when (result) {
-                        ReportResult.Reported -> {
+                        EmotionModerationResult.Success -> {
                             uiState.copy(isSubmitting = false, successMessage = "신고가 접수되었어요.")
                         }
 
-                        ReportResult.OwnEmotion -> {
+                        EmotionModerationResult.OwnEmotion -> {
                             uiState.copy(isSubmitting = false, errorMessage = "내 감정은 신고할 수 없어요.")
                         }
 
-                        ReportResult.Failed -> {
+                        else -> {
                             uiState.copy(
                                 isSubmitting = false,
                                 errorMessage = "신고를 접수하지 못했어요. 잠시 후 다시 시도해 주세요.",

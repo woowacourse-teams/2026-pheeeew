@@ -27,10 +27,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
-import com.pheeeew.feature.component.stamp.StampShapeCatalog
-import com.pheeeew.feature.component.stamp.StampShapeId
-import com.pheeeew.feature.component.stamp.StampTextArea
 import org.jetbrains.compose.resources.painterResource
 
 /** 정사각형 슬롯 안에 모양의 비율을 유지해 그룹 스탬프를 그립니다. */
@@ -41,27 +37,6 @@ fun GroupStamp(
     modifier: Modifier = Modifier,
 ) {
     GroupStampContent(appearance = appearance, size = size, modifier = modifier)
-}
-
-/** 랭킹 화면의 기존 호출을 유지하기 위한 호환 진입점입니다. */
-@Composable
-fun GroupStamp(
-    label: String,
-    size: Dp,
-    modifier: Modifier = Modifier,
-) {
-    GroupStampContent(
-        appearance =
-            StampAppearanceUiModel(
-                label = label,
-                shape = StampShapeId.CIRCLE,
-                fillArgb = LEGACY_FILL_ARGB,
-                textArgb = LEGACY_TEXT_ARGB,
-            ),
-        size = size,
-        modifier = modifier,
-        preserveLegacyCircleStyle = true,
-    )
 }
 
 @Composable
@@ -171,7 +146,7 @@ private fun LegacyCircleStamp(
     }
 }
 
-private fun stampFontSize(
+internal fun stampFontSize(
     layout: StampTextLayout,
     textArea: StampTextArea,
     stampWidth: Dp,
@@ -181,14 +156,14 @@ private fun stampFontSize(
     stampWidth.value * textArea.widthFraction / (layout.longestLineLength.coerceAtLeast(1) * 0.95f),
 ).coerceIn(minimumValue = 7f, maximumValue = 28f).sp
 
-private data class StampTextLayout(
+internal data class StampTextLayout(
     val text: String,
     val lineCount: Int,
     val longestLineLength: Int,
 )
 
 /** Four code points are laid out as two deliberate rows to keep group stamps readable. */
-private fun String.toStampTextLayout(): StampTextLayout {
+internal fun String.toStampTextLayout(): StampTextLayout {
     val codePointOffsets = mutableListOf<Int>()
     var index = 0
     while (index < length) {
@@ -213,15 +188,6 @@ private fun String.toStampTextLayout(): StampTextLayout {
 private const val FOUR_CHARACTER_LABEL_LENGTH = 4
 private val HIGH_SURROGATES = '\uD800'..'\uDBFF'
 private val LOW_SURROGATES = '\uDC00'..'\uDFFF'
-
-private const val LEGACY_FILL_ARGB = 0xFF9DE8D0L
-private const val LEGACY_TEXT_ARGB = 0xFF15181BL
-
-@Preview(name = "레거시 랭킹 원형")
-@Composable
-private fun GroupStampPreview() {
-    GroupStamp("히유", 62.dp, Modifier.padding(16.dp))
-}
 
 @Preview(name = "그룹 스탬프 모양 10종")
 @Composable

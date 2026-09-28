@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 object AppColors {
     val GroupInk = Color(0xFF202323)
+    val GroupBackground = Color(0xFFFAFAFA)
     val RankingContent = Color(0xFF15181B)
     val RankingAccent = Color(0xFF9DE8D0)
     val RankingSurface = Color(0xFFF3F4F5)
@@ -22,4 +23,6 @@ object AppColors {
     val RecordSheetInputSurface = Color(0xFFECECEC)
     val RecordSheetAction = Color(0xFF202323)
     val RecordSheetRecording = Color(0xFFE26962)
+
+    val Error = Color(0xFFE26962)
 }

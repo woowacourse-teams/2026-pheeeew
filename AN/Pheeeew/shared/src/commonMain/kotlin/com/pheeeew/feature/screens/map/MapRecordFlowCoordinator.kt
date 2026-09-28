@@ -20,6 +20,7 @@ internal class MapRecordFlowCoordinator(
     }
 
     fun dismiss() {
+        if (recordViewModel.uiModel.value.isSubmitting) return
         voiceRecorder.clear()
         recordViewModel.dismiss()
         mapViewModel.onRecordLocationPickingChanged(false)
@@ -32,6 +33,7 @@ internal class MapRecordFlowCoordinator(
     }
 
     fun next(currentLocation: CurrentLocation?) {
+        if (recordViewModel.uiModel.value.isGroupSelectionLoading) return
         voiceRecorder.stop()
         voiceRecorder.pause()
         recordViewModel.onNext(currentLocation, voiceRecorder.state.value.filePath)
@@ -39,12 +41,14 @@ internal class MapRecordFlowCoordinator(
     }
 
     fun skip(currentLocation: CurrentLocation?) {
+        if (recordViewModel.uiModel.value.isGroupSelectionLoading) return
         voiceRecorder.clear()
         recordViewModel.onSkip(currentLocation)
         mapViewModel.onRecordLocationPickingChanged(true)
     }
 
     fun backToInput() {
+        if (recordViewModel.uiModel.value.isSubmitting) return
         recordViewModel.onBackToInput()
         mapViewModel.onRecordLocationPickingChanged(false)
     }

@@ -15,8 +15,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.legacy.core.designsystem.theme.AppTheme
+import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
+import com.pheeeew.feature.screens.settings.SettingsTheme
 
 @Composable
 internal fun SettingsSectionTitle(
@@ -26,7 +28,10 @@ internal fun SettingsSectionTitle(
     Text(
         text = title,
         color = SettingsColors.Ink,
-        style = AppTheme.typography.sectionHeader.copy(fontWeight = FontWeight.Bold),
+        fontFamily = notoSansKrFontFamily(),
+        fontSize = 16.sp,
+        lineHeight = 22.sp,
+        fontWeight = FontWeight.Bold,
         modifier = modifier.fillMaxWidth().padding(horizontal = 26.dp).padding(bottom = 5.dp),
     )
 }
@@ -59,7 +64,7 @@ internal fun SettingsDivider(modifier: Modifier = Modifier) {
 @Preview
 @Composable
 private fun SettingsSectionTitlePreview() {
-    AppTheme {
+    SettingsTheme {
         Column(Modifier.background(AppColors.Background)) {
             SettingsSectionTitle("이용 안내")
         }
@@ -69,7 +74,7 @@ private fun SettingsSectionTitlePreview() {
 @Preview
 @Composable
 private fun SettingsCardPreview() {
-    AppTheme {
+    SettingsTheme {
         SettingsCard {
             SettingsActionRow("접근 권한 설정", SettingsIcon.Tune, highlighted = true, onClick = {})
         }
@@ -79,7 +84,7 @@ private fun SettingsCardPreview() {
 @Preview
 @Composable
 private fun SettingsDividerPreview() {
-    AppTheme {
+    SettingsTheme {
         Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
             SettingsDivider()
         }

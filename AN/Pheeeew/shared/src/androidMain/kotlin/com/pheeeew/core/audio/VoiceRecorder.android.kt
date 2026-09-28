@@ -17,6 +17,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import com.pheeeew.core.audio.MAX_RECORDING_DURATION_SECONDS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -70,12 +71,26 @@ private class AndroidVoiceRecorder(
             }.build()
     var requestPermission: (() -> Unit)? = null
 
+    override fun refreshPermissionStatus() {
+        mutable.value = state.value.copy(microphonePermissionGranted = hasMicrophonePermission())
+    }
+
+    private fun hasMicrophonePermission(): Boolean =
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.RECORD_AUDIO,
+        ) == PackageManager.PERMISSION_GRANTED
+
     override fun start() {
         if (released || state.value.recording || state.value.requestingPermission) return
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) !=
-            PackageManager.PERMISSION_GRANTED
-        ) {
-            mutable.value = state.value.copy(requestingPermission = true, error = null)
+        refreshPermissionStatus()
+        if (!state.value.microphonePermissionGranted) {
+            mutable.value =
+                state.value.copy(
+                    requestingPermission = true,
+                    microphonePermissionDenied = false,
+                    error = null,
+                )
             requestPermission?.invoke()
             return
         }
@@ -84,8 +99,13 @@ private class AndroidVoiceRecorder(
 
     fun permissionResult(granted: Boolean) {
         if (released || !state.value.requestingPermission) return
-        mutable.value = state.value.copy(requestingPermission = false)
-        if (granted) begin() else mutable.value = state.value.copy(error = "설정에서 마이크 권한을 허용해주세요")
+        mutable.value =
+            state.value.copy(
+                requestingPermission = false,
+                microphonePermissionGranted = granted,
+                microphonePermissionDenied = !granted,
+            )
+        if (granted) begin()
     }
 
     @Suppress("DEPRECATION")
@@ -112,6 +132,9 @@ private class AndroidVoiceRecorder(
                 scope.launch {
                     while (isActive) {
                         delay(80)
+                        val elapsedMillis = SystemClock.elapsedRealtime() - started
+                        val recordedDurationMillis =
+                            elapsedMillis.coerceAtMost(MAX_RECORDING_DURATION_SECONDS * 1000L)
                         val amplitude =
                             runCatching { capture.maxAmplitude }.getOrElse {
                                 fail()
@@ -127,9 +150,14 @@ private class AndroidVoiceRecorder(
                             }
                         mutable.value =
                             state.value.copy(
-                                elapsedSeconds = ((SystemClock.elapsedRealtime() - started) / 1000).toInt(),
+                                elapsedSeconds = (recordedDurationMillis / 1000).toInt(),
+                                durationMillis = recordedDurationMillis,
                                 samples = (state.value.samples + level).takeLast(7500),
                             )
+                        if (elapsedMillis >= MAX_RECORDING_DURATION_SECONDS * 1000L) {
+                            stop()
+                            return@launch
+                        }
                     }
                 }
         } catch (_: Exception) {
@@ -171,7 +199,11 @@ private class AndroidVoiceRecorder(
                     it.setDataSource(path)
                     it.prepare()
                     it.setOnCompletionListener {
-                        mutable.value = state.value.copy(playing = false)
+                        mutable.value =
+                            state.value.copy(
+                                playing = false,
+                                playbackPositionMillis = state.value.durationMillis,
+                            )
                         it.seekTo(0)
                         audioManager.abandonAudioFocusRequest(focus)
                     }
@@ -182,7 +214,20 @@ private class AndroidVoiceRecorder(
                     }
                 }
             playback.start()
-            mutable.value = state.value.copy(playing = true, error = null)
+            mutable.value =
+                state.value.copy(
+                    playing = true,
+                    playbackPositionMillis = playback.currentPosition.toLong(),
+                    error = null,
+                )
+            meter?.cancel()
+            meter =
+                scope.launch {
+                    while (isActive && state.value.playing) {
+                        delay(50)
+                        mutable.value = state.value.copy(playbackPositionMillis = playback.currentPosition.toLong())
+                    }
+                }
         } catch (_: Exception) {
             audioManager.abandonAudioFocusRequest(focus)
             player?.release()
@@ -192,9 +237,11 @@ private class AndroidVoiceRecorder(
     }
 
     override fun pause() {
+        val playbackPosition = player?.currentPosition?.toLong() ?: state.value.playbackPositionMillis
         runCatching { player?.pause() }
+        if (!state.value.recording) meter?.cancel()
         if (!state.value.recording) audioManager.abandonAudioFocusRequest(focus)
-        mutable.value = state.value.copy(playing = false)
+        mutable.value = state.value.copy(playing = false, playbackPositionMillis = playbackPosition)
     }
 
     override fun clear() {

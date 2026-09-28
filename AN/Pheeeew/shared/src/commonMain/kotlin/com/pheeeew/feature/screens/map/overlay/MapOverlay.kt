@@ -39,7 +39,6 @@ import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_menu
 import pheeeew.shared.generated.resources.ic_my_location
-import pheeeew.shared.generated.resources.ic_settings
 
 private const val EMOTION_PROMPT_DAMPING_RATIO = 0.8205f
 private const val EMOTION_PROMPT_STIFFNESS = 380f
@@ -117,22 +116,10 @@ fun MapOverlay(
                     )
                 }
 
-                Box(
-                    modifier =
-                        Modifier
-                            .align(Alignment.CenterStart)
-                            .clip(RoundedCornerShape(15.dp))
-                            .background(AppColors.Surface)
-                            .border(width = 1.dp, color = AppColors.Border, shape = RoundedCornerShape(15.dp))
-                            .clickable(onClick = onSettingClick)
-                            .padding(horizontal = 10.dp, vertical = 10.dp),
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_settings),
-                        contentDescription = "설정 버튼",
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
+                SettingsIconButton(
+                    onClick = onSettingClick,
+                    modifier = Modifier.align(Alignment.CenterStart),
+                )
             }
 
             if (!isMapError) {
