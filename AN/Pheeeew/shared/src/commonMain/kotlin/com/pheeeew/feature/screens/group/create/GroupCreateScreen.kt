@@ -5,9 +5,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -24,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -71,6 +74,7 @@ fun GroupCreateScreen(
 ) {
     val enabled = uiState.submission == GroupCreateSubmissionState.Editing
     val backDescription = stringResource(Res.string.group_create_back)
+    val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
     Column(
         modifier =
@@ -96,21 +100,23 @@ fun GroupCreateScreen(
             modifier = Modifier.weight(1f),
         )
 
-        Button(
-            onClick = onCreateClick,
-            enabled = enabled && uiState.colorSheet is StampColorSheetState.Closed,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(52.dp),
-            shape = CircleShape,
-            colors = ButtonDefaults.buttonColors(containerColor = AppColors.GroupInk),
-        ) {
-            Text(
-                text = stringResource(Res.string.group_create_submit),
-                color = Color.White,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
+        if (!isKeyboardVisible) {
+            Button(
+                onClick = onCreateClick,
+                enabled = enabled && uiState.colorSheet is StampColorSheetState.Closed,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(52.dp),
+                shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(containerColor = AppColors.GroupInk),
+            ) {
+                Text(
+                    text = stringResource(Res.string.group_create_submit),
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Spacer(Modifier.height(16.dp))
         }
-        Spacer(Modifier.height(16.dp))
     }
 
     GroupCreateOverlays(
