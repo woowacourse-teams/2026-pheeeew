@@ -41,7 +41,7 @@ internal fun EmotionDetail.toUiModel() =
                     EmotionDetailContentUiModel.Empty
                 }
             },
-        actionsEnabled = false,
+        actionsEnabled = true,
         reactionError = null,
         reactions =
             EmotionReactionType.entries.map { type ->

@@ -25,6 +25,14 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         mapView = MLNMapView(frame: .zero, styleURL: FoundationMapStyle.styleURL)
         super.init()
         mapView.delegate = self
+        mapView.showsLogoView = false
+        mapView.showsAttributionButton = true
+        mapView.attributionButtonPosition = .bottomLeft
+        mapView.attributionButton.tintColor = .white
+        mapView.attributionButton.setImage(
+            UIImage(systemName: "info.circle")?.withRenderingMode(.alwaysTemplate),
+            for: .normal
+        )
         let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleEmotionPinTap(_:)))
         tapRecognizer.cancelsTouchesInView = false
         tapRecognizer.delegate = self
@@ -195,6 +203,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     func mapViewDidLayoutSubviews() {
+        mapView.compassViewMargins = CGPoint(x: 16, y: 16)
+        mapView.attributionButtonMargins = CGPoint(x: 16, y: 16)
         publishViewportIfReady()
     }
 

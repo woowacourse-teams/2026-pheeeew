@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.map.renderer
 
 import android.graphics.Color
+import android.view.Gravity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -10,6 +11,8 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -34,6 +37,7 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import kotlin.math.PI
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 
 private const val OPEN_FREE_MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
 private const val MAP_FONT_REGULAR_ASSET_URL =
@@ -131,6 +135,8 @@ private class AndroidFoundationMapHost(
     private var lastAppliedCameraCommandId = 0L
     private var fittedOrigin: GeoCoordinate? = null
     private var cameraBoundsInstalled = false
+    private var statusBarInsetPx = 0
+    private var navigationBarInsetPx = 0
     private var didConfigureKoreanFontFaces = false
 
     private val mapLoadFailureListener =
@@ -139,6 +145,14 @@ private class AndroidFoundationMapHost(
         }
 
     init {
+        ViewCompat.setOnApplyWindowInsetsListener(mapView) { _, insets ->
+            statusBarInsetPx = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
+            navigationBarInsetPx = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
+            applyCompassMargins()
+            applyAttributionMargins()
+            insets
+        }
+        ViewCompat.requestApplyInsets(mapView)
         mapView.addOnDidFailLoadingMapListener(mapLoadFailureListener)
         mapView.getMapAsync { readyMap ->
             if (released) return@getMapAsync
@@ -157,6 +171,17 @@ private class AndroidFoundationMapHost(
             }
             readyMap.setMinZoomPreference(MINIMUM_ZOOM)
             readyMap.setMaxZoomPreference(MAXIMUM_ZOOM)
+            readyMap.uiSettings.apply {
+                isLogoEnabled = false
+                isAttributionEnabled = true
+                attributionGravity = Gravity.BOTTOM or Gravity.START
+                setAttributionTintColor(Color.WHITE)
+                isCompassEnabled = true
+                compassGravity = Gravity.TOP or Gravity.END
+                setCompassFadeFacingNorth(true)
+            }
+            applyCompassMargins()
+            applyAttributionMargins()
             readyMap.addOnCameraMoveListener {
                 publishRecordViewport()
             }
@@ -201,6 +226,7 @@ private class AndroidFoundationMapHost(
     fun release() {
         if (released) return
         released = true
+        ViewCompat.setOnApplyWindowInsetsListener(mapView, null)
         mapView.removeOnDidFailLoadingMapListener(mapLoadFailureListener)
         mapView.onPause()
         mapView.onStop()
@@ -305,6 +331,24 @@ private class AndroidFoundationMapHost(
         val CITY_LABEL_LAYER_IDS = setOf("label_city", "label_city_capital", "label_town", "label_village")
         val KOREAN_UNICODE_RANGES =
             listOf("U+1100-11FF", "U+3130-318F", "U+A960-A97F", "U+AC00-D7AF", "U+D7B0-D7FF")
+    }
+
+    private fun applyCompassMargins() {
+        map?.uiSettings?.setCompassMargins(
+            0,
+            statusBarInsetPx + (16f * mapView.resources.displayMetrics.density).roundToInt(),
+            (16f * mapView.resources.displayMetrics.density).roundToInt(),
+            0,
+        )
+    }
+
+    private fun applyAttributionMargins() {
+        map?.uiSettings?.setAttributionMargins(
+            (16f * mapView.resources.displayMetrics.density).roundToInt(),
+            0,
+            0,
+            navigationBarInsetPx + (16f * mapView.resources.displayMetrics.density).roundToInt(),
+        )
     }
 
     private fun renderLatestState() {

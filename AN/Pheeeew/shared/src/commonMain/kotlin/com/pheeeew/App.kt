@@ -2,7 +2,9 @@ package com.pheeeew
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -18,11 +20,13 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.di.ApiDependencies
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.di.createEmotionAudioRepository
 import com.pheeeew.core.di.createEmotionDetailRepository
 import com.pheeeew.core.di.createEmotionMapDependencies
+import com.pheeeew.core.di.createEmotionModerationDependencies
 import com.pheeeew.core.di.group.createGroupDependencies
 import com.pheeeew.core.navigation.GroupRootDestination
 import com.pheeeew.core.navigation.MapRootDestination
@@ -39,8 +43,10 @@ import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
+import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
+import org.jetbrains.compose.resources.DrawableResource
 
 @Composable
 fun App(
@@ -62,11 +68,15 @@ fun App(
         return
     }
 
-    LaunchedEffect(apiDependencies) { apiDependencies.prepareSession() }
+    LaunchedEffect(apiDependencies) {
+        apiDependencies.prepareSession()
+    }
+
     val emotionMapDependencies =
         remember(apiDependencies.client) {
             createEmotionMapDependencies(apiDependencies.client)
         }
+
     val mapViewModel: MapViewModel =
         viewModel {
             MapViewModel.create(
@@ -75,41 +85,54 @@ fun App(
                 emotionMapDependencies.findSnapshot,
             )
         }
+
     val mapRecordViewModel: MapRecordViewModel =
         viewModel {
             MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase())
         }
-    val detailRepository = remember(apiDependencies.client) { createEmotionDetailRepository(apiDependencies.client) }
+
+    val detailRepository =
+        remember(apiDependencies.client) {
+            createEmotionDetailRepository(apiDependencies.client)
+        }
+
     val detailViewModel: EmotionDetailViewModel =
-        viewModel { EmotionDetailViewModel(detailRepository) }
+        viewModel {
+            EmotionDetailViewModel(detailRepository)
+        }
+
     val detailState by detailViewModel.uiModel.collectAsState()
     val audioRepository = remember { createEmotionAudioRepository() }
-    val groupDependencies = remember(apiDependencies.client) { createGroupDependencies(apiDependencies.client) }
+
+    // TODO: 병합 후 화면 상태와 moderation 상태의 소유 범위를 다시 확인한다.
+    val moderation =
+        remember(apiDependencies.client) {
+            createEmotionModerationDependencies(apiDependencies.client)
+        }
+    val groupDependencies =
+        remember(apiDependencies.client) {
+            createGroupDependencies(apiDependencies.client)
+        }
+
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
+
     val selectedDestination =
-        when {
-            currentBackStackEntry?.destination?.route == MapRootDestination::class.qualifiedName -> {
-                AppDestination.Map
-            }
-
-            currentBackStackEntry?.destination?.route == GroupRootDestination::class.qualifiedName -> {
-                AppDestination.Group
-            }
-
-            currentBackStackEntry?.destination?.route == RankingRootDestination::class.qualifiedName -> {
-                AppDestination.Ranking
-            }
-
-            else -> {
-                AppDestination.Map
-            }
+        when (currentBackStackEntry?.destination?.route) {
+            MapRootDestination::class.qualifiedName -> AppDestination.Map
+            GroupRootDestination::class.qualifiedName -> AppDestination.Group
+            RankingRootDestination::class.qualifiedName -> AppDestination.Ranking
+            else -> AppDestination.Map
         }
+
     var isSettingsVisible by remember { mutableStateOf(false) }
+    var reportTarget by remember { mutableStateOf<Pair<Long, DrawableResource>?>(null) }
+    var moderationMessage by remember { mutableStateOf<String?>(null) }
     var isGroupDetailVisible by remember { mutableStateOf(false) }
     var isGroupCreateVisible by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
+        // TODO: 병합 후 상세 오버레이와 공통 피드백 UI의 표시 생명주기를 확인한다.
         NavHost(
             navController = navController,
             startDestination = MapRootDestination,
@@ -126,15 +149,33 @@ fun App(
                         onEmotionBubbleClick = {},
                         modifier = Modifier.fillMaxSize(),
                     )
+
                     EmotionDetailOverlay(
                         detailState,
                         detailViewModel::dismiss,
                         detailViewModel::retry,
                         audioRepository,
                         detailViewModel::toggleReaction,
+                        moderation.block,
+                        moderation.delete,
+                        onReportClick = { id, stamp ->
+                            detailViewModel.dismiss()
+                            reportTarget = id to stamp
+                        },
+                        onBlockSucceeded = {
+                            detailViewModel.dismiss()
+                            mapViewModel.refreshEmotionPins()
+                            moderationMessage = "차단되었습니다."
+                        },
+                        onDeleteSucceeded = {
+                            detailViewModel.dismiss()
+                            mapViewModel.refreshEmotionPins()
+                            moderationMessage = "삭제되었습니다."
+                        },
                     )
                 }
             }
+
             composable<GroupRootDestination> {
                 GroupFeatureHost(
                     dependencies = groupDependencies,
@@ -143,9 +184,33 @@ fun App(
                     onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
                 )
             }
+
             composable<RankingRootDestination> {
-                WeeklyRankingRoute(apiDependencies.client, Modifier.fillMaxSize())
+                WeeklyRankingRoute(
+                    apiDependencies.client,
+                    Modifier.fillMaxSize(),
+                )
             }
+        }
+
+        Snackbar(
+            message = moderationMessage,
+            onDismiss = { moderationMessage = null },
+            modifier =
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(16.dp),
+        )
+
+        reportTarget?.let { (id, stamp) ->
+            ReportRoute(
+                emotionId = id,
+                emotionStamp = stamp,
+                reportEmotion = moderation.report,
+                onBack = { reportTarget = null },
+            )
         }
 
         if (isSettingsVisible) {
@@ -155,9 +220,16 @@ fun App(
                 permissionSettingsLauncher = permissionSettingsLauncher,
                 modifier = Modifier.fillMaxSize(),
             )
-        } else if (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible)) {
+        }
+
+        if (!isSettingsVisible &&
+            (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible))
+        ) {
             AppBottomNavigationBar(
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = AppBottomNavigationBarBottomSpacing),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = AppBottomNavigationBarBottomSpacing),
                 selectedDestination = selectedDestination,
                 onDestinationSelected = { destination ->
                     val route =
@@ -166,6 +238,7 @@ fun App(
                             AppDestination.Group -> GroupRootDestination
                             AppDestination.Ranking -> RankingRootDestination
                         }
+
                     navController.navigate(route) {
                         popUpTo<MapRootDestination> { saveState = true }
                         launchSingleTop = true
