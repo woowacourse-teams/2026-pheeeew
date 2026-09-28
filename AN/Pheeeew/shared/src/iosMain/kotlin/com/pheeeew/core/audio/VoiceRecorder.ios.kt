@@ -73,10 +73,19 @@ private class IosVoiceRecorder : VoiceRecorder {
             )
     }
 
+    override fun requestMicrophonePermission() {
+        requestPermission(startRecording = false)
+    }
+
     override fun start() {
+        requestPermission(startRecording = true)
+    }
+
+    private fun requestPermission(startRecording: Boolean) {
         if (released || state.value.recording || state.value.requestingPermission) return
         val token = ++generation
         refreshPermissionStatus()
+        if (state.value.microphonePermissionGranted && !startRecording) return
         mutable.value = state.value.copy(requestingPermission = true, microphonePermissionDenied = false, error = null)
         session.requestRecordPermission { granted ->
             scope.launch {
@@ -87,7 +96,7 @@ private class IosVoiceRecorder : VoiceRecorder {
                         microphonePermissionGranted = granted,
                         microphonePermissionDenied = !granted,
                     )
-                if (granted) begin()
+                if (granted && startRecording) begin()
             }
         }
     }

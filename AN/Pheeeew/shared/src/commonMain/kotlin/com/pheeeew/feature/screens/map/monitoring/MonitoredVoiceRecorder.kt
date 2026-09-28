@@ -132,6 +132,8 @@ private class MonitoredVoiceRecorder(
 
     override fun refreshPermissionStatus() = delegate.refreshPermissionStatus()
 
+    override fun requestMicrophonePermission() = delegate.requestMicrophonePermission()
+
     override fun release() {
         close()
         delegate.release()

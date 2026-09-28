@@ -37,7 +37,7 @@ actual fun rememberVoiceRecorder(): VoiceRecorder {
     val recorder = remember(context) { AndroidVoiceRecorder(context) }
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission(), recorder::permissionResult)
-    SideEffect { recorder.requestPermission = { launcher.launch(Manifest.permission.RECORD_AUDIO) } }
+    SideEffect { recorder.launchPermissionRequest = { launcher.launch(Manifest.permission.RECORD_AUDIO) } }
     DisposableEffect(recorder) { onDispose { recorder.release() } }
     return recorder
 }
@@ -53,6 +53,7 @@ private class AndroidVoiceRecorder(
     private var player: MediaPlayer? = null
     private var file: File? = null
     private var released = false
+    private var startAfterPermission = false
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val focus =
         AudioFocusRequest
@@ -69,7 +70,7 @@ private class AndroidVoiceRecorder(
                     pause()
                 }
             }.build()
-    var requestPermission: (() -> Unit)? = null
+    var launchPermissionRequest: (() -> Unit)? = null
 
     override fun refreshPermissionStatus() {
         mutable.value = state.value.copy(microphonePermissionGranted = hasMicrophonePermission())
@@ -81,31 +82,53 @@ private class AndroidVoiceRecorder(
             Manifest.permission.RECORD_AUDIO,
         ) == PackageManager.PERMISSION_GRANTED
 
+    override fun requestMicrophonePermission() {
+        requestPermission(startRecording = false)
+    }
+
     override fun start() {
+        requestPermission(startRecording = true)
+    }
+
+    private fun requestPermission(startRecording: Boolean) {
         if (released || state.value.recording || state.value.requestingPermission) return
         refreshPermissionStatus()
         if (!state.value.microphonePermissionGranted) {
+            startAfterPermission = startRecording
             mutable.value =
                 state.value.copy(
                     requestingPermission = true,
                     microphonePermissionDenied = false,
                     error = null,
                 )
-            requestPermission?.invoke()
+            val launch = launchPermissionRequest
+            if (launch == null) {
+                startAfterPermission = false
+                mutable.value = state.value.copy(requestingPermission = false)
+                return
+            }
+            try {
+                launch()
+            } catch (_: IllegalStateException) {
+                startAfterPermission = false
+                mutable.value = state.value.copy(requestingPermission = false)
+            }
             return
         }
-        begin()
+        if (startRecording) begin()
     }
 
     fun permissionResult(granted: Boolean) {
         if (released || !state.value.requestingPermission) return
+        val shouldStart = startAfterPermission
+        startAfterPermission = false
         mutable.value =
             state.value.copy(
                 requestingPermission = false,
                 microphonePermissionGranted = granted,
                 microphonePermissionDenied = !granted,
             )
-        if (granted) begin()
+        if (granted && shouldStart) begin()
     }
 
     @Suppress("DEPRECATION")
@@ -245,6 +268,7 @@ private class AndroidVoiceRecorder(
     }
 
     override fun clear() {
+        startAfterPermission = false
         meter?.cancel()
         recorder?.let {
             runCatching { it.stop() }
