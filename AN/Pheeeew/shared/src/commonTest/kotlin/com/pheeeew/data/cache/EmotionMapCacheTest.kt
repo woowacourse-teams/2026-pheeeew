@@ -11,6 +11,20 @@ import kotlin.test.assertNull
 
 class EmotionMapCacheTest {
     @Test
+    fun `겹치는 최신 응답이 있으면 이전 완료 캐시로 새 핀을 덮어쓰지 않는다`() {
+        val cache = EmotionMapCache()
+        val wide = EmotionMapBounds(127.0, 37.0, 128.0, 38.0)
+        val small = EmotionMapBounds(127.1, 37.1, 127.3, 37.3)
+        val moved = EmotionMapBounds(127.05, 37.05, 127.4, 37.4)
+        cache.appendPage(wide, null, null, EmotionMapPage(listOf(pin(1, 127.2)), false, null, 0))
+        cache.appendPage(small, null, null, EmotionMapPage(listOf(pin(1, 127.2), pin(2, 127.2)), false, null, 0))
+
+        assertEquals(listOf(1L, 2L), cache.snapshot(moved, null)?.pins?.map { it.id })
+        assertNull(cache.completePage(moved, null))
+        assertNotNull(cache.completePage(small, null))
+    }
+
+    @Test
     fun `완료된 캐시는 포함 영역에 재사용하고 유효기간이 지나면 조회하지 않는다`() {
         var now = 0L
         val cache = EmotionMapCache(nowMillis = { now })

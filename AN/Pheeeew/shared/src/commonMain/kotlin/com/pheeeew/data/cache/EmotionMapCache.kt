@@ -20,6 +20,10 @@ internal class EmotionMapCache(
         require(ttlMillis > 0)
     }
 
+    fun clear() {
+        regions.clear()
+    }
+
     fun completePage(
         bounds: EmotionMapBounds,
         groupId: String?,
@@ -70,6 +74,11 @@ internal class EmotionMapCache(
                 nextCursor = page.nextCursor,
                 invalidItemCount = (previous?.page?.invalidItemCount ?: 0) + page.invalidItemCount,
             )
+        // An older overlapping response no longer proves that the region is complete.
+        // Keep its pins for snapshots, but fetch again before replacing newer pins.
+        regions
+            .filter { it.groupId == groupId && it.bounds.intersects(bounds) }
+            .forEach { it.isComplete = false }
         regions.removeAll { it.bounds == bounds && it.groupId == groupId }
         regions +=
             Region(
@@ -96,7 +105,7 @@ internal class EmotionMapCache(
         val groupId: String?,
         val page: EmotionMapPage,
         val hasFirstPage: Boolean,
-        val isComplete: Boolean,
+        var isComplete: Boolean,
         val fetchedAt: Long,
         var lastAccess: Long,
     )

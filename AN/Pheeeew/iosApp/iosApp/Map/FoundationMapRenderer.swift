@@ -217,6 +217,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     func mapViewRegionIsChanging(_ mapView: MLNMapView) {
+        publishHighlightedPinPosition()
         publishRecordViewport()
     }
 
@@ -272,6 +273,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             )
             mapView.minimumZoomLevel = mapView.zoomLevel - 1.0
         }
+        publishHighlightedPinPosition()
         publishRecordViewport()
         return true
     }
@@ -287,9 +289,28 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         eventSink.onRecordViewportChanged(centerX: Float(center.x), centerY: Float(center.y), radius: Float(radius))
     }
 
+    private func publishHighlightedPinPosition() {
+        guard styleIsReady, let state = pendingState, !state.isRecordLocationPicking,
+              let id = state.highlightedEmotionId?.int64Value,
+              let pin = state.emotionPinCoordinates.first(where: { $0.id == id }),
+              lastEmotionPinImageKeys.contains(pin.imageKey),
+              mapView.bounds.width > 0, mapView.bounds.height > 0
+        else {
+            eventSink.onHighlightedPinPositionChanged(position: nil)
+            return
+        }
+        let point = mapView.convert(
+            CLLocationCoordinate2D(latitude: pin.latitude, longitude: pin.longitude),
+            toPointTo: mapView
+        )
+        eventSink.onHighlightedPinPositionChanged(
+            position: HighlightedPinPosition(id: id, x: Float(point.x), y: Float(point.y))
+        )
+    }
+
     private func publishViewportIfReady() {
-        guard styleIsReady, mapView.bounds.width > 0, mapView.bounds.height > 0,
-              pendingState?.isRecordLocationPicking != true else { return }
+        publishHighlightedPinPosition()
+        guard styleIsReady, mapView.bounds.width > 0, mapView.bounds.height > 0 else { return }
         let bounds = mapView.visibleCoordinateBounds
         let queryBounds = EmotionMapBounds(
             minLongitude: bounds.sw.longitude,

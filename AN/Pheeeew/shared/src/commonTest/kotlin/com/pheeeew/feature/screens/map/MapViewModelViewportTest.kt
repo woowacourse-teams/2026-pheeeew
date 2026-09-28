@@ -78,6 +78,86 @@ class MapViewModelViewportTest {
         }
 
     @Test
+    fun `스탬프 위치 선택 중에도 진행 중인 조회와 지도 이동 후 핀 갱신을 유지한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val firstResponse = CompletableDeferred<EmotionMapPageResult>()
+                val movedResponse = CompletableDeferred<EmotionMapPageResult>()
+                val refreshResponse = CompletableDeferred<EmotionMapPageResult>()
+                val repository = QueuedEmotionMapRepository(firstResponse, movedResponse, refreshResponse)
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                val firstBounds = bounds(127.0, 37.5)
+                val movedBounds = bounds(128.0, 37.5)
+
+                viewModel.onViewportChanged(firstBounds)
+                advanceTimeBy(700)
+                runCurrent()
+                viewModel.onRecordLocationPickingChanged(true)
+                firstResponse.complete(page(listOf(pin(1, 127.02, 37.55))))
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
+
+                viewModel.onViewportChanged(movedBounds)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(listOf<EmotionMapBounds?>(firstBounds, movedBounds), repository.requestedBounds)
+                movedResponse.complete(page(listOf(pin(2, 128.02, 37.55))))
+                runCurrent()
+                assertEquals(listOf(2L), viewModel.pinIds())
+
+                viewModel.refreshEmotionPins()
+                runCurrent()
+                refreshResponse.complete(page(listOf(pin(2, 128.02, 37.55), pin(3, 128.03, 37.55))))
+                runCurrent()
+                assertEquals(listOf(2L, 3L), viewModel.pinIds())
+                assertEquals(true, viewModel.uiModel.value.isRecordLocationPicking)
+                assertEquals(1, repository.maximumConcurrentRequests)
+                assertEquals(false, viewModel.uiModel.value.isLoadingEmotionPins)
+
+                viewModel.onRecordLocationPickingChanged(false)
+                assertEquals(listOf(2L, 3L), viewModel.pinIds())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `등록 좌표로 이동할 때 핀 조회 완료를 기다리지 않는다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val repository = QueuedEmotionMapRepository()
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                val coordinate = GeoCoordinate(37.567, 126.979)
+                viewModel.onRecordLocationPickingChanged(true)
+                viewModel.onRecordLocationPickingChanged(false)
+                viewModel.focusOnCoordinate(coordinate)
+                val command = viewModel.uiModel.value.cameraCommand!!
+                assertEquals(MapCameraActionUiModel.MoveToCoordinate, command.action)
+                assertEquals(coordinate.latitude, command.latitude)
+                assertEquals(coordinate.longitude, command.longitude)
+                assertEquals(false, viewModel.uiModel.value.isRecordLocationPicking)
+                assertEquals(emptyList(), viewModel.pinIds())
+                viewModel.focusOnCoordinate(coordinate)
+                val nextCommand = viewModel.uiModel.value.cameraCommand
+                assertEquals(command.id + 1, nextCommand?.id)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `이전 화면 응답을 캐시하고 현재 영역의 핀만 표시하며 재방문 시 재사용한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))

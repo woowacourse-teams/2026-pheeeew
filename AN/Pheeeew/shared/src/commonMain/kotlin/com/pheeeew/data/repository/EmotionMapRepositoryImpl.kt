@@ -26,6 +26,7 @@ class EmotionMapRepositoryImpl(
     private val api: EmotionMapApi,
 ) : EmotionMapRepository {
     private val cache = EmotionMapCache()
+    private var cacheGeneration = 0L
 
     override fun findSnapshot(
         bounds: EmotionMapBounds,
@@ -38,6 +39,11 @@ class EmotionMapRepositoryImpl(
         cursor: String?,
         forceRefresh: Boolean,
     ): EmotionMapPageResult {
+        if (forceRefresh && cursor == null) {
+            cacheGeneration++
+            cache.clear()
+        }
+        val generation = cacheGeneration
         if (!forceRefresh && cursor == null && bounds != null) {
             cache.completePage(bounds, groupId)?.let { page ->
                 return EmotionMapPageResult.Success(page)
@@ -67,7 +73,9 @@ class EmotionMapRepositoryImpl(
 
                 is ApiResult.Success -> {
                     result.value.toDomain().also { pageResult ->
-                        if (pageResult is EmotionMapPageResult.Success && bounds != null) {
+                        if (pageResult is EmotionMapPageResult.Success && bounds != null &&
+                            generation == cacheGeneration
+                        ) {
                             cache.appendPage(bounds, groupId, cursor, pageResult.page)
                         }
                     }

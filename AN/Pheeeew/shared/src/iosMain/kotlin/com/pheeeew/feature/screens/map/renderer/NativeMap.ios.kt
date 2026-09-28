@@ -10,6 +10,7 @@ import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
+import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
@@ -26,8 +27,10 @@ internal actual fun NativeMap(
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapBounds) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
+    onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     modifier: Modifier,
 ) {
+    val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
@@ -36,6 +39,10 @@ internal actual fun NativeMap(
     val eventSink =
         remember {
             object : FoundationIosMapEventSink {
+                override fun onHighlightedPinPositionChanged(position: HighlightedPinPosition?) {
+                    currentOnHighlightPosition(position)
+                }
+
                 override fun onEmotionPinClick(id: Long) = currentOnEmotionPinClick(id)
 
                 override fun onRendererUnavailable() = currentOnMapError(MapErrorUiModel.RendererUnavailable)
@@ -98,19 +105,16 @@ private fun MapUiModel.toFoundationIosRenderUiModel(): FoundationIosMapRenderUiM
         cameraCommandValue = cameraCommand?.value ?: 0.0,
         isRecordLocationPicking = isRecordLocationPicking,
         recordOrigin = recordOrigin?.let { FoundationIosMapCoordinateUiModel(it.latitude, it.longitude) },
+        highlightedEmotionId = highlightedEmotionId,
         emotionPinCoordinates =
-            if (isRecordLocationPicking) {
-                emptyList()
-            } else {
-                emotionPins.map {
-                    FoundationIosEmotionPinCoordinateUiModel(
-                        id = it.id,
-                        latitude = it.latitude,
-                        longitude = it.longitude,
-                        imageKey = it.symbolImageKey(),
-                        rotationDegrees = it.rotationDegrees,
-                    )
-                }
+            emotionPins.map {
+                FoundationIosEmotionPinCoordinateUiModel(
+                    id = it.id,
+                    latitude = it.latitude,
+                    longitude = it.longitude,
+                    imageKey = it.symbolImageKey(),
+                    rotationDegrees = it.rotationDegrees,
+                )
             },
         emotionPinSymbolImages =
             emotionPinSymbolImages.map {

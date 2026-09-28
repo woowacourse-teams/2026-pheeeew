@@ -39,7 +39,7 @@ import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
 import androidx.compose.foundation.Canvas as CanvasComposable
 
-private val EMOTION_PIN_SIZE = 40.dp
+internal val EMOTION_PIN_SIZE = 40.dp
 private const val SYMBOL_RESOURCE_RETRY_MILLIS = 80L
 
 /** Raster icon registered as a native MapLibre style image. */

@@ -9,6 +9,7 @@ data class FoundationIosMapRenderUiModel(
     val cameraLongitude: Double,
     val cameraCommandValue: Double,
     val isRecordLocationPicking: Boolean,
+    val highlightedEmotionId: Long?,
     val recordOrigin: FoundationIosMapCoordinateUiModel?,
     val emotionPinCoordinates: List<FoundationIosEmotionPinCoordinateUiModel>,
     val emotionPinSymbolImages: List<FoundationIosMapSymbolImageUiModel>,
