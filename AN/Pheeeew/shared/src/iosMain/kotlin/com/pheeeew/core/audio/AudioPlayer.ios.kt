@@ -62,14 +62,14 @@ internal class IosAudioPlayer : AudioPlayer {
         if (!resume) stop()
         val address = if (source.startsWith("https://")) NSURL.URLWithString(source) else NSURL.fileURLWithPath(source)
         if (address == null) {
-            mutableState.value = AudioPlayerState(error = "녹음을 재생하지 못했어요. 다시 눌러 주세요.")
+            mutableState.value = AudioPlayerState(error = "녹음을 재생하지 못했어. 다시 눌러.")
             return
         }
         val session = AVAudioSession.sharedInstance()
         if (!session.setCategory(AVAudioSessionCategoryPlayback, error = null) ||
             !session.setActive(true, error = null)
         ) {
-            mutableState.value = AudioPlayerState(error = "녹음을 재생하지 못했어요. 다시 눌러 주세요.")
+            mutableState.value = AudioPlayerState(error = "녹음을 재생하지 못했어. 다시 눌러.")
             return
         }
         ownsSession = true
@@ -128,7 +128,7 @@ internal class IosAudioPlayer : AudioPlayer {
                     }
                     if (next.currentItem?.status == AVPlayerItemStatusFailed || (!started && ticks > 120)) {
                         stop()
-                        mutableState.value = AudioPlayerState(error = "녹음을 재생하지 못했어요. 다시 눌러 주세요.")
+                        mutableState.value = AudioPlayerState(error = "녹음을 재생하지 못했어. 다시 눌러.")
                         break
                     }
                 }
