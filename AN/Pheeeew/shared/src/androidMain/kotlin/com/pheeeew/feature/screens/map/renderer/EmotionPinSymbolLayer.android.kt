@@ -24,13 +24,15 @@ import org.maplibre.geojson.Point
 /** Native MapLibre source and symbol layer for emotion pins. */
 internal class EmotionPinSymbolLayer {
     private val registeredImageKeys = mutableSetOf<String>()
-    private var renderedPins: List<EmotionPinUiModel>? = null
+    private var lastRenderedPins: List<EmotionPinUiModel>? = null
     private var layerVisible: Boolean? = null
+    private var lastMonitoringLoadId: String? = null
 
     fun install(style: Style) {
         registeredImageKeys.clear()
-        renderedPins = null
+        lastRenderedPins = null
         layerVisible = null
+        lastMonitoringLoadId = null
         if (style.getSource(SOURCE_ID) == null) {
             style.addSource(GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(emptyList())))
         }
@@ -74,10 +76,12 @@ internal class EmotionPinSymbolLayer {
             style.getLayer(LAYER_ID)?.setProperties(visibility(if (visible) Property.VISIBLE else Property.NONE))
             layerVisible = visible
         }
-        // Keep the source while selecting a location and avoid rebuilding it for unrelated UI updates.
-        if (renderedPins == pins) return
-        val features =
-            pins.map { pin ->
+        // A pin must not enter the source until its asynchronously rasterized icon is ready.
+        val renderedPins = pins.filter { it.symbolImageKey() in registeredImageKeys }
+        // Loading, notices and other Compose state changes do not change the map's features.
+        if (renderedPins == lastRenderedPins && monitoringLoadId == lastMonitoringLoadId) return
+        val features: List<Feature> =
+            renderedPins.map { pin ->
                 val properties =
                     JsonObject().apply {
                         addProperty("monitoring-load-id", monitoringLoadId)
@@ -91,7 +95,8 @@ internal class EmotionPinSymbolLayer {
                 )
             }
         source.setGeoJson(FeatureCollection.fromFeatures(features))
-        renderedPins = pins.toList()
+        lastRenderedPins = renderedPins
+        lastMonitoringLoadId = monitoringLoadId
     }
 
     private fun EmotionPinSymbolImage.toAndroidBitmap(densityDpi: Int): Bitmap {

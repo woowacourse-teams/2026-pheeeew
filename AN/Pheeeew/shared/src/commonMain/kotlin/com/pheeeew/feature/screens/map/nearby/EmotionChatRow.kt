@@ -57,6 +57,7 @@ internal fun EmotionChatRow(
     busy: Boolean,
     playing: Boolean,
     audioLoading: Boolean,
+    onOpenOnMap: () -> Unit,
     onSelect: () -> Unit,
     onDismissMenu: () -> Unit,
     onReact: (EmotionReactionType) -> Unit,
@@ -97,7 +98,7 @@ internal fun EmotionChatRow(
                         .combinedClickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = {},
+                            onClick = onOpenOnMap,
                             onLongClick = {
                                 reactionOnly = false
                                 onSelect()

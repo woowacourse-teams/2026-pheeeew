@@ -4,15 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.repository.EmotionModerationResult
 import com.pheeeew.domain.repository.emotion.EmotionFailure
 import com.pheeeew.domain.repository.emotion.EmotionRepository
 import com.pheeeew.domain.repository.emotion.EmotionResult
 import com.pheeeew.domain.repository.group.GroupStampListLoadResult
 import com.pheeeew.domain.repository.group.GroupStampListRepository
+import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.toUiShape
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
@@ -233,6 +236,20 @@ class NearbyEmotionViewModel(
         mutableState.update { it.copy(message = null) }
     }
 
+    fun openOnMap(
+        id: Long,
+        focus: (Long, GeoCoordinate?) -> Boolean,
+    ) {
+        val item = state.value.items.firstOrNull { it.id == id } ?: return
+        val focused = focus(item.id, item.coordinate)
+        mutableState.update {
+            it.copy(
+                selectedId = null,
+                message = if (focused) null else "지도에서 이 감정의 위치를 찾지 못했어요. 새로고침 후 다시 시도해 주세요.",
+            )
+        }
+    }
+
     fun react(
         id: Long,
         type: EmotionReactionType,
@@ -332,35 +349,59 @@ class NearbyEmotionViewModel(
         mutableState.update { it.copy(blockId = id, selectedId = null, message = null) }
     }
 
-    fun confirmBlock() {
+    fun confirmBlock(blockUser: BlockUserUseCase? = null) {
         val id = state.value.blockId ?: return
         if (id in state.value.pendingIds) return
-        mutableState.update { it.copy(pendingIds = it.pendingIds + id) }
+        mutableState.update { it.copy(blockId = null, pendingIds = it.pendingIds + id) }
         viewModelScope.launch {
-            when (
-                val result =
-                    telemetry
-                        .operation(
-                            "emotion_block_finished",
-                            labels(
-                                "entry_key" to id.toString(),
-                                "entry_source" to "list",
-                                "action" to "block_emotion",
-                            ),
-                        ).observe(::resultLabel) { repository.block(id) }
-            ) {
-                is EmotionResult.Success -> {
+            val result =
+                telemetry
+                    .operation(
+                        "emotion_block_finished",
+                        labels(
+                            "entry_key" to id.toString(),
+                            "entry_source" to "list",
+                            "action" to if (blockUser == null) "block_emotion" else "block_user",
+                        ),
+                    ).observe(::resultLabel) {
+                        try {
+                            if (blockUser != null) {
+                                blockUser(id)
+                            } else {
+                                when (repository.block(id)) {
+                                    is EmotionResult.Success -> EmotionModerationResult.Success
+                                    is EmotionResult.Failure -> EmotionModerationResult.Unavailable
+                                }
+                            }
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            EmotionModerationResult.Unavailable
+                        }
+                    }
+            when (result) {
+                EmotionModerationResult.Success -> {
                     removeItem(id)
-                    mutableState.update { it.copy(blockId = null, message = "이 감정을 차단했어.") }
+                    mutableState.update { it.copy(message = "해당 사용자를 차단했어.") }
+                    if (blockUser != null) refresh()
                 }
 
-                is EmotionResult.Failure -> {
-                    mutableState.update { it.copy(message = result.reason.message()) }
+                else -> {
+                    mutableState.update { it.copy(message = result.blockMessage()) }
                 }
             }
             mutableState.update { it.copy(pendingIds = it.pendingIds - id) }
         }
     }
+
+    private fun EmotionModerationResult.blockMessage(): String =
+        when (this) {
+            EmotionModerationResult.OwnEmotion -> "내가 작성한 감정은 사용자 차단을 할 수 없어요."
+            EmotionModerationResult.AuthorUnknown -> "작성자 정보를 알 수 없어 사용자 차단을 할 수 없어요."
+            EmotionModerationResult.NotFound -> "차단할 감정을 찾을 수 없습니다."
+            EmotionModerationResult.NetworkUnavailable -> "인터넷 연결 상태를 확인해주세요."
+            else -> "차단에 실패했습니다. 잠시 후 다시 시도해주세요."
+        }
 
     fun onMembershipChanged() {
         groupJob?.cancel()

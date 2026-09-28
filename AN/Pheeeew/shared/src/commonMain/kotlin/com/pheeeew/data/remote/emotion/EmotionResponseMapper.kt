@@ -1,5 +1,6 @@
 package com.pheeeew.data.remote.emotion
 
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.Emotion
 import com.pheeeew.domain.model.emotion.EmotionAudio
 import com.pheeeew.domain.model.emotion.EmotionContentType
@@ -53,6 +54,17 @@ internal object EmotionResponseMapper {
                 )
             },
             audio,
+            dto.geometry?.toCoordinateOrNull(),
         )
+    }
+
+    private fun EmotionPointDto.toCoordinateOrNull(): GeoCoordinate? {
+        if (type != null && type != "Point") return null
+        if (coordinates.size != 2) return null
+        val longitude = coordinates[0]
+        val latitude = coordinates[1]
+        if (!longitude.isFinite() || longitude !in -180.0..180.0) return null
+        if (!latitude.isFinite() || latitude !in -90.0..90.0) return null
+        return GeoCoordinate(latitude, longitude)
     }
 }

@@ -20,7 +20,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -38,8 +37,10 @@ import com.pheeeew.feature.screens.map.overlay.MapFeedbackOverlay
 import com.pheeeew.feature.screens.map.overlay.MapOverlay
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
+import com.pheeeew.feature.screens.map.record.RegisteredEmotionUiModel
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
+import com.pheeeew.feature.screens.map.record.group.groupSelectorDialogProperties
 import com.pheeeew.feature.screens.map.record.location.RecordLocationSelectionContent
 import com.pheeeew.feature.screens.map.record.location.RecordMapViewport
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheet
@@ -48,6 +49,7 @@ import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
 import com.pheeeew.feature.screens.map.renderer.NativeMap
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -146,6 +148,20 @@ fun MapScreen(
         onDispose { viewModel.contentVisibility(false) }
     }
     val notice by recordViewModel.notice.collectAsState()
+    val registeredEmotion by recordViewModel.registeredEmotion.collectAsState()
+    var highlightedEmotion by remember { mutableStateOf<RegisteredEmotionUiModel?>(null) }
+    var highlightedPinPosition by remember { mutableStateOf<HighlightedPinPosition?>(null) }
+    val clearHighlight = {
+        highlightedEmotion = null
+        highlightedPinPosition = null
+    }
+    // Keep the loaded pin's badge for one minute; discard it if its refresh never arrives.
+    LaunchedEffect(highlightedEmotion?.id, highlightedPinPosition?.id) {
+        if (highlightedEmotion != null) {
+            delay(if (highlightedPinPosition?.id == highlightedEmotion?.id) 60_000 else 10_000)
+            clearHighlight()
+        }
+    }
     LaunchedEffect(recordViewModel, monitoringResumed, monitoringVisible) {
         if (monitoringResumed && monitoringVisible) {
             recordViewModel.funnel.screenShown()
@@ -205,6 +221,10 @@ fun MapScreen(
             leaveInput()
         }
     }
+    FlowBackHandler(
+        enabled = uiModel.isEmotionSelectorExpanded,
+        onBack = viewModel::onEmotionSelectorToggle,
+    )
     FlowBackHandler(recordUiModel.step != RecordFlowStepUiModel.Closed) {
         when {
             recordUiModel.isSubmitting -> Unit
@@ -217,10 +237,15 @@ fun MapScreen(
     LaunchedEffect(recordViewModel, viewModel) {
         recordViewModel.registeredEmotions.collect(viewModel::onEmotionRegistered)
     }
-    LaunchedEffect(recordUiModel.step) {
+    LaunchedEffect(recordUiModel.step, registeredEmotion) {
         if (recordUiModel.step == RecordFlowStepUiModel.Closed) {
             voiceRecorder.clear()
             viewModel.onRecordLocationPickingChanged(false)
+            recordViewModel.consumeRegisteredEmotion()?.let { emotion ->
+                highlightedPinPosition = null
+                highlightedEmotion = emotion
+                viewModel.focusOnCoordinate(emotion.coordinate)
+            }
         }
     }
     var recordViewport by remember { mutableStateOf<RecordMapViewport?>(null) }
@@ -228,6 +253,7 @@ fun MapScreen(
 
     LaunchedEffect(recordUiModel.step) {
         if (recordUiModel.step != RecordFlowStepUiModel.LocationSelection) recordViewport = null
+        if (recordUiModel.step != RecordFlowStepUiModel.Closed) clearHighlight()
     }
 
     LaunchedEffect(currentLocation) {
@@ -243,38 +269,56 @@ fun MapScreen(
             onRecordCoordinateSelected = recordViewModel::onLocationSelected,
             groupOptions = groupOptions,
             mapContent = { renderUiModel, mapModifier ->
-                key(uiModel.mapRevision) {
-                    NativeMap(
-                        state =
-                            renderUiModel.copy(
-                                recordOrigin = recordUiModel.origin,
-                                emotionContentLoad = renderUiModel.emotionContentLoad.takeIf { contentVisible },
-                                emotionPins =
-                                    renderUiModel.emotionPins.filterNot {
-                                        it.id in renderUiModel.hiddenEmotionIds
-                                    },
-                            ),
-                        onMapError = viewModel::onMapError,
-                        onMapRecovered = viewModel::onMapRecovered,
-                        onRecordViewportChanged = { centerX, centerY, radius ->
-                            val viewport = RecordMapViewport(centerX, centerY, radius)
-                            if (recordViewport != viewport) recordViewport = viewport
-                        },
-                        onViewportChanged = { bounds ->
-                            viewModel.onViewportChanged(bounds)
-                            onViewportChanged(
-                                EmotionBounds(
-                                    bounds.minLongitude,
-                                    bounds.minLatitude,
-                                    bounds.maxLongitude,
-                                    bounds.maxLatitude,
+                Box(mapModifier) {
+                    key(uiModel.mapRevision) {
+                        NativeMap(
+                            state =
+                                renderUiModel.copy(
+                                    recordOrigin = recordUiModel.origin,
+                                    highlightedEmotionId = highlightedEmotion?.id,
+                                    emotionContentLoad = renderUiModel.emotionContentLoad.takeIf { contentVisible },
+                                    emotionPins =
+                                        renderUiModel.emotionPins.filterNot {
+                                            it.id in renderUiModel.hiddenEmotionIds
+                                        },
                                 ),
-                            )
-                        },
-                        onEmotionPinClick = onEmotionPinClick,
-                        onContentPresented = viewModel::contentPresented,
-                        modifier = mapModifier,
-                    )
+                            onMapError = viewModel::onMapError,
+                            onMapRecovered = viewModel::onMapRecovered,
+                            onRecordViewportChanged = { centerX, centerY, radius ->
+                                val viewport = RecordMapViewport(centerX, centerY, radius)
+                                if (recordViewport != viewport) recordViewport = viewport
+                            },
+                            onViewportChanged = { bounds ->
+                                viewModel.onViewportChanged(bounds)
+                                onViewportChanged(
+                                    EmotionBounds(
+                                        bounds.minLongitude,
+                                        bounds.minLatitude,
+                                        bounds.maxLongitude,
+                                        bounds.maxLatitude,
+                                    ),
+                                )
+                            },
+                            onEmotionPinClick = { id ->
+                                clearHighlight()
+                                onEmotionPinClick(id)
+                            },
+                            onContentPresented = viewModel::contentPresented,
+                            onHighlightedPinPositionChanged = { position ->
+                                highlightedPinPosition = position?.takeIf { it.id == highlightedEmotion?.id }
+                            },
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                    val highlightPosition = highlightedPinPosition
+                    if (highlightPosition != null && highlightPosition.id == highlightedEmotion?.id &&
+                        uiModel.mapError == null
+                    ) {
+                        val position = highlightPosition
+                        key(position.id) {
+                            RegisteredPinHighlight(position = position)
+                        }
+                    }
                 }
             },
             onListClick = onListClick,
@@ -506,7 +550,7 @@ internal fun MapScreenContent(
                 if (recordUiModel.isGroupSelectorVisible) {
                     Dialog(
                         onDismissRequest = onRecordGroupSelectorDismiss,
-                        properties = DialogProperties(usePlatformDefaultWidth = false),
+                        properties = groupSelectorDialogProperties(),
                     ) {
                         GroupSelectorContent(
                             isVisible = true,

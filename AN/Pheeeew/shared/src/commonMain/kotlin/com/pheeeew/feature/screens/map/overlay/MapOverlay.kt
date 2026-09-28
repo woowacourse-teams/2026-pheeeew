@@ -44,7 +44,8 @@ import pheeeew.shared.generated.resources.ic_my_location
 
 private const val EMOTION_PROMPT_DAMPING_RATIO = 0.8205f
 private const val EMOTION_PROMPT_STIFFNESS = 380f
-private val MAP_BOTTOM_BAR_LIFT = AppBottomNavigationBarOverlaySpace - 56.dp
+private val MAP_CONTROL_BOTTOM_SPACE = AppBottomNavigationBarOverlaySpace + 24.dp
+private val MAP_BOTTOM_BAR_LIFT = MAP_CONTROL_BOTTOM_SPACE - 56.dp
 
 @Composable
 fun MapOverlay(
@@ -116,7 +117,7 @@ fun MapOverlay(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "주변 목록",
+                        text = "감정 목록",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
@@ -134,7 +135,7 @@ fun MapOverlay(
                         Modifier
                             .align(Alignment.BottomEnd)
                             .navigationBarsPadding()
-                            .padding(bottom = AppBottomNavigationBarOverlaySpace)
+                            .padding(bottom = MAP_CONTROL_BOTTOM_SPACE)
                             .clip(CircleShape)
                             .shadow(elevation = 4.dp, shape = CircleShape)
                             .background(AppColors.Surface)
@@ -142,13 +143,13 @@ fun MapOverlay(
                             .clickable(
                                 enabled = !isRequestingLocation,
                                 onClick = onMyLocationClick,
-                            ).padding(horizontal = 10.dp, vertical = 10.dp),
+                            ).padding(12.dp),
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_my_location),
                         contentDescription = null,
-                        modifier = Modifier.size(28.dp),
-                        tint = Color(0xff000000),
+                        modifier = Modifier.size(24.dp),
+                        tint = Color(0xFF2670F8),
                     )
                 }
             }
@@ -183,7 +184,7 @@ fun MapOverlay(
                     modifier =
                         Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = AppBottomNavigationBarOverlaySpace),
+                            .padding(bottom = MAP_CONTROL_BOTTOM_SPACE),
                 )
             }
         }

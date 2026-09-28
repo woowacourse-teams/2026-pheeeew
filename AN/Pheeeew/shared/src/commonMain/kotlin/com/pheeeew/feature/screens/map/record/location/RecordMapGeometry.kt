@@ -10,7 +10,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 const val RECORD_RADIUS_METERS = 500.0
-const val RECORD_CAMERA_LIMIT_METERS = 650.0
+const val RECORD_CAMERA_LIMIT_METERS = 500.0
 private const val EARTH_RADIUS_METERS = 6_371_000.0
 
 data class RecordMapViewport(

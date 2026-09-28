@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -35,7 +35,7 @@ fun ReportDescriptionInput(
                 .heightIn(min = 84.dp, max = 144.dp)
                 .border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(14.dp))
                 .padding(horizontal = 14.dp, vertical = 14.dp),
-        textStyle = TextStyle(color = AppColors.GroupInk, fontSize = 14.sp),
+        textStyle = LocalTextStyle.current.copy(color = AppColors.GroupInk, fontSize = 14.sp),
         maxLines = 5,
         decorationBox = { innerTextField ->
             Box(modifier = Modifier.fillMaxWidth()) {
