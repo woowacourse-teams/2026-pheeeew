@@ -9,9 +9,10 @@ import com.pheeeew.domain.model.emotion.EmotionReaction
 import com.pheeeew.domain.repository.emotion.EmotionFailure
 import com.pheeeew.domain.repository.emotion.EmotionRepository
 import com.pheeeew.domain.repository.emotion.EmotionResult
-import com.pheeeew.domain.repository.group.GroupListLoadResult
-import com.pheeeew.domain.repository.group.GroupListRepository
-import com.pheeeew.feature.screens.group.mapper.toSummaryUiModel
+import com.pheeeew.domain.repository.group.GroupStampListLoadResult
+import com.pheeeew.domain.repository.group.GroupStampListRepository
+import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
+import com.pheeeew.feature.component.stamp.toUiShape
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -23,7 +24,7 @@ import kotlinx.coroutines.launch
 
 class NearbyEmotionViewModel(
     private val repository: EmotionRepository,
-    private val groups: GroupListRepository,
+    private val groups: GroupStampListRepository,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(NearbyEmotionUiState())
     val state = mutableState.asStateFlow()
@@ -274,12 +275,21 @@ class NearbyEmotionViewModel(
         groupJob =
             viewModelScope.launch {
                 when (val result = groups.findMine()) {
-                    is GroupListLoadResult.Loaded -> {
+                    is GroupStampListLoadResult.Loaded -> {
                         val options =
                             listOf(ALL_GROUP_OPTION) +
                                 result.groups.map {
-                                    val summary = it.toSummaryUiModel()
-                                    GroupSelectorGroupUiModel(it.id.value, it.name, it.stamp.text, summary.stamp)
+                                    GroupSelectorGroupUiModel(
+                                        it.id.value,
+                                        it.name,
+                                        it.stamp.text,
+                                        StampAppearanceUiModel(
+                                            it.stamp.text,
+                                            it.stamp.frame.toUiShape(),
+                                            it.stamp.backgroundColor.argb,
+                                            it.stamp.textColor.argb,
+                                        ),
+                                    )
                                 }
                         val disappeared = options.none { it.id == state.value.groupId }
                         mutableState.update {
@@ -292,7 +302,7 @@ class NearbyEmotionViewModel(
                         if (disappeared && state.value.visible) refresh()
                     }
 
-                    GroupListLoadResult.Unavailable -> {
+                    GroupStampListLoadResult.Unavailable -> {
                         mutableState.update { it.copy(groupsLoading = false, groupsError = true) }
                     }
                 }

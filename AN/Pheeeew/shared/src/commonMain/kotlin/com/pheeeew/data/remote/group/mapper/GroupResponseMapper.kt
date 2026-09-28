@@ -3,11 +3,13 @@ package com.pheeeew.data.remote.group.mapper
 import com.pheeeew.data.remote.group.dto.GroupPreviewResponseDto
 import com.pheeeew.data.remote.group.dto.GroupResponseDto
 import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
+import com.pheeeew.data.remote.group.dto.GroupStampItemResponseDto
 import com.pheeeew.domain.model.group.Group
 import com.pheeeew.domain.model.group.GroupId
 import com.pheeeew.domain.model.group.GroupPreview
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.domain.model.group.GroupStamp
+import com.pheeeew.domain.model.group.GroupStampItem
 import com.pheeeew.domain.model.group.GroupStampFrame
 import com.pheeeew.domain.model.group.StampColor
 
@@ -33,6 +35,13 @@ object GroupResponseMapper {
             name = parseName(dto.name),
             description = dto.description,
             memberCount = parseMemberCount(dto.memberCount),
+            stamp = dto.stamp.toDomain(),
+        )
+
+    fun toDomain(dto: GroupStampItemResponseDto): GroupStampItem =
+        GroupStampItem(
+            id = parseId(dto.groupId),
+            name = parseName(dto.name),
             stamp = dto.stamp.toDomain(),
         )
 
