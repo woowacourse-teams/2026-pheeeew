@@ -54,17 +54,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: S3 Variables 확인
+      - name: S3 Secrets 확인
         env:
-          S3_BUCKET: ${{ vars.S3_BUCKET }}
-          S3_KEY_PREFIX: ${{ vars.S3_KEY_PREFIX }}
-          S3_REGION: ${{ vars.S3_REGION }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_KEY_PREFIX: ${{ secrets.S3_KEY_PREFIX }}
+          S3_REGION: ${{ secrets.S3_REGION }}
         run: |
           set -eu
           for key in S3_BUCKET S3_KEY_PREFIX S3_REGION; do
             value="${!key:-}"
-            if [[ -z "$value" || ! "$value" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
-              echo "::error::development Variables의 $key 값은 영문, 숫자, 점, 밑줄, 슬래시, 하이픈으로 지정해야 합니다."
+            if [[ -z "$value" ]]; then
+              echo "::error::development Secrets에 $key 값이 등록되어 있지 않거나 비어 있습니다."
+              exit 1
+            fi
+            if [[ ! "$value" =~ ^[a-zA-Z0-9._/-]+$ ]]; then
+              echo "::error::development Secrets의 $key 값은 앞뒤 공백 없이 영문, 숫자, 점, 밑줄, 슬래시, 하이픈으로 지정해야 합니다."
               exit 1
             fi
           done
@@ -124,9 +128,9 @@ jobs:
           JWT_PUBLIC_KEY_BASE64: ${{ secrets.JWT_PUBLIC_KEY_BASE64 }}
           PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64: ${{ secrets.PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64 }}
           PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
-          S3_BUCKET: ${{ vars.S3_BUCKET }}
-          S3_KEY_PREFIX: ${{ vars.S3_KEY_PREFIX }}
-          S3_REGION: ${{ vars.S3_REGION }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+          S3_KEY_PREFIX: ${{ secrets.S3_KEY_PREFIX }}
+          S3_REGION: ${{ secrets.S3_REGION }}
         run: |
           set -eu
           umask 077
