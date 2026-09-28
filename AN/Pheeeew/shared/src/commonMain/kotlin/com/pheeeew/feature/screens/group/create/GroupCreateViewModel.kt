@@ -52,7 +52,7 @@ class GroupCreateViewModel(
     fun onStampLabelChanged(value: String) {
         updateDraft(
             transform = { draft ->
-                draft.copy(stamp = draft.stamp.copy(label = formRules.retainStampLabelForValidation(value)))
+                draft.copy(stamp = draft.stamp.copy(label = formRules.limitStampLabel(value)))
             },
             clearError = { errors -> errors.copy(stampLabel = null) },
         )

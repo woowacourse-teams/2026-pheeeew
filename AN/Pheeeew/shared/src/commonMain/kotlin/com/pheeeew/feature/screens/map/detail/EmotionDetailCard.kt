@@ -1,6 +1,8 @@
 package com.pheeeew.feature.screens.map.detail
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -8,14 +10,19 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -25,6 +32,9 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -237,13 +247,34 @@ private fun EmotionDetailContent(
         }
 
         is EmotionDetailContentUiModel.Memo -> {
-            Text(
-                content.text,
-                Modifier.fillMaxWidth(),
-                color = AppColors.GroupInk,
-                fontSize = 14.sp,
-                lineHeight = 24.sp,
-            )
+            val memoScrollState = rememberScrollState()
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 120.dp),
+            ) {
+                Text(
+                    content.text,
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(end = 8.dp)
+                        .verticalScroll(memoScrollState),
+                    color = AppColors.GroupInk,
+                    fontSize = 14.sp,
+                    lineHeight = 24.sp,
+                )
+                if (memoScrollState.maxValue > 0) {
+                    EmotionDetailScrollbar(
+                        scrollState = memoScrollState,
+                        modifier =
+                            Modifier
+                                .align(Alignment.CenterEnd)
+                                .fillMaxHeight()
+                                .width(4.dp)
+                                .padding(vertical = 2.dp),
+                    )
+                }
+            }
             Spacer(Modifier.height(24.dp))
         }
 
@@ -251,6 +282,44 @@ private fun EmotionDetailContent(
             EmotionAudioPlayer(content, onPlaybackClick, Modifier.fillMaxWidth())
             Spacer(Modifier.height(24.dp))
         }
+    }
+}
+
+@Composable
+private fun EmotionDetailScrollbar(
+    scrollState: ScrollState,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(modifier) {
+        val maxScroll = scrollState.maxValue
+        if (maxScroll <= 0 || size.height <= 0f) return@Canvas
+
+        val cornerRadius = size.width / 2f
+        drawRoundRect(
+            color = AppColors.GroupInk.copy(alpha = 0.12f),
+            cornerRadius = CornerRadius(cornerRadius),
+        )
+
+        val minThumbHeight = 20.dp.toPx()
+        val contentHeight = size.height + maxScroll
+        val thumbHeight =
+            (size.height * size.height / contentHeight)
+                .coerceAtLeast(minThumbHeight)
+                .coerceAtMost(size.height)
+        val scrollRange = size.height - thumbHeight
+        val thumbTop =
+            if (scrollRange == 0f) {
+                0f
+            } else {
+                (scrollState.value.toFloat() / maxScroll * scrollRange).coerceIn(0f, scrollRange)
+            }
+
+        drawRoundRect(
+            color = AppColors.GroupInk.copy(alpha = 0.6f),
+            topLeft = Offset(0f, thumbTop),
+            size = Size(size.width, thumbHeight),
+            cornerRadius = CornerRadius(cornerRadius),
+        )
     }
 }
 

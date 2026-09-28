@@ -94,6 +94,7 @@ fun GroupDetailRoute(
             .rememberMonitoringForeground() &&
             LocalProductMonitoringVisible.current
     GroupDetailScreen(
+        feedbackOperationKey = { viewModel.lastAcceptedPressKey },
         onFeedbackShown = { key ->
             if (isCurrentDestination && foreground) {
                 viewModel.telemetry.emit(

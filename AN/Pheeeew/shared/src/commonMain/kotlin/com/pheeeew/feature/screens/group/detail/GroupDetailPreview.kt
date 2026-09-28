@@ -129,7 +129,7 @@ private fun GroupDetailPreviewFrame(
 }
 
 @Composable
-private fun previewActions(onEmotionTap: (EmotionKind) -> Boolean = { true }) =
+internal fun previewActions(onEmotionTap: (EmotionKind) -> Boolean = { true }) =
     GroupDetailActions(
         onBack = {},
         onReturnHome = {},
@@ -147,7 +147,7 @@ private fun previewActions(onEmotionTap: (EmotionKind) -> Boolean = { true }) =
         onNoticeDismissed = {},
     )
 
-private fun fixtureDetail(
+internal fun fixtureDetail(
     todayTotal: Long,
     presentation: GroupDetailPresentationKind,
 ): GroupDetailUiModel =

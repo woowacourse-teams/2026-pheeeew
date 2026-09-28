@@ -489,7 +489,7 @@ private fun SighListHeader(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "한숨 목록",
+                    text = "주변 감정",
                     style = AppTheme.typography.sectionHeader,
                 )
                 if (!compact) {

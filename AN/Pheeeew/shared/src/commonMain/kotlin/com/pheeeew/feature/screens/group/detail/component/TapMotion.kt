@@ -234,13 +234,12 @@ internal object TapTrajectory {
             val t = index / 32.0
             val p = 1 - (1 - t).pow(3)
             val remaining = 1 - p
-            val fade = ((t - .74) / .26).coerceIn(0.0, 1.0)
             TapTransform(
                 fixed(2 * remaining * p * controlX + p * p * deltaX, 2),
                 fixed(-(2 * remaining * p * rise * .88 + p * p * rise), 2),
                 fixed(fitScale * (1 - .42 * exp(-24 * t) * cos(32 * t)), 3),
                 fixed(initialRotation + (rotation - initialRotation) * p, 2),
-                min(1.0, t / .045) * (1 - fade * fade * (3 - 2 * fade)),
+                min(1.0, t / .045),
             )
         }
 
@@ -279,12 +278,12 @@ internal object TapTrajectory {
                 listOf(
                     TapTransform(scale = fixed(fit, 3), alpha = 0.0),
                     TapTransform(scale = fixed(fit, 3)),
-                    TapTransform(scale = fixed(fit, 3), alpha = 0.0),
+                    TapTransform(scale = fixed(fit, 3)),
                 )
             } else {
                 frames(deltaX, controlX, rise, fit, initialRotation, rotation)
             }
-        val duration = if (reduced) 150.0 else random.range(760.0, 940.0)
+        val duration = if (reduced) 150.0 else random.range(650.0, 800.0)
         return TapFlight(x - width / 2, y, duration, frames)
     }
 }
