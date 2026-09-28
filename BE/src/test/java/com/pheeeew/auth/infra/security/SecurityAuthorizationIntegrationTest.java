@@ -54,7 +54,11 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 
 @Import(SharedPostgisTestConfiguration.class)
 @ActiveProfiles("test")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "pheeeew.s3.bucket=pheeeew-test",
+        "pheeeew.s3.key-prefix=pheeeew/test/",
+        "pheeeew.s3.region=ap-northeast-2"
+})
 class SecurityAuthorizationIntegrationTest {
 
     private static final UUID 기기_공개_식별자 = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");

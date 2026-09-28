@@ -16,6 +16,10 @@ spring:
       mode: never
 
 pheeeew:
+  s3:
+    bucket: ${S3_BUCKET:}
+    key-prefix: ${S3_KEY_PREFIX:}
+    region: ${S3_REGION:}
   jwt:
     private-key-base64: ${JWT_PRIVATE_KEY_BASE64}
     public-key-base64: ${JWT_PUBLIC_KEY_BASE64}
