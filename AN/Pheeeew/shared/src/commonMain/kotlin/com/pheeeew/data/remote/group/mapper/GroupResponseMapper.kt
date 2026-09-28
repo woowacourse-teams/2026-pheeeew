@@ -2,6 +2,7 @@ package com.pheeeew.data.remote.group.mapper
 
 import com.pheeeew.data.remote.group.dto.GroupPreviewResponseDto
 import com.pheeeew.data.remote.group.dto.GroupResponseDto
+import com.pheeeew.data.remote.group.dto.GroupStampItemResponseDto
 import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
 import com.pheeeew.domain.model.group.Group
 import com.pheeeew.domain.model.group.GroupId
@@ -9,6 +10,7 @@ import com.pheeeew.domain.model.group.GroupPreview
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.domain.model.group.GroupStamp
 import com.pheeeew.domain.model.group.GroupStampFrame
+import com.pheeeew.domain.model.group.GroupStampItem
 import com.pheeeew.domain.model.group.StampColor
 
 class GroupContractException(
@@ -16,6 +18,13 @@ class GroupContractException(
 ) : IllegalArgumentException("그룹 응답 계약을 확인할 수 없습니다: $field")
 
 object GroupResponseMapper {
+    fun toDomain(dto: GroupStampItemResponseDto): GroupStampItem =
+        GroupStampItem(
+            id = parseId(dto.groupId),
+            name = parseName(dto.name),
+            stamp = dto.stamp.toDomain(),
+        )
+
     fun toDomain(dto: GroupResponseDto): Group =
         Group(
             id = parseId(dto.groupId),

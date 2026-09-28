@@ -62,7 +62,7 @@ class EmotionRegistrationApiTest {
                 assertEquals(
                     42L,
                     assertIs<ApiResult.Success<EmotionRegistrationResponseDto>>(
-                        EmotionRegistrationApi(client.requests).register(registration.toRequestDto()!!),
+                        EmotionRegistrationApi(client.requests).register(registration.toRequestDto(null)!!),
                     ).value.id,
                 )
             } finally {
