@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecordingState
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
+import com.pheeeew.feature.screens.map.drawPlaybackWaveform
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
@@ -198,6 +199,7 @@ private fun AdioRecordingPanel(
             AudioWaveform(
                 isRecording = true,
                 samples = audio.samples,
+                playbackProgress = 0f,
                 modifier =
                     Modifier
                         .weight(1f)
@@ -247,7 +249,14 @@ private fun AdioCompletedPanel(
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = formatAudioTime(audio.elapsedSeconds),
+                text =
+                    formatAudioTime(
+                        if (audio.playing) {
+                            (audio.playbackPositionMillis / 1000).toInt()
+                        } else {
+                            (audio.durationMillis / 1000).toInt().takeIf { it > 0 } ?: audio.elapsedSeconds
+                        },
+                    ),
                 color = AppColors.TextPrimary,
                 fontSize = 14.sp,
             )
@@ -284,6 +293,8 @@ private fun AdioCompletedPanel(
             Spacer(modifier = Modifier.width(16.dp))
             AudioWaveform(
                 samples = audio.samples,
+                isRecording = false,
+                playbackProgress = audio.playbackProgress(),
                 modifier =
                     Modifier
                         .weight(1f)
@@ -296,33 +307,31 @@ private fun AdioCompletedPanel(
 @Composable
 private fun AudioWaveform(
     samples: List<Float>,
-    isRecording: Boolean = false,
+    isRecording: Boolean,
+    playbackProgress: Float,
     modifier: Modifier = Modifier,
 ) {
     Canvas(modifier = modifier) {
-        val count = 64
-        val displayed =
+        val activeColor = AppColors.RecordSheetRecording
+        val waveform =
             if (isRecording) {
-                List((count - samples.size).coerceAtLeast(0)) { 0f } + samples.takeLast(count)
+                List((64 - samples.size).coerceAtLeast(0)) { 0f } + samples.takeLast(64)
             } else {
-                List(count) { index ->
-                    val from = index * samples.size / count
-                    val to = ((index + 1) * samples.size / count).coerceAtLeast(from + 1)
-                    samples.subList(from.coerceAtMost(samples.size), to.coerceAtMost(samples.size)).maxOrNull() ?: 0f
-                }
+                samples
             }
-        val spacing = size.width / count
-        displayed.forEachIndexed { index, value ->
-            val halfHeight = (size.height * value.coerceIn(0f, 1f)).coerceAtLeast(2.dp.toPx()) / 2f
-            val x = spacing * (index + 0.5f)
-            drawLine(
-                color = if (isRecording) AppColors.RecordSheetRecording else AppColors.TextPrimary,
-                start = Offset(x, size.height / 2f - halfHeight),
-                end = Offset(x, size.height / 2f + halfHeight),
-                strokeWidth = 1.dp.toPx(),
-            )
-        }
+        drawPlaybackWaveform(
+            waveform = waveform,
+            progress = if (isRecording) 1f else playbackProgress,
+            inactiveColor = if (isRecording) activeColor else Color(0xFFA3ABA5),
+            activeColor = activeColor,
+        )
     }
+}
+
+private fun VoiceRecordingState.playbackProgress(): Float {
+    val recordedDurationMillis = durationMillis.takeIf { it > 0 } ?: elapsedSeconds * 1000L
+    if (recordedDurationMillis <= 0) return 0f
+    return (playbackPositionMillis.toFloat() / recordedDurationMillis).coerceIn(0f, 1f)
 }
 
 @Composable

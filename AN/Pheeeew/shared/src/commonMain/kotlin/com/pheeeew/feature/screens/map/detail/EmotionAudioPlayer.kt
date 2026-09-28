@@ -22,9 +22,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -32,6 +29,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.feature.screens.map.drawPlaybackWaveform
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 
 @Composable
@@ -93,46 +91,18 @@ internal fun EmotionAudioPlayer(
                 }
             }
             Canvas(Modifier.weight(1f).height(40.dp)) {
-                drawAudioWaveform(audio.waveform, Color(0xFFA3ABA5))
-                val progress = audio.playbackProgress()
-                if (progress > 0f) {
-                    clipRect(right = size.width * progress) {
-                        drawAudioWaveform(audio.waveform, AppColors.RecordSheetRecording)
-                    }
-                }
+                drawPlaybackWaveform(
+                    audio.waveform,
+                    audio.playbackProgress(),
+                    Color(0xFFA3ABA5),
+                    AppColors.RecordSheetRecording,
+                )
             }
             audio.timelineLabel()?.let { label ->
                 Text(label, color = AppColors.GroupInk, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
         audio.error?.let { Text(it, color = AppColors.RecordSheetRecording, fontSize = 12.sp) }
-    }
-}
-
-private fun DrawScope.drawAudioWaveform(
-    waveform: List<Float>,
-    color: Color,
-) {
-    if (waveform.isEmpty()) {
-        drawLine(color, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), 3.dp.toPx(), StrokeCap.Round)
-        return
-    }
-    // Aggregate PCM bins to the available width so bars stay distinct on small screens.
-    val bars = (size.width / 6.dp.toPx()).toInt().coerceIn(1, waveform.size)
-    val step = size.width / bars
-    repeat(bars) { index ->
-        val start = index * waveform.size / bars
-        val end = (index + 1) * waveform.size / bars
-        val amplitude = waveform.subList(start, end).maxOrNull() ?: 0f
-        val height = (size.height * amplitude.coerceIn(0f, 1f)).coerceAtLeast(3.dp.toPx())
-        val x = step * (index + .5f)
-        drawLine(
-            color,
-            Offset(x, (size.height - height) / 2),
-            Offset(x, (size.height + height) / 2),
-            3.dp.toPx(),
-            StrokeCap.Round,
-        )
     }
 }
 

@@ -5,6 +5,7 @@ package com.pheeeew.core.audio
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import com.pheeeew.core.audio.MAX_RECORDING_DURATION_SECONDS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,6 +23,7 @@ import platform.AVFAudio.AVAudioSessionCategoryOptionDefaultToSpeaker
 import platform.AVFAudio.AVAudioSessionCategoryPlayAndRecord
 import platform.AVFAudio.AVAudioSessionCategoryPlayback
 import platform.AVFAudio.AVAudioSessionInterruptionNotification
+import platform.AVFAudio.AVAudioSessionRecordPermissionGranted
 import platform.AVFAudio.AVEncoderBitRateKey
 import platform.AVFAudio.AVFormatIDKey
 import platform.AVFAudio.AVNumberOfChannelsKey
@@ -64,15 +66,28 @@ private class IosVoiceRecorder : VoiceRecorder {
             }
         }
 
+    override fun refreshPermissionStatus() {
+        mutable.value =
+            state.value.copy(
+                microphonePermissionGranted = session.recordPermission == AVAudioSessionRecordPermissionGranted,
+            )
+    }
+
     override fun start() {
         if (released || state.value.recording || state.value.requestingPermission) return
         val token = ++generation
-        mutable.value = state.value.copy(requestingPermission = true, error = null)
+        refreshPermissionStatus()
+        mutable.value = state.value.copy(requestingPermission = true, microphonePermissionDenied = false, error = null)
         session.requestRecordPermission { granted ->
             scope.launch {
                 if (released || generation != token) return@launch
-                mutable.value = state.value.copy(requestingPermission = false)
-                if (granted) begin() else mutable.value = state.value.copy(error = "설정에서 마이크 권한을 허용해주세요")
+                mutable.value =
+                    state.value.copy(
+                        requestingPermission = false,
+                        microphonePermissionGranted = granted,
+                        microphonePermissionDenied = !granted,
+                    )
+                if (granted) begin()
             }
         }
     }
@@ -118,11 +133,22 @@ private class IosVoiceRecorder : VoiceRecorder {
                         capture.updateMeters()
                         val db = capture.averagePowerForChannel(0u).toDouble()
                         val level = ((db + 60.0) / 60.0).toFloat().coerceIn(0f, 1f)
+                        val durationMillis = (capture.currentTime * 1000).toLong()
                         mutable.value =
                             state.value.copy(
-                                elapsedSeconds = capture.currentTime.toInt(),
+                                elapsedSeconds = (durationMillis / 1000).toInt(),
+                                durationMillis = durationMillis,
                                 samples = (state.value.samples + level).takeLast(7500),
                             )
+                        if (capture.currentTime >= MAX_RECORDING_DURATION_SECONDS.toDouble()) {
+                            mutable.value =
+                                state.value.copy(
+                                    elapsedSeconds = MAX_RECORDING_DURATION_SECONDS,
+                                    durationMillis = MAX_RECORDING_DURATION_SECONDS * 1000L,
+                                )
+                            stop()
+                            return@launch
+                        }
                     }
                 }
         } catch (_: Exception) {
@@ -137,6 +163,11 @@ private class IosVoiceRecorder : VoiceRecorder {
         val capture = recorder ?: return
         meter?.cancel()
         val duration = capture.currentTime
+        mutable.value =
+            state.value.copy(
+                elapsedSeconds = duration.toInt(),
+                durationMillis = (duration * 1000).toLong(),
+            )
         capture.stop()
         recorder = null
         session.setActive(false, error = null)
@@ -164,9 +195,17 @@ private class IosVoiceRecorder : VoiceRecorder {
             meter?.cancel()
             meter =
                 scope.launch {
-                    while (isActive && playback.playing) delay(80)
+                    while (isActive && playback.playing) {
+                        mutable.value =
+                            state.value.copy(playbackPositionMillis = (playback.currentTime * 1000).toLong())
+                        delay(50)
+                    }
                     playback.currentTime = 0.0
-                    mutable.value = state.value.copy(playing = false)
+                    mutable.value =
+                        state.value.copy(
+                            playing = false,
+                            playbackPositionMillis = state.value.durationMillis,
+                        )
                     session.setActive(false, error = null)
                 }
         } catch (_: Exception) {
@@ -177,8 +216,9 @@ private class IosVoiceRecorder : VoiceRecorder {
 
     override fun pause() {
         if (!state.value.recording) meter?.cancel()
+        val playbackPosition = player?.currentTime?.let { (it * 1000).toLong() } ?: state.value.playbackPositionMillis
         player?.pause()
-        mutable.value = state.value.copy(playing = false)
+        mutable.value = state.value.copy(playing = false, playbackPositionMillis = playbackPosition)
         if (!state.value.recording) session.setActive(false, error = null)
     }
 
