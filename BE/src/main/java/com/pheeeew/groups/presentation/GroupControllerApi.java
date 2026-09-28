@@ -9,6 +9,9 @@ import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -130,24 +133,52 @@ public interface GroupControllerApi {
     );
 
     @Operation(
-            summary = "감정 버튼 누르기",
+            summary = "감정 버튼 입력",
             description = """
-                    그룹 화면의 감정 버튼을 누릅니다. **그룹 멤버만** 누를 수 있습니다.
+                    그룹 멤버가 한 번 또는 여러 번 누른 입력을 같은 API로 보냅니다.
 
-                    - 누른 뒤의 **오늘 집계를 바로 돌려줍니다.** 다시 조회할 필요가 없습니다.
-                    - **횟수 제한이 없습니다.** 연타하면 그만큼 올라갑니다. 취소는 없습니다.
-                    - **지도에 감정이 찍히지 않고 그룹 점수와 순위에도 영향이 없습니다.**
-                      점수는 지도에 남긴 감정만 셉니다.
+                    ### 입력
+                    - `presses`는 1~5개 항목이며 `count`는 추가할 횟수입니다. 현재 총합을 보내지 않습니다.
+                    - 각 횟수는 1~100의 정수이며, 한 요청의 횟수 합계는 최대 100회입니다.
+                      일일 횟수 제한은 없습니다. 같은 감정이 여러 항목에 있으면 합산합니다.
+                    - 한 번 누른 경우에도 `presses`에 항목 하나와 `count: 1`을 보냅니다.
+                      이전 `{state}` 형태의 단건 본문은 더 이상 받지 않습니다.
+                    - 모든 항목을 함께 반영하거나 모두 반영하지 않습니다.
+
+                    ### 통신 실패와 재전송
+                    - 요청마다 증가량을 더합니다. 같은 본문을 다시 보내도 다시 집계합니다.
+                    - 통신 오류·타임아웃으로 반영 여부를 알 수 없는 입력은 자동 재전송하지 않습니다.
+                      일부 입력이 집계에 남지 않을 수 있으며, 그룹 상세 조회로 최신 서버 집계를 확인합니다.
+                    - 클라이언트는 이미 전송한 입력과 아직 보내지 않은 입력을 분리해 관리합니다.
+
+                    ### 집계와 응답
+                    - 요청을 처리하는 서버 시각의 한국 날짜에 집계합니다. 입력한 과거 시각을 받지 않습니다.
+                    - 반영한 뒤의 오늘 집계를 반환합니다. 아직 서버로 보내지 않은 입력은 포함되지 않습니다.
+                    - 지도 감정과 그룹 점수·순위에는 영향을 주지 않습니다.
                     """
     )
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "누르기 성공"),
+            @ApiResponse(responseCode = "200", description = "입력 반영 후 오늘 집계"),
+            @ApiResponse(responseCode = "400", description = "필수 값 누락, 잘못된 감정·횟수 또는 요청 크기 초과"),
             @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
             @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
     })
     GroupPressCountResponse press(
             UUID groupId,
-            GroupPressRequest request,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    content = @Content(
+                            schema = @Schema(implementation = GroupPressRequest.class),
+                            examples = {
+                                    @ExampleObject(name = "한 번 누르기", value = """
+                                            {"presses":[{"state":"ANGRY","count":1}]}
+                                            """),
+                                    @ExampleObject(name = "여러 감정 묶기", value = """
+                                            {"presses":[{"state":"ANGRY","count":12},
+                                                        {"state":"IRRITATED","count":3}]}
+                                            """)
+                            }
+                    )
+            ) GroupPressRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 

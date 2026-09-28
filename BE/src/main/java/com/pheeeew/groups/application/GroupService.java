@@ -15,6 +15,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
+import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupPreviewResult;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
@@ -122,11 +123,14 @@ public class GroupService {
     }
 
     @Transactional
-    public GroupPressCountResult press(UUID groupPublicId, UUID devicePublicId, EmotionState state) {
+    public GroupPressCountResult press(UUID groupPublicId, UUID devicePublicId, GroupPressCommand command) {
         Group group = findGroup(groupPublicId);
         requireMember(group, devicePublicId);
-        LocalDate today = LocalDate.now(clock);
-        groupDailyPressRepository.increase(group.getId(), today, state.name(), clock.instant());
+        Instant now = clock.instant();
+        LocalDate today = now.atZone(clock.getZone()).toLocalDate();
+
+        command.counts().forEach((state, count) ->
+                groupDailyPressRepository.increase(group.getId(), today, state.name(), count, now));
 
         return pressesOf(group, today);
     }
