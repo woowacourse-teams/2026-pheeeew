@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -39,7 +39,7 @@ fun ReportSubmitButton(
         modifier = modifier.fillMaxWidth().height(56.dp).border(2.5.dp, AppColors.GroupInk, shape),
     ) {
         if (isSubmitting) {
-            CircularProgressIndicator(
+            CircularLoadingIndicator(
                 modifier = Modifier.height(20.dp),
                 color = AppColors.TextPrimary,
                 strokeWidth = 2.dp,

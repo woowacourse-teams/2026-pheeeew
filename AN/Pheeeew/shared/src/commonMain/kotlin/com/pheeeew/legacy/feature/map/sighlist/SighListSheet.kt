@@ -29,7 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -336,7 +336,7 @@ internal fun SighListSheet(
                                 modifier = Modifier.fillMaxWidth().height(160.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                CircularProgressIndicator(
+                                CircularLoadingIndicator(
                                     color = AppColors.Blue100,
                                     modifier = Modifier.size(28.dp),
                                     strokeWidth = 3.dp,
@@ -375,7 +375,7 @@ internal fun SighListSheet(
                                     modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
                                     contentAlignment = Alignment.Center,
                                 ) {
-                                    CircularProgressIndicator(
+                                    CircularLoadingIndicator(
                                         color = AppColors.Blue100,
                                         modifier = Modifier.size(24.dp),
                                         strokeWidth = 3.dp,
@@ -402,7 +402,7 @@ internal fun SighListSheet(
                                 .pointerInput(Unit) { detectTapGestures { } },
                         contentAlignment = Alignment.Center,
                     ) {
-                        CircularProgressIndicator(
+                        CircularLoadingIndicator(
                             color = AppColors.Blue100,
                             modifier = Modifier.size(32.dp),
                             strokeWidth = 3.dp,

@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -212,7 +212,7 @@ private fun RowCenteredProgress() {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,
     ) {
-        CircularProgressIndicator(modifier = Modifier.height(23.dp), color = AppColors.GroupInk, strokeWidth = 2.dp)
+        CircularLoadingIndicator(modifier = Modifier.height(23.dp), color = AppColors.GroupInk, strokeWidth = 2.dp)
         androidx.compose.foundation.layout
             .Spacer(Modifier.padding(horizontal = 8.dp))
         Text(

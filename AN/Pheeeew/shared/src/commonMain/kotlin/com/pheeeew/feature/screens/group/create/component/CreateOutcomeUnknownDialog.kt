@@ -19,7 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -107,7 +107,7 @@ internal fun CreateOutcomeUnknownDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            CircularProgressIndicator(color = AppColors.GroupInk, strokeWidth = 2.dp)
+                            CircularLoadingIndicator(color = AppColors.GroupInk, strokeWidth = 2.dp)
                             Text(
                                 text = stringResource(Res.string.group_create_recovery_checking),
                                 color = AppColors.RankingSecondaryContent,

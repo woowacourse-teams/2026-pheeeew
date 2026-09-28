@@ -22,7 +22,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.RadioButton
@@ -206,7 +206,7 @@ internal fun SighReportScreen(
                     .height(52.dp),
         ) {
             if (uiState.isSubmitting) {
-                CircularProgressIndicator(
+                CircularLoadingIndicator(
                     modifier = Modifier.height(20.dp),
                     color = AppColors.Cream100,
                     strokeWidth = 2.dp,

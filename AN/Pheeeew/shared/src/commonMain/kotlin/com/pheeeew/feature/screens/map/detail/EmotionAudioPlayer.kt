@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -67,7 +67,7 @@ internal fun EmotionAudioPlayer(
                         },
             ) {
                 if (audio.isPreparing) {
-                    CircularProgressIndicator(Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                    CircularLoadingIndicator(Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
                     Canvas(Modifier.size(24.dp)) {
                         if (audio.isPlaying) {

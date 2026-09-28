@@ -15,7 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -163,7 +163,7 @@ private fun SubmittingProgressCard(title: String) {
             modifier = Modifier.size(56.dp).clip(CircleShape).background(Color(0xFFEAF7F2)),
             contentAlignment = Alignment.Center,
         ) {
-            CircularProgressIndicator(
+            CircularLoadingIndicator(
                 modifier = Modifier.size(28.dp),
                 color = AppColors.GroupInk,
                 strokeWidth = 2.5.dp,

@@ -18,7 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.CircularProgressIndicator
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -427,7 +427,7 @@ private fun JoinPrimaryButton(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (isLoading) {
-                CircularProgressIndicator(
+                CircularLoadingIndicator(
                     modifier = Modifier.size(17.dp),
                     color = if (enabled) Color.White else AppColors.GroupInk,
                     strokeWidth = 2.dp,
