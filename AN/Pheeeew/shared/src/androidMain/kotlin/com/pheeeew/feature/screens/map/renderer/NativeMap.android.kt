@@ -20,6 +20,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
+import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
@@ -60,6 +61,7 @@ internal actual fun NativeMap(
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapBounds) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
+    onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
     modifier: Modifier,
 ) {
@@ -67,6 +69,7 @@ internal actual fun NativeMap(
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
+    val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val hostResult =
@@ -83,6 +86,7 @@ internal actual fun NativeMap(
                     onRecordViewportChanged = onRecordViewportChanged,
                     onViewportChanged = onViewportChanged,
                     onEmotionPinClick = { currentOnEmotionPinClick(it) },
+                    onHighlightedPinPositionChanged = { currentOnHighlightPosition(it) },
                     onContentPresented = { token, count -> currentOnContentPresented(token, count) },
                 )
             }
@@ -128,6 +132,7 @@ private class AndroidFoundationMapHost(
     private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     private val onViewportChanged: (EmotionMapBounds) -> Unit,
     private val onEmotionPinClick: (Long) -> Unit,
+    private val onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     private val onContentPresented: (String, List<String>) -> Unit,
 ) {
     private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
@@ -236,6 +241,7 @@ private class AndroidFoundationMapHost(
             applyCompassMargins()
             applyAttributionMargins()
             readyMap.addOnCameraMoveListener {
+                publishHighlightedPinPosition()
                 publishRecordViewport()
             }
             readyMap.addOnCameraIdleListener {
@@ -420,7 +426,7 @@ private class AndroidFoundationMapHost(
                 style = loadedStyle,
                 pins = state.emotionPins,
                 images = state.emotionPinSymbolImages,
-                visible = !state.isRecordLocationPicking,
+                visible = true,
                 densityDpi = mapView.resources.displayMetrics.densityDpi,
                 monitoringLoadId = state.emotionContentLoad?.loadId,
             )
@@ -516,6 +522,22 @@ private class AndroidFoundationMapHost(
         }
     }
 
+    private fun publishHighlightedPinPosition() {
+        val state = latestState
+        val currentMap = map
+        val pin = state?.emotionPins?.firstOrNull { it.id == state.highlightedEmotionId }
+        if (!styleLoaded || released || currentMap == null || pin == null ||
+            state.isRecordLocationPicking || mapView.width == 0 ||
+            style?.getImage(pin.symbolImageKey()) == null
+        ) {
+            onHighlightedPinPositionChanged(null)
+            return
+        }
+        val point = currentMap.projection.toScreenLocation(LatLng(pin.latitude, pin.longitude))
+        val density = mapView.resources.displayMetrics.density
+        onHighlightedPinPositionChanged(HighlightedPinPosition(pin.id, point.x / density, point.y / density))
+    }
+
     private fun publishRecordViewport() {
         val state = latestState ?: return
         if (!state.isRecordLocationPicking || !styleLoaded || mapView.width == 0) return
@@ -532,6 +554,7 @@ private class AndroidFoundationMapHost(
     }
 
     private fun publishViewport() {
+        publishHighlightedPinPosition()
         val currentMap = map ?: return
         if (!styleLoaded || released || mapView.width <= 0 || mapView.height <= 0) return
         val bounds = currentMap.projection.visibleRegion.latLngBounds

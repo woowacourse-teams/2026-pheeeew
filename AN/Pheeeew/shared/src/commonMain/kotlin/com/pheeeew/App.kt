@@ -41,7 +41,9 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.di.ApiDependencies
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.di.createEmotionAudioRepository
@@ -52,10 +54,16 @@ import com.pheeeew.core.di.createEmotionRegistrationRepository
 import com.pheeeew.core.di.emotion.createNearbyEmotionViewModel
 import com.pheeeew.core.di.group.createGroupDependencies
 import com.pheeeew.core.di.group.createGroupStampListRepository
+import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.GroupRootDestination
 import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
+import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.permission.AppSettingsLauncher
+import com.pheeeew.data.remote.version.AppVersionApi
+import com.pheeeew.data.remote.version.toPolicy
+import com.pheeeew.domain.model.version.AppVersionDecision
+import com.pheeeew.domain.model.version.evaluateAppVersion
 import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.component.AppBottomNavigationBar
@@ -71,16 +79,11 @@ import com.pheeeew.feature.screens.map.nearby.NearbyEmotionSheet
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
 import com.pheeeew.feature.screens.map.nearby.face
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
+import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
-import com.pheeeew.legacy.core.network.ConnectivityObserver
-import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
-import com.pheeeew.legacy.data.remote.version.AppVersionApi
-import com.pheeeew.legacy.data.remote.version.toPolicy
-import com.pheeeew.legacy.domain.model.version.AppVersionDecision
-import com.pheeeew.legacy.domain.model.version.evaluateAppVersion
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withTimeout
 import org.jetbrains.compose.resources.DrawableResource
@@ -92,11 +95,40 @@ fun App(
     lastRecordedGroupRepository: LastRecordedGroupRepository,
     appVersion: String,
     appVersionApi: AppVersionApi,
-    permissionSettingsLauncher: LocationPermissionSettingsLauncher,
+    permissionSettingsLauncher: AppSettingsLauncher,
     appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
     connectivityObserver: ConnectivityObserver,
+) {
+    AppTheme {
+        AppContent(
+            locationDependencies = locationDependencies,
+            apiDependencies = apiDependencies,
+            lastRecordedGroupRepository = lastRecordedGroupRepository,
+            appVersion = appVersion,
+            appVersionApi = appVersionApi,
+            connectivityObserver = connectivityObserver,
+            permissionSettingsLauncher = permissionSettingsLauncher,
+            appSettingsLauncher = appSettingsLauncher,
+            hasCompletedOnboarding = hasCompletedOnboarding,
+            onOnboardingCompleted = onOnboardingCompleted,
+        )
+    }
+}
+
+@Composable
+private fun AppContent(
+    locationDependencies: LocationDependencies,
+    apiDependencies: ApiDependencies,
+    lastRecordedGroupRepository: LastRecordedGroupRepository,
+    appVersion: String,
+    appVersionApi: AppVersionApi,
+    connectivityObserver: ConnectivityObserver,
+    permissionSettingsLauncher: AppSettingsLauncher,
+    appSettingsLauncher: AppSettingsLauncher,
+    hasCompletedOnboarding: Boolean,
+    onOnboardingCompleted: () -> Unit,
 ) {
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -225,6 +257,8 @@ fun App(
     val nearbyViewModel: NearbyEmotionViewModel =
         viewModel { createNearbyEmotionViewModel(apiDependencies.client, groupStampListRepository) }
     val nearbyState by nearbyViewModel.state.collectAsState()
+    val mapUiModel by mapViewModel.uiModel.collectAsState()
+    val recordUiModel by mapRecordViewModel.uiModel.collectAsState()
 
     val detailRepository =
         remember(apiDependencies.client) {
@@ -264,6 +298,12 @@ fun App(
     var moderationMessage by remember { mutableStateOf<String?>(null) }
     var isGroupDetailVisible by remember { mutableStateOf(false) }
     var isGroupCreateVisible by remember { mutableStateOf(false) }
+    val isEmotionRecordFlowActive =
+        selectedDestination == AppDestination.Map &&
+            (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
+
+    // Register the exit fallback before navigation and screen-specific back handlers.
+    DoubleBackToExitHandler()
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -301,9 +341,11 @@ fun App(
                             mapViewModel.refreshEmotionPins()
                         },
                         onLeaveEmotion = mapViewModel::onEmotionSelectorOpen,
-                        onReportEmotion = { id ->
-                            nearbyState.items.firstOrNull { it.id == id && !it.isMine }?.let { item ->
-                                reportTarget = Triple(id, item.state.face, "list")
+                        onOpenEmotionOnMap = mapViewModel::focusOnEmotion,
+                        blockUser = moderation.block,
+                        onReportEmotion = { id, stamp ->
+                            nearbyState.items.firstOrNull { it.id == id && !it.isMine }?.let {
+                                reportTarget = Triple(id, stamp, "list")
                             }
                         },
                         monitoringVisible = !isSettingsVisible && reportTarget == null,
@@ -417,7 +459,7 @@ fun App(
             )
         }
 
-        if (!isSettingsVisible && !nearbyState.visible &&
+        if (!isSettingsVisible && !nearbyState.visible && !isEmotionRecordFlowActive &&
             (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible))
         ) {
             AppBottomNavigationBar(

@@ -14,6 +14,7 @@ internal data class EmotionPageDto(
 internal data class EmotionDto(
     val id: Long,
     val properties: EmotionPropertiesDto,
+    val geometry: EmotionPointDto? = null,
 )
 
 @Serializable

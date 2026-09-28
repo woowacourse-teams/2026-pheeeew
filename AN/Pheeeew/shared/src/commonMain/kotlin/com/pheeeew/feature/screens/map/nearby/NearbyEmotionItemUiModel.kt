@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.map.nearby
 
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.Emotion
 import com.pheeeew.domain.model.emotion.EmotionAudio
 import com.pheeeew.domain.model.emotion.EmotionContentType
@@ -20,6 +21,7 @@ data class NearbyEmotionItemUiModel(
     val reactions: List<ReactionCount>,
     val stamp: StampAppearanceUiModel?,
     val audio: EmotionAudio?,
+    val coordinate: GeoCoordinate? = null,
 )
 
 internal fun Emotion.toUiModel() =
@@ -41,4 +43,5 @@ internal fun Emotion.toUiModel() =
             )
         },
         audio,
+        coordinate,
     )

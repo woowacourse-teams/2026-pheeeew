@@ -16,10 +16,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,7 +27,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
@@ -45,14 +45,18 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.audio.rememberEmotionAudioPlayer
+import com.pheeeew.core.designsystem.component.ConfirmDialog
+import com.pheeeew.core.navigation.PredictiveBackEffect
+import com.pheeeew.domain.model.GeoCoordinate
+import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import com.pheeeew.feature.screens.map.record.noRippleClickable
-import com.pheeeew.legacy.core.navigation.PredictiveBackEffect
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_refresh
@@ -62,11 +66,13 @@ fun NearbyEmotionSheet(
     viewModel: NearbyEmotionViewModel,
     onEmotionHidden: (Long) -> Unit,
     onLeaveEmotion: () -> Unit,
-    // Connect the report screen (#441) here when it is available.
-    onReportEmotion: ((Long) -> Unit)? = null,
+    onOpenEmotionOnMap: (Long, GeoCoordinate?) -> Boolean,
+    blockUser: BlockUserUseCase,
+    onReportEmotion: (Long, DrawableResource) -> Unit,
     monitoringVisible: Boolean = true,
 ) {
     val state by viewModel.state.collectAsState()
+    var expanded by remember(state.visible) { mutableStateOf(false) }
     val foreground = rememberMonitoringForeground()
     val contentVisible =
         monitoringVisible && foreground && state.visible && !state.groupSelectorVisible && state.blockId == null
@@ -175,7 +181,12 @@ fun NearbyEmotionSheet(
     LaunchedEffect(atEnd, state.nextCursor, state.loading, state.loadingMore, state.error) {
         if (atEnd && !state.loading && !state.loadingMore && state.error == null) viewModel.loadMore()
     }
-    NearbySheetLayout(state.visible, viewModel::dismiss) {
+    NearbySheetLayout(
+        visible = state.visible,
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        onDismiss = viewModel::dismiss,
+    ) {
         val group = state.groups.find { it.id == state.groupId } ?: ALL_GROUP_OPTION
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -241,17 +252,19 @@ fun NearbyEmotionSheet(
                         busy = emotion.id in state.pendingIds,
                         playing = playback.id == emotion.id,
                         audioLoading = state.audioLoadingId == emotion.id,
+                        onOpenOnMap = {
+                            expanded = false
+                            viewModel.openOnMap(emotion.id, onOpenEmotionOnMap)
+                        },
                         onSelect = { viewModel.select(emotion.id) },
                         onDismissMenu = { viewModel.select(null) },
                         onReact = { viewModel.react(emotion.id, it) },
                         onBlock = { viewModel.requestBlock(emotion.id) },
-                        onReport =
-                            onReportEmotion?.let { report ->
-                                {
-                                    viewModel.select(null)
-                                    report(emotion.id)
-                                }
-                            },
+                        onReport = {
+                            viewModel.select(null)
+                            viewModel.dismiss()
+                            onReportEmotion(emotion.id, emotion.state.face)
+                        },
                         onPlay = {
                             if (playback.id ==
                                 emotion.id
@@ -320,24 +333,13 @@ fun NearbyEmotionSheet(
         }
     }
     state.blockId?.let { id ->
-        AlertDialog(
-            onDismissRequest = { if (id !in state.pendingIds) viewModel.requestBlock(null) },
-            title = { Text("이 감정을 차단할까요?") },
-            text = {
-                Column {
-                    Text("이 감정 글 하나가 내 지도와 목록에서 숨겨져요.")
-                    state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = viewModel::confirmBlock,
-                    enabled = id !in state.pendingIds,
-                ) { Text("차단하기") }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.requestBlock(null) }, enabled = id !in state.pendingIds) { Text("취소") }
-            },
+        ConfirmDialog(
+            title = "해당 사용자를 차단할까요?",
+            content = "차단 이후 해당 사용자가 올린 감정은 더 이상 보이지 않아요.",
+            confirmText = "차단하기",
+            cancelText = "취소",
+            onConfirm = { viewModel.confirmBlock(blockUser) },
+            onCancel = { viewModel.requestBlock(null) },
         )
     }
 }

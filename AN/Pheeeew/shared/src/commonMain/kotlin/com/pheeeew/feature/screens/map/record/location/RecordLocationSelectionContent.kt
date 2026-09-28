@@ -1,9 +1,13 @@
 package com.pheeeew.feature.screens.map.record.location
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,13 +24,18 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -93,6 +102,12 @@ fun RecordLocationSelectionContent(
                 val angle = bearing(origin, selected)
                 val offsetX = (sin(angle) * meters / RECORD_RADIUS_METERS * radius).toFloat()
                 val offsetY = (-cos(angle) * meters / RECORD_RADIUS_METERS * radius).toFloat()
+                var isStampPressed by remember(origin) { mutableStateOf(false) }
+                val stampScale by animateFloatAsState(
+                    targetValue = if (isStampPressed && !isSubmitting) 1.2f else 1f,
+                    animationSpec = tween(durationMillis = 150),
+                    label = "recordStampPressScale",
+                )
                 Box(
                     modifier =
                         Modifier
@@ -102,6 +117,19 @@ fun RecordLocationSelectionContent(
                                     (center.x + offsetX - 31.dp.toPx()).roundToInt(),
                                     (center.y + offsetY - 31.dp.toPx()).roundToInt(),
                                 )
+                            }.pointerInput(origin, isSubmitting) {
+                                // Observe the press without consuming the stamp's drag events.
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                                    try {
+                                        isStampPressed = latestCanMove
+                                        do {
+                                            val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        } while (event.changes.any { it.pressed })
+                                    } finally {
+                                        isStampPressed = false
+                                    }
+                                }
                             }.pointerInput(origin, density) {
                                 var draggedCenter = Offset.Zero
                                 detectDragGestures(
@@ -141,14 +169,23 @@ fun RecordLocationSelectionContent(
                             },
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (selectedGroupStamp == null) {
-                        Image(
-                            painter = painterResource(selectedEmotion.icon),
-                            contentDescription = selectedEmotion.label,
-                            modifier = Modifier.size(62.dp),
-                        )
-                    } else {
-                        GroupSelectionStamp(stamp = selectedGroupStamp, size = 62.dp)
+                    Box(
+                        modifier =
+                            Modifier.graphicsLayer {
+                                scaleX = stampScale
+                                scaleY = stampScale
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (selectedGroupStamp == null) {
+                            Image(
+                                painter = painterResource(selectedEmotion.icon),
+                                contentDescription = selectedEmotion.label,
+                                modifier = Modifier.size(62.dp),
+                            )
+                        } else {
+                            GroupSelectionStamp(stamp = selectedGroupStamp, size = 62.dp)
+                        }
                     }
                 }
             }
@@ -159,7 +196,7 @@ fun RecordLocationSelectionContent(
                 Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(top = 30.dp)
+                    .padding(top = 50.dp)
                     .background(Color.Black.copy(alpha = 0.6f), AppShapes.Pill)
                     .padding(horizontal = 32.dp, vertical = 8.dp),
             color = AppColors.Surface,
@@ -177,7 +214,7 @@ fun RecordLocationSelectionContent(
                 Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = 36.dp),
+                    .padding(bottom = 100.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -202,7 +239,8 @@ fun RecordLocationSelectionContent(
                         .noRippleClickable(onClick = onBack)
                         .padding(8.dp),
                 color = AppColors.TextPrimary,
-                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 16.sp,
             )
         }
     }

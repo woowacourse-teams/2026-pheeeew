@@ -26,6 +26,7 @@ class EmotionMapRepositoryImpl(
     private val api: EmotionMapApi,
 ) : EmotionMapRepository {
     private val cache = EmotionMapCache()
+    private var cacheGeneration = 0L
 
     override fun findSnapshot(
         bounds: EmotionMapBounds,
@@ -38,10 +39,16 @@ class EmotionMapRepositoryImpl(
         cursor: String?,
         forceRefresh: Boolean,
     ): EmotionMapPageResult {
-        if (forceRefresh && cursor == null && bounds != null) {
-            // Older overlapping regions must not replace newly registered pins after a refresh.
-            cache.invalidate(bounds, groupId)
+        if (forceRefresh && cursor == null) {
+            cacheGeneration++
+            if (bounds == null) {
+                cache.clear()
+            } else {
+                // Remove only overlapping regions; stale requests cannot repopulate the cache.
+                cache.invalidate(bounds, groupId)
+            }
         }
+        val generation = cacheGeneration
         if (!forceRefresh && cursor == null && bounds != null) {
             cache.completePage(bounds, groupId)?.let { page ->
                 return EmotionMapPageResult.Success(page, fromCache = true)
@@ -71,7 +78,9 @@ class EmotionMapRepositoryImpl(
 
                 is ApiResult.Success -> {
                     result.value.toDomain().also { pageResult ->
-                        if (pageResult is EmotionMapPageResult.Success && bounds != null) {
+                        if (pageResult is EmotionMapPageResult.Success && bounds != null &&
+                            generation == cacheGeneration
+                        ) {
                             cache.appendPage(bounds, groupId, cursor, pageResult.page)
                         }
                     }

@@ -55,6 +55,11 @@ class MapRecordViewModel(
     private var pendingRegistration: EmotionRegistration? = null
     private val _notice = MutableStateFlow<RecordNoticeUiModel?>(null)
     val notice = _notice.asStateFlow()
+    private val _registeredEmotion = MutableStateFlow<RegisteredEmotionUiModel?>(null)
+    val registeredEmotion = _registeredEmotion.asStateFlow()
+
+    fun consumeRegisteredEmotion(): RegisteredEmotionUiModel? =
+        _registeredEmotion.value.also { _registeredEmotion.value = null }
 
     fun dismissNotice() {
         _notice.value = null
@@ -271,6 +276,7 @@ class MapRecordViewModel(
                     funnel.clearFlow()
                     _uiModel.value = RecordBottomSheetUiModel()
                     pendingRegistration = null
+                    _registeredEmotion.value = RegisteredEmotionUiModel(result.id, registration.coordinate)
                     _notice.value = RecordNoticeUiModel("선택한 위치에 감정을 남겼어요", false, receipt)
                 }
 

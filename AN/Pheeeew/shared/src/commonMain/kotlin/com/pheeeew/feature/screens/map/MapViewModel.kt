@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
@@ -77,6 +78,7 @@ class MapViewModel(
     private var queryGeneration = 0L
     private var activeEmotionMapRequestId = 0L
     private var pendingEmotionMapRequest: EmotionMapRequest? = null
+    private var needsFreshEmotionPins = false
     private var requestedBounds: EmotionMapBounds? = null
     private var displayedBounds: EmotionMapBounds? = null
     private var retryCursor: String? = null
@@ -111,6 +113,28 @@ class MapViewModel(
         requestCurrentLocation(moveCamera = true, requestPermission = true)
     }
 
+    fun focusOnEmotion(
+        id: Long,
+        coordinate: GeoCoordinate? = null,
+    ): Boolean {
+        if (id in _uiModel.value.hiddenEmotionIds) return false
+        val target =
+            coordinate ?: _uiModel.value.emotionPins.firstOrNull { it.id == id }?.let {
+                GeoCoordinate(it.latitude, it.longitude)
+            } ?: return false
+        focusOnCoordinate(target)
+        return true
+    }
+
+    fun focusOnCoordinate(coordinate: GeoCoordinate) {
+        sendCameraCommand(
+            action = MapCameraActionUiModel.MoveToCoordinate,
+            latitude = coordinate.latitude,
+            longitude = coordinate.longitude,
+            value = LOCATION_FOCUS_ZOOM,
+        )
+    }
+
     fun onEmotionSelectorOpen() {
         _uiModel.value = _uiModel.value.copy(isEmotionSelectorExpanded = true)
     }
@@ -125,26 +149,12 @@ class MapViewModel(
     }
 
     fun onRecordLocationPickingChanged(isPicking: Boolean) {
-        val wasPicking = _uiModel.value.isRecordLocationPicking
         _uiModel.value = _uiModel.value.copy(isRecordLocationPicking = isPicking)
-        if (isPicking) {
-            queryGeneration++
-            viewportJob?.cancel()
-            pendingEmotionMapRequest = null
-            cancelEmotionMapRequest()
-            _uiModel.value =
-                _uiModel.value.copy(
-                    isLoadingEmotionPins = false,
-                    isLoadingMoreEmotionPins = false,
-                )
-        } else if (wasPicking) {
-            displayedBounds = null
-        }
         // The renderer initially fits the circle and constrains camera movement around the origin.
     }
 
     fun onViewportChanged(bounds: EmotionMapBounds) {
-        if (_uiModel.value.isRecordLocationPicking || !bounds.isValid()) return
+        if (!bounds.isValid()) return
         if (bounds == requestedBounds && (viewportJob?.isActive == true || emotionMapJob?.isActive == true)) return
         if (bounds == displayedBounds && emotionMapJob?.isActive != true) return
         requestedBounds = bounds
@@ -157,13 +167,14 @@ class MapViewModel(
             viewModelScope.launch {
                 delay(VIEWPORT_DEBOUNCE_MILLIS)
                 if (generation == queryGeneration) {
-                    enqueueEmotionMapRequest(EmotionMapRequest(bounds, generation))
+                    enqueueEmotionMapRequest(EmotionMapRequest(bounds, generation, bypassCache = needsFreshEmotionPins))
                 }
             }
     }
 
     fun refreshEmotionPins() {
-        if (_uiModel.value.isRecordLocationPicking) return
+        // A camera move may replace this request before it starts or finishes.
+        needsFreshEmotionPins = true
         val bounds = requestedBounds ?: displayedBounds ?: return
         val generation = ++queryGeneration
         viewportJob?.cancel()
@@ -193,7 +204,7 @@ class MapViewModel(
     }
 
     private fun enqueueEmotionMapRequest(request: EmotionMapRequest) {
-        if (request.generation != queryGeneration || _uiModel.value.isRecordLocationPicking) return
+        if (request.generation != queryGeneration) return
         if (emotionMapJob?.isActive == true) {
             pendingEmotionMapRequest = request
         } else {
@@ -286,7 +297,10 @@ class MapViewModel(
                                         emotionPinsError = null,
                                     )
                                 firstPage = false
-                                if (!page.hasNext) break
+                                if (!page.hasNext) {
+                                    if (request.bypassCache) needsFreshEmotionPins = false
+                                    break
+                                }
                                 val nextCursor = page.nextCursor
                                 if (nextCursor.isNullOrBlank() || !usedCursors.add(nextCursor)) {
                                     retryCursor = null
@@ -337,12 +351,6 @@ class MapViewModel(
             }
         emotionMapJob = job
         job.start()
-    }
-
-    private fun cancelEmotionMapRequest() {
-        activeEmotionMapRequestId++
-        emotionMapJob?.cancel()
-        emotionMapJob = null
     }
 
     private fun publishSnapshot(bounds: EmotionMapBounds) {
