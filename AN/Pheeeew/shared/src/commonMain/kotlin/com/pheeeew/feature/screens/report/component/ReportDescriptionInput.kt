@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 
 @Composable
@@ -32,7 +33,7 @@ fun ReportDescriptionInput(
             modifier
                 .fillMaxWidth()
                 .heightIn(min = 84.dp, max = 144.dp)
-                .border(2.dp, AppColors.GroupInk, RoundedCornerShape(14.dp))
+                .border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(14.dp))
                 .padding(horizontal = 14.dp, vertical = 14.dp),
         textStyle = TextStyle(color = AppColors.GroupInk, fontSize = 14.sp),
         maxLines = 5,

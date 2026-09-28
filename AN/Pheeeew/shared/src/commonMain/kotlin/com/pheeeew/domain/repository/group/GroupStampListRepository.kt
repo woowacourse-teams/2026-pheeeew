@@ -4,6 +4,9 @@ import com.pheeeew.domain.model.group.GroupStampItem
 
 fun interface GroupStampListRepository {
     suspend fun findMyStamps(): GroupStampListLoadResult
+
+    /** Discards membership snapshots after joining, creating, or leaving a group. */
+    fun invalidate() = Unit
 }
 
 sealed interface GroupStampListLoadResult {

@@ -12,6 +12,7 @@ import com.pheeeew.data.local.group.AndroidLastRecordedGroupRepository
 import com.pheeeew.data.location.platform.android.LocationDependenciesHolder
 import com.pheeeew.data.location.platform.android.createAndroidLocationDependencies
 import com.pheeeew.feature.screens.onboarding.WELCOME_ONBOARDING_COMPLETED_KEY
+import com.pheeeew.legacy.AndroidConnectivityObserver
 import com.pheeeew.legacy.core.permission.AndroidLocationPermissionSettingsLauncher
 import com.pheeeew.legacy.data.remote.version.createAppVersionApi
 import com.pheeeew.legacy.core.network.ApiConfig as LegacyApiConfig
@@ -32,9 +33,12 @@ class MainActivity : ComponentActivity() {
         val lastRecordedGroupRepository = AndroidLastRecordedGroupRepository(applicationContext)
         val appVersionApi = createAppVersionApi(LegacyApiConfig(BuildConfig.API_BASE_URL), "android")
 
+        val connectivityObserver = AndroidConnectivityObserver(applicationContext)
+
         setContent {
             App(
                 locationDependencies = locationDependencies,
+                connectivityObserver = connectivityObserver,
                 lastRecordedGroupRepository = lastRecordedGroupRepository,
                 hasCompletedOnboarding = hasCompletedOnboarding,
                 onOnboardingCompleted = {

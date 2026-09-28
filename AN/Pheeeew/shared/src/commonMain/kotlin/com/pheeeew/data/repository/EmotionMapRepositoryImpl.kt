@@ -38,6 +38,10 @@ class EmotionMapRepositoryImpl(
         cursor: String?,
         forceRefresh: Boolean,
     ): EmotionMapPageResult {
+        if (forceRefresh && cursor == null && bounds != null) {
+            // Older overlapping regions must not replace newly registered pins after a refresh.
+            cache.invalidate(bounds, groupId)
+        }
         if (!forceRefresh && cursor == null && bounds != null) {
             cache.completePage(bounds, groupId)?.let { page ->
                 return EmotionMapPageResult.Success(page, fromCache = true)

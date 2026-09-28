@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.create.GroupCreateRecoveryState
 import com.pheeeew.feature.screens.group.model.GroupId
@@ -72,7 +73,7 @@ internal fun CreateOutcomeUnknownDialog(
                         .heightIn(max = 620.dp)
                         .clip(RoundedCornerShape(24.dp))
                         .background(Color.White)
-                        .border(BorderStroke(1.5.dp, AppColors.GroupInk), RoundedCornerShape(24.dp))
+                        .border(BorderStroke(AppBorders.Standard, AppColors.GroupInk), RoundedCornerShape(24.dp))
                         .padding(horizontal = 24.dp, vertical = 28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
@@ -151,6 +152,7 @@ internal fun CreateOutcomeUnknownDialog(
                                 recovery.candidates.forEach { candidate ->
                                     OutlinedButton(
                                         onClick = { onSelectCandidate(candidate.groupId) },
+                                        border = BorderStroke(AppBorders.Standard, AppColors.GroupInk),
                                         modifier = Modifier.fillMaxWidth(),
                                     ) {
                                         Text(

@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.group.join
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.group.join.component.GroupJoinPreviewCard
@@ -176,7 +178,18 @@ fun GroupJoinSheet(
             OutlinedTextField(
                 value = uiState.input,
                 onValueChange = onCodeChanged,
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .border(
+                            AppBorders.Standard,
+                            when {
+                                uiState.isInteractionLocked || isDismissing -> AppColors.GroupInk.copy(alpha = 0.38f)
+                                uiState.shouldShowCodeValidationError -> JoinErrorColor
+                                else -> AppColors.GroupInk
+                            },
+                            JoinInputShape,
+                        ),
                 enabled = !uiState.isInteractionLocked && !isDismissing,
                 isError = uiState.shouldShowCodeValidationError,
                 placeholder = { Text(stringResource(Res.string.group_join_code_placeholder)) },
@@ -197,12 +210,10 @@ fun GroupJoinSheet(
                     ),
                 colors =
                     OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor =
-                            if (uiState.shouldShowCodeValidationError) JoinErrorColor else AppColors.GroupInk,
-                        unfocusedBorderColor =
-                            if (uiState.shouldShowCodeValidationError) JoinErrorColor else Color.Transparent,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
                         disabledBorderColor = Color.Transparent,
-                        errorBorderColor = JoinErrorColor,
+                        errorBorderColor = Color.Transparent,
                         focusedContainerColor = Color(0xFFF2F4F3),
                         unfocusedContainerColor = Color(0xFFF2F4F3),
                         disabledContainerColor = Color(0xFFF2F4F3),
@@ -420,7 +431,11 @@ private fun JoinPrimaryButton(
                 .height(50.dp)
                 .clip(JoinButtonShape)
                 .background(if (enabled) AppColors.Primary else Color(0xFFE3E8E5))
-                .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+                .border(
+                    AppBorders.Standard,
+                    if (enabled) AppColors.GroupInk else AppColors.GroupInk.copy(alpha = 0.38f),
+                    JoinButtonShape,
+                ).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
                 .semantics { contentDescription = text },
         contentAlignment = Alignment.Center,
     ) {

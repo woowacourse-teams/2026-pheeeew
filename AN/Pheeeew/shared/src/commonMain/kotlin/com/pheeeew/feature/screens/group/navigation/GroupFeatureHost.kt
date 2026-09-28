@@ -31,6 +31,7 @@ fun GroupFeatureHost(
     modifier: Modifier = Modifier,
     onGroupDetailVisibilityChanged: (Boolean) -> Unit = {},
     onGroupCreateVisibilityChanged: (Boolean) -> Unit = {},
+    onMembershipChanged: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val currentBackStackEntry = navController.currentBackStackEntryAsState().value
@@ -57,6 +58,7 @@ fun GroupFeatureHost(
                 onCreateClick = { navController.navigate(GroupCreateDestination) },
                 onGroupClick = { groupId -> navController.navigate(GroupDetailDestination(groupId.value)) },
                 onJoinSucceeded = { groupId, _ ->
+                    onMembershipChanged()
                     navController.navigate(GroupDetailDestination(groupId.value)) {
                         launchSingleTop = true
                     }
@@ -82,6 +84,7 @@ fun GroupFeatureHost(
                 isCurrentDestination = currentBackStackEntry == entry,
                 onBack = { navController.popBackStack() },
                 onCreated = { groupId, _ ->
+                    onMembershipChanged()
                     homeViewModel.invalidateMembership()
                     navController.navigate(GroupDetailDestination(groupId.value)) {
                         popUpTo<GroupHomeDestination> { inclusive = false }
@@ -105,6 +108,7 @@ fun GroupFeatureHost(
                 }
 
             fun returnHomeAndRefresh(removedGroupId: GroupId) {
+                onMembershipChanged()
                 homeViewModel.invalidateMembership()
                 homeViewModel.removeGroup(removedGroupId)
                 navController.popBackStack<GroupHomeDestination>(inclusive = false)

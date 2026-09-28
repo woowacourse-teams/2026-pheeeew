@@ -81,6 +81,7 @@ class MapViewModel(
     private var displayedBounds: EmotionMapBounds? = null
     private var retryCursor: String? = null
     private var displayedPins = linkedMapOf<Long, EmotionMapPin>()
+    private val locallyRegisteredPins = linkedMapOf<Long, EmotionPinUiModel>()
 
     fun start() {
         if (hasStarted) return
@@ -88,7 +89,20 @@ class MapViewModel(
         requestCurrentLocation(moveCamera = false, requestPermission = false)
     }
 
+    fun onEmotionRegistered(pin: EmotionPinUiModel) {
+        locallyRegisteredPins[pin.id] = pin
+        onRecordLocationPickingChanged(false)
+        _uiModel.value =
+            _uiModel.value.copy(
+                emotionPins =
+                    (uiModel.value.emotionPins.filterNot { it.id == pin.id } + pin)
+                        .sortedWith(compareBy<EmotionPinUiModel> { Instant.parse(it.createdAt) }.thenBy { it.id }),
+            )
+        refreshEmotionPins()
+    }
+
     fun onEmotionHidden(id: Long) {
+        locallyRegisteredPins.remove(id)
         _uiModel.value = _uiModel.value.copy(hiddenEmotionIds = _uiModel.value.hiddenEmotionIds + id)
     }
 
@@ -259,7 +273,8 @@ class MapViewModel(
                                 val displayLoad = exploration.display(observation, origin)
                                 displayedBounds = request.bounds
                                 displayedPins = pins
-                                val ordered = pins.values.toOrderedUiPins()
+                                page.pins.forEach { locallyRegisteredPins.remove(it.id) }
+                                val ordered = pins.values.toOrderedUiPins(request.bounds)
                                 _uiModel.value =
                                     _uiModel.value.copy(
                                         emotionPins = ordered,
@@ -335,12 +350,31 @@ class MapViewModel(
         displayedPins = pins.associateByTo(linkedMapOf()) { it.id }
         _uiModel.value.emotionContentLoad?.hidden()
         val load = exploration.load("cache", "cache").also { it.ready() }
-        _uiModel.value = _uiModel.value.copy(emotionPins = pins.toOrderedUiPins(), emotionContentLoad = load)
+        _uiModel.value = _uiModel.value.copy(emotionPins = pins.toOrderedUiPins(bounds), emotionContentLoad = load)
     }
 
-    private fun Collection<EmotionMapPin>.toOrderedUiPins(): List<EmotionPinUiModel> =
-        sortedWith(compareBy<EmotionMapPin> { Instant.parse(it.createdAt) }.thenBy { it.id })
-            .map { it.toUiModel() }
+    private fun Collection<EmotionMapPin>.toOrderedUiPins(bounds: EmotionMapBounds): List<EmotionPinUiModel> =
+        (map { it.toUiModel() } + locallyRegisteredPins.values.filter { bounds.contains(it) })
+            .distinctBy { it.id }
+            .filterNot { it.id in _uiModel.value.hiddenEmotionIds }
+            .sortedWith(compareBy<EmotionPinUiModel> { Instant.parse(it.createdAt) }.thenBy { it.id })
+
+    private fun EmotionMapBounds.contains(pin: EmotionPinUiModel): Boolean =
+        pin.latitude in minLatitude..maxLatitude &&
+            if (minLongitude <= maxLongitude) {
+                pin.longitude in minLongitude..maxLongitude
+            } else {
+                pin.longitude >= minLongitude || pin.longitude <= maxLongitude
+            }
+
+    fun onConnectivityChanged(connected: Boolean) {
+        val wasOffline = _uiModel.value.isOffline
+        _uiModel.value = _uiModel.value.copy(isOffline = !connected)
+        if (connected && wasOffline) {
+            if (_uiModel.value.mapError != null) retryMap()
+            refreshEmotionPins()
+        }
+    }
 
     fun onMapRendererAttached() {
         mapLoad?.finish("cancelled")
@@ -375,13 +409,17 @@ class MapViewModel(
         if (locationRequestJob?.isActive == true) return
         locationRequestJob =
             viewModelScope.launch {
-                _uiModel.value = _uiModel.value.copy(isRequestingLocation = true)
+                _uiModel.value = _uiModel.value.copy(isRequestingLocation = true, locationError = null)
                 try {
                     val locationState =
                         telemetry.operation("location_acquire_finished").observe({
                             if (it is LocationState.Available) "success" else "unavailable"
                         }) { refreshLocation(requestPermission) }
-                    _uiModel.value = _uiModel.value.copy(locationState = locationState)
+                    _uiModel.value =
+                        _uiModel.value.copy(
+                            locationState = locationState,
+                            locationError = (locationState as? LocationState.Unavailable)?.reason.takeIf { moveCamera },
+                        )
                     val location = (locationState as? LocationState.Available)?.location
                     if (moveCamera && location != null) {
                         sendCameraCommand(
@@ -397,6 +435,7 @@ class MapViewModel(
                     _uiModel.value =
                         _uiModel.value.copy(
                             locationState = LocationState.Unavailable(LocationError.GpsUnavailable),
+                            locationError = LocationError.GpsUnavailable.takeIf { moveCamera },
                         )
                 } finally {
                     _uiModel.value = _uiModel.value.copy(isRequestingLocation = false)

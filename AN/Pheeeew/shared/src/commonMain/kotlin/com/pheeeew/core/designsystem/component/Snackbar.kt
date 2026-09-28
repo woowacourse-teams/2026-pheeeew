@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
@@ -55,6 +56,7 @@ fun Snackbar(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     isError: Boolean = false,
+    maxLines: Int = 1,
     presentationKey: Any? = message,
     onShown: () -> Unit = {},
 ) {
@@ -87,14 +89,14 @@ fun Snackbar(
                 Modifier
                     .fillMaxWidth()
                     .widthIn(max = 354.dp)
-                    .height(48.dp),
+                    .heightIn(min = 48.dp),
             shape = RoundedCornerShape(1.dp),
             color = AppColors.Background,
             contentColor = AppColors.TextPrimary,
-            border = androidx.compose.foundation.BorderStroke(1.dp, AppColors.TextPrimary),
+            border = androidx.compose.foundation.BorderStroke(AppBorders.Standard, AppColors.TextPrimary),
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -103,7 +105,7 @@ fun Snackbar(
                         Modifier
                             .size(24.dp)
                             .clip(CircleShape)
-                            .border(width = 1.dp, color = AppColors.Border, shape = CircleShape),
+                            .border(width = AppBorders.Standard, color = AppColors.Border, shape = CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(painterResource(Res.drawable.ic_error), null, Modifier.size(24.dp), tint = AppColors.Error)
@@ -114,7 +116,7 @@ fun Snackbar(
                             Modifier
                                 .size(18.dp)
                                 .background(Color(0xFFFFE36E), CircleShape)
-                                .border(1.dp, AppColors.TextPrimary, CircleShape),
+                                .border(AppBorders.Standard, AppColors.TextPrimary, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         SuccessCheckMark()
@@ -126,7 +128,7 @@ fun Snackbar(
                     color = AppColors.TextPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1,
+                    maxLines = maxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
             }

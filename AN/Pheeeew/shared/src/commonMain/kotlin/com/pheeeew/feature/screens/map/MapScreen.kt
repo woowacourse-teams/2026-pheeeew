@@ -1,14 +1,9 @@
 package com.pheeeew.feature.screens.map
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -32,13 +27,14 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.rememberVoiceRecorder
 import com.pheeeew.core.designsystem.component.ConfirmDialog
-import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.core.permission.LocationPermissionController
 import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionBounds
+import com.pheeeew.feature.screens.map.detail.EmotionDetailLoadUiModel
+import com.pheeeew.feature.screens.map.overlay.MapFeedbackOverlay
 import com.pheeeew.feature.screens.map.overlay.MapOverlay
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
@@ -74,6 +70,11 @@ fun MapScreen(
     locationPermissionController: LocationPermissionController,
     appSettingsLauncher: AppSettingsLauncher,
     modifier: Modifier = Modifier,
+    message: String? = null,
+    onMessageDismiss: () -> Unit = {},
+    detailError: EmotionDetailLoadUiModel.Failed? = null,
+    onRetryDetail: () -> Unit = {},
+    onDismissDetailError: () -> Unit = {},
     monitoringVisible: Boolean = true,
 ) {
     LaunchedEffect(viewModel) {
@@ -213,11 +214,13 @@ fun MapScreen(
             else -> requestInputBack()
         }
     }
-    LaunchedEffect(recordUiModel.step, notice) {
+    LaunchedEffect(recordViewModel, viewModel) {
+        recordViewModel.registeredEmotions.collect(viewModel::onEmotionRegistered)
+    }
+    LaunchedEffect(recordUiModel.step) {
         if (recordUiModel.step == RecordFlowStepUiModel.Closed) {
             voiceRecorder.clear()
             viewModel.onRecordLocationPickingChanged(false)
-            if (notice?.isError == false) viewModel.refreshEmotionPins()
         }
     }
     var recordViewport by remember { mutableStateOf<RecordMapViewport?>(null) }
@@ -331,8 +334,7 @@ fun MapScreen(
                     }
                 }
             },
-            onMyLocationClick = { viewModel.onMyLocationClick() },
-            onRetryMap = viewModel::retryMap,
+            onMyLocationClick = viewModel::onMyLocationClick,
             onRecordBottomSheetDismiss = requestInputBack,
             onRecordInputModeChange = recordFlowCoordinator::changeInputMode,
             onRecordMemoChange = recordViewModel::onMemoChange,
@@ -348,13 +350,42 @@ fun MapScreen(
             onRecordGroupSelectionComplete = recordViewModel::onGroupSelectionComplete,
             modifier = Modifier.fillMaxSize(),
         )
-        Snackbar(
-            message = notice?.message?.takeIf { monitoringResumed },
-            presentationKey = notice,
-            onShown = { notice?.receipt?.shown() },
-            onDismiss = recordViewModel::dismissNotice,
-            modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 16.dp, end = 16.dp),
-            isError = notice?.isError == true,
+        MapFeedbackOverlay(
+            uiModel = uiModel,
+            notice = notice,
+            onDismissNotice = recordViewModel::dismissNotice,
+            message = message,
+            onMessageDismiss = onMessageDismiss,
+            detailError = detailError,
+            onRetryDetail = onRetryDetail,
+            onDismissDetailError = onDismissDetailError,
+            onAction = { action ->
+                when (action) {
+                    MapFeedbackAction.RetryMap -> {
+                        viewModel.retryMap()
+                    }
+
+                    MapFeedbackAction.RetryPins -> {
+                        viewModel.retryEmotionPins()
+                    }
+
+                    MapFeedbackAction.RetryLocation -> {
+                        viewModel.onMyLocationClick()
+                    }
+
+                    MapFeedbackAction.OpenSettings -> {
+                        coroutineScope.launch { appSettingsLauncher.openAppSettings() }
+                    }
+
+                    MapFeedbackAction.OpenLocationSettings -> {
+                        coroutineScope.launch {
+                            appSettingsLauncher
+                                .openLocationSettings()
+                        }
+                    }
+                }
+            },
+            modifier = Modifier.align(Alignment.TopCenter),
         )
     }
     if (showDiscardDialog) {
@@ -416,7 +447,6 @@ internal fun MapScreenContent(
     onEmotionSelectorToggle: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
     onMyLocationClick: () -> Unit,
-    onRetryMap: () -> Unit,
     onRecordBottomSheetDismiss: () -> Unit,
     onRecordInputModeChange: (RecordInputModeUiModel) -> Unit,
     onRecordMemoChange: (String) -> Unit,
@@ -441,31 +471,6 @@ internal fun MapScreenContent(
             uiModel.copy(emotionPinSymbolImages = symbolImages),
             Modifier.fillMaxSize(),
         )
-
-        if (uiModel.mapError != null) {
-            Box(
-                modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.45f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Text("지도를 불러오지 못했어", color = Color.White)
-                    Button(
-                        onClick = onRetryMap,
-                        colors =
-                            ButtonDefaults.buttonColors(
-                                containerColor = Color.Black,
-                                contentColor = Color.White,
-                            ),
-                    ) {
-                        Text("다시 시도")
-                    }
-                }
-            }
-        }
 
         if (recordUiModel.step != RecordFlowStepUiModel.LocationSelection) {
             MapOverlay(
@@ -556,7 +561,6 @@ private fun MapScreenContentPreview() {
         onEmotionSelectorToggle = {},
         onEmotionBubbleClick = {},
         onMyLocationClick = {},
-        onRetryMap = {},
         onRecordBottomSheetDismiss = {},
         onRecordInputModeChange = {},
         onRecordMemoChange = {},

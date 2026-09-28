@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.domain.model.emotion.EmotionState
 import org.jetbrains.compose.resources.painterResource
 
@@ -133,6 +134,6 @@ private fun FeedbackButton(
                 containerColor = if (highlighted) Color(0xFFFFE164) else Color.White,
                 contentColor = FeedbackInk,
             ),
-        border = BorderStroke(1.dp, if (highlighted) FeedbackInk else Color(0xFFD8DDD5)),
+        border = BorderStroke(AppBorders.Standard, if (highlighted) FeedbackInk else Color(0xFFD8DDD5)),
     ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
 }
