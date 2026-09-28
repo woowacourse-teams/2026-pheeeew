@@ -346,7 +346,12 @@ class NearbyEmotionViewModel(
         if (changedGroup) refresh()
     }
 
+    fun canPlay(event: NearbyEmotionEvent.Play): Boolean =
+        state.value.visible && event.generation == generation &&
+            event.id !in blocked && state.value.items.any { it.id == event.id }
+
     fun play(id: Long) {
+        if (!state.value.visible) return
         audioJob?.cancel()
         val item = state.value.items.find { it.id == id } ?: return
         if (item.contentType != EmotionContentType.AUDIO) return
@@ -355,7 +360,10 @@ class NearbyEmotionViewModel(
         val currentAudio = item.audio
         if (currentAudio != null && currentAudio.expiresAt > kotlin.time.Clock.System.now()) {
             mutableState.update { it.copy(selectedId = null, audioLoadingId = null) }
-            viewModelScope.launch { eventChannel.send(NearbyEmotionEvent.Play(id, currentAudio.url)) }
+            audioJob = viewModelScope.launch {
+                val event = NearbyEmotionEvent.Play(id, currentAudio.url, ticket)
+                if (canPlay(event)) eventChannel.send(event)
+            }
             return
         }
         mutableState.update { it.copy(audioLoadingId = id, selectedId = null) }
@@ -374,7 +382,7 @@ class NearbyEmotionViewModel(
                             kotlin.time.Clock.System
                                 .now()
                         ) {
-                            eventChannel.send(NearbyEmotionEvent.Play(id, audio.url))
+                            eventChannel.send(NearbyEmotionEvent.Play(id, audio.url, ticket))
                         } else {
                             mutableState.update { it.copy(message = "녹음을 불러오지 못했어요. 다시 시도해 주세요.") }
                         }
@@ -396,6 +404,7 @@ sealed interface NearbyEmotionEvent {
     data class Play(
         val id: Long,
         val url: String,
+        val generation: Long,
     ) : NearbyEmotionEvent
 
     data class Hidden(

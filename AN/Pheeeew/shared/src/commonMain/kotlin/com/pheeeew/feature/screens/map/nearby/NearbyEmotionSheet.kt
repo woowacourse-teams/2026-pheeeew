@@ -76,7 +76,7 @@ fun NearbyEmotionSheet(
         viewModel.events.collect { event ->
             when (event) {
                 is NearbyEmotionEvent.Play -> {
-                    if (viewModel.state.value.visible) player.play(event.id, event.url)
+                    if (viewModel.canPlay(event)) player.play(event.id, event.url)
                 }
 
                 is NearbyEmotionEvent.Hidden -> {
