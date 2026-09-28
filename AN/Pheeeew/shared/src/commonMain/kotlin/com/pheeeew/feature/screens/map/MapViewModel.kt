@@ -278,6 +278,15 @@ class MapViewModel(
         sortedWith(compareBy<EmotionMapPin> { Instant.parse(it.createdAt) }.thenBy { it.id })
             .map { it.toUiModel() }
 
+    fun onConnectivityChanged(connected: Boolean) {
+        val wasOffline = _uiModel.value.isOffline
+        _uiModel.value = _uiModel.value.copy(isOffline = !connected)
+        if (connected && wasOffline) {
+            if (_uiModel.value.mapError != null) retryMap()
+            refreshEmotionPins()
+        }
+    }
+
     fun onMapError(error: MapErrorUiModel) {
         _uiModel.value = _uiModel.value.copy(mapError = error)
     }
@@ -301,10 +310,14 @@ class MapViewModel(
         if (locationRequestJob?.isActive == true) return
         locationRequestJob =
             viewModelScope.launch {
-                _uiModel.value = _uiModel.value.copy(isRequestingLocation = true)
+                _uiModel.value = _uiModel.value.copy(isRequestingLocation = true, locationError = null)
                 try {
                     val locationState = refreshLocation(requestPermission)
-                    _uiModel.value = _uiModel.value.copy(locationState = locationState)
+                    _uiModel.value =
+                        _uiModel.value.copy(
+                            locationState = locationState,
+                            locationError = (locationState as? LocationState.Unavailable)?.reason.takeIf { moveCamera },
+                        )
                     val location = (locationState as? LocationState.Available)?.location
                     if (moveCamera && location != null) {
                         sendCameraCommand(
@@ -320,6 +333,7 @@ class MapViewModel(
                     _uiModel.value =
                         _uiModel.value.copy(
                             locationState = LocationState.Unavailable(LocationError.GpsUnavailable),
+                            locationError = LocationError.GpsUnavailable.takeIf { moveCamera },
                         )
                 } finally {
                     _uiModel.value = _uiModel.value.copy(isRequestingLocation = false)

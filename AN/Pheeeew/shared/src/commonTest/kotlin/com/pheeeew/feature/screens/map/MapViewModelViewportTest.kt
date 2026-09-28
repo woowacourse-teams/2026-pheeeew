@@ -2,8 +2,11 @@ package com.pheeeew.feature.screens.map
 
 import com.pheeeew.core.permission.LocationPermissionController
 import com.pheeeew.core.permission.LocationPermissionStatus
+import com.pheeeew.domain.model.CurrentLocation
+import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
+import com.pheeeew.domain.model.emotion.EmotionMapFailure
 import com.pheeeew.domain.model.emotion.EmotionMapPage
 import com.pheeeew.domain.model.emotion.EmotionMapPageResult
 import com.pheeeew.domain.model.emotion.EmotionMapPin
@@ -185,6 +188,147 @@ class MapViewModelViewportTest {
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(listOf<EmotionMapBounds?>(firstBounds, latestBounds), repository.requestedBounds)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `failed pin refresh preserves displayed pins and clears its banner after retry succeeds`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val pins = listOf(pin(1, 127.02, 37.55))
+                val repository =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(page(pins)),
+                        CompletableDeferred(EmotionMapPageResult.Failure(EmotionMapFailure.Unavailable)),
+                        CompletableDeferred(page(pins)),
+                    )
+                val vm =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                vm.onViewportChanged(bounds(127.0, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+                vm.refreshEmotionPins()
+                runCurrent()
+                assertEquals(listOf(1L), vm.pinIds())
+                assertEquals(
+                    MapFeedbackAction.RetryPins,
+                    vm.uiModel.value
+                        .primaryFeedback()
+                        ?.action,
+                )
+                vm.retryEmotionPins()
+                runCurrent()
+                assertEquals(null, vm.uiModel.value.primaryFeedback())
+                assertEquals(listOf(1L), vm.pinIds())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `reconnection retries failed map and pin reads once without changing existing pins`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val pins = listOf(pin(1, 127.02, 37.55))
+                val repository =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(page(pins)),
+                        CompletableDeferred(page(pins)),
+                    )
+                val vm =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                vm.onViewportChanged(bounds(127.0, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+                vm.onConnectivityChanged(true)
+                assertEquals(1, repository.requestedBounds.size)
+                vm.onMapError(MapErrorUiModel.StyleLoadFailed)
+                vm.onConnectivityChanged(false)
+                assertEquals(
+                    null,
+                    vm.uiModel.value
+                        .primaryFeedback()
+                        ?.action,
+                )
+                assertEquals(listOf(1L), vm.pinIds())
+                assertEquals(0, vm.uiModel.value.mapRevision)
+                vm.onConnectivityChanged(true)
+                runCurrent()
+                assertEquals(1, vm.uiModel.value.mapRevision)
+                assertEquals(null, vm.uiModel.value.primaryFeedback())
+                assertEquals(listOf(1L), vm.pinIds())
+                assertEquals(2, repository.requestedBounds.size)
+                vm.onConnectivityChanged(true)
+                runCurrent()
+                assertEquals(2, repository.requestedBounds.size)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `explicit location failures show a banner and successful retry clears it`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val location =
+                    MutableStateFlow<LocationState>(LocationState.Unavailable(LocationError.PermissionDenied))
+                val refresh =
+                    RefreshLocationUseCase(
+                        object : LocationPermissionController {
+                            override suspend fun currentStatus() = LocationPermissionStatus.Granted
+
+                            override suspend fun requestPermission() = LocationPermissionStatus.Granted
+                        },
+                        object : LocationRepository {
+                            override val state = location
+
+                            override suspend fun refresh() = Unit
+                        },
+                    )
+                val repository = QueuedEmotionMapRepository()
+                val vm =
+                    MapViewModel(
+                        refresh,
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                vm.start()
+                runCurrent()
+                assertEquals(null, vm.uiModel.value.primaryFeedback())
+                vm.onMyLocationClick()
+                runCurrent()
+                assertEquals(
+                    MapFeedbackAction.OpenSettings,
+                    vm.uiModel.value
+                        .primaryFeedback()
+                        ?.action,
+                )
+                location.value = LocationState.Unavailable(LocationError.LocationTimeout)
+                vm.onMyLocationClick()
+                runCurrent()
+                assertEquals(
+                    MapFeedbackAction.RetryLocation,
+                    vm.uiModel.value
+                        .primaryFeedback()
+                        ?.action,
+                )
+                location.value = LocationState.Available(CurrentLocation(37.5, 127.0, 1f, 0L))
+                vm.onMyLocationClick()
+                runCurrent()
+                assertEquals(null, vm.uiModel.value.primaryFeedback())
             } finally {
                 Dispatchers.resetMain()
             }

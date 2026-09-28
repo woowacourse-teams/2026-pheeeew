@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -53,6 +53,7 @@ fun Snackbar(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     isError: Boolean = false,
+    maxLines: Int = 1,
 ) {
     var lastMessage by remember { mutableStateOf(message) }
 
@@ -75,14 +76,14 @@ fun Snackbar(
                 Modifier
                     .fillMaxWidth()
                     .widthIn(max = 354.dp)
-                    .height(48.dp),
+                    .heightIn(min = 48.dp),
             shape = RoundedCornerShape(1.dp),
             color = AppColors.Background,
             contentColor = AppColors.TextPrimary,
             border = androidx.compose.foundation.BorderStroke(1.dp, AppColors.TextPrimary),
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp),
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -114,7 +115,7 @@ fun Snackbar(
                     color = AppColors.TextPrimary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Medium,
-                    maxLines = 1,
+                    maxLines = maxLines,
                     overflow = TextOverflow.Ellipsis,
                 )
             }

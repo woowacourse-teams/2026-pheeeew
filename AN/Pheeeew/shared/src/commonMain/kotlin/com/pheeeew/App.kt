@@ -2,9 +2,7 @@ package com.pheeeew
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -14,13 +12,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.di.ApiDependencies
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.di.createEmotionAudioRepository
@@ -43,6 +42,7 @@ import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.screens.group.navigation.GroupFeatureHost
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
+import com.pheeeew.feature.screens.map.detail.EmotionDetailLoadUiModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailOverlay
 import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionSheet
@@ -52,6 +52,7 @@ import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
+import com.pheeeew.legacy.core.network.ConnectivityObserver
 import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 import org.jetbrains.compose.resources.DrawableResource
 
@@ -65,6 +66,7 @@ fun App(
     appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
+    connectivityObserver: ConnectivityObserver,
 ) {
     var onboardingCompleted by remember { mutableStateOf(hasCompletedOnboarding) }
     if (!onboardingCompleted) {
@@ -94,6 +96,12 @@ fun App(
                 emotionMapDependencies.findSnapshot,
             )
         }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(connectivityObserver, lifecycleOwner, mapViewModel) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            connectivityObserver.isConnected.collect(mapViewModel::onConnectivityChanged)
+        }
+    }
     val registrationRepository =
         remember(apiDependencies.client) { createEmotionRegistrationRepository(apiDependencies.client) }
     val groupStampListRepository =
@@ -170,6 +178,11 @@ fun App(
                         locationPermissionController = locationDependencies.permissionController,
                         appSettingsLauncher = appSettingsLauncher,
                         modifier = Modifier.fillMaxSize(),
+                        message = moderationMessage,
+                        onMessageDismiss = { moderationMessage = null },
+                        detailError = detailState as? EmotionDetailLoadUiModel.Failed,
+                        onRetryDetail = detailViewModel::retry,
+                        onDismissDetailError = detailViewModel::dismiss,
                     )
 
                     NearbyEmotionSheet(
@@ -227,17 +240,6 @@ fun App(
                 )
             }
         }
-
-        Snackbar(
-            message = moderationMessage,
-            onDismiss = { moderationMessage = null },
-            modifier =
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(16.dp),
-        )
 
         reportTarget?.let { (id, stamp) ->
             ReportRoute(

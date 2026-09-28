@@ -12,6 +12,7 @@ import com.pheeeew.data.local.group.AndroidLastRecordedGroupRepository
 import com.pheeeew.data.location.platform.android.LocationDependenciesHolder
 import com.pheeeew.data.location.platform.android.createAndroidLocationDependencies
 import com.pheeeew.feature.screens.onboarding.WELCOME_ONBOARDING_COMPLETED_KEY
+import com.pheeeew.legacy.AndroidConnectivityObserver
 import com.pheeeew.legacy.core.permission.AndroidLocationPermissionSettingsLauncher
 
 class MainActivity : ComponentActivity() {
@@ -29,9 +30,12 @@ class MainActivity : ComponentActivity() {
         val hasCompletedOnboarding = onboardingPreferences.getBoolean(WELCOME_ONBOARDING_COMPLETED_KEY, false)
         val lastRecordedGroupRepository = AndroidLastRecordedGroupRepository(applicationContext)
 
+        val connectivityObserver = AndroidConnectivityObserver(applicationContext)
+
         setContent {
             App(
                 locationDependencies = locationDependencies,
+                connectivityObserver = connectivityObserver,
                 lastRecordedGroupRepository = lastRecordedGroupRepository,
                 hasCompletedOnboarding = hasCompletedOnboarding,
                 onOnboardingCompleted = {
