@@ -94,7 +94,7 @@ internal fun NearbySheetLayout(
                             .fillMaxWidth()
                             .height(with(density) { (availableHeightPx - offset).coerceAtLeast(0f).toDp() }),
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                    color = Color(0xFFFFFCF6),
+                    color = Color(0xFFFAFAFA),
                     shadowElevation = 12.dp,
                 ) {
                     Column(
