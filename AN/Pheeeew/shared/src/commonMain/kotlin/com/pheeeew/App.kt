@@ -23,7 +23,6 @@ import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.di.createEmotionAudioRepository
 import com.pheeeew.core.di.createEmotionDetailRepository
 import com.pheeeew.core.di.createEmotionMapDependencies
-import com.pheeeew.core.di.createWeeklyRankingViewModel
 import com.pheeeew.core.di.group.createGroupDependencies
 import com.pheeeew.core.navigation.GroupRootDestination
 import com.pheeeew.core.navigation.MapRootDestination
@@ -40,7 +39,6 @@ import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
-import com.pheeeew.feature.screens.ranking.WeeklyRankingViewModel
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 
@@ -87,8 +85,6 @@ fun App(
     val detailState by detailViewModel.uiModel.collectAsState()
     val audioRepository = remember { createEmotionAudioRepository() }
     val groupDependencies = remember(apiDependencies.client) { createGroupDependencies(apiDependencies.client) }
-    val rankingViewModel: WeeklyRankingViewModel =
-        viewModel { createWeeklyRankingViewModel(apiDependencies.client) }
     val navController = rememberNavController()
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val selectedDestination =
@@ -146,7 +142,7 @@ fun App(
                 )
             }
             composable<RankingRootDestination> {
-                WeeklyRankingRoute(rankingViewModel, Modifier.fillMaxSize())
+                WeeklyRankingRoute(apiDependencies.client, Modifier.fillMaxSize())
             }
         }
 
