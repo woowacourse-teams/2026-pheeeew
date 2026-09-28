@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.screens.group.home.component.GroupListItem
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
@@ -284,7 +285,12 @@ private fun GroupListContent(
     Box(modifier = modifier.fillMaxWidth()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 0.dp),
+            contentPadding =
+                PaddingValues(
+                    start = 24.dp,
+                    end = 24.dp,
+                    bottom = AppBottomNavigationBarOverlaySpace,
+                ),
             verticalArrangement = Arrangement.spacedBy(17.dp),
         ) {
             item(key = "home:list-header", contentType = "list-header") {
