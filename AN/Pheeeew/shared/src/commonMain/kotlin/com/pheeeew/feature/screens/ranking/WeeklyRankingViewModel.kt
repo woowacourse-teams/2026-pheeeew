@@ -18,6 +18,8 @@ data class WeeklyRankingUiState(
     val hasPrevious: Boolean = false,
     val rankings: List<RankingMember> = emptyList(),
     val status: WeeklyRankingStatus = WeeklyRankingStatus.Loading,
+    val isRefreshing: Boolean = false,
+    val hasRefreshError: Boolean = false,
 )
 
 enum class WeeklyRankingStatus {
@@ -79,11 +81,22 @@ class WeeklyRankingViewModel(
         if (_uiState.value.status == WeeklyRankingStatus.Failed) load(_uiState.value.weeksAgo)
     }
 
-    private fun load(weeksAgo: Int) {
+    fun onRefresh() {
+        if (requestJob?.isActive == true) return
+        val state = _uiState.value
+        load(state.weeksAgo, preserveContent = state.status == WeeklyRankingStatus.Ready)
+    }
+
+    private fun load(weeksAgo: Int, preserveContent: Boolean = false) {
         requestJob?.cancel()
         val requestId = ++requestGeneration
         val currentWeekLabel = _uiState.value.weekLabel
-        _uiState.value = WeeklyRankingUiState(weeksAgo = weeksAgo, weekLabel = currentWeekLabel)
+        _uiState.value =
+            if (preserveContent) {
+                _uiState.value.copy(isRefreshing = true, hasRefreshError = false)
+            } else {
+                WeeklyRankingUiState(weeksAgo = weeksAgo, weekLabel = currentWeekLabel)
+            }
         requestJob =
             viewModelScope.launch {
                 try {
@@ -114,11 +127,15 @@ class WeeklyRankingViewModel(
                         WeeklyRankingLoadResult.Unavailable -> {
                             if (requestId == requestGeneration) {
                                 _uiState.value =
-                                    WeeklyRankingUiState(
-                                        weeksAgo = weeksAgo,
-                                        weekLabel = currentWeekLabel,
-                                        status = WeeklyRankingStatus.Failed,
-                                    )
+                                    if (preserveContent) {
+                                        _uiState.value.copy(isRefreshing = false, hasRefreshError = true)
+                                    } else {
+                                        WeeklyRankingUiState(
+                                            weeksAgo = weeksAgo,
+                                            weekLabel = currentWeekLabel,
+                                            status = WeeklyRankingStatus.Failed,
+                                        )
+                                    }
                             }
                         }
                     }
@@ -127,11 +144,15 @@ class WeeklyRankingViewModel(
                 } catch (_: Exception) {
                     if (requestId == requestGeneration) {
                         _uiState.value =
-                            WeeklyRankingUiState(
-                                weeksAgo = weeksAgo,
-                                weekLabel = currentWeekLabel,
-                                status = WeeklyRankingStatus.Failed,
-                            )
+                            if (preserveContent) {
+                                _uiState.value.copy(isRefreshing = false, hasRefreshError = true)
+                            } else {
+                                WeeklyRankingUiState(
+                                    weeksAgo = weeksAgo,
+                                    weekLabel = currentWeekLabel,
+                                    status = WeeklyRankingStatus.Failed,
+                                )
+                            }
                     }
                 } finally {
                     if (requestId == requestGeneration) requestJob = null
