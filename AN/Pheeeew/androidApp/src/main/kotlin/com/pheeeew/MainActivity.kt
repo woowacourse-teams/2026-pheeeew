@@ -14,6 +14,8 @@ import com.pheeeew.data.location.platform.android.createAndroidLocationDependenc
 import com.pheeeew.feature.screens.onboarding.WELCOME_ONBOARDING_COMPLETED_KEY
 import com.pheeeew.legacy.AndroidConnectivityObserver
 import com.pheeeew.legacy.core.permission.AndroidLocationPermissionSettingsLauncher
+import com.pheeeew.legacy.data.remote.version.createAppVersionApi
+import com.pheeeew.legacy.core.network.ApiConfig as LegacyApiConfig
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,6 +31,7 @@ class MainActivity : ComponentActivity() {
         val onboardingPreferences = getSharedPreferences("pheeeew_preferences", MODE_PRIVATE)
         val hasCompletedOnboarding = onboardingPreferences.getBoolean(WELCOME_ONBOARDING_COMPLETED_KEY, false)
         val lastRecordedGroupRepository = AndroidLastRecordedGroupRepository(applicationContext)
+        val appVersionApi = createAppVersionApi(LegacyApiConfig(BuildConfig.API_BASE_URL), "android")
 
         val connectivityObserver = AndroidConnectivityObserver(applicationContext)
 
@@ -42,6 +45,7 @@ class MainActivity : ComponentActivity() {
                     onboardingPreferences.edit().putBoolean(WELCOME_ONBOARDING_COMPLETED_KEY, true).apply()
                 },
                 appVersion = BuildConfig.VERSION_NAME,
+                appVersionApi = appVersionApi,
                 permissionSettingsLauncher = AndroidLocationPermissionSettingsLauncher(this@MainActivity),
                 appSettingsLauncher = AndroidAppSettingsLauncher(this@MainActivity),
                 apiDependencies =
@@ -56,6 +60,7 @@ class MainActivity : ComponentActivity() {
                         ),
                         BuildConfig.APPLICATION_ID,
                         BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
+                        monitoring = (application as PheeeewApplication).monitoring,
                     ),
             )
         }

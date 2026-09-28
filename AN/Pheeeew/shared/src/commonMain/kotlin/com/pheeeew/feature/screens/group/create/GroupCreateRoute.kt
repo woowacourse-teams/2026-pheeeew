@@ -8,6 +8,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.flow.collect
@@ -20,6 +21,7 @@ fun GroupCreateRoute(
     onBack: () -> Unit,
     onCreated: (groupId: GroupId, operationKey: GroupOperationKey) -> Unit,
 ) {
+    ProductScreen(viewModel.telemetry, isCurrentDestination, "group_create_form_viewed")
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnCreated by rememberUpdatedState(onCreated)

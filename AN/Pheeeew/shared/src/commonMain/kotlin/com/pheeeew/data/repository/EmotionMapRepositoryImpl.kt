@@ -44,7 +44,7 @@ class EmotionMapRepositoryImpl(
         }
         if (!forceRefresh && cursor == null && bounds != null) {
             cache.completePage(bounds, groupId)?.let { page ->
-                return EmotionMapPageResult.Success(page)
+                return EmotionMapPageResult.Success(page, fromCache = true)
             }
         }
         return try {

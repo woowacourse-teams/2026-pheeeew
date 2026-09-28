@@ -47,6 +47,7 @@ fun EmotionDetailOverlay(
     onReportClick: (Long, DrawableResource) -> Unit,
     onBlockSucceeded: () -> Unit,
     onDeleteSucceeded: () -> Unit,
+    monitoringVisible: Boolean = true,
 ) {
     when (state) {
         EmotionDetailLoadUiModel.Closed -> {
@@ -66,6 +67,7 @@ fun EmotionDetailOverlay(
                     onReportClick = onReportClick,
                     onBlockSucceeded = onBlockSucceeded,
                     onDeleteSucceeded = onDeleteSucceeded,
+                    monitoringVisible = monitoringVisible,
                 )
             }
         }
@@ -88,6 +90,7 @@ private fun EmotionDetailReadyOverlay(
     onReportClick: (Long, DrawableResource) -> Unit,
     onBlockSucceeded: () -> Unit,
     onDeleteSucceeded: () -> Unit,
+    monitoringVisible: Boolean = true,
 ) {
     var showActions by remember { mutableStateOf(false) }
     var showBlockConfirmation by remember { mutableStateOf(false) }
@@ -106,19 +109,50 @@ private fun EmotionDetailReadyOverlay(
             onReactionClick,
             notice = actionMessage,
             onNoticeDismiss = { actionMessage = null },
+            presentationKey = state.visit,
+            monitoringVisible = monitoringVisible && !showActions && !showBlockConfirmation && !showDeleteConfirmation,
+            onShown = { state.visit?.shown() },
+            onContentShown = { state.visit?.contentShown() },
         )
     } else {
         key(audio.playbackUrl) {
             val playback = rememberAudioPlayback()
+            val telemetry = remember(state.visit) { state.visit?.productMonitoring() }
+            val fields = remember(state.visit) { state.visit?.eventFields().orEmpty() }
+            val audioMonitoring =
+                remember(playback, state.visit) {
+                    telemetry?.let {
+                        com.pheeeew.feature.monitoring.product
+                            .AudioMonitoring(it, fields)
+                    }
+                }
+            androidx.compose.runtime.DisposableEffect(
+                audioMonitoring,
+            ) { onDispose { audioMonitoring?.finish("stopped") } }
+            LaunchedEffect(playback, audioMonitoring) {
+                playback.state.collect { value ->
+                    audioMonitoring?.update(
+                        value.isPlaying,
+                        value.durationMillis,
+                        value.durationMillis > 0 && value.positionMillis >= value.durationMillis,
+                        value.error != null,
+                        value.positionMillis,
+                    )
+                }
+            }
             val playbackState by playback.state.collectAsState()
             var preparing by remember { mutableStateOf(true) }
             var loadError by remember { mutableStateOf<String?>(null) }
             LaunchedEffect(playback, audio.playbackUrl) {
+                val load = telemetry?.operation("emotion_audio_load_finished", fields)
                 try {
                     playback.prepare(audioRepository.download(audio.playbackUrl))
+                    load?.finish(if (playback.state.value.error == null) "success" else "failed")
                 } catch (cancelled: CancellationException) {
+                    load?.finish("cancelled")
                     throw cancelled
                 } catch (_: Exception) {
+                    load?.finish("failed")
                     loadError = "녹음을 불러올 수 없어요. 다시 시도해주세요"
                 } finally {
                     preparing = false
@@ -143,6 +177,11 @@ private fun EmotionDetailReadyOverlay(
                 onReactionClick,
                 notice = actionMessage,
                 onNoticeDismiss = { actionMessage = null },
+                presentationKey = state.visit,
+                monitoringVisible =
+                    monitoringVisible && !showActions && !showBlockConfirmation && !showDeleteConfirmation,
+                onShown = { state.visit?.shown() },
+                onContentShown = { state.visit?.contentShown() },
             )
         }
     }

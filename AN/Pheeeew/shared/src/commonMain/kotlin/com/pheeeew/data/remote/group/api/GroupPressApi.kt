@@ -25,6 +25,7 @@ class GroupPressApi(
                 // Only AUTH-001, which is rejected before the handler, may trigger the executor's safe refresh.
                 // Timeouts and every other uncertain result are never replayed.
                 replayAfterAuthentication = true,
+                monitoringEndpoint = "group_press",
             ),
         ) { response -> response.body<GroupPressCountResponseDto>() }
 

@@ -31,6 +31,7 @@ class EmotionBlockApi(
                 method = HttpMethod.Post,
                 path = "/api/v2/blocks/emotions",
                 kind = RequestKind.WRITE,
+                monitoringEndpoint = "emotion_block",
                 body = EmotionBlockRequestDto(emotionId),
             ),
         ) { response -> response.body<EmotionBlockResponseDto>() }

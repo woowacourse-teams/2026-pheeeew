@@ -31,7 +31,13 @@ class EmotionMapApi(
                 }
             }
         return requests.execute(
-            ApiRequest(HttpMethod.Get, PATH, RequestKind.READ, queryParameters = query),
+            ApiRequest(
+                HttpMethod.Get,
+                PATH,
+                RequestKind.READ,
+                monitoringEndpoint = "emotion_map",
+                queryParameters = query,
+            ),
         ) { response -> response.body<EmotionMapPageDto>() }
     }
 

@@ -3,6 +3,8 @@ package com.pheeeew.core.di
 import android.content.Context
 import android.util.Log
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.data.local.device.AndroidDeviceCredentialStorage
 import com.pheeeew.data.remote.device.attestation.AndroidPlayIntegrityProofProvider
@@ -20,6 +22,7 @@ object AndroidApiDependencies {
         build: DeviceSessionBuildConfig,
         applicationId: String,
         cloudProjectNumber: Long,
+        monitoring: Monitoring = NoOpMonitoring,
     ): ApiDependencies {
         require(build.isDebug || applicationId == "com.pheeeew") { "Release requires the official package" }
         require(build.attestationMode != "required" || cloudProjectNumber > 0) { "Play Integrity project is required" }
@@ -30,6 +33,7 @@ object AndroidApiDependencies {
                 build,
                 AndroidDeviceCredentialStorage(context.applicationContext, partition, build.legacyCredentialPolicy),
                 DevicePlatform.ANDROID,
+                monitoring = monitoring,
                 createProofProvider = { AndroidPlayIntegrityProofProvider(context, cloudProjectNumber) },
                 diagnostics =
                     DeviceSessionDiagnostics { event ->

@@ -28,7 +28,12 @@ class ApiLookupGroupAction(
 class ApiJoinGroupAction(
     private val repository: GroupJoinRepository,
     private val groupListSource: GroupListSource,
+    monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
 ) : JoinGroupAction {
+    private val telemetry =
+        com.pheeeew.feature.monitoring.product
+            .ProductMonitoring(monitoring, "group_home")
+
     override suspend fun join(
         groupId: GroupId,
         normalizedCode: String,
@@ -64,7 +69,34 @@ class ApiJoinGroupAction(
         }
 
     private suspend fun isMember(groupId: GroupId): Boolean =
-        when (val result = groupListSource.loadGroups()) {
+        when (
+            val result =
+                telemetry
+                    .operation(
+                        "operation_reconciled",
+                        com.pheeeew.feature.monitoring.product.labels(
+                            "operation_kind" to "group_join",
+                            "group_key" to groupId.value,
+                        ),
+                    ).observe({ result ->
+                        when (result) {
+                            is GroupListResult.Success -> {
+                                if (result.groups.any {
+                                        it.id.value.equals(groupId.value, ignoreCase = true)
+                                    }
+                                ) {
+                                    "member"
+                                } else {
+                                    "not_member"
+                                }
+                            }
+
+                            GroupListResult.Unavailable -> {
+                                "unknown"
+                            }
+                        }
+                    }) { groupListSource.loadGroups() }
+        ) {
             is GroupListResult.Success -> result.groups.any { it.id.value.equals(groupId.value, ignoreCase = true) }
             GroupListResult.Unavailable -> false
         }

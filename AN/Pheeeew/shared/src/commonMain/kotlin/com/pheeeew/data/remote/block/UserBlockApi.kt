@@ -27,6 +27,7 @@ class UserBlockApi(
                 method = HttpMethod.Post,
                 path = "/api/v2/blocks/devices",
                 kind = RequestKind.WRITE,
+                monitoringEndpoint = "user_block",
                 body = EmotionBlockRequestDto(emotionId),
             ),
         ) { response -> response.body<UserBlockResponseDto>() }

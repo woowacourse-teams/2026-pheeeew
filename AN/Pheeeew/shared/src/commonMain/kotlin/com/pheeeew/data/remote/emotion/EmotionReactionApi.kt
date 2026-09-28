@@ -21,6 +21,7 @@ class EmotionReactionApi(
                 method = if (selected) HttpMethod.Put else HttpMethod.Delete,
                 path = "/api/v1/emotions/$emotionId/emojis/${type.name}",
                 kind = RequestKind.WRITE,
+                monitoringEndpoint = "emotion_reaction",
                 replayAfterAuthentication = true,
             ),
         )

@@ -8,9 +8,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.pheeeew.BuildConfig
+import com.pheeeew.PheeeewApplication
+import com.pheeeew.feature.monitoring.compat.Monitoring
 import com.pheeeew.legacy.core.network.ApiConfig
 import com.pheeeew.legacy.data.local.device.AndroidDeviceIdStorage
 import com.pheeeew.legacy.data.local.device.InMemoryAccessTokenStore
@@ -58,23 +62,30 @@ class LegacyMainActivity : ComponentActivity() {
                     accessTokenStore = accessTokenStore,
                 )
             }
-        val sighDependencies =
-            SighModule.create(
-                config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
-                deviceIdStorage = AndroidDeviceIdStorage(this),
-                accessTokenStore = accessTokenStore,
-                refreshAccessToken = {
-                    deviceDependencies.ensureRegistered().getOrThrow().accessToken
-                },
-                monitoring = (application as PheeeewApplication).monitoring,
-            )
         val appVersionApi = createAppVersionApi(ApiConfig(baseUrl = BuildConfig.API_BASE_URL), "android")
         val connectivityObserver = AndroidConnectivityObserver(this)
 
         setContent {
+            val monitoring =
+                produceState<Monitoring?>(null) {
+                    value = (application as PheeeewApplication).compatibilityMonitoring()
+                }.value ?: return@setContent
+            val sighDependencies =
+                remember(monitoring) {
+                    SighModule.create(
+                        config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
+                        deviceIdStorage = AndroidDeviceIdStorage(this),
+                        accessTokenStore = accessTokenStore,
+                        refreshAccessToken = {
+                            deviceDependencies.ensureRegistered().getOrThrow().accessToken
+                        },
+                        monitoring = monitoring,
+                    )
+                }
+
             LegacyApp(
                 appVersion = BuildConfig.VERSION_NAME,
-                monitoring = (application as PheeeewApplication).monitoring,
+                monitoring = monitoring,
                 appVersionApi = appVersionApi,
                 connectivityObserver = connectivityObserver,
                 hasCompletedOnboarding = firstSighGuidePreferences.hasCompletedOnboarding,

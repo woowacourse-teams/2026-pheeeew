@@ -4,9 +4,18 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -15,7 +24,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -23,6 +41,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.di.ApiDependencies
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.di.createEmotionAudioRepository
@@ -50,6 +69,7 @@ import com.pheeeew.feature.screens.map.detail.EmotionDetailOverlay
 import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionSheet
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
+import com.pheeeew.feature.screens.map.nearby.face
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
@@ -57,6 +77,12 @@ import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.legacy.core.network.ConnectivityObserver
 import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
+import com.pheeeew.legacy.data.remote.version.AppVersionApi
+import com.pheeeew.legacy.data.remote.version.toPolicy
+import com.pheeeew.legacy.domain.model.version.AppVersionDecision
+import com.pheeeew.legacy.domain.model.version.evaluateAppVersion
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.withTimeout
 import org.jetbrains.compose.resources.DrawableResource
 
 @Composable
@@ -65,15 +91,90 @@ fun App(
     apiDependencies: ApiDependencies,
     lastRecordedGroupRepository: LastRecordedGroupRepository,
     appVersion: String,
+    appVersionApi: AppVersionApi,
     permissionSettingsLauncher: LocationPermissionSettingsLauncher,
     appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
     connectivityObserver: ConnectivityObserver,
 ) {
+    val uriHandler = LocalUriHandler.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var versionCheckAttempt by remember { mutableStateOf(0) }
+    var initialVersionCheckComplete by remember { mutableStateOf(false) }
+    var versionDecision by remember { mutableStateOf<AppVersionDecision?>(null) }
+    var suggestionDismissed by remember { mutableStateOf(false) }
+    var storeOpenError by remember { mutableStateOf(false) }
+
+    LaunchedEffect(appVersionApi, appVersion, versionCheckAttempt) {
+        initialVersionCheckComplete = false
+        try {
+            val policy = withTimeout(VERSION_CHECK_TIMEOUT_MILLIS) { appVersionApi.getPolicy().toPolicy() }
+            versionDecision = evaluateAppVersion(appVersion, policy)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            // Fail open if the public version-policy endpoint is temporarily unavailable.
+        } finally {
+            initialVersionCheckComplete = true
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME && initialVersionCheckComplete) {
+                    versionCheckAttempt++
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    if (!initialVersionCheckComplete) {
+        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(color = AppColors.GroupInk)
+        }
+        return
+    }
+
+    val requiredUpdate = versionDecision as? AppVersionDecision.UpdateRequired
+    if (requiredUpdate != null) {
+        RequiredUpdateDialog(
+            storeOpenError = storeOpenError,
+            onOpenStore = {
+                storeOpenError = runCatching { uriHandler.openUri(requiredUpdate.storeUrl) }.isFailure
+            },
+            onRetry = { versionCheckAttempt++ },
+        )
+        return
+    }
+
     var onboardingCompleted by remember { mutableStateOf(hasCompletedOnboarding) }
+    val suggestedUpdate = versionDecision as? AppVersionDecision.UpdateSuggested
+    if (suggestedUpdate != null && !suggestionDismissed) {
+        AlertDialog(
+            onDismissRequest = { suggestionDismissed = true },
+            title = { Text("새로운 버전이 나왔어요") },
+            text = { Text("최신 버전으로 업데이트하면 더 나은 앱을 이용할 수 있어요.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (runCatching { uriHandler.openUri(suggestedUpdate.storeUrl) }.isSuccess) {
+                            suggestionDismissed = true
+                        }
+                    },
+                ) { Text("업데이트") }
+            },
+            dismissButton = {
+                TextButton(onClick = { suggestionDismissed = true }) { Text("나중에") }
+            },
+        )
+    }
+
     if (!onboardingCompleted) {
         OnboardingScreen(
+            monitoring = apiDependencies.client.monitoring,
             onFinished = {
                 onOnboardingCompleted()
                 onboardingCompleted = true
@@ -97,11 +198,12 @@ fun App(
                 locationDependencies,
                 emotionMapDependencies.findPage,
                 emotionMapDependencies.findSnapshot,
+                apiDependencies.client.monitoring,
             )
         }
-    val lifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(connectivityObserver, lifecycleOwner, mapViewModel) {
-        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+    val connectivityLifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(connectivityObserver, connectivityLifecycleOwner, mapViewModel) {
+        connectivityLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             connectivityObserver.isConnected.collect(mapViewModel::onConnectivityChanged)
         }
     }
@@ -116,6 +218,7 @@ fun App(
                 registrationRepository,
                 groupStampListRepository,
                 lastRecordedGroupRepository,
+                apiDependencies.client.monitoring,
             )
         }
 
@@ -130,7 +233,7 @@ fun App(
 
     val detailViewModel: EmotionDetailViewModel =
         viewModel {
-            EmotionDetailViewModel(detailRepository)
+            EmotionDetailViewModel(detailRepository, apiDependencies.client.monitoring)
         }
 
     val detailState by detailViewModel.uiModel.collectAsState()
@@ -157,7 +260,7 @@ fun App(
         }
 
     var isSettingsVisible by remember { mutableStateOf(false) }
-    var reportTarget by remember { mutableStateOf<Pair<Long, DrawableResource>?>(null) }
+    var reportTarget by remember { mutableStateOf<Triple<Long, DrawableResource, String>?>(null) }
     var moderationMessage by remember { mutableStateOf<String?>(null) }
     var isGroupDetailVisible by remember { mutableStateOf(false) }
     var isGroupCreateVisible by remember { mutableStateOf(false) }
@@ -173,7 +276,10 @@ fun App(
                     MapScreen(
                         viewModel = mapViewModel,
                         recordViewModel = mapRecordViewModel,
-                        onEmotionPinClick = detailViewModel::open,
+                        onEmotionPinClick = { id -> detailViewModel.open(id, mapViewModel.exploration.viewId) },
+                        monitoringVisible =
+                            !nearbyState.visible && detailState == EmotionDetailLoadUiModel.Closed &&
+                                !isSettingsVisible && reportTarget == null,
                         onListClick = nearbyViewModel::toggle,
                         onViewportChanged = nearbyViewModel::onViewportChanged,
                         onSettingClick = { isSettingsVisible = true },
@@ -195,6 +301,12 @@ fun App(
                             mapViewModel.refreshEmotionPins()
                         },
                         onLeaveEmotion = mapViewModel::onEmotionSelectorOpen,
+                        onReportEmotion = { id ->
+                            nearbyState.items.firstOrNull { it.id == id && !it.isMine }?.let { item ->
+                                reportTarget = Triple(id, item.state.face, "list")
+                            }
+                        },
+                        monitoringVisible = !isSettingsVisible && reportTarget == null,
                     )
 
                     EmotionDetailOverlay(
@@ -207,13 +319,14 @@ fun App(
                         moderation.delete,
                         onReportClick = { id, stamp ->
                             detailViewModel.dismiss()
-                            reportTarget = id to stamp
+                            reportTarget = Triple(id, stamp, "map")
                         },
                         onBlockSucceeded = {
                             detailViewModel.dismiss()
                             mapViewModel.refreshEmotionPins()
                             moderationMessage = "차단되었습니다."
                         },
+                        monitoringVisible = !isSettingsVisible && reportTarget == null,
                         onDeleteSucceeded = {
                             detailViewModel.dismiss()
                             mapViewModel.refreshEmotionPins()
@@ -239,16 +352,21 @@ fun App(
                     }
                 },
             ) {
-                GroupFeatureHost(
-                    dependencies = groupDependencies,
-                    modifier = Modifier.fillMaxSize(),
-                    onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
-                    onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
-                    onMembershipChanged = {
-                        groupStampListRepository.invalidate()
-                        nearbyViewModel.onMembershipChanged()
-                    },
-                )
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible provides
+                        (!isSettingsVisible && reportTarget == null),
+                ) {
+                    GroupFeatureHost(
+                        dependencies = groupDependencies,
+                        modifier = Modifier.fillMaxSize(),
+                        onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
+                        onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
+                        onMembershipChanged = {
+                            groupStampListRepository.invalidate()
+                            nearbyViewModel.onMembershipChanged()
+                        },
+                    )
+                }
             }
 
             composable<RankingRootDestination>(
@@ -267,24 +385,31 @@ fun App(
                     }
                 },
             ) {
-                WeeklyRankingRoute(
-                    apiDependencies.client,
-                    Modifier.fillMaxSize(),
-                )
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible provides
+                        (!isSettingsVisible && reportTarget == null),
+                ) {
+                    WeeklyRankingRoute(
+                        apiDependencies.client,
+                        Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
-
-        reportTarget?.let { (id, stamp) ->
+        reportTarget?.let { (id, stamp, source) ->
             ReportRoute(
                 emotionId = id,
                 emotionStamp = stamp,
                 reportEmotion = moderation.report,
+                entrySource = source,
+                monitoring = apiDependencies.client.monitoring,
                 onBack = { reportTarget = null },
             )
         }
 
         if (isSettingsVisible) {
             SettingsScreen(
+                monitoring = apiDependencies.client.monitoring,
                 appVersion = appVersion,
                 onBackClick = { isSettingsVisible = false },
                 permissionSettingsLauncher = permissionSettingsLauncher,
@@ -320,3 +445,43 @@ fun App(
         }
     }
 }
+
+@Composable
+private fun RequiredUpdateDialog(
+    storeOpenError: Boolean,
+    onOpenStore: () -> Unit,
+    onRetry: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = {},
+        properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
+    ) {
+        Surface(
+            color = Color.White,
+            shape =
+                androidx.compose.foundation.shape
+                    .RoundedCornerShape(20.dp),
+        ) {
+            Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("앱 업데이트가 필요해요", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text =
+                        if (storeOpenError) {
+                            "스토어를 열 수 없어요. 다시 시도하거나 앱 버전을 확인해 주세요."
+                        } else {
+                            "현재 버전은 더 이상 지원되지 않아요. 최신 버전으로 업데이트한 뒤 이용해 주세요."
+                        },
+                    fontSize = 14.sp,
+                    lineHeight = 22.sp,
+                    textAlign = TextAlign.Center,
+                )
+                Spacer(Modifier.height(16.dp))
+                TextButton(onClick = onOpenStore) { Text("업데이트") }
+                TextButton(onClick = onRetry) { Text("다시 확인") }
+            }
+        }
+    }
+}
+
+private const val VERSION_CHECK_TIMEOUT_MILLIS = 10_000L

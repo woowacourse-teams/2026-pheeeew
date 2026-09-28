@@ -54,6 +54,7 @@ internal class EmotionPinSymbolLayer {
         images: List<EmotionPinSymbolImage>,
         visible: Boolean,
         densityDpi: Int,
+        monitoringLoadId: String?,
     ) {
         val source = style.getSourceAs<GeoJsonSource>(SOURCE_ID) ?: return
         val requiredImageKeys = images.mapTo(mutableSetOf(), EmotionPinSymbolImage::key)
@@ -79,6 +80,7 @@ internal class EmotionPinSymbolLayer {
             pins.map { pin ->
                 val properties =
                     JsonObject().apply {
+                        addProperty("monitoring-load-id", monitoringLoadId)
                         addProperty(IMAGE_KEY_PROPERTY, pin.symbolImageKey())
                         addProperty(ROTATION_PROPERTY, pin.rotationDegrees)
                     }

@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.map
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
+import com.pheeeew.feature.screens.map.monitoring.ContentLoad
 
 data class MapUiModel(
     val hiddenEmotionIds: Set<Long> = emptySet(),
@@ -23,4 +24,5 @@ data class MapUiModel(
     val hasPartialEmotionPins: Boolean = false,
     val invalidEmotionPinCount: Int = 0,
     val emotionPinsError: String? = null,
+    val emotionContentLoad: ContentLoad? = null,
 )

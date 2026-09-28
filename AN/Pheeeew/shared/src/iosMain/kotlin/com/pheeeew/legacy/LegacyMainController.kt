@@ -1,8 +1,10 @@
 package com.pheeeew.legacy
 
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
-import com.pheeeew.legacy.core.monitoring.IosMonitoring
+import com.pheeeew.core.di.IosMonitoring
+import com.pheeeew.feature.monitoring.compat.Monitoring
 import com.pheeeew.legacy.core.network.ApiConfig
 import com.pheeeew.legacy.core.network.IosConnectivityObserver
 import com.pheeeew.legacy.data.local.device.InMemoryAccessTokenStore
@@ -18,6 +20,11 @@ import platform.Foundation.NSUserDefaults
 @Suppress("ktlint:standard:function-naming")
 fun LegacyMainController() =
     ComposeUIViewController {
+        val monitoring =
+            produceState<Monitoring?>(null) {
+                value = IosMonitoring.compatibility()
+            }.value ?: return@ComposeUIViewController
+
         val firstSighGuidePreferences =
             remember { resolveFirstSighGuidePreferences(NSUserDefaults.standardUserDefaults) }
         val appVersion = NSBundle.mainBundle.infoDictionary?.get("CFBundleShortVersionString") as? String ?: "-"
@@ -44,12 +51,12 @@ fun LegacyMainController() =
                     refreshAccessToken = {
                         deviceDependencies.ensureRegistered().getOrThrow().accessToken
                     },
-                    monitoring = IosMonitoring.instance,
+                    monitoring = monitoring,
                 )
             }
         LegacyApp(
             appVersion = appVersion,
-            monitoring = IosMonitoring.instance,
+            monitoring = monitoring,
             appVersionApi = appVersionApi,
             connectivityObserver = connectivityObserver,
             hasCompletedOnboarding = firstSighGuidePreferences.hasCompletedOnboarding,

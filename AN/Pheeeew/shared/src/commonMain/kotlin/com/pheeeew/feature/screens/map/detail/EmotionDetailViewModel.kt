@@ -2,9 +2,14 @@ package com.pheeeew.feature.screens.map.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.model.emotion.EmotionDetailResult
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.repository.EmotionDetailRepository
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.labels
+import com.pheeeew.feature.screens.map.monitoring.DetailVisit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +25,7 @@ sealed interface EmotionDetailLoadUiModel {
         val id: Long,
         val detail: EmotionDetailUiModel,
         val isMine: Boolean,
+        val visit: DetailVisit? = null,
     ) : EmotionDetailLoadUiModel
 
     data class Failed(
@@ -30,9 +36,12 @@ sealed interface EmotionDetailLoadUiModel {
 
 class EmotionDetailViewModel(
     private val repository: EmotionDetailRepository,
+    private val monitoring: Monitoring = NoOpMonitoring,
 ) : ViewModel() {
+    private val telemetry = ProductMonitoring(monitoring, "map")
     private val mutable = MutableStateFlow<EmotionDetailLoadUiModel>(EmotionDetailLoadUiModel.Closed)
     val uiModel = mutable.asStateFlow()
+    private var detailVisit: DetailVisit? = null
     private var selectedId: Long? = null
     private var generation = 0L
     private var loadJob: Job? = null
@@ -44,47 +53,71 @@ class EmotionDetailViewModel(
         var job: Job?,
     )
 
-    fun open(id: Long) {
+    fun open(
+        id: Long,
+        viewId: String = "unattributed",
+        source: String = "map",
+    ) {
         if (id <= 0) return
+        detailVisit?.close()
+        detailVisit = DetailVisit(monitoring, id, source, viewId)
+        load(id)
+    }
+
+    private fun load(id: Long) {
+        val visit = detailVisit
         loadJob?.cancel()
         selectedId = id
         val requestGeneration = ++generation
         mutable.value = EmotionDetailLoadUiModel.Loading
         loadJob =
             viewModelScope.launch {
-                // Finish earlier writes before reopening the same emotion.
-                reactionMutations
-                    .filterKeys { it.first == id }
-                    .values
-                    .mapNotNull { it.job }
-                    .forEach { it.join() }
-                val result =
-                    try {
-                        repository.findById(id)
-                    } catch (cancelled: CancellationException) {
-                        throw cancelled
-                    } catch (_: Exception) {
-                        EmotionDetailResult.Unavailable
-                    }
-                if (requestGeneration != generation) return@launch
-                mutable.value =
-                    when (result) {
-                        is EmotionDetailResult.Success -> {
-                            EmotionDetailLoadUiModel.Ready(id, result.detail.toUiModel(), result.detail.isMine)
+                val observation = visit?.load()
+                try {
+                    // Finish earlier writes before reopening the same emotion.
+                    reactionMutations
+                        .filterKeys { it.first == id }
+                        .values
+                        .mapNotNull { it.job }
+                        .forEach { it.join() }
+                    val result =
+                        try {
+                            repository.findById(id)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            EmotionDetailResult.Unavailable
                         }
+                    val isOwn = (result as? EmotionDetailResult.Success)?.detail?.isMine
+                    if (isOwn != null) visit?.ownership(isOwn)
+                    observation?.finish(if (result is EmotionDetailResult.Success) "success" else "failed", isOwn)
+                    if (requestGeneration != generation) return@launch
+                    mutable.value =
+                        when (result) {
+                            is EmotionDetailResult.Success -> {
+                                EmotionDetailLoadUiModel.Ready(
+                                    id,
+                                    result.detail.toUiModel(),
+                                    result.detail.isMine,
+                                    visit,
+                                )
+                            }
 
-                        EmotionDetailResult.NotFound -> {
-                            EmotionDetailLoadUiModel.Failed("삭제되었거나 볼 수 없는 감정이에요", false)
-                        }
+                            EmotionDetailResult.NotFound -> {
+                                EmotionDetailLoadUiModel.Failed("삭제되었거나 볼 수 없는 감정이에요", false)
+                            }
 
-                        EmotionDetailResult.Unauthorized -> {
-                            EmotionDetailLoadUiModel.Failed("인증 정보를 확인하지 못했어요", true)
-                        }
+                            EmotionDetailResult.Unauthorized -> {
+                                EmotionDetailLoadUiModel.Failed("인증 정보를 확인하지 못했어요", true)
+                            }
 
-                        EmotionDetailResult.InvalidResponse, EmotionDetailResult.Unavailable -> {
-                            EmotionDetailLoadUiModel.Failed("감정을 불러오지 못했어요", true)
+                            EmotionDetailResult.InvalidResponse, EmotionDetailResult.Unavailable -> {
+                                EmotionDetailLoadUiModel.Failed("감정을 불러오지 못했어요", true)
+                            }
                         }
-                    }
+                } finally {
+                    observation?.finish("cancelled")
+                }
             }
     }
 
@@ -113,6 +146,7 @@ class EmotionDetailViewModel(
             )
         if (mutation.job != null) return
         val requestGeneration = generation
+        val visitFields = detailVisit?.eventFields().orEmpty()
         mutation.job =
             viewModelScope.launch {
                 try {
@@ -120,7 +154,19 @@ class EmotionDetailViewModel(
                         val requestedSelection = mutation.desiredSelected
                         val success =
                             try {
-                                repository.setReactionSelected(id, type, requestedSelection)
+                                telemetry
+                                    .operation(
+                                        "emotion_reaction_finished",
+                                        visitFields +
+                                            labels(
+                                                "entry_key" to id.toString(),
+                                                "entry_source" to "map",
+                                                "action" to if (requestedSelection) "add" else "remove",
+                                            ),
+                                        "emotion_reaction_started",
+                                    ).observe(
+                                        { if (it) "success" else "unknown" },
+                                    ) { repository.setReactionSelected(id, type, requestedSelection) }
                             } catch (cancelled: CancellationException) {
                                 throw cancelled
                             } catch (_: Exception) {
@@ -139,6 +185,26 @@ class EmotionDetailViewModel(
                                 } catch (_: Exception) {
                                     null
                                 }
+                            telemetry.emit(
+                                "operation_reconciled",
+                                visitFields +
+                                    labels(
+                                        "operation_kind" to "emotion_reaction",
+                                        "entry_key" to id.toString(),
+                                        "outcome" to
+                                            if (actual ==
+                                                null
+                                            ) {
+                                                "unknown"
+                                            } else if (actual.selected ==
+                                                requestedSelection
+                                            ) {
+                                                "state_matches"
+                                            } else {
+                                                "state_differs"
+                                            },
+                                    ),
+                            )
                             val rollback =
                                 actual?.let {
                                     mutation.confirmed.copy(count = it.count, isSelected = it.selected)
@@ -193,10 +259,12 @@ class EmotionDetailViewModel(
         }
 
     fun retry() {
-        selectedId?.let(::open)
+        selectedId?.let(::load)
     }
 
     fun dismiss() {
+        detailVisit?.close()
+        detailVisit = null
         generation++
         loadJob?.cancel()
         selectedId = null

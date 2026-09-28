@@ -55,7 +55,14 @@ internal fun MapFeedbackOverlay(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         // Notices share this column with persistent errors, so they never occupy the same slot.
-        Snackbar(notice?.message, onDismissNotice, isError = notice?.isError == true, maxLines = 3)
+        Snackbar(
+            message = notice?.message,
+            onDismiss = onDismissNotice,
+            isError = notice?.isError == true,
+            maxLines = 3,
+            presentationKey = notice,
+            onShown = { notice?.receipt?.shown() },
+        )
         Snackbar(message, onMessageDismiss, maxLines = 3)
         uiModel.primaryFeedback()?.let { feedback ->
             MapErrorBanner(

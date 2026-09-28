@@ -8,6 +8,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import com.pheeeew.domain.repository.EmotionModerationResult
 import com.pheeeew.domain.usecase.ReportEmotionUseCase
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.labels
+import com.pheeeew.feature.monitoring.product.resultLabel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
@@ -18,6 +21,8 @@ fun ReportRoute(
     emotionStamp: DrawableResource,
     reportEmotion: ReportEmotionUseCase,
     onBack: () -> Unit,
+    entrySource: String = "map",
+    monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
 ) {
     var uiState by remember(emotionId, emotionStamp) { mutableStateOf(ReportScreenUiState(emotionStamp)) }
     val coroutineScope = rememberCoroutineScope()
@@ -48,7 +53,17 @@ fun ReportRoute(
             coroutineScope.launch {
                 val result =
                     try {
-                        reportEmotion(emotionId, reason)
+                        ProductMonitoring(monitoring, "map")
+                            .operation(
+                                "emotion_report_finished",
+                                labels(
+                                    "entry_key" to emotionId.toString(),
+                                    "entry_source" to entrySource,
+                                    "action" to "report",
+                                ),
+                            ).observe(::resultLabel) {
+                                reportEmotion(emotionId, reason)
+                            }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (_: Exception) {

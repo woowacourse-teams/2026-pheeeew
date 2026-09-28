@@ -8,7 +8,9 @@ import com.pheeeew.feature.screens.ranking.data.ApiWeeklyRankingSource
 
 fun createWeeklyRankingViewModel(apiClient: ApiClient): WeeklyRankingViewModel =
     WeeklyRankingViewModel(
-        ApiWeeklyRankingSource(
-            GroupRankingRepositoryImpl(GroupRankingApi(apiClient.requests)),
-        ),
+        monitoring = apiClient.monitoring,
+        source =
+            ApiWeeklyRankingSource(
+                GroupRankingRepositoryImpl(GroupRankingApi(apiClient.requests)),
+            ),
     )

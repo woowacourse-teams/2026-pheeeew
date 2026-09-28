@@ -14,7 +14,7 @@ class GroupCreateApi(
 ) {
     suspend fun create(request: GroupCreateRequestDto): ApiResult<GroupCreateResponseDto> =
         requests.execute(
-            ApiRequest(HttpMethod.Post, PATH, RequestKind.WRITE, body = request),
+            ApiRequest(HttpMethod.Post, PATH, RequestKind.WRITE, body = request, monitoringEndpoint = "group_create"),
         ) { response -> response.body<GroupCreateResponseDto>() }
 
     private companion object {

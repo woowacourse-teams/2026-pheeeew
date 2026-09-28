@@ -9,8 +9,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 
 @Composable
 actual fun rememberAudioPlayer(): AudioPlayer {
@@ -26,6 +33,21 @@ internal class AndroidAudioPlayer(
     private val mutable = MutableStateFlow(AudioPlayerState())
     override val state = mutable.asStateFlow()
     private var player: MediaPlayer? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
+    init {
+        scope.launch {
+            while (isActive) {
+                delay(100)
+                if (state.value.playing) {
+                    runCatching { player?.currentPosition?.toLong() }.getOrNull()?.let {
+                        mutable.value = state.value.copy(positionMillis = it.coerceAtLeast(0))
+                    }
+                }
+            }
+        }
+    }
+
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val attributes =
         AudioAttributes
@@ -45,7 +67,7 @@ internal class AndroidAudioPlayer(
             if (state.value.source == source && player != null && !state.value.loading) {
                 check(audioManager.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED)
                 player?.start()
-                mutable.value = state.value.copy(playing = true, error = null)
+                mutable.value = state.value.copy(playing = true, error = null, completed = false)
                 return
             }
             stop()
@@ -57,14 +79,21 @@ internal class AndroidAudioPlayer(
             next.setOnPreparedListener {
                 if (player === it) {
                     it.start()
-                    mutable.value = state.value.copy(playing = true, loading = false)
+                    mutable.value =
+                        state.value.copy(
+                            playing = true,
+                            loading = false,
+                            durationMillis = it.duration.toLong(),
+                            completed = false,
+                        )
                 }
             }
             next.setOnCompletionListener {
                 if (player === it) {
                     it.seekTo(0)
                     audioManager.abandonAudioFocusRequest(focus)
-                    mutable.value = state.value.copy(playing = false)
+                    mutable.value =
+                        state.value.copy(playing = false, completed = true, positionMillis = state.value.durationMillis)
                 }
             }
             next.setOnErrorListener { failed, _, _ ->
@@ -101,5 +130,8 @@ internal class AndroidAudioPlayer(
         mutable.value = AudioPlayerState()
     }
 
-    override fun release() = stop()
+    override fun release() {
+        stop()
+        scope.cancel()
+    }
 }
