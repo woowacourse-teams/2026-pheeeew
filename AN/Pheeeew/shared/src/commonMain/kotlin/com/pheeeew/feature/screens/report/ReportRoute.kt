@@ -72,17 +72,17 @@ fun ReportRoute(
                 uiState =
                     when (result) {
                         EmotionModerationResult.Success -> {
-                            uiState.copy(isSubmitting = false, successMessage = "신고가 접수되었어요.")
+                            uiState.copy(isSubmitting = false, successMessage = "신고가 접수됐어.")
                         }
 
                         EmotionModerationResult.OwnEmotion -> {
-                            uiState.copy(isSubmitting = false, errorMessage = "내 감정은 신고할 수 없어요.")
+                            uiState.copy(isSubmitting = false, errorMessage = "내 감정은 신고할 수 없어.")
                         }
 
                         else -> {
                             uiState.copy(
                                 isSubmitting = false,
-                                errorMessage = "신고를 접수하지 못했어요. 잠시 후 다시 시도해 주세요.",
+                                errorMessage = "신고를 접수하지 못했어. 잠시 후 다시 시도해.",
                             )
                         }
                     }

@@ -40,14 +40,14 @@ fun ReportStampPrompt(
         Spacer(Modifier.width(16.dp))
         Column {
             Text(
-                text = "이 감정, 선 넘었나요?",
+                text = "이 감정, 선 넘었나?",
                 color = AppColors.GroupInk,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "동네 평화를 위해 이유를 골라주세요.",
+                text = "동네 평화를 위해 이유를 골라줘.",
                 color = AppColors.TextSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,

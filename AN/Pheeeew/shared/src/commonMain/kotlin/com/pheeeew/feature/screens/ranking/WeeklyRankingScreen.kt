@@ -101,7 +101,7 @@ fun WeeklyRankingScreen(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Text("랭킹을 불러오지 못했어요.", color = AppColors.RankingContent, fontSize = 14.sp)
+                        Text("랭킹을 불러오지 못했어.", color = AppColors.RankingContent, fontSize = 14.sp)
                         Button(onClick = onRetry) { Text("다시 시도") }
                     }
                 }
@@ -109,7 +109,7 @@ fun WeeklyRankingScreen(
                 WeeklyRankingStatus.Ready -> {
                     if (uiState.rankings.isEmpty()) {
                         Text(
-                            "해당 주에 랭킹이 없어요.",
+                            "해당 주에 랭킹이 없어.",
                             modifier = Modifier.padding(vertical = 48.dp),
                             color = AppColors.RankingSecondaryContent,
                             fontSize = 14.sp,

@@ -40,7 +40,7 @@ fun ReportDescriptionInput(
             Box(modifier = Modifier.fillMaxWidth()) {
                 if (value.isEmpty()) {
                     Text(
-                        text = "상황을 짧게 알려주면 더 빨리 확인해요.",
+                        text = "상황을 짧게 알려주면 더 빨리 확인할 수 있어.",
                         color = AppColors.TextSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,
