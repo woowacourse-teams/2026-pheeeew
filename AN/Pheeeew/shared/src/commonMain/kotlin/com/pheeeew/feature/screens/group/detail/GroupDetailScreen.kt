@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +32,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
@@ -41,6 +41,7 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.detail.component.GroupDetailNoticeSnackbar
 import com.pheeeew.feature.screens.group.detail.component.InviteCodeDialog
 import com.pheeeew.feature.screens.group.detail.component.LeaveGroupDialog
+import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationKind
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -116,7 +117,7 @@ fun GroupDetailScreen(
                             hasRefreshError = uiState.hasRefreshError,
                             canTapEmotion = uiState.canTapEmotion,
                             pressStatus = uiState.pressStatus,
-                            confirmedPressFeedback = uiState.confirmedPressFeedback,
+                            pendingEmotionPresses = uiState.pendingEmotionPresses,
                             onInviteClick = actions.onInviteClick,
                             onRetry = actions.onRetry,
                             onEmotionTap = actions.onEmotionTap,
@@ -210,6 +211,22 @@ fun GroupDetailScreen(
         GroupDetailOverlay.Menu,
         -> {}
     }
+}
+
+@Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 화면")
+@Composable
+private fun GroupDetailScreenPreview() {
+    GroupDetailScreen(
+        uiState =
+            GroupDetailUiState(
+                content =
+                    GroupDetailContent.Ready(
+                        fixtureDetail(1_238L, GroupDetailPresentationKind.Active),
+                    ),
+            ),
+        actions = previewActions(),
+        modifier = Modifier.fillMaxSize(),
+    )
 }
 
 @Composable

@@ -12,7 +12,7 @@ data class GroupDetailUiState(
     val notice: GroupDetailNotice? = null,
     val groupName: String? = null,
     val pressStatus: GroupPressStatus = GroupPressStatus.Idle,
-    val confirmedPressFeedback: GroupPressFeedback? = null,
+    val pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
     val membershipEvent: GroupDetailMembershipEvent? = null,
 ) {
     val detail: GroupDetailUiModel?
@@ -25,7 +25,9 @@ data class GroupDetailUiState(
         get() = refreshStatus == GroupDetailRefreshStatus.Failed
 
     val canTapEmotion: Boolean
-        get() = detail != null && overlay == GroupDetailOverlay.None && pressStatus == GroupPressStatus.Idle
+        get() =
+            detail != null && overlay == GroupDetailOverlay.None &&
+                (pressStatus == GroupPressStatus.Idle || pressStatus is GroupPressStatus.Sending)
 
     init {
         require(content is GroupDetailContent.Ready || refreshStatus == GroupDetailRefreshStatus.Idle) {
@@ -76,11 +78,6 @@ sealed interface GroupPressStatus {
         val emotion: EmotionKind,
     ) : GroupPressStatus
 }
-
-data class GroupPressFeedback(
-    val operationKey: GroupOperationKey,
-    val emotion: EmotionKind,
-)
 
 sealed interface GroupDetailOverlay {
     data object None : GroupDetailOverlay

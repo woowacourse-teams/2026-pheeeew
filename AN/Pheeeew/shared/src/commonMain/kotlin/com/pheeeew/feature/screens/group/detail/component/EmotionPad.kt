@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -64,11 +63,11 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import com.pheeeew.feature.screens.group.detail.GroupPressFeedback
 import com.pheeeew.feature.screens.group.detail.model.EmotionCountUiModel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import kotlinx.coroutines.channels.Channel
@@ -76,6 +75,7 @@ import kotlinx.coroutines.isActive
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.group_emotion_button_base
 import pheeeew.shared.generated.resources.tap_noto_700
 import pheeeew.shared.generated.resources.tap_noto_900
 import kotlin.time.TimeSource
@@ -84,9 +84,9 @@ import kotlin.time.TimeSource
 @Composable
 internal fun EmotionPad(
     counts: List<EmotionCountUiModel>,
+    optimisticPressCounts: Map<EmotionKind, Long> = emptyMap(),
     enabled: Boolean,
     onEmotionTap: (EmotionKind) -> Boolean,
-    confirmedPress: GroupPressFeedback? = null,
     fixtureFeedbackOnAcceptedPress: Boolean = false,
     preserveFeedbackWhileDisabled: Boolean = false,
     modifier: Modifier = Modifier,
@@ -116,8 +116,6 @@ internal fun EmotionPad(
     val callback by rememberUpdatedState(onEmotionTap)
     val inputEnabled by rememberUpdatedState(enabled)
     val byKind = remember(counts) { counts.associateBy { it.kind } }
-    var pendingOrigin by remember { mutableStateOf<PendingTapOrigin?>(null) }
-    var lastHandledPressKey by remember { mutableStateOf(confirmedPress?.operationKey) }
 
     fun refresh() {
         frameTime.value = now()
@@ -248,21 +246,6 @@ internal fun EmotionPad(
             refresh()
         }
 
-        LaunchedEffect(confirmedPress?.operationKey) {
-            val press = confirmedPress ?: return@LaunchedEffect
-            if (lastHandledPressKey == press.operationKey) return@LaunchedEffect
-            lastHandledPressKey = press.operationKey
-            val origin = pendingOrigin?.takeIf { it.emotion == press.emotion }
-            pendingOrigin = null
-            val index = EmotionKind.entries.indexOf(press.emotion)
-            addReaction(
-                kind = press.emotion,
-                originX = origin?.x ?: (inset + origins[index].first * unit),
-                originY = origin?.y ?: (origins[index].second * unit),
-                pointer = origin?.pointer,
-            )
-        }
-
         Box(Modifier.fillMaxWidth().height((345 * unit).dp)) {
             EmotionKind.entries.forEachIndexed { index, kind ->
                 val emotion = TapCatalog.emotion(kind)
@@ -281,17 +264,11 @@ internal fun EmotionPad(
                     pointer = null
                 }
 
-                val count = byKind[kind]?.count ?: 0L
+                val count = (byKind[kind]?.count ?: 0L) + (optimisticPressCounts[kind] ?: 0L)
                 val buttonModifier =
                     Modifier
                         .size((105 * unit).dp, (110 * unit).dp)
-                        .graphicsLayer {
-                            val transform = motion.sample(frameTime.value)
-                            transformOrigin = TransformOrigin(.5f, .8f)
-                            translationY = transform.y.toFloat() * density.density
-                            scaleX = transform.scale.toFloat()
-                            scaleY = scaleX
-                        }.testTag("emotion-${kind.name}")
+                        .testTag("emotion-${kind.name}")
                         .pointerInput(reduce) {
                             try {
                                 awaitEachGesture {
@@ -370,12 +347,9 @@ internal fun EmotionPad(
                             } else {
                                 motion.release(now(), reduce)
                             }
-                            if (callback(kind)) {
-                                if (fixtureFeedbackOnAcceptedPress) {
-                                    addReaction(kind, x, y, pointer)
-                                } else {
-                                    pendingOrigin = PendingTapOrigin(kind, x, y, pointer)
-                                }
+                            if (callback(kind) || fixtureFeedbackOnAcceptedPress) {
+                                // Start visual feedback now; the ViewModel persists accepted taps asynchronously.
+                                addReaction(kind, x, y, pointer)
                             }
                             pointer = null
                             keyboardActivation = false
@@ -390,12 +364,24 @@ internal fun EmotionPad(
                         contentAlignment = Alignment.Center,
                     ) {
                         Image(
-                            painter = painterResource(EmotionFeedbackCatalog.face(kind)),
+                            painter = painterResource(Res.drawable.group_emotion_button_base),
+                            contentDescription = null,
+                            modifier = Modifier.size((105 * unit).dp, (110 * unit).dp),
+                        )
+                        Image(
+                            painter = painterResource(EmotionFeedbackCatalog.buttonFace(kind)),
                             contentDescription = null,
                             modifier =
                                 Modifier
-                                    .size((105 * unit).dp, (110 * unit).dp)
-                                    .testTag("emotion-surface-${kind.name}"),
+                                    .requiredSize((110 * unit).dp, (115 * unit).dp)
+                                    .graphicsLayer {
+                                        val transform = motion.sample(frameTime.value)
+                                        transformOrigin = TransformOrigin(.5f, .8f)
+                                        // Keep the idle face lifted; the 4dp press travel lands it at the base center.
+                                        translationY = (transform.y.toFloat() - 4f) * density.density
+                                        scaleX = transform.scale.toFloat()
+                                        scaleY = scaleX
+                                    }.testTag("emotion-surface-${kind.name}"),
                         )
                     }
                     Column(
@@ -501,13 +487,6 @@ internal fun EmotionPad(
     }
 }
 
-private data class PendingTapOrigin(
-    val emotion: EmotionKind,
-    val x: Float,
-    val y: Float,
-    val pointer: Offset?,
-)
-
 private val TapInk = Color(0xFF242725)
 
 private fun stickerStyle(
@@ -534,3 +513,13 @@ internal fun formatCount(value: Long): String =
         .chunked(3)
         .joinToString(",")
         .reversed()
+
+@Preview(widthDp = 354, heightDp = 345, name = "그룹 감정 버튼")
+@Composable
+private fun EmotionPadPreview() {
+    EmotionPad(
+        counts = EmotionKind.entries.mapIndexed { index, kind -> EmotionCountUiModel(kind, (index + 1) * 123L) },
+        enabled = true,
+        onEmotionTap = { true },
+    )
+}
