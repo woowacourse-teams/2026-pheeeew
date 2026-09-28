@@ -17,7 +17,9 @@ sealed interface EmotionDetailLoadUiModel {
     data object Loading : EmotionDetailLoadUiModel
 
     data class Ready(
+        val id: Long,
         val detail: EmotionDetailUiModel,
+        val isMine: Boolean,
     ) : EmotionDetailLoadUiModel
 
     data class Failed(
@@ -68,7 +70,7 @@ class EmotionDetailViewModel(
                 mutable.value =
                     when (result) {
                         is EmotionDetailResult.Success -> {
-                            EmotionDetailLoadUiModel.Ready(result.detail.toUiModel())
+                            EmotionDetailLoadUiModel.Ready(id, result.detail.toUiModel(), result.detail.isMine)
                         }
 
                         EmotionDetailResult.NotFound -> {
