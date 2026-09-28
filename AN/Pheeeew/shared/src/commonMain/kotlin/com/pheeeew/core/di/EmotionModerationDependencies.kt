@@ -6,12 +6,12 @@ import com.pheeeew.data.remote.block.UserBlockApi
 import com.pheeeew.data.remote.emotion.EmotionDeleteApi
 import com.pheeeew.data.remote.report.EmotionReportApi
 import com.pheeeew.data.repository.EmotionModerationRepositoryImpl
-import com.pheeeew.domain.usecase.BlockEmotionUseCase
+import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.domain.usecase.DeleteEmotionUseCase
 import com.pheeeew.domain.usecase.ReportEmotionUseCase
 
 data class EmotionModerationDependencies(
-    val block: BlockEmotionUseCase,
+    val block: BlockUserUseCase,
     val delete: DeleteEmotionUseCase,
     val report: ReportEmotionUseCase,
 )
@@ -26,7 +26,7 @@ fun createEmotionModerationDependencies(apiClient: ApiClient): EmotionModeration
             deleteApi = EmotionDeleteApi(requests),
         )
     return EmotionModerationDependencies(
-        block = BlockEmotionUseCase(repository),
+        block = BlockUserUseCase(repository),
         delete = DeleteEmotionUseCase(repository),
         report = ReportEmotionUseCase(repository),
     )

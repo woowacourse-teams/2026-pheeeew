@@ -45,12 +45,12 @@ internal fun EmotionActionSheet(
                     shadowElevation = 12.dp,
                 ) {
                     Column {
-                        ActionItem("신고하기", AppColors.Error, onReportClick)
-                        HorizontalDivider(color = AppColors.Gray100)
-                        ActionItem("차단하기", AppColors.GroupInk, onBlockClick)
                         if (isMine) {
-                            HorizontalDivider(color = AppColors.Gray100)
                             ActionItem("삭제하기", Color(0xFFE26962), onDeleteClick)
+                        } else {
+                            ActionItem("신고하기", AppColors.Error, onReportClick)
+                            HorizontalDivider(color = AppColors.Gray100)
+                            ActionItem("차단하기", AppColors.GroupInk, onBlockClick)
                         }
                     }
                 }

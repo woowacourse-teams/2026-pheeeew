@@ -9,7 +9,7 @@ import com.pheeeew.data.remote.emotion.EmotionDeleteApi
 import com.pheeeew.data.remote.report.EmotionReportApi
 import com.pheeeew.data.repository.EmotionModerationRepositoryImpl
 import com.pheeeew.domain.repository.EmotionModerationResult
-import com.pheeeew.domain.usecase.BlockEmotionUseCase
+import com.pheeeew.domain.usecase.BlockUserUseCase
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.toByteArray
@@ -53,7 +53,7 @@ class EmotionBlockApiTest {
         }
 
     @Test
-    fun `내 감정은 개별 차단하고 다른 사용자 감정은 작성자를 차단한다`() =
+    fun `차단 요청은 사용자 차단 API를 호출한다`() =
         runTest {
             val requestedPaths = mutableListOf<String>()
             val client =
@@ -62,14 +62,8 @@ class EmotionBlockApiTest {
                         MockEngine { request ->
                             requestedPaths += request.url.encodedPath
                             assertEquals("{\"emotionId\":42}", request.body.toByteArray().decodeToString())
-                            val response =
-                                if (requestedPaths.size == 1) {
-                                    """{"emotionId":42,"nickname":"익명","memo":null,"createdAt":"2026-09-28T00:00:00Z"}"""
-                                } else {
-                                    """{"blockId":7,"emotionId":42,"nickname":"익명","memo":null,"createdAt":"2026-09-28T00:00:00Z"}"""
-                                }
                             respond(
-                                response,
+                                """{"blockId":7,"emotionId":42,"nickname":"익명","memo":null,"createdAt":"2026-09-28T00:00:00Z"}""",
                                 status = HttpStatusCode.Created,
                                 headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
                             )
@@ -85,10 +79,10 @@ class EmotionBlockApiTest {
                         UserBlockApi(client.requests),
                         EmotionDeleteApi(client.requests),
                     )
-                val block = BlockEmotionUseCase(repository)
-                assertEquals(EmotionModerationResult.Success, block(42, isMine = true))
-                assertEquals(EmotionModerationResult.Success, block(42, isMine = false))
-                assertEquals(listOf("/api/v2/blocks/emotions", "/api/v2/blocks/devices"), requestedPaths)
+                val block = BlockUserUseCase(repository)
+                assertEquals(EmotionModerationResult.Success, block(42))
+                assertEquals(EmotionModerationResult.Success, block(42))
+                assertEquals(listOf("/api/v2/blocks/devices", "/api/v2/blocks/devices"), requestedPaths)
             } finally {
                 client.close()
             }

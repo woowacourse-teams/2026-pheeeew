@@ -30,7 +30,7 @@ import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.domain.repository.EmotionModerationRepository
 import com.pheeeew.domain.repository.EmotionModerationResult
 import com.pheeeew.domain.repository.audio.EmotionAudioRepository
-import com.pheeeew.domain.usecase.BlockEmotionUseCase
+import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.domain.usecase.DeleteEmotionUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
@@ -43,7 +43,7 @@ fun EmotionDetailOverlay(
     onRetry: () -> Unit,
     audioRepository: EmotionAudioRepository,
     onReactionClick: (String) -> Unit,
-    blockEmotion: BlockEmotionUseCase,
+    blockUser: BlockUserUseCase,
     deleteEmotion: DeleteEmotionUseCase,
     onReportClick: (Long, DrawableResource) -> Unit,
     onBlockSucceeded: () -> Unit,
@@ -62,7 +62,7 @@ fun EmotionDetailOverlay(
                     onRetry = onRetry,
                     audioRepository = audioRepository,
                     onReactionClick = onReactionClick,
-                    blockEmotion = blockEmotion,
+                    blockUser = blockUser,
                     deleteEmotion = deleteEmotion,
                     onReportClick = onReportClick,
                     onBlockSucceeded = onBlockSucceeded,
@@ -84,7 +84,7 @@ private fun EmotionDetailReadyOverlay(
     onRetry: () -> Unit,
     audioRepository: EmotionAudioRepository,
     onReactionClick: (String) -> Unit,
-    blockEmotion: BlockEmotionUseCase,
+    blockUser: BlockUserUseCase,
     deleteEmotion: DeleteEmotionUseCase,
     onReportClick: (Long, DrawableResource) -> Unit,
     onBlockSucceeded: () -> Unit,
@@ -153,11 +153,11 @@ private fun EmotionDetailReadyOverlay(
             isMine = state.isMine,
             onReportClick = {
                 showActions = false
-                onReportClick(state.id, state.detail.emotion.icon)
+                if (!state.isMine) onReportClick(state.id, state.detail.emotion.icon)
             },
             onBlockClick = {
                 showActions = false
-                showBlockConfirmation = true
+                if (!state.isMine) showBlockConfirmation = true
             },
             onDeleteClick = {
                 showActions = false
@@ -168,13 +168,8 @@ private fun EmotionDetailReadyOverlay(
     }
     if (showBlockConfirmation) {
         ConfirmDialog(
-            title = if (state.isMine) "해당 감정을 차단하시겠습니까?" else "해당 사용자를 차단하시겠습니까?",
-            content =
-                if (state.isMine) {
-                    "차단 이후 해당 감정은 내 지도와 목록에서 보이지 않습니다."
-                } else {
-                    "차단 이후 해당 사용자가 올린 감정은 더 이상 보이지 않습니다."
-                },
+            title = "해당 사용자를 차단하시겠습니까?",
+            content = "차단 이후 해당 사용자가 올린 감정은 더 이상 보이지 않습니다.",
             confirmText = "차단하기",
             cancelText = "취소",
             onConfirm = {
@@ -184,7 +179,7 @@ private fun EmotionDetailReadyOverlay(
                     scope.launch {
                         val result =
                             try {
-                                blockEmotion(state.id, state.isMine)
+                                blockUser(state.id)
                             } catch (cancelled: CancellationException) {
                                 throw cancelled
                             } catch (_: Exception) {
@@ -263,7 +258,7 @@ private fun EmotionDetailOverlayPreview() {
         onRetry = {},
         audioRepository = EmotionAudioRepository { error("Preview does not fetch audio") },
         onReactionClick = {},
-        blockEmotion = BlockEmotionUseCase(PreviewModerationRepository),
+        blockUser = BlockUserUseCase(PreviewModerationRepository),
         deleteEmotion = DeleteEmotionUseCase(PreviewModerationRepository),
         onReportClick = { _, _ -> },
         onBlockSucceeded = {},

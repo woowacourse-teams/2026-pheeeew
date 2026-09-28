@@ -3,15 +3,12 @@ package com.pheeeew.domain.usecase
 import com.pheeeew.domain.repository.EmotionModerationRepository
 import com.pheeeew.domain.repository.EmotionModerationResult
 
-class BlockEmotionUseCase(
+class BlockUserUseCase(
     private val repository: EmotionModerationRepository,
 ) {
-    suspend operator fun invoke(
-        emotionId: Long,
-        isMine: Boolean,
-    ): EmotionModerationResult {
+    suspend operator fun invoke(emotionId: Long): EmotionModerationResult {
         require(emotionId > 0)
-        return if (isMine) repository.blockEmotion(emotionId) else repository.blockUser(emotionId)
+        return repository.blockUser(emotionId)
     }
 }
 
