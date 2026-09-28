@@ -34,7 +34,7 @@ class PlayIntegrityTokenDecoderTest {
         RestClient client = 가짜_구글.이_서버를_향하는_클라이언트();
         decoder = new PlayIntegrityTokenDecoder(
                 client,
-                new GoogleAccessTokenProvider(RestClient.builder().build(), properties),
+                new GoogleAccessTokenProvider(new PlayIntegrityConfig().googleApiRestClient(), properties),
                 properties
         );
         가짜_구글.토큰_응답을_넣는다(200, 토큰_응답("ya29.access", 3599));

@@ -64,7 +64,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestClient;
 
 @PostgisDataJpaTest
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -668,7 +667,7 @@ class PlayIntegrityRegistrationIntegrationTest {
         PlayIntegrityMetrics metrics = new PlayIntegrityMetrics(registry);
         PlayIntegrityTokenDecoder decoder = new PlayIntegrityTokenDecoder(
                 가짜_구글.이_서버를_향하는_클라이언트(),
-                new GoogleAccessTokenProvider(RestClient.builder().build(), properties),
+                new GoogleAccessTokenProvider(new PlayIntegrityConfig().googleApiRestClient(), properties),
                 properties
         );
         PlayIntegrityDeviceAttestationVerifier verifier = new PlayIntegrityDeviceAttestationVerifier(

@@ -32,7 +32,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.web.client.RestClient;
 
 class GoogleAccessTokenProviderTest {
 
@@ -45,7 +44,7 @@ class GoogleAccessTokenProviderTest {
     void setUp() {
         가짜_구글 = FakeGoogleApiServer.시작한다();
         provider = new GoogleAccessTokenProvider(
-                RestClient.builder().build(),
+                new PlayIntegrityConfig().googleApiRestClient(),
                 자격증명이_있는_설정(가짜_구글.토큰_엔드포인트())
         );
     }
