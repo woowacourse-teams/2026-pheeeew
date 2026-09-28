@@ -40,7 +40,7 @@ fun ReportStampPrompt(
         Spacer(Modifier.width(16.dp))
         Column {
             Text(
-                text = "이 감정, 선 넘었나?",
+                text = "이 감정, 선 넘었나요?",
                 color = AppColors.GroupInk,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
