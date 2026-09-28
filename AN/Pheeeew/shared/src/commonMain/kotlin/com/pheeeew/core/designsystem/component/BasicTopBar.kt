@@ -1,5 +1,6 @@
 package com.pheeeew.core.designsystem.component
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -12,9 +13,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -33,6 +35,7 @@ fun BasicTopBar(
     onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    showBackIndication: Boolean = true,
     backContentDescription: String = "뒤로가기",
     titleColor: Color = AppColors.GroupInk,
     titleFontFamily: FontFamily? = null,
@@ -40,17 +43,39 @@ fun BasicTopBar(
 ) {
     Box(modifier = modifier.fillMaxWidth().height(height), contentAlignment = Alignment.Center) {
         onBack?.let { onBackClick ->
-            IconButton(
-                onClick = onBackClick,
-                enabled = enabled,
-                modifier = Modifier.align(Alignment.CenterStart).padding(start = 8.dp).size(48.dp),
-            ) {
-                Icon(
-                    painter = painterResource(Res.drawable.ic_arrow_back),
-                    contentDescription = backContentDescription,
-                    tint = titleColor,
-                    modifier = Modifier.size(24.dp),
-                )
+            val backButtonModifier = Modifier.align(Alignment.CenterStart).padding(start = 8.dp).size(48.dp)
+            if (showBackIndication) {
+                IconButton(
+                    onClick = onBackClick,
+                    enabled = enabled,
+                    modifier = backButtonModifier,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_arrow_back),
+                        contentDescription = backContentDescription,
+                        tint = titleColor,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            } else {
+                Box(
+                    modifier =
+                        backButtonModifier.clickable(
+                            interactionSource = null,
+                            indication = null,
+                            enabled = enabled,
+                            role = Role.Button,
+                            onClick = onBackClick,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_arrow_back),
+                        contentDescription = backContentDescription,
+                        tint = titleColor,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
         }
         Text(

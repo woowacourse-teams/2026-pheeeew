@@ -41,7 +41,7 @@ internal fun ContactCard(
                 .shadow(3.dp, shape, clip = false)
                 .border(1.4.dp, SettingsColors.Ink, shape)
                 .background(Color.White, shape)
-                .clickable(onClick = onClick)
+                .clickable(interactionSource = null, indication = null, onClick = onClick)
                 .padding(horizontal = 18.dp, vertical = 28.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

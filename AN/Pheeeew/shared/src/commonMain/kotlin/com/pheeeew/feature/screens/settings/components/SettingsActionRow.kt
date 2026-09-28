@@ -31,7 +31,13 @@ internal fun SettingsActionRow(
             modifier
                 .fillMaxWidth()
                 .height(64.dp)
-                .let { row -> if (onClick == null) row else row.clickable(onClick = onClick) },
+                .let { row ->
+                    if (onClick == null) {
+                        row
+                    } else {
+                        row.clickable(interactionSource = null, indication = null, onClick = onClick)
+                    }
+                },
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SettingsIconBadge(icon = icon, highlighted = highlighted)

@@ -17,6 +17,7 @@ internal fun SettingsHeader(
         onBack = onBackClick,
         modifier = modifier,
         height = 64.dp,
+        showBackIndication = false,
     )
 }
 
