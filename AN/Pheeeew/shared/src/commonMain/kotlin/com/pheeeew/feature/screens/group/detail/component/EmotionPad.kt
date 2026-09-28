@@ -76,11 +76,6 @@ import kotlinx.coroutines.isActive
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.tap_face_angry
-import pheeeew.shared.generated.resources.tap_face_annoyed
-import pheeeew.shared.generated.resources.tap_face_blocked
-import pheeeew.shared.generated.resources.tap_face_defeated
-import pheeeew.shared.generated.resources.tap_face_tired
 import pheeeew.shared.generated.resources.tap_noto_700
 import pheeeew.shared.generated.resources.tap_noto_900
 import kotlin.time.TimeSource
