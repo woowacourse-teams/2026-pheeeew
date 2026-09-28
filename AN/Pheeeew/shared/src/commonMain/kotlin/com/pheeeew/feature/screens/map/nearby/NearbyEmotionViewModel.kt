@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.map.nearby
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.domain.model.emotion.EmotionBounds
+import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReaction
 import com.pheeeew.domain.repository.emotion.EmotionFailure
@@ -332,8 +333,16 @@ class NearbyEmotionViewModel(
 
     fun play(id: Long) {
         audioJob?.cancel()
+        val item = state.value.items.find { it.id == id } ?: return
+        if (item.contentType != EmotionContentType.AUDIO) return
         val ticket = generation
         val version = contentVersion
+        val currentAudio = item.audio
+        if (currentAudio != null && currentAudio.expiresAt > kotlin.time.Clock.System.now()) {
+            mutableState.update { it.copy(selectedId = null, audioLoadingId = null) }
+            viewModelScope.launch { eventChannel.send(NearbyEmotionEvent.Play(id, currentAudio.url)) }
+            return
+        }
         mutableState.update { it.copy(audioLoadingId = id, selectedId = null) }
         audioJob =
             viewModelScope.launch {

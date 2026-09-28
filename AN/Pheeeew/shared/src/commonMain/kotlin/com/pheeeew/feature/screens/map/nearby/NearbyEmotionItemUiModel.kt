@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.map.nearby
 
 import com.pheeeew.domain.model.emotion.Emotion
+import com.pheeeew.domain.model.emotion.EmotionAudio
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.ReactionCount
@@ -18,6 +19,7 @@ data class NearbyEmotionItemUiModel(
     val memo: String?,
     val reactions: List<ReactionCount>,
     val stamp: StampAppearanceUiModel?,
+    val audio: EmotionAudio?,
 )
 
 internal fun Emotion.toUiModel() =
@@ -38,4 +40,5 @@ internal fun Emotion.toUiModel() =
                 it.textColor.argb,
             )
         },
+        audio,
     )
