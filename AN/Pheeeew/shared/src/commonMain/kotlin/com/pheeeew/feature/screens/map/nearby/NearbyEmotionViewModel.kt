@@ -2,6 +2,8 @@ package com.pheeeew.feature.screens.map.nearby
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionPage
@@ -13,7 +15,13 @@ import com.pheeeew.domain.repository.group.GroupStampListLoadResult
 import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.toUiShape
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.labels
+import com.pheeeew.feature.monitoring.product.resultLabel
+import com.pheeeew.feature.screens.map.monitoring.ContentLoad
+import com.pheeeew.feature.screens.map.monitoring.ContentMonitoring
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,11 +33,34 @@ import kotlinx.coroutines.launch
 class NearbyEmotionViewModel(
     private val repository: EmotionRepository,
     private val groups: GroupStampListRepository,
+    monitoring: Monitoring = NoOpMonitoring,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(NearbyEmotionUiState())
     val state = mutableState.asStateFlow()
     private val eventChannel = Channel<NearbyEmotionEvent>(Channel.BUFFERED)
     val events = eventChannel.receiveAsFlow()
+    val telemetry = ProductMonitoring(monitoring, "map")
+    val exploration = ContentMonitoring(monitoring, viewModelScope, "list")
+
+    fun contentVisibility(visible: Boolean) {
+        if (exploration.visibility(visible) && state.value.contentLoad != null && !state.value.loading) {
+            val load = exploration.load("resume", "cache", state.value.contentLoad?.loadId).also { it.ready() }
+            mutableState.update { it.copy(contentLoad = load) }
+        }
+    }
+
+    override fun onCleared() {
+        exploration.close()
+        super.onCleared()
+    }
+
+    fun contentPresented(
+        load: ContentLoad,
+        count: Int,
+    ) {
+        if (state.value.visible && state.value.contentLoad === load) exploration.presented(load, count)
+    }
+
     private var viewport: EmotionBounds? = null
     private var queryBounds: EmotionBounds? = null
     private var pageJob: Job? = null
@@ -61,6 +92,7 @@ class NearbyEmotionViewModel(
     }
 
     fun dismiss() {
+        contentVisibility(false)
         generation++
         pageJob?.cancel()
         audioJob?.cancel()
@@ -87,6 +119,7 @@ class NearbyEmotionViewModel(
         pageJob?.cancel()
         audioJob?.cancel()
         changed.clear()
+        state.value.contentLoad?.hidden()
         val groupId = state.value.groupId.takeUnless { it == ALL_GROUPS }
         mutableState.update {
             it.copy(
@@ -102,9 +135,8 @@ class NearbyEmotionViewModel(
         }
         pageJob =
             viewModelScope.launch {
-                val result = repository.firstPage(bounds, groupId)
-                if (ticket != generation) return@launch
-                applyPage(result, append = false)
+                val observation = exploration.load(if (state.value.revision == 1L) "initial" else "refresh")
+                loadPage(observation, ticket, append = false) { repository.firstPage(bounds, groupId) }
             }
     }
 
@@ -121,10 +153,41 @@ class NearbyEmotionViewModel(
         mutableState.update { it.copy(loadingMore = true, error = null) }
         pageJob =
             viewModelScope.launch {
-                val result = repository.nextPage(cursor)
-                if (ticket != generation) return@launch
-                applyPage(result, append = true, requestedCursor = cursor)
+                val observation = exploration.load("pagination")
+                loadPage(observation, ticket, append = true, cursor = cursor) { repository.nextPage(cursor) }
             }
+    }
+
+    private suspend fun loadPage(
+        observation: ContentLoad,
+        ticket: Long,
+        append: Boolean,
+        cursor: String? = null,
+        request: suspend () -> EmotionResult<EmotionPage>,
+    ) {
+        try {
+            val result = request()
+            if (ticket != generation) {
+                observation.hidden()
+                if (result is EmotionResult.Success) observation.ready() else observation.failed()
+                return
+            }
+            if (result is EmotionResult.Success) {
+                state.value.contentLoad?.hidden()
+                val displayLoad = exploration.display(observation)
+                applyPage(result, append, cursor)
+                mutableState.update { it.copy(contentLoad = displayLoad) }
+            } else {
+                observation.failed()
+                applyPage(result, append, cursor)
+            }
+        } catch (cancelled: CancellationException) {
+            observation.cancelled()
+            throw cancelled
+        } catch (_: Exception) {
+            observation.failed()
+            if (ticket == generation) applyPage(EmotionResult.Failure(EmotionFailure.UNAVAILABLE), append, cursor)
+        }
     }
 
     private fun applyPage(
@@ -180,7 +243,20 @@ class NearbyEmotionViewModel(
         contentVersion++
         mutableState.update { it.copy(pendingIds = it.pendingIds + id, selectedId = null) }
         viewModelScope.launch {
-            when (val result = repository.react(id, type, selected)) {
+            when (
+                val result =
+                    telemetry
+                        .operation(
+                            "emotion_reaction_finished",
+                            labels(
+                                "entry_key" to id.toString(),
+                                "entry_source" to "list",
+                                "view_id" to exploration.viewId,
+                                "action" to if (selected) "add" else "remove",
+                            ) + mapOf("is_own" to com.pheeeew.core.monitoring.EventValue.Flag(item.isMine)),
+                            "emotion_reaction_started",
+                        ).observe(::resultLabel) { repository.react(id, type, selected) }
+            ) {
                 is EmotionResult.Success -> {
                     // Confirmed write; a later failed read must not roll this selection back.
                     val updated =
@@ -255,7 +331,18 @@ class NearbyEmotionViewModel(
         if (id in state.value.pendingIds) return
         mutableState.update { it.copy(pendingIds = it.pendingIds + id) }
         viewModelScope.launch {
-            when (val result = repository.block(id)) {
+            when (
+                val result =
+                    telemetry
+                        .operation(
+                            "emotion_block_finished",
+                            labels(
+                                "entry_key" to id.toString(),
+                                "entry_source" to "list",
+                                "action" to "block_emotion",
+                            ),
+                        ).observe(::resultLabel) { repository.block(id) }
+            ) {
                 is EmotionResult.Success -> {
                     removeItem(id)
                     mutableState.update { it.copy(blockId = null, message = "이 감정을 차단했어요.") }
@@ -341,6 +428,10 @@ class NearbyEmotionViewModel(
     fun completeGroup(group: GroupSelectorGroupUiModel) {
         if (state.value.groups.none { it.id == group.id }) return
         val changedGroup = state.value.groupId != group.id
+        telemetry.emit(
+            "nearby_filter_applied",
+            labels("group_selection" to if (group.id == ALL_GROUPS) "all" else "group"),
+        )
         mutableState.update { it.copy(groupId = group.id, groupSelectorVisible = false) }
         if (changedGroup) refresh()
     }
@@ -372,33 +463,53 @@ class NearbyEmotionViewModel(
         mutableState.update { it.copy(audioLoadingId = id, selectedId = null) }
         audioJob =
             viewModelScope.launch {
-                when (val result = repository.detail(id)) {
-                    is EmotionResult.Success -> {
-                        if (ticket != generation || !state.value.visible || id in blocked) return@launch
-                        if (version == contentVersion &&
-                            id !in state.value.pendingIds
-                        ) {
-                            replaceItem(result.value.toUiModel())
+                // URL refresh precedes native playback. Only failed/cancelled preparation emits here;
+                // successful handoff is completed once by the observed native player.
+                val preparation = telemetry.operation(
+                    "emotion_audio_load_finished",
+                    labels(
+                        "entry_key" to id.toString(),
+                        "entry_source" to "list",
+                        "view_id" to exploration.viewId,
+                    ) + mapOf("is_own" to com.pheeeew.core.monitoring.EventValue.Flag(item.isMine)),
+                )
+                var handedOff = false
+                try {
+                    when (val result = repository.detail(id)) {
+                        is EmotionResult.Success -> {
+                            if (ticket != generation || !state.value.visible || id in blocked) return@launch
+                            if (version == contentVersion && id !in state.value.pendingIds) {
+                                replaceItem(result.value.toUiModel())
+                            }
+                            val audio = result.value.audio
+                            if (audio != null && audio.expiresAt > kotlin.time.Clock.System.now()) {
+                                eventChannel.send(NearbyEmotionEvent.Play(id, audio.url, ticket))
+                                handedOff = true
+                            } else {
+                                preparation.finish("failed")
+                                mutableState.update { it.copy(message = "녹음을 불러오지 못했어요. 다시 시도해 주세요.") }
+                            }
                         }
-                        val audio = result.value.audio
-                        if (audio != null && audio.expiresAt >
-                            kotlin.time.Clock.System
-                                .now()
-                        ) {
-                            eventChannel.send(NearbyEmotionEvent.Play(id, audio.url, ticket))
-                        } else {
-                            mutableState.update { it.copy(message = "녹음을 불러오지 못했어요. 다시 시도해 주세요.") }
+                        is EmotionResult.Failure -> {
+                            preparation.finish("failed")
+                            if (ticket == generation) {
+                                if (result.reason == EmotionFailure.NOT_FOUND) removeItem(id)
+                                mutableState.update { it.copy(message = result.reason.message()) }
+                            }
                         }
                     }
-
-                    is EmotionResult.Failure -> {
-                        if (ticket == generation) {
-                            if (result.reason == EmotionFailure.NOT_FOUND) removeItem(id)
-                            mutableState.update { it.copy(message = result.reason.message()) }
-                        }
+                } catch (cancelled: CancellationException) {
+                    preparation.finish("cancelled")
+                    throw cancelled
+                } catch (_: Exception) {
+                    preparation.finish("failed")
+                    if (ticket == generation) {
+                        mutableState.update { it.copy(message = "녹음을 불러오지 못했어요. 다시 시도해 주세요.") }
                     }
+                } finally {
+                    if (!handedOff) preparation.finish("cancelled")
+                    if (ticket == generation) mutableState.update { it.copy(audioLoadingId = null) }
                 }
-                if (ticket == generation) mutableState.update { it.copy(audioLoadingId = null) }
             }
     }
 }

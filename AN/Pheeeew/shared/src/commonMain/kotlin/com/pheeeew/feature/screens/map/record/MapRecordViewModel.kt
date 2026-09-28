@@ -1,11 +1,9 @@
 package com.pheeeew.feature.screens.map.record
 
-import com.pheeeew.core.monitoring.Monitoring
-import com.pheeeew.core.monitoring.NoOpMonitoring
-import com.pheeeew.feature.screens.map.monitoring.RecordResultReceipt
-import com.pheeeew.feature.screens.map.monitoring.RecordFunnelMonitoring
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.model.CurrentLocation
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.EmotionRegistration
@@ -17,6 +15,9 @@ import com.pheeeew.domain.repository.group.GroupStampListLoadResult
 import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
+import com.pheeeew.feature.monitoring.product.resultLabel
+import com.pheeeew.feature.screens.map.monitoring.RecordFunnelMonitoring
+import com.pheeeew.feature.screens.map.monitoring.RecordResultReceipt
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import com.pheeeew.feature.screens.map.record.group.toSelectorUiModel
 import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
@@ -56,7 +57,10 @@ class MapRecordViewModel(
     val groupOptions: StateFlow<List<GroupSelectorGroupUiModel>> = _groupOptions.asStateFlow()
     private var groupLoadJob: Job? = null
 
-    fun open(emotion: EmotionTypeUiModel, selectorId: String? = null) {
+    fun open(
+        emotion: EmotionTypeUiModel,
+        selectorId: String? = null,
+    ) {
         funnel.start(selectorId)
         groupLoadJob?.cancel()
         pendingRegistration = null
@@ -72,6 +76,21 @@ class MapRecordViewModel(
     fun dismiss() {
         if (_uiModel.value.isSubmitting) return
         groupLoadJob?.cancel()
+        funnel.recordEvent(
+            "emotion_record_closed",
+            mapOf(
+                "step" to
+                    if (_uiModel.value.isGroupSelectorVisible) {
+                        "group"
+                    } else if (_uiModel.value.step ==
+                        RecordFlowStepUiModel.Input
+                    ) {
+                        "input"
+                    } else {
+                        "location"
+                    },
+            ),
+        )
         funnel.clearFlow()
         pendingRegistration = null
         _uiModel.value = RecordBottomSheetUiModel()
@@ -95,7 +114,11 @@ class MapRecordViewModel(
         funnel.inputFinished(
             if (_uiModel.value.inputMode == RecordInputModeUiModel.Recording) {
                 if (recordingFilePath != null) "voice" else "none"
-            } else if (_uiModel.value.memo.isNotBlank()) "text" else "none",
+            } else if (_uiModel.value.memo.isNotBlank()) {
+                "text"
+            } else {
+                "none"
+            },
             skipped = false,
         )
         _uiModel.value = _uiModel.value.copy(recordingFilePath = recordingFilePath)
@@ -134,7 +157,10 @@ class MapRecordViewModel(
         }
         if (_uiModel.value.isSubmitting) return
         val candidate = constrainToRecordRadius(origin, GeoCoordinate(latitude, longitude))
-        if (candidate != _uiModel.value.selectedCoordinate) pendingRegistration = null
+        if (candidate != _uiModel.value.selectedCoordinate) {
+            pendingRegistration = null
+            funnel.recordEvent("emotion_record_location_changed")
+        }
         val isInRange = isWithinRecordRadius(origin, candidate)
         _uiModel.value =
             _uiModel.value.copy(
@@ -166,6 +192,7 @@ class MapRecordViewModel(
         val coordinate = state.selectedCoordinate ?: return
         val origin = state.origin ?: return
         if (!isWithinRecordRadius(origin, coordinate)) return
+        funnel.recordEvent("emotion_record_location_confirmed")
         val content =
             when (state.inputMode) {
                 RecordInputModeUiModel.Memo -> {
@@ -188,15 +215,16 @@ class MapRecordViewModel(
                 groupId = state.selectedGroupId.takeUnless { it == NO_GROUP_ID },
                 content = content,
             ).also { pendingRegistration = it }
-        val submission = funnel.submit(
-            registration.requestId,
-            when (registration.content) {
-                is EmotionRegistrationContent.Memo -> "text"
-                is EmotionRegistrationContent.Audio -> "voice"
-                EmotionRegistrationContent.None -> "none"
-            },
-            registration.groupId != null,
-        )
+        val submission =
+            funnel.submit(
+                registration.requestId,
+                when (registration.content) {
+                    is EmotionRegistrationContent.Memo -> "text"
+                    is EmotionRegistrationContent.Audio -> "voice"
+                    EmotionRegistrationContent.None -> "none"
+                },
+                registration.groupId != null,
+            )
         _notice.value = null
         _uiModel.value = state.copy(isSubmitting = true)
         viewModelScope.launch {
@@ -222,6 +250,7 @@ class MapRecordViewModel(
                     } catch (_: Exception) {
                         // Registration succeeded even if remembering its group failed.
                     }
+                    funnel.clearFlow()
                     _uiModel.value = RecordBottomSheetUiModel()
                     pendingRegistration = null
                     _notice.value = RecordNoticeUiModel("선택한 위치에 감정을 남겼어요", false, receipt)
@@ -308,6 +337,12 @@ class MapRecordViewModel(
     }
 
     fun onGroupSelectionComplete(group: GroupSelectorGroupUiModel) {
+        if (_uiModel.value.selectedGroupId != group.id) {
+            funnel.recordEvent(
+                "emotion_record_group_changed",
+                mapOf("group_selection" to if (group.id == NO_GROUP_ID) "none" else "group"),
+            )
+        }
         _uiModel.value =
             _uiModel.value.copy(
                 isGroupSelectorVisible = false,
@@ -338,6 +373,7 @@ class MapRecordViewModel(
 
     private fun loadMyGroups(restoreLastGroup: Boolean) {
         groupLoadJob?.cancel()
+        val observation = funnel.observe("emotion_record_group_options_finished")
         groupLoadJob =
             viewModelScope.launch {
                 val storedId =
@@ -354,7 +390,7 @@ class MapRecordViewModel(
                     }
                 val result =
                     try {
-                        groupStampListRepository.findMyStamps()
+                        observation.observe(::resultLabel) { groupStampListRepository.findMyStamps() }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (_: Exception) {

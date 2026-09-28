@@ -20,6 +20,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -35,6 +37,7 @@ import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.component.stamp.GroupStamp
+import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
@@ -50,8 +53,21 @@ fun EmotionDetailDialog(
     onReactionClick: (String) -> Unit,
     notice: String? = null,
     onNoticeDismiss: () -> Unit = {},
+    presentationKey: Any? = null,
+    monitoringVisible: Boolean = true,
+    onShown: () -> Unit = {},
+    onContentShown: () -> Unit = {},
 ) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        val foreground = rememberMonitoringForeground()
+        LaunchedEffect(presentationKey, foreground, monitoringVisible) {
+            if (foreground && monitoringVisible) {
+                withFrameNanos { }
+                onShown()
+                kotlinx.coroutines.delay(1000)
+                onContentShown()
+            }
+        }
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             EmotionDetailCard(
                 uiModel,
