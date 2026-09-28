@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.theme.AppBorders
 
 internal enum class SettingsIcon { Tune, Shield, Document, Info, Mail }
 
@@ -46,7 +47,15 @@ internal fun SettingsIconBadge(
                 .size(36.dp)
                 .background(if (highlighted) Color.White else SettingsColors.IconSurface, RoundedCornerShape(12.dp))
                 .then(
-                    if (highlighted) Modifier.border(1.dp, SettingsColors.Ink, RoundedCornerShape(12.dp)) else Modifier,
+                    if (highlighted) {
+                        Modifier.border(
+                            AppBorders.Standard,
+                            SettingsColors.Ink,
+                            RoundedCornerShape(12.dp),
+                        )
+                    } else {
+                        Modifier
+                    },
                 ),
         contentAlignment = Alignment.Center,
     ) {

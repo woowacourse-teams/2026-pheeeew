@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import kotlinx.coroutines.launch
@@ -94,7 +95,7 @@ internal fun AppBottomNavigationBar(
                 .navigationBarsPadding()
                 .height(AppBottomNavigationBarHeight)
                 .background(Color.White, CircleShape)
-                .border(1.dp, NavigationInk, CircleShape)
+                .border(AppBorders.Standard, NavigationInk, CircleShape)
                 .padding(horizontal = 6.dp, vertical = 5.dp),
         contentAlignment = Alignment.CenterStart,
     ) {

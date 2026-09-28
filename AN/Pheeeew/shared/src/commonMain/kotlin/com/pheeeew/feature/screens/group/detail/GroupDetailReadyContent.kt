@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.detail.component.EmotionPad
 import com.pheeeew.feature.screens.group.detail.component.GroupSummary
@@ -273,7 +274,7 @@ internal fun DetailOutlineButton(
         enabled = enabled,
         modifier = modifier.height(50.dp),
         shape = CircleShape,
-        border = BorderStroke(1.5.dp, AppColors.GroupInk),
+        border = BorderStroke(AppBorders.Standard, AppColors.GroupInk),
         colors =
             ButtonDefaults.outlinedButtonColors(
                 contentColor = AppColors.GroupInk,

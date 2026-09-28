@@ -16,6 +16,7 @@ import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.monitoring.product.resultLabel
+import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.monitoring.RecordFunnelMonitoring
 import com.pheeeew.feature.screens.map.monitoring.RecordResultReceipt
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
@@ -26,11 +27,14 @@ import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
 class MapRecordViewModel(
@@ -44,6 +48,9 @@ class MapRecordViewModel(
 
     private val _uiModel = MutableStateFlow(RecordBottomSheetUiModel())
     val uiModel: StateFlow<RecordBottomSheetUiModel> = _uiModel.asStateFlow()
+
+    private val registrationEvents = Channel<EmotionPinUiModel>(Channel.BUFFERED)
+    val registeredEmotions = registrationEvents.receiveAsFlow()
 
     private var pendingRegistration: EmotionRegistration? = null
     private val _notice = MutableStateFlow<RecordNoticeUiModel?>(null)
@@ -250,6 +257,17 @@ class MapRecordViewModel(
                     } catch (_: Exception) {
                         // Registration succeeded even if remembering its group failed.
                     }
+                    registrationEvents.send(
+                        EmotionPinUiModel(
+                            id = result.id,
+                            latitude = registration.coordinate.latitude,
+                            longitude = registration.coordinate.longitude,
+                            createdAt = Clock.System.now().toString(),
+                            rotationDegrees = registration.rotationDegrees,
+                            emotion = emotion,
+                            stamp = _groupOptions.value.firstOrNull { it.id == state.selectedGroupId }?.stamp,
+                        ),
+                    )
                     funnel.clearFlow()
                     _uiModel.value = RecordBottomSheetUiModel()
                     pendingRegistration = null

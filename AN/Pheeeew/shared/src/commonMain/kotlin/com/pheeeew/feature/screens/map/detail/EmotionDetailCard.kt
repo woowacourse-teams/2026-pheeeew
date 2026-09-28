@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.Snackbar
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.component.stamp.GroupStamp
@@ -116,7 +117,7 @@ fun EmotionDetailCard(
             .fillMaxWidth()
             .clip(AppShapes.DetailDialog)
             .background(Color.White)
-            .border(1.dp, AppColors.GroupInk, AppShapes.DetailDialog)
+            .border(AppBorders.Standard, AppColors.GroupInk, AppShapes.DetailDialog)
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp),
     ) {
@@ -145,7 +146,7 @@ private fun EmotionDetailGroupHeader(
                     Modifier
                         .size(32.dp)
                         .background(AppColors.Gray100, CircleShape)
-                        .border(1.dp, AppColors.GroupInk, CircleShape),
+                        .border(AppBorders.Standard, AppColors.GroupInk, CircleShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(uiModel.stampText, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = AppColors.GroupInk)

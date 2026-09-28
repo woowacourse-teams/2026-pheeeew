@@ -1,5 +1,8 @@
 package com.pheeeew.feature.screens.group.create.component
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +15,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
@@ -22,6 +27,7 @@ import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -43,6 +49,15 @@ internal fun CreateTextField(
     enabled: Boolean = true,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    val borderColor =
+        when {
+            !enabled -> AppColors.GroupInk.copy(alpha = 0.38f)
+            errorText != null -> Color(0xFFCA4231)
+            isFocused -> AppColors.GroupInk
+            else -> Color(0xFFD9DEDD)
+        }
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = label,
@@ -53,7 +68,13 @@ internal fun CreateTextField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp).semantics { contentDescription = label },
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+                    .border(AppBorders.Standard, borderColor, RoundedCornerShape(12.dp))
+                    .semantics { contentDescription = label },
+            interactionSource = interactionSource,
             enabled = enabled,
             placeholder = { Text(placeholder, color = AppColors.RankingSecondaryContent) },
             singleLine = maxLines == 1,
@@ -69,9 +90,10 @@ internal fun CreateTextField(
             keyboardActions = keyboardActions,
             colors =
                 OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = AppColors.GroupInk,
-                    unfocusedBorderColor = Color(0xFFD9DEDD),
-                    errorBorderColor = Color(0xFFCA4231),
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    disabledBorderColor = Color.Transparent,
+                    errorBorderColor = Color.Transparent,
                     focusedContainerColor = Color(0xFFF8F9F9),
                     unfocusedContainerColor = Color(0xFFF8F9F9),
                     errorContainerColor = Color(0xFFFFF4F1),

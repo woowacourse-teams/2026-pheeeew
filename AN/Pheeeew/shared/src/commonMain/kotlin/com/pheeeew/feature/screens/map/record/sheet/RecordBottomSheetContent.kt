@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
@@ -154,7 +155,9 @@ private fun RecordBottomSheetContent(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "${selectedEmotion.label}한 마음,\n조금 더 남길까요?",
+                text = selectedEmotion.recordPrompt,
+                modifier = Modifier.weight(1f),
+                lineHeight = 22.sp,
                 color = AppColors.TextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -333,7 +336,7 @@ private fun MemoPanel(
                     .fillMaxWidth()
                     .height(105.dp)
                     .clip(AppShapes.Input)
-                    .border(width = 1.dp, color = AppColors.Border, shape = AppShapes.Input)
+                    .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
                     .padding(16.dp),
             textStyle =
                 TextStyle(
@@ -392,6 +395,7 @@ private fun RecordInputModeToggle(
                 .height(45.dp)
                 .clip(AppShapes.Pill)
                 .background(AppColors.Gray100)
+                .border(AppBorders.Standard, AppColors.Border, AppShapes.Pill)
                 .padding(4.dp),
     ) {
         RecordInputModeTab(

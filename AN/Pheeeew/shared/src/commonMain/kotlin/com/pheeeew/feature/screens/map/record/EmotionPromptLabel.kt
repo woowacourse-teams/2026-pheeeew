@@ -17,6 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 
 @Composable
 internal fun EmotionPromptLabel(
@@ -31,7 +32,7 @@ internal fun EmotionPromptLabel(
                 .animateContentSize(animationSpec = tween(durationMillis = 220))
                 .clip(shape)
                 .background(Color.White)
-                .border(width = 1.dp, color = Color(0xFF292B2A), shape = shape)
+                .border(width = AppBorders.Standard, color = Color(0xFF292B2A), shape = shape)
                 .padding(horizontal = 16.dp, vertical = 5.dp),
         contentAlignment = Alignment.Center,
     ) {

@@ -1,13 +1,14 @@
 package com.pheeeew
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Surface
@@ -34,12 +35,12 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.di.ApiDependencies
 import com.pheeeew.core.di.LocationDependencies
@@ -74,6 +75,7 @@ import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
+import com.pheeeew.legacy.core.network.ConnectivityObserver
 import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 import com.pheeeew.legacy.data.remote.version.AppVersionApi
 import com.pheeeew.legacy.data.remote.version.toPolicy
@@ -94,6 +96,7 @@ fun App(
     appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
+    connectivityObserver: ConnectivityObserver,
 ) {
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -198,6 +201,12 @@ fun App(
                 apiDependencies.client.monitoring,
             )
         }
+    val connectivityLifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(connectivityObserver, connectivityLifecycleOwner, mapViewModel) {
+        connectivityLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            connectivityObserver.isConnected.collect(mapViewModel::onConnectivityChanged)
+        }
+    }
     val registrationRepository =
         remember(apiDependencies.client) { createEmotionRegistrationRepository(apiDependencies.client) }
     val groupStampListRepository =
@@ -213,7 +222,8 @@ fun App(
             )
         }
 
-    val nearbyViewModel: NearbyEmotionViewModel = viewModel { createNearbyEmotionViewModel(apiDependencies.client) }
+    val nearbyViewModel: NearbyEmotionViewModel =
+        viewModel { createNearbyEmotionViewModel(apiDependencies.client, groupStampListRepository) }
     val nearbyState by nearbyViewModel.state.collectAsState()
 
     val detailRepository =
@@ -277,6 +287,11 @@ fun App(
                         locationPermissionController = locationDependencies.permissionController,
                         appSettingsLauncher = appSettingsLauncher,
                         modifier = Modifier.fillMaxSize(),
+                        message = moderationMessage,
+                        onMessageDismiss = { moderationMessage = null },
+                        detailError = detailState as? EmotionDetailLoadUiModel.Failed,
+                        onRetryDetail = detailViewModel::retry,
+                        onDismissDetailError = detailViewModel::dismiss,
                     )
 
                     NearbyEmotionSheet(
@@ -321,7 +336,22 @@ fun App(
                 }
             }
 
-            composable<GroupRootDestination> {
+            composable<GroupRootDestination>(
+                enterTransition = {
+                    if (initialState.destination.route == RankingRootDestination::class.qualifiedName) {
+                        slideInHorizontally(tween(300)) { -it }
+                    } else {
+                        null
+                    }
+                },
+                exitTransition = {
+                    if (targetState.destination.route == RankingRootDestination::class.qualifiedName) {
+                        slideOutHorizontally(tween(300)) { -it }
+                    } else {
+                        null
+                    }
+                },
+            ) {
                 androidx.compose.runtime.CompositionLocalProvider(
                     com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible provides
                         (!isSettingsVisible && reportTarget == null),
@@ -331,11 +361,30 @@ fun App(
                         modifier = Modifier.fillMaxSize(),
                         onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
                         onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
+                        onMembershipChanged = {
+                            groupStampListRepository.invalidate()
+                            nearbyViewModel.onMembershipChanged()
+                        },
                     )
                 }
             }
 
-            composable<RankingRootDestination> {
+            composable<RankingRootDestination>(
+                enterTransition = {
+                    if (initialState.destination.route == GroupRootDestination::class.qualifiedName) {
+                        slideInHorizontally(tween(300)) { it }
+                    } else {
+                        null
+                    }
+                },
+                exitTransition = {
+                    if (targetState.destination.route == GroupRootDestination::class.qualifiedName) {
+                        slideOutHorizontally(tween(300)) { it }
+                    } else {
+                        null
+                    }
+                },
+            ) {
                 androidx.compose.runtime.CompositionLocalProvider(
                     com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible provides
                         (!isSettingsVisible && reportTarget == null),
@@ -347,18 +396,6 @@ fun App(
                 }
             }
         }
-
-        Snackbar(
-            message = moderationMessage,
-            onDismiss = { moderationMessage = null },
-            modifier =
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(16.dp),
-        )
-
         reportTarget?.let { (id, stamp, source) ->
             ReportRoute(
                 emotionId = id,

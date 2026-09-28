@@ -14,6 +14,7 @@ import org.maplibre.android.style.layers.PropertyFactory.iconAnchor
 import org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement
 import org.maplibre.android.style.layers.PropertyFactory.iconImage
 import org.maplibre.android.style.layers.PropertyFactory.iconRotate
+import org.maplibre.android.style.layers.PropertyFactory.visibility
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
@@ -23,9 +24,13 @@ import org.maplibre.geojson.Point
 /** Native MapLibre source and symbol layer for emotion pins. */
 internal class EmotionPinSymbolLayer {
     private val registeredImageKeys = mutableSetOf<String>()
+    private var renderedPins: List<EmotionPinUiModel>? = null
+    private var layerVisible: Boolean? = null
 
     fun install(style: Style) {
         registeredImageKeys.clear()
+        renderedPins = null
+        layerVisible = null
         if (style.getSource(SOURCE_ID) == null) {
             style.addSource(GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(emptyList())))
         }
@@ -65,25 +70,28 @@ internal class EmotionPinSymbolLayer {
         registeredImageKeys.clear()
         registeredImageKeys.addAll(requiredImageKeys)
 
-        val features: List<Feature> =
-            if (visible) {
-                pins.map { pin ->
-                    val properties =
-                        JsonObject().apply {
-                            addProperty("monitoring-load-id", monitoringLoadId)
-                            addProperty(IMAGE_KEY_PROPERTY, pin.symbolImageKey())
-                            addProperty(ROTATION_PROPERTY, pin.rotationDegrees)
-                        }
-                    Feature.fromGeometry(
-                        Point.fromLngLat(pin.longitude, pin.latitude),
-                        properties,
-                        pin.id.toString(),
-                    )
-                }
-            } else {
-                emptyList()
+        if (layerVisible != visible) {
+            style.getLayer(LAYER_ID)?.setProperties(visibility(if (visible) Property.VISIBLE else Property.NONE))
+            layerVisible = visible
+        }
+        // Keep the source while selecting a location and avoid rebuilding it for unrelated UI updates.
+        if (renderedPins == pins) return
+        val features =
+            pins.map { pin ->
+                val properties =
+                    JsonObject().apply {
+                        addProperty("monitoring-load-id", monitoringLoadId)
+                        addProperty(IMAGE_KEY_PROPERTY, pin.symbolImageKey())
+                        addProperty(ROTATION_PROPERTY, pin.rotationDegrees)
+                    }
+                Feature.fromGeometry(
+                    Point.fromLngLat(pin.longitude, pin.latitude),
+                    properties,
+                    pin.id.toString(),
+                )
             }
         source.setGeoJson(FeatureCollection.fromFeatures(features))
+        renderedPins = pins.toList()
     }
 
     private fun EmotionPinSymbolImage.toAndroidBitmap(densityDpi: Int): Bitmap {
