@@ -43,7 +43,7 @@ class ApiJoinGroupAction(
             }
 
             GroupJoinRepositoryResult.AlreadyMember -> {
-                if (isMember(groupId)) GroupJoinResult.Joined(groupId) else GroupJoinResult.AlreadyMember
+                GroupJoinResult.AlreadyMember
             }
 
             is GroupJoinRepositoryResult.RateLimited -> {
