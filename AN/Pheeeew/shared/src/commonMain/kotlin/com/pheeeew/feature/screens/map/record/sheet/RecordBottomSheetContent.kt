@@ -62,12 +62,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
-import com.pheeeew.feature.screens.map.record.group.GroupSelectionStamp
+import com.pheeeew.feature.screens.map.record.group.GroupSelectionButton
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -117,7 +118,7 @@ fun RecordBottomSheet(
         shape = AppShapes.BottomSheet,
         containerColor = AppColors.Surface,
         scrimColor = Color.Black.copy(alpha = 0.3f),
-        dragHandle = null,
+        dragHandle = { SheetDragHandle() },
     ) {
         RecordBottomSheetContent(
             selectedEmotion = selectedEmotion,
@@ -182,17 +183,6 @@ private fun RecordBottomSheetContent(
                     }
                 }.padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .size(width = 94.dp, height = 3.dp)
-                    .clip(AppShapes.Pill)
-                    .background(AppColors.TextPrimary),
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Start,
@@ -232,25 +222,11 @@ private fun RecordBottomSheetContent(
                 onInputModeChange = onInputModeChange,
                 modifier = Modifier.weight(1f),
             )
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(44.dp)
-                            .noRippleClickable(enabled = !isGroupSelectionLoading, onClick = onGroupClick),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    GroupSelectionStamp(stamp = selectedGroupStamp, size = 44.dp)
-                }
-                Text(
-                    text = if (isGroupSelectionLoading) "그룹 확인 중" else "그룹 변경",
-                    fontSize = 10.sp,
-                    color = AppColors.TextSecondary,
-                )
-            }
+            GroupSelectionButton(
+                stamp = selectedGroupStamp,
+                loading = isGroupSelectionLoading,
+                onClick = onGroupClick,
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))

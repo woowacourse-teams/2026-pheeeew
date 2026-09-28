@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.map.record.noRippleClickable
@@ -277,7 +278,7 @@ fun GroupSelectorContent(
                         if (group.showStamp) {
                             GroupSelectionStamp(stamp = group.stamp, size = DIAL_ITEM_SIZE)
                         } else {
-                            Text(group.name, color = Color(0xFF252826), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                            GroupSelectionStamp(stamp = null, size = DIAL_ITEM_SIZE, emptyLabel = group.name)
                         }
                     }
                 }
@@ -328,10 +329,29 @@ fun GroupSelectorContent(
 @Preview(name = "그룹 선택 다이얼 큰 화면", widthDp = 440, heightDp = 956, showBackground = true)
 @Composable
 private fun GroupSelectorContentPreview() {
-    var selectedGroupId by remember { mutableStateOf("baemin") }
-    val selectedIndex =
+    GroupSelectorPreviewContent(
+        defaultGroup = GroupSelectorGroupUiModel("none", "없음", null),
+        initialSelectedGroupId = "baemin",
+    )
+}
+
+@Preview(name = "감정 목록 그룹 선택 · 전체", widthDp = 402, heightDp = 874, showBackground = true)
+@Composable
+private fun AllGroupsSelectorContentPreview() {
+    GroupSelectorPreviewContent(
+        defaultGroup = GroupSelectorGroupUiModel("all", "전체", null, showStamp = false),
+        initialSelectedGroupId = "all",
+    )
+}
+
+@Composable
+private fun GroupSelectorPreviewContent(
+    defaultGroup: GroupSelectorGroupUiModel,
+    initialSelectedGroupId: String,
+) {
+    val groups =
         listOf(
-            GroupSelectorGroupUiModel("none", "없음", null),
+            defaultGroup,
             GroupSelectorGroupUiModel(
                 "baemin",
                 "배민",
@@ -342,49 +362,40 @@ private fun GroupSelectorContentPreview() {
                 "메가박스",
                 StampAppearanceUiModel("메박", StampShapeId.FLOWER, 0xFFACD9EE, 0xFF252826),
             ),
-        ).indexOfFirst { it.id == selectedGroupId }.coerceAtLeast(0)
+        )
+    var selectedGroupId by remember { mutableStateOf(initialSelectedGroupId) }
+    val selectedIndex = groups.indexOfFirst { it.id == selectedGroupId }.coerceAtLeast(0)
     val dialProgress = remember { Animatable(selectedIndex.toFloat()) }
     val coroutineScope = rememberCoroutineScope()
 
-    Box(
-        modifier = Modifier.fillMaxSize().background(Color(0xffbfc2c5)),
-    ) {
-        GroupSelectorContent(
-            isVisible = true,
-            groups =
-                listOf(
-                    GroupSelectorGroupUiModel("none", "없음", null),
-                    GroupSelectorGroupUiModel(
-                        "baemin",
-                        "배민",
-                        StampAppearanceUiModel("배민", StampShapeId.TICKET, 0xFFFFE164, 0xFF252826),
-                    ),
-                    GroupSelectorGroupUiModel(
-                        "megabox",
-                        "메가박스",
-                        StampAppearanceUiModel("메박", StampShapeId.FLOWER, 0xFFACD9EE, 0xFF252826),
-                    ),
-                ),
-            selectedGroupId = selectedGroupId,
-            dialProgress = dialProgress.value,
-            onDialProgressChange = { progress ->
-                coroutineScope.launch { dialProgress.snapTo(progress) }
-            },
-            onDialProgressSettle = { progress ->
-                coroutineScope.launch {
-                    dialProgress.animateTo(
-                        targetValue = progress,
-                        animationSpec =
-                            spring(
-                                dampingRatio = DIAL_SPRING_DAMPING_RATIO,
-                                stiffness = DIAL_SPRING_STIFFNESS,
-                            ),
-                    )
-                }
-            },
-            onSelectedGroupChange = { selectedGroupId = it.id },
-            onDismiss = {},
-            onComplete = { selectedGroupId = it.id },
-        )
+    AppTheme {
+        Box(
+            modifier = Modifier.fillMaxSize().background(Color(0xffbfc2c5)),
+        ) {
+            GroupSelectorContent(
+                isVisible = true,
+                groups = groups,
+                selectedGroupId = selectedGroupId,
+                dialProgress = dialProgress.value,
+                onDialProgressChange = { progress ->
+                    coroutineScope.launch { dialProgress.snapTo(progress) }
+                },
+                onDialProgressSettle = { progress ->
+                    coroutineScope.launch {
+                        dialProgress.animateTo(
+                            targetValue = progress,
+                            animationSpec =
+                                spring(
+                                    dampingRatio = DIAL_SPRING_DAMPING_RATIO,
+                                    stiffness = DIAL_SPRING_STIFFNESS,
+                                ),
+                        )
+                    }
+                },
+                onSelectedGroupChange = { selectedGroupId = it.id },
+                onDismiss = {},
+                onComplete = { selectedGroupId = it.id },
+            )
+        }
     }
 }

@@ -23,9 +23,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.domain.model.emotion.EmotionState
 import org.jetbrains.compose.resources.painterResource
 
@@ -136,4 +138,16 @@ private fun FeedbackButton(
             ),
         border = BorderStroke(AppBorders.Standard, if (highlighted) FeedbackInk else Color(0xFFD8DDD5)),
     ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
+}
+
+@Preview(name = "Nearby · 오류 및 안내", widthDp = 402, showBackground = true)
+@Composable
+private fun NearbyFeedbackPreview() {
+    AppTheme {
+        Column(Modifier.padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            NearbyNotice("잠시 후 다시 시도해 주세요.", onDismiss = {})
+            NearbyLoadError("연결 상태를 확인해 주세요.", hasItems = false, onRetry = {})
+            NearbyLoadError("연결 상태를 확인해 주세요.", hasItems = true, onRetry = {})
+        }
+    }
 }

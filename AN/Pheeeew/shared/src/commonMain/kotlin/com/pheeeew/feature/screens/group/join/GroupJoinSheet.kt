@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -48,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
@@ -55,7 +55,6 @@ import com.pheeeew.feature.screens.group.join.component.GroupJoinPreviewCard
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.group_join_close
 import pheeeew.shared.generated.resources.group_join_code_count
 import pheeeew.shared.generated.resources.group_join_code_format_hint
 import pheeeew.shared.generated.resources.group_join_code_invalid_characters
@@ -101,7 +100,6 @@ fun GroupJoinSheet(
     val latestDismiss by rememberUpdatedState(onDismiss)
     val latestDismissBlocked by rememberUpdatedState(uiState.isDismissBlocked)
     val keyboardController = LocalSoftwareKeyboardController.current
-    val closeDescription = stringResource(Res.string.group_join_close)
     var isDismissing by remember { mutableStateOf(false) }
     val sheetState =
         rememberModalBottomSheetState(
@@ -128,6 +126,7 @@ fun GroupJoinSheet(
         modifier = modifier,
         onDismissRequest = ::dismissSheet,
         sheetState = sheetState,
+        dragHandle = { SheetDragHandle() },
         containerColor = AppColors.GroupBackground,
         contentColor = AppColors.GroupInk,
     ) {
@@ -139,40 +138,18 @@ fun GroupJoinSheet(
                     .verticalScroll(rememberScrollState())
                     .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top,
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(Res.string.group_join_title),
-                        color = AppColors.GroupInk,
-                        fontSize = 21.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = stringResource(Res.string.group_join_description),
-                        modifier = Modifier.padding(top = 5.dp),
-                        color = AppColors.RankingSecondaryContent,
-                        fontSize = 13.sp,
-                    )
-                }
-                Box(
-                    modifier =
-                        Modifier
-                            .size(36.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFF3F5F4))
-                            .clickable(
-                                enabled = !uiState.isDismissBlocked && !isDismissing,
-                                role = Role.Button,
-                                onClick = ::dismissSheet,
-                            ).semantics { contentDescription = closeDescription },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text("×", color = AppColors.GroupInk, fontSize = 24.sp, textAlign = TextAlign.Center)
-                }
-            }
+            Text(
+                text = stringResource(Res.string.group_join_title),
+                color = AppColors.GroupInk,
+                fontSize = 21.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(Res.string.group_join_description),
+                modifier = Modifier.padding(top = 5.dp),
+                color = AppColors.RankingSecondaryContent,
+                fontSize = 13.sp,
+            )
 
             Spacer(Modifier.height(22.dp))
             OutlinedTextField(
