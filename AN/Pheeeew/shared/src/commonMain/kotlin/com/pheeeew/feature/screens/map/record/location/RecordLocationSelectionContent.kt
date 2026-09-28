@@ -154,7 +154,7 @@ fun RecordLocationSelectionContent(
             }
         }
         Text(
-            text = "원하는 위치에 남겨봐!",
+            text = "원하는 위치에 남겨보세요!",
             modifier =
                 Modifier
                     .align(Alignment.TopCenter)
