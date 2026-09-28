@@ -14,13 +14,17 @@ class NearbySheetNestedScrollConnectionTest {
     private var expanded = true
     private var offset = 0f
     private var collapsed: Boolean? = null
+    private var dismissed = false
     private val connection =
         NearbySheetNestedScrollConnection(
             middleOffset = 400f,
+            hiddenOffset = 800f,
             collapseThreshold = 28f,
+            dismissThreshold = 72f,
             isExpanded = { expanded },
             onDrag = { offset = it },
             onFinish = { collapsed = it },
+            onDismiss = { dismissed = true },
         )
 
     @Test
@@ -68,6 +72,7 @@ class NearbySheetNestedScrollConnectionTest {
             assertEquals(400f, offset)
             connection.onPreFling(Velocity(0f, 5000f))
             assertEquals(true, collapsed)
+            assertFalse(dismissed)
             assertEquals(Offset.Zero, connection.onPreScroll(Offset(0f, 50f), NestedScrollSource.UserInput))
             pull(available = 10f)
             assertEquals(10f, offset)
@@ -76,11 +81,67 @@ class NearbySheetNestedScrollConnectionTest {
         }
 
     @Test
-    fun collapsedSheetAndFlingDoNotStartPull() =
+    fun leftoverPullAtTopDismissesHalfSheet() =
         runTest {
             expanded = false
-            assertEquals(Offset.Zero, pull(available = 80f))
-            expanded = true
+            assertEquals(Offset(0f, 72f), pull(consumed = 80f, available = 72f))
+            assertEquals(472f, offset)
+            assertEquals(Velocity(0f, 500f), connection.onPreFling(Velocity(0f, 500f)))
+            assertTrue(dismissed)
+            assertNull(collapsed)
+        }
+
+    @Test
+    fun shortPullReturnsToHalfPosition() =
+        runTest {
+            expanded = false
+            pull(available = 71f)
+            assertEquals(471f, offset)
+            connection.onPreFling(Velocity(0f, 5000f))
+            assertFalse(dismissed)
+            assertEquals(false, collapsed)
+        }
+
+    @Test
+    fun reversingHalfSheetPullReturnsRemainingScrollToList() =
+        runTest {
+            expanded = false
+            pull(available = 100f)
+            assertEquals(Offset(0f, -100f), connection.onPreScroll(Offset(0f, -150f), NestedScrollSource.UserInput))
+            assertEquals(400f, offset)
+            connection.onPreFling(Velocity.Zero)
+            assertFalse(dismissed)
+            assertEquals(false, collapsed)
+        }
+
+    @Test
+    fun secondPullAfterCollapseDismissesHalfSheet() =
+        runTest {
+            pull(available = 1000f)
+            connection.onPreFling(Velocity.Zero)
+            assertEquals(true, collapsed)
+            assertFalse(dismissed)
+            expanded = false
+            assertEquals(Offset(0f, 400f), pull(available = 1000f))
+            assertEquals(800f, offset)
+            connection.onPreFling(Velocity.Zero)
+            assertTrue(dismissed)
+        }
+
+    @Test
+    fun scrollingWithinHalfSheetDoesNotMoveSheet() =
+        runTest {
+            expanded = false
+            assertEquals(Offset.Zero, connection.onPreScroll(Offset(0f, 80f), NestedScrollSource.UserInput))
+            assertEquals(Offset.Zero, pull(consumed = 80f, available = 0f))
+            assertEquals(Velocity.Zero, connection.onPreFling(Velocity(0f, 500f)))
+            assertFalse(dismissed)
+            assertNull(collapsed)
+        }
+
+    @Test
+    fun flingAndUpwardScrollDoNotStartPull() =
+        runTest {
             assertEquals(
                 Offset.Zero,
                 connection.onPostScroll(Offset.Zero, Offset(0f, 80f), NestedScrollSource.SideEffect),
@@ -88,6 +149,7 @@ class NearbySheetNestedScrollConnectionTest {
             assertEquals(Offset.Zero, pull(available = -80f))
             connection.onPreFling(Velocity.Zero)
             assertNull(collapsed)
+            assertFalse(dismissed)
         }
 
     private fun pull(

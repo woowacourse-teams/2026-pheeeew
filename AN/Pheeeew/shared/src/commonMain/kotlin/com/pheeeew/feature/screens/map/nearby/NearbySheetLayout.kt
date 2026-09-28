@@ -97,11 +97,14 @@ internal fun NearbySheetLayout(
                     }
                 val latestExpanded by rememberUpdatedState(expanded)
                 val latestOnExpandedChange by rememberUpdatedState(onExpandedChange)
+                val latestOnDismiss by rememberUpdatedState(onDismiss)
                 val listScrollConnection =
-                    remember(availableHeightPx, collapseThreshold) {
+                    remember(availableHeightPx, collapseThreshold, dismissThreshold) {
                         NearbySheetNestedScrollConnection(
                             middleOffset = middleOffset,
+                            hiddenOffset = availableHeightPx,
                             collapseThreshold = collapseThreshold,
+                            dismissThreshold = dismissThreshold,
                             isExpanded = { latestExpanded },
                             onDrag = {
                                 draggedOffset = it
@@ -112,6 +115,7 @@ internal fun NearbySheetLayout(
                                 dragging = false
                                 totalDrag = 0f
                             },
+                            onDismiss = { latestOnDismiss() },
                         )
                     }
                 Surface(

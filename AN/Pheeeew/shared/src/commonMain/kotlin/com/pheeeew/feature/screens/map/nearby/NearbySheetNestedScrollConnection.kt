@@ -7,17 +7,25 @@ import androidx.compose.ui.unit.Velocity
 
 internal class NearbySheetNestedScrollConnection(
     private val middleOffset: Float,
+    private val hiddenOffset: Float,
     private val collapseThreshold: Float,
+    private val dismissThreshold: Float,
     private val isExpanded: () -> Boolean,
     private val onDrag: (Float) -> Unit,
     private val onFinish: (collapse: Boolean) -> Unit,
+    private val onDismiss: () -> Unit,
 ) : NestedScrollConnection {
     private var pullingSheet = false
+    private var startedExpanded = true
     private var draggedOffset = 0f
+
+    private val startOffset: Float
+        get() = if (startedExpanded) 0f else middleOffset
 
     private fun drag(amount: Float): Offset {
         val previous = draggedOffset
-        draggedOffset = (previous + amount).coerceIn(0f, middleOffset)
+        val endOffset = if (startedExpanded) middleOffset else hiddenOffset
+        draggedOffset = (previous + amount).coerceIn(startOffset, endOffset)
         onDrag(draggedOffset)
         return Offset(0f, draggedOffset - previous)
     }
@@ -36,18 +44,23 @@ internal class NearbySheetNestedScrollConnection(
         source: NestedScrollSource,
     ): Offset {
         // Only the downward distance left over at the list's top moves the sheet.
-        if (source != NestedScrollSource.UserInput || !isExpanded() || available.y <= 0f) return Offset.Zero
+        if (source != NestedScrollSource.UserInput || available.y <= 0f) return Offset.Zero
         if (!pullingSheet) {
             pullingSheet = true
-            draggedOffset = 0f
+            startedExpanded = isExpanded()
+            draggedOffset = startOffset
         }
         return drag(available.y)
     }
 
     override suspend fun onPreFling(available: Velocity): Velocity {
         if (!pullingSheet) return Velocity.Zero
-        // A pull from the list stops at half height, even after a long or fast gesture.
-        onFinish(draggedOffset >= collapseThreshold)
+        // Each pull moves down one step: full to half, or half to hidden.
+        if (!startedExpanded && draggedOffset - startOffset >= dismissThreshold) {
+            onDismiss()
+        } else {
+            onFinish(startedExpanded && draggedOffset >= collapseThreshold)
+        }
         pullingSheet = false
         draggedOffset = 0f
         return available
