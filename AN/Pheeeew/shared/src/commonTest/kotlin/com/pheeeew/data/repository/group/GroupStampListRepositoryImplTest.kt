@@ -15,6 +15,8 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -92,6 +94,85 @@ class GroupStampListRepositoryImplTest {
                 assertEquals(2, requestCount)
                 assertEquals(emptyList(), assertIs<GroupStampListLoadResult.Loaded>(repository.findMyStamps()).groups)
                 assertEquals(2, requestCount)
+            } finally {
+                client.close()
+            }
+        }
+
+    @Test
+    fun `membership change invalidates even an empty cached list before five minutes`() =
+        runTest {
+            var body = "[]"
+            var requests = 0
+            val client =
+                createApiClient(
+                    engine =
+                        MockEngine {
+                            requests++
+                            respond(
+                                body,
+                                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                            )
+                        },
+                    config = ApiConfig("https://api.example.test"),
+                    accessTokenProvider = { AccessToken("access-token") },
+                )
+            try {
+                val repository = repository(client)
+                assertEquals(0, assertIs<GroupStampListLoadResult.Loaded>(repository.findMyStamps()).groups.size)
+                body = stampsJson
+                repository.invalidate()
+                assertEquals(2, assertIs<GroupStampListLoadResult.Loaded>(repository.findMyStamps()).groups.size)
+                assertEquals(2, requests)
+                assertEquals(2, assertIs<GroupStampListLoadResult.Loaded>(repository.findMyStamps()).groups.size)
+                assertEquals(2, requests)
+                body = "[]"
+                repository.invalidate()
+                assertEquals(0, assertIs<GroupStampListLoadResult.Loaded>(repository.findMyStamps()).groups.size)
+                assertEquals(3, requests)
+            } finally {
+                client.close()
+            }
+        }
+
+    @Test
+    fun `response started before membership change is retried and never returned or cached`() =
+        runTest {
+            val started = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            var requests = 0
+            val client =
+                createApiClient(
+                    engine =
+                        MockEngine {
+                            val body =
+                                if (++requests == 1) {
+                                    started.complete(Unit)
+                                    release.await()
+                                    "[]"
+                                } else {
+                                    stampsJson
+                                }
+                            respond(
+                                body,
+                                headers = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString()),
+                            )
+                        },
+                    config = ApiConfig("https://api.example.test"),
+                    accessTokenProvider = { AccessToken("access-token") },
+                )
+            try {
+                val repository = repository(client)
+                val first = async { repository.findMyStamps() }
+                started.await()
+                repository.invalidate()
+                val second = async { repository.findMyStamps() }
+                release.complete(Unit)
+                assertEquals(2, assertIs<GroupStampListLoadResult.Loaded>(first.await()).groups.size)
+                assertEquals(2, assertIs<GroupStampListLoadResult.Loaded>(second.await()).groups.size)
+                assertEquals(2, requests)
+                assertEquals(2, assertIs<GroupStampListLoadResult.Loaded>(repository.findMyStamps()).groups.size)
+                assertEquals(2, requests)
             } finally {
                 client.close()
             }

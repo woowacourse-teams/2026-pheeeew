@@ -108,7 +108,8 @@ fun App(
             )
         }
 
-    val nearbyViewModel: NearbyEmotionViewModel = viewModel { createNearbyEmotionViewModel(apiDependencies.client) }
+    val nearbyViewModel: NearbyEmotionViewModel =
+        viewModel { createNearbyEmotionViewModel(apiDependencies.client, groupStampListRepository) }
     val nearbyState by nearbyViewModel.state.collectAsState()
 
     val detailRepository =
@@ -212,6 +213,10 @@ fun App(
                     modifier = Modifier.fillMaxSize(),
                     onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
                     onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
+                    onMembershipChanged = {
+                        groupStampListRepository.invalidate()
+                        nearbyViewModel.onMembershipChanged()
+                    },
                 )
             }
 

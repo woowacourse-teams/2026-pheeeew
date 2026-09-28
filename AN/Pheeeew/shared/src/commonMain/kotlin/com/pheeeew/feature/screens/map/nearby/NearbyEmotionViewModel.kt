@@ -14,6 +14,7 @@ import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.toUiShape
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,7 @@ class NearbyEmotionViewModel(
     private var queryBounds: EmotionBounds? = null
     private var pageJob: Job? = null
     private var groupJob: Job? = null
+    private var groupGeneration = 0L
     private var audioJob: Job? = null
     private var generation = 0L
     private var contentVersion = 0L
@@ -269,12 +271,31 @@ class NearbyEmotionViewModel(
         }
     }
 
+    fun onMembershipChanged() {
+        groupJob?.cancel()
+        groupJob = null
+        mutableState.update {
+            it.copy(groups = listOf(ALL_GROUP_OPTION), pendingGroupId = ALL_GROUPS, dialProgress = 0f)
+        }
+        loadGroups()
+    }
+
     fun loadGroups() {
         if (groupJob?.isActive == true) return
+        val ticket = ++groupGeneration
         mutableState.update { it.copy(groupsLoading = true, groupsError = false) }
         groupJob =
             viewModelScope.launch {
-                when (val result = groups.findMyStamps()) {
+                val result =
+                    try {
+                        groups.findMyStamps()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        GroupStampListLoadResult.Unavailable
+                    }
+                if (ticket != groupGeneration) return@launch
+                when (result) {
                     is GroupStampListLoadResult.Loaded -> {
                         val options =
                             listOf(ALL_GROUP_OPTION) +
@@ -292,10 +313,16 @@ class NearbyEmotionViewModel(
                                 }
                         val disappeared = options.none { it.id == state.value.groupId }
                         mutableState.update {
+                            val selectedId = if (disappeared) ALL_GROUPS else it.groupId
+                            val pendingId =
+                                it.pendingGroupId.takeIf { id -> options.any { option -> option.id == id } }
+                                    ?: selectedId
                             it.copy(
                                 groups = options,
                                 groupsLoading = false,
-                                groupId = if (disappeared) ALL_GROUPS else it.groupId,
+                                groupId = selectedId,
+                                pendingGroupId = pendingId,
+                                dialProgress = options.indexOfFirst { option -> option.id == pendingId }.toFloat(),
                             )
                         }
                         if (disappeared && state.value.visible) refresh()
