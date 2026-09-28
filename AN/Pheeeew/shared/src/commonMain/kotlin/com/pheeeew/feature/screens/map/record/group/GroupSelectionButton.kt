@@ -36,6 +36,7 @@ internal fun GroupSelectionButton(
         Text(
             text = if (loading) "그룹 확인 중" else "그룹 변경",
             fontSize = 10.sp,
+            lineHeight = 12.sp,
             color = AppColors.TextSecondary,
         )
     }

@@ -79,6 +79,7 @@ internal fun EmotionChatRow(
     onBlock: () -> Unit,
     onReport: (() -> Unit)?,
     onPlay: () -> Unit,
+    focused: Boolean = false,
 ) {
     val alignment = if (item.isMine) Alignment.End else Alignment.Start
     val visibleReactions = item.reactions.filter { it.count > 0 || it.selected }
@@ -122,7 +123,7 @@ internal fun EmotionChatRow(
                         .then(if (item.contentType == EmotionContentType.AUDIO) Modifier.fillMaxWidth() else Modifier)
                         .border(
                             AppBorders.Standard,
-                            Color(0xFFE8E8E8),
+                            if (focused) AppColors.Primary else Color(0xFFE8E8E8),
                             RoundedCornerShape(16.dp),
                         ).background(Color.White, RoundedCornerShape(16.dp))
                         .combinedClickable(

@@ -9,17 +9,19 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,8 +33,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.PathFillType
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -43,15 +48,20 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.BasicTopBar
+import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
+import com.pheeeew.feature.screens.map.overlay.MapControlButton
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.group.GroupSelectionStamp
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import org.jetbrains.compose.resources.painterResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_my_location
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -70,6 +80,9 @@ fun RecordLocationSelectionContent(
     onConfirm: () -> Unit,
     onBack: () -> Unit,
     modifier: Modifier,
+    onMyLocationClick: () -> Unit = {},
+    isRequestingLocation: Boolean = false,
+    showDragGuide: Boolean = true,
 ) {
     val density = LocalDensity.current.density
     val latestOnSelected by rememberUpdatedState(onCoordinateSelected)
@@ -77,6 +90,20 @@ fun RecordLocationSelectionContent(
     val latestViewport by rememberUpdatedState(viewport)
     val latestCoordinate by rememberUpdatedState(selectedCoordinate ?: origin)
     Box(modifier = modifier.fillMaxSize()) {
+        // Draw only: the map keeps receiving pan and zoom gestures through the dim.
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val dim =
+                Path().apply {
+                    fillType = PathFillType.EvenOdd
+                    addRect(Rect(Offset.Zero, size))
+                    if (origin != null && viewport != null && viewport.radius > 0f) {
+                        val center = Offset(viewport.centerX * density, viewport.centerY * density)
+                        val radius = viewport.radius * density
+                        addOval(Rect(center.x - radius, center.y - radius, center.x + radius, center.y + radius))
+                    }
+                }
+            drawPath(dim, Color.Black.copy(alpha = 0.45f))
+        }
         if (origin != null && viewport != null && viewport.radius > 0f) {
             val center = Offset(viewport.centerX * density, viewport.centerY * density)
             val radius = viewport.radius * density
@@ -108,6 +135,17 @@ fun RecordLocationSelectionContent(
                     animationSpec = tween(durationMillis = 150),
                     label = "recordStampPressScale",
                 )
+                if (showDragGuide) {
+                    RecordStampDragGuide(
+                        modifier =
+                            Modifier.offset {
+                                IntOffset(
+                                    (center.x + offsetX - 58.dp.toPx()).roundToInt(),
+                                    (center.y + offsetY - 76.dp.toPx()).roundToInt(),
+                                )
+                            },
+                    )
+                }
                 Box(
                     modifier =
                         Modifier
@@ -171,10 +209,13 @@ fun RecordLocationSelectionContent(
                 ) {
                     Box(
                         modifier =
-                            Modifier.graphicsLayer {
-                                scaleX = stampScale
-                                scaleY = stampScale
-                            },
+                            Modifier
+                                .graphicsLayer {
+                                    scaleX = stampScale
+                                    scaleY = stampScale
+                                }.requiredSize(70.dp)
+                                .background(Color(0xFFFFF3BF).copy(alpha = 0.3f), CircleShape)
+                                .border(2.dp, Color(0xFFE5BE28), CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         if (selectedGroupStamp == null) {
@@ -190,58 +231,89 @@ fun RecordLocationSelectionContent(
                 }
             }
         }
-        Text(
-            text = "원하는 위치에 남겨보세요!",
+        Column(
             modifier =
                 Modifier
                     .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 50.dp)
-                    .background(Color.Black.copy(alpha = 0.6f), AppShapes.Pill)
-                    .padding(horizontal = 32.dp, vertical = 8.dp),
-            color = AppColors.Surface,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
+                    .fillMaxWidth()
+                    .background(AppColors.Surface)
+                    .noRippleClickable {}
+                    .statusBarsPadding(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            BasicTopBar(
+                title = "스탬프를 눌러서 옮겨주세요",
+                onBack = onBack,
+                enabled = !isSubmitting,
+            )
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, end = 24.dp, bottom = 12.dp)
+                        .border(1.dp, AppColors.TextSecondary.copy(alpha = 0.35f), AppShapes.Pill)
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "내 위치에서 500m 내에서 찍을 수 있어요.",
+                    color = AppColors.TextPrimary,
+                    fontSize = 12.sp,
+                )
+            }
+        }
         if (isSubmitting) {
             CircularProgressIndicator(
                 modifier = Modifier.align(Alignment.Center),
                 color = AppColors.Primary,
             )
         }
+        // A fixed panel, with no dismiss or swipe behavior.
         Column(
-            modifier =
-                Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 100.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+            horizontalAlignment = Alignment.End,
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .width(140.dp)
-                        .height(48.dp)
-                        .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Button)
-                        .background(
-                            AppColors.Primary,
-                            AppShapes.Button,
-                        ).noRippleClickable(enabled = canConfirm && !isSubmitting, onClick = onConfirm),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("완료", color = AppColors.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            }
-            Text(
-                text = "돌아가기",
-                modifier =
-                    Modifier
-                        .noRippleClickable(onClick = onBack)
-                        .padding(8.dp),
-                color = AppColors.TextPrimary,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp,
+            MapControlButton(
+                icon = Res.drawable.ic_my_location,
+                contentDescription = "내 위치로 이동",
+                onClick = onMyLocationClick,
+                enabled = !isRequestingLocation && !isSubmitting,
+                modifier = Modifier.padding(end = 20.dp, bottom = 12.dp),
             )
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .background(AppColors.Surface, AppShapes.BottomSheet)
+                        .noRippleClickable {}
+                        .navigationBarsPadding()
+                        .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                SheetDragHandle()
+                Text(
+                    text = "이 위치에 감정을 남길까요?",
+                    modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 24.dp),
+                    color = AppColors.GroupInk,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Box(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Button)
+                            .background(
+                                if (canConfirm && !isSubmitting) AppColors.Primary else AppColors.Gray100,
+                                AppShapes.Button,
+                            ).noRippleClickable(enabled = canConfirm && !isSubmitting, onClick = onConfirm),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("여기에 남기기", color = AppColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(24.dp))
+            }
         }
     }
 }

@@ -18,6 +18,7 @@ import com.pheeeew.feature.monitoring.product.MonitoredLocationPermission
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.screens.map.monitoring.ContentLoad
 import com.pheeeew.feature.screens.map.monitoring.ContentMonitoring
+import com.pheeeew.feature.screens.map.nearby.NEARBY_COLLAPSED_MAP_HEIGHT_FRACTION
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -105,7 +106,11 @@ class MapViewModel(
 
     fun onEmotionHidden(id: Long) {
         locallyRegisteredPins.remove(id)
-        _uiModel.value = _uiModel.value.copy(hiddenEmotionIds = _uiModel.value.hiddenEmotionIds + id)
+        _uiModel.value =
+            _uiModel.value.copy(
+                hiddenEmotionIds = _uiModel.value.hiddenEmotionIds + id,
+                focusedEmotionId = _uiModel.value.focusedEmotionId.takeUnless { it == id },
+            )
     }
 
     fun onMyLocationClick(fromUser: Boolean = true) {
@@ -122,16 +127,26 @@ class MapViewModel(
             coordinate ?: _uiModel.value.emotionPins.firstOrNull { it.id == id }?.let {
                 GeoCoordinate(it.latitude, it.longitude)
             } ?: return false
-        focusOnCoordinate(target)
+        // Place the pin slightly below the visible map's midpoint.
+        focusOnCoordinate(target, verticalPosition = NEARBY_COLLAPSED_MAP_HEIGHT_FRACTION.toDouble() * 0.6)
+        _uiModel.value = _uiModel.value.copy(focusedEmotionId = id)
         return true
     }
 
-    fun focusOnCoordinate(coordinate: GeoCoordinate) {
+    fun clearFocusedEmotion() {
+        _uiModel.value = _uiModel.value.copy(focusedEmotionId = null)
+    }
+
+    fun focusOnCoordinate(
+        coordinate: GeoCoordinate,
+        verticalPosition: Double = 0.5,
+    ) {
         sendCameraCommand(
             action = MapCameraActionUiModel.MoveToCoordinate,
             latitude = coordinate.latitude,
             longitude = coordinate.longitude,
             value = LOCATION_FOCUS_ZOOM,
+            verticalPosition = verticalPosition,
         )
     }
 
@@ -150,7 +165,7 @@ class MapViewModel(
 
     fun onRecordLocationPickingChanged(isPicking: Boolean) {
         _uiModel.value = _uiModel.value.copy(isRecordLocationPicking = isPicking)
-        // The renderer initially fits the circle and constrains camera movement around the origin.
+        // The renderer fits the 500m circle and uses that zoom as the zoom-out limit.
     }
 
     fun onViewportChanged(bounds: EmotionMapBounds) {
@@ -456,6 +471,7 @@ class MapViewModel(
         latitude: Double = 0.0,
         longitude: Double = 0.0,
         value: Double,
+        verticalPosition: Double = 0.5,
     ) {
         _uiModel.value =
             _uiModel.value.copy(
@@ -466,6 +482,7 @@ class MapViewModel(
                         latitude = latitude,
                         longitude = longitude,
                         value = value,
+                        verticalPosition = verticalPosition,
                     ),
             )
     }

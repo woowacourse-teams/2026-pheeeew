@@ -70,6 +70,8 @@ fun NearbyEmotionSheet(
     blockUser: BlockUserUseCase,
     onReportEmotion: (Long, DrawableResource) -> Unit,
     monitoringVisible: Boolean = true,
+    onSheetInteraction: () -> Unit = {},
+    focusedEmotionId: Long? = null,
 ) {
     val state by viewModel.state.collectAsState()
     var expanded by remember(state.visible) { mutableStateOf(false) }
@@ -186,6 +188,7 @@ fun NearbyEmotionSheet(
         expanded = expanded,
         onExpandedChange = { expanded = it },
         onDismiss = viewModel::dismiss,
+        onInteraction = onSheetInteraction,
     ) {
         val group = state.groups.find { it.id == state.groupId } ?: ALL_GROUP_OPTION
         NearbySheetHeader(
@@ -226,6 +229,7 @@ fun NearbyEmotionSheet(
                     EmotionChatRow(
                         emotion,
                         selected = state.selectedId == emotion.id,
+                        focused = focusedEmotionId == emotion.id,
                         busy = emotion.id in state.pendingIds,
                         playing = playback.id == emotion.id,
                         audioLoading = state.audioLoadingId == emotion.id,

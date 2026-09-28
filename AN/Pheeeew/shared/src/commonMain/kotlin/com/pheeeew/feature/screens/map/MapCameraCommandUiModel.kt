@@ -11,4 +11,6 @@ data class MapCameraCommandUiModel(
     val latitude: Double = 0.0,
     val longitude: Double = 0.0,
     val value: Double,
+    // Target position as a fraction of the map height, measured from the top.
+    val verticalPosition: Double = 0.5,
 )

@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.map.renderer
 
 import android.graphics.Color
+import android.graphics.PointF
 import android.graphics.RectF
 import android.view.Gravity
 import androidx.compose.runtime.Composable
@@ -25,6 +26,7 @@ import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
 import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
+import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
 import com.pheeeew.feature.screens.map.record.location.destination
 import com.pheeeew.feature.screens.map.record.location.recordCameraBounds
 import com.pheeeew.feature.screens.map.symbolImageKey
@@ -429,6 +431,7 @@ private class AndroidFoundationMapHost(
                 visible = true,
                 densityDpi = mapView.resources.displayMetrics.densityDpi,
                 monitoringLoadId = state.emotionContentLoad?.loadId,
+                focusedId = state.focusedEmotionId,
             )
         }
         val point =
@@ -454,12 +457,12 @@ private class AndroidFoundationMapHost(
             isQuickZoomGesturesEnabled = true
         }
         if (picking) {
-            state.cameraCommand?.let { lastAppliedCameraCommandId = it.id }
             val origin = state.recordOrigin ?: return
             if (fittedOrigin != origin && mapView.width > 0 && mapView.height > 0) {
                 fittedOrigin = origin
                 currentMap.setLatLngBoundsForCameraTarget(null)
                 cameraBoundsInstalled = false
+                state.cameraCommand?.let { lastAppliedCameraCommandId = it.id }
                 currentMap.setMinZoomPreference(MINIMUM_ZOOM)
                 val north = destination(origin, RECORD_RADIUS_METERS, 0.0)
                 val south = destination(origin, RECORD_RADIUS_METERS, PI)
@@ -487,12 +490,21 @@ private class AndroidFoundationMapHost(
                         (mapView.height * 0.22).toInt(),
                     ),
                 )
-                currentMap.setMinZoomPreference(currentMap.cameraPosition.zoom - 1.0)
+                currentMap.setMinZoomPreference(currentMap.cameraPosition.zoom)
                 val cameraBounds = recordCameraBounds(origin)
                 currentMap.setLatLngBoundsForCameraTarget(
                     LatLngBounds.from(cameraBounds.north, cameraBounds.east, cameraBounds.south, cameraBounds.west),
                 )
                 cameraBoundsInstalled = true
+            }
+            state.cameraCommand?.takeIf { it.id > lastAppliedCameraCommandId }?.let { command ->
+                lastAppliedCameraCommandId = command.id
+                if (command.action == MapCameraActionUiModel.MoveToCoordinate) {
+                    val target = constrainToRecordRadius(origin, GeoCoordinate(command.latitude, command.longitude))
+                    currentMap.animateCamera(
+                        CameraUpdateFactory.newLatLng(LatLng(target.latitude, target.longitude)),
+                    )
+                }
             }
             publishRecordViewport()
             return
@@ -505,12 +517,18 @@ private class AndroidFoundationMapHost(
         fittedOrigin = null
         state.cameraCommand?.takeIf { it.id > lastAppliedCameraCommandId }?.let { command ->
             lastAppliedCameraCommandId = command.id
+            currentMap.cancelTransitions()
+            val bottomPadding = mapView.height * (1.0 - 2.0 * command.verticalPosition).coerceIn(0.0, 1.0)
             val update =
                 when (command.action) {
                     MapCameraActionUiModel.MoveToCoordinate -> {
-                        CameraUpdateFactory.newLatLngZoom(
-                            LatLng(command.latitude, command.longitude),
-                            command.value,
+                        CameraUpdateFactory.newCameraPosition(
+                            CameraPosition
+                                .Builder(currentMap.cameraPosition)
+                                .target(LatLng(command.latitude, command.longitude))
+                                .zoom(command.value)
+                                .padding(0.0, 0.0, 0.0, bottomPadding)
+                                .build(),
                         )
                     }
 
@@ -518,8 +536,44 @@ private class AndroidFoundationMapHost(
                         CameraUpdateFactory.zoomBy(command.value)
                     }
                 }
-            currentMap.animateCamera(update, 350)
+            if (command.action == MapCameraActionUiModel.MoveToCoordinate && bottomPadding > 0.0) {
+                currentMap.animateCamera(
+                    update,
+                    350,
+                    object : MapLibreMap.CancelableCallback {
+                        private var cleared = false
+
+                        override fun onFinish() = clearPaddingOnce()
+
+                        override fun onCancel() = clearPaddingOnce()
+
+                        private fun clearPaddingOnce() {
+                            if (cleared) return
+                            cleared = true
+                            clearFocusPadding(currentMap)
+                        }
+                    },
+                )
+            } else {
+                currentMap.animateCamera(update, 350)
+            }
         }
+    }
+
+    private fun clearFocusPadding(currentMap: MapLibreMap) {
+        if (released) return
+        if (currentMap.cameraPosition.padding?.any { it != 0.0 } != true) return
+        // Preserve the visible map while removing padding from subsequent gestures and commands.
+        val center = currentMap.projection.fromScreenLocation(PointF(mapView.width / 2f, mapView.height / 2f))
+        currentMap.moveCamera(
+            CameraUpdateFactory.newCameraPosition(
+                CameraPosition
+                    .Builder(currentMap.cameraPosition)
+                    .target(center)
+                    .padding(0.0, 0.0, 0.0, 0.0)
+                    .build(),
+            ),
+        )
     }
 
     private fun publishHighlightedPinPosition() {

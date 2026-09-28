@@ -16,6 +16,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private var emotionPinSource: MLNShapeSource?
     private var lastEmotionPinImageKeys = Set<String>()
     private var lastEmotionPinCoordinates: [FoundationIosEmotionPinCoordinateUiModel]?
+    private var lastFocusedEmotionId: Int64?
     private var fittedOrigin: CLLocationCoordinate2D?
     private var fittedSize: CGSize = .zero
     private var recordCameraBounds: RecordCameraBounds?
@@ -257,15 +258,16 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             recordCameraBounds = nil
             return false
         }
-        lastAppliedCameraCommandId = state.cameraCommandId
         guard let origin = state.recordOrigin, mapView.bounds.width > 0, mapView.bounds.height > 0 else { return true }
         let center = CLLocationCoordinate2D(latitude: origin.latitude, longitude: origin.longitude)
-        if fittedOrigin?.latitude != center.latitude || fittedOrigin?.longitude != center.longitude || fittedSize != mapView.bounds.size {
+        let isNewOrigin = fittedOrigin?.latitude != center.latitude || fittedOrigin?.longitude != center.longitude
+        if isNewOrigin || fittedSize != mapView.bounds.size {
             fittedOrigin = center
             fittedSize = mapView.bounds.size
             recordCameraBounds = RecordMapGeometryKt.recordCameraBounds(
                 origin: GeoCoordinate(latitude: center.latitude, longitude: center.longitude)
             )
+            lastAppliedCameraCommandId = state.cameraCommandId
             mapView.minimumZoomLevel = FoundationMapStyle.minimumZoom
             let latitudeDelta = 500.0 / 6_371_000.0 * 180.0 / .pi
             let longitudeDelta = latitudeDelta / cos(center.latitude * .pi / 180.0)
@@ -283,7 +285,20 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
                 animated: false,
                 completionHandler: nil
             )
-            mapView.minimumZoomLevel = mapView.zoomLevel - 1.0
+            mapView.minimumZoomLevel = mapView.zoomLevel
+        }
+        if state.cameraCommandId > lastAppliedCameraCommandId {
+            lastAppliedCameraCommandId = state.cameraCommandId
+            if state.cameraCommandType == 1 {
+                let target = RecordMapGeometryKt.constrainToRecordRadius(
+                    origin: GeoCoordinate(latitude: center.latitude, longitude: center.longitude),
+                    target: GeoCoordinate(latitude: state.cameraLatitude, longitude: state.cameraLongitude)
+                )
+                mapView.setCenter(
+                    CLLocationCoordinate2D(latitude: target.latitude, longitude: target.longitude),
+                    animated: true
+                )
+            }
         }
         publishHighlightedPinPosition()
         publishRecordViewport()
@@ -340,7 +355,9 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         let layer = MLNSymbolStyleLayer(identifier: "foundation-emotion-pin-layer", source: source)
         layer.iconImageName = NSExpression(mglJSONObject: ["get", "imageKey"])
         layer.iconRotation = NSExpression(mglJSONObject: ["get", "rotationDegrees"])
-        layer.iconScale = NSExpression(forConstantValue: 1.0)
+        layer.iconScale = NSExpression(forKeyPath: "focusScale")
+        layer.symbolSortKey = NSExpression(forKeyPath: "focusPriority")
+        layer.symbolZOrder = NSExpression(forConstantValue: "source")
         layer.iconAllowsOverlap = NSExpression(forConstantValue: true)
         layer.iconIgnoresPlacement = NSExpression(forConstantValue: true)
         style.addLayer(layer)
@@ -361,7 +378,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         // Rasterization completes after pin data arrives. Publish only drawable features,
         // and leave the source untouched when unrelated Compose state changes.
         let coordinates = state.emotionPinCoordinates.filter { lastEmotionPinImageKeys.contains($0.imageKey) }
-        guard coordinates != lastEmotionPinCoordinates else { return }
+        let focusedId = state.focusedEmotionId?.int64Value
+        guard coordinates != lastEmotionPinCoordinates || focusedId != lastFocusedEmotionId else { return }
         let features = coordinates.map { pin -> MLNPointFeature in
             let feature = MLNPointFeature()
             feature.coordinate = CLLocationCoordinate2D(latitude: pin.latitude, longitude: pin.longitude)
@@ -371,11 +389,14 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
                 "monitoring-load-id": state.monitoringLoadId ?? "",
                 "imageKey": pin.imageKey,
                 "rotationDegrees": pin.rotationDegrees,
+                "focusScale": pin.id == focusedId ? 1.3 : 1.0,
+                "focusPriority": pin.id == focusedId ? 1 : 0,
             ]
             return feature
         }
         emotionPinSource.shape = MLNShapeCollectionFeature(shapes: features)
         lastEmotionPinCoordinates = coordinates
+        lastFocusedEmotionId = focusedId
     }
 
     private func applyInitialCameraIfNeeded(_ state: FoundationIosMapRenderUiModel) {
@@ -396,11 +417,30 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         lastAppliedCameraCommandId = state.cameraCommandId
         switch state.cameraCommandType {
         case 1:
-            mapView.setCenter(
-                CLLocationCoordinate2D(latitude: state.cameraLatitude, longitude: state.cameraLongitude),
-                zoomLevel: state.cameraCommandValue,
-                animated: true
-            )
+            let coordinate = CLLocationCoordinate2D(latitude: state.cameraLatitude, longitude: state.cameraLongitude)
+            if state.cameraVerticalPosition < 0.5, !mapView.bounds.isEmpty {
+                let camera = mapView.camera
+                camera.centerCoordinate = coordinate
+                camera.altitude = MLNAltitudeForZoomLevel(
+                    state.cameraCommandValue,
+                    camera.pitch,
+                    coordinate.latitude,
+                    mapView.frame.size
+                )
+                let desiredY = mapView.bounds.height * state.cameraVerticalPosition
+                let inset = mapView.contentInset
+                let bottomPadding = max(0, mapView.bounds.height + inset.top - inset.bottom - 2 * desiredY)
+                // Keep the offset local to this transition instead of changing contentInset.
+                mapView.setCamera(
+                    camera,
+                    withDuration: 0.35,
+                    animationTimingFunction: nil,
+                    edgePadding: UIEdgeInsets(top: 0, left: 0, bottom: bottomPadding, right: 0),
+                    completionHandler: nil
+                )
+            } else {
+                mapView.setCenter(coordinate, zoomLevel: state.cameraCommandValue, animated: true)
+            }
         case 2:
             mapView.setZoomLevel(mapView.zoomLevel + state.cameraCommandValue, animated: true)
         default:
