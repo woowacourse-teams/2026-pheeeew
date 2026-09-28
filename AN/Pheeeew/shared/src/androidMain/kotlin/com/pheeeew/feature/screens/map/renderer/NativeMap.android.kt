@@ -430,6 +430,7 @@ private class AndroidFoundationMapHost(
                 densityDpi = mapView.resources.displayMetrics.densityDpi,
                 monitoringLoadId = state.emotionContentLoad?.loadId,
             )
+            emotionPinSymbolLayer.updatePress(loadedStyle, state.pressedEmotionId, state.pressedEmotionScale)
         }
         val point =
             currentLocation?.let { LatLng(it.latitude, it.longitude) }

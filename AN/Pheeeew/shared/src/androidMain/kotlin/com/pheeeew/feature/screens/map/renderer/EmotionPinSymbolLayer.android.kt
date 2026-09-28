@@ -14,6 +14,7 @@ import org.maplibre.android.style.layers.PropertyFactory.iconAnchor
 import org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement
 import org.maplibre.android.style.layers.PropertyFactory.iconImage
 import org.maplibre.android.style.layers.PropertyFactory.iconRotate
+import org.maplibre.android.style.layers.PropertyFactory.iconSize
 import org.maplibre.android.style.layers.PropertyFactory.visibility
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
@@ -27,12 +28,16 @@ internal class EmotionPinSymbolLayer {
     private var lastRenderedPins: List<EmotionPinUiModel>? = null
     private var layerVisible: Boolean? = null
     private var lastMonitoringLoadId: String? = null
+    private var lastPressedId: Long? = null
+    private var lastPressedScale = 1f
 
     fun install(style: Style) {
         registeredImageKeys.clear()
         lastRenderedPins = null
         layerVisible = null
         lastMonitoringLoadId = null
+        lastPressedId = null
+        lastPressedScale = 1f
         if (style.getSource(SOURCE_ID) == null) {
             style.addSource(GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(emptyList())))
         }
@@ -87,6 +92,7 @@ internal class EmotionPinSymbolLayer {
                         addProperty("monitoring-load-id", monitoringLoadId)
                         addProperty(IMAGE_KEY_PROPERTY, pin.symbolImageKey())
                         addProperty(ROTATION_PROPERTY, pin.rotationDegrees)
+                        addProperty(PIN_ID_PROPERTY, pin.id)
                     }
                 Feature.fromGeometry(
                     Point.fromLngLat(pin.longitude, pin.latitude),
@@ -97,6 +103,28 @@ internal class EmotionPinSymbolLayer {
         source.setGeoJson(FeatureCollection.fromFeatures(features))
         lastRenderedPins = renderedPins
         lastMonitoringLoadId = monitoringLoadId
+    }
+
+    fun updatePress(
+        style: Style,
+        pressedId: Long?,
+        scale: Float,
+    ) {
+        if (pressedId == lastPressedId && scale == lastPressedScale) return
+        val layer = style.getLayer(LAYER_ID) ?: return
+        val size =
+            if (pressedId == null) {
+                Expression.literal(1f)
+            } else {
+                Expression.switchCase(
+                    Expression.eq(Expression.get(PIN_ID_PROPERTY), Expression.literal(pressedId)),
+                    Expression.literal(scale),
+                    Expression.literal(1f),
+                )
+            }
+        layer.setProperties(iconSize(size))
+        lastPressedId = pressedId
+        lastPressedScale = scale
     }
 
     private fun EmotionPinSymbolImage.toAndroidBitmap(densityDpi: Int): Bitmap {
@@ -120,5 +148,6 @@ internal class EmotionPinSymbolLayer {
         const val LAYER_ID = "emotion-pin-symbol-layer"
         const val IMAGE_KEY_PROPERTY = "image-key"
         const val ROTATION_PROPERTY = "rotation-degrees"
+        const val PIN_ID_PROPERTY = "pin-id"
     }
 }
