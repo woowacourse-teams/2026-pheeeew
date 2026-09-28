@@ -82,6 +82,7 @@ fun RecordLocationSelectionContent(
     modifier: Modifier,
     onMyLocationClick: () -> Unit = {},
     isRequestingLocation: Boolean = false,
+    showDragGuide: Boolean = true,
 ) {
     val density = LocalDensity.current.density
     val latestOnSelected by rememberUpdatedState(onCoordinateSelected)
@@ -134,6 +135,17 @@ fun RecordLocationSelectionContent(
                     animationSpec = tween(durationMillis = 150),
                     label = "recordStampPressScale",
                 )
+                if (showDragGuide) {
+                    RecordStampDragGuide(
+                        modifier =
+                            Modifier.offset {
+                                IntOffset(
+                                    (center.x + offsetX - 58.dp.toPx()).roundToInt(),
+                                    (center.y + offsetY - 76.dp.toPx()).roundToInt(),
+                                )
+                            },
+                    )
+                }
                 Box(
                     modifier =
                         Modifier

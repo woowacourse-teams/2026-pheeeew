@@ -121,6 +121,46 @@ class RecordLocationTest {
             }
         }
 
+    @Test
+    fun dragGuideResetsWheneverLocationSelectionIsEntered() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val model = initializedModel(FakeRegistrationRepository())
+                val location = CurrentLocation(origin.latitude, origin.longitude, 1f, 0L)
+                advanceUntilIdle()
+                model.onSkip(location)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+                model.onLocationSelected(Double.NaN, 0.0)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+
+                val moved = destination(origin, 100.0, 1.0)
+                model.onLocationSelected(moved.latitude, moved.longitude)
+                assertTrue(model.uiModel.value.hasMovedStamp)
+                model.onBackToInput()
+                model.onSkip(location)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+                model.onLocationSelected(moved.latitude, moved.longitude)
+                assertTrue(model.uiModel.value.hasMovedStamp)
+
+                model.onBackToInput()
+                model.onNext(null, null)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+                model.onOriginLocationAvailable(location)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+                model.onLocationSelected(moved.latitude, moved.longitude)
+                assertTrue(model.uiModel.value.hasMovedStamp)
+
+                model.dismiss()
+                model.open(EmotionTypeUiModel.FRUSTRATED)
+                advanceUntilIdle()
+                model.onSkip(location)
+                assertFalse(model.uiModel.value.hasMovedStamp)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun initializedModel(repository: EmotionRegistrationRepository): MapRecordViewModel =
         MapRecordViewModel(
             IsWithinEmotionRecordRadiusUseCase(),

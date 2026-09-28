@@ -571,6 +571,7 @@ internal fun MapScreenContent(
 
             RecordFlowStepUiModel.LocationSelection -> {
                 RecordLocationSelectionContent(
+                    showDragGuide = !recordUiModel.hasMovedStamp,
                     onMyLocationClick = onMyLocationClick,
                     isRequestingLocation = uiModel.isRequestingLocation,
                     origin = recordUiModel.origin,

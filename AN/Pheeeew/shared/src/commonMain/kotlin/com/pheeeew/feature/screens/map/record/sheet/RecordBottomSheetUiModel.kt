@@ -27,6 +27,7 @@ data class RecordBottomSheetUiModel(
     val groupDialProgress: Float = 0f,
     val origin: GeoCoordinate? = null,
     val selectedCoordinate: GeoCoordinate? = null,
+    val hasMovedStamp: Boolean = false,
     val isSelectedCoordinateInRange: Boolean = false,
     val isSubmitting: Boolean = false,
 )

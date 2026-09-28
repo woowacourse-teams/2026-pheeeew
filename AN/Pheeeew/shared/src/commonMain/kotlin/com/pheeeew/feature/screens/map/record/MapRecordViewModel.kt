@@ -177,6 +177,7 @@ class MapRecordViewModel(
         _uiModel.value =
             _uiModel.value.copy(
                 selectedCoordinate = candidate,
+                hasMovedStamp = true,
                 isSelectedCoordinateInRange = isInRange,
             )
     }
@@ -389,6 +390,7 @@ class MapRecordViewModel(
             _uiModel.value.copy(
                 step = RecordFlowStepUiModel.LocationSelection,
                 isGroupSelectorVisible = false,
+                hasMovedStamp = false,
                 origin = origin,
                 selectedCoordinate = origin,
                 isSelectedCoordinateInRange = origin != null,
