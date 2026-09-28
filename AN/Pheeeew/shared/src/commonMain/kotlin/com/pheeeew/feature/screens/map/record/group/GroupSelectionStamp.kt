@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
@@ -16,6 +17,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
@@ -25,6 +27,7 @@ fun GroupSelectionStamp(
     stamp: StampAppearanceUiModel?,
     size: Dp,
     modifier: Modifier = Modifier,
+    emptyLabel: String = "없음",
 ) {
     if (stamp != null) {
         GroupStamp(appearance = stamp, size = size, modifier = modifier)
@@ -33,7 +36,7 @@ fun GroupSelectionStamp(
             modifier = modifier.size(size).background(AppColors.Gray100, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            Text("없음", color = AppColors.TextSecondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(emptyLabel, color = AppColors.TextSecondary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -47,5 +50,16 @@ private fun GroupSelectionStampPreview() {
             stamp = StampAppearanceUiModel("모임", StampShapeId.TICKET, 0xFFFFE164, 0xFF252826),
             size = 70.dp,
         )
+    }
+}
+
+@Preview(name = "기본 그룹 배경 · 없음 / 전체", showBackground = true)
+@Composable
+private fun DefaultGroupSelectionStampPreview() {
+    AppTheme {
+        Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            GroupSelectionStamp(stamp = null, size = 70.dp)
+            GroupSelectionStamp(stamp = null, size = 70.dp, emptyLabel = "전체")
+        }
     }
 }

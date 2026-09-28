@@ -68,7 +68,7 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
-import com.pheeeew.feature.screens.map.record.group.GroupSelectionStamp
+import com.pheeeew.feature.screens.map.record.group.GroupSelectionButton
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -222,25 +222,11 @@ private fun RecordBottomSheetContent(
                 onInputModeChange = onInputModeChange,
                 modifier = Modifier.weight(1f),
             )
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(44.dp)
-                            .noRippleClickable(enabled = !isGroupSelectionLoading, onClick = onGroupClick),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    GroupSelectionStamp(stamp = selectedGroupStamp, size = 44.dp)
-                }
-                Text(
-                    text = if (isGroupSelectionLoading) "그룹 확인 중" else "그룹 변경",
-                    fontSize = 10.sp,
-                    color = AppColors.TextSecondary,
-                )
-            }
+            GroupSelectionButton(
+                stamp = selectedGroupStamp,
+                loading = isGroupSelectionLoading,
+                onClick = onGroupClick,
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))
