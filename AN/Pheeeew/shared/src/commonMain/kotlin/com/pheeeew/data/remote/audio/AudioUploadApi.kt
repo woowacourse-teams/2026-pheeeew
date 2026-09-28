@@ -18,13 +18,14 @@ internal class AudioUploadApi(
                 kind = RequestKind.WRITE,
                 body = AudioUploadUrlRequestDto(AUDIO_CONTENT_TYPE, contentLength),
                 replayAfterAuthentication = true,
+                monitoringEndpoint = "emotion_audio_upload_url",
             ),
         ) { it.body<AudioUploadUrlResponseDto>() }
 
     suspend fun upload(
         upload: AudioUploadUrlResponseDto,
         bytes: ByteArray,
-    ): ApiResult<Unit> = requests.putSignedBinary(upload.uploadUrl, upload.headers, bytes)
+    ): ApiResult<Unit> = requests.putSignedBinary(upload.uploadUrl, upload.headers, bytes, monitoringEndpoint = "emotion_audio_upload")
 
     private companion object {
         const val AUDIO_CONTENT_TYPE = "audio/mp4"

@@ -90,6 +90,7 @@ class ApiRequestExecutor internal constructor(
         url: String,
         signedHeaders: Map<String, List<String>>,
         bytes: ByteArray,
+        monitoringEndpoint: String? = null,
     ): ApiResult<Unit> {
         val contentTypeValue =
             signedHeaders.entries
@@ -120,6 +121,13 @@ class ApiRequestExecutor internal constructor(
             )
         }
 
+        val attempt = monitoringEndpoint?.let { endpoint ->
+            runCatching { attemptObserver?.started(endpoint, "PUT") }.getOrNull()
+        }
+        val started = TimeSource.Monotonic.markNow()
+        fun finish(outcome: HttpAttemptOutcome, status: Int? = null) {
+            runCatching { attempt?.completed(outcome, status, started.elapsedNow().inWholeMilliseconds) }
+        }
         val response =
             try {
                 client.request(url) {
@@ -139,16 +147,22 @@ class ApiRequestExecutor internal constructor(
                     }
                 }
             } catch (cancelled: CancellationException) {
+                finish(HttpAttemptOutcome.CANCELLED)
                 throw cancelled
             } catch (timeout: HttpRequestTimeoutException) {
+                finish(HttpAttemptOutcome.TIMEOUT)
                 return signedUploadFailure(TransportFailureReason.TIMEOUT)
             } catch (timeout: ConnectTimeoutException) {
+                finish(HttpAttemptOutcome.TIMEOUT)
                 return signedUploadFailure(TransportFailureReason.TIMEOUT)
             } catch (timeout: SocketTimeoutException) {
+                finish(HttpAttemptOutcome.TIMEOUT)
                 return signedUploadFailure(TransportFailureReason.TIMEOUT)
             } catch (_: IOException) {
+                finish(HttpAttemptOutcome.CONNECTION)
                 return signedUploadFailure(TransportFailureReason.CONNECTION)
             } catch (exception: Exception) {
+                finish(HttpAttemptOutcome.UNEXPECTED)
                 return ApiResult.Failure(
                     NetworkFailure.Unexpected(
                         exceptionType = exception::class.simpleName ?: "Exception",
@@ -157,6 +171,7 @@ class ApiRequestExecutor internal constructor(
                 )
             }
 
+        finish(HttpAttemptOutcome.RESPONSE, response.status.value)
         if (response.status.value == SIGNED_UPLOAD_SUCCESS) return ApiResult.Success(Unit)
         return response.toHttpFailure(RequestKind.WRITE)
     }

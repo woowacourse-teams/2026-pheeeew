@@ -18,6 +18,7 @@ internal class EmotionRegistrationApi(
                 kind = RequestKind.WRITE,
                 body = request,
                 replayAfterAuthentication = true,
+                monitoringEndpoint = "emotion_register",
             ),
         ) { it.body<EmotionRegistrationResponseDto>() }
 }
