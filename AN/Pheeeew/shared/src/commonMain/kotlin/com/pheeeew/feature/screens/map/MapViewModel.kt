@@ -411,12 +411,6 @@ class MapViewModel(
             viewModelScope.launch {
                 _uiModel.value = _uiModel.value.copy(isRequestingLocation = true, locationError = null)
                 try {
-                    val locationState = refreshLocation(requestPermission)
-                    _uiModel.value =
-                        _uiModel.value.copy(
-                            locationState = locationState,
-                            locationError = (locationState as? LocationState.Unavailable)?.reason.takeIf { moveCamera },
-                        )
                     val locationState =
                         telemetry.operation("location_acquire_finished").observe({
                             if (it is LocationState.Available) "success" else "unavailable"
