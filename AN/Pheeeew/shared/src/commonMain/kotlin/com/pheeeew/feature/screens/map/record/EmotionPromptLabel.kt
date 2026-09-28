@@ -32,7 +32,7 @@ internal fun EmotionPromptLabel(
                 .clip(shape)
                 .background(Color.White)
                 .border(width = 1.dp, color = Color(0xFF292B2A), shape = shape)
-                .padding(horizontal = 24.dp, vertical = 8.dp),
+                .padding(horizontal = 18.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(

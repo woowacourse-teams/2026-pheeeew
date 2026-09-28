@@ -49,10 +49,12 @@ import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionSheet
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
+import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
+import com.pheeeew.legacy.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 import org.jetbrains.compose.resources.DrawableResource
 
@@ -136,6 +138,8 @@ private fun AppContent(
 
     val nearbyViewModel: NearbyEmotionViewModel = viewModel { createNearbyEmotionViewModel(apiDependencies.client) }
     val nearbyState by nearbyViewModel.state.collectAsState()
+    val mapUiModel by mapViewModel.uiModel.collectAsState()
+    val recordUiModel by mapRecordViewModel.uiModel.collectAsState()
 
     val detailRepository =
         remember(apiDependencies.client) {
@@ -175,6 +179,12 @@ private fun AppContent(
     var moderationMessage by remember { mutableStateOf<String?>(null) }
     var isGroupDetailVisible by remember { mutableStateOf(false) }
     var isGroupCreateVisible by remember { mutableStateOf(false) }
+    val isEmotionRecordFlowActive =
+        selectedDestination == AppDestination.Map &&
+            (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
+
+    // Register the exit fallback before navigation and screen-specific back handlers.
+    DoubleBackToExitHandler()
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -283,7 +293,7 @@ private fun AppContent(
             )
         }
 
-        if (!isSettingsVisible && !nearbyState.visible &&
+        if (!isSettingsVisible && !nearbyState.visible && !isEmotionRecordFlowActive &&
             (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible))
         ) {
             AppBottomNavigationBar(

@@ -52,14 +52,14 @@ class RecordLocationTest {
         val bounds = recordCameraBounds(origin)
         assertTrue(bounds.contains(origin))
         for (angle in listOf(0.0, 1.5708, 3.1416, -1.5708)) {
-            assertTrue(bounds.contains(destination(origin, 600.0, angle)))
-            assertFalse(bounds.contains(destination(origin, 700.0, angle)))
+            assertTrue(bounds.contains(destination(origin, 499.0, angle)))
+            assertFalse(bounds.contains(destination(origin, 501.0, angle)))
         }
         assertTrue(bounds.contains(GeoCoordinate(bounds.north, bounds.east)))
         assertFalse(bounds.contains(GeoCoordinate(bounds.north + 0.000001, bounds.east)))
         assertFalse(bounds.contains(GeoCoordinate(Double.NaN, origin.longitude)))
         assertFalse(bounds.contains(GeoCoordinate(origin.latitude, Double.NaN)))
-        val coordinate = destination(origin, 600.0, 1.0)
+        val coordinate = destination(origin, 550.0, 1.0)
         assertTrue(bounds.contains(coordinate))
         assertTrue(distance(origin, constrainToRecordRadius(origin, coordinate)) < RECORD_RADIUS_METERS)
     }

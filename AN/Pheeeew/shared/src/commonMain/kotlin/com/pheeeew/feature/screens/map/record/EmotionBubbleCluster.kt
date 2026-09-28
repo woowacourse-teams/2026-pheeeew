@@ -70,6 +70,9 @@ private const val EMOTION_SPRING_DAMPING_RATIO = 0.5443f
 private const val EMOTION_SPRING_STIFFNESS = 527.7778f
 private const val EMOTION_INTERACTION_DAMPING_RATIO = 0.4694f
 private const val EMOTION_INTERACTION_STIFFNESS = 600f
+private val EMOTION_ICON_SIZE = 60.dp
+private val EMOTION_ICON_GAP = 4.dp
+private val BUBBLE_CLUSTER_WIDTH = 340.dp
 private val BUBBLE_EASE_OUT = CubicBezierEasing(0f, 0f, 0.58f, 1f)
 private val EMOTION_EASE_IN_OUT = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
 private val EMOTION_POSITION_SPRING =
@@ -163,7 +166,7 @@ internal fun EmotionBubbleCluster(
     Box(
         modifier =
             modifier
-                .size(width = 340.dp, height = 260.dp),
+                .size(width = BUBBLE_CLUSTER_WIDTH, height = 260.dp),
     ) {
         if (isExpanded && rippleProgress.value < 1f) {
             Canvas(
@@ -350,7 +353,7 @@ private fun EmotionBubble(
         baseOffset.copy(
             y = baseOffset.y + if (!isExpanded && isBubblePressed) 4.dp else 0.dp,
         )
-    val targetScale = if (isExpanded) 1f else 32f / 52f
+    val targetScale = if (isExpanded) 1f else 32f / EMOTION_ICON_SIZE.value
     val x = remember { Animatable(targetOffset.x.value) }
     val y = remember { Animatable(targetOffset.y.value) }
     val scale = remember { Animatable(targetScale) }
@@ -427,7 +430,7 @@ private fun EmotionBubble(
                 .offset(
                     x = x.value.dp,
                     y = y.value.dp,
-                ).size(width = 52.dp, height = 76.dp),
+                ).size(width = EMOTION_ICON_SIZE, height = EMOTION_ICON_SIZE + 24.dp),
         contentAlignment = Alignment.TopCenter,
     ) {
         Image(
@@ -435,9 +438,9 @@ private fun EmotionBubble(
             contentDescription = null,
             modifier =
                 Modifier
-                    .size(52.dp)
+                    .size(EMOTION_ICON_SIZE)
                     .graphicsLayer {
-                        val scaleCompensation = (1f - scale.value) * 26f
+                        val scaleCompensation = (1f - scale.value) * EMOTION_ICON_SIZE.value / 2f
                         translationX = -scaleCompensation.dp.toPx() + floating.dp.toPx()
                         translationY =
                             -scaleCompensation.dp.toPx() -
@@ -470,7 +473,7 @@ private fun EmotionBubble(
                 textAlign = TextAlign.Center,
                 modifier =
                     Modifier
-                        .offset(y = 57.dp)
+                        .offset(y = EMOTION_ICON_SIZE + 5.dp)
                         .width(72.dp)
                         .graphicsLayer { alpha = labelAlpha },
                 style =
@@ -489,7 +492,12 @@ private fun EmotionBubble(
 
 private fun EmotionTypeUiModel.offset(isExpanded: Boolean): DpOffset =
     if (isExpanded) {
-        DpOffset(x = (3 + ordinal * 67).dp, y = 53.dp)
+        val count = EmotionTypeUiModel.entries.size
+        val rowWidth = EMOTION_ICON_SIZE * count + EMOTION_ICON_GAP * (count - 1)
+        DpOffset(
+            x = (BUBBLE_CLUSTER_WIDTH - rowWidth) / 2 + (EMOTION_ICON_SIZE + EMOTION_ICON_GAP) * ordinal,
+            y = 49.dp,
+        )
     } else {
         when (this) {
             EmotionTypeUiModel.FRUSTRATED -> DpOffset(x = 127.dp, y = 180.dp)

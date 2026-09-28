@@ -1,35 +1,59 @@
 package com.pheeeew.feature.screens.map.record.sheet
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
@@ -65,15 +89,24 @@ fun RecordBottomSheet(
     modifier: Modifier = Modifier,
     voiceRecorder: VoiceRecorder? = null,
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val handleDismissRequest by rememberUpdatedState<() -> Unit> {
+        if (isKeyboardVisible) {
+            keyboardController?.hide()
+        } else {
+            onDismissRequest()
+        }
+    }
     ModalBottomSheet(
-        onDismissRequest = onDismissRequest,
+        onDismissRequest = handleDismissRequest,
         modifier = modifier,
         sheetState =
             rememberModalBottomSheetState(
                 skipPartiallyExpanded = true,
                 confirmValueChange = { value ->
                     if (value == SheetValue.Hidden) {
-                        onDismissRequest()
+                        handleDismissRequest()
                         false
                     } else {
                         true
@@ -117,6 +150,10 @@ private fun RecordBottomSheetContent(
     modifier: Modifier,
     voiceRecorder: VoiceRecorder? = null,
 ) {
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var sheetPosition by remember { mutableStateOf(Offset.Zero) }
+    var memoBounds by remember { mutableStateOf(Rect.Zero) }
     val recordingReady =
         if (inputMode == RecordInputModeUiModel.Recording) {
             rememberRecordingReady(voiceRecorder)
@@ -129,7 +166,20 @@ private fun RecordBottomSheetContent(
                 .fillMaxWidth()
                 .clip(AppShapes.BottomSheet)
                 .background(AppColors.Surface)
-                .padding(horizontal = 20.dp, vertical = 16.dp),
+                .onGloballyPositioned { sheetPosition = it.positionInRoot() }
+                .pointerInput(focusManager, keyboardController, inputMode) {
+                    awaitEachGesture {
+                        // Observe before child buttons consume the touch, without consuming it ourselves.
+                        val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                        val touchedMemo =
+                            inputMode == RecordInputModeUiModel.Memo &&
+                                memoBounds.contains(down.position + sheetPosition)
+                        if (!touchedMemo) {
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        }
+                    }
+                }.padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
         Box(
             modifier =
@@ -206,12 +256,12 @@ private fun RecordBottomSheetContent(
             MemoPanel(
                 memo = memo,
                 onMemoChange = onMemoChange,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().onGloballyPositioned { memoBounds = it.boundsInRoot() },
             )
         } else {
             RecordAudioSection(voiceRecorder = voiceRecorder)
         }
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         RecordSheetActions(
             onNext = onNext,
@@ -307,7 +357,7 @@ private fun RecordSheetActions(
                 text = "건너뛰기",
                 color = AppColors.Border,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
@@ -367,14 +417,8 @@ private fun MemoPanel(
                 }
             },
         )
-        Text(
+        RecordInputSupportingText(
             text = "${memo.length}/50",
-            modifier =
-                Modifier
-                    .padding(end = 4.dp)
-                    .align(Alignment.End),
-            color = AppColors.TextSecondary,
-            fontSize = 12.sp,
             textAlign = TextAlign.End,
         )
     }
@@ -386,7 +430,7 @@ private fun RecordInputModeToggle(
     onInputModeChange: (RecordInputModeUiModel) -> Unit,
     modifier: Modifier,
 ) {
-    Row(
+    BoxWithConstraints(
         modifier =
             modifier
                 .height(45.dp)
@@ -394,18 +438,35 @@ private fun RecordInputModeToggle(
                 .background(AppColors.Gray100)
                 .padding(4.dp),
     ) {
-        RecordInputModeTab(
-            label = "메모",
-            selected = inputMode == RecordInputModeUiModel.Memo,
-            onClick = { onInputModeChange(RecordInputModeUiModel.Memo) },
-            modifier = Modifier.weight(1f).fillMaxHeight(),
+        val tabWidth = maxWidth / 2
+        val indicatorOffset by animateDpAsState(
+            targetValue = if (inputMode == RecordInputModeUiModel.Memo) 0.dp else tabWidth,
+            animationSpec = tween(durationMillis = 220),
+            label = "recordInputModeIndicator",
         )
-        RecordInputModeTab(
-            label = "녹음",
-            selected = inputMode == RecordInputModeUiModel.Recording,
-            onClick = { onInputModeChange(RecordInputModeUiModel.Recording) },
-            modifier = Modifier.weight(1f).fillMaxHeight(),
+        Box(
+            modifier =
+                Modifier
+                    .offset(x = indicatorOffset)
+                    .width(tabWidth)
+                    .fillMaxHeight()
+                    .clip(AppShapes.Pill)
+                    .background(AppColors.Primary),
         )
+        Row(modifier = Modifier.fillMaxSize()) {
+            RecordInputModeTab(
+                label = "메모",
+                selected = inputMode == RecordInputModeUiModel.Memo,
+                onClick = { onInputModeChange(RecordInputModeUiModel.Memo) },
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            )
+            RecordInputModeTab(
+                label = "녹음",
+                selected = inputMode == RecordInputModeUiModel.Recording,
+                onClick = { onInputModeChange(RecordInputModeUiModel.Recording) },
+                modifier = Modifier.weight(1f).fillMaxHeight(),
+            )
+        }
     }
 }
 
@@ -420,7 +481,7 @@ private fun RecordInputModeTab(
         modifier =
             modifier
                 .clip(AppShapes.Pill)
-                .background(if (selected) AppColors.Primary else Color.Transparent)
+                .semantics { this.selected = selected }
                 .noRippleClickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {

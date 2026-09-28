@@ -66,9 +66,10 @@ internal fun RecordAudioContent(
             onStartRecording = onStartRecording,
             onStopRecording = onStopRecording,
         )
-        audio.error?.let {
-            Text(text = it, color = AppColors.RecordSheetRecording, fontSize = 12.sp)
-        }
+        RecordInputSupportingText(
+            text = audio.error.orEmpty(),
+            color = AppColors.RecordSheetRecording,
+        )
     }
 }
 
@@ -127,17 +128,9 @@ private fun AudioReadyPanel(
             Modifier
                 .fillMaxSize()
                 .noRippleClickable(enabled = !audio.requestingPermission, onClick = onStartRecording),
-        verticalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            text = "목소리로 남겨볼까요?",
-            modifier = Modifier.fillMaxWidth(),
-            color = AppColors.TextPrimary,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-
         Box(
             modifier =
                 Modifier

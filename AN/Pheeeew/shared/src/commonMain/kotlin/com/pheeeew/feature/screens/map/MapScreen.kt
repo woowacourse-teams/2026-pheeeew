@@ -25,7 +25,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -45,6 +44,7 @@ import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.map.record.RegisteredEmotionUiModel
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
+import com.pheeeew.feature.screens.map.record.group.groupSelectorDialogProperties
 import com.pheeeew.feature.screens.map.record.location.RecordLocationSelectionContent
 import com.pheeeew.feature.screens.map.record.location.RecordMapViewport
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheet
@@ -146,6 +146,10 @@ fun MapScreen(
             leaveInput()
         }
     }
+    FlowBackHandler(
+        enabled = uiModel.isEmotionSelectorExpanded,
+        onBack = viewModel::onEmotionSelectorToggle,
+    )
     FlowBackHandler(recordUiModel.step != RecordFlowStepUiModel.Closed) {
         when {
             recordUiModel.isSubmitting -> Unit
@@ -448,7 +452,7 @@ internal fun MapScreenContent(
                 if (recordUiModel.isGroupSelectorVisible) {
                     Dialog(
                         onDismissRequest = onRecordGroupSelectorDismiss,
-                        properties = DialogProperties(usePlatformDefaultWidth = false),
+                        properties = groupSelectorDialogProperties(),
                     ) {
                         GroupSelectorContent(
                             isVisible = true,

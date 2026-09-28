@@ -16,9 +16,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -66,6 +69,10 @@ private val DIAL_HEIGHT = 283.dp
 private val DIAL_RADIUS = 316.dp
 private val DIAL_ITEM_SIZE = 70.dp
 private val DIAL_STEP = 100.dp
+
+// The arc drops about 17% of the screen width from its apex to either edge.
+private const val DIAL_BACKGROUND_RADIUS_TO_WIDTH = 0.82f
+
 private const val DIAL_CENTER_Y = 445f
 private const val DIAL_STEP_DEGREES = 18.5f
 private const val DIAL_SPRING_DAMPING_RATIO = 0.873f
@@ -94,12 +101,13 @@ fun GroupSelectorContent(
     val onDialProgressSettleState by rememberUpdatedState(onDialProgressSettle)
     val onSelectedGroupChangeState by rememberUpdatedState(onSelectedGroupChange)
     val density = LocalDensity.current
+    val bottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val densityScale = density.density
     val dragStepPx = with(density) { DIAL_STEP.toPx() }
     val dialRadiusPx = with(density) { DIAL_RADIUS.toPx() }
     val dialCenterYPx = with(density) { DIAL_CENTER_Y.dp.toPx() }
     val dialItemHalfSizePx = with(density) { DIAL_ITEM_SIZE.toPx() / 2f }
-    val sheetStartOffsetPx = with(density) { DIAL_SHEET_START_OFFSET_DP.dp.roundToPx() }
+    val sheetStartOffsetPx = with(density) { (DIAL_SHEET_START_OFFSET_DP.dp + bottomInset).roundToPx() }
     val isPreview = LocalInspectionMode.current
     val scrimEnter = if (isPreview) EnterTransition.None else fadeIn(tween(durationMillis = 160))
     val scrimExit = if (isPreview) ExitTransition.None else fadeOut(tween(durationMillis = 160))
@@ -139,7 +147,7 @@ fun GroupSelectorContent(
 
         AnimatedVisibility(
             visible = isVisible,
-            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(DIAL_HEIGHT),
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(DIAL_HEIGHT + bottomInset),
             enter = sheetEnter,
             exit = sheetExit,
         ) {
@@ -191,8 +199,9 @@ fun GroupSelectorContent(
                         },
             ) {
                 Canvas(Modifier.fillMaxSize()) {
-                    val center = Offset(197.dp.toPx(), 299.dp.toPx())
-                    val radius = 291.dp.toPx()
+                    val arcTop = 8.dp.toPx()
+                    val radius = size.width * DIAL_BACKGROUND_RADIUS_TO_WIDTH
+                    val center = Offset(size.width / 2f, arcTop + radius)
                     drawCircle(color = Color.White, radius = radius, center = center)
                     drawCircle(
                         color = Color(0xff252826),
@@ -294,7 +303,7 @@ fun GroupSelectorContent(
                     modifier =
                         Modifier
                             .align(Alignment.BottomCenter)
-                            .padding(bottom = 12.dp)
+                            .padding(bottom = 12.dp + bottomInset)
                             .size(width = 235.dp, height = 41.dp)
                             .clip(CircleShape)
                             .background(Color(0xffffe164))
@@ -315,6 +324,7 @@ fun GroupSelectorContent(
 }
 
 @Preview(name = "그룹 선택 다이얼", widthDp = 402, heightDp = 874, showBackground = true)
+@Preview(name = "그룹 선택 다이얼 큰 화면", widthDp = 440, heightDp = 956, showBackground = true)
 @Composable
 private fun GroupSelectorContentPreview() {
     var selectedGroupId by remember { mutableStateOf("baemin") }
