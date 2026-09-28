@@ -340,7 +340,12 @@ class NearbyEmotionViewModel(
     private fun removeItem(id: Long) {
         blocked += id
         changed.remove(id)
-        mutableState.update { it.copy(items = it.items.filterNot { item -> item.id == id }, selectedId = null) }
+        mutableState.update {
+            it.copy(
+                items = it.items.filterNot { item -> item.id == id },
+                selectedId = null,
+            )
+        }
         eventChannel.trySend(NearbyEmotionEvent.Hidden(id))
     }
 
