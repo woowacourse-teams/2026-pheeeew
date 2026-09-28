@@ -31,4 +31,6 @@ sealed interface EmotionRegistrationResult {
     data object Unavailable : EmotionRegistrationResult
 
     data object AudioUnavailable : EmotionRegistrationResult
+
+    data object AudioUploadFailed : EmotionRegistrationResult
 }
