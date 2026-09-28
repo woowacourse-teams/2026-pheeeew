@@ -15,8 +15,8 @@ import com.pheeeew.domain.repository.group.GroupStampListLoadResult
 import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
-import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.monitoring.product.resultLabel
+import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.monitoring.RecordFunnelMonitoring
 import com.pheeeew.feature.screens.map.monitoring.RecordResultReceipt
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
@@ -25,6 +25,9 @@ import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheetUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
+import kotlin.math.roundToInt
+import kotlin.time.Clock
+import kotlin.uuid.Uuid
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -33,9 +36,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
-import kotlin.time.Clock
-import kotlin.uuid.Uuid
 
 class MapRecordViewModel(
     private val isWithinRecordRadius: IsWithinEmotionRecordRadiusUseCase,
