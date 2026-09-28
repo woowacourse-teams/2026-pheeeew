@@ -21,6 +21,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pheeeew.core.designsystem.component.Snackbar
+import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.di.ApiDependencies
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.di.createEmotionAudioRepository
@@ -57,6 +58,31 @@ import org.jetbrains.compose.resources.DrawableResource
 
 @Composable
 fun App(
+    locationDependencies: LocationDependencies,
+    apiDependencies: ApiDependencies,
+    lastRecordedGroupRepository: LastRecordedGroupRepository,
+    appVersion: String,
+    permissionSettingsLauncher: LocationPermissionSettingsLauncher,
+    appSettingsLauncher: AppSettingsLauncher,
+    hasCompletedOnboarding: Boolean,
+    onOnboardingCompleted: () -> Unit,
+) {
+    AppTheme {
+        AppContent(
+            locationDependencies = locationDependencies,
+            apiDependencies = apiDependencies,
+            lastRecordedGroupRepository = lastRecordedGroupRepository,
+            appVersion = appVersion,
+            permissionSettingsLauncher = permissionSettingsLauncher,
+            appSettingsLauncher = appSettingsLauncher,
+            hasCompletedOnboarding = hasCompletedOnboarding,
+            onOnboardingCompleted = onOnboardingCompleted,
+        )
+    }
+}
+
+@Composable
+private fun AppContent(
     locationDependencies: LocationDependencies,
     apiDependencies: ApiDependencies,
     lastRecordedGroupRepository: LastRecordedGroupRepository,

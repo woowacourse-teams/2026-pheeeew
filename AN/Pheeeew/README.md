@@ -26,6 +26,27 @@ This is a Kotlin Multiplatform project targeting Android, iOS.
 - `domain/model` — 앱의 핵심 비즈니스 모델(도메인 모델) 정의
 - `feature` — 기능(화면) 단위 모듈 (현재 비어 있으며, 추후 기능별 하위 패키지 추가 예정)
 
+### 앱 폰트
+
+현재 앱의 `App` 진입점은 `core/designsystem/theme/AppTheme`으로 감싸져 있으며,
+Android와 iOS 공통 UI에 Noto Sans KR을 적용합니다. `notoSansKrFontFamily()`에
+Thin(100)부터 Black(900)까지 9개 정적 TTF를 등록해 굵기에 맞는 파일을 선택합니다.
+폰트 원본과 SIL Open Font License는 `shared/src/commonMain/composeResources/font`에 있습니다.
+
+Material 3 `Text`에서는 `fontFamily` 없이 굵기만 지정하면 됩니다.
+
+```kotlin
+Text("기본 본문")
+Text("중간 굵기", fontWeight = FontWeight.Medium)
+Text("굵은 제목", fontWeight = FontWeight.Bold)
+```
+
+`BasicText`, `BasicTextField`, Canvas의 `TextMeasurer`는 테마의 텍스트 스타일을
+자동으로 상속하지 않으므로 `LocalTextStyle.current.copy(...)` 또는
+`MaterialTheme.typography.bodyMedium.copy(...)`를 전달합니다. Material `Text`도
+새 `TextStyle(...)` 대신 테마 스타일을 복사하면 폰트 설정을 유지할 수 있습니다.
+단독 Preview에서 전역 폰트를 보려면 `AppTheme { ... }`으로 감쌉니다.
+
 ### Running the apps
 
 Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:

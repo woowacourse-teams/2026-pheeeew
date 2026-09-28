@@ -68,16 +68,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.group.detail.model.EmotionCountUiModel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
-import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_emotion_button_base
-import pheeeew.shared.generated.resources.tap_noto_700
-import pheeeew.shared.generated.resources.tap_noto_900
 import kotlin.time.TimeSource
 
 /** Five emotion buttons and the independent reactions created by accepted presses. */
@@ -106,9 +104,7 @@ internal fun EmotionPad(
     var padPosition by remember { mutableStateOf(Offset.Zero) }
     var rootWidth by remember { mutableStateOf(402.0) }
     val density = LocalDensity.current
-    val boldFont = Font(Res.font.tap_noto_700, FontWeight.Bold)
-    val blackFont = Font(Res.font.tap_noto_900, FontWeight.Black)
-    val font = remember(boldFont, blackFont) { FontFamily(boldFont, blackFont) }
+    val font = notoSansKrFontFamily()
     val measurer = rememberTextMeasurer()
     val scope = rememberCoroutineScope()
     val reduce = reducedMotion || scope.coroutineContext[MotionDurationScale]?.scaleFactor == 0f

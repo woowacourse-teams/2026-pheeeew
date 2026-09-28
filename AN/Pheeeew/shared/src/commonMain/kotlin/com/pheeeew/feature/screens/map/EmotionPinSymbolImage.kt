@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.map
 
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
@@ -19,7 +20,6 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -81,8 +81,19 @@ private fun RasterizePinSymbol(
     val fill = shape?.let { painterResource(it.fill) }
     val overlay = shape?.overlay?.let { painterResource(it) }
     val textMeasurer = rememberTextMeasurer()
+    val baseTextStyle = LocalTextStyle.current
 
-    LaunchedEffect(pin.symbolImageKey(), pixels, density, layoutDirection, emotionPainter, backdrop, fill, overlay) {
+    LaunchedEffect(
+        pin.symbolImageKey(),
+        pixels,
+        density,
+        layoutDirection,
+        emotionPainter,
+        backdrop,
+        fill,
+        overlay,
+        baseTextStyle,
+    ) {
         repeat(10) {
             val bitmap = ImageBitmap(pixels, pixels)
             CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(pixels.toFloat(), pixels.toFloat())) {
@@ -122,7 +133,7 @@ private fun RasterizePinSymbol(
                         val layout = stamp.label.toStampTextLayout()
                         val fontSize = stampFontSize(layout, EMOTION_PIN_SIZE, fontScale = density.fontScale)
                         val textStyle =
-                            TextStyle(
+                            baseTextStyle.copy(
                                 color = Color(stamp.textArgb.toInt()),
                                 fontSize = fontSize,
                                 lineHeight = stampLineHeight(fontSize),
