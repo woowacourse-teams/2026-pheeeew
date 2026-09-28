@@ -38,10 +38,10 @@ import com.pheeeew.feature.screens.settings.components.SettingsDivider
 import com.pheeeew.feature.screens.settings.components.SettingsHeader
 import com.pheeeew.feature.screens.settings.components.SettingsIcon
 import com.pheeeew.feature.screens.settings.components.SettingsSectionTitle
-import com.pheeeew.legacy.core.navigation.PredictiveBackContent
-import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 import com.pheeeew.feature.screens.settings.legal.LegalDocument
 import com.pheeeew.feature.screens.settings.legal.LegalDocumentRoute
+import com.pheeeew.legacy.core.navigation.PredictiveBackContent
+import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 import kotlinx.coroutines.launch
 
 @Composable
@@ -88,16 +88,6 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(32.dp))
         ContactCard(onClick = onContactClick)
-        Spacer(Modifier.height(72.dp))
-        Text(
-            text = "pheeeew.",
-            color = SettingsColors.Footer,
-            fontFamily = notoSansKrFontFamily(),
-            fontSize = 12.sp,
-            lineHeight = 16.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 22.dp),
-        )
     }
 }
 
