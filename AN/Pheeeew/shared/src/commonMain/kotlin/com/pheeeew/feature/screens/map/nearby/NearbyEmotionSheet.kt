@@ -7,14 +7,18 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -42,7 +46,11 @@ import com.pheeeew.core.audio.rememberEmotionAudioPlayer
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
+import com.pheeeew.feature.screens.map.record.noRippleClickable
 import com.pheeeew.legacy.core.navigation.PredictiveBackEffect
+import org.jetbrains.compose.resources.painterResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_refresh
 
 @Composable
 fun NearbyEmotionSheet(
@@ -95,12 +103,34 @@ fun NearbyEmotionSheet(
         if (atEnd && !state.loading && !state.loadingMore && state.error == null) viewModel.loadMore()
     }
     NearbySheetLayout(state.visible, viewModel::dismiss) {
+        val group = state.groups.find { it.id == state.groupId } ?: ALL_GROUP_OPTION
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.End,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            val group = state.groups.find { it.id == state.groupId } ?: ALL_GROUP_OPTION
+            Column(
+                Modifier
+                    .heightIn(min = 48.dp)
+                    .semantics { contentDescription = "주변 감정 새로고침" }
+                    .noRippleClickable(enabled = !state.loading, onClick = viewModel::refreshCurrentViewport)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Box(
+                    Modifier.width(32.dp).height(if (group.showStamp) 32.dp else 20.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        painter = painterResource(Res.drawable.ic_refresh),
+                        contentDescription = null,
+                        tint = Color(0xFF252826),
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                Text("새로고침", color = Color(0xFF85877F), fontSize = 10.sp)
+            }
             NearbyGroupFilter(group, onClick = viewModel::openGroups)
         }
 

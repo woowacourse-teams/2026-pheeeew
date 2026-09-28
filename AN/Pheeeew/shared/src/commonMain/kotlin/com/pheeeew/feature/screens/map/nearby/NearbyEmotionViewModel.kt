@@ -107,6 +107,11 @@ class NearbyEmotionViewModel(
             }
     }
 
+    fun refreshCurrentViewport() {
+        queryBounds = viewport ?: queryBounds
+        refresh()
+    }
+
     fun loadMore() {
         val current = state.value
         if (!current.visible || current.loading || current.loadingMore) return
