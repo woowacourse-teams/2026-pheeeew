@@ -82,7 +82,7 @@ class RecordLocationTest {
                 assertEquals("기록", (repository.lastRegistration?.content as EmotionRegistrationContent.Memo).text)
                 assertTrue(distance(origin, repository.lastRegistration!!.coordinate) <= 500.0)
                 assertEquals(RecordFlowStepUiModel.Closed, model.uiModel.value.step)
-                assertEquals("선택한 위치에 감정을 남겼어", model.notice.value?.message)
+                assertEquals("선택한 위치에 감정을 남겼어요", model.notice.value?.message)
             } finally {
                 Dispatchers.resetMain()
             }

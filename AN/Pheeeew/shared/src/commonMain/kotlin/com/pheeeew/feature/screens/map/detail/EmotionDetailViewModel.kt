@@ -104,15 +104,15 @@ class EmotionDetailViewModel(
                             }
 
                             EmotionDetailResult.NotFound -> {
-                                EmotionDetailLoadUiModel.Failed("삭제됐거나 볼 수 없는 감정이야", false)
+                                EmotionDetailLoadUiModel.Failed("삭제되었거나 볼 수 없는 감정이에요", false)
                             }
 
                             EmotionDetailResult.Unauthorized -> {
-                                EmotionDetailLoadUiModel.Failed("인증 정보를 확인하지 못했어", true)
+                                EmotionDetailLoadUiModel.Failed("인증 정보를 확인하지 못했어요", true)
                             }
 
                             EmotionDetailResult.InvalidResponse, EmotionDetailResult.Unavailable -> {
-                                EmotionDetailLoadUiModel.Failed("감정을 불러오지 못했어", true)
+                                EmotionDetailLoadUiModel.Failed("감정을 불러오지 못했어요", true)
                             }
                         }
                 } finally {
@@ -219,7 +219,7 @@ class EmotionDetailViewModel(
                                 )
                                 continue
                             }
-                            updateReaction(id, requestGeneration, rollback, "이모지 반응을 저장하지 못했어. 다시 눌러줘")
+                            updateReaction(id, requestGeneration, rollback, "이모지 반응을 저장하지 못했어요. 다시 눌러주세요")
                             break
                         }
                         mutation.confirmed = mutation.confirmed.withSelection(requestedSelection)

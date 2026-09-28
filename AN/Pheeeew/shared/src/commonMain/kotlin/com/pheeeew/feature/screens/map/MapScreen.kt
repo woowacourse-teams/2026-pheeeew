@@ -390,8 +390,8 @@ fun MapScreen(
     }
     if (showDiscardDialog) {
         ConfirmDialog(
-            title = "작성 중인 내용이 있어.",
-            content = "지금까지 작성하던 내용은 저장되지 않아.\n나갈까?",
+            title = "작성 중인 내용이 있어요.",
+            content = "지금까지 작성하던 내용이 저장되지 않아요.\n나갈까요?",
             confirmText = "나가기",
             cancelText = "취소",
             onConfirm = {
@@ -405,15 +405,15 @@ fun MapScreen(
         ConfirmDialog(
             title =
                 when (dialog) {
-                    PermissionDialogUiModel.Location -> "위치 권한이 필요해"
-                    PermissionDialogUiModel.LocationServices -> "위치 서비스를 켜줘"
-                    PermissionDialogUiModel.Microphone -> "마이크 권한이 필요해"
+                    PermissionDialogUiModel.Location -> "위치 권한이 필요해요"
+                    PermissionDialogUiModel.LocationServices -> "위치 서비스를 켜주세요"
+                    PermissionDialogUiModel.Microphone -> "마이크 권한이 필요해요"
                 },
             content =
                 when (dialog) {
-                    PermissionDialogUiModel.Location -> "감정을 남기려면 위치 권한을 허용해줘.\n설정에서 권한을 켤 수 있어."
-                    PermissionDialogUiModel.LocationServices -> "감정을 남기려면 위치 서비스를 켜줘."
-                    PermissionDialogUiModel.Microphone -> "음성을 녹음하려면 마이크 권한을 허용해줘.\n설정에서 권한을 켤 수 있어."
+                    PermissionDialogUiModel.Location -> "감정을 남기려면 위치 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요."
+                    PermissionDialogUiModel.LocationServices -> "감정을 남기려면 위치 서비스를 켜주세요."
+                    PermissionDialogUiModel.Microphone -> "음성을 녹음하려면 마이크 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요."
                 },
             confirmText = "설정으로 이동",
             cancelText = "취소",

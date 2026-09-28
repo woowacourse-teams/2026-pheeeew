@@ -88,7 +88,7 @@ internal fun NearbyLoadError(
                 ) { Text("!", color = FeedbackSecondary, fontWeight = FontWeight.Bold, fontSize = 20.sp) }
             }
             Text(
-                if (hasItems) "다음 감정을 불러오지 못했어" else "감정을 불러오지 못했어",
+                if (hasItems) "다음 감정을 불러오지 못했어요" else "감정을 불러오지 못했어요",
                 color = FeedbackInk,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,

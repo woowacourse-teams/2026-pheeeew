@@ -11,10 +11,10 @@ import kotlin.coroutines.resume
 class IosLocationPermissionSettingsLauncher : LocationPermissionSettingsLauncher {
     override val canOpenLocationSettings: Boolean = false
 
-    override val locationServicesInstruction: String = "설정에서 위치 서비스를 켜줘."
+    override val locationServicesInstruction: String = "설정에서 위치 서비스를 켜주세요."
 
     override val locationServicesDialogInstruction: String =
-        "설정 > 개인정보 보호 및 보안 > 위치 서비스에서 위치 서비스를 켜줘."
+        "설정 > 개인정보 보호 및 보안 > 위치 서비스에서 위치 서비스를 켜주세요."
 
     override suspend fun openAppSettings(): Boolean =
         withContext(Dispatchers.Main) {

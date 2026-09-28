@@ -271,7 +271,7 @@ class MapRecordViewModel(
                     funnel.clearFlow()
                     _uiModel.value = RecordBottomSheetUiModel()
                     pendingRegistration = null
-                    _notice.value = RecordNoticeUiModel("선택한 위치에 감정을 남겼어", false, receipt)
+                    _notice.value = RecordNoticeUiModel("선택한 위치에 감정을 남겼어요", false, receipt)
                 }
 
                 else -> {
@@ -280,15 +280,15 @@ class MapRecordViewModel(
                         RecordNoticeUiModel(
                             when (result) {
                                 EmotionRegistrationResult.AudioUnavailable -> {
-                                    "녹음 파일을 확인할 수 없어. 다시 녹음해."
+                                    "녹음 파일을 확인할 수 없어요. 다시 녹음해 주세요"
                                 }
 
                                 EmotionRegistrationResult.AudioUploadFailed -> {
-                                    "녹음을 업로드하지 못했어. 다시 시도해."
+                                    "녹음을 업로드하지 못했어요. 다시 시도해 주세요"
                                 }
 
                                 else -> {
-                                    "감정을 등록하지 못했어. 다시 시도해."
+                                    "감정을 등록하지 못했어요. 다시 시도해 주세요"
                                 }
                             },
                             true,
@@ -448,7 +448,7 @@ class MapRecordViewModel(
                     GroupStampListLoadResult.Unavailable -> {
                         _uiModel.value =
                             _uiModel.value.copy(isGroupSelectorVisible = false, isGroupSelectionLoading = false)
-                        _notice.value = RecordNoticeUiModel("그룹 목록을 불러오지 못했어. 다시 시도해.", true)
+                        _notice.value = RecordNoticeUiModel("그룹 목록을 불러오지 못했어요. 다시 시도해 주세요", true)
                     }
                 }
             }

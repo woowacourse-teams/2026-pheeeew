@@ -47,7 +47,7 @@ fun ReportStampPrompt(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "동네 평화를 위해 이유를 골라줘.",
+                text = "동네 평화를 위해 이유를 골라주세요.",
                 color = AppColors.TextSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
