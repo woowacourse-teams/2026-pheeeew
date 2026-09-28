@@ -1,6 +1,7 @@
 package com.pheeeew.emotion.application.command;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.emotion.fixture.AudioUploadFixture.기본_업로드_빌더;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_REQUIRED;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
@@ -10,16 +11,17 @@ import static com.pheeeew.groups.fixture.GroupFixture.일반_멤버_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.emotion.application.AudioUploadLinker;
+import com.pheeeew.emotion.infra.S3ObjectVerifier;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
 import com.pheeeew.emotion.domain.Audio;
+import com.pheeeew.emotion.domain.AudioUpload;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.domain.repository.AudioUploadRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
@@ -56,6 +58,8 @@ class EmotionEditIntegrationTest {
     @Autowired
     private EmotionRepository emotions;
     @Autowired
+    private AudioUploadRepository uploads;
+    @Autowired
     private DeviceRepository devices;
     @Autowired
     private EmotionReportRepository reports;
@@ -64,7 +68,7 @@ class EmotionEditIntegrationTest {
     @Autowired
     private JdbcClient jdbc;
     @MockitoBean
-    private AudioUploadLinker linker;
+    private S3ObjectVerifier objectVerifier;
 
     private Device owner;
     private Device other;
@@ -84,11 +88,12 @@ class EmotionEditIntegrationTest {
         jdbc.sql("UPDATE emotions SET created_at = :at WHERE id = :id")
                 .param("at", java.sql.Timestamp.from(createdAt)).param("id", original.getId()).update();
         em.clear();
-        when(linker.claim("new-upload", owner.getId(), original.getRequestId())).thenReturn("recordings/new.m4a");
+        AudioUpload upload = uploads.save(기본_업로드_빌더().deviceId(owner.getId())
+                .objectKey("recordings/new.m4a").expiresAt(Instant.now().plusSeconds(3600)).build());
 
         // when
         command.update(original.getId(), owner.getPublicId(), EmotionState.ANGRY,
-                after.equals("MEMO") ? " 새 메모 " : null, after.equals("AUDIO") ? "new-upload" : null, false, null);
+                after.equals("MEMO") ? " 새 메모 " : null, after.equals("AUDIO") ? upload.getUploadId() : null, false, null);
         em.flush();
         em.clear();
 
@@ -104,6 +109,8 @@ class EmotionEditIntegrationTest {
         assertThat(loaded.getNickname()).isEqualTo(original.getNickname());
         assertThat(loaded.getRequestId()).isEqualTo(original.getRequestId());
         assertThat(loaded.getCreatedAt()).isEqualTo(createdAt);
+        assertThat(uploads.findByUploadId(upload.getUploadId()).orElseThrow().getClaimedRequestId())
+                .isEqualTo(after.equals("AUDIO") ? original.getRequestId() : null);
     }
 
     @Test
@@ -119,7 +126,7 @@ class EmotionEditIntegrationTest {
         // then
         assertThat(emotions.findById(emotion.getId()).orElseThrow().getContent().getAudio().getObjectKey())
                 .isEqualTo("recordings/old.m4a");
-        verifyNoInteractions(linker);
+        verifyNoInteractions(objectVerifier);
     }
 
     @Test
@@ -147,7 +154,7 @@ class EmotionEditIntegrationTest {
                 error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_NOT_VISIBLE));
         assertThat(emotion.getMemo()).isEqualTo("기존 메모");
         assertThat(emotion.getDeletedAt()).isNull();
-        verifyNoInteractions(linker);
+        verifyNoInteractions(objectVerifier);
     }
 
     @Test
@@ -157,7 +164,7 @@ class EmotionEditIntegrationTest {
         assertThatThrownBy(() -> command.delete(Long.MAX_VALUE, owner.getPublicId())).isInstanceOf(EmotionException.class);
         assertThatThrownBy(() -> command.update(Long.MAX_VALUE, owner.getPublicId(), EmotionState.ANGRY,
                 null, "upload", false, null)).isInstanceOf(EmotionException.class);
-        verifyNoInteractions(linker);
+        verifyNoInteractions(objectVerifier);
     }
 
     @Test
@@ -185,7 +192,7 @@ class EmotionEditIntegrationTest {
         assertThatThrownBy(() -> query.findById(emotion.getId(), owner.getPublicId())).isInstanceOf(EmotionException.class);
         assertThatThrownBy(() -> command.update(emotion.getId(), owner.getPublicId(), EmotionState.ANGRY,
                 "수정", null, false, null)).isInstanceOf(EmotionException.class);
-        verifyNoInteractions(linker);
+        verifyNoInteractions(objectVerifier);
     }
 
     @Test

@@ -1,6 +1,6 @@
 package com.pheeeew.emotion.presentation.dto;
 
-import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer.PlaybackUrl;
+import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
 import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
 import com.pheeeew.emotion.application.dto.EmotionDetailView;
 import com.pheeeew.emotion.domain.EmojiType;

@@ -2,19 +2,24 @@ package com.pheeeew.emotion.application.command;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.emotion.fixture.AudioUploadFixture.기본_업로드_빌더;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_UPLOAD_ALREADY_USED;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.emotion.application.AudioUploadLinker;
+import com.pheeeew.emotion.infra.S3ObjectVerifier;
+import com.pheeeew.emotion.domain.AudioUpload;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.domain.repository.AudioUploadRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.support.PostgisDataJpaTest;
+import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,9 +28,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -34,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 @PostgisDataJpaTest
-@Import({EmotionCommandService.class, EmotionContentResolver.class, EmotionCommandServiceSaveIntegrationTest.UploadTestConfiguration.class})
+@Import({EmotionCommandService.class, EmotionContentResolver.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class EmotionCommandServiceSaveIntegrationTest {
 
@@ -48,24 +52,32 @@ class EmotionCommandServiceSaveIntegrationTest {
     private DeviceRepository deviceRepository;
 
     @Autowired
+    private AudioUploadRepository uploads;
+
+    @Autowired
     private JdbcClient jdbc;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @MockitoBean
+    private S3ObjectVerifier objectVerifier;
+
     private Device device;
+    private AudioUpload upload;
 
     @BeforeEach
     void setUp() {
-        jdbc.sql("CREATE TABLE test_audio_links (upload_id TEXT PRIMARY KEY, device_id BIGINT, request_id UUID)").update();
         device = deviceRepository.save(기본_기기_빌더().build());
+        upload = uploads.save(기본_업로드_빌더().deviceId(device.getId())
+                .expiresAt(Instant.now().plusSeconds(3600)).build());
     }
 
     @AfterEach
     void tearDown() {
         emotionRepository.deleteAllInBatch();
+        uploads.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
-        jdbc.sql("DROP TABLE test_audio_links").update();
         jdbc.sql("ALTER TABLE emotions DROP CONSTRAINT IF EXISTS test_emotion_insert_failure").update();
         jdbc.sql("ALTER TABLE emotions DROP CONSTRAINT IF EXISTS test_emotion_update_failure").update();
     }
@@ -96,13 +108,13 @@ class EmotionCommandServiceSaveIntegrationTest {
         UUID requestId = UUID.randomUUID();
 
         // when
-        Emotion saved = save(requestId, null, "upload-id");
+        Emotion saved = save(requestId, null, upload.getUploadId());
 
         // then
         assertThat(emotionRepository.findById(saved.getId()).orElseThrow().getContent().getAudio().getObjectKey())
-                .isEqualTo("recordings/upload-id.m4a");
-        assertThat(jdbc.sql("SELECT request_id FROM test_audio_links WHERE device_id = :id")
-                .param("id", device.getId()).query(UUID.class).single()).isEqualTo(requestId);
+                .isEqualTo(upload.getObjectKey());
+        assertThat(uploads.findByUploadId(upload.getUploadId()).orElseThrow().getClaimedRequestId())
+                .isEqualTo(requestId);
     }
 
     @Test
@@ -113,7 +125,7 @@ class EmotionCommandServiceSaveIntegrationTest {
 
         // when / then
         assertThatThrownBy(() -> commandService.save(requestId, EmotionState.FRUSTRATED,
-                126.9774, 37.5669, 45, null, "upload-id", null, device.getPublicId()))
+                126.9774, 37.5669, 45, null, upload.getUploadId(), null, device.getPublicId()))
                 .isInstanceOfSatisfying(EmotionException.class, exception -> {
                     assertThat(exception.getErrorCode()).isEqualTo(EMOTION_SAVE_FAILED);
                     assertThat(exception.getCause()).isInstanceOf(DataIntegrityViolationException.class);
@@ -121,7 +133,7 @@ class EmotionCommandServiceSaveIntegrationTest {
         assertThat(emotionRepository.count()).isZero();
         assertThat(linkCount()).isZero();
 
-        save(requestId, null, "upload-id");
+        save(requestId, null, upload.getUploadId());
         assertThat(linkCount()).isOne();
         assertThat(emotionRepository.count()).isOne();
     }
@@ -136,7 +148,7 @@ class EmotionCommandServiceSaveIntegrationTest {
         // when / then
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             assertThatThrownBy(() -> commandService.save(UUID.randomUUID(), EmotionState.FRUSTRATED,
-                    126.9774, 37.5669, 45, null, "upload-id", null, device.getPublicId()))
+                    126.9774, 37.5669, 45, null, upload.getUploadId(), null, device.getPublicId()))
                     .isInstanceOfSatisfying(EmotionException.class,
                             exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_SAVE_FAILED));
             assertThat(emotionRepository.findById(original.getId()).orElseThrow().getMemo())
@@ -148,7 +160,7 @@ class EmotionCommandServiceSaveIntegrationTest {
     @Test
     void 없는_기기는_녹음을_연결하거나_감정을_저장할_수_없다() {
         assertThatThrownBy(() -> commandService.save(UUID.randomUUID(), EmotionState.FRUSTRATED,
-                126.9774, 37.5669, 35.5, null, "upload-id", null, UUID.randomUUID()))
+                126.9774, 37.5669, 35.5, null, upload.getUploadId(), null, UUID.randomUUID()))
                 .isInstanceOfSatisfying(DeviceException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(DEVICE_NOT_FOUND));
         assertThat(linkCount()).isZero();
@@ -157,12 +169,12 @@ class EmotionCommandServiceSaveIntegrationTest {
 
     @Test
     void 필수값과_좌표가_잘못되면_녹음을_연결하지_않는다() {
-        assertThatThrownBy(() -> save(null, null, "upload-id")).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> save(null, null, upload.getUploadId())).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> commandService.save(UUID.randomUUID(), null,
-                126.9774, 37.5669, 35.5, null, "upload-id", null, device.getPublicId()))
+                126.9774, 37.5669, 35.5, null, upload.getUploadId(), null, device.getPublicId()))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> commandService.save(UUID.randomUUID(), EmotionState.FRUSTRATED,
-                Double.NaN, 37.5669, 35.5, null, "upload-id", null, device.getPublicId()))
+                Double.NaN, 37.5669, 35.5, null, upload.getUploadId(), null, device.getPublicId()))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThat(linkCount()).isZero();
         assertThat(emotionRepository.count()).isZero();
@@ -176,18 +188,40 @@ class EmotionCommandServiceSaveIntegrationTest {
 
         // when / then
         assertThatThrownBy(() -> commandService.update(original.getId(), device.getPublicId(), EmotionState.ANGRY,
-                null, "new-upload", false, null)).isInstanceOf(DataIntegrityViolationException.class);
+                null, upload.getUploadId(), false, null)).isInstanceOf(DataIntegrityViolationException.class);
         assertThat(linkCount()).isZero();
         Emotion unchanged = emotionRepository.findById(original.getId()).orElseThrow();
         assertThat(unchanged.getMemo()).isEqualTo("기존 메모");
         assertThat(unchanged.getState()).isEqualTo(EmotionState.FRUSTRATED);
         commandService.update(original.getId(), device.getPublicId(), EmotionState.EXHAUSTED,
-                null, "new-upload", false, null);
+                null, upload.getUploadId(), false, null);
         assertThat(linkCount()).isOne();
         assertThat(emotionRepository.findById(original.getId()).orElseThrow().getContent().getAudio().getObjectKey())
-                .isEqualTo("recordings/new-upload.m4a");
-        assertThat(jdbc.sql("SELECT request_id FROM test_audio_links").query(UUID.class).single())
+                .isEqualTo(upload.getObjectKey());
+        assertThat(uploads.findByUploadId(upload.getUploadId()).orElseThrow().getClaimedRequestId())
                 .isEqualTo(original.getRequestId());
+    }
+
+    @Test
+    void 교체한_이전_녹음도_다른_감정에_재사용할_수_없다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+        Emotion original = save(requestId, null, upload.getUploadId());
+        AudioUpload replacement = uploads.save(기본_업로드_빌더().deviceId(device.getId())
+                .objectKey("recordings/replacement.m4a").expiresAt(Instant.now().plusSeconds(3600)).build());
+
+        // when
+        commandService.update(original.getId(), device.getPublicId(), EmotionState.ANGRY,
+                null, replacement.getUploadId(), false, null);
+
+        // then
+        assertThat(emotionRepository.findById(original.getId()).orElseThrow().getContent().getAudio().getObjectKey())
+                .isEqualTo(replacement.getObjectKey());
+        assertThat(uploads.findAll()).allSatisfy(value -> assertThat(value.getClaimedRequestId()).isEqualTo(requestId));
+        assertThatThrownBy(() -> save(UUID.randomUUID(), null, upload.getUploadId()))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_AUDIO_UPLOAD_ALREADY_USED));
+        assertThat(emotionRepository.count()).isOne();
     }
 
     private Emotion save(UUID requestId, String memo, String uploadId) {
@@ -196,7 +230,7 @@ class EmotionCommandServiceSaveIntegrationTest {
     }
 
     private long linkCount() {
-        return jdbc.sql("SELECT count(*) FROM test_audio_links").query(Long.class).single();
+        return jdbc.sql("SELECT count(*) FROM audio_uploads WHERE claimed_request_id IS NOT NULL").query(Long.class).single();
     }
 
     private void rejectRotation45() {
@@ -205,17 +239,4 @@ class EmotionCommandServiceSaveIntegrationTest {
                 .update();
     }
 
-    @TestConfiguration(proxyBeanMethods = false)
-    static class UploadTestConfiguration {
-
-        // S3 검증 대역이며, 실제 DB 쓰기로 호출자의 공동 커밋·롤백만 검증한다.
-        @Bean
-        AudioUploadLinker audioUploadLinker(JdbcClient jdbc) {
-            return (uploadId, deviceId, requestId) -> {
-                jdbc.sql("INSERT INTO test_audio_links VALUES (:uploadId, :deviceId, :requestId)")
-                        .param("uploadId", uploadId).param("deviceId", deviceId).param("requestId", requestId).update();
-                return "recordings/" + uploadId + ".m4a";
-            };
-        }
-    }
 }
