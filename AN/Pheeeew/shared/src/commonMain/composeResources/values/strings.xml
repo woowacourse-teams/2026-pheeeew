@@ -160,7 +160,7 @@
     <string name="group_detail_leave_title">그룹에서 나갈까요?</string>
     <string name="group_detail_leave_body">그룹에서 나가면 다시 초대코드로 참여해야 해요.</string>
     <string name="group_detail_leave_confirm">나가기</string>
-    <string name="group_detail_leave_cancel">남아 있을게요</string>
+    <string name="group_detail_leave_cancel">취소</string>
     <string name="group_detail_leaving_title">그룹에서 나가고 있어요</string>
     <string name="group_detail_leaving_body">잠시만 기다려 주세요.</string>
     <string name="group_detail_leave_error_title">그룹에서 나가지 못했어요.</string>
