@@ -22,7 +22,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.RadioButton
@@ -35,6 +34,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.legacy.core.designsystem.theme.AppColors
 import com.pheeeew.legacy.core.designsystem.theme.AppTheme
 import com.pheeeew.legacy.core.navigation.PredictiveBackEffect
