@@ -34,6 +34,9 @@ class AndroidDeviceCredentialStorage(
                 prefs.getString(key, null)?.let {
                     return@withContext CredentialRead.Found(Json.decodeFromString<DeviceCredentials>(it))
                 }
+                if (legacyPolicy == LegacyCredentialPolicy.START_NEW_ENVIRONMENT_SESSION) {
+                    return@withContext CredentialRead.Missing
+                }
                 val legacy = prefs.getString("refresh_token", null)
                 migrateLegacyCredentials(legacy, legacyPolicy) { persist(it) }
             } catch (cancelled: CancellationException) {

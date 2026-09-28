@@ -23,7 +23,7 @@ class DeviceSessionBuildConfigTest {
             ).legacyCredentialPolicy,
         )
         assertEquals(
-            LegacyCredentialPolicy.UNCONFIRMED,
+            LegacyCredentialPolicy.START_NEW_ENVIRONMENT_SESSION,
             DeviceSessionBuildConfig(
                 true,
                 "dev",
