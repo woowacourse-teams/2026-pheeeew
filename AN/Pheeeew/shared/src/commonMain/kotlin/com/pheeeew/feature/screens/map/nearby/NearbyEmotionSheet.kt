@@ -278,9 +278,11 @@ internal fun SelectorStamp(
         Box(modifier.size(size.dp), contentAlignment = Alignment.Center) {
             Text(group.name, color = Color(0xFF252826), fontSize = 16.sp)
         }
-    } else if (group.appearance != null) {
-        NearbyGroupStamp(group.appearance, size.dp, modifier)
+    } else if (group.stamp != null) {
+        NearbyGroupStamp(group.stamp, size.dp, modifier)
     } else {
-        GroupStamp(group.stampLabel, size.dp, modifier)
+        Box(modifier.size(size.dp), contentAlignment = Alignment.Center) {
+            Text(group.name, color = Color(0xFF252826), fontSize = 16.sp)
+        }
     }
 }

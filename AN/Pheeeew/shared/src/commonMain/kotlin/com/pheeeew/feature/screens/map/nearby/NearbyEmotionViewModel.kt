@@ -274,7 +274,7 @@ class NearbyEmotionViewModel(
         mutableState.update { it.copy(groupsLoading = true, groupsError = false) }
         groupJob =
             viewModelScope.launch {
-                when (val result = groups.findMine()) {
+                when (val result = groups.findMyStamps()) {
                     is GroupStampListLoadResult.Loaded -> {
                         val options =
                             listOf(ALL_GROUP_OPTION) +
@@ -282,7 +282,6 @@ class NearbyEmotionViewModel(
                                     GroupSelectorGroupUiModel(
                                         it.id.value,
                                         it.name,
-                                        it.stamp.text,
                                         StampAppearanceUiModel(
                                             it.stamp.text,
                                             it.stamp.frame.toUiShape(),

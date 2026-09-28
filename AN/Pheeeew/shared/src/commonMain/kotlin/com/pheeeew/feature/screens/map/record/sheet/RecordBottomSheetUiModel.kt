@@ -20,24 +20,13 @@ data class RecordBottomSheetUiModel(
     val inputMode: RecordInputModeUiModel = RecordInputModeUiModel.Memo,
     val memo: String = "",
     val recordingFilePath: String? = null,
-    val groupLabel: String = "개인",
     val isGroupSelectorVisible: Boolean = false,
-    val selectedGroupId: String = "personal",
-    val pendingGroupId: String = "personal",
+    val selectedGroupId: String = "none",
+    val pendingGroupId: String = "none",
+    val isGroupSelectionLoading: Boolean = false,
     val groupDialProgress: Float = 0f,
     val origin: GeoCoordinate? = null,
     val selectedCoordinate: GeoCoordinate? = null,
     val isSelectedCoordinateInRange: Boolean = false,
-    val locationMessage: String? = null,
-    val submissionMessage: String? = null,
-    val confirmedRecord: RecordRegistrationUiModel? = null,
-)
-
-data class RecordRegistrationUiModel(
-    val emotion: EmotionTypeUiModel,
-    val coordinate: GeoCoordinate,
-    val groupId: String,
-    val inputMode: RecordInputModeUiModel,
-    val memo: String?,
-    val recordingFilePath: String?,
+    val isSubmitting: Boolean = false,
 )

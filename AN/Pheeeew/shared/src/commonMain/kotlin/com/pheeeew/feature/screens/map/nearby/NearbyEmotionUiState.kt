@@ -25,4 +25,4 @@ data class NearbyEmotionUiState(
 )
 
 internal const val ALL_GROUPS = "all"
-internal val ALL_GROUP_OPTION = GroupSelectorGroupUiModel(ALL_GROUPS, "전체", "전체", showStamp = false)
+internal val ALL_GROUP_OPTION = GroupSelectorGroupUiModel(ALL_GROUPS, "전체", null, showStamp = false)

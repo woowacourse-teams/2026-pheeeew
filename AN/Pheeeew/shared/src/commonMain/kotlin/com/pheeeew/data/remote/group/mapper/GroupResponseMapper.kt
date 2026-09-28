@@ -18,6 +18,13 @@ class GroupContractException(
 ) : IllegalArgumentException("그룹 응답 계약을 확인할 수 없습니다: $field")
 
 object GroupResponseMapper {
+    fun toDomain(dto: GroupStampItemResponseDto): GroupStampItem =
+        GroupStampItem(
+            id = parseId(dto.groupId),
+            name = parseName(dto.name),
+            stamp = dto.stamp.toDomain(),
+        )
+
     fun toDomain(dto: GroupResponseDto): Group =
         Group(
             id = parseId(dto.groupId),
@@ -35,13 +42,6 @@ object GroupResponseMapper {
             name = parseName(dto.name),
             description = dto.description,
             memberCount = parseMemberCount(dto.memberCount),
-            stamp = dto.stamp.toDomain(),
-        )
-
-    fun toDomain(dto: GroupStampItemResponseDto): GroupStampItem =
-        GroupStampItem(
-            id = parseId(dto.groupId),
-            name = parseName(dto.name),
             stamp = dto.stamp.toDomain(),
         )
 

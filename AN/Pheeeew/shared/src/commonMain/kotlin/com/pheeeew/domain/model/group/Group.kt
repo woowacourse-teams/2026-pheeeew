@@ -27,13 +27,3 @@ data class GroupPreview(
         require(memberCount >= 0L) { "멤버 수는 음수일 수 없습니다." }
     }
 }
-
-data class GroupStampItem(
-    val id: GroupId,
-    val name: String,
-    val stamp: GroupStamp,
-) {
-    init {
-        require(name.isNotEmpty()) { "그룹 이름은 비어 있을 수 없습니다." }
-    }
-}

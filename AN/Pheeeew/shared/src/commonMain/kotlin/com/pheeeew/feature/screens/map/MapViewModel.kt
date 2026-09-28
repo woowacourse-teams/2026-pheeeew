@@ -45,7 +45,7 @@ class MapViewModel(
     fun start() {
         if (hasStarted) return
         hasStarted = true
-        requestCurrentLocation(moveCamera = false)
+        requestCurrentLocation(moveCamera = false, requestPermission = false)
     }
 
     fun onEmotionHidden(id: Long) {
@@ -53,7 +53,7 @@ class MapViewModel(
     }
 
     fun onMyLocationClick() {
-        requestCurrentLocation(moveCamera = true)
+        requestCurrentLocation(moveCamera = true, requestPermission = true)
     }
 
     fun onEmotionSelectorOpen() {
@@ -294,13 +294,16 @@ class MapViewModel(
             )
     }
 
-    private fun requestCurrentLocation(moveCamera: Boolean) {
+    private fun requestCurrentLocation(
+        moveCamera: Boolean,
+        requestPermission: Boolean,
+    ) {
         if (locationRequestJob?.isActive == true) return
         locationRequestJob =
             viewModelScope.launch {
                 _uiModel.value = _uiModel.value.copy(isRequestingLocation = true)
                 try {
-                    val locationState = refreshLocation()
+                    val locationState = refreshLocation(requestPermission)
                     _uiModel.value = _uiModel.value.copy(locationState = locationState)
                     val location = (locationState as? LocationState.Available)?.location
                     if (moveCamera && location != null) {

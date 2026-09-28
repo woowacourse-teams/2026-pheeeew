@@ -23,13 +23,6 @@ data class GroupPreviewResponseDto(
 )
 
 @Serializable
-data class GroupStampItemResponseDto(
-    val groupId: String,
-    val name: String,
-    val stamp: GroupStampResponseDto,
-)
-
-@Serializable
 data class GroupStampResponseDto(
     val text: String,
     val textColor: String,
