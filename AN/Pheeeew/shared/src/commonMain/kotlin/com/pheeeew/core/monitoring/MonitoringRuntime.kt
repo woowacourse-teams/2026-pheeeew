@@ -338,7 +338,7 @@ class MonitoringRuntime(
             mapOf(
                 "event_id" to JsonPrimitive(newId()),
                 "event_schema_version" to JsonPrimitive(definition.version),
-                "measurement_config_version" to JsonPrimitive("v2"),
+                "measurement_config_version" to JsonPrimitive("v3"),
                 "anonymous_id" to JsonPrimitive(state!!.anonymousId),
                 "occurred_at" to JsonPrimitive(Instant.fromEpochMilliseconds(time).toString()),
                 "event_sequence" to JsonPrimitive(++sequence),
@@ -352,7 +352,7 @@ class MonitoringRuntime(
                 "build_number" to JsonPrimitive(config.buildNumber),
                 "os_version" to JsonPrimitive(config.osVersion),
                 "device_class" to JsonPrimitive(config.deviceClass),
-            ) + context.parentOperationId?.let { mapOf("parent_operation_id" to JsonPrimitive(it)) }.orEmpty()
+            ) + config.collection.eventProperties() + context.parentOperationId?.let { mapOf("parent_operation_id" to JsonPrimitive(it)) }.orEmpty()
         append(EventEnvelope(definition.name, time, JsonObject(fields + common)))
     }
 

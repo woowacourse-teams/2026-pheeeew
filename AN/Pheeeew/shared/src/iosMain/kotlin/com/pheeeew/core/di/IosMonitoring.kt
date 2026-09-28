@@ -56,6 +56,7 @@ object IosMonitoring {
                 posthogHost = setting("POSTHOG_HOST"),
                 sentryDsn = setting("SENTRY_DSN"),
                 activeDay = ::monitoringActiveDay,
+                collection = appCollectionMetadata(setting("MONITORING_ENVIRONMENT")),
             )
         val manager = NSFileManager.defaultManager
         val path =

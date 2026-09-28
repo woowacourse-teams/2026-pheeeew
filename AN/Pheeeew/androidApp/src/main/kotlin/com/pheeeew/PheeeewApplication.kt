@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
+import com.pheeeew.core.di.appCollectionMetadata
 import com.pheeeew.core.di.AppMonitoring
 import com.pheeeew.core.di.appMonitoringRegistry
 import com.pheeeew.core.di.decodeAppMonitoringState
@@ -35,6 +36,7 @@ class PheeeewApplication :
                 posthogHost = BuildConfig.POSTHOG_HOST,
                 sentryDsn = BuildConfig.SENTRY_DSN,
                 activeDay = ::monitoringActiveDay,
+                collection = appCollectionMetadata(BuildConfig.MONITORING_ENVIRONMENT),
             )
         owner =
             AppMonitoring(

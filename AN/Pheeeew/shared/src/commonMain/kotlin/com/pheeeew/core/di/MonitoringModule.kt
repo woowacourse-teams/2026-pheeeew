@@ -1,5 +1,8 @@
 package com.pheeeew.core.di
 
+import com.pheeeew.core.monitoring.ClassificationSource
+import com.pheeeew.core.monitoring.CollectionMetadata
+import com.pheeeew.core.monitoring.DataSource
 import com.pheeeew.core.monitoring.CollectionState
 import com.pheeeew.core.monitoring.EventDefinition
 import com.pheeeew.core.monitoring.EventEnvelope
@@ -223,3 +226,14 @@ fun monitoringActiveDay(timestamp: Long): String =
         .fromEpochMilliseconds(timestamp + 9 * 60 * 60 * 1000)
         .toString()
         .substringBefore('T')
+
+/** Release builds may still be used by QA; production membership stays unknown until classified. */
+fun appCollectionMetadata(environment: String) =
+    CollectionMetadata(
+        productGeneration = "emotion_map",
+        dataSource = DataSource.LIVE,
+        isTestUser = if (environment == "dev") true else null,
+        classificationSource =
+            if (environment == "dev") ClassificationSource.BUILD
+            else ClassificationSource.UNKNOWN,
+    )
