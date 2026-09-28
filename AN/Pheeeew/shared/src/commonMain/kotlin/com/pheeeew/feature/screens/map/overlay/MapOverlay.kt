@@ -106,20 +106,20 @@ fun MapOverlay(
                                 color = AppColors.Border,
                                 shape = RoundedCornerShape(100.dp),
                             ).clickable(onClick = onListClick)
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .padding(horizontal = 24.dp, vertical = 10.dp)
                             .align(Alignment.Center),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
                         painter = painterResource(Res.drawable.ic_menu),
                         contentDescription = "목록 열기",
-                        modifier = Modifier.size(18.dp),
+                        modifier = Modifier.size(24.dp),
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
                     Text(
                         text = "감정 목록",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
                     )
                 }
 
@@ -139,7 +139,6 @@ fun MapOverlay(
                             .clip(CircleShape)
                             .shadow(elevation = 4.dp, shape = CircleShape)
                             .background(AppColors.Surface)
-                            .border(AppBorders.Standard, AppColors.Border, CircleShape)
                             .clickable(
                                 enabled = !isRequestingLocation,
                                 onClick = onMyLocationClick,
