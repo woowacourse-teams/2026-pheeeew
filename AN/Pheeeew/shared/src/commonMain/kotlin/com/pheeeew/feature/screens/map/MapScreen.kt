@@ -76,7 +76,6 @@ fun MapScreen(
     onRetryDetail: () -> Unit = {},
     onDismissDetailError: () -> Unit = {},
     monitoringVisible: Boolean = true,
-    monitoringVisible: Boolean = true,
 ) {
     LaunchedEffect(viewModel) {
         viewModel.onMapRendererAttached()
