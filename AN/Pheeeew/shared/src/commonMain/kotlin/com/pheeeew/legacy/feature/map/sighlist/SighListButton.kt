@@ -60,7 +60,7 @@ fun SighListButton(
                 modifier = Modifier.size(16.dp),
             )
             Text(
-                text = "한숨 목록",
+                text = "주변 감정",
                 style = AppTheme.typography.menuItem.copy(fontWeight = FontWeight.Bold),
             )
         }
