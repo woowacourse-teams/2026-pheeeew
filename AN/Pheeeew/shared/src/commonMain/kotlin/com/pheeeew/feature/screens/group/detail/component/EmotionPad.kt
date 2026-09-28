@@ -9,6 +9,8 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -74,11 +76,6 @@ import kotlinx.coroutines.isActive
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.tap_face_angry
-import pheeeew.shared.generated.resources.tap_face_annoyed
-import pheeeew.shared.generated.resources.tap_face_blocked
-import pheeeew.shared.generated.resources.tap_face_defeated
-import pheeeew.shared.generated.resources.tap_face_tired
 import pheeeew.shared.generated.resources.tap_noto_700
 import pheeeew.shared.generated.resources.tap_noto_900
 import kotlin.time.TimeSource
@@ -401,35 +398,38 @@ internal fun EmotionPad(
                                     .testTag("emotion-surface-${kind.name}"),
                         )
                     }
-                    BasicText(
-                        text = emotion.label,
-                        modifier = Modifier.offset(0.dp, (116 * unit).dp).fillMaxWidth(),
-                        style =
-                            TextStyle(
-                                color = TapInk,
-                                fontFamily = font,
-                                fontSize = (16 * unit).sp,
-                                lineHeight = (19 * unit).sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                            ),
-                    )
-                    BasicText(
-                        text = formatCount(count),
-                        modifier =
-                            Modifier
-                                .offset((-10 * unit).dp, (138.6016f * unit).dp)
-                                .width((125 * unit).dp),
-                        style =
-                            TextStyle(
-                                color = Color(0xFF777C78),
-                                fontFamily = font,
-                                fontSize = (20 * unit).sp,
-                                lineHeight = (24 * unit).sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                            ),
-                    )
+                    Column(
+                        modifier = Modifier.offset(y = (116 * unit).dp).width((105 * unit).dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        BasicText(
+                            text = emotion.label,
+                            modifier = Modifier.fillMaxWidth(),
+                            style =
+                                TextStyle(
+                                    color = TapInk,
+                                    fontFamily = font,
+                                    fontSize = (16 * unit).sp,
+                                    lineHeight = (19 * unit).sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                ),
+                        )
+                        Spacer(Modifier.height((3.6f * unit).dp))
+                        BasicText(
+                            text = formatCount(count),
+                            modifier = Modifier.fillMaxWidth(),
+                            style =
+                                TextStyle(
+                                    color = Color(0xFF777C78),
+                                    fontFamily = font,
+                                    fontSize = (20 * unit).sp,
+                                    lineHeight = (24 * unit).sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                ),
+                        )
+                    }
                 }
             }
 

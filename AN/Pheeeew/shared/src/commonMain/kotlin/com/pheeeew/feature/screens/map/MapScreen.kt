@@ -38,6 +38,7 @@ import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.core.permission.LocationPermissionController
 import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.domain.model.LocationState
+import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.feature.screens.map.overlay.MapOverlay
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
@@ -69,6 +70,7 @@ fun MapScreen(
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
+    onViewportChanged: (EmotionBounds) -> Unit = {},
     locationPermissionController: LocationPermissionController,
     appSettingsLauncher: AppSettingsLauncher,
     modifier: Modifier = Modifier,
@@ -166,14 +168,31 @@ fun MapScreen(
             mapContent = { renderUiModel, mapModifier ->
                 key(uiModel.mapRevision) {
                     NativeMap(
-                        state = renderUiModel.copy(recordOrigin = recordUiModel.origin),
+                        state =
+                            renderUiModel.copy(
+                                recordOrigin = recordUiModel.origin,
+                                emotionPins =
+                                    renderUiModel.emotionPins.filterNot {
+                                        it.id in renderUiModel.hiddenEmotionIds
+                                    },
+                            ),
                         onMapError = viewModel::onMapError,
                         onMapRecovered = viewModel::onMapRecovered,
                         onRecordViewportChanged = { centerX, centerY, radius ->
                             val viewport = RecordMapViewport(centerX, centerY, radius)
                             if (recordViewport != viewport) recordViewport = viewport
                         },
-                        onViewportChanged = viewModel::onViewportChanged,
+                        onViewportChanged = { bounds ->
+                            viewModel.onViewportChanged(bounds)
+                            onViewportChanged(
+                                EmotionBounds(
+                                    bounds.minLongitude,
+                                    bounds.minLatitude,
+                                    bounds.maxLongitude,
+                                    bounds.maxLatitude,
+                                ),
+                            )
+                        },
                         onEmotionPinClick = onEmotionPinClick,
                         modifier = mapModifier,
                     )

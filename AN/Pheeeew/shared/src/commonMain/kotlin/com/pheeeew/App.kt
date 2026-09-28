@@ -28,6 +28,7 @@ import com.pheeeew.core.di.createEmotionDetailRepository
 import com.pheeeew.core.di.createEmotionMapDependencies
 import com.pheeeew.core.di.createEmotionModerationDependencies
 import com.pheeeew.core.di.createEmotionRegistrationRepository
+import com.pheeeew.core.di.emotion.createNearbyEmotionViewModel
 import com.pheeeew.core.di.group.createGroupDependencies
 import com.pheeeew.core.di.group.createGroupStampListRepository
 import com.pheeeew.core.navigation.GroupRootDestination
@@ -44,6 +45,8 @@ import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailOverlay
 import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
+import com.pheeeew.feature.screens.map.nearby.NearbyEmotionSheet
+import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
@@ -105,6 +108,9 @@ fun App(
             )
         }
 
+    val nearbyViewModel: NearbyEmotionViewModel = viewModel { createNearbyEmotionViewModel(apiDependencies.client) }
+    val nearbyState by nearbyViewModel.state.collectAsState()
+
     val detailRepository =
         remember(apiDependencies.client) {
             createEmotionDetailRepository(apiDependencies.client)
@@ -156,12 +162,22 @@ fun App(
                         viewModel = mapViewModel,
                         recordViewModel = mapRecordViewModel,
                         onEmotionPinClick = detailViewModel::open,
-                        onListClick = {},
+                        onListClick = nearbyViewModel::toggle,
+                        onViewportChanged = nearbyViewModel::onViewportChanged,
                         onSettingClick = { isSettingsVisible = true },
                         onEmotionBubbleClick = {},
                         locationPermissionController = locationDependencies.permissionController,
                         appSettingsLauncher = appSettingsLauncher,
                         modifier = Modifier.fillMaxSize(),
+                    )
+
+                    NearbyEmotionSheet(
+                        nearbyViewModel,
+                        onEmotionHidden = { id ->
+                            mapViewModel.onEmotionHidden(id)
+                            mapViewModel.refreshEmotionPins()
+                        },
+                        onLeaveEmotion = mapViewModel::onEmotionSelectorOpen,
                     )
 
                     EmotionDetailOverlay(
@@ -236,7 +252,7 @@ fun App(
             )
         }
 
-        if (!isSettingsVisible &&
+        if (!isSettingsVisible && !nearbyState.visible &&
             (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible))
         ) {
             AppBottomNavigationBar(
@@ -246,6 +262,7 @@ fun App(
                         .padding(bottom = AppBottomNavigationBarBottomSpacing),
                 selectedDestination = selectedDestination,
                 onDestinationSelected = { destination ->
+                    nearbyViewModel.dismiss()
                     val route =
                         when (destination) {
                             AppDestination.Map -> MapRootDestination

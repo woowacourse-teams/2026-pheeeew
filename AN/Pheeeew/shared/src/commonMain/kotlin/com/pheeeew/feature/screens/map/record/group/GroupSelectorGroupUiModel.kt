@@ -8,6 +8,7 @@ data class GroupSelectorGroupUiModel(
     val id: String,
     val name: String,
     val stamp: StampAppearanceUiModel?,
+    val showStamp: Boolean = true,
 )
 
 fun GroupStampItem.toSelectorUiModel(): GroupSelectorGroupUiModel =

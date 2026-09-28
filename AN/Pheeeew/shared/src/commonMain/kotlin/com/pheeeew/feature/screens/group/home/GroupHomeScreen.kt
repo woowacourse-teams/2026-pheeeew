@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.screens.group.home.component.GroupListItem
 import com.pheeeew.feature.screens.group.model.GroupId
@@ -49,7 +50,6 @@ import pheeeew.shared.generated.resources.group_home_empty_description
 import pheeeew.shared.generated.resources.group_home_empty_illustration
 import pheeeew.shared.generated.resources.group_home_empty_title
 import pheeeew.shared.generated.resources.group_home_error_description
-import pheeeew.shared.generated.resources.group_home_error_illustration
 import pheeeew.shared.generated.resources.group_home_error_title
 import pheeeew.shared.generated.resources.group_home_group_count
 import pheeeew.shared.generated.resources.group_home_join
@@ -58,6 +58,7 @@ import pheeeew.shared.generated.resources.group_home_my_groups
 import pheeeew.shared.generated.resources.group_home_refresh_error
 import pheeeew.shared.generated.resources.group_home_retry
 import pheeeew.shared.generated.resources.group_home_title
+import pheeeew.shared.generated.resources.ic_emotion_irritated
 
 /** 그룹 홈의 시각 상태와 사용자 입력을 표현합니다. */
 @Composable
@@ -73,7 +74,7 @@ fun GroupHomeScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(AppColors.GroupBackground)
                 .statusBarsPadding()
                 .navigationBarsPadding(),
     ) {
@@ -89,25 +90,11 @@ fun GroupHomeScreen(
                 textAlign = TextAlign.Center,
             )
         }
-        Spacer(Modifier.height(16.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
-        ) {
-            GroupHomeActionButton(
-                text = stringResource(Res.string.group_home_create),
-                isPrimary = true,
-                onClick = onCreateClick,
-                modifier = Modifier.weight(1f),
-            )
-            GroupHomeActionButton(
-                text = stringResource(Res.string.group_home_join),
-                isPrimary = false,
-                onClick = onJoinClick,
-                modifier = Modifier.weight(1f),
-            )
+        if (uiState.content !is GroupHomeContent.Ready) {
+            Spacer(Modifier.height(16.dp))
+            GroupHomeActions(onCreateClick = onCreateClick, onJoinClick = onJoinClick)
+            Spacer(Modifier.height(28.dp))
         }
-        Spacer(Modifier.height(28.dp))
 
         when (val content = uiState.content) {
             GroupHomeContent.Loading -> {
@@ -130,6 +117,8 @@ fun GroupHomeScreen(
                 GroupListContent(
                     groups = content.groups,
                     hasRefreshError = uiState.hasRefreshError,
+                    onCreateClick = onCreateClick,
+                    onJoinClick = onJoinClick,
                     onGroupClick = onGroupClick,
                     onRetry = onRetry,
                     modifier = Modifier.weight(1f),
@@ -140,19 +129,44 @@ fun GroupHomeScreen(
 }
 
 @Composable
+private fun GroupHomeActions(
+    onCreateClick: () -> Unit,
+    onJoinClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp),
+        horizontalArrangement = Arrangement.spacedBy(24.dp),
+    ) {
+        GroupHomeActionButton(
+            text = stringResource(Res.string.group_home_create),
+            isPrimary = true,
+            onClick = onCreateClick,
+            modifier = Modifier.weight(1f),
+        )
+        GroupHomeActionButton(
+            text = stringResource(Res.string.group_home_join),
+            isPrimary = false,
+            onClick = onJoinClick,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
 private fun GroupHomeActionButton(
     text: String,
     isPrimary: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(25.dp)
+    val shape = RoundedCornerShape(20.dp)
+    val buttonFont = notoSansKrFontFamily()
     Box(
         modifier =
             modifier
                 .height(50.dp)
                 .clip(shape)
-                .background(if (isPrimary) AppColors.GroupInk else Color.White)
+                .background(if (isPrimary) AppColors.Primary else Color.White)
                 .then(if (isPrimary) Modifier else Modifier.border(1.dp, AppColors.GroupInk, shape))
                 .clickable(role = Role.Button, onClick = onClick)
                 .padding(horizontal = 12.dp),
@@ -160,9 +174,10 @@ private fun GroupHomeActionButton(
     ) {
         Text(
             text = text,
-            color = if (isPrimary) Color.White else AppColors.GroupInk,
+            color = if (isPrimary) AppColors.TextPrimary else AppColors.GroupInk,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
+            fontFamily = buttonFont,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -251,9 +266,9 @@ private fun FailedContent(
         verticalArrangement = Arrangement.Top,
     ) {
         Image(
-            painter = painterResource(Res.drawable.group_home_error_illustration),
+            painter = painterResource(Res.drawable.ic_emotion_irritated),
             contentDescription = null,
-            modifier = Modifier.size(width = 138.dp, height = 116.dp),
+            modifier = Modifier.size(96.dp),
         )
         Spacer(Modifier.height(24.dp))
         Text(
@@ -284,6 +299,8 @@ private fun FailedContent(
 private fun GroupListContent(
     groups: List<GroupSummaryUiModel>,
     hasRefreshError: Boolean,
+    onCreateClick: () -> Unit,
+    onJoinClick: () -> Unit,
     onGroupClick: (GroupId) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
@@ -291,17 +308,17 @@ private fun GroupListContent(
     Box(modifier = modifier.fillMaxWidth()) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding =
-                PaddingValues(
-                    start = 24.dp,
-                    end = 24.dp,
-                    bottom = AppBottomNavigationBarOverlaySpace,
-                ),
+            contentPadding = PaddingValues(bottom = AppBottomNavigationBarOverlaySpace),
             verticalArrangement = Arrangement.spacedBy(17.dp),
         ) {
+            item(key = "home:actions", contentType = "actions") {
+                Column(modifier = Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 11.dp)) {
+                    GroupHomeActions(onCreateClick = onCreateClick, onJoinClick = onJoinClick)
+                }
+            }
             item(key = "home:list-header", contentType = "list-header") {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 2.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -320,7 +337,7 @@ private fun GroupListContent(
             }
             if (hasRefreshError) {
                 item(key = "home:refresh-error", contentType = "refresh-error") {
-                    RefreshErrorBanner(onRetry = onRetry)
+                    RefreshErrorBanner(onRetry = onRetry, modifier = Modifier.padding(horizontal = 24.dp))
                 }
             }
             items(
@@ -328,7 +345,11 @@ private fun GroupListContent(
                 key = { group -> "group:${group.id.value}" },
                 contentType = { "group-row" },
             ) { group ->
-                GroupListItem(group = group, onClick = { onGroupClick(group.id) })
+                GroupListItem(
+                    group = group,
+                    onClick = { onGroupClick(group.id) },
+                    modifier = Modifier.padding(horizontal = 24.dp),
+                )
             }
         }
     }

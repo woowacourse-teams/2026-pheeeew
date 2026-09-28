@@ -69,7 +69,7 @@ internal fun CreateOutcomeUnknownDialog(
                     Modifier
                         .fillMaxWidth()
                         .widthIn(max = 420.dp)
-                        .heightIn(min = 294.dp, max = 620.dp)
+                        .heightIn(max = 620.dp)
                         .clip(RoundedCornerShape(24.dp))
                         .background(Color.White)
                         .border(BorderStroke(1.5.dp, AppColors.GroupInk), RoundedCornerShape(24.dp))
