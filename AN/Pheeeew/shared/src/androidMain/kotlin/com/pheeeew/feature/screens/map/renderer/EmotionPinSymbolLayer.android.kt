@@ -23,9 +23,11 @@ import org.maplibre.geojson.Point
 /** Native MapLibre source and symbol layer for emotion pins. */
 internal class EmotionPinSymbolLayer {
     private val registeredImageKeys = mutableSetOf<String>()
+    private var lastRenderedPins: List<EmotionPinUiModel>? = null
 
     fun install(style: Style) {
         registeredImageKeys.clear()
+        lastRenderedPins = null
         if (style.getSource(SOURCE_ID) == null) {
             style.addSource(GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(emptyList())))
         }
@@ -64,24 +66,25 @@ internal class EmotionPinSymbolLayer {
         registeredImageKeys.clear()
         registeredImageKeys.addAll(requiredImageKeys)
 
+        // A pin must not enter the source until its asynchronously rasterized icon is ready.
+        val renderedPins = if (visible) pins.filter { it.symbolImageKey() in registeredImageKeys } else emptyList()
+        // Loading, notices and other Compose state changes do not change the map's features.
+        if (renderedPins == lastRenderedPins) return
         val features: List<Feature> =
-            if (visible) {
-                pins.map { pin ->
-                    val properties =
-                        JsonObject().apply {
-                            addProperty(IMAGE_KEY_PROPERTY, pin.symbolImageKey())
-                            addProperty(ROTATION_PROPERTY, pin.rotationDegrees)
-                        }
-                    Feature.fromGeometry(
-                        Point.fromLngLat(pin.longitude, pin.latitude),
-                        properties,
-                        pin.id.toString(),
-                    )
-                }
-            } else {
-                emptyList()
+            renderedPins.map { pin ->
+                val properties =
+                    JsonObject().apply {
+                        addProperty(IMAGE_KEY_PROPERTY, pin.symbolImageKey())
+                        addProperty(ROTATION_PROPERTY, pin.rotationDegrees)
+                    }
+                Feature.fromGeometry(
+                    Point.fromLngLat(pin.longitude, pin.latitude),
+                    properties,
+                    pin.id.toString(),
+                )
             }
         source.setGeoJson(FeatureCollection.fromFeatures(features))
+        lastRenderedPins = renderedPins
     }
 
     private fun EmotionPinSymbolImage.toAndroidBitmap(densityDpi: Int): Bitmap {
