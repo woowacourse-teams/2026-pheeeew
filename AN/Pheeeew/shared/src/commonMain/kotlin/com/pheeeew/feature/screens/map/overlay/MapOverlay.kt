@@ -59,7 +59,7 @@ fun MapOverlay(
 ) {
     val promptTranslationY by
         animateFloatAsState(
-            targetValue = if (isEmotionSelectorExpanded) -125f else 0f,
+            targetValue = if (isEmotionSelectorExpanded) -90f else 0f,
             animationSpec =
                 spring(
                     dampingRatio = EMOTION_PROMPT_DAMPING_RATIO,
@@ -143,7 +143,7 @@ fun MapOverlay(
                         painter = painterResource(Res.drawable.ic_my_location),
                         contentDescription = null,
                         modifier = Modifier.size(28.dp),
-                        tint = Color(0xff2670F8),
+                        tint = Color(0xff000000),
                     )
                 }
             }
