@@ -92,36 +92,38 @@ fun GroupDetailScreen(
                 overlay = uiState.overlay,
                 actions = actions,
             )
-            when (val content = uiState.content) {
-                GroupDetailContent.Loading -> {
-                    LoadingContent()
-                }
+            Box(modifier = Modifier.weight(1f)) {
+                when (val content = uiState.content) {
+                    GroupDetailContent.Loading -> {
+                        LoadingContent()
+                    }
 
-                GroupDetailContent.LoadFailed -> {
-                    FailedContent(onRetry = actions.onRetry)
-                }
+                    GroupDetailContent.LoadFailed -> {
+                        FailedContent(onRetry = actions.onRetry)
+                    }
 
-                GroupDetailContent.MembershipChanged -> {
-                    MembershipChangedContent(onReturnHome = actions.onReturnHome)
-                }
+                    GroupDetailContent.MembershipChanged -> {
+                        MembershipChangedContent(onReturnHome = actions.onReturnHome)
+                    }
 
-                GroupDetailContent.NotFound -> {
-                    NotFoundContent(onReturnHome = actions.onReturnHome)
-                }
+                    GroupDetailContent.NotFound -> {
+                        NotFoundContent(onReturnHome = actions.onReturnHome)
+                    }
 
-                is GroupDetailContent.Ready -> {
-                    GroupDetailReadyContent(
-                        detail = content.detail,
-                        hasRefreshError = uiState.hasRefreshError,
-                        canTapEmotion = uiState.canTapEmotion,
-                        pressStatus = uiState.pressStatus,
-                        confirmedPressFeedback = uiState.confirmedPressFeedback,
-                        onInviteClick = actions.onInviteClick,
-                        onRetry = actions.onRetry,
-                        onEmotionTap = actions.onEmotionTap,
-                        onResolvePressOutcome = actions.onResolvePressOutcome,
-                        fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
-                    )
+                    is GroupDetailContent.Ready -> {
+                        GroupDetailReadyContent(
+                            detail = content.detail,
+                            hasRefreshError = uiState.hasRefreshError,
+                            canTapEmotion = uiState.canTapEmotion,
+                            pressStatus = uiState.pressStatus,
+                            confirmedPressFeedback = uiState.confirmedPressFeedback,
+                            onInviteClick = actions.onInviteClick,
+                            onRetry = actions.onRetry,
+                            onEmotionTap = actions.onEmotionTap,
+                            onResolvePressOutcome = actions.onResolvePressOutcome,
+                            fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
+                        )
+                    }
                 }
             }
         }

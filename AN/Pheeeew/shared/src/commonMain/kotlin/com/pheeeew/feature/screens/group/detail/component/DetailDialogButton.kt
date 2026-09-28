@@ -26,9 +26,9 @@ internal fun DetailDialogButton(
         text = text,
         modifier =
             Modifier
+                .defaultMinSize(minHeight = 40.dp)
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-                .padding(horizontal = 8.dp, vertical = 10.dp)
-                .defaultMinSize(minHeight = 40.dp),
+                .padding(horizontal = 8.dp, vertical = 8.dp),
         color = if (enabled) textColor else textColor.copy(alpha = 0.45f),
         fontSize = 13.sp,
         fontWeight = FontWeight.SemiBold,

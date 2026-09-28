@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -81,13 +80,12 @@ internal fun LeaveGroupDialog(
                     Modifier
                         .fillMaxWidth()
                         .widthIn(max = 380.dp)
-                        .heightIn(min = 176.dp)
                         .shadow(elevation = 12.dp, shape = shape)
                         .clip(shape)
                         .background(Color.White)
                         .border(BorderStroke(1.dp, AppColors.GroupInk.copy(alpha = 0.72f)), shape)
-                        .padding(horizontal = 20.dp, vertical = 18.dp),
-                verticalArrangement = Arrangement.Top,
+                        .padding(horizontal = 20.dp)
+                        .padding(top = 20.dp, bottom = if (isWorking) 20.dp else 12.dp),
             ) {
                 when {
                     isWorking -> {
@@ -192,7 +190,7 @@ private fun LeaveDialogContent(
 @Composable
 private fun WorkingContent() {
     Column(
-        modifier = Modifier.fillMaxWidth().height(198.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start,
     ) {
         Text(
@@ -209,7 +207,7 @@ private fun WorkingContent() {
             fontSize = 12.sp,
             lineHeight = 17.sp,
         )
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(24.dp))
         Row(
             modifier =
                 Modifier
