@@ -70,9 +70,19 @@ internal fun EmotionActionSheet(
 }
 
 @Composable
-private fun ActionItem(text: String, color: Color, onClick: () -> Unit) {
+private fun ActionItem(
+    text: String,
+    color: Color,
+    onClick: () -> Unit,
+) {
     Box(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(onClick = onClick).padding(horizontal = 20.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .heightIn(
+                    min = 56.dp,
+                ).clickable(onClick = onClick)
+                .padding(horizontal = 20.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(text = text, color = color, fontSize = 16.sp, fontWeight = FontWeight.Bold)

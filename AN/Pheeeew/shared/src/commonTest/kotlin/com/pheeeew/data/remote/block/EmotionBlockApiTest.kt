@@ -5,6 +5,7 @@ import com.pheeeew.core.network.AccessTokenProvider
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.createApiClient
+import com.pheeeew.data.remote.emotion.EmotionDeleteApi
 import com.pheeeew.data.remote.report.EmotionReportApi
 import com.pheeeew.data.repository.EmotionModerationRepositoryImpl
 import com.pheeeew.domain.repository.EmotionModerationResult
@@ -81,7 +82,8 @@ class EmotionBlockApiTest {
                     EmotionModerationRepositoryImpl(
                         EmotionReportApi(client.requests),
                         EmotionBlockApi(client.requests),
-                UserBlockApi(client.requests),
+                        UserBlockApi(client.requests),
+                        EmotionDeleteApi(client.requests),
                     )
                 val block = BlockEmotionUseCase(repository)
                 assertEquals(EmotionModerationResult.Success, block(42, isMine = true))
