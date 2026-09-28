@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
@@ -73,7 +74,7 @@ internal fun GroupDetailReadyContent(
     hasRefreshError: Boolean,
     canTapEmotion: Boolean,
     pressStatus: GroupPressStatus,
-    confirmedPressFeedback: GroupPressFeedback?,
+    pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
     onInviteClick: () -> Unit,
     onRetry: () -> Unit,
     onEmotionTap: (EmotionKind) -> Boolean,
@@ -105,19 +106,34 @@ internal fun GroupDetailReadyContent(
             PressStatusNotice(status = pressStatus, onResolveOutcome = onResolvePressOutcome)
             EmotionPad(
                 counts = detail.emotionCounts,
+                optimisticPressCounts = pendingEmotionPresses,
                 enabled = canTapEmotion,
                 onEmotionTap = onEmotionTap,
-                confirmedPress = confirmedPressFeedback,
                 fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
                 preserveFeedbackWhileDisabled = pressStatus != GroupPressStatus.Idle,
             )
             Spacer(Modifier.height(20.dp))
-            TodayTotal(detail)
+            TodayTotal(detail.copy(todayTotal = detail.todayTotal + pendingEmotionPresses.values.sum()))
             Spacer(Modifier.height(24.dp))
             WeeklySummary(detail)
             Spacer(Modifier.height(16.dp))
         }
     }
+}
+
+@Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 본문")
+@Composable
+private fun GroupDetailReadyContentPreview() {
+    GroupDetailReadyContent(
+        detail = fixtureDetail(1_238L, GroupDetailPresentationKind.Active),
+        hasRefreshError = false,
+        canTapEmotion = true,
+        pressStatus = GroupPressStatus.Idle,
+        onInviteClick = {},
+        onRetry = {},
+        onEmotionTap = { true },
+        onResolvePressOutcome = {},
+    )
 }
 
 @Composable
