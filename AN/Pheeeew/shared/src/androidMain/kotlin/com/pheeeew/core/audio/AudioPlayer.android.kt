@@ -109,7 +109,7 @@ internal class AndroidAudioPlayer(
 
     private fun fail() {
         stop()
-        mutable.value = AudioPlayerState(error = "녹음을 재생할 수 없어. 다시 시도해.")
+        mutable.value = AudioPlayerState(error = "녹음을 재생할 수 없어요. 다시 시도해주세요")
     }
 
     override fun pause() {
