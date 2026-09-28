@@ -20,6 +20,7 @@ internal class MapRecordFlowCoordinator(
     }
 
     fun dismiss() {
+        if (recordViewModel.uiModel.value.isSubmitting) return
         voiceRecorder.clear()
         recordViewModel.dismiss()
         mapViewModel.onRecordLocationPickingChanged(false)
@@ -45,6 +46,7 @@ internal class MapRecordFlowCoordinator(
     }
 
     fun backToInput() {
+        if (recordViewModel.uiModel.value.isSubmitting) return
         recordViewModel.onBackToInput()
         mapViewModel.onRecordLocationPickingChanged(false)
     }

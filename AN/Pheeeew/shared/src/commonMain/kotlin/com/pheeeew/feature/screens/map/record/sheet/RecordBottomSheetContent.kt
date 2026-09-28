@@ -20,6 +20,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -65,7 +66,18 @@ fun RecordBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         modifier = modifier,
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState =
+            rememberModalBottomSheetState(
+                skipPartiallyExpanded = true,
+                confirmValueChange = { value ->
+                    if (value == SheetValue.Hidden) {
+                        onDismissRequest()
+                        false
+                    } else {
+                        true
+                    }
+                },
+            ),
         shape = AppShapes.BottomSheet,
         containerColor = AppColors.Surface,
         scrimColor = Color.Black.copy(alpha = 0.3f),

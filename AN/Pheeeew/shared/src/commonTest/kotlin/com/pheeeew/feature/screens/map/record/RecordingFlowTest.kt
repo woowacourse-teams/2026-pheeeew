@@ -1,14 +1,23 @@
 package com.pheeeew.feature.screens.map.record
 
+import com.pheeeew.domain.model.emotion.EmotionRegistration
+import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
+import com.pheeeew.domain.repository.EmotionRegistrationRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class RecordingFlowTest {
+    private val unusedRepository =
+        object : EmotionRegistrationRepository {
+            override suspend fun register(registration: EmotionRegistration): EmotionRegistrationResult =
+                EmotionRegistrationResult.Unavailable
+        }
+
     @Test
     fun recordingSurvivesLocationSelectionAndReturn() {
-        val model = MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase())
+        val model = MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase(), unusedRepository)
         model.open(EmotionTypeUiModel.FRUSTRATED)
         model.onNext(null, "/tmp/voice.m4a")
         assertEquals("/tmp/voice.m4a", model.uiModel.value.recordingFilePath)
@@ -18,7 +27,7 @@ class RecordingFlowTest {
 
     @Test
     fun skipAndDismissDiscardRecordingReference() {
-        val model = MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase())
+        val model = MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase(), unusedRepository)
         model.open(EmotionTypeUiModel.FRUSTRATED)
         model.onNext(null, "/tmp/voice.m4a")
         model.onBackToInput()

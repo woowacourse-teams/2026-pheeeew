@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
 import com.pheeeew.core.di.AndroidApiDependencies
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.permission.AndroidAppSettingsLauncher
 import com.pheeeew.data.location.platform.android.LocationDependenciesHolder
 import com.pheeeew.data.location.platform.android.createAndroidLocationDependencies
 import com.pheeeew.feature.screens.onboarding.WELCOME_ONBOARDING_COMPLETED_KEY
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
                 },
                 appVersion = BuildConfig.VERSION_NAME,
                 permissionSettingsLauncher = AndroidLocationPermissionSettingsLauncher(this@MainActivity),
+                appSettingsLauncher = AndroidAppSettingsLauncher(this@MainActivity),
                 apiDependencies =
                     AndroidApiDependencies.get(
                         applicationContext,

@@ -1,25 +1,42 @@
 package com.pheeeew.feature.screens.map.record
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.pheeeew.domain.model.CurrentLocation
 import com.pheeeew.domain.model.GeoCoordinate
+import com.pheeeew.domain.model.emotion.EmotionRegistration
+import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
+import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
+import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.repository.EmotionRegistrationRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheetUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
-import com.pheeeew.feature.screens.map.record.sheet.RecordRegistrationUiModel
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import kotlin.uuid.Uuid
 
 class MapRecordViewModel(
     private val isWithinRecordRadius: IsWithinEmotionRecordRadiusUseCase,
+    private val registrationRepository: EmotionRegistrationRepository,
 ) : ViewModel() {
     private val _uiModel = MutableStateFlow(RecordBottomSheetUiModel())
     val uiModel: StateFlow<RecordBottomSheetUiModel> = _uiModel.asStateFlow()
+
+    private var pendingRegistration: EmotionRegistration? = null
+    private val _notice = MutableStateFlow<RecordNoticeUiModel?>(null)
+    val notice = _notice.asStateFlow()
+
+    fun dismissNotice() {
+        _notice.value = null
+    }
 
     val groupOptions =
         listOf(
@@ -28,6 +45,7 @@ class MapRecordViewModel(
         )
 
     fun open(emotion: EmotionTypeUiModel) {
+        pendingRegistration = null
         _uiModel.value =
             RecordBottomSheetUiModel(
                 step = RecordFlowStepUiModel.Input,
@@ -36,6 +54,8 @@ class MapRecordViewModel(
     }
 
     fun dismiss() {
+        if (_uiModel.value.isSubmitting) return
+        pendingRegistration = null
         _uiModel.value = RecordBottomSheetUiModel()
     }
 
@@ -61,6 +81,8 @@ class MapRecordViewModel(
     }
 
     fun onBackToInput() {
+        if (_uiModel.value.isSubmitting) return
+        pendingRegistration = null
         _uiModel.value =
             _uiModel.value.copy(
                 step = RecordFlowStepUiModel.Input,
@@ -74,9 +96,7 @@ class MapRecordViewModel(
         longitude: Double,
     ) {
         val origin = _uiModel.value.origin
-        if (_uiModel.value.step != RecordFlowStepUiModel.LocationSelection || origin == null ||
-            _uiModel.value.confirmedRecord != null
-        ) {
+        if (_uiModel.value.step != RecordFlowStepUiModel.LocationSelection || origin == null) {
             return
         }
         if (!latitude.isFinite() || !longitude.isFinite() || latitude !in -90.0..90.0 ||
@@ -84,7 +104,9 @@ class MapRecordViewModel(
         ) {
             return
         }
+        if (_uiModel.value.isSubmitting) return
         val candidate = constrainToRecordRadius(origin, GeoCoordinate(latitude, longitude))
+        if (candidate != _uiModel.value.selectedCoordinate) pendingRegistration = null
         val isInRange = isWithinRecordRadius(origin, candidate)
         _uiModel.value =
             _uiModel.value.copy(
@@ -114,8 +136,8 @@ class MapRecordViewModel(
 
     fun onConfirmLocation() {
         val state = _uiModel.value
-        if (state.step != RecordFlowStepUiModel.LocationSelection || !state.isSelectedCoordinateInRange ||
-            state.confirmedRecord != null
+        if (state.step != RecordFlowStepUiModel.LocationSelection || state.isSubmitting ||
+            !state.isSelectedCoordinateInRange
         ) {
             return
         }
@@ -123,23 +145,60 @@ class MapRecordViewModel(
         val coordinate = state.selectedCoordinate ?: return
         val origin = state.origin ?: return
         if (!isWithinRecordRadius(origin, coordinate)) return
-        _uiModel.value =
-            state.copy(
-                confirmedRecord =
-                    RecordRegistrationUiModel(
-                        emotion = emotion,
-                        coordinate = coordinate,
-                        groupId = state.selectedGroupId,
-                        inputMode = state.inputMode,
-                        memo = state.memo.takeIf { state.inputMode == RecordInputModeUiModel.Memo && it.isNotBlank() },
-                        recordingFilePath =
-                            state.recordingFilePath.takeIf {
-                                state.inputMode ==
-                                    RecordInputModeUiModel.Recording
+        val content =
+            when (state.inputMode) {
+                RecordInputModeUiModel.Memo -> {
+                    state.memo
+                        .takeIf { it.isNotBlank() }
+                        ?.let { EmotionRegistrationContent.Memo(it) } ?: EmotionRegistrationContent.None
+                }
+
+                RecordInputModeUiModel.Recording -> {
+                    state.recordingFilePath
+                        ?.let { EmotionRegistrationContent.Audio(it) } ?: EmotionRegistrationContent.None
+                }
+            }
+        val registration =
+            pendingRegistration ?: EmotionRegistration(
+                requestId = Uuid.random().toString(),
+                state = EmotionState.valueOf(emotion.name),
+                coordinate = coordinate,
+                rotationDegrees = 0.0,
+                groupId = state.selectedGroupId.takeUnless { it == PERSONAL_GROUP_ID || it == NO_GROUP_ID },
+                content = content,
+            ).also { pendingRegistration = it }
+        _notice.value = null
+        _uiModel.value = state.copy(isSubmitting = true, submissionMessage = "감정을 등록하고 있어요")
+        viewModelScope.launch {
+            val result =
+                try {
+                    registrationRepository.register(registration)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    EmotionRegistrationResult.Unavailable
+                }
+            when (result) {
+                is EmotionRegistrationResult.Success -> {
+                    _uiModel.value = RecordBottomSheetUiModel()
+                    pendingRegistration = null
+                    _notice.value = RecordNoticeUiModel("선택한 위치에 감정을 남겼어요", false)
+                }
+
+                else -> {
+                    _uiModel.value = _uiModel.value.copy(isSubmitting = false, submissionMessage = null)
+                    _notice.value =
+                        RecordNoticeUiModel(
+                            if (result == EmotionRegistrationResult.AudioUnavailable) {
+                                "녹음 등록은 아직 사용할 수 없어요. 잠시 후 다시 시도해 주세요"
+                            } else {
+                                "감정을 등록하지 못했어요. 다시 시도해 주세요"
                             },
-                    ),
-                submissionMessage = "선택한 위치로 등록 정보를 확정했어요",
-            )
+                            true,
+                        )
+                }
+            }
+        }
     }
 
     fun onGroupSelectorOpen() {
@@ -210,7 +269,6 @@ class MapRecordViewModel(
         _uiModel.value =
             _uiModel.value.copy(
                 step = RecordFlowStepUiModel.LocationSelection,
-                confirmedRecord = null,
                 isGroupSelectorVisible = false,
                 origin = origin,
                 selectedCoordinate = origin,
@@ -226,3 +284,8 @@ class MapRecordViewModel(
         const val NO_GROUP_ID = "none"
     }
 }
+
+data class RecordNoticeUiModel(
+    val message: String,
+    val isError: Boolean,
+)

@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +31,12 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.rememberVoiceRecorder
+import com.pheeeew.core.designsystem.component.ConfirmDialog
+import com.pheeeew.core.designsystem.component.Snackbar
+import com.pheeeew.core.navigation.FlowBackHandler
+import com.pheeeew.core.permission.AppSettingsLauncher
+import com.pheeeew.core.permission.LocationPermissionController
+import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.feature.screens.map.overlay.MapOverlay
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
@@ -43,6 +50,16 @@ import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheetUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
 import com.pheeeew.feature.screens.map.renderer.NativeMap
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+
+private enum class PermissionDialogUiModel {
+    Location,
+    LocationServices,
+    Microphone,
+}
 
 @Composable
 fun MapScreen(
@@ -52,12 +69,26 @@ fun MapScreen(
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
+    locationPermissionController: LocationPermissionController,
+    appSettingsLauncher: AppSettingsLauncher,
     modifier: Modifier = Modifier,
 ) {
     LaunchedEffect(viewModel) {
         viewModel.start()
     }
     val voiceRecorder = rememberVoiceRecorder()
+    val coroutineScope = rememberCoroutineScope()
+    var permissionDialog by remember { mutableStateOf<PermissionDialogUiModel?>(null) }
+    var isRequestingBubblePermission by remember { mutableStateOf(false) }
+    LaunchedEffect(voiceRecorder) {
+        voiceRecorder.refreshPermissionStatus()
+        voiceRecorder.state
+            .map { it.microphonePermissionDenied }
+            .distinctUntilChanged()
+            .collect { denied ->
+                if (denied) permissionDialog = PermissionDialogUiModel.Microphone
+            }
+    }
     val recordFlowCoordinator =
         remember(viewModel, recordViewModel, voiceRecorder) {
             MapRecordFlowCoordinator(
@@ -70,9 +101,11 @@ fun MapScreen(
     DisposableEffect(lifecycleOwner, voiceRecorder) {
         val observer =
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_STOP) {
+                if (event == Lifecycle.Event.ON_STOP && !voiceRecorder.state.value.requestingPermission) {
                     voiceRecorder.stop()
                     voiceRecorder.pause()
+                } else if (event == Lifecycle.Event.ON_RESUME) {
+                    voiceRecorder.refreshPermissionStatus()
                 }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -80,6 +113,36 @@ fun MapScreen(
     }
     val uiModel by viewModel.uiModel.collectAsState()
     val recordUiModel by recordViewModel.uiModel.collectAsState()
+    val notice by recordViewModel.notice.collectAsState()
+    var showDiscardDialog by remember { mutableStateOf(false) }
+    val leaveInput = {
+        recordFlowCoordinator.dismiss()
+        viewModel.onEmotionSelectorToggle()
+    }
+    val requestInputBack = {
+        val audio = voiceRecorder.state.value
+        if (recordUiModel.memo.isNotBlank() || audio.recording || audio.filePath != null) {
+            showDiscardDialog = true
+        } else {
+            leaveInput()
+        }
+    }
+    FlowBackHandler(recordUiModel.step != RecordFlowStepUiModel.Closed) {
+        when {
+            recordUiModel.isSubmitting -> Unit
+            showDiscardDialog -> showDiscardDialog = false
+            recordUiModel.isGroupSelectorVisible -> recordViewModel.onGroupSelectorDismiss()
+            recordUiModel.step == RecordFlowStepUiModel.LocationSelection -> recordFlowCoordinator.backToInput()
+            else -> requestInputBack()
+        }
+    }
+    LaunchedEffect(recordUiModel.step, notice) {
+        if (recordUiModel.step == RecordFlowStepUiModel.Closed) {
+            voiceRecorder.clear()
+            viewModel.onRecordLocationPickingChanged(false)
+            if (notice?.isError == false) viewModel.refreshEmotionPins()
+        }
+    }
     var recordViewport by remember { mutableStateOf<RecordMapViewport?>(null) }
     val currentLocation = (uiModel.locationState as? LocationState.Available)?.location
 
@@ -91,53 +154,142 @@ fun MapScreen(
         if (currentLocation != null) recordViewModel.onOriginLocationAvailable(currentLocation)
     }
 
-    MapScreenContent(
-        uiModel = uiModel,
-        recordUiModel = recordUiModel,
-        voiceRecorder = voiceRecorder,
-        recordViewport = recordViewport,
-        onRecordCoordinateSelected = recordViewModel::onLocationSelected,
-        groupOptions = recordViewModel.groupOptions,
-        mapContent = { renderUiModel, mapModifier ->
-            key(uiModel.mapRevision) {
-                NativeMap(
-                    state = renderUiModel.copy(recordOrigin = recordUiModel.origin),
-                    onMapError = viewModel::onMapError,
-                    onMapRecovered = viewModel::onMapRecovered,
-                    onRecordViewportChanged = { centerX, centerY, radius ->
-                        val viewport = RecordMapViewport(centerX, centerY, radius)
-                        if (recordViewport != viewport) recordViewport = viewport
-                    },
-                    onViewportChanged = viewModel::onViewportChanged,
-                    onEmotionPinClick = onEmotionPinClick,
-                    modifier = mapModifier,
-                )
-            }
-        },
-        onListClick = onListClick,
-        onSettingClick = onSettingClick,
-        onEmotionSelectorToggle = viewModel::onEmotionSelectorToggle,
-        onEmotionBubbleClick = { emotion ->
-            recordFlowCoordinator.onEmotionSelected(emotion)
-            onEmotionBubbleClick(emotion)
-        },
-        onMyLocationClick = viewModel::onMyLocationClick,
-        onRetryMap = viewModel::retryMap,
-        onRecordBottomSheetDismiss = recordFlowCoordinator::dismiss,
-        onRecordInputModeChange = recordFlowCoordinator::changeInputMode,
-        onRecordMemoChange = recordViewModel::onMemoChange,
-        onRecordGroupClick = recordViewModel::onGroupSelectorOpen,
-        onRecordNext = { recordFlowCoordinator.next(currentLocation) },
-        onRecordSkip = { recordFlowCoordinator.skip(currentLocation) },
-        onRecordBackToInput = recordFlowCoordinator::backToInput,
-        onRecordConfirmLocation = recordFlowCoordinator::confirmLocation,
-        onRecordGroupSelectorDismiss = recordViewModel::onGroupSelectorDismiss,
-        onRecordGroupDialProgressChange = recordViewModel::onGroupDialProgressChange,
-        onRecordGroupDialProgressSettle = recordViewModel::onGroupDialProgressSettle,
-        onRecordPendingGroupChange = recordViewModel::onPendingGroupChange,
-        onRecordGroupSelectionComplete = recordViewModel::onGroupSelectionComplete,
-        modifier = modifier,
-    )
+    Box(modifier.fillMaxSize()) {
+        MapScreenContent(
+            uiModel = uiModel,
+            recordUiModel = recordUiModel,
+            voiceRecorder = voiceRecorder,
+            recordViewport = recordViewport,
+            onRecordCoordinateSelected = recordViewModel::onLocationSelected,
+            groupOptions = recordViewModel.groupOptions,
+            mapContent = { renderUiModel, mapModifier ->
+                key(uiModel.mapRevision) {
+                    NativeMap(
+                        state = renderUiModel.copy(recordOrigin = recordUiModel.origin),
+                        onMapError = viewModel::onMapError,
+                        onMapRecovered = viewModel::onMapRecovered,
+                        onRecordViewportChanged = { centerX, centerY, radius ->
+                            val viewport = RecordMapViewport(centerX, centerY, radius)
+                            if (recordViewport != viewport) recordViewport = viewport
+                        },
+                        onViewportChanged = viewModel::onViewportChanged,
+                        onEmotionPinClick = onEmotionPinClick,
+                        modifier = mapModifier,
+                    )
+                }
+            },
+            onListClick = onListClick,
+            onSettingClick = onSettingClick,
+            onEmotionSelectorToggle = viewModel::onEmotionSelectorToggle,
+            onEmotionBubbleClick = { emotion ->
+                if (!isRequestingBubblePermission) {
+                    isRequestingBubblePermission = true
+                    coroutineScope.launch {
+                        try {
+                            val status = locationPermissionController.currentStatus()
+                            val result =
+                                if (status == LocationPermissionStatus.Granted ||
+                                    status == LocationPermissionStatus.ServicesDisabled
+                                ) {
+                                    status
+                                } else {
+                                    locationPermissionController.requestPermission()
+                                }
+                            when (result) {
+                                LocationPermissionStatus.Granted -> {
+                                    viewModel.onMyLocationClick()
+                                    recordFlowCoordinator.onEmotionSelected(emotion)
+                                    onEmotionBubbleClick(emotion)
+                                }
+
+                                LocationPermissionStatus.ServicesDisabled -> {
+                                    permissionDialog = PermissionDialogUiModel.LocationServices
+                                }
+
+                                else -> {
+                                    permissionDialog = PermissionDialogUiModel.Location
+                                }
+                            }
+                        } catch (cancellation: CancellationException) {
+                            throw cancellation
+                        } catch (_: Exception) {
+                            permissionDialog = PermissionDialogUiModel.Location
+                        } finally {
+                            isRequestingBubblePermission = false
+                        }
+                    }
+                }
+            },
+            onMyLocationClick = viewModel::onMyLocationClick,
+            onRetryMap = viewModel::retryMap,
+            onRecordBottomSheetDismiss = requestInputBack,
+            onRecordInputModeChange = recordFlowCoordinator::changeInputMode,
+            onRecordMemoChange = recordViewModel::onMemoChange,
+            onRecordGroupClick = recordViewModel::onGroupSelectorOpen,
+            onRecordNext = { recordFlowCoordinator.next(currentLocation) },
+            onRecordSkip = { recordFlowCoordinator.skip(currentLocation) },
+            onRecordBackToInput = recordFlowCoordinator::backToInput,
+            onRecordConfirmLocation = recordFlowCoordinator::confirmLocation,
+            onRecordGroupSelectorDismiss = recordViewModel::onGroupSelectorDismiss,
+            onRecordGroupDialProgressChange = recordViewModel::onGroupDialProgressChange,
+            onRecordGroupDialProgressSettle = recordViewModel::onGroupDialProgressSettle,
+            onRecordPendingGroupChange = recordViewModel::onPendingGroupChange,
+            onRecordGroupSelectionComplete = recordViewModel::onGroupSelectionComplete,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Snackbar(
+            message = notice?.message,
+            isError = notice?.isError == true,
+            onDismiss = recordViewModel::dismissNotice,
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 16.dp, end = 16.dp),
+        )
+    }
+    if (showDiscardDialog) {
+        ConfirmDialog(
+            title = "작성중인 내용이 있습니다.",
+            content = "지금까지 작성하던 내용이 저장되지 않습니다.\n나가시겠습니까?",
+            confirmText = "나가기",
+            cancelText = "취소",
+            onConfirm = {
+                showDiscardDialog = false
+                leaveInput()
+            },
+            onCancel = { showDiscardDialog = false },
+        )
+    }
+    permissionDialog?.let { dialog ->
+        ConfirmDialog(
+            title =
+                when (dialog) {
+                    PermissionDialogUiModel.Location -> "위치 권한이 필요해요"
+                    PermissionDialogUiModel.LocationServices -> "위치 서비스를 켜주세요"
+                    PermissionDialogUiModel.Microphone -> "마이크 권한이 필요해요"
+                },
+            content =
+                when (dialog) {
+                    PermissionDialogUiModel.Location -> "감정을 남기려면 위치 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요."
+                    PermissionDialogUiModel.LocationServices -> "감정을 남기려면 위치 서비스를 켜주세요."
+                    PermissionDialogUiModel.Microphone -> "음성을 녹음하려면 마이크 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요."
+                },
+            confirmText = "설정으로 이동",
+            cancelText = "취소",
+            onConfirm = {
+                permissionDialog = null
+                if (dialog == PermissionDialogUiModel.Microphone) voiceRecorder.clear()
+                coroutineScope.launch {
+                    if (dialog == PermissionDialogUiModel.LocationServices) {
+                        appSettingsLauncher.openLocationSettings()
+                    } else {
+                        appSettingsLauncher.openAppSettings()
+                    }
+                }
+            },
+            onCancel = {
+                permissionDialog = null
+                if (dialog == PermissionDialogUiModel.Microphone) voiceRecorder.clear()
+            },
+        )
+    }
 }
 
 @Composable
@@ -264,7 +416,7 @@ internal fun MapScreenContent(
                     submissionMessage = recordUiModel.submissionMessage,
                     canConfirm =
                         recordUiModel.isSelectedCoordinateInRange && recordViewport != null &&
-                            uiModel.mapError == null && recordUiModel.confirmedRecord == null,
+                            uiModel.mapError == null && !recordUiModel.isSubmitting,
                     onConfirm = onRecordConfirmLocation,
                     onBack = onRecordBackToInput,
                     modifier = Modifier.fillMaxSize(),

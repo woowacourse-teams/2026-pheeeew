@@ -16,6 +16,8 @@ import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.di.createEmotionAudioRepository
 import com.pheeeew.core.di.createEmotionDetailRepository
 import com.pheeeew.core.di.createEmotionMapDependencies
+import com.pheeeew.core.di.createEmotionRegistrationRepository
+import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
@@ -32,6 +34,7 @@ fun App(
     apiDependencies: ApiDependencies,
     appVersion: String,
     permissionSettingsLauncher: LocationPermissionSettingsLauncher,
+    appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
 ) {
@@ -59,9 +62,11 @@ fun App(
                 emotionMapDependencies.findSnapshot,
             )
         }
+    val registrationRepository =
+        remember(apiDependencies.client) { createEmotionRegistrationRepository(apiDependencies.client) }
     val mapRecordViewModel: MapRecordViewModel =
         viewModel {
-            MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase())
+            MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase(), registrationRepository)
         }
     val detailRepository = remember(apiDependencies.client) { createEmotionDetailRepository(apiDependencies.client) }
     val detailViewModel: EmotionDetailViewModel =
@@ -78,6 +83,8 @@ fun App(
             onListClick = {},
             onSettingClick = { isSettingsVisible = true },
             onEmotionBubbleClick = {},
+            locationPermissionController = locationDependencies.permissionController,
+            appSettingsLauncher = appSettingsLauncher,
             modifier = Modifier.fillMaxSize(),
         )
 

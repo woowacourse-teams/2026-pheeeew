@@ -30,14 +30,5 @@ data class RecordBottomSheetUiModel(
     val isSelectedCoordinateInRange: Boolean = false,
     val locationMessage: String? = null,
     val submissionMessage: String? = null,
-    val confirmedRecord: RecordRegistrationUiModel? = null,
-)
-
-data class RecordRegistrationUiModel(
-    val emotion: EmotionTypeUiModel,
-    val coordinate: GeoCoordinate,
-    val groupId: String,
-    val inputMode: RecordInputModeUiModel,
-    val memo: String?,
-    val recordingFilePath: String?,
+    val isSubmitting: Boolean = false,
 )
