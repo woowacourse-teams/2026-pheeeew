@@ -30,6 +30,7 @@ fun GroupFeatureHost(
     dependencies: GroupDependencies,
     modifier: Modifier = Modifier,
     onGroupDetailVisibilityChanged: (Boolean) -> Unit = {},
+    onGroupCreateVisibilityChanged: (Boolean) -> Unit = {},
 ) {
     val navController = rememberNavController()
     val currentBackStackEntry = navController.currentBackStackEntryAsState().value
@@ -37,9 +38,10 @@ fun GroupFeatureHost(
 
     LaunchedEffect(currentBackStackEntry?.destination?.route) {
         val detailRoute = GroupDetailDestination::class.qualifiedName.orEmpty()
-        onGroupDetailVisibilityChanged(
-            currentBackStackEntry?.destination?.route?.startsWith(detailRoute) == true,
-        )
+        val currentRoute = currentBackStackEntry?.destination?.route.orEmpty()
+        onGroupDetailVisibilityChanged(currentRoute.startsWith(detailRoute))
+        val createRoute = GroupCreateDestination::class.qualifiedName.orEmpty()
+        onGroupCreateVisibilityChanged(currentRoute.startsWith(createRoute))
     }
 
     NavHost(

@@ -18,6 +18,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private var fittedOrigin: CLLocationCoordinate2D?
     private var fittedSize: CGSize = .zero
     private var recordCameraBounds: RecordCameraBounds?
+    private var didConfigureKoreanFontFaces = false
 
     init(eventSink: FoundationIosMapEventSink) {
         self.eventSink = eventSink
@@ -74,7 +75,108 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         lastEmotionPinImageKeys.removeAll()
     }
 
+    private func styleJSON(_ style: MLNStyle, addingKoreanFonts fonts: (regular: URL, bold: URL)) -> String? {
+        guard var styleJSON = (try? JSONSerialization.jsonObject(with: Data(style.styleJSON.utf8))) as? [String: Any] else {
+            return nil
+        }
+
+        let fontFace: (URL) -> [[String: Any]] = { fontURL in [[
+            "url": fontURL.absoluteString,
+            "unicode-range": ["U+1100-11FF", "U+3130-318F", "U+A960-A97F", "U+AC00-D7AF", "U+D7B0-D7FF"],
+        ]] }
+        styleJSON["font-faces"] = [
+            "Noto Sans Regular": fontFace(fonts.regular),
+            "Noto Sans Italic": fontFace(fonts.regular),
+            "Noto Sans Bold": fontFace(fonts.bold),
+        ]
+
+        if var layers = styleJSON["layers"] as? [[String: Any]] {
+            for index in layers.indices {
+                guard let layerID = layers[index]["id"] as? String,
+                      layers[index]["type"] as? String == "symbol",
+                      var layout = layers[index]["layout"] as? [String: Any]
+                else { continue }
+
+                if layerID.hasPrefix("highway-shield-") || layerID.hasPrefix("road_shield_") {
+                    layout["visibility"] = "none"
+                }
+                let cityLabelLayers = ["label_city", "label_city_capital", "label_town", "label_village"]
+                let sizeScale: Double
+                if layerID.hasPrefix("label_country_") {
+                    sizeScale = 0.76
+                } else if cityLabelLayers.contains(layerID) {
+                    sizeScale = 1.0
+                } else if layerID == "label_other" {
+                    sizeScale = 1.05
+                } else {
+                    sizeScale = 0.92
+                }
+                scaleTextSize(in: &layout, by: sizeScale)
+                if layerID.hasPrefix("label_country_") {
+                    layers[index]["maxzoom"] = 12
+                }
+                if layerID == "label_other" {
+                    layers[index]["minzoom"] = 7
+                    layout.removeValue(forKey: "text-transform")
+                }
+                if let fonts = layout["text-font"] as? [String] {
+                    layout["text-font"] = fonts.map {
+                        $0 == "Noto Sans Bold" || (layerID == "label_other" && $0 == "Noto Sans Italic")
+                            ? "Noto Sans Regular"
+                            : $0
+                    }
+                }
+                layers[index]["layout"] = layout
+            }
+            styleJSON["layers"] = layers
+        }
+        guard let data = try? JSONSerialization.data(withJSONObject: styleJSON) else { return nil }
+        return String(data: data, encoding: .utf8)
+    }
+
+    private func scaleTextSize(in layout: inout [String: Any], by scale: Double) {
+        if let textSize = layout["text-size"] as? NSNumber {
+            layout["text-size"] = textSize.doubleValue * scale
+            return
+        }
+        guard var expression = layout["text-size"] as? [Any],
+              let operatorName = expression.first as? String
+        else { return }
+
+        let outputIndices: [Int]
+        switch operatorName {
+        case "interpolate", "interpolate-hcl", "interpolate-lab":
+            outputIndices = Array(stride(from: 4, to: expression.count, by: 2))
+        case "step":
+            outputIndices = Array(stride(from: 2, to: expression.count, by: 2))
+        default:
+            return
+        }
+        for index in outputIndices {
+            if let output = expression[index] as? NSNumber {
+                expression[index] = output.doubleValue * scale
+            }
+        }
+        layout["text-size"] = expression
+    }
+
+    private func koreanFontURLs() -> (regular: URL, bold: URL)? {
+        let resourcePath = "compose-resources/composeResources/pheeeew.shared.generated.resources/font"
+        guard let regular = Bundle.main.url(forResource: "tap_noto_700", withExtension: "ttf", subdirectory: resourcePath) ?? Bundle.main.url(forResource: "tap_noto_700", withExtension: "ttf"),
+              let bold = Bundle.main.url(forResource: "tap_noto_900", withExtension: "ttf", subdirectory: resourcePath) ?? Bundle.main.url(forResource: "tap_noto_900", withExtension: "ttf")
+        else { return nil }
+        return (regular, bold)
+    }
+
     func mapView(_ mapView: MLNMapView, didFinishLoading style: MLNStyle) {
+        if !didConfigureKoreanFontFaces {
+            didConfigureKoreanFontFaces = true
+            if let fontURLs = koreanFontURLs(), let styleJSON = styleJSON(style, addingKoreanFonts: fontURLs) {
+                mapView.styleJSON = styleJSON
+                return
+            }
+        }
+        FoundationMapStyle.applyMutedPalette(to: style)
         styleIsReady = true
         currentLocationSource = FoundationCurrentLocationLayer.install(on: style)
         emotionPinSource = installEmotionPinLayer(on: style)

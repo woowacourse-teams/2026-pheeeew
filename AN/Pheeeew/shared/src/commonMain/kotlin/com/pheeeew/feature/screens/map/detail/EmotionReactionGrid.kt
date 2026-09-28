@@ -38,6 +38,7 @@ internal fun EmotionReactionGrid(
                         Modifier
                             .weight(1f)
                             .clip(AppShapes.Pill)
+                            .clickable(enabled = enabled, role = Role.Button) { onReactionClick(reaction.id) }
                             .background(if (reaction.isSelected) AppColors.Primary else AppColors.Gray100)
                             .then(
                                 if (reaction.isSelected) {
@@ -49,8 +50,7 @@ internal fun EmotionReactionGrid(
                                 } else {
                                     Modifier
                                 },
-                            ).padding(vertical = 8.dp, horizontal = 16.dp)
-                            .clickable(enabled = enabled, role = Role.Button) { onReactionClick(reaction.id) },
+                            ).padding(vertical = 8.dp, horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp, alignment = Alignment.CenterHorizontally),
                     ) {
