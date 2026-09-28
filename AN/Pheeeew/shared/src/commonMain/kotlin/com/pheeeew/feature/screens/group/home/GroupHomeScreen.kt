@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.group.home.component.GroupListItem
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
@@ -46,7 +47,6 @@ import pheeeew.shared.generated.resources.group_home_empty_description
 import pheeeew.shared.generated.resources.group_home_empty_illustration
 import pheeeew.shared.generated.resources.group_home_empty_title
 import pheeeew.shared.generated.resources.group_home_error_description
-import pheeeew.shared.generated.resources.group_home_error_illustration
 import pheeeew.shared.generated.resources.group_home_error_title
 import pheeeew.shared.generated.resources.group_home_group_count
 import pheeeew.shared.generated.resources.group_home_join
@@ -55,6 +55,7 @@ import pheeeew.shared.generated.resources.group_home_my_groups
 import pheeeew.shared.generated.resources.group_home_refresh_error
 import pheeeew.shared.generated.resources.group_home_retry
 import pheeeew.shared.generated.resources.group_home_title
+import pheeeew.shared.generated.resources.ic_emotion_irritated
 
 /** 그룹 홈의 시각 상태와 사용자 입력을 표현합니다. */
 @Composable
@@ -70,7 +71,7 @@ fun GroupHomeScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(AppColors.GroupBackground)
                 .statusBarsPadding()
                 .navigationBarsPadding(),
     ) {
@@ -143,7 +144,8 @@ private fun GroupHomeActionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(25.dp)
+    val shape = RoundedCornerShape(20.dp)
+    val buttonFont = notoSansKrFontFamily()
     Box(
         modifier =
             modifier
@@ -160,6 +162,7 @@ private fun GroupHomeActionButton(
             color = if (isPrimary) AppColors.TextPrimary else AppColors.GroupInk,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
+            fontFamily = buttonFont,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -244,9 +247,9 @@ private fun FailedContent(
         verticalArrangement = Arrangement.Top,
     ) {
         Image(
-            painter = painterResource(Res.drawable.group_home_error_illustration),
+            painter = painterResource(Res.drawable.ic_emotion_irritated),
             contentDescription = null,
-            modifier = Modifier.size(width = 138.dp, height = 116.dp),
+            modifier = Modifier.size(96.dp),
         )
         Spacer(Modifier.height(24.dp))
         Text(

@@ -41,6 +41,7 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.detail.component.GroupDetailNoticeSnackbar
 import com.pheeeew.feature.screens.group.detail.component.InviteCodeDialog
 import com.pheeeew.feature.screens.group.detail.component.LeaveGroupDialog
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -66,6 +67,8 @@ import pheeeew.shared.generated.resources.group_detail_return_home
 import pheeeew.shared.generated.resources.group_home_error_illustration
 import pheeeew.shared.generated.resources.group_home_title
 import pheeeew.shared.generated.resources.ic_arrow_back
+import pheeeew.shared.generated.resources.ic_emotion_discouraged
+import pheeeew.shared.generated.resources.ic_emotion_exhausted
 
 @Composable
 fun GroupDetailScreen(
@@ -313,6 +316,7 @@ private fun FailedContent(onRetry: () -> Unit) {
         title = stringResource(Res.string.group_detail_load_error_title),
         body = stringResource(Res.string.group_detail_load_error_body),
         actionLabel = stringResource(Res.string.group_detail_retry),
+        illustration = Res.drawable.ic_emotion_discouraged,
         onAction = onRetry,
     )
 }
@@ -324,6 +328,7 @@ private fun MembershipChangedContent(onReturnHome: () -> Unit) {
         title = stringResource(Res.string.group_detail_membership_changed_title),
         body = stringResource(Res.string.group_detail_membership_changed_body),
         actionLabel = stringResource(Res.string.group_detail_return_home),
+        illustration = Res.drawable.ic_emotion_exhausted,
         onAction = onReturnHome,
     )
 }
@@ -334,6 +339,7 @@ private fun NotFoundContent(onReturnHome: () -> Unit) {
         title = stringResource(Res.string.group_detail_not_found_title),
         body = stringResource(Res.string.group_detail_not_found_body),
         actionLabel = stringResource(Res.string.group_detail_return_home),
+        illustration = Res.drawable.group_home_error_illustration,
         onAction = onReturnHome,
     )
 }
@@ -343,6 +349,7 @@ private fun DetailUnavailableContent(
     title: String,
     body: String,
     actionLabel: String,
+    illustration: DrawableResource,
     onAction: () -> Unit,
 ) {
     Column(
@@ -351,9 +358,9 @@ private fun DetailUnavailableContent(
     ) {
         Spacer(Modifier.height(188.dp))
         Image(
-            painter = painterResource(Res.drawable.group_home_error_illustration),
+            painter = painterResource(illustration),
             contentDescription = null,
-            modifier = Modifier.size(width = 138.dp, height = 116.dp),
+            modifier = Modifier.size(96.dp),
         )
         Spacer(Modifier.height(28.dp))
         Text(

@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.group.join.component.GroupJoinPreviewCard
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
@@ -79,7 +80,7 @@ import pheeeew.shared.generated.resources.group_join_searching
 import pheeeew.shared.generated.resources.group_join_title
 import pheeeew.shared.generated.resources.group_join_verify_membership
 
-private val JoinButtonShape = RoundedCornerShape(24.dp)
+private val JoinButtonShape = RoundedCornerShape(20.dp)
 private val JoinInputShape = RoundedCornerShape(10.dp)
 private val JoinErrorColor = Color(0xFFC94D43)
 
@@ -125,7 +126,7 @@ fun GroupJoinSheet(
         modifier = modifier,
         onDismissRequest = ::dismissSheet,
         sheetState = sheetState,
-        containerColor = Color.White,
+        containerColor = AppColors.GroupBackground,
         contentColor = AppColors.GroupInk,
     ) {
         Column(
@@ -411,6 +412,7 @@ private fun JoinPrimaryButton(
     isLoading: Boolean,
     onClick: () -> Unit,
 ) {
+    val buttonFont = notoSansKrFontFamily()
     Box(
         modifier =
             Modifier
@@ -439,6 +441,7 @@ private fun JoinPrimaryButton(
                 color = if (enabled) AppColors.TextPrimary else AppColors.RankingSecondaryContent,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
+                fontFamily = buttonFont,
             )
         }
     }

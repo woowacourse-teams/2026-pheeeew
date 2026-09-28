@@ -76,7 +76,7 @@ fun GroupCreateScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(AppColors.GroupBackground)
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .imePadding(),
