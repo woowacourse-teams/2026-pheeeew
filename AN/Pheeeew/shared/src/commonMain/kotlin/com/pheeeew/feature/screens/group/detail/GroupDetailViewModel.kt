@@ -167,8 +167,15 @@ class GroupDetailViewModel(
     private fun submitNextQueuedEmotionPress() {
         val state = _uiState.value
         if (pressJob?.isActive == true || state.pressStatus != GroupPressStatus.Idle) return
-        if (state.detail?.group?.id != groupId) {
+        if (state.overlay is GroupDetailOverlay.Leaving || state.overlay is GroupDetailOverlay.Left) return
+        if (state.detail?.group?.id != groupId ||
+            state.content is GroupDetailContent.MembershipChanged ||
+            state.content is GroupDetailContent.NotFound
+        ) {
             queuedEmotionPresses.clear()
+            _uiState.update { current ->
+                if (current.pendingEmotionPresses.isEmpty()) current else current.copy(pendingEmotionPresses = emptyMap())
+            }
             return
         }
         val emotion = queuedEmotionPresses.removeFirstOrNull() ?: return
@@ -196,7 +203,7 @@ class GroupDetailViewModel(
     }
 
     fun onLeaveMenuClick() {
-        if (_uiState.value.pressStatus != GroupPressStatus.Idle) {
+        if (hasPendingEmotionPresses(_uiState.value)) {
             _uiState.update { state ->
                 if (state.overlay == GroupDetailOverlay.Menu) state.copy(overlay = GroupDetailOverlay.None) else state
             }
@@ -214,6 +221,12 @@ class GroupDetailViewModel(
             }
         }
     }
+
+    private fun hasPendingEmotionPresses(state: GroupDetailUiState): Boolean =
+        state.pressStatus != GroupPressStatus.Idle ||
+            pressJob?.isActive == true ||
+            queuedEmotionPresses.isNotEmpty() ||
+            state.pendingEmotionPresses.isNotEmpty()
 
     fun onDismissOverlay() {
         _uiState.update { state ->
@@ -565,7 +578,7 @@ class GroupDetailViewModel(
 
     private fun submitLeave(expectedOverlay: GroupDetailOverlay) {
         val current = _uiState.value
-        if (current.pressStatus != GroupPressStatus.Idle) {
+        if (hasPendingEmotionPresses(current)) {
             showNotice(GroupDetailNoticeKind.PressBlockedWhilePending)
             return
         }
@@ -607,6 +620,17 @@ class GroupDetailViewModel(
                             LeaveGroupResult.OutcomeUnknown
                         }
 
+                    if ((_uiState.value.overlay as? GroupDetailOverlay.Leaving)?.operationKey == operationKey) {
+                        when (result) {
+                            LeaveGroupResult.Left,
+                            LeaveGroupResult.MembershipChanged,
+                            LeaveGroupResult.NotFound,
+                            -> queuedEmotionPresses.clear()
+
+                            else -> Unit
+                        }
+                    }
+
                     _uiState.update { state ->
                         val leaving = state.overlay as? GroupDetailOverlay.Leaving
                         if (leaving?.operationKey != operationKey) {
@@ -619,6 +643,7 @@ class GroupDetailViewModel(
                                         groupName = state.detail?.group?.name ?: state.groupName,
                                         overlay = GroupDetailOverlay.Left(operationKey),
                                         membershipEvent = null,
+                                        pendingEmotionPresses = emptyMap(),
                                     )
                                 }
 
@@ -627,6 +652,7 @@ class GroupDetailViewModel(
                                         content = GroupDetailContent.MembershipChanged,
                                         groupName = state.detail?.group?.name ?: state.groupName,
                                         overlay = GroupDetailOverlay.None,
+                                        pendingEmotionPresses = emptyMap(),
                                         membershipEvent =
                                             GroupDetailMembershipEvent(
                                                 operationKey,
@@ -640,6 +666,7 @@ class GroupDetailViewModel(
                                         content = GroupDetailContent.NotFound,
                                         groupName = state.detail?.group?.name ?: state.groupName,
                                         overlay = GroupDetailOverlay.None,
+                                        pendingEmotionPresses = emptyMap(),
                                         membershipEvent =
                                             GroupDetailMembershipEvent(operationKey, GroupDetailAccessLoss.NotFound),
                                     )
