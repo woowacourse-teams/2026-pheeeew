@@ -107,6 +107,7 @@ fun App(
         }
     var isSettingsVisible by remember { mutableStateOf(false) }
     var isGroupDetailVisible by remember { mutableStateOf(false) }
+    var isGroupCreateVisible by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -139,6 +140,7 @@ fun App(
                     dependencies = groupDependencies,
                     modifier = Modifier.fillMaxSize(),
                     onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
+                    onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
                 )
             }
             composable<RankingRootDestination> {
@@ -153,7 +155,7 @@ fun App(
                 permissionSettingsLauncher = permissionSettingsLauncher,
                 modifier = Modifier.fillMaxSize(),
             )
-        } else if (selectedDestination != AppDestination.Group || !isGroupDetailVisible) {
+        } else if (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible)) {
             AppBottomNavigationBar(
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = AppBottomNavigationBarBottomSpacing),
                 selectedDestination = selectedDestination,
