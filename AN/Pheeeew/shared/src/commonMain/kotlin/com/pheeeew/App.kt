@@ -42,8 +42,8 @@ import com.pheeeew.feature.screens.map.detail.EmotionDetailOverlay
 import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
-import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
+import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.legacy.core.permission.LocationPermissionSettingsLauncher
 import org.jetbrains.compose.resources.DrawableResource
