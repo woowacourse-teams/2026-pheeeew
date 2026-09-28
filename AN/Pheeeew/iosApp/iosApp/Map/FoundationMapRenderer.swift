@@ -430,7 +430,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
                 let desiredY = mapView.bounds.height * state.cameraVerticalPosition
                 let inset = mapView.contentInset
                 let bottomPadding = max(0, mapView.bounds.height + inset.top - inset.bottom - 2 * desiredY)
-                // Keep the offset local to this transition, as in MapLibreCamera.
+                // Keep the offset local to this transition instead of changing contentInset.
                 mapView.setCamera(
                     camera,
                     withDuration: 0.35,
