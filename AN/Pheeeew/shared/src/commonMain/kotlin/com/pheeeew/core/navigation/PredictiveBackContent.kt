@@ -1,4 +1,4 @@
-package com.pheeeew.legacy.core.navigation
+package com.pheeeew.core.navigation
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween

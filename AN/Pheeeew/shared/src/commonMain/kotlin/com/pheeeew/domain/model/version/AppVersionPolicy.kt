@@ -1,4 +1,4 @@
-package com.pheeeew.legacy.domain.model.version
+package com.pheeeew.domain.model.version
 
 data class AppVersionPolicy(
     val minSupportedVersion: String,

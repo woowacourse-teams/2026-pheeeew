@@ -1,6 +1,6 @@
 @file:Suppress("NonAsciiCharacters")
 
-package com.pheeeew.legacy.domain.model.version
+package com.pheeeew.domain.model.version
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

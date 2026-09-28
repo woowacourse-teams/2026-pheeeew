@@ -1,10 +1,9 @@
-package com.pheeeew.legacy
+package com.pheeeew.core.network
 
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import com.pheeeew.legacy.core.network.ConnectivityObserver
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -12,7 +11,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 
 class AndroidConnectivityObserver(
     context: Context,
-) : com.pheeeew.legacy.core.network.ConnectivityObserver {
+) : ConnectivityObserver {
     private val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
     override val isConnected: Flow<Boolean> =

@@ -1,4 +1,4 @@
-package com.pheeeew.legacy.core.network
+package com.pheeeew.core.network
 
 import kotlinx.coroutines.flow.Flow
 
