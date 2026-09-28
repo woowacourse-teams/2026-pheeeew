@@ -39,7 +39,8 @@ object ExplorationEvents {
                 "load_duration_ms" to number,
                 "presentation_delay_ms" to number,
             )
-    private val detail = visit + mapOf("detail_view_id" to text(), "entry_key" to text(), "is_own" to PropertyRule(ValueType.BOOLEAN))
+    private val detail =
+        visit + mapOf("detail_view_id" to text(), "entry_key" to text(), "is_own" to PropertyRule(ValueType.BOOLEAN))
     val mapLoaded = EventDefinition("map_emotions_load_finished", properties = load)
     val listViewed = EventDefinition("nearby_list_viewed", properties = visit)
     val listLoaded = EventDefinition("nearby_list_load_finished", properties = load)
@@ -105,7 +106,8 @@ class ContentMonitoring(
                 val value = id()
                 telemetry.emit(
                     "emotion_item_impression",
-                    fields() + ownership + mapOf("entry_key" to entry.toString().value(), "impression_id" to value.value()),
+                    fields() + ownership +
+                        mapOf("entry_key" to entry.toString().value(), "impression_id" to value.value()),
                 )
                 value
             }
@@ -114,7 +116,8 @@ class ContentMonitoring(
         ) {
             telemetry.emit(
                 "emotion_content_viewed",
-                fields() + ownership + mapOf("entry_key" to entry.toString().value(), "impression_id" to impression.value()),
+                fields() + ownership +
+                    mapOf("entry_key" to entry.toString().value(), "impression_id" to impression.value()),
             )
         }
     }
@@ -356,7 +359,10 @@ class DetailLoad internal constructor(
     private val start = TimeSource.Monotonic.markNow()
     private var ended = false
 
-    fun finish(outcome: String, isOwn: Boolean? = null) {
+    fun finish(
+        outcome: String,
+        isOwn: Boolean? = null,
+    ) {
         if (ended) return
         ended = true
         monitoring.emit(

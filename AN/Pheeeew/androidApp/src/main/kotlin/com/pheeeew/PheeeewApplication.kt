@@ -5,8 +5,8 @@ import android.os.Build
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
-import com.pheeeew.core.di.appCollectionMetadata
 import com.pheeeew.core.di.AppMonitoring
+import com.pheeeew.core.di.appCollectionMetadata
 import com.pheeeew.core.di.appMonitoringRegistry
 import com.pheeeew.core.di.decodeAppMonitoringState
 import com.pheeeew.core.di.monitoringActiveDay

@@ -253,7 +253,12 @@ class NearbyEmotionViewModel(
                                 "entry_source" to "list",
                                 "view_id" to exploration.viewId,
                                 "action" to if (selected) "add" else "remove",
-                            ) + mapOf("is_own" to com.pheeeew.core.monitoring.EventValue.Flag(item.isMine)),
+                            ) +
+                                mapOf(
+                                    "is_own" to
+                                        com.pheeeew.core.monitoring.EventValue
+                                            .Flag(item.isMine),
+                                ),
                             "emotion_reaction_started",
                         ).observe(::resultLabel) { repository.react(id, type, selected) }
             ) {
@@ -465,14 +470,20 @@ class NearbyEmotionViewModel(
             viewModelScope.launch {
                 // URL refresh precedes native playback. Only failed/cancelled preparation emits here;
                 // successful handoff is completed once by the observed native player.
-                val preparation = telemetry.operation(
-                    "emotion_audio_load_finished",
-                    labels(
-                        "entry_key" to id.toString(),
-                        "entry_source" to "list",
-                        "view_id" to exploration.viewId,
-                    ) + mapOf("is_own" to com.pheeeew.core.monitoring.EventValue.Flag(item.isMine)),
-                )
+                val preparation =
+                    telemetry.operation(
+                        "emotion_audio_load_finished",
+                        labels(
+                            "entry_key" to id.toString(),
+                            "entry_source" to "list",
+                            "view_id" to exploration.viewId,
+                        ) +
+                            mapOf(
+                                "is_own" to
+                                    com.pheeeew.core.monitoring.EventValue
+                                        .Flag(item.isMine),
+                            ),
+                    )
                 var handedOff = false
                 try {
                     when (val result = repository.detail(id)) {
@@ -482,7 +493,10 @@ class NearbyEmotionViewModel(
                                 replaceItem(result.value.toUiModel())
                             }
                             val audio = result.value.audio
-                            if (audio != null && audio.expiresAt > kotlin.time.Clock.System.now()) {
+                            if (audio != null && audio.expiresAt >
+                                kotlin.time.Clock.System
+                                    .now()
+                            ) {
                                 eventChannel.send(NearbyEmotionEvent.Play(id, audio.url, ticket))
                                 handedOff = true
                             } else {
@@ -490,6 +504,7 @@ class NearbyEmotionViewModel(
                                 mutableState.update { it.copy(message = "녹음을 불러오지 못했어요. 다시 시도해 주세요.") }
                             }
                         }
+
                         is EmotionResult.Failure -> {
                             preparation.finish("failed")
                             if (ticket == generation) {

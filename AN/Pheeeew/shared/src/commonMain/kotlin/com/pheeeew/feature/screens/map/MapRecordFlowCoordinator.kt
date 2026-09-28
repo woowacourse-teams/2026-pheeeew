@@ -13,7 +13,10 @@ internal class MapRecordFlowCoordinator(
     private val recordViewModel: MapRecordViewModel,
     private val voiceRecorder: VoiceRecorder,
 ) {
-    fun onEmotionSelected(emotion: EmotionTypeUiModel, selectorId: String? = null) {
+    fun onEmotionSelected(
+        emotion: EmotionTypeUiModel,
+        selectorId: String? = null,
+    ) {
         mapViewModel.onEmotionBubbleSelected()
         voiceRecorder.clear()
         recordViewModel.open(emotion, selectorId)

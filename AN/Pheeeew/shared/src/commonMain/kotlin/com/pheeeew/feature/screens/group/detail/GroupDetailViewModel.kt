@@ -120,7 +120,10 @@ class GroupDetailViewModel(
         }
     }
 
-    private fun submitEmotionPress(emotion: EmotionKind, operationKey: GroupOperationKey) {
+    private fun submitEmotionPress(
+        emotion: EmotionKind,
+        operationKey: GroupOperationKey,
+    ) {
         val current = _uiState.value
         if (current.detail?.group?.id != groupId || current.pressStatus != GroupPressStatus.Idle) {
             return

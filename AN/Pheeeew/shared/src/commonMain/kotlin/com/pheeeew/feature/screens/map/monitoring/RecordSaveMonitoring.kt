@@ -12,26 +12,47 @@ import com.pheeeew.domain.repository.AudioUploadObservation
 import kotlin.time.TimeSource
 
 object RecordSaveEvents {
-    private fun text(vararg allowed: String) = PropertyRule(
-        ValueType.TEXT, required = true, allowed = allowed.toSet().takeIf { it.isNotEmpty() },
-    )
-    private val keys = mapOf(
-        "selector_view_id" to text(), "flow_id" to text(), "registration_key" to text(),
-        "input_mode" to text("text", "voice", "none"), "group_selection" to text("none", "group"),
-    )
+    private fun text(vararg allowed: String) =
+        PropertyRule(
+            ValueType.TEXT,
+            required = true,
+            allowed = allowed.toSet().takeIf { it.isNotEmpty() },
+        )
+
+    private val keys =
+        mapOf(
+            "selector_view_id" to text(),
+            "flow_id" to text(),
+            "registration_key" to text(),
+            "input_mode" to text("text", "voice", "none"),
+            "group_selection" to text("none", "group"),
+        )
     private val duration = PropertyRule(ValueType.INTEGER, required = true, minimum = 0.0)
-    private val result = keys + mapOf(
-        "outcome" to text("success", "failed", "unknown", "cancelled"),
-        "entry_key" to PropertyRule(ValueType.TEXT),
-    )
-    val upload = EventDefinition("emotion_audio_upload_finished", properties = keys + mapOf(
-        "outcome" to text("success", "failed", "unknown", "cancelled"),
-        "failure_stage" to text("none", "file", "url_request", "upload"),
-        "cache_reused" to PropertyRule(ValueType.BOOLEAN, required = true),
-        "duration_ms" to duration,
-    ))
+    private val result =
+        keys +
+            mapOf(
+                "outcome" to text("success", "failed", "unknown", "cancelled"),
+                "entry_key" to PropertyRule(ValueType.TEXT),
+            )
+    val upload =
+        EventDefinition(
+            "emotion_audio_upload_finished",
+            properties =
+                keys +
+                    mapOf(
+                        "outcome" to text("success", "failed", "unknown", "cancelled"),
+                        "failure_stage" to text("none", "file", "url_request", "upload"),
+                        "cache_reused" to PropertyRule(ValueType.BOOLEAN, required = true),
+                        "duration_ms" to duration,
+                    ),
+        )
     val finished = EventDefinition("emotion_record_submit_finished", properties = result + ("duration_ms" to duration))
-    val viewed = EventDefinition("emotion_record_result_viewed", properties = result + ("feedback_elapsed_ms" to duration))
+    val viewed =
+        EventDefinition(
+            "emotion_record_result_viewed",
+            properties =
+                result + ("feedback_elapsed_ms" to duration),
+        )
     val definitions = listOf(upload, finished, viewed)
 }
 
@@ -49,38 +70,58 @@ class RecordSubmission internal constructor(
     fun audioFinished(observation: AudioUploadObservation) {
         if (uploadRecorded || finished) return
         uploadRecorded = true
-        emit(RecordSaveEvents.upload, fields + mapOf(
-            "outcome" to EventValue.Text(observation.outcome.name.lowercase()),
-            "failure_stage" to EventValue.Text(observation.failureStage.name.lowercase()),
-            "cache_reused" to EventValue.Flag(observation.cacheReused),
-            "duration_ms" to EventValue.Integer(observation.durationMs.coerceAtLeast(0)),
-        ))
+        emit(
+            RecordSaveEvents.upload,
+            fields +
+                mapOf(
+                    "outcome" to EventValue.Text(observation.outcome.name.lowercase()),
+                    "failure_stage" to EventValue.Text(observation.failureStage.name.lowercase()),
+                    "cache_reused" to EventValue.Flag(observation.cacheReused),
+                    "duration_ms" to EventValue.Integer(observation.durationMs.coerceAtLeast(0)),
+                ),
+        )
     }
 
     fun finish(result: EmotionRegistrationResult): RecordResultReceipt? {
         val entry = (result as? EmotionRegistrationResult.Success)?.id?.takeIf { it > 0 }
-        val outcome = when (result) {
-            is EmotionRegistrationResult.Success -> if (entry != null) "success" else "unknown"
-            EmotionRegistrationResult.Rejected,
-            EmotionRegistrationResult.AudioUnavailable,
-            EmotionRegistrationResult.AudioUploadFailed -> "failed"
-            EmotionRegistrationResult.Unavailable -> "unknown"
-        }
+        val outcome =
+            when (result) {
+                is EmotionRegistrationResult.Success -> if (entry != null) "success" else "unknown"
+
+                EmotionRegistrationResult.Rejected,
+                EmotionRegistrationResult.AudioUnavailable,
+                EmotionRegistrationResult.AudioUploadFailed,
+                -> "failed"
+
+                EmotionRegistrationResult.Unavailable -> "unknown"
+            }
         return complete(outcome, entry)
     }
 
-    fun cancelled() { complete("cancelled", null) }
+    fun cancelled() {
+        complete("cancelled", null)
+    }
 
-    private fun complete(outcome: String, entry: Long?): RecordResultReceipt? {
+    private fun complete(
+        outcome: String,
+        entry: Long?,
+    ): RecordResultReceipt? {
         if (finished) return null
         finished = true
-        val resultFields = fields + mapOf("outcome" to EventValue.Text(outcome)) +
-            entry?.let { mapOf("entry_key" to EventValue.Text(it.toString())) }.orEmpty()
-        emit(RecordSaveEvents.finished, resultFields + ("duration_ms" to EventValue.Integer(started.elapsedNow().inWholeMilliseconds)))
+        val resultFields =
+            fields + mapOf("outcome" to EventValue.Text(outcome)) +
+                entry?.let { mapOf("entry_key" to EventValue.Text(it.toString())) }.orEmpty()
+        emit(
+            RecordSaveEvents.finished,
+            resultFields + ("duration_ms" to EventValue.Integer(started.elapsedNow().inWholeMilliseconds)),
+        )
         return RecordResultReceipt(monitoring, context, resultFields, started)
     }
 
-    private fun emit(definition: EventDefinition, values: Map<String, EventValue>) {
+    private fun emit(
+        definition: EventDefinition,
+        values: Map<String, EventValue>,
+    ) {
         runCatching { monitoring.track(DefinedEvent(definition, values), context) }
     }
 }
@@ -93,12 +134,19 @@ class RecordResultReceipt internal constructor(
     private val started: TimeSource.Monotonic.ValueTimeMark,
 ) {
     private var shown = false
+
     fun shown() {
         if (shown) return
         shown = true
         runCatching {
-            monitoring.track(DefinedEvent(RecordSaveEvents.viewed, fields +
-                ("feedback_elapsed_ms" to EventValue.Integer(started.elapsedNow().inWholeMilliseconds))), context)
+            monitoring.track(
+                DefinedEvent(
+                    RecordSaveEvents.viewed,
+                    fields +
+                        ("feedback_elapsed_ms" to EventValue.Integer(started.elapsedNow().inWholeMilliseconds)),
+                ),
+                context,
+            )
         }
     }
 }

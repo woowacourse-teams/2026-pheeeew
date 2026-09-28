@@ -173,21 +173,24 @@ internal fun EventValue.primitive(): JsonPrimitive =
     }
 
 // Optional on historical envelopes: never backfill classification while restoring or sending.
-private val COLLECTION_PROPERTY_RULES = mapOf(
-    "product_generation" to PropertyRule(ValueType.TEXT, maxLength = 80),
-    "data_source" to PropertyRule(ValueType.TEXT, allowed = DataSource.entries.map { it.wireValue }.toSet()),
-    "is_test_user" to PropertyRule(ValueType.BOOLEAN),
-    "is_research_participant" to PropertyRule(ValueType.BOOLEAN),
-    "classification_source" to PropertyRule(
-        ValueType.TEXT,
-        allowed = ClassificationSource.entries.map { it.wireValue }.toSet(),
-    ),
-)
+private val COLLECTION_PROPERTY_RULES =
+    mapOf(
+        "product_generation" to PropertyRule(ValueType.TEXT, maxLength = 80),
+        "data_source" to PropertyRule(ValueType.TEXT, allowed = DataSource.entries.map { it.wireValue }.toSet()),
+        "is_test_user" to PropertyRule(ValueType.BOOLEAN),
+        "is_research_participant" to PropertyRule(ValueType.BOOLEAN),
+        "classification_source" to
+            PropertyRule(
+                ValueType.TEXT,
+                allowed = ClassificationSource.entries.map { it.wireValue }.toSet(),
+            ),
+    )
 
-internal fun CollectionMetadata.eventProperties(): Map<String, JsonPrimitive> = buildMap {
-    put("product_generation", JsonPrimitive(productGeneration))
-    put("data_source", JsonPrimitive(dataSource.wireValue))
-    put("classification_source", JsonPrimitive(classificationSource.wireValue))
-    isTestUser?.let { put("is_test_user", JsonPrimitive(it)) }
-    isResearchParticipant?.let { put("is_research_participant", JsonPrimitive(it)) }
-}
+internal fun CollectionMetadata.eventProperties(): Map<String, JsonPrimitive> =
+    buildMap {
+        put("product_generation", JsonPrimitive(productGeneration))
+        put("data_source", JsonPrimitive(dataSource.wireValue))
+        put("classification_source", JsonPrimitive(classificationSource.wireValue))
+        isTestUser?.let { put("is_test_user", JsonPrimitive(it)) }
+        isResearchParticipant?.let { put("is_research_participant", JsonPrimitive(it)) }
+    }

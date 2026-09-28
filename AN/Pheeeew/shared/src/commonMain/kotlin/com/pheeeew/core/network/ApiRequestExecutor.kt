@@ -121,11 +121,16 @@ class ApiRequestExecutor internal constructor(
             )
         }
 
-        val attempt = monitoringEndpoint?.let { endpoint ->
-            runCatching { attemptObserver?.started(endpoint, "PUT") }.getOrNull()
-        }
+        val attempt =
+            monitoringEndpoint?.let { endpoint ->
+                runCatching { attemptObserver?.started(endpoint, "PUT") }.getOrNull()
+            }
         val started = TimeSource.Monotonic.markNow()
-        fun finish(outcome: HttpAttemptOutcome, status: Int? = null) {
+
+        fun finish(
+            outcome: HttpAttemptOutcome,
+            status: Int? = null,
+        ) {
             runCatching { attempt?.completed(outcome, status, started.elapsedNow().inWholeMilliseconds) }
         }
         val response =

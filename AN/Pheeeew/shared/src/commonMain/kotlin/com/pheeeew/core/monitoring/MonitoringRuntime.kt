@@ -352,7 +352,8 @@ class MonitoringRuntime(
                 "build_number" to JsonPrimitive(config.buildNumber),
                 "os_version" to JsonPrimitive(config.osVersion),
                 "device_class" to JsonPrimitive(config.deviceClass),
-            ) + config.collection.eventProperties() + context.parentOperationId?.let { mapOf("parent_operation_id" to JsonPrimitive(it)) }.orEmpty()
+            ) + config.collection.eventProperties() +
+                context.parentOperationId?.let { mapOf("parent_operation_id" to JsonPrimitive(it)) }.orEmpty()
         append(EventEnvelope(definition.name, time, JsonObject(fields + common)))
     }
 

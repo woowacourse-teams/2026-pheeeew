@@ -42,10 +42,19 @@ data class CollectionMetadata(
     }
 }
 
-enum class DataSource(val wireValue: String) {
-    LIVE("live"), MOCK("mock"), PREVIEW("preview"), UNKNOWN("unknown"),
+enum class DataSource(
+    val wireValue: String,
+) {
+    LIVE("live"),
+    MOCK("mock"),
+    PREVIEW("preview"),
+    UNKNOWN("unknown"),
 }
 
-enum class ClassificationSource(val wireValue: String) {
-    BUILD("build"), CONFIGURATION("configuration"), UNKNOWN("unknown"),
+enum class ClassificationSource(
+    val wireValue: String,
+) {
+    BUILD("build"),
+    CONFIGURATION("configuration"),
+    UNKNOWN("unknown"),
 }

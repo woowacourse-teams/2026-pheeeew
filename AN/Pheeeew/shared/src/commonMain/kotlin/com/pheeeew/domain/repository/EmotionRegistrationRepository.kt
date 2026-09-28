@@ -21,4 +21,5 @@ data class AudioUploadObservation(
 )
 
 enum class AudioUploadOutcome { SUCCESS, FAILED, UNKNOWN, CANCELLED }
+
 enum class AudioUploadStage { NONE, FILE, URL_REQUEST, UPLOAD }
