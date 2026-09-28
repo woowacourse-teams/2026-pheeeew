@@ -62,21 +62,21 @@ private val onboardingPages =
             illustration = Res.drawable.ic_emotion_discouraged,
         ),
         OnboardingPage(
-            message = "힘든 척하기도\n이제 지쳤어요.",
+            message = "힘든 척하기도\n이제 지쳤어.",
             illustration = Res.drawable.ic_emotion_exhausted,
         ),
         OnboardingPage(
-            message = "참으라고요?\n내가 제일 힘든데요.",
+            message = "참으라고?\n내가 제일 힘든데.",
             illustration = Res.drawable.ic_emotion_frustrated,
         ),
         OnboardingPage(
-            message = "남들도 힘들다지만\n일단 내가 제일 힘들어요!!",
+            message = "남들도 힘들다지만\n일단 내가 제일 힘들어!!",
             illustration = Res.drawable.ic_emotion_irritated,
         ),
         OnboardingPage(
-            message = "내가 제일 힘들다는 걸\n이 공간에서 표출해봐요!!",
+            message = "내가 제일 힘들다는 걸\n이 공간에서 표출해봐!!",
             illustration = Res.drawable.ic_emotion_angry,
-            supportingText = "참았던 마음을 지도에 뿜어봐요\n매일 50자, 목소리 30초\n아무것도 없이 남겨도 좋아요",
+            supportingText = "참았던 마음을 지도에 뿜어봐\n매일 50자, 목소리 30초\n아무것도 없이 남겨도 좋아",
         ),
     )
 
