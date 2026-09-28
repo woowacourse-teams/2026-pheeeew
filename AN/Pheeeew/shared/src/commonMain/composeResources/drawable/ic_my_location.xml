@@ -1,11 +1,21 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    android:width="24dp"
-    android:height="24dp"
-    android:viewportWidth="960"
-    android:viewportHeight="960">
-    <group android:translateY="960">
-        <path
-            android:fillColor="#1F1F1F"
-            android:pathData="M440-82v-40q-125-14-214.5-103.5T122-440H82q-17 0-28.5-11.5T42-480q0-17 11.5-28.5T82-520h40q14-125 103.5-214.5T440-838v-40q0-17 11.5-28.5T480-918q17 0 28.5 11.5T520-878v40q125 14 214.5 103.5T838-520h40q17 0 28.5 11.5T918-480q0 17-11.5 28.5T878-440h-40q-14 125-103.5 214.5T520-122v40q0 17-11.5 28.5T480-42q-17 0-28.5-11.5T440-82Zm238-200q82-82 82-198t-82-198q-82-82-198-82t-198 82q-82 82-82 198t82 198q82 82 198 82t198-82Zm-311-85q-47-47-47-113t47-113q47-47 113-47t113 47q47 47 47 113t-47 113q-47 47-113 47t-113-47Zm169.5-56.5Q560-447 560-480t-23.5-56.5Q513-560 480-560t-56.5 23.5Q400-513 400-480t23.5 56.5Q447-400 480-400t56.5-23.5ZM480-480Z"/>
-    </group>
+    android:width="18dp"
+    android:height="18dp"
+    android:viewportWidth="18"
+    android:viewportHeight="18">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M8.86016,17.0562C13.3889,17.0562 17.0602,13.385 17.0602,8.85625C17.0602,4.32751 13.3889,0.65625 8.86016,0.65625C4.33142,0.65625 0.660156,4.32751 0.660156,8.85625C0.660156,13.385 4.33142,17.0562 8.86016,17.0562Z"
+        android:strokeColor="#000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.32" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M8.86016,0.65625V3.45625M17.0602,8.85625H14.2602M8.86016,17.0562V14.2562M0.660156,8.85625H3.46016"
+        android:strokeColor="#000000"
+        android:strokeLineCap="round"
+        android:strokeWidth="1.32" />
+    <path
+        android:fillColor="#000000"
+        android:pathData="M8.86004,10.1791C9.58905,10.1791 10.18,9.58808 10.18,8.85906C10.18,8.13005 9.58905,7.53906 8.86004,7.53906C8.13102,7.53906 7.54004,8.13005 7.54004,8.85906C7.54004,9.58808 8.13102,10.1791 8.86004,10.1791Z" />
 </vector>

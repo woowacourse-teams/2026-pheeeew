@@ -29,7 +29,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import com.pheeeew.feature.component.stamp.StampShapeCatalog
+import com.pheeeew.feature.component.stamp.balanceTwoLines
 import com.pheeeew.feature.component.stamp.stampFontSize
+import com.pheeeew.feature.component.stamp.stampLineHeight
 import com.pheeeew.feature.component.stamp.toStampTextLayout
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import kotlinx.coroutines.delay
@@ -118,24 +120,36 @@ private fun RasterizePinSymbol(
                         overlay?.let { with(it) { draw(fitted) } }
                         val area = shape.textArea
                         val layout = stamp.label.toStampTextLayout()
-                        val stampWidth = with(density) { fitted.width.toDp() }
-                        val stampHeight = with(density) { fitted.height.toDp() }
+                        val fontSize = stampFontSize(layout, EMOTION_PIN_SIZE, fontScale = density.fontScale)
+                        val textStyle =
+                            TextStyle(
+                                color = Color(stamp.textArgb.toInt()),
+                                fontSize = fontSize,
+                                lineHeight = stampLineHeight(fontSize),
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center,
+                            )
+                        val textWidth = (fitted.width * area.widthFraction).roundToInt()
+                        val maxLines = layout.characterCount.coerceAtLeast(1)
+                        val measuredLines =
+                            textMeasurer
+                                .measure(
+                                    layout.text,
+                                    style = textStyle,
+                                    overflow = TextOverflow.Clip,
+                                    maxLines = maxLines,
+                                    constraints = Constraints(minWidth = textWidth, maxWidth = textWidth),
+                                ).lineCount
                         val text =
                             textMeasurer.measure(
-                                layout.text,
-                                style =
-                                    TextStyle(
-                                        color = Color(stamp.textArgb.toInt()),
-                                        fontSize = stampFontSize(layout, area, stampWidth, stampHeight),
-                                        fontWeight = FontWeight.Bold,
-                                        textAlign = TextAlign.Center,
-                                    ),
-                                overflow = TextOverflow.Ellipsis,
-                                maxLines = 2,
+                                layout.balanceTwoLines(measuredLines),
+                                style = textStyle,
+                                overflow = TextOverflow.Clip,
+                                maxLines = maxLines,
                                 constraints =
                                     Constraints(
-                                        minWidth = (fitted.width * area.widthFraction).roundToInt(),
-                                        maxWidth = (fitted.width * area.widthFraction).roundToInt(),
+                                        minWidth = textWidth,
+                                        maxWidth = textWidth,
                                         maxHeight = (fitted.height * area.heightFraction).roundToInt(),
                                     ),
                             )
@@ -144,7 +158,7 @@ private fun RasterizePinSymbol(
                             topLeft =
                                 Offset(
                                     fitted.width * (area.centerX - area.widthFraction / 2),
-                                    fitted.height * (area.centerY - area.heightFraction / 2),
+                                    fitted.height * area.centerY - text.size.height / 2f,
                                 ),
                         )
                     }
