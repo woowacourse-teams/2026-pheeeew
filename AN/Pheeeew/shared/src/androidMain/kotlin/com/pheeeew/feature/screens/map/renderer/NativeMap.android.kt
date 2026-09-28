@@ -25,6 +25,8 @@ import com.pheeeew.feature.screens.map.MapUiModel
 import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
 import com.pheeeew.feature.screens.map.record.location.destination
 import com.pheeeew.feature.screens.map.record.location.recordCameraBounds
+import org.json.JSONArray
+import org.json.JSONObject
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -38,6 +40,10 @@ import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 private const val OPEN_FREE_MAP_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty"
+private const val MAP_FONT_REGULAR_ASSET_URL =
+    "asset://composeResources/pheeeew.shared.generated.resources/font/tap_noto_700.ttf"
+private const val MAP_FONT_BOLD_ASSET_URL =
+    "asset://composeResources/pheeeew.shared.generated.resources/font/tap_noto_900.ttf"
 private const val INITIAL_ZOOM = 11.0
 private const val MINIMUM_ZOOM = 2.0
 private const val MAXIMUM_ZOOM = 20.0
@@ -131,10 +137,27 @@ private class AndroidFoundationMapHost(
     private var cameraBoundsInstalled = false
     private var statusBarInsetPx = 0
     private var navigationBarInsetPx = 0
+    private var didConfigureKoreanFontFaces = false
+    private var pendingOriginalStyleJson: String? = null
+    private var isRestoringOriginalStyle = false
 
     private val mapLoadFailureListener =
         MapView.OnDidFailLoadingMapListener {
-            if (!released) onMapError(MapErrorUiModel.StyleLoadFailed)
+            val originalStyleJson = pendingOriginalStyleJson
+            val currentMap = map
+            if (!released && originalStyleJson != null && !isRestoringOriginalStyle && currentMap != null) {
+                isRestoringOriginalStyle = true
+                currentMap.setStyle(Style.Builder().fromJson(originalStyleJson)) { restoredStyle ->
+                    if (released) return@setStyle
+                    pendingOriginalStyleJson = null
+                    isRestoringOriginalStyle = false
+                    installLoadedStyle(restoredStyle)
+                }
+            } else if (!released) {
+                pendingOriginalStyleJson = null
+                isRestoringOriginalStyle = false
+                onMapError(MapErrorUiModel.StyleLoadFailed)
+            }
         }
 
     init {
@@ -192,13 +215,24 @@ private class AndroidFoundationMapHost(
             }
             readyMap.setStyle(Style.Builder().fromUri(OPEN_FREE_MAP_STYLE_URL)) { loadedStyle ->
                 if (released) return@setStyle
-                style = loadedStyle
-                AndroidCurrentLocationLayer.install(loadedStyle)
-                emotionPinSymbolLayer.install(loadedStyle)
-                styleLoaded = true
-                onMapRecovered()
-                renderLatestState()
-                publishViewport()
+                if (!didConfigureKoreanFontFaces) {
+                    didConfigureKoreanFontFaces = true
+                    val originalStyleJson = loadedStyle.json
+                    val styleJson = withKoreanFontFaces(originalStyleJson)
+                    if (styleJson != null) {
+                        pendingOriginalStyleJson = originalStyleJson
+                        isRestoringOriginalStyle = false
+                        readyMap.setStyle(Style.Builder().fromJson(styleJson)) configuredStyle@{ configuredStyle ->
+                            if (released) return@configuredStyle
+                            pendingOriginalStyleJson = null
+                            installLoadedStyle(configuredStyle)
+                        }
+                    } else {
+                        installLoadedStyle(loadedStyle)
+                    }
+                } else {
+                    installLoadedStyle(loadedStyle)
+                }
             }
         }
     }
@@ -219,6 +253,104 @@ private class AndroidFoundationMapHost(
         mapView.onDestroy()
         map = null
         style = null
+    }
+
+    private fun withKoreanFontFaces(styleJson: String): String? =
+        runCatching {
+            val style = JSONObject(styleJson)
+            val fontFaces = JSONObject()
+            mapOf(
+                "Noto Sans Regular" to MAP_FONT_REGULAR_ASSET_URL,
+                "Noto Sans Italic" to MAP_FONT_REGULAR_ASSET_URL,
+                "Noto Sans Bold" to MAP_FONT_BOLD_ASSET_URL,
+            ).forEach { (fontName, fontUrl) ->
+                val face =
+                    JSONObject()
+                        .put("url", fontUrl)
+                        .put("unicode-range", JSONArray(KOREAN_UNICODE_RANGES))
+                fontFaces.put(fontName, JSONArray().put(face))
+            }
+            style.put("font-faces", fontFaces)
+
+            val layers = style.optJSONArray("layers") ?: return@runCatching style.toString()
+            for (index in 0 until layers.length()) {
+                val layer = layers.optJSONObject(index) ?: continue
+                if (layer.optString("type") != "symbol") continue
+                val layerId = layer.optString("id")
+                val layout = layer.optJSONObject("layout") ?: continue
+                if (layerId.startsWith("highway-shield-") || layerId.startsWith("road_shield_")) {
+                    layout.put("visibility", "none")
+                }
+                val sizeScale =
+                    when {
+                        layerId.startsWith("label_country_") -> 0.76
+                        layerId in CITY_LABEL_LAYER_IDS -> 1.0
+                        layerId == "label_other" -> 1.05
+                        else -> 0.92
+                    }
+                scaleTextSize(layout, sizeScale)
+                if (layerId.startsWith("label_country_")) layer.put("maxzoom", 12)
+                if (layerId == "label_other") {
+                    layer.put("minzoom", 7)
+                    layout.remove("text-transform")
+                }
+                layout.optJSONArray("text-font")?.let { fonts ->
+                    for (fontIndex in 0 until fonts.length()) {
+                        if (fonts.optString(fontIndex) == "Noto Sans Bold" ||
+                            (layerId == "label_other" && fonts.optString(fontIndex) == "Noto Sans Italic")
+                        ) {
+                            fonts.put(fontIndex, "Noto Sans Regular")
+                        }
+                    }
+                }
+            }
+            style.toString()
+        }.getOrNull()
+
+    private fun scaleTextSize(
+        layout: JSONObject,
+        scale: Double,
+    ) {
+        when (val textSize = layout.opt("text-size")) {
+            is Number -> {
+                layout.put("text-size", textSize.toDouble() * scale)
+            }
+
+            is JSONArray -> {
+                when (textSize.optString(0)) {
+                    "interpolate", "interpolate-hcl", "interpolate-lab" -> {
+                        for (index in 4 until textSize.length() step 2) {
+                            val output = textSize.opt(index)
+                            if (output is Number) textSize.put(index, output.toDouble() * scale)
+                        }
+                    }
+
+                    "step" -> {
+                        for (index in 2 until textSize.length() step 2) {
+                            val output = textSize.opt(index)
+                            if (output is Number) textSize.put(index, output.toDouble() * scale)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private fun installLoadedStyle(loadedStyle: Style) {
+        style = loadedStyle
+        AndroidMapAppearance.apply(loadedStyle)
+        AndroidCurrentLocationLayer.install(loadedStyle)
+        emotionPinSymbolLayer.install(loadedStyle)
+        styleLoaded = true
+        onMapRecovered()
+        renderLatestState()
+        publishViewport()
+    }
+
+    private companion object {
+        val CITY_LABEL_LAYER_IDS = setOf("label_city", "label_city_capital", "label_town", "label_village")
+        val KOREAN_UNICODE_RANGES =
+            listOf("U+1100-11FF", "U+3130-318F", "U+A960-A97F", "U+AC00-D7AF", "U+D7B0-D7FF")
     }
 
     private fun applyCompassMargins() {

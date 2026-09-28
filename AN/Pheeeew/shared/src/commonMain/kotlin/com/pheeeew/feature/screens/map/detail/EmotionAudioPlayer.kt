@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,12 +21,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.map.drawPlaybackWaveform
 import com.pheeeew.feature.screens.map.record.noRippleClickable
@@ -56,6 +57,7 @@ internal fun EmotionAudioPlayer(
                         !audio.isPreparing && (audio.durationMillis != null || audio.error != null),
                         onPlaybackClick,
                     ).semantics {
+                        role = Role.Button
                         contentDescription =
                             when {
                                 audio.isPreparing -> "녹음 준비 중"
@@ -67,7 +69,7 @@ internal fun EmotionAudioPlayer(
                 contentAlignment = Alignment.Center,
             ) {
                 if (audio.isPreparing) {
-                    CircularProgressIndicator(Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
+                    CircularLoadingIndicator(Modifier.size(24.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
                     Canvas(Modifier.size(24.dp)) {
                         if (audio.isPlaying) {

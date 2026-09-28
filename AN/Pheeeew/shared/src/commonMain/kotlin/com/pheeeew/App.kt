@@ -142,6 +142,7 @@ fun App(
     var reportTarget by remember { mutableStateOf<Pair<Long, DrawableResource>?>(null) }
     var moderationMessage by remember { mutableStateOf<String?>(null) }
     var isGroupDetailVisible by remember { mutableStateOf(false) }
+    var isGroupCreateVisible by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         NavHost(
@@ -194,6 +195,7 @@ fun App(
                     dependencies = groupDependencies,
                     modifier = Modifier.fillMaxSize(),
                     onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
+                    onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
                 )
             }
 
@@ -234,7 +236,9 @@ fun App(
             )
         }
 
-        if (selectedDestination != AppDestination.Group || !isGroupDetailVisible) {
+        if (!isSettingsVisible &&
+            (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible))
+        ) {
             AppBottomNavigationBar(
                 modifier =
                     Modifier

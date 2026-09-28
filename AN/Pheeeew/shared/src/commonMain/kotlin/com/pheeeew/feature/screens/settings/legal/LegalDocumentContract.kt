@@ -1,4 +1,4 @@
-package com.pheeeew.legacy.feature.setting.legal
+package com.pheeeew.feature.screens.settings.legal
 
 internal sealed interface LegalDocumentUiState {
     data object Loading : LegalDocumentUiState

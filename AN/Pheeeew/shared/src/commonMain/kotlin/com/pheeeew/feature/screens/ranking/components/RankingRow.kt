@@ -59,7 +59,7 @@ fun RankingRow(
             maxLines = 1,
         )
         Column(horizontalAlignment = Alignment.End) {
-            Text("톡 개수", color = AppColors.RankingSecondaryContent, fontSize = 11.sp)
+            Text("감정 개수", color = AppColors.RankingSecondaryContent, fontSize = 11.sp)
             Text("${member.score}개", color = AppColors.RankingContent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
     }

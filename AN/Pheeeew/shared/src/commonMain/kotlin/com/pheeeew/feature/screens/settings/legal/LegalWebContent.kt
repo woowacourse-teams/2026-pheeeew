@@ -1,4 +1,4 @@
-package com.pheeeew.legacy.feature.setting.legal
+package com.pheeeew.feature.screens.settings.legal
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
