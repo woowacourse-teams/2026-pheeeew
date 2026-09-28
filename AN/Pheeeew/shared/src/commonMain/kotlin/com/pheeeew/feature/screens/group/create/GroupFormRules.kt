@@ -50,7 +50,8 @@ data class GroupFormRules(
 
     fun retainDescriptionForValidation(value: String): String = value.takeCodePoints(descriptionMax + 1)
 
-    fun retainStampLabelForValidation(value: String): String = value.takeCodePoints(stampLabelMax + 1)
+    /** 스탬프 문구는 입력 자체를 허용 길이로 제한합니다. */
+    fun limitStampLabel(value: String): String = value.takeCodePoints(stampLabelMax)
 
     private fun countCodePoints(value: String): Int {
         var index = 0
