@@ -32,6 +32,9 @@ enum FoundationMapStyle {
                 if let color = fillColor(sourceLayer: sourceLayer, layerID: layerID) {
                     layer.fillColor = NSExpression(forConstantValue: color)
                 }
+                if let color = fillOutlineColor(sourceLayer: sourceLayer, layerID: layerID) {
+                    layer.fillOutlineColor = NSExpression(forConstantValue: color)
+                }
                 continue
             }
 
@@ -50,6 +53,11 @@ enum FoundationMapStyle {
         if sourceLayer == "park" || layerID.contains("park") { return park }
         if sourceLayer == "landcover" && (layerID.contains("wood") || layerID.contains("grass")) { return park }
         if sourceLayer == "landuse" && layerID.contains("residential") { return landUse }
+        return nil
+    }
+
+    private static func fillOutlineColor(sourceLayer: String, layerID: String) -> UIColor? {
+        if sourceLayer == "park" || layerID.contains("park") { return parkOutline }
         return nil
     }
 

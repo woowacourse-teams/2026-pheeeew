@@ -7,6 +7,7 @@ import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory.backgroundColor
 import org.maplibre.android.style.layers.PropertyFactory.fillColor
+import org.maplibre.android.style.layers.PropertyFactory.fillOutlineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
 
 internal object AndroidMapAppearance {
@@ -29,8 +30,12 @@ internal object AndroidMapAppearance {
                 }
 
                 is FillLayer -> {
-                    fillColorFor(layer.sourceLayer.orEmpty().lowercase(), layerId)?.let { color ->
+                    val sourceLayer = layer.sourceLayer.orEmpty().lowercase()
+                    fillColorFor(sourceLayer, layerId)?.let { color ->
                         layer.setProperties(fillColor(color))
+                    }
+                    fillOutlineColorFor(sourceLayer, layerId)?.let { color ->
+                        layer.setProperties(fillOutlineColor(color))
                     }
                 }
 
@@ -53,6 +58,15 @@ internal object AndroidMapAppearance {
             sourceLayer == "park" || layerId.contains("park") -> park
             sourceLayer == "landcover" && (layerId.contains("wood") || layerId.contains("grass")) -> park
             sourceLayer == "landuse" && layerId.contains("residential") -> landUse
+            else -> null
+        }
+
+    private fun fillOutlineColorFor(
+        sourceLayer: String,
+        layerId: String,
+    ): Int? =
+        when {
+            sourceLayer == "park" || layerId.contains("park") -> parkOutline
             else -> null
         }
 
