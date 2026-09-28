@@ -20,6 +20,13 @@ internal class EmotionMapCache(
         require(ttlMillis > 0)
     }
 
+    fun invalidate(
+        bounds: EmotionMapBounds,
+        groupId: String?,
+    ) {
+        regions.removeAll { it.groupId == groupId && it.bounds.intersects(bounds) }
+    }
+
     fun completePage(
         bounds: EmotionMapBounds,
         groupId: String?,

@@ -15,6 +15,7 @@ import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.component.stamp.StampShapeId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -44,6 +45,40 @@ class RecordGroupSelectionTest {
         object : EmotionRegistrationRepository {
             override suspend fun register(registration: EmotionRegistration): EmotionRegistrationResult =
                 EmotionRegistrationResult.Unavailable
+        }
+
+    @Test
+    fun `등록 성공은 화면이 닫힌 뒤에도 서버 ID와 선택한 스탬프의 핀을 전달한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val model =
+                    MapRecordViewModel(
+                        IsWithinEmotionRecordRadiusUseCase(),
+                        object : EmotionRegistrationRepository {
+                            override suspend fun register(registration: EmotionRegistration) =
+                                EmotionRegistrationResult.Success(42)
+                        },
+                        GroupStampListRepository { GroupStampListLoadResult.Loaded(listOf(sampleGroup)) },
+                        InMemoryLastRecordedGroupRepository(),
+                    )
+                model.open(EmotionTypeUiModel.DISCOURAGED)
+                advanceUntilIdle()
+                val group = model.groupOptions.value.last()
+                model.onGroupSelectionComplete(group)
+                model.onSkip(CurrentLocation(37.52, 127.02, 5f, 0L))
+                model.onConfirmLocation()
+                advanceUntilIdle()
+                assertNull(model.uiModel.value.selectedEmotion)
+                val registered = model.registeredEmotions.first()
+                assertEquals(42L, registered.id)
+                assertEquals(37.52, registered.latitude)
+                assertEquals(127.02, registered.longitude)
+                assertEquals(EmotionTypeUiModel.DISCOURAGED, registered.emotion)
+                assertEquals(group.stamp, registered.stamp)
+            } finally {
+                Dispatchers.resetMain()
+            }
         }
 
     @Test

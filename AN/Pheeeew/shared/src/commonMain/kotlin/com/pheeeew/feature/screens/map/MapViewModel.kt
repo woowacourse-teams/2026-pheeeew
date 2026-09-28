@@ -41,6 +41,7 @@ class MapViewModel(
     private var displayedBounds: EmotionMapBounds? = null
     private var retryCursor: String? = null
     private var displayedPins = linkedMapOf<Long, EmotionMapPin>()
+    private val locallyRegisteredPins = linkedMapOf<Long, EmotionPinUiModel>()
 
     fun start() {
         if (hasStarted) return
@@ -48,7 +49,20 @@ class MapViewModel(
         requestCurrentLocation(moveCamera = false, requestPermission = false)
     }
 
+    fun onEmotionRegistered(pin: EmotionPinUiModel) {
+        locallyRegisteredPins[pin.id] = pin
+        onRecordLocationPickingChanged(false)
+        _uiModel.value =
+            _uiModel.value.copy(
+                emotionPins =
+                    (uiModel.value.emotionPins.filterNot { it.id == pin.id } + pin)
+                        .sortedWith(compareBy<EmotionPinUiModel> { Instant.parse(it.createdAt) }.thenBy { it.id }),
+            )
+        refreshEmotionPins()
+    }
+
     fun onEmotionHidden(id: Long) {
+        locallyRegisteredPins.remove(id)
         _uiModel.value = _uiModel.value.copy(hiddenEmotionIds = _uiModel.value.hiddenEmotionIds + id)
     }
 
@@ -200,7 +214,8 @@ class MapViewModel(
                                 }
                                 displayedBounds = request.bounds
                                 displayedPins = pins
-                                val ordered = pins.values.toOrderedUiPins()
+                                page.pins.forEach { locallyRegisteredPins.remove(it.id) }
+                                val ordered = pins.values.toOrderedUiPins(request.bounds)
                                 _uiModel.value =
                                     _uiModel.value.copy(
                                         emotionPins = ordered,
@@ -271,12 +286,22 @@ class MapViewModel(
     private fun publishSnapshot(bounds: EmotionMapBounds) {
         val pins = findEmotionMapSnapshot(bounds)?.pins ?: return
         displayedPins = pins.associateByTo(linkedMapOf()) { it.id }
-        _uiModel.value = _uiModel.value.copy(emotionPins = pins.toOrderedUiPins())
+        _uiModel.value = _uiModel.value.copy(emotionPins = pins.toOrderedUiPins(bounds))
     }
 
-    private fun Collection<EmotionMapPin>.toOrderedUiPins(): List<EmotionPinUiModel> =
-        sortedWith(compareBy<EmotionMapPin> { Instant.parse(it.createdAt) }.thenBy { it.id })
-            .map { it.toUiModel() }
+    private fun Collection<EmotionMapPin>.toOrderedUiPins(bounds: EmotionMapBounds): List<EmotionPinUiModel> =
+        (map { it.toUiModel() } + locallyRegisteredPins.values.filter { bounds.contains(it) })
+            .distinctBy { it.id }
+            .filterNot { it.id in _uiModel.value.hiddenEmotionIds }
+            .sortedWith(compareBy<EmotionPinUiModel> { Instant.parse(it.createdAt) }.thenBy { it.id })
+
+    private fun EmotionMapBounds.contains(pin: EmotionPinUiModel): Boolean =
+        pin.latitude in minLatitude..maxLatitude &&
+            if (minLongitude <= maxLongitude) {
+                pin.longitude in minLongitude..maxLongitude
+            } else {
+                pin.longitude >= minLongitude || pin.longitude <= maxLongitude
+            }
 
     fun onConnectivityChanged(connected: Boolean) {
         val wasOffline = _uiModel.value.isOffline

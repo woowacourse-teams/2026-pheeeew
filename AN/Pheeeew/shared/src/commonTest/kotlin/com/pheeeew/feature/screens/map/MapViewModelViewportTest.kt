@@ -334,6 +334,84 @@ class MapViewModelViewportTest {
             }
         }
 
+    @Test
+    fun `등록 핀은 즉시 보이고 빈 재조회에도 유지되며 서버 핀 확인 후 교체된다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val initial = CompletableDeferred<EmotionMapPageResult>()
+                val stale = CompletableDeferred<EmotionMapPageResult>()
+                val acknowledged = CompletableDeferred<EmotionMapPageResult>()
+                val deleted = CompletableDeferred<EmotionMapPageResult>()
+                val repository = QueuedEmotionMapRepository(initial, stale, acknowledged, deleted)
+                val vm =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                vm.onViewportChanged(bounds(127.0, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+                initial.complete(page(listOf(pin(1, 127.01, 37.51))))
+                runCurrent()
+                vm.onRecordLocationPickingChanged(true)
+                vm.onEmotionRegistered(pin(42, 127.02, 37.52).toUiModel())
+                assertEquals(false, vm.uiModel.value.isRecordLocationPicking)
+                assertEquals(listOf(1L, 42L), vm.pinIds())
+                runCurrent()
+                stale.complete(emptyPage())
+                runCurrent()
+                assertEquals(listOf(42L), vm.pinIds())
+                vm.refreshEmotionPins()
+                runCurrent()
+                val serverPin = pin(42, 127.021, 37.521).copy(rotationDegrees = 45.0)
+                acknowledged.complete(page(listOf(serverPin)))
+                runCurrent()
+                assertEquals(listOf(serverPin.toUiModel()), vm.uiModel.value.emotionPins)
+                vm.refreshEmotionPins()
+                runCurrent()
+                deleted.complete(emptyPage())
+                runCurrent()
+                assertEquals(emptyList(), vm.pinIds())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `오래된 캐시를 표시해도 등록 핀을 유지하고 숨긴 핀은 다시 나타나지 않는다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val initial = CompletableDeferred<EmotionMapPageResult>()
+                val refreshing = CompletableDeferred<EmotionMapPageResult>()
+                val repository = QueuedEmotionMapRepository(initial, refreshing)
+                val vm =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                vm.onViewportChanged(bounds(127.0, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+                initial.complete(page(listOf(pin(1, 127.02, 37.52))))
+                runCurrent()
+                vm.onEmotionRegistered(pin(42, 127.03, 37.53).toUiModel())
+                runCurrent()
+                vm.onViewportChanged(EmotionMapBounds(127.01, 37.51, 127.08, 37.58))
+                assertEquals(listOf(1L, 42L), vm.pinIds())
+                vm.onEmotionHidden(42)
+                refreshing.complete(emptyPage())
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(emptyList(), vm.pinIds())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun bounds(
         minLongitude: Double,
         minLatitude: Double,

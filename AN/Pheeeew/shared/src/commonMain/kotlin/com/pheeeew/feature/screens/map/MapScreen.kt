@@ -140,11 +140,13 @@ fun MapScreen(
             else -> requestInputBack()
         }
     }
-    LaunchedEffect(recordUiModel.step, notice) {
+    LaunchedEffect(recordViewModel, viewModel) {
+        recordViewModel.registeredEmotions.collect(viewModel::onEmotionRegistered)
+    }
+    LaunchedEffect(recordUiModel.step) {
         if (recordUiModel.step == RecordFlowStepUiModel.Closed) {
             voiceRecorder.clear()
             viewModel.onRecordLocationPickingChanged(false)
-            if (notice?.isError == false) viewModel.refreshEmotionPins()
         }
     }
     var recordViewport by remember { mutableStateOf<RecordMapViewport?>(null) }
