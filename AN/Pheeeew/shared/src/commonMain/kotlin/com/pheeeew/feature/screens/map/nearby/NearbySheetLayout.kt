@@ -131,7 +131,7 @@ internal fun NearbySheetLayout(
                             .then(if (expanded) Modifier.statusBarsPadding() else Modifier),
                     ) {
                         SheetDragHandle(
-                            Modifier.pointerInput(availableHeightPx) {
+                            Modifier.height(16.dp).pointerInput(availableHeightPx) {
                                 detectVerticalDragGestures(
                                     onDragStart = {
                                         dragging = true
