@@ -3,12 +3,6 @@ package com.pheeeew.feature.screens.group.detail.component
 import androidx.compose.ui.graphics.Color
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import org.jetbrains.compose.resources.DrawableResource
-import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.tap_face_angry
-import pheeeew.shared.generated.resources.tap_face_annoyed
-import pheeeew.shared.generated.resources.tap_face_blocked
-import pheeeew.shared.generated.resources.tap_face_defeated
-import pheeeew.shared.generated.resources.tap_face_tired
 
 internal enum class TapReactionKind {
     Face,
@@ -37,7 +31,7 @@ internal object TapCatalog {
                 TapEmotion(
                     label = "답답",
                     color = Color(0xFFF8D3C0),
-                    face = Res.drawable.tap_face_blocked,
+                    face = EmotionFeedbackCatalog.face(kind),
                     texts = listOf("아오!!", "으아아", "꽉 막혔어", "후우…"),
                     emojis = listOf("😮‍💨", "😤"),
                 )
@@ -47,7 +41,7 @@ internal object TapCatalog {
                 TapEmotion(
                     label = "짜증",
                     color = Color(0xFFF3C7D6),
-                    face = Res.drawable.tap_face_annoyed,
+                    face = EmotionFeedbackCatalog.face(kind),
                     texts = listOf("아 진짜!", "으으…", "또?!", "그만 좀!"),
                     emojis = listOf("💢", "🙄", "😑"),
                 )
@@ -57,7 +51,7 @@ internal object TapCatalog {
                 TapEmotion(
                     label = "지침",
                     color = Color(0xFFE1D9F0),
-                    face = Res.drawable.tap_face_tired,
+                    face = EmotionFeedbackCatalog.face(kind),
                     texts = listOf("ㅠㅠ", "방전…", "기력 0", "눕고 싶다"),
                     emojis = listOf("🫠", "🥱", "🪫"),
                 )
@@ -67,7 +61,7 @@ internal object TapCatalog {
                 TapEmotion(
                     label = "좌절",
                     color = Color(0xFFCCE5F2),
-                    face = Res.drawable.tap_face_defeated,
+                    face = EmotionFeedbackCatalog.face(kind),
                     texts = listOf("ㅠㅠ", "털썩…", "안 돼…", "와르르"),
                     emojis = listOf("😭", "🥲", "💧"),
                 )
@@ -77,7 +71,7 @@ internal object TapCatalog {
                 TapEmotion(
                     label = "분노",
                     color = Color(0xFFF5BEB3),
-                    face = Res.drawable.tap_face_angry,
+                    face = EmotionFeedbackCatalog.face(kind),
                     texts = listOf("으아악!!", "부글부글", "폭발 직전", "!!!"),
                     emojis = listOf("😡", "🤬", "🔥"),
                 )

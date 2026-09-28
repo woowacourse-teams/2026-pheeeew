@@ -5,11 +5,6 @@ import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.emotion_face_angry
-import pheeeew.shared.generated.resources.emotion_face_discouraged
-import pheeeew.shared.generated.resources.emotion_face_exhausted
-import pheeeew.shared.generated.resources.emotion_face_frustrated
-import pheeeew.shared.generated.resources.emotion_face_irritated
 import pheeeew.shared.generated.resources.group_detail_emoji_angry_1
 import pheeeew.shared.generated.resources.group_detail_emoji_angry_2
 import pheeeew.shared.generated.resources.group_detail_emoji_angry_3
@@ -45,6 +40,11 @@ import pheeeew.shared.generated.resources.group_detail_sticker_defeated_3
 import pheeeew.shared.generated.resources.group_detail_sticker_tired_1
 import pheeeew.shared.generated.resources.group_detail_sticker_tired_2
 import pheeeew.shared.generated.resources.group_detail_sticker_tired_3
+import pheeeew.shared.generated.resources.ic_emotion_angry
+import pheeeew.shared.generated.resources.ic_emotion_discouraged
+import pheeeew.shared.generated.resources.ic_emotion_exhausted
+import pheeeew.shared.generated.resources.ic_emotion_frustrated
+import pheeeew.shared.generated.resources.ic_emotion_irritated
 import kotlin.random.Random
 
 internal enum class EmotionStickerKind {
@@ -89,12 +89,14 @@ internal object EmotionFeedbackCatalog {
 
     fun face(emotion: EmotionKind): DrawableResource =
         when (emotion) {
-            EmotionKind.Blocked -> Res.drawable.emotion_face_frustrated
-            EmotionKind.Annoyed -> Res.drawable.emotion_face_irritated
-            EmotionKind.Tired -> Res.drawable.emotion_face_exhausted
-            EmotionKind.Defeated -> Res.drawable.emotion_face_discouraged
-            EmotionKind.Angry -> Res.drawable.emotion_face_angry
+            EmotionKind.Blocked -> Res.drawable.ic_emotion_frustrated
+            EmotionKind.Annoyed -> Res.drawable.ic_emotion_irritated
+            EmotionKind.Tired -> Res.drawable.ic_emotion_exhausted
+            EmotionKind.Defeated -> Res.drawable.ic_emotion_discouraged
+            EmotionKind.Angry -> Res.drawable.ic_emotion_angry
         }
+
+    fun buttonFace(emotion: EmotionKind): DrawableResource = face(emotion)
 
     fun name(emotion: EmotionKind): StringResource =
         when (emotion) {
