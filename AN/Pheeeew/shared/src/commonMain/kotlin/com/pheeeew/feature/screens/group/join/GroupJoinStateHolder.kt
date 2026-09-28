@@ -1,5 +1,8 @@
 package com.pheeeew.feature.screens.group.join
 
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.labels
+import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -17,6 +20,7 @@ class GroupJoinStateHolder(
     private val scope: CoroutineScope,
     private val dependencies: GroupJoinDependencies,
 ) {
+    private val telemetry = ProductMonitoring(dependencies.monitoring, "group_home")
     private val _uiState = MutableStateFlow(GroupJoinUiState())
     val uiState = _uiState.asStateFlow()
 
@@ -30,6 +34,7 @@ class GroupJoinStateHolder(
 
     fun open() {
         if (isOpen) return
+        telemetry.emit("group_join_started")
         isOpen = true
         _uiState.value = GroupJoinUiState(rateLimit = activeRateLimit)
     }
@@ -38,6 +43,7 @@ class GroupJoinStateHolder(
     fun close(): Boolean {
         if (!isOpen) return true
         if (_uiState.value.isDismissBlocked) return false
+        telemetry.emit("group_flow_closed", labels("operation_kind" to "join"))
 
         invalidateRequests()
         isOpen = false
@@ -93,7 +99,7 @@ class GroupJoinStateHolder(
 
         lookupJob =
             scope.launch {
-                val result = lookup(code)
+                val result = telemetry.operation("group_lookup_finished").observe(::resultLabel) { lookup(code) }
                 if (!isCurrentLookup(requestId, code)) return@launch
 
                 _uiState.update { state ->
@@ -129,7 +135,15 @@ class GroupJoinStateHolder(
 
         joinJob =
             scope.launch {
-                val result = join(found.group.id, found.requestedCode)
+                val result =
+                    telemetry
+                        .operation(
+                            "group_join_finished",
+                            labels("group_key" to found.group.id.value),
+                            started = "group_join_submit_started",
+                        ).observe(::resultLabel) {
+                            join(found.group.id, found.requestedCode)
+                        }
                 if (!isCurrentJoin(requestId, operationKey)) return@launch
 
                 _uiState.update { state ->

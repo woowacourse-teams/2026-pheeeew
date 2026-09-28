@@ -79,6 +79,7 @@ internal fun GroupDetailReadyContent(
     onEmotionTap: (EmotionKind) -> Boolean,
     onResolvePressOutcome: () -> Unit,
     fixtureFeedbackOnAcceptedPress: Boolean = false,
+    onFeedbackShown: (com.pheeeew.feature.screens.group.model.GroupOperationKey) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
@@ -109,6 +110,7 @@ internal fun GroupDetailReadyContent(
                 onEmotionTap = onEmotionTap,
                 confirmedPress = confirmedPressFeedback,
                 fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
+                onFeedbackShown = onFeedbackShown,
                 preserveFeedbackWhileDisabled = pressStatus != GroupPressStatus.Idle,
             )
             Spacer(Modifier.height(20.dp))

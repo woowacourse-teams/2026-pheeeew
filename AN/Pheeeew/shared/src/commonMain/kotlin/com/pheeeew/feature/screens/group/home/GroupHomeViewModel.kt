@@ -2,6 +2,8 @@ package com.pheeeew.feature.screens.group.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.group.join.GroupJoinDependencies
 import com.pheeeew.feature.screens.group.join.GroupJoinFailure
 import com.pheeeew.feature.screens.group.join.GroupJoinStateHolder
@@ -20,6 +22,7 @@ class GroupHomeViewModel(
     private val groupListSource: GroupListSource,
     groupJoinDependencies: GroupJoinDependencies,
 ) : ViewModel() {
+    val telemetry = ProductMonitoring(groupJoinDependencies.monitoring, "group_home")
     private val _uiState = MutableStateFlow(GroupHomeUiState())
     val uiState = _uiState.asStateFlow()
     private val _isJoinSheetVisible = MutableStateFlow(false)
@@ -163,7 +166,11 @@ class GroupHomeViewModel(
         listJob =
             viewModelScope.launch {
                 try {
-                    val result = requestGroups()
+                    val result =
+                        telemetry
+                            .operation(
+                                "group_list_load_finished",
+                            ).observe(::resultLabel) { requestGroups() }
                     if (requestId != requestGeneration) return@launch
 
                     when (result) {

@@ -88,6 +88,7 @@ internal fun EmotionPad(
     onEmotionTap: (EmotionKind) -> Boolean,
     confirmedPress: GroupPressFeedback? = null,
     fixtureFeedbackOnAcceptedPress: Boolean = false,
+    onFeedbackShown: (com.pheeeew.feature.screens.group.model.GroupOperationKey) -> Unit = {},
     preserveFeedbackWhileDisabled: Boolean = false,
     modifier: Modifier = Modifier,
     reducedMotion: Boolean = rememberTapReducedMotion(),
@@ -113,6 +114,7 @@ internal fun EmotionPad(
     val scope = rememberCoroutineScope()
     val reduce = reducedMotion || scope.coroutineContext[MotionDurationScale]?.scaleFactor == 0f
     val focused = LocalWindowInfo.current.isWindowFocused
+    val feedbackShown by rememberUpdatedState(onFeedbackShown)
     val callback by rememberUpdatedState(onEmotionTap)
     val inputEnabled by rememberUpdatedState(enabled)
     val byKind = remember(counts) { counts.associateBy { it.kind } }
@@ -261,6 +263,8 @@ internal fun EmotionPad(
                 originY = origin?.y ?: (origins[index].second * unit),
                 pointer = origin?.pointer,
             )
+            withFrameNanos { }
+            if (focused) feedbackShown(press.operationKey)
         }
 
         Box(Modifier.fillMaxWidth().height((345 * unit).dp)) {

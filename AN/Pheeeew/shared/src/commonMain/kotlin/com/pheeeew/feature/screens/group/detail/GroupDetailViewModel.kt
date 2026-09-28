@@ -3,6 +3,9 @@ package com.pheeeew.feature.screens.group.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.domain.model.group.GroupRole
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.labels
+import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.detail.model.withDominantEmotionSummary
@@ -23,6 +26,7 @@ class GroupDetailViewModel(
     private val dependencies: GroupDetailDependencies,
     initialGroupName: String? = null,
 ) : ViewModel() {
+    val telemetry = ProductMonitoring(dependencies.monitoring, "group_detail", labels("group_key" to groupId.value))
     private val _uiState =
         MutableStateFlow(
             GroupDetailUiState(
@@ -100,7 +104,17 @@ class GroupDetailViewModel(
                     val result =
                         try {
                             withTimeoutOrNull(dependencies.requestPolicy.timeoutMillis) {
-                                dependencies.pressGroupEmotionAction.press(groupId, emotion)
+                                telemetry
+                                    .operation(
+                                        "group_emotion_press_finished",
+                                        labels(
+                                            "group_operation_key" to
+                                                "${operationKey.ownerInstanceId}:${operationKey.sequence}",
+                                        ),
+                                        started = "group_emotion_press_started",
+                                    ).observe(
+                                        ::resultLabel,
+                                    ) { dependencies.pressGroupEmotionAction.press(groupId, emotion) }
                             } ?: PressGroupEmotionResult.OutcomeUnknown
                         } catch (cancellation: CancellationException) {
                             _uiState.update { state ->
@@ -236,6 +250,14 @@ class GroupDetailViewModel(
         operationKey: GroupOperationKey,
         result: GroupCopyCodeResult,
     ) {
+        if (_uiState.value.copyRequest?.operationKey == operationKey &&
+            _uiState.value.overlay == GroupDetailOverlay.InviteCode
+        ) {
+            telemetry.emit(
+                "group_invite_copy_finished",
+                labels("outcome" to if (result == GroupCopyCodeResult.Copied) "success" else "failed"),
+            )
+        }
         _uiState.update { state ->
             val request = state.copyRequest
             if (state.overlay != GroupDetailOverlay.InviteCode || request?.operationKey != operationKey) {
@@ -342,7 +364,20 @@ class GroupDetailViewModel(
         loadJob =
             viewModelScope.launch {
                 try {
-                    val result = requestDetail()
+                    val result =
+                        telemetry
+                            .operation(
+                                "group_detail_load_finished",
+                            ).observe(::resultLabel) { requestDetail() }
+                    if (reconcileLeaveOutcome || reconcilePressOperationKey != null) {
+                        telemetry.emit(
+                            "operation_reconciled",
+                            labels(
+                                "operation_kind" to if (reconcileLeaveOutcome) "group_leave" else "group_press",
+                                "outcome" to resultLabel(result),
+                            ),
+                        )
+                    }
                     if (requestId != loadGeneration) return@launch
 
                     if (result is GroupDetailLoadResult.Loaded && result.detail.group.id != groupId) {
@@ -533,7 +568,14 @@ class GroupDetailViewModel(
                     val result =
                         try {
                             withTimeoutOrNull(dependencies.requestPolicy.timeoutMillis) {
-                                dependencies.leaveGroupAction.leave(groupId)
+                                telemetry
+                                    .operation(
+                                        "group_leave_finished",
+                                        labels(
+                                            "group_operation_key" to
+                                                "${operationKey.ownerInstanceId}:${operationKey.sequence}",
+                                        ),
+                                    ).observe(::resultLabel) { dependencies.leaveGroupAction.leave(groupId) }
                             } ?: LeaveGroupResult.OutcomeUnknown
                         } catch (cancellation: CancellationException) {
                             throw cancellation

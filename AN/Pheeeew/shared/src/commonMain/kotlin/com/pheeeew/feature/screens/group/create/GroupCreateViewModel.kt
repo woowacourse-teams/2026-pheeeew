@@ -3,6 +3,9 @@ package com.pheeeew.feature.screens.group.create
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.feature.component.stamp.StampShapeId
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.labels
+import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.group.create.model.StampColorSelection
 import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
 import com.pheeeew.feature.screens.group.create.model.StampTextColorOption
@@ -25,7 +28,9 @@ class GroupCreateViewModel(
     private val requestPolicy: CreateRequestPolicy = CreateRequestPolicy(),
     private val findCandidatesAction: FindGroupCreateCandidatesAction =
         FindGroupCreateCandidatesAction { GroupCreateCandidatesResult.Unavailable },
+    monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
 ) : ViewModel() {
+    val telemetry = ProductMonitoring(monitoring, "group_create")
     private val _uiState = MutableStateFlow(GroupCreateUiState())
     val uiState = _uiState.asStateFlow()
     private var lastAppliedHue: Float? = null
@@ -72,6 +77,23 @@ class GroupCreateViewModel(
         val normalizedDraft = current.draft.normalizedForSubmission()
         val errors = formRules.validate(normalizedDraft)
         if (errors.hasErrors) {
+            listOf(
+                "name" to errors.name,
+                "description" to errors.description,
+                "stamp_label" to errors.stampLabel,
+            ).forEach { (field, rule) ->
+                if (rule !=
+                    null
+                ) {
+                    telemetry.emit(
+                        "group_create_validation_failed",
+                        labels(
+                            "field" to field,
+                            "rule" to rule.name.lowercase(),
+                        ),
+                    )
+                }
+            }
             _uiState.update { state ->
                 if (state.submission == GroupCreateSubmissionState.Editing &&
                     state.colorSheet is StampColorSheetState.Closed
@@ -98,6 +120,9 @@ class GroupCreateViewModel(
     }
 
     fun onCancelConfirmation() {
+        if (_uiState.value.submission == GroupCreateSubmissionState.Confirming) {
+            telemetry.emit("group_create_confirmation_resolved", labels("action" to "cancel"))
+        }
         _uiState.update { state ->
             if (state.submission == GroupCreateSubmissionState.Confirming) {
                 state.copy(submission = GroupCreateSubmissionState.Editing)
@@ -115,6 +140,7 @@ class GroupCreateViewModel(
             return
         }
 
+        telemetry.emit("group_create_confirmation_resolved", labels("action" to "confirm"))
         submitDraft(
             draft = current.draft.normalizedForSubmission(),
             expectedSubmission = GroupCreateSubmissionState.Confirming,
@@ -153,7 +179,13 @@ class GroupCreateViewModel(
         viewModelScope.launch {
             val result =
                 try {
-                    findCandidatesAction.findCandidates(current.draft.name.trim())
+                    telemetry
+                        .operation(
+                            "operation_reconciled",
+                            labels("operation_kind" to "group_create_candidates"),
+                        ).observe(::resultLabel) {
+                            findCandidatesAction.findCandidates(current.draft.name.trim())
+                        }
                 } catch (cancelled: CancellationException) {
                     throw cancelled
                 } catch (exception: Exception) {
@@ -317,6 +349,7 @@ class GroupCreateViewModel(
             }
 
             state.submission == GroupCreateSubmissionState.Editing -> {
+                telemetry.emit("group_flow_closed", labels("operation_kind" to "create"))
                 true
             }
 

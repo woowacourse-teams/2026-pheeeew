@@ -76,6 +76,7 @@ fun GroupDetailScreen(
     actions: GroupDetailActions,
     modifier: Modifier = Modifier,
     fixtureFeedbackOnAcceptedPress: Boolean = false,
+    onFeedbackShown: (com.pheeeew.feature.screens.group.model.GroupOperationKey) -> Unit = {},
 ) {
     val title = uiState.detail?.group?.name ?: uiState.groupName ?: stringResource(Res.string.group_home_title)
     Box(
@@ -122,6 +123,7 @@ fun GroupDetailScreen(
                             onEmotionTap = actions.onEmotionTap,
                             onResolvePressOutcome = actions.onResolvePressOutcome,
                             fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
+                            onFeedbackShown = onFeedbackShown,
                         )
                     }
                 }

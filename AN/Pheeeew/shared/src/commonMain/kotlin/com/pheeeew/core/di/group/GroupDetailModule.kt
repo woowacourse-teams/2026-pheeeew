@@ -24,6 +24,7 @@ fun createGroupDetailDependencies(
         source = ApiGroupDetailSource(repository),
         pressGroupEmotionAction = ApiGroupPressAction(pressRepository),
         leaveGroupAction = ApiLeaveGroupAction(repository),
+        monitoring = apiClient.monitoring,
         errorReporter = errorReporter,
         operationKeyAllocator = operationKeyAllocator,
     )

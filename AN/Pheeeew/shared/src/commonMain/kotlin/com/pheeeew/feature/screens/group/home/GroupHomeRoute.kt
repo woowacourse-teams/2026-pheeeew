@@ -9,6 +9,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.group.join.GroupJoinSheet
 import com.pheeeew.feature.screens.group.join.GroupJoinSubmissionState
 import com.pheeeew.feature.screens.group.model.GroupId
@@ -25,6 +26,7 @@ fun GroupHomeRoute(
     onJoinSucceeded: (groupId: GroupId, operationKey: GroupOperationKey) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    ProductScreen(viewModel.telemetry, isCurrentDestination)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val joinUiState by viewModel.joinUiState.collectAsStateWithLifecycle()
     val isJoinSheetVisible by viewModel.isJoinSheetVisible.collectAsStateWithLifecycle()
