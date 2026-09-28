@@ -173,9 +173,7 @@ class GroupDetailViewModel(
             state.content is GroupDetailContent.NotFound
         ) {
             queuedEmotionPresses.clear()
-            _uiState.update { current ->
-                if (current.pendingEmotionPresses.isEmpty()) current else current.copy(pendingEmotionPresses = emptyMap())
-            }
+            _uiState.update { it.copy(pendingEmotionPresses = emptyMap()) }
             return
         }
         val emotion = queuedEmotionPresses.removeFirstOrNull() ?: return
