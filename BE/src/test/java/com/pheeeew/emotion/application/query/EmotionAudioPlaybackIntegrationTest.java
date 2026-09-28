@@ -8,6 +8,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import com.pheeeew.device.domain.Device;
@@ -94,20 +96,62 @@ class EmotionAudioPlaybackIntegrationTest {
     }
 
     @Test
-    void 녹음_목록과_메모_상세에서는_재생_URL을_발급하지_않는다() {
+    void 목록의_녹음에만_재생_URL을_발급하고_재조회하면_갱신한다() {
         // given
         Emotion memo = emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).memo("메모").build());
+        Emotion empty = emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).build());
         entityManager.flush();
+        PlaybackUrl first = PlaybackUrl.of("https://audio.example.test/first", Instant.now().plusSeconds(3600));
+        PlaybackUrl second = PlaybackUrl.of("https://audio.example.test/second", Instant.now().plusSeconds(3600));
+        when(issuer.issuePlayback(OBJECT_KEY)).thenReturn(first, second);
 
         // when / then
         var page = queryService.findFirstListPage(EmotionSearchBounds.of(126, 37, 128, 38), viewer.getPublicId());
         assertThat(page.items()).filteredOn(item -> item.id().equals(emotion.getId()))
                 .singleElement().satisfies(item -> {
                     assertThat(item.hasAudio()).isTrue();
+                    assertThat(item.audio()).isEqualTo(first);
+                });
+        assertThat(page.items()).filteredOn(item -> !item.id().equals(emotion.getId()))
+                .hasSize(2).allSatisfy(item -> {
+                    assertThat(item.hasAudio()).isFalse();
                     assertThat(item.audio()).isNull();
                 });
+        var refreshed = queryService.findFirstListPage(EmotionSearchBounds.of(126, 37, 128, 38), viewer.getPublicId());
+        assertThat(refreshed.items()).filteredOn(item -> item.id().equals(emotion.getId()))
+                .singleElement().satisfies(item -> assertThat(item.audio()).isEqualTo(second));
         assertThat(queryService.findById(memo.getId(), viewer.getPublicId()).audio()).isNull();
+        assertThat(queryService.findById(empty.getId(), viewer.getPublicId()).audio()).isNull();
+        verify(issuer, times(2)).issuePlayback(OBJECT_KEY);
+        verifyNoMoreInteractions(issuer);
+    }
+
+    @Test
+    void 목록은_현재_페이지의_녹음에만_URL을_발급하며_다음_커서에서도_반환한다() {
+        // given
+        for (int i = 0; i < 20; i++) {
+            emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).build());
+        }
+        entityManager.flush();
+        entityManager.clear();
+        PlaybackUrl playback = PlaybackUrl.of("https://audio.example.test/signed", Instant.now().plusSeconds(3600));
+        when(issuer.issuePlayback(OBJECT_KEY)).thenReturn(playback);
+
+        // when
+        var first = queryService.findFirstListPage(EmotionSearchBounds.of(126, 37, 128, 38), viewer.getPublicId());
+
+        // then
+        assertThat(first.items()).hasSize(20).allSatisfy(item -> assertThat(item.audio()).isNull());
+        assertThat(first.hasNext()).isTrue();
         verifyNoInteractions(issuer);
+        var second = queryService.findNextListPage(first.nextCursor(), viewer.getPublicId());
+        assertThat(second.items()).singleElement().satisfies(item -> {
+            assertThat(item.id()).isEqualTo(emotion.getId());
+            assertThat(item.audio()).isEqualTo(playback);
+        });
+        assertThat(second.hasNext()).isFalse();
+        assertThat(second.nextCursor()).isNull();
+        verify(issuer).issuePlayback(OBJECT_KEY);
     }
 
     @ParameterizedTest
@@ -130,6 +174,10 @@ class EmotionAudioPlaybackIntegrationTest {
         assertThatThrownBy(() -> queryService.findById(targetId, viewer.getPublicId()))
                 .isInstanceOfSatisfying(EmotionException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_NOT_VISIBLE));
+        if (!reason.equals("missing")) {
+            var page = queryService.findFirstListPage(EmotionSearchBounds.of(126, 37, 128, 38), viewer.getPublicId());
+            assertThat(page.items()).isEmpty();
+        }
         verifyNoInteractions(issuer);
     }
 
@@ -145,6 +193,11 @@ class EmotionAudioPlaybackIntegrationTest {
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE))
                 .hasCause(failure);
         verify(issuer).issuePlayback(OBJECT_KEY);
+        assertThatThrownBy(() -> queryService.findFirstListPage(
+                EmotionSearchBounds.of(126, 37, 128, 38), viewer.getPublicId()))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE))
+                .hasCause(failure);
     }
 
     @ParameterizedTest
@@ -155,6 +208,10 @@ class EmotionAudioPlaybackIntegrationTest {
 
         // when / then
         assertThatThrownBy(() -> queryService.findById(emotion.getId(), viewer.getPublicId()))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE));
+        assertThatThrownBy(() -> queryService.findFirstListPage(
+                EmotionSearchBounds.of(126, 37, 128, 38), viewer.getPublicId()))
                 .isInstanceOfSatisfying(EmotionException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE));
     }

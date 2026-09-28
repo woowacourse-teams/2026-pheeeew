@@ -1,6 +1,7 @@
 package com.pheeeew.emotion.presentation;
 
 import static com.pheeeew.emotion.fixture.EmotionFixture.서울시청_좌표;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
@@ -36,6 +37,7 @@ import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.StampFrame;
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -140,23 +142,31 @@ class EmotionControllerTest {
         verify(emotionQueryService).findById(42L, DEVICE_PUBLIC_ID);
     }
 
-    @Test
-    void 녹음_상세는_재생_URL과_만료_시각만_반환한다() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 녹음_목록과_상세는_내용_유형과_메모와_재생_정보를_순서대로_반환한다(boolean list) {
         // given
         Emotion emotion = Emotion.builder().requestId(UUID.randomUUID()).location(서울시청_좌표())
                 .state(EmotionState.FRUSTRATED).rotationDegrees(0).nickname("먼지구름").deviceId(1L)
                 .audio(Audio.builder().objectKey("private/voice.m4a").build()).build();
         var playback = PlaybackUrl.of(
                 "https://audio.example.test/signed", Instant.parse("2026-09-25T12:05:00Z"));
-        when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID))
-                .thenReturn(EmotionDetailView.of(emotion, List.of(), playback));
+        var view = EmotionDetailView.of(emotion, List.of(), playback);
+        when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(view);
+        when(emotionQueryService.findFirstListPage(any(), eq(DEVICE_PUBLIC_ID), any()))
+                .thenReturn(EmotionPageView.of(List.of(view), false, null));
+        String uri = list
+                ? "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38" : EMOTION_URI;
+        String path = list ? "$.items[0].properties" : "$.properties";
 
         // when / then
-        request(HttpMethod.GET, EMOTION_URI, "access-token").expectStatus().isOk().expectBody()
-                .jsonPath("$.properties.contentType").isEqualTo("AUDIO")
-                .jsonPath("$.properties.audio.playbackUrl").isEqualTo(playback.playbackUrl())
-                .jsonPath("$.properties.audio.expiresAt").isEqualTo("2026-09-25T12:05:00Z")
-                .jsonPath("$.properties.audio.objectKey").doesNotExist();
+        request(HttpMethod.GET, uri, "access-token").expectStatus().isOk().expectBody()
+                .jsonPath(path + ".contentType").isEqualTo("AUDIO")
+                .jsonPath(path + ".audio.playbackUrl").isEqualTo(playback.playbackUrl())
+                .jsonPath(path + ".audio.expiresAt").isEqualTo("2026-09-25T12:05:00Z")
+                .jsonPath(path + ".audio.objectKey").doesNotExist()
+                .consumeWith(result -> assertThat(new String(result.getResponseBody(), StandardCharsets.UTF_8))
+                        .containsPattern("\"contentType\"\\s*:\\s*\"AUDIO\"\\s*,\\s*\"memo\"\\s*:\\s*null\\s*,\\s*\"audio\"\\s*:"));
     }
 
     @Test
