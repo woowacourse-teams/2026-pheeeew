@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -36,6 +35,7 @@ import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.component.stamp.GroupStamp
+import com.pheeeew.feature.screens.map.record.noRippleClickable
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_close
@@ -135,7 +135,10 @@ private fun EmotionDetailGroupHeader(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+        Box(
+            Modifier.size(48.dp).noRippleClickable(true, onDismiss),
+            contentAlignment = Alignment.Center,
+        ) {
             Icon(
                 painterResource(Res.drawable.ic_close),
                 "닫기",
@@ -180,10 +183,12 @@ private fun EmotionDetailEmotionHeader(
             )
             Text(uiModel.createdAtLabel, color = AppColors.TextSecondary, fontSize = 12.sp)
         }
-        IconButton(
-            onClick = onMoreClick,
-            enabled = uiModel.actionsEnabled,
-            modifier = Modifier.align(Alignment.Top).size(48.dp),
+        Box(
+            Modifier
+                .align(Alignment.Top)
+                .size(48.dp)
+                .noRippleClickable(uiModel.actionsEnabled, onMoreClick),
+            contentAlignment = Alignment.Center,
         ) {
             Icon(painterResource(Res.drawable.ic_more), "더보기", Modifier.size(24.dp), tint = AppColors.GroupInk)
         }

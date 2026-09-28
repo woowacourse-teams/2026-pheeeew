@@ -9,12 +9,15 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -381,35 +384,38 @@ internal fun EmotionPad(
                                     }.testTag("emotion-surface-${kind.name}"),
                         )
                     }
-                    BasicText(
-                        text = emotion.label,
-                        modifier = Modifier.offset(0.dp, (116 * unit).dp).fillMaxWidth(),
-                        style =
-                            TextStyle(
-                                color = TapInk,
-                                fontFamily = font,
-                                fontSize = (16 * unit).sp,
-                                lineHeight = (19 * unit).sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                            ),
-                    )
-                    BasicText(
-                        text = formatCount(count),
-                        modifier =
-                            Modifier
-                                .offset(y = (138.6016f * unit).dp)
-                                .fillMaxWidth(),
-                        style =
-                            TextStyle(
-                                color = Color(0xFF777C78),
-                                fontFamily = font,
-                                fontSize = (20 * unit).sp,
-                                lineHeight = (24 * unit).sp,
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                            ),
-                    )
+                    Column(
+                        modifier = Modifier.offset(y = (116 * unit).dp).width((105 * unit).dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        BasicText(
+                            text = emotion.label,
+                            modifier = Modifier.fillMaxWidth(),
+                            style =
+                                TextStyle(
+                                    color = TapInk,
+                                    fontFamily = font,
+                                    fontSize = (16 * unit).sp,
+                                    lineHeight = (19 * unit).sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                ),
+                        )
+                        Spacer(Modifier.height((3.6f * unit).dp))
+                        BasicText(
+                            text = formatCount(count),
+                            modifier = Modifier.fillMaxWidth(),
+                            style =
+                                TextStyle(
+                                    color = Color(0xFF777C78),
+                                    fontFamily = font,
+                                    fontSize = (20 * unit).sp,
+                                    lineHeight = (24 * unit).sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center,
+                                ),
+                        )
+                    }
                 }
             }
 

@@ -20,9 +20,14 @@ data class DeviceSessionBuildConfig(
         require(version.matches(Regex("[A-Za-z0-9._+-]{1,64}"))) { "Invalid app version" }
     }
 
-    // Published legacy Release builds used PROD_URL. Debug shares no such provenance.
+    // Published legacy Release builds used PROD_URL. Debug gets an isolated dev session without touching old credentials.
     val legacyCredentialPolicy: LegacyCredentialPolicy
-        get() = if (isDebug) LegacyCredentialPolicy.UNCONFIRMED else LegacyCredentialPolicy.IMPORT_CURRENT_ENVIRONMENT
+        get() =
+            if (isDebug) {
+                LegacyCredentialPolicy.START_NEW_ENVIRONMENT_SESSION
+            } else {
+                LegacyCredentialPolicy.IMPORT_CURRENT_ENVIRONMENT
+            }
 
     fun policy(createProofProvider: () -> DeviceProofProvider): DeviceAttestationPolicy =
         if (attestationMode == "platform_only") {

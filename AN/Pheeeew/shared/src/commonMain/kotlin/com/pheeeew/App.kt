@@ -27,10 +27,15 @@ import com.pheeeew.core.di.createEmotionAudioRepository
 import com.pheeeew.core.di.createEmotionDetailRepository
 import com.pheeeew.core.di.createEmotionMapDependencies
 import com.pheeeew.core.di.createEmotionModerationDependencies
+import com.pheeeew.core.di.createEmotionRegistrationRepository
+import com.pheeeew.core.di.emotion.createNearbyEmotionViewModel
 import com.pheeeew.core.di.group.createGroupDependencies
+import com.pheeeew.core.di.group.createGroupStampListRepository
 import com.pheeeew.core.navigation.GroupRootDestination
 import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
+import com.pheeeew.core.permission.AppSettingsLauncher
+import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
@@ -40,6 +45,8 @@ import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailOverlay
 import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
+import com.pheeeew.feature.screens.map.nearby.NearbyEmotionSheet
+import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
@@ -52,8 +59,10 @@ import org.jetbrains.compose.resources.DrawableResource
 fun App(
     locationDependencies: LocationDependencies,
     apiDependencies: ApiDependencies,
+    lastRecordedGroupRepository: LastRecordedGroupRepository,
     appVersion: String,
     permissionSettingsLauncher: LocationPermissionSettingsLauncher,
+    appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
 ) {
@@ -85,11 +94,22 @@ fun App(
                 emotionMapDependencies.findSnapshot,
             )
         }
-
+    val registrationRepository =
+        remember(apiDependencies.client) { createEmotionRegistrationRepository(apiDependencies.client) }
+    val groupStampListRepository =
+        remember(apiDependencies.client) { createGroupStampListRepository(apiDependencies.client) }
     val mapRecordViewModel: MapRecordViewModel =
         viewModel {
-            MapRecordViewModel(IsWithinEmotionRecordRadiusUseCase())
+            MapRecordViewModel(
+                IsWithinEmotionRecordRadiusUseCase(),
+                registrationRepository,
+                groupStampListRepository,
+                lastRecordedGroupRepository,
+            )
         }
+
+    val nearbyViewModel: NearbyEmotionViewModel = viewModel { createNearbyEmotionViewModel(apiDependencies.client) }
+    val nearbyState by nearbyViewModel.state.collectAsState()
 
     val detailRepository =
         remember(apiDependencies.client) {
@@ -104,7 +124,6 @@ fun App(
     val detailState by detailViewModel.uiModel.collectAsState()
     val audioRepository = remember { createEmotionAudioRepository() }
 
-    // TODO: 병합 후 화면 상태와 moderation 상태의 소유 범위를 다시 확인한다.
     val moderation =
         remember(apiDependencies.client) {
             createEmotionModerationDependencies(apiDependencies.client)
@@ -132,7 +151,6 @@ fun App(
     var isGroupCreateVisible by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // TODO: 병합 후 상세 오버레이와 공통 피드백 UI의 표시 생명주기를 확인한다.
         NavHost(
             navController = navController,
             startDestination = MapRootDestination,
@@ -144,10 +162,22 @@ fun App(
                         viewModel = mapViewModel,
                         recordViewModel = mapRecordViewModel,
                         onEmotionPinClick = detailViewModel::open,
-                        onListClick = {},
+                        onListClick = nearbyViewModel::toggle,
+                        onViewportChanged = nearbyViewModel::onViewportChanged,
                         onSettingClick = { isSettingsVisible = true },
                         onEmotionBubbleClick = {},
+                        locationPermissionController = locationDependencies.permissionController,
+                        appSettingsLauncher = appSettingsLauncher,
                         modifier = Modifier.fillMaxSize(),
+                    )
+
+                    NearbyEmotionSheet(
+                        nearbyViewModel,
+                        onEmotionHidden = { id ->
+                            mapViewModel.onEmotionHidden(id)
+                            mapViewModel.refreshEmotionPins()
+                        },
+                        onLeaveEmotion = mapViewModel::onEmotionSelectorOpen,
                     )
 
                     EmotionDetailOverlay(
@@ -222,7 +252,7 @@ fun App(
             )
         }
 
-        if (!isSettingsVisible &&
+        if (!isSettingsVisible && !nearbyState.visible &&
             (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible))
         ) {
             AppBottomNavigationBar(
@@ -232,6 +262,7 @@ fun App(
                         .padding(bottom = AppBottomNavigationBarBottomSpacing),
                 selectedDestination = selectedDestination,
                 onDestinationSelected = { destination ->
+                    nearbyViewModel.dismiss()
                     val route =
                         when (destination) {
                             AppDestination.Map -> MapRootDestination

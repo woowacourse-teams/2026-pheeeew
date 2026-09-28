@@ -60,6 +60,9 @@ class IosDeviceCredentialStorage(
                 readString(
                     account,
                 )?.let { return@withContext CredentialRead.Found(Json.decodeFromString<DeviceCredentials>(it)) }
+                if (legacyPolicy == LegacyCredentialPolicy.START_NEW_ENVIRONMENT_SESSION) {
+                    return@withContext CredentialRead.Missing
+                }
                 val legacy = readString("refresh-token")
                 migrateLegacyCredentials(legacy, legacyPolicy) {
                     writeString(account, Json.encodeToString(it))

@@ -14,11 +14,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -47,6 +48,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -324,7 +326,7 @@ private fun EmotionBubble(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val isHovered by interactionSource.collectIsHoveredAsState()
-    val faceScale by
+    val interactionScale by
         animateFloatAsState(
             targetValue =
                 if (isPressed) {
@@ -348,10 +350,10 @@ private fun EmotionBubble(
         baseOffset.copy(
             y = baseOffset.y + if (!isExpanded && isBubblePressed) 4.dp else 0.dp,
         )
-    val targetIconSize = if (isExpanded) 58.dp.value else 28.dp.value
+    val targetScale = if (isExpanded) 1f else 32f / 52f
     val x = remember { Animatable(targetOffset.x.value) }
     val y = remember { Animatable(targetOffset.y.value) }
-    val iconSize = remember { Animatable(targetIconSize) }
+    val scale = remember { Animatable(targetScale) }
     val velocities = remember { floatArrayOf(0f, 0f, 0f) }
     val animationDelayMillis =
         if (isExpanded) {
@@ -359,7 +361,7 @@ private fun EmotionBubble(
         } else {
             (EmotionTypeUiModel.entries.lastIndex - emotion.ordinal) * 18L
         }
-    LaunchedEffect(targetOffset, targetIconSize, isExpanded) {
+    LaunchedEffect(targetOffset, targetScale, isExpanded) {
         delay(animationDelayMillis)
         coroutineScope {
             launch {
@@ -375,8 +377,8 @@ private fun EmotionBubble(
                 velocities[1] = 0f
             }
             launch {
-                iconSize.animateTo(
-                    targetValue = targetIconSize,
+                scale.animateTo(
+                    targetValue = targetScale,
                     animationSpec = EMOTION_SCALE_SPRING,
                     initialVelocity = velocities[2],
                 ) {
@@ -419,37 +421,45 @@ private fun EmotionBubble(
                 ),
             label = "emotionBubbleLabelAlpha",
         )
-    Column(
+    Box(
         modifier =
             Modifier
                 .offset(
-                    x = x.value.dp + floating.dp,
-                    y = y.value.dp - (5f * floating).dp,
-                ).graphicsLayer {
-                    rotationZ = if (isExpanded) 0f else -3f + floating * 7f
-                    scaleX = faceScale
-                    scaleY = faceScale
-                    translationY = faceHoverY.dp.toPx()
-                }.width(iconSize.value.dp)
-                .hoverable(interactionSource, enabled = isExpanded)
-                .then(
-                    if (isExpanded) {
-                        Modifier.clickable(
-                            interactionSource = interactionSource,
-                            indication = null,
-                            role = Role.Button,
-                            onClickLabel = "${emotion.label} 선택",
-                        ) { onEmotionClick(emotion) }
-                    } else {
-                        Modifier
-                    },
-                ),
-        horizontalAlignment = Alignment.CenterHorizontally,
+                    x = x.value.dp,
+                    y = y.value.dp,
+                ).size(width = 52.dp, height = 76.dp),
+        contentAlignment = Alignment.TopCenter,
     ) {
         Image(
             painter = painterResource(emotion.icon),
             contentDescription = null,
-            modifier = Modifier.size(iconSize.value.dp),
+            modifier =
+                Modifier
+                    .size(52.dp)
+                    .graphicsLayer {
+                        val scaleCompensation = (1f - scale.value) * 26f
+                        translationX = -scaleCompensation.dp.toPx() + floating.dp.toPx()
+                        translationY =
+                            -scaleCompensation.dp.toPx() -
+                            (5f * floating).dp.toPx() +
+                            faceHoverY.dp.toPx()
+                        scaleX = scale.value * interactionScale
+                        scaleY = scale.value * interactionScale
+                        rotationZ = if (isExpanded) 0f else -3f + floating * 7f
+                    }.clip(CircleShape)
+                    .hoverable(interactionSource, enabled = isExpanded)
+                    .then(
+                        if (isExpanded) {
+                            Modifier.clickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                                role = Role.Button,
+                                onClickLabel = "${emotion.label} 선택",
+                            ) { onEmotionClick(emotion) }
+                        } else {
+                            Modifier
+                        },
+                    ),
         )
         if (labelAlpha > 0f) {
             Text(
@@ -457,7 +467,12 @@ private fun EmotionBubble(
                 color = Color.Black,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.graphicsLayer { alpha = labelAlpha },
+                textAlign = TextAlign.Center,
+                modifier =
+                    Modifier
+                        .offset(y = 57.dp)
+                        .width(72.dp)
+                        .graphicsLayer { alpha = labelAlpha },
                 style =
                     TextStyle(
                         shadow =
@@ -474,7 +489,7 @@ private fun EmotionBubble(
 
 private fun EmotionTypeUiModel.offset(isExpanded: Boolean): DpOffset =
     if (isExpanded) {
-        DpOffset(x = (3 + ordinal * 67).dp, y = 12.dp)
+        DpOffset(x = (3 + ordinal * 67).dp, y = 53.dp)
     } else {
         when (this) {
             EmotionTypeUiModel.FRUSTRATED -> DpOffset(x = 127.dp, y = 180.dp)

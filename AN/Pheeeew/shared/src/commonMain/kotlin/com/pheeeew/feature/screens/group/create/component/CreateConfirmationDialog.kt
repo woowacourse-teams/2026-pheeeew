@@ -137,7 +137,7 @@ internal fun CreateConfirmationDialog(
                         text = stringResource(Res.string.group_create_confirm_cancel),
                         onClick = onDismiss,
                     )
-                    Spacer(Modifier.height(42.dp))
+                    Spacer(Modifier.height(32.dp))
                 }
             }
         }
@@ -261,7 +261,7 @@ internal fun CreateFailureDialog(
                         onClick = onDismiss,
                     )
                 }
-                Spacer(Modifier.height(42.dp))
+                Spacer(Modifier.height(32.dp))
             }
         }
     }

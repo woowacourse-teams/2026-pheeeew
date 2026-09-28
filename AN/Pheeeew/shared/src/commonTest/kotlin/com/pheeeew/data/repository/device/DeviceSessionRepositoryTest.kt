@@ -70,6 +70,15 @@ class DeviceSessionRepositoryTest {
                 migrateLegacyCredentials("legacy", LegacyCredentialPolicy.UNCONFIRMED, storage::write),
             )
             assertNull(storage.value)
+            assertEquals(
+                CredentialRead.Missing,
+                migrateLegacyCredentials(
+                    "legacy",
+                    LegacyCredentialPolicy.START_NEW_ENVIRONMENT_SESSION,
+                    storage::write,
+                ),
+            )
+            assertNull(storage.value)
             storage.rejectWrite = true
             assertIs<CredentialRead.Failure>(
                 migrateLegacyCredentials("legacy", LegacyCredentialPolicy.IMPORT_CURRENT_ENVIRONMENT, storage::write),

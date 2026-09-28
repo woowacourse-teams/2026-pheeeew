@@ -22,7 +22,12 @@ interface DeviceCredentialStorage {
 }
 
 /** Explicit migration decision supplied only after verifying the old install's environment. */
-enum class LegacyCredentialPolicy { UNCONFIRMED, IMPORT_CURRENT_ENVIRONMENT, BELONGS_TO_OTHER_ENVIRONMENT }
+enum class LegacyCredentialPolicy {
+    UNCONFIRMED,
+    IMPORT_CURRENT_ENVIRONMENT,
+    BELONGS_TO_OTHER_ENVIRONMENT,
+    START_NEW_ENVIRONMENT_SESSION,
+}
 
 /** Copy only; callers never delete the legacy entry, including on failed persistence. */
 internal suspend fun migrateLegacyCredentials(
@@ -30,7 +35,11 @@ internal suspend fun migrateLegacyCredentials(
     policy: LegacyCredentialPolicy,
     persist: suspend (DeviceCredentials) -> Boolean,
 ): CredentialRead {
-    if (token == null || policy == LegacyCredentialPolicy.BELONGS_TO_OTHER_ENVIRONMENT) return CredentialRead.Missing
+    if (token == null || policy == LegacyCredentialPolicy.BELONGS_TO_OTHER_ENVIRONMENT ||
+        policy == LegacyCredentialPolicy.START_NEW_ENVIRONMENT_SESSION
+    ) {
+        return CredentialRead.Missing
+    }
     if (policy == LegacyCredentialPolicy.UNCONFIRMED) return CredentialRead.Failure(true)
     if (token.isBlank()) return CredentialRead.Failure()
     val migrated = DeviceCredentials(refreshToken = token, generation = 1, preservesLegacyIdentity = true)
