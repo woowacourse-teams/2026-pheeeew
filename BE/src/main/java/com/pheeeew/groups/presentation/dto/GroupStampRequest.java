@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 
 public record GroupStampRequest(
         @NotBlank(message = "스탬프 글자는 필수입니다.")
-        @Size(min = 2, max = 4, message = "스탬프 글자는 2자 이상 4자 이하여야 합니다.")
+        @Size(min = 1, max = 4, message = "스탬프 글자는 1자 이상 4자 이하여야 합니다.")
         String text,
 
         @NotBlank(message = "글자 색은 필수입니다.")

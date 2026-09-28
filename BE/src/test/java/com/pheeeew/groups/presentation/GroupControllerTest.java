@@ -198,13 +198,24 @@ class GroupControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"한", "다섯글자임"})
-    void 스탬프_글자가_두_자에서_네_자가_아니면_400이다(String 글자) {
+    @ValueSource(strings = {"한", "기본", "네글자임"})
+    void 스탬프_글자가_한_자에서_네_자면_통과한다(String 글자) {
+        // given
+        when(groupService.update(eq(그룹_공개_식별자), eq(기기_공개_식별자), any(), any(), any()))
+                .thenReturn(기본_결과());
+
         // when
-        RestTestClient.ResponseSpec result = 변경한다("""
-                {"name": "한숨모임", "stamp": {"text": "%s", "textColor": "#FFFFFF",
-                 "backgroundColor": "#000000", "frame": "CIRCLE"}}
-                """.formatted(글자));
+        RestTestClient.ResponseSpec result = 스탬프_글자로_변경한다(글자);
+
+        // then
+        result.expectStatus().isOk();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"다섯글자임", "여섯글자입니다", "", "  "})
+    void 스탬프_글자가_네_자를_넘거나_비어_있으면_400이다(String 글자) {
+        // when
+        RestTestClient.ResponseSpec result = 스탬프_글자로_변경한다(글자);
 
         // then
         result.expectStatus().isBadRequest();
@@ -322,6 +333,13 @@ class GroupControllerTest {
 
         // then
         result.expectStatus().isEqualTo(409);
+    }
+
+    private RestTestClient.ResponseSpec 스탬프_글자로_변경한다(String 글자) {
+        return 변경한다("""
+                {"name": "한숨모임", "stamp": {"text": "%s", "textColor": "#FFFFFF",
+                 "backgroundColor": "#000000", "frame": "CIRCLE"}}
+                """.formatted(글자));
     }
 
     private String 스탬프_본문() {
