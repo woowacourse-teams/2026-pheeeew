@@ -21,8 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.settings.SettingsTheme
-import com.pheeeew.legacy.core.designsystem.theme.AppTheme
 
 internal const val SETTINGS_CONTACT_EMAIL = "contact@pheeeew.com"
 
@@ -60,9 +61,18 @@ internal fun ContactCard(
             Text(
                 "문의하기",
                 color = SettingsColors.Ink,
-                style = AppTheme.typography.sectionHeader.copy(fontWeight = FontWeight.Bold),
+                fontFamily = notoSansKrFontFamily(),
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.Bold,
             )
-            Text(SETTINGS_CONTACT_EMAIL, color = SettingsColors.Ink, style = AppTheme.typography.caption)
+            Text(
+                text = SETTINGS_CONTACT_EMAIL,
+                color = SettingsColors.Ink,
+                fontFamily = notoSansKrFontFamily(),
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+            )
         }
     }
 }

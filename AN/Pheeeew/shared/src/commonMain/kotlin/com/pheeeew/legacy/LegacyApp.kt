@@ -43,8 +43,8 @@ import com.pheeeew.legacy.feature.map.MapViewModel
 import com.pheeeew.legacy.feature.map.sighlist.SighModerationViewModel
 import com.pheeeew.legacy.feature.onboarding.OnboardingScreen
 import com.pheeeew.legacy.feature.setting.SettingsScreen
-import com.pheeeew.legacy.feature.setting.legal.LegalDocument
-import com.pheeeew.legacy.feature.setting.legal.LegalDocumentRoute
+import com.pheeeew.feature.screens.settings.legal.LegalDocument
+import com.pheeeew.feature.screens.settings.legal.LegalDocumentRoute
 import com.pheeeew.legacy.feature.splash.SplashScreen
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay

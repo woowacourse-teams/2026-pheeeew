@@ -1,4 +1,4 @@
-package com.pheeeew.legacy.feature.setting.legal
+package com.pheeeew.feature.screens.settings.legal
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable

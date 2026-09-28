@@ -15,9 +15,10 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.settings.SettingsTheme
-import com.pheeeew.legacy.core.designsystem.theme.AppTheme
 
 @Composable
 internal fun SettingsSectionTitle(
@@ -27,7 +28,10 @@ internal fun SettingsSectionTitle(
     Text(
         text = title,
         color = SettingsColors.Ink,
-        style = AppTheme.typography.sectionHeader.copy(fontWeight = FontWeight.Bold),
+        fontFamily = notoSansKrFontFamily(),
+        fontSize = 16.sp,
+        lineHeight = 22.sp,
+        fontWeight = FontWeight.Bold,
         modifier = modifier.fillMaxWidth().padding(horizontal = 26.dp).padding(bottom = 5.dp),
     )
 }

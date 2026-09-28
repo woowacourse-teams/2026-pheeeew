@@ -21,7 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,9 +34,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.DetailTopBar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.detail.component.GroupDetailNoticeSnackbar
 import com.pheeeew.feature.screens.group.detail.component.InviteCodeDialog
@@ -65,7 +65,6 @@ import pheeeew.shared.generated.resources.group_detail_retry
 import pheeeew.shared.generated.resources.group_detail_return_home
 import pheeeew.shared.generated.resources.group_home_error_illustration
 import pheeeew.shared.generated.resources.group_home_title
-import pheeeew.shared.generated.resources.ic_arrow_back
 
 @Composable
 fun GroupDetailScreen(
@@ -214,31 +213,11 @@ private fun GroupDetailTopBar(
     actions: GroupDetailActions,
 ) {
     val moreDescription = stringResource(Res.string.group_detail_more)
-    Row(
-        modifier = Modifier.fillMaxWidth().height(54.dp).padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Image(
-            painter = painterResource(Res.drawable.ic_arrow_back),
-            contentDescription = stringResource(Res.string.group_detail_back),
-            modifier =
-                Modifier
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .clickable(role = Role.Button, onClick = actions.onBack)
-                    .padding(9.dp),
-        )
-        Text(
-            text = title,
-            modifier = Modifier.weight(1f).padding(horizontal = 8.dp),
-            color = AppColors.GroupInk,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-        )
-        Box(modifier = Modifier.size(42.dp), contentAlignment = Alignment.Center) {
+    DetailTopBar(
+        title = title,
+        onBack = actions.onBack,
+        backContentDescription = stringResource(Res.string.group_detail_back),
+        rightContent = {
             androidx.compose.foundation.Canvas(
                 modifier =
                     Modifier
@@ -251,11 +230,7 @@ private fun GroupDetailTopBar(
                     drawCircle(
                         AppColors.GroupInk,
                         radius = 1.8.dp.toPx(),
-                        center =
-                            center.copy(
-                                y =
-                                    center.y + offset.dp.toPx(),
-                            ),
+                        center = center.copy(y = center.y + offset.dp.toPx()),
                     )
                 }
             }
@@ -263,9 +238,7 @@ private fun GroupDetailTopBar(
                 androidx.compose.ui.window.Popup(
                     alignment = Alignment.TopEnd,
                     onDismissRequest = actions.onDismissOverlay,
-                    properties =
-                        androidx.compose.ui.window
-                            .PopupProperties(focusable = true),
+                    properties = androidx.compose.ui.window.PopupProperties(focusable = true),
                 ) {
                     Box(
                         modifier =
@@ -286,8 +259,8 @@ private fun GroupDetailTopBar(
                     }
                 }
             }
-        }
-    }
+        },
+    )
 }
 
 @Composable
@@ -297,7 +270,7 @@ private fun LoadingContent() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        CircularProgressIndicator(color = AppColors.GroupInk)
+        CircularLoadingIndicator(color = AppColors.GroupInk)
         Spacer(Modifier.height(12.dp))
         Text(
             text = stringResource(Res.string.group_detail_loading),
