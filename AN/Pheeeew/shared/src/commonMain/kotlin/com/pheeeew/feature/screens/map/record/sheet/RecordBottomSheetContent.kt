@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
@@ -117,7 +118,7 @@ fun RecordBottomSheet(
         shape = AppShapes.BottomSheet,
         containerColor = AppColors.Surface,
         scrimColor = Color.Black.copy(alpha = 0.3f),
-        dragHandle = null,
+        dragHandle = { SheetDragHandle() },
     ) {
         RecordBottomSheetContent(
             selectedEmotion = selectedEmotion,
@@ -182,17 +183,6 @@ private fun RecordBottomSheetContent(
                     }
                 }.padding(horizontal = 20.dp, vertical = 16.dp),
     ) {
-        Box(
-            modifier =
-                Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .size(width = 94.dp, height = 3.dp)
-                    .clip(AppShapes.Pill)
-                    .background(AppColors.TextPrimary),
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Start,

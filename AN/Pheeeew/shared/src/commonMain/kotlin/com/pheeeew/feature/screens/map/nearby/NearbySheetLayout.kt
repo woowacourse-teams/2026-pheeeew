@@ -6,7 +6,6 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -16,8 +15,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
@@ -34,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.pheeeew.core.designsystem.component.SheetDragHandle
 
 /** Non-modal sheet: uses the legacy SighListSheet middle ratio and drag thresholds. */
 @Composable
@@ -104,8 +102,8 @@ internal fun NearbySheetLayout(
                             .navigationBarsPadding()
                             .then(if (expanded) Modifier.statusBarsPadding() else Modifier),
                     ) {
-                        Box(
-                            Modifier.fillMaxWidth().height(28.dp).pointerInput(availableHeightPx) {
+                        SheetDragHandle(
+                            Modifier.pointerInput(availableHeightPx) {
                                 detectVerticalDragGestures(
                                     onDragStart = {
                                         dragging = true
@@ -124,10 +122,7 @@ internal fun NearbySheetLayout(
                                     },
                                 )
                             },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Box(Modifier.size(36.dp, 4.dp).background(Color(0xFFD9D8D1), RoundedCornerShape(2.dp)))
-                        }
+                        )
                         content()
                     }
                 }
