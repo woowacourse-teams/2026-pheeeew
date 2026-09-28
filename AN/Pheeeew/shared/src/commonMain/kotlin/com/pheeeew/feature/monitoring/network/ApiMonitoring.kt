@@ -13,6 +13,14 @@ import com.pheeeew.core.network.HttpAttemptOutcome
 object ApiMonitoringEvents {
     val endpoints =
         setOf(
+            "emotion_map",
+            "emotion_list",
+            "emotion_detail",
+            "emotion_reaction",
+            "emotion_delete",
+            "emotion_block",
+            "user_block",
+            "group_stamps",
             "group_create",
             "group_list",
             "group_lookup",

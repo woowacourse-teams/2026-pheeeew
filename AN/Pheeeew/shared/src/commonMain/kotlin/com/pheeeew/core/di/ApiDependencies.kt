@@ -60,13 +60,16 @@ class ApiDependencies private constructor(
             val now = { Clock.System.now().toEpochMilliseconds() }
             val session =
                 DeviceSessionManager(
-                    DeviceSessionRepositoryImpl(
-                        KtorDeviceSessionApi(bootstrap.requests, diagnostics),
-                        storage,
-                        platform,
-                        attestationPolicy,
-                        now,
-                        diagnostics,
+                    com.pheeeew.feature.monitoring.product.MonitoredDeviceSession(
+                        DeviceSessionRepositoryImpl(
+                            KtorDeviceSessionApi(bootstrap.requests, diagnostics),
+                            storage,
+                            platform,
+                            attestationPolicy,
+                            now,
+                            diagnostics,
+                        ),
+                        monitoring,
                     ),
                     scope,
                     now,

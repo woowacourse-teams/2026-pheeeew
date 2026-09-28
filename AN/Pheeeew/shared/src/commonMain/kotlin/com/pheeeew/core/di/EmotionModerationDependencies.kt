@@ -25,9 +25,12 @@ fun createEmotionModerationDependencies(apiClient: ApiClient): EmotionModeration
             userBlockApi = UserBlockApi(requests),
             deleteApi = EmotionDeleteApi(requests),
         )
+    val observed =
+        com.pheeeew.feature.monitoring.product
+            .MonitoredModeration(repository, apiClient.monitoring)
     return EmotionModerationDependencies(
-        block = BlockUserUseCase(repository),
-        delete = DeleteEmotionUseCase(repository),
-        report = ReportEmotionUseCase(repository),
+        block = BlockUserUseCase(observed),
+        delete = DeleteEmotionUseCase(observed),
+        report = ReportEmotionUseCase(observed),
     )
 }

@@ -8,6 +8,9 @@ data class AudioPlayerState(
     val playing: Boolean = false,
     val loading: Boolean = false,
     val error: String? = null,
+    val durationMillis: Long = 0,
+    val positionMillis: Long = 0,
+    val completed: Boolean = false,
 )
 
 /** Shared playback for a recorded local file or a remote audio URL. */

@@ -2,8 +2,8 @@ package com.pheeeew.core.di
 
 import com.pheeeew.core.monitoring.ClassificationSource
 import com.pheeeew.core.monitoring.CollectionMetadata
-import com.pheeeew.core.monitoring.DataSource
 import com.pheeeew.core.monitoring.CollectionState
+import com.pheeeew.core.monitoring.DataSource
 import com.pheeeew.core.monitoring.EventDefinition
 import com.pheeeew.core.monitoring.EventEnvelope
 import com.pheeeew.core.monitoring.EventRegistry
@@ -18,9 +18,10 @@ import com.pheeeew.feature.monitoring.compat.MONITORING_PROPERTIES
 import com.pheeeew.feature.monitoring.compat.MonitoringEventNames
 import com.pheeeew.feature.monitoring.compat.MonitoringTicker
 import com.pheeeew.feature.monitoring.network.ApiMonitoringEvents
-import com.pheeeew.feature.screens.map.monitoring.RecordSaveEvents
-import com.pheeeew.feature.screens.map.monitoring.RecordFunnelEvents
 import com.pheeeew.feature.screens.group.monitoring.GroupMonitoringEvents
+import com.pheeeew.feature.screens.map.monitoring.ExplorationEvents
+import com.pheeeew.feature.screens.map.monitoring.RecordFunnelEvents
+import com.pheeeew.feature.screens.map.monitoring.RecordSaveEvents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -49,7 +50,10 @@ fun appMonitoringRegistry(): EventRegistry {
         }
     return EventRegistry(
         compatibility + LifecycleEvents.definitions + ApiMonitoringEvents.definitions +
-            GroupMonitoringEvents.definitions + RecordFunnelEvents.definitions + RecordSaveEvents.definitions,
+            com.pheeeew.feature.monitoring.product.ProductEvents.definitions + GroupMonitoringEvents.definitions +
+            RecordFunnelEvents.definitions +
+            RecordSaveEvents.definitions +
+            ExplorationEvents.definitions,
         setOf(
             "splash",
             "map",
@@ -236,6 +240,9 @@ fun appCollectionMetadata(environment: String) =
         dataSource = DataSource.LIVE,
         isTestUser = if (environment == "dev") true else null,
         classificationSource =
-            if (environment == "dev") ClassificationSource.BUILD
-            else ClassificationSource.UNKNOWN,
+            if (environment == "dev") {
+                ClassificationSource.BUILD
+            } else {
+                ClassificationSource.UNKNOWN
+            },
     )
