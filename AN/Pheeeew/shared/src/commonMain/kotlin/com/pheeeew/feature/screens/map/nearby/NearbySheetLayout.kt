@@ -28,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -87,6 +88,25 @@ internal fun NearbySheetLayout(
                             totalDrag = 0f
                         }
                     }
+                val latestExpanded by rememberUpdatedState(expanded)
+                val latestOnExpandedChange by rememberUpdatedState(onExpandedChange)
+                val listScrollConnection =
+                    remember(availableHeightPx, collapseThreshold) {
+                        NearbySheetNestedScrollConnection(
+                            middleOffset = middleOffset,
+                            collapseThreshold = collapseThreshold,
+                            isExpanded = { latestExpanded },
+                            onDrag = {
+                                draggedOffset = it
+                                dragging = true
+                            },
+                            onFinish = { collapse ->
+                                if (collapse) latestOnExpandedChange(false)
+                                dragging = false
+                                totalDrag = 0f
+                            },
+                        )
+                    }
                 Surface(
                     modifier =
                         Modifier
@@ -99,6 +119,7 @@ internal fun NearbySheetLayout(
                     Column(
                         Modifier
                             .fillMaxSize()
+                            .nestedScroll(listScrollConnection)
                             .navigationBarsPadding()
                             .then(if (expanded) Modifier.statusBarsPadding() else Modifier),
                     ) {
