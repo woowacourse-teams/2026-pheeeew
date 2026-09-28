@@ -36,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
@@ -167,7 +168,7 @@ private fun GroupHomeActionButton(
                 .height(50.dp)
                 .clip(shape)
                 .background(if (isPrimary) AppColors.Primary else Color.White)
-                .then(if (isPrimary) Modifier else Modifier.border(1.dp, AppColors.GroupInk, shape))
+                .border(AppBorders.Standard, AppColors.GroupInk, shape)
                 .clickable(role = Role.Button, onClick = onClick)
                 .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center,
@@ -366,6 +367,7 @@ private fun RefreshErrorBanner(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
                 .background(AppColors.RankingSurface)
+                .border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(12.dp))
                 .clickable(role = Role.Button, onClick = onRetry)
                 .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,

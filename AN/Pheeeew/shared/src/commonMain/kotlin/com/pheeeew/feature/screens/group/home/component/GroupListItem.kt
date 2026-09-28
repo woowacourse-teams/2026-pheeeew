@@ -27,6 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
@@ -65,7 +66,7 @@ fun GroupListItem(
                     .height(83.dp)
                     .clip(shape)
                     .background(Color.White)
-                    .border(width = 1.dp, color = AppColors.GroupInk, shape = shape)
+                    .border(width = AppBorders.Standard, color = AppColors.GroupInk, shape = shape)
                     .padding(horizontal = 28.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

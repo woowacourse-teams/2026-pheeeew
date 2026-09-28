@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.group.create.component
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -41,6 +42,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
@@ -203,7 +205,7 @@ internal fun StampColorSheet(
                         Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(Color(0xFFF3F4F3))
-                            .border(1.dp, Color(0xFFE3E6E5), RoundedCornerShape(8.dp))
+                            .border(AppBorders.Standard, Color(0xFFE3E6E5), RoundedCornerShape(8.dp))
                             .padding(horizontal = 12.dp, vertical = 7.dp),
                     color = AppColors.GroupInk,
                     fontSize = 13.sp,
@@ -221,6 +223,7 @@ internal fun StampColorSheet(
             ) {
                 OutlinedButton(
                     onClick = dismissAndClose,
+                    border = BorderStroke(AppBorders.Standard, AppColors.GroupInk),
                     modifier = Modifier.weight(1f).height(48.dp),
                     shape = RoundedCornerShape(14.dp),
                 ) {

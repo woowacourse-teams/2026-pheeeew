@@ -24,6 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.Snackbar
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.map.MapFeedbackAction
 import com.pheeeew.feature.screens.map.MapUiModel
@@ -85,7 +86,7 @@ private fun MapErrorBanner(
         modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
         shape = RoundedCornerShape(12.dp),
         color = AppColors.Background,
-        border = BorderStroke(1.dp, AppColors.Error),
+        border = BorderStroke(AppBorders.Standard, AppColors.Error),
     ) {
         Row(
             Modifier.padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),

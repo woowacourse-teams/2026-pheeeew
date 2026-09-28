@@ -33,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.screens.map.drawPlaybackWaveform
@@ -87,7 +88,7 @@ private fun RecordAudioPanel(
                 .fillMaxWidth()
                 .height(105.dp)
                 .clip(AppShapes.Input)
-                .border(width = 1.dp, color = AppColors.Border, shape = AppShapes.Input)
+                .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -143,7 +144,7 @@ private fun AudioReadyPanel(
                 Modifier
                     .size(52.dp)
                     .clip(CircleShape)
-                    .border(2.dp, AppColors.TextPrimary, CircleShape)
+                    .border(AppBorders.Standard, AppColors.TextPrimary, CircleShape)
                     .background(AppColors.Primary),
             contentAlignment = Alignment.Center,
         ) {
@@ -211,7 +212,7 @@ private fun AdioRecordingPanel(
                     Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .border(width = 1.dp, color = Color.Black, shape = CircleShape)
+                        .border(width = AppBorders.Standard, color = Color.Black, shape = CircleShape)
                         .background(AppColors.Surface)
                         .padding(12.dp),
             ) {

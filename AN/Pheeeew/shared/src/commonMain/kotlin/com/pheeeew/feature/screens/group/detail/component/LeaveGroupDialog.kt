@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.detail.GroupDetailOverlay
 import org.jetbrains.compose.resources.stringResource
@@ -83,7 +84,7 @@ internal fun LeaveGroupDialog(
                         .shadow(elevation = 12.dp, shape = shape)
                         .clip(shape)
                         .background(Color.White)
-                        .border(BorderStroke(1.dp, AppColors.GroupInk.copy(alpha = 0.72f)), shape)
+                        .border(BorderStroke(AppBorders.Standard, AppColors.GroupInk.copy(alpha = 0.72f)), shape)
                         .padding(horizontal = 20.dp)
                         .padding(top = 20.dp, bottom = if (isWorking) 20.dp else 12.dp),
             ) {

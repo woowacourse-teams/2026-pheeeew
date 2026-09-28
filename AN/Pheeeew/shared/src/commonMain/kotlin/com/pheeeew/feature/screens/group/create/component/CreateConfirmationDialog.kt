@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.create.GroupCreateFailure
 import org.jetbrains.compose.resources.stringResource
@@ -52,7 +53,7 @@ import pheeeew.shared.generated.resources.group_create_failure_unknown
 import pheeeew.shared.generated.resources.group_create_submitting
 import pheeeew.shared.generated.resources.group_create_submitting_title
 
-private val DialogBorder = BorderStroke(1.5.dp, AppColors.GroupInk)
+private val DialogBorder = BorderStroke(AppBorders.Standard, AppColors.GroupInk)
 
 @Composable
 internal fun CreateConfirmationDialog(
@@ -155,7 +156,7 @@ private fun SubmittingProgressCard(title: String) {
                 .shadow(elevation = 16.dp, shape = shape)
                 .clip(shape)
                 .background(Color.White)
-                .border(width = 1.dp, color = Color(0xFFE6EEEA), shape = shape)
+                .border(width = AppBorders.Standard, color = Color(0xFFE6EEEA), shape = shape)
                 .padding(horizontal = 28.dp, vertical = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

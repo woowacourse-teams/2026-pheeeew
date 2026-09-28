@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -66,7 +67,7 @@ internal fun InviteCodeDialog(
                         .widthIn(max = 420.dp)
                         .clip(RoundedCornerShape(20.dp))
                         .background(Color.White)
-                        .border(1.5.dp, AppColors.GroupInk, RoundedCornerShape(20.dp))
+                        .border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(20.dp))
                         .padding(horizontal = 24.dp, vertical = 22.dp),
             ) {
                 Text(

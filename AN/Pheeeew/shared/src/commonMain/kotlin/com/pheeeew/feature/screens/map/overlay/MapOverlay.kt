@@ -31,6 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.screens.map.record.EmotionBubbleCluster
@@ -99,8 +100,11 @@ fun MapOverlay(
                         Modifier
                             .clip(RoundedCornerShape(100.dp))
                             .background(AppColors.Surface)
-                            .border(width = 1.dp, color = AppColors.Border, shape = RoundedCornerShape(100.dp))
-                            .clickable(onClick = onListClick)
+                            .border(
+                                width = AppBorders.Standard,
+                                color = AppColors.Border,
+                                shape = RoundedCornerShape(100.dp),
+                            ).clickable(onClick = onListClick)
                             .padding(horizontal = 16.dp, vertical = 12.dp)
                             .align(Alignment.Center),
                     verticalAlignment = Alignment.CenterVertically,
@@ -134,6 +138,7 @@ fun MapOverlay(
                             .clip(CircleShape)
                             .shadow(elevation = 4.dp, shape = CircleShape)
                             .background(AppColors.Surface)
+                            .border(AppBorders.Standard, AppColors.Border, CircleShape)
                             .clickable(
                                 enabled = !isRequestingLocation,
                                 onClick = onMyLocationClick,

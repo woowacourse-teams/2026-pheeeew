@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.screens.settings.SettingsTheme
@@ -48,7 +49,7 @@ internal fun SettingsCard(
                 .fillMaxWidth()
                 .padding(horizontal = 21.dp)
                 .shadow(3.dp, shape, clip = false)
-                .border(1.4.dp, SettingsColors.Ink, shape)
+                .border(AppBorders.Standard, SettingsColors.Ink, shape)
                 .background(AppColors.Background, shape)
                 .padding(horizontal = 18.dp),
     ) {

@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
@@ -80,7 +81,7 @@ fun Snackbar(
             shape = RoundedCornerShape(1.dp),
             color = AppColors.Background,
             contentColor = AppColors.TextPrimary,
-            border = androidx.compose.foundation.BorderStroke(1.dp, AppColors.TextPrimary),
+            border = androidx.compose.foundation.BorderStroke(AppBorders.Standard, AppColors.TextPrimary),
         ) {
             Row(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -92,7 +93,7 @@ fun Snackbar(
                         Modifier
                             .size(24.dp)
                             .clip(CircleShape)
-                            .border(width = 1.dp, color = AppColors.Border, shape = CircleShape),
+                            .border(width = AppBorders.Standard, color = AppColors.Border, shape = CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(painterResource(Res.drawable.ic_error), null, Modifier.size(24.dp), tint = AppColors.Error)
@@ -103,7 +104,7 @@ fun Snackbar(
                             Modifier
                                 .size(18.dp)
                                 .background(Color(0xFFFFE36E), CircleShape)
-                                .border(1.dp, AppColors.TextPrimary, CircleShape),
+                                .border(AppBorders.Standard, AppColors.TextPrimary, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         SuccessCheckMark()

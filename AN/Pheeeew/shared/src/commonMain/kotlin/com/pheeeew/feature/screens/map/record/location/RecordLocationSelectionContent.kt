@@ -34,6 +34,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.domain.model.GeoCoordinate
@@ -185,7 +186,7 @@ fun RecordLocationSelectionContent(
                     Modifier
                         .width(140.dp)
                         .height(48.dp)
-                        .border(width = 1.dp, color = AppColors.Border, shape = AppShapes.Button)
+                        .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Button)
                         .background(
                             AppColors.Primary,
                             AppShapes.Button,
