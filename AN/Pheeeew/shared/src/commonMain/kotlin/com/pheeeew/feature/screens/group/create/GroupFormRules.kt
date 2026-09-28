@@ -45,10 +45,10 @@ data class GroupFormRules(
 
     fun count(value: String): Int = countCodePoints(value)
 
-    /** 제한 초과 오류를 표시할 수 있도록 허용 길이에 한 글자만 더 보존합니다. */
-    fun retainGroupNameForValidation(value: String): String = value.takeCodePoints(groupNameMax + 1)
+    /** 입력 중에도 화면에 표시한 최대 글자 수를 넘기지 않습니다. */
+    fun limitGroupName(value: String): String = value.takeCodePoints(groupNameMax)
 
-    fun retainDescriptionForValidation(value: String): String = value.takeCodePoints(descriptionMax + 1)
+    fun limitDescription(value: String): String = value.takeCodePoints(descriptionMax)
 
     /** 스탬프 문구는 입력 자체를 허용 길이로 제한합니다. */
     fun limitStampLabel(value: String): String = value.takeCodePoints(stampLabelMax)

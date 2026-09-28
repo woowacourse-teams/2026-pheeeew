@@ -37,14 +37,14 @@ class GroupCreateViewModel(
 
     fun onNameChanged(value: String) {
         updateDraft(
-            transform = { draft -> draft.copy(name = formRules.retainGroupNameForValidation(value)) },
+            transform = { draft -> draft.copy(name = formRules.limitGroupName(value)) },
             clearError = { errors -> errors.copy(name = null) },
         )
     }
 
     fun onDescriptionChanged(value: String) {
         updateDraft(
-            transform = { draft -> draft.copy(description = formRules.retainDescriptionForValidation(value)) },
+            transform = { draft -> draft.copy(description = formRules.limitDescription(value)) },
             clearError = { errors -> errors.copy(description = null) },
         )
     }
