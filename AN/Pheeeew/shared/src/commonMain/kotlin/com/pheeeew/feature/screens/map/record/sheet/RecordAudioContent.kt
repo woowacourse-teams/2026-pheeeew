@@ -131,7 +131,7 @@ private fun AudioReadyPanel(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "목소리로 남겨볼까요?",
+            text = "목소리로 남겨볼까?",
             modifier = Modifier.fillMaxWidth(),
             color = AppColors.TextPrimary,
             fontSize = 16.sp,
@@ -440,7 +440,7 @@ private fun RecordAudioPlayingPreview() {
 @Preview(name = "녹음 오류", widthDp = 402, showBackground = true)
 @Composable
 private fun RecordAudioErrorPreview() {
-    RecordAudioPreview(VoiceRecordingState(error = "설정에서 마이크 권한을 허용해주세요"))
+    RecordAudioPreview(VoiceRecordingState(error = "설정에서 마이크 권한을 허용해줘"))
 }
 
 @Preview(name = "무음 녹음 중", widthDp = 402, showBackground = true)

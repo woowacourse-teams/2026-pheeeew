@@ -112,7 +112,7 @@ class NearbyEmotionViewModel(
     fun refresh() {
         val bounds =
             queryBounds ?: run {
-                mutableState.update { it.copy(error = "지도 영역을 확인하고 있어요. 잠시 후 다시 시도해 주세요.", loading = false) }
+                mutableState.update { it.copy(error = "지도 영역을 확인하고 있어. 잠시 후 다시 시도해.", loading = false) }
                 return
             }
         val ticket = ++generation
@@ -217,7 +217,7 @@ class NearbyEmotionViewModel(
                     current.copy(
                         loading = false,
                         loadingMore = false,
-                        error = if (append) "더 불러오지 못했어요. 다시 시도해 주세요." else result.reason.message(),
+                        error = if (append) "더 불러오지 못했어. 다시 시도해." else result.reason.message(),
                     )
                 }
             }
@@ -350,7 +350,7 @@ class NearbyEmotionViewModel(
             ) {
                 is EmotionResult.Success -> {
                     removeItem(id)
-                    mutableState.update { it.copy(blockId = null, message = "이 감정을 차단했어요.") }
+                    mutableState.update { it.copy(blockId = null, message = "이 감정을 차단했어.") }
                 }
 
                 is EmotionResult.Failure -> {
@@ -501,7 +501,7 @@ class NearbyEmotionViewModel(
                                 handedOff = true
                             } else {
                                 preparation.finish("failed")
-                                mutableState.update { it.copy(message = "녹음을 불러오지 못했어요. 다시 시도해 주세요.") }
+                                mutableState.update { it.copy(message = "녹음을 불러오지 못했어. 다시 시도해.") }
                             }
                         }
 
@@ -519,7 +519,7 @@ class NearbyEmotionViewModel(
                 } catch (_: Exception) {
                     preparation.finish("failed")
                     if (ticket == generation) {
-                        mutableState.update { it.copy(message = "녹음을 불러오지 못했어요. 다시 시도해 주세요.") }
+                        mutableState.update { it.copy(message = "녹음을 불러오지 못했어. 다시 시도해.") }
                     }
                 } finally {
                     if (!handedOff) preparation.finish("cancelled")
@@ -543,9 +543,9 @@ sealed interface NearbyEmotionEvent {
 
 private fun EmotionFailure.message(): String =
     when (this) {
-        EmotionFailure.NOT_FOUND -> "삭제되었거나 더 이상 볼 수 없는 감정이에요."
-        EmotionFailure.AUTHENTICATION -> "기기 인증을 확인하지 못했어요. 다시 시도해 주세요."
-        EmotionFailure.INVALID_REQUEST -> "요청을 처리하지 못했어요. 새로고침해 주세요."
-        EmotionFailure.FORBIDDEN -> "이 감정에는 해당 동작을 할 수 없어요."
-        EmotionFailure.UNAVAILABLE -> "연결을 확인하고 다시 시도해 주세요."
+        EmotionFailure.NOT_FOUND -> "삭제됐거나 더 이상 볼 수 없는 감정이야."
+        EmotionFailure.AUTHENTICATION -> "기기 인증을 확인하지 못했어. 다시 시도해."
+        EmotionFailure.INVALID_REQUEST -> "요청을 처리하지 못했어. 새로고침해."
+        EmotionFailure.FORBIDDEN -> "이 감정에는 해당 동작을 할 수 없어."
+        EmotionFailure.UNAVAILABLE -> "연결을 확인하고 다시 시도해."
     }

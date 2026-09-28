@@ -139,7 +139,7 @@ private fun EmotionAudioPlayerPreparingPreview() {
 @Composable
 private fun EmotionAudioPlayerErrorPreview() {
     EmotionAudioPlayer(
-        EmotionDetailPreviewData.audio.copy(durationMillis = null, error = "녹음을 불러올 수 없어요. 다시 시도해주세요"),
+        EmotionDetailPreviewData.audio.copy(durationMillis = null, error = "녹음을 불러올 수 없어. 다시 시도해."),
         {},
         Modifier.fillMaxWidth(),
     )

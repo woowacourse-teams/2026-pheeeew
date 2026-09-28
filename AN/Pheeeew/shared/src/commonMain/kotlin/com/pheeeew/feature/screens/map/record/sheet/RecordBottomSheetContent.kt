@@ -154,7 +154,7 @@ private fun RecordBottomSheetContent(
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "${selectedEmotion.label}한 마음,\n조금 더 남길까요?",
+                text = "${selectedEmotion.recordPhrase} 마음,\n조금 더 남길까?",
                 color = AppColors.TextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -164,7 +164,7 @@ private fun RecordBottomSheetContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "메모, 녹음은 선택이에요.",
+            text = "메모와 녹음은 선택이야.",
             fontSize = 12.sp,
             color = AppColors.TextSecondary,
         )
@@ -351,7 +351,7 @@ private fun MemoPanel(
                                     .padding(bottom = 20.dp),
                         ) {
                             Text(
-                                text = "지금 마음을 짧게 적어보세요",
+                                text = "지금 마음을 짧게 적어봐",
                                 color = AppColors.Border.copy(alpha = 0.45f),
                                 fontSize = 16.sp,
                             )

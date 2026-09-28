@@ -36,7 +36,7 @@ internal fun EmotionPromptLabel(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = if (isExpanded) "지금 내 감정은 어떤가요?" else "터치해서 감정을 꺼내보세요",
+            text = if (isExpanded) "지금 감정이 어때?" else "터치해서 감정을 꺼내봐",
             color = Color(0xFF292B2A),
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
