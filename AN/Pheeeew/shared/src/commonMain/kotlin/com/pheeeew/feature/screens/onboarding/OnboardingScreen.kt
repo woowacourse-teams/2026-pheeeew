@@ -58,7 +58,7 @@ private data class OnboardingPage(
 private val onboardingPages =
     listOf(
         OnboardingPage(
-            message = "오늘도 왜 나만\n이렇게 힘든 거죠?",
+            message = "오늘도 왜 나만\n이렇게 힘든 거지??",
             illustration = Res.drawable.ic_emotion_discouraged,
         ),
         OnboardingPage(
@@ -76,7 +76,6 @@ private val onboardingPages =
         OnboardingPage(
             message = "내가 제일 힘들다는 걸\n이 공간에서 표출해봐!!",
             illustration = Res.drawable.ic_emotion_angry,
-            supportingText = "참았던 감정을 지도에 뿜어봐\n매일 50자, 목소리 30초\n아무것도 없이 남겨도 좋아",
         ),
     )
 
@@ -219,7 +218,7 @@ fun OnboardingScreen(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = if (isLastPage) "내 감정 뿜으로 가기" else "다음",
+                text = if (isLastPage) "내 감정 남기러 가기" else "다음",
                 color = Color.White,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
