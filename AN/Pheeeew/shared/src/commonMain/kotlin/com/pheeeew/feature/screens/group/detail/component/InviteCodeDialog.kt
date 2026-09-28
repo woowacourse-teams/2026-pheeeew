@@ -56,7 +56,7 @@ internal fun InviteCodeDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Box(
-            modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.34f)),
+            modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center,
         ) {
             Column(

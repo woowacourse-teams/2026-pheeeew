@@ -21,12 +21,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -34,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.DetailTopBar
@@ -81,6 +86,8 @@ fun GroupDetailScreen(
     onFeedbackShown: (com.pheeeew.feature.screens.group.model.GroupOperationKey) -> Unit = {},
 ) {
     val title = uiState.detail?.group?.name ?: uiState.groupName ?: stringResource(Res.string.group_home_title)
+    val pullState = rememberPullToRefreshState()
+    val pullDistance = with(LocalDensity.current) { 56.dp.toPx() }
     Box(
         modifier =
             modifier
@@ -89,45 +96,59 @@ fun GroupDetailScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding(),
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            GroupDetailTopBar(
-                title = title,
-                overlay = uiState.overlay,
-                actions = actions,
-            )
-            Box(modifier = Modifier.weight(1f)) {
-                when (val content = uiState.content) {
-                    GroupDetailContent.Loading -> {
-                        LoadingContent()
-                    }
+        PullToRefreshBox(
+            isRefreshing = uiState.isRefreshing,
+            onRefresh = actions.onRetry,
+            state = pullState,
+            enabled =
+                uiState.overlay == GroupDetailOverlay.None && uiState.pressStatus == GroupPressStatus.Idle &&
+                    (uiState.content is GroupDetailContent.Ready || uiState.content == GroupDetailContent.LoadFailed),
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Column(
+                modifier =
+                    Modifier.fillMaxSize().graphicsLayer {
+                        translationY = pullState.distanceFraction.coerceIn(0f, 1f) * pullDistance
+                    },
+            ) {
+                GroupDetailTopBar(
+                    title = title,
+                    overlay = uiState.overlay,
+                    actions = actions,
+                )
+                Box(modifier = Modifier.weight(1f)) {
+                    when (val content = uiState.content) {
+                        GroupDetailContent.Loading -> {
+                            LoadingContent()
+                        }
 
-                    GroupDetailContent.LoadFailed -> {
-                        FailedContent(onRetry = actions.onRetry)
-                    }
+                        GroupDetailContent.LoadFailed -> {
+                            FailedContent(onRetry = actions.onRetry)
+                        }
 
-                    GroupDetailContent.MembershipChanged -> {
-                        MembershipChangedContent(onReturnHome = actions.onReturnHome)
-                    }
+                        GroupDetailContent.MembershipChanged -> {
+                            MembershipChangedContent(onReturnHome = actions.onReturnHome)
+                        }
 
-                    GroupDetailContent.NotFound -> {
-                        NotFoundContent(onReturnHome = actions.onReturnHome)
-                    }
+                        GroupDetailContent.NotFound -> {
+                            NotFoundContent(onReturnHome = actions.onReturnHome)
+                        }
 
-                    is GroupDetailContent.Ready -> {
-                        GroupDetailReadyContent(
-                            detail = content.detail,
-                            hasRefreshError = uiState.hasRefreshError,
-                            canTapEmotion = uiState.canTapEmotion,
-                            pressStatus = uiState.pressStatus,
-                            pendingEmotionPresses = uiState.pendingEmotionPresses,
-                            onInviteClick = actions.onInviteClick,
-                            onRetry = actions.onRetry,
-                            onEmotionTap = actions.onEmotionTap,
-                            onResolvePressOutcome = actions.onResolvePressOutcome,
-                            fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
-                            feedbackOperationKey = feedbackOperationKey,
-                            onFeedbackShown = onFeedbackShown,
-                        )
+                        is GroupDetailContent.Ready -> {
+                            GroupDetailReadyContent(
+                                detail = content.detail,
+                                hasRefreshError = uiState.hasRefreshError,
+                                canTapEmotion = uiState.canTapEmotion,
+                                pressStatus = uiState.pressStatus,
+                                pendingEmotionPresses = uiState.pendingEmotionPresses,
+                                onInviteClick = actions.onInviteClick,
+                                onEmotionTap = actions.onEmotionTap,
+                                onResolvePressOutcome = actions.onResolvePressOutcome,
+                                fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
+                                feedbackOperationKey = feedbackOperationKey,
+                                onFeedbackShown = onFeedbackShown,
+                            )
+                        }
                     }
                 }
             }
@@ -264,6 +285,7 @@ private fun GroupDetailTopBar(
             if (overlay == GroupDetailOverlay.Menu) {
                 androidx.compose.ui.window.Popup(
                     alignment = Alignment.TopEnd,
+                    offset = with(LocalDensity.current) { IntOffset(0, 48.dp.roundToPx()) },
                     onDismissRequest = actions.onDismissOverlay,
                     properties =
                         androidx.compose.ui.window
@@ -284,6 +306,7 @@ private fun GroupDetailTopBar(
                             text = stringResource(Res.string.group_detail_menu_leave),
                             color = Color(0xFFFF3B30),
                             fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }

@@ -2,7 +2,6 @@ package com.pheeeew.feature.screens.group.detail
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,7 +24,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -49,14 +47,13 @@ import pheeeew.shared.generated.resources.group_detail_hero_first
 import pheeeew.shared.generated.resources.group_detail_hero_first_subtitle
 import pheeeew.shared.generated.resources.group_detail_hero_neutral
 import pheeeew.shared.generated.resources.group_detail_hero_neutral_subtitle
-import pheeeew.shared.generated.resources.group_detail_load_error_body
 import pheeeew.shared.generated.resources.group_detail_press_check
 import pheeeew.shared.generated.resources.group_detail_press_checking
 import pheeeew.shared.generated.resources.group_detail_press_unknown
 import pheeeew.shared.generated.resources.group_detail_rank_empty
 import pheeeew.shared.generated.resources.group_detail_rank_label
 import pheeeew.shared.generated.resources.group_detail_rank_number
-import pheeeew.shared.generated.resources.group_detail_retry
+import pheeeew.shared.generated.resources.group_detail_refresh_error_pull
 import pheeeew.shared.generated.resources.group_detail_summary_angry
 import pheeeew.shared.generated.resources.group_detail_summary_annoyed
 import pheeeew.shared.generated.resources.group_detail_summary_blocked
@@ -77,7 +74,6 @@ internal fun GroupDetailReadyContent(
     pressStatus: GroupPressStatus,
     pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
     onInviteClick: () -> Unit,
-    onRetry: () -> Unit,
     onEmotionTap: (EmotionKind) -> Boolean,
     onResolvePressOutcome: () -> Unit,
     fixtureFeedbackOnAcceptedPress: Boolean = false,
@@ -87,7 +83,7 @@ internal fun GroupDetailReadyContent(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
             if (hasRefreshError) {
-                RefreshBanner(onRetry = onRetry)
+                RefreshBanner()
             }
             GroupSummary(memberCount = detail.group.memberCount, onInviteClick = onInviteClick)
             Spacer(Modifier.height(8.dp))
@@ -135,7 +131,6 @@ private fun GroupDetailReadyContentPreview() {
         canTapEmotion = true,
         pressStatus = GroupPressStatus.Idle,
         onInviteClick = {},
-        onRetry = {},
         onEmotionTap = { true },
         onResolvePressOutcome = {},
     )
@@ -306,30 +301,17 @@ private fun GroupDetailCopyKey.toStringResource() =
 
 @Composable
 private fun RefreshBanner(
-    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
+    Text(
+        text = stringResource(Res.string.group_detail_refresh_error_pull),
         modifier =
             modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFFF3F4F2))
-                .clickable(role = Role.Button, onClick = onRetry)
                 .padding(horizontal = 14.dp, vertical = 11.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            text = stringResource(Res.string.group_detail_load_error_body),
-            modifier = Modifier.weight(1f),
-            color = AppColors.RankingSecondaryContent,
-            fontSize = 12.sp,
-        )
-        Text(
-            text = stringResource(Res.string.group_detail_retry),
-            color = AppColors.GroupInk,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
+        color = AppColors.RankingSecondaryContent,
+        fontSize = 12.sp,
+    )
 }

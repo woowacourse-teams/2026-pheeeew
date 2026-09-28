@@ -147,6 +147,7 @@
     <string name="group_detail_load_error_title">그룹을 불러오지 못했어요</string>
     <string name="group_detail_load_error_body">연결 상태를 확인하고 다시 눌러 주세요.</string>
     <string name="group_detail_retry">다시 불러오기</string>
+    <string name="group_detail_refresh_error_pull">새로고침에 실패했어요. 다시 아래로 당겨 주세요.</string>
     <string name="group_detail_membership_changed_title">그룹을 다시 확인해 주세요</string>
     <string name="group_detail_membership_changed_body">참여 정보가 바뀌었어요.</string>
     <string name="group_detail_not_found_title">그룹을 찾을 수 없어요</string>
