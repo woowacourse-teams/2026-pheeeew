@@ -335,7 +335,6 @@ fun MapScreen(
                 }
             },
             onMyLocationClick = viewModel::onMyLocationClick,
-            onMyLocationClick = viewModel::onMyLocationClick,
             onRecordBottomSheetDismiss = requestInputBack,
             onRecordInputModeChange = recordFlowCoordinator::changeInputMode,
             onRecordMemoChange = recordViewModel::onMemoChange,
