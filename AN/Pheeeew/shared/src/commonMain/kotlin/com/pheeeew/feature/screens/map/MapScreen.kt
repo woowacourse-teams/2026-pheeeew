@@ -311,7 +311,9 @@ fun MapScreen(
             modifier = Modifier.fillMaxSize(),
         )
         Snackbar(
-            message = notice?.message,
+            message = notice?.message?.takeIf { monitoringResumed },
+            presentationKey = notice,
+            onShown = { notice?.receipt?.shown() },
             onDismiss = recordViewModel::dismissNotice,
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 48.dp, start = 16.dp, end = 16.dp),
             isError = notice?.isError == true,
