@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.map.nearby
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionPage
@@ -171,8 +172,18 @@ class NearbyEmotionViewModel(
         mutableState.update { it.copy(message = null) }
     }
 
-    fun showMapLocationUnavailable() {
-        mutableState.update { it.copy(message = "지도에서 이 감정의 위치를 찾지 못했어요. 새로고침 후 다시 시도해 주세요.") }
+    fun openOnMap(
+        id: Long,
+        focus: (Long, GeoCoordinate?) -> Boolean,
+    ) {
+        val item = state.value.items.firstOrNull { it.id == id } ?: return
+        val focused = focus(item.id, item.coordinate)
+        mutableState.update {
+            it.copy(
+                selectedId = null,
+                message = if (focused) null else "지도에서 이 감정의 위치를 찾지 못했어요. 새로고침 후 다시 시도해 주세요.",
+            )
+        }
     }
 
     fun react(

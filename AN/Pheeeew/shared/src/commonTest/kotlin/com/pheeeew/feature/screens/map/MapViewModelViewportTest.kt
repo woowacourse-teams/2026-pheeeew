@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.map
 
 import com.pheeeew.core.permission.LocationPermissionController
 import com.pheeeew.core.permission.LocationPermissionStatus
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapPage
@@ -26,9 +27,56 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelViewportTest {
+    @Test
+    fun `지도 핀이 다른 영역으로 교체되어도 목록 좌표로 반복 이동한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val repository =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(page(listOf(pin(1, 127.02, 37.55)))),
+                        CompletableDeferred(page(listOf(pin(2, 128.02, 37.55)))),
+                    )
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                viewModel.onViewportChanged(bounds(127.0, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+                assertTrue(viewModel.focusOnEmotion(1))
+
+                viewModel.onViewportChanged(bounds(128.0, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(listOf(2L), viewModel.pinIds())
+                assertFalse(viewModel.focusOnEmotion(1))
+
+                val coordinate = GeoCoordinate(37.55, 127.02)
+                assertTrue(viewModel.focusOnEmotion(1, coordinate))
+                val command = viewModel.uiModel.value.cameraCommand!!
+                assertEquals(MapCameraActionUiModel.MoveToCoordinate, command.action)
+                assertEquals(coordinate.latitude, command.latitude)
+                assertEquals(coordinate.longitude, command.longitude)
+                assertTrue(viewModel.focusOnEmotion(1, coordinate))
+                val repeatedCommand = viewModel.uiModel.value.cameraCommand
+                assertEquals(command.id + 1, repeatedCommand?.id)
+
+                viewModel.onEmotionHidden(1)
+                assertFalse(viewModel.focusOnEmotion(1, coordinate))
+                assertEquals(repeatedCommand, viewModel.uiModel.value.cameraCommand)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     @Test
     fun `이전 화면 응답을 캐시하고 현재 영역의 핀만 표시하며 재방문 시 재사용한다`() =
         runTest {

@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.map.nearby
 
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.Emotion
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionContentType
@@ -31,6 +32,36 @@ import kotlin.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class NearbyEmotionViewModelTest {
+    @Test
+    fun `지도 영역 변경 뒤 목록 좌표로 이동해도 목록과 조회 상태를 유지한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val coordinate = GeoCoordinate(37.55, 127.02)
+                val repo = FakeRepository()
+                repo.first = {
+                    EmotionResult.Success(EmotionPage(listOf(emotion(1).copy(coordinate = coordinate)), "next"))
+                }
+                val vm = viewModel(repo)
+                vm.onViewportChanged(BOUNDS)
+                vm.open()
+                advanceUntilIdle()
+                val loaded = vm.state.value
+                vm.onViewportChanged(EmotionBounds(1.0, 1.0, 2.0, 2.0))
+                vm.select(1)
+                vm.openOnMap(1) { id, target ->
+                    assertEquals(1L, id)
+                    assertEquals(coordinate, target)
+                    true
+                }
+                assertEquals(loaded, vm.state.value)
+                assertEquals(listOf(BOUNDS), repo.bounds)
+                vm.dismiss()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     @Test
     fun `시트 열린 뒤 지도 콜백 변경은 캡처한 목록 범위를 바꾸지 않는다`() =
         runTest {

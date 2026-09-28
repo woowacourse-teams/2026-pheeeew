@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.di.LocationDependencies
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
@@ -56,17 +57,26 @@ class MapViewModel(
         requestCurrentLocation(moveCamera = true, requestPermission = true)
     }
 
-    fun focusOnEmotion(id: Long): Boolean {
-        val pin =
-            _uiModel.value.emotionPins.firstOrNull { it.id == id && it.id !in _uiModel.value.hiddenEmotionIds }
-                ?: return false
+    fun focusOnEmotion(
+        id: Long,
+        coordinate: GeoCoordinate? = null,
+    ): Boolean {
+        if (id in _uiModel.value.hiddenEmotionIds) return false
+        val target =
+            coordinate ?: _uiModel.value.emotionPins.firstOrNull { it.id == id }?.let {
+                GeoCoordinate(it.latitude, it.longitude)
+            } ?: return false
+        focusOnCoordinate(target)
+        return true
+    }
+
+    fun focusOnCoordinate(coordinate: GeoCoordinate) {
         sendCameraCommand(
             action = MapCameraActionUiModel.MoveToCoordinate,
-            latitude = pin.latitude,
-            longitude = pin.longitude,
+            latitude = coordinate.latitude,
+            longitude = coordinate.longitude,
             value = LOCATION_FOCUS_ZOOM,
         )
-        return true
     }
 
     fun onEmotionSelectorOpen() {

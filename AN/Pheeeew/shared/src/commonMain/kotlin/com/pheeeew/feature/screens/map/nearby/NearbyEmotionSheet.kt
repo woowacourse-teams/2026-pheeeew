@@ -27,7 +27,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -42,6 +44,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.audio.rememberEmotionAudioPlayer
 import com.pheeeew.core.designsystem.component.ConfirmDialog
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
@@ -58,11 +61,12 @@ fun NearbyEmotionSheet(
     viewModel: NearbyEmotionViewModel,
     onEmotionHidden: (Long) -> Unit,
     onLeaveEmotion: () -> Unit,
-    onOpenEmotionOnMap: (Long) -> Boolean,
+    onOpenEmotionOnMap: (Long, GeoCoordinate?) -> Boolean,
     blockUser: BlockUserUseCase,
     onReportEmotion: (Long, DrawableResource) -> Unit,
 ) {
     val state by viewModel.state.collectAsState()
+    var expanded by remember(state.visible) { mutableStateOf(false) }
     val player = rememberEmotionAudioPlayer()
     val playback by player.state.collectAsState()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -104,7 +108,12 @@ fun NearbyEmotionSheet(
     LaunchedEffect(atEnd, state.nextCursor, state.loading, state.loadingMore, state.error) {
         if (atEnd && !state.loading && !state.loadingMore && state.error == null) viewModel.loadMore()
     }
-    NearbySheetLayout(state.visible, viewModel::dismiss) {
+    NearbySheetLayout(
+        visible = state.visible,
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        onDismiss = viewModel::dismiss,
+    ) {
         val group = state.groups.find { it.id == state.groupId } ?: ALL_GROUP_OPTION
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 20.dp),
@@ -171,14 +180,8 @@ fun NearbyEmotionSheet(
                         playing = playback.id == emotion.id,
                         audioLoading = state.audioLoadingId == emotion.id,
                         onOpenOnMap = {
-                            if (onOpenEmotionOnMap(
-                                    emotion.id,
-                                )
-                            ) {
-                                viewModel.dismiss()
-                            } else {
-                                viewModel.showMapLocationUnavailable()
-                            }
+                            expanded = false
+                            viewModel.openOnMap(emotion.id, onOpenEmotionOnMap)
                         },
                         onSelect = { viewModel.select(emotion.id) },
                         onDismissMenu = { viewModel.select(null) },

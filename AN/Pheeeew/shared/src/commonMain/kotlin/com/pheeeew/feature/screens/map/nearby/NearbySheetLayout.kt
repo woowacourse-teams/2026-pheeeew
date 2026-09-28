@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.dp
 @Composable
 internal fun NearbySheetLayout(
     visible: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -52,7 +54,6 @@ internal fun NearbySheetLayout(
                 val density = LocalDensity.current
                 val availableHeightPx = constraints.maxHeight.toFloat()
                 val middleOffset = availableHeightPx * 0.55f
-                var expanded by remember { mutableStateOf(false) }
                 var dragging by remember { mutableStateOf(false) }
                 var draggedOffset by remember { mutableFloatStateOf(0f) }
                 var totalDrag by remember { mutableFloatStateOf(0f) }
@@ -75,10 +76,10 @@ internal fun NearbySheetLayout(
                     rememberUpdatedState {
                         val dismiss =
                             if (expanded) {
-                                if (totalDrag >= collapseThreshold) expanded = false
+                                if (totalDrag >= collapseThreshold) onExpandedChange(false)
                                 totalDrag >= expandedDismissThreshold
                             } else {
-                                if (totalDrag <= -expandThreshold) expanded = true
+                                if (totalDrag <= -expandThreshold) onExpandedChange(true)
                                 totalDrag >= dismissThreshold
                             }
                         if (dismiss) {

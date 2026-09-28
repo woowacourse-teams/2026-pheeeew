@@ -4,6 +4,7 @@ import com.pheeeew.core.network.AccessToken
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createApiClient
 import com.pheeeew.data.remote.emotion.EmotionApi
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.EmotionState
@@ -57,6 +58,7 @@ class EmotionRepositoryTest {
                 assertEquals(EmotionState.DISCOURAGED, item.state)
                 assertEquals(6, item.reactions.size)
                 assertEquals(3000000000L, item.reactions.first().count)
+                assertEquals(GeoCoordinate(37.55, 127.02), item.coordinate)
                 repository.nextPage("opaque")
                 assertEquals(2, index)
             } finally {
@@ -112,7 +114,7 @@ class EmotionRepositoryTest {
     private companion object {
         val PAGE =
             """
-            {"items":[{"id":42,"properties":{
+            {"items":[{"id":42,"geometry":{"type":"Point","coordinates":[127.02,37.55]},"properties":{
               "state":"DISCOURAGED","nickname":"나","createdAt":"2026-09-27T00:00:00Z",
               "isMine":true,"contentType":"MEMO","memo":"메모",
               "emojis":[{"type":"HEART","count":3000000000,"selected":true}]
