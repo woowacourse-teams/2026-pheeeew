@@ -20,6 +20,7 @@ import com.pheeeew.groups.application.dto.GroupPreviewResult;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
+import com.pheeeew.groups.application.dto.GroupStampItemResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupMember;
@@ -84,6 +85,14 @@ public class GroupService {
                 .filter(member -> !member.getGroup().isDeleted())
                 .sorted(Comparator.comparing(GroupMember::getCreatedAt))
                 .map(member -> toResult(member.getGroup(), member.getRole()))
+                .toList();
+    }
+
+    public List<GroupStampItemResult> findMyStamps(UUID devicePublicId) {
+        Device device = findDevice(devicePublicId);
+
+        return groupStampRepository.findMyStamps(device.getId()).stream()
+                .map(GroupStampItemResult::from)
                 .toList();
     }
 
