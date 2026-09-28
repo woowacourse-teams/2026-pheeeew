@@ -54,7 +54,11 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 
 @Import(SharedPostgisTestConfiguration.class)
 @ActiveProfiles("test")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "pheeeew.s3.bucket=pheeeew-test",
+        "pheeeew.s3.key-prefix=pheeeew/test/",
+        "pheeeew.s3.region=ap-northeast-2"
+})
 class SecurityAuthorizationIntegrationTest {
 
     private static final UUID 기기_공개_식별자 = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
@@ -163,11 +167,12 @@ class SecurityAuthorizationIntegrationTest {
         result.expectStatus().isForbidden().expectBody().json(권한_없음_응답, JsonCompareMode.STRICT);
     }
 
-    @Test
-    void 토큰_없이_한숨을_등록하면_401을_반환한다() {
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v1/audio-uploads"})
+    void 토큰_없이_감정_등록이나_녹음_업로드를_요청하면_401을_반환한다(String uri) {
         // given / when
         RestTestClient.ResponseSpec result = client.post()
-                .uri("/api/v1/emotions")
+                .uri(uri)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(한숨_등록_본문())
                 .exchange();
@@ -309,17 +314,19 @@ class SecurityAuthorizationIntegrationTest {
         assertThat(emotionRepository.count()).isOne();
     }
 
-    @Test
-    void 등록되지_않은_기기의_토큰으로_한숨을_등록하면_401_기기_없음을_반환한다() {
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v1/audio-uploads"})
+    void 등록되지_않은_기기는_감정_등록이나_업로드를_요청할_수_없다(String uri) {
         // given
         String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
 
         // when
         RestTestClient.ResponseSpec result = client.post()
-                .uri("/api/v1/emotions")
+                .uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
-                .body(한숨_등록_본문())
+                .body(uri.equals("/api/v1/audio-uploads")
+                        ? "{\"contentType\":\"audio/mp4\",\"contentLength\":1024}" : 한숨_등록_본문())
                 .exchange();
 
         // then
@@ -329,6 +336,7 @@ class SecurityAuthorizationIntegrationTest {
                         {"code":"DEVICE-004","message":"인증 정보를 사용할 수 없습니다."}
                         """, JsonCompareMode.STRICT);
         assertThat(emotionRepository.count()).isZero();
+        assertThat(jdbcClient.sql("SELECT count(*) FROM audio_uploads").query(Long.class).single()).isZero();
     }
 
     @ParameterizedTest

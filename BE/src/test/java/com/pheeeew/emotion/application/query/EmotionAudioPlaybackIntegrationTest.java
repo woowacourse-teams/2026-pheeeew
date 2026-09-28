@@ -12,8 +12,8 @@ import static org.mockito.Mockito.when;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
-import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer;
-import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer.PlaybackUrl;
+import com.pheeeew.emotion.application.AudioUrlIssuer;
+import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
 import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
@@ -58,7 +58,7 @@ class EmotionAudioPlaybackIntegrationTest {
     @Autowired
     private EntityManager entityManager;
     @MockitoBean
-    private AudioPlaybackUrlIssuer issuer;
+    private AudioUrlIssuer issuer;
 
     @MockitoSpyBean
     private EmotionEmojiRepository emojis;
@@ -82,7 +82,7 @@ class EmotionAudioPlaybackIntegrationTest {
         // given
         PlaybackUrl first = PlaybackUrl.of("https://audio.example.test/first", Instant.now().plusSeconds(300));
         PlaybackUrl second = PlaybackUrl.of("https://audio.example.test/second", Instant.now().plusSeconds(600));
-        when(issuer.issue(OBJECT_KEY)).thenReturn(first, second);
+        when(issuer.issuePlayback(OBJECT_KEY)).thenReturn(first, second);
 
         // when / then
         assertThat(queryService.findById(emotion.getId(), viewer.getPublicId()).audio()).isEqualTo(first);
@@ -137,21 +137,21 @@ class EmotionAudioPlaybackIntegrationTest {
     void 발급_실패는_원인을_보존한_서비스_오류로_반환한다() {
         // given
         RuntimeException failure = new IllegalStateException("signing failed");
-        when(issuer.issue(OBJECT_KEY)).thenThrow(failure);
+        when(issuer.issuePlayback(OBJECT_KEY)).thenThrow(failure);
 
         // when / then
         assertThatThrownBy(() -> queryService.findById(emotion.getId(), viewer.getPublicId()))
                 .isInstanceOfSatisfying(EmotionException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE))
                 .hasCause(failure);
-        verify(issuer).issue(OBJECT_KEY);
+        verify(issuer).issuePlayback(OBJECT_KEY);
     }
 
     @ParameterizedTest
     @MethodSource("invalidPlaybackUrls")
     void 유효하지_않거나_만료된_재생_URL은_반환하지_않는다(PlaybackUrl playbackUrl) {
         // given
-        when(issuer.issue(OBJECT_KEY)).thenReturn(playbackUrl);
+        when(issuer.issuePlayback(OBJECT_KEY)).thenReturn(playbackUrl);
 
         // when / then
         assertThatThrownBy(() -> queryService.findById(emotion.getId(), viewer.getPublicId()))

@@ -19,7 +19,7 @@ import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
-import com.pheeeew.emotion.application.AudioPlaybackUrlIssuer.PlaybackUrl;
+import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
 import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
