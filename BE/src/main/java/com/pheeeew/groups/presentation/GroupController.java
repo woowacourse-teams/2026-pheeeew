@@ -10,6 +10,7 @@ import com.pheeeew.groups.presentation.dto.GroupPressCountResponse;
 import com.pheeeew.groups.presentation.dto.GroupPressRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampRequest;
+import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
 import jakarta.validation.Valid;
 import java.net.URI;
@@ -58,6 +59,16 @@ public class GroupController implements GroupControllerApi {
     ) {
         return groupService.findMine(devicePublicId).stream()
                 .map(GroupResponse::from)
+                .toList();
+    }
+
+    @Override
+    @GetMapping("/stamps")
+    public List<GroupStampItemResponse> findMyStamps(
+            @CurrentDevice UUID devicePublicId
+    ) {
+        return groupService.findMyStamps(devicePublicId).stream()
+                .map(GroupStampItemResponse::from)
                 .toList();
     }
 

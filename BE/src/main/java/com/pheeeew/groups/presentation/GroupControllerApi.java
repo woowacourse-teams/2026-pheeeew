@@ -5,12 +5,14 @@ import com.pheeeew.groups.presentation.dto.GroupDetailResponse;
 import com.pheeeew.groups.presentation.dto.GroupPressCountResponse;
 import com.pheeeew.groups.presentation.dto.GroupPressRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
+import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -51,6 +53,25 @@ public interface GroupControllerApi {
                     """
     )
     List<GroupResponse> findMine(@Parameter(hidden = true) UUID devicePublicId);
+
+    @Operation(
+            summary = "내 그룹 스탬프 목록",
+            description = """
+                    인증된 기기가 현재 속한 그룹의 `groupId`, `name`, `stamp`만 반환합니다.
+                    스탬프 선택과 그룹 필터에 사용할 수 있습니다.
+
+                    - 탈퇴한 그룹과 삭제된 그룹은 제외합니다.
+                    - 가입한 시각이 빠른 순서로 반환합니다. 같은 시각에는 가입 식별자 순서입니다.
+                    - 페이지네이션 없이 전체 목록을 JSON 배열로 반환합니다.
+                    - 소속 그룹이 없으면 빈 배열을 반환합니다. 요청 파라미터는 없습니다.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "내 그룹 스탬프 목록 조회 성공"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기")
+    })
+    List<GroupStampItemResponse> findMyStamps(@Parameter(hidden = true) UUID devicePublicId);
 
     @Operation(
             summary = "그룹 상세",

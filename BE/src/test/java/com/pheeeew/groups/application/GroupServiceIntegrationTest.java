@@ -4,9 +4,12 @@ import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.groups.fixture.GroupFixture.일반_멤버_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
+import com.pheeeew.device.exception.DeviceErrorCode;
+import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
@@ -22,6 +25,7 @@ import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.exception.GroupErrorCode;
 import com.pheeeew.groups.exception.GroupException;
 import com.pheeeew.support.PostgisDataJpaTest;
+import jakarta.persistence.EntityManagerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,8 +35,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Propagation;
@@ -65,6 +73,9 @@ class GroupServiceIntegrationTest {
 
     @Autowired
     private JdbcClient jdbcClient;
+
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
 
     @AfterEach
     void tearDown() {
@@ -211,6 +222,114 @@ class GroupServiceIntegrationTest {
 
         // then
         assertThat(groupService.findMine(나.getPublicId())).isEmpty();
+    }
+
+    @Test
+    void 목록에_그룹별_전체_정보와_내_역할_및_활성_회원_수를_반환한다() {
+        // given
+        Device 나 = 기기를_저장한다();
+        Device 다른_기기 = 기기를_저장한다();
+        Device 세번째_기기 = 기기를_저장한다();
+        GroupResult 내_그룹 = groupService.save(나.getPublicId(), "내모임", "내 설명", 스탬프("내것"));
+        멤버로_넣는다(내_그룹.publicId(), 다른_기기);
+        멤버로_넣는다(내_그룹.publicId(), 세번째_기기);
+        나간다(내_그룹.publicId(), 세번째_기기.getId());
+        GroupResult 참여한_그룹 = groupService.save(다른_기기.getPublicId(), "참여모임", null, 스탬프("참여"));
+        멤버로_넣는다(참여한_그룹.publicId(), 나);
+        멤버로_넣는다(참여한_그룹.publicId(), 세번째_기기);
+
+        // when
+        List<GroupResult> 목록 = groupService.findMine(나.getPublicId());
+
+        // then
+        assertThat(목록).extracting(GroupResult::publicId, GroupResult::name, GroupResult::description,
+                        GroupResult::inviteCode, GroupResult::role, GroupResult::memberCount, GroupResult::stamp)
+                .containsExactlyInAnyOrder(
+                        tuple(내_그룹.publicId(), "내모임", "내 설명", 내_그룹.inviteCode(),
+                                GroupRole.OWNER, 2L, 내_그룹.stamp()),
+                        tuple(참여한_그룹.publicId(), "참여모임", null, 참여한_그룹.inviteCode(),
+                                GroupRole.MEMBER, 3L, 참여한_그룹.stamp())
+                );
+    }
+
+    @Test
+    void 그룹_생성_순서가_아닌_가입_시각_순서로_목록을_반환한다() {
+        // given
+        Device 나 = 기기를_저장한다();
+        GroupResult 늦게_가입한_그룹 = groupService.save(나.getPublicId(), "늦은가입", null, 스탬프("기본"));
+        GroupResult 먼저_가입한_그룹 = groupService.save(나.getPublicId(), "먼저가입", null, 스탬프("기본"));
+        jdbcClient.sql("""
+                        UPDATE group_members
+                        SET created_at = CASE WHEN group_id = (SELECT id FROM groups WHERE public_id = ?)
+                            THEN TIMESTAMPTZ '2026-09-28 01:00:00+00'
+                            ELSE TIMESTAMPTZ '2026-09-28 00:00:00+00' END
+                        WHERE device_id = ?
+                        """)
+                .param(늦게_가입한_그룹.publicId())
+                .param(나.getId())
+                .update();
+
+        // when
+        List<GroupResult> 목록 = groupService.findMine(나.getPublicId());
+
+        // then
+        assertThat(목록).extracting(GroupResult::publicId)
+                .containsExactly(먼저_가입한_그룹.publicId(), 늦게_가입한_그룹.publicId());
+    }
+
+    @Test
+    void 등록되지_않은_기기는_내_그룹_목록을_조회할_수_없다() {
+        // given
+        UUID 등록되지_않은_기기 = UUID.randomUUID();
+
+        // when
+        Throwable 예외 = catchThrowable(() -> groupService.findMine(등록되지_않은_기기));
+
+        // then
+        assertThat(예외).isInstanceOf(DeviceException.class);
+        assertThat(((DeviceException) 예외).getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND);
+    }
+
+    @Test
+    void 스탬프가_누락된_그룹은_목록에서_제외하지_않고_기존_오류를_반환한다() {
+        // given
+        Device 나 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(나.getPublicId(), "내모임", null, 스탬프("기본"));
+        jdbcClient.sql("DELETE FROM group_stamps WHERE group_id = (SELECT id FROM groups WHERE public_id = ?)")
+                .param(그룹.publicId())
+                .update();
+
+        // when
+        Throwable 예외 = catchThrowable(() -> groupService.findMine(나.getPublicId()));
+
+        // then
+        그룹_오류다(예외, GroupErrorCode.GROUP_NOT_FOUND);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 5, 25})
+    void 그룹_수와_관계없이_두_번의_SQL로_전체_목록을_조회한다(int 그룹_수) {
+        // given
+        Device 나 = 기기를_저장한다();
+        for (int index = 0; index < 그룹_수; index++) {
+            groupService.save(나.getPublicId(), "모임" + index, null, 스탬프("기본"));
+        }
+        Statistics 통계 = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        boolean 기존_통계_설정 = 통계.isStatisticsEnabled();
+        통계.setStatisticsEnabled(true);
+        통계.clear();
+        try {
+            // when
+            List<GroupResult> 목록 = groupService.findMine(나.getPublicId());
+            long SQL_횟수 = 통계.getPrepareStatementCount();
+
+            // then
+            assertThat(목록).hasSize(그룹_수);
+            assertThat(SQL_횟수).isEqualTo(2);
+        } finally {
+            통계.clear();
+            통계.setStatisticsEnabled(기존_통계_설정);
+        }
     }
 
     @Test

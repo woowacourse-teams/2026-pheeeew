@@ -20,6 +20,7 @@ import com.pheeeew.groups.application.dto.GroupPreviewResult;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
+import com.pheeeew.groups.application.dto.GroupStampItemResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupMember;
@@ -30,13 +31,13 @@ import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
+import com.pheeeew.groups.domain.repository.projection.GroupListProjection;
 import com.pheeeew.groups.exception.GroupException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -80,10 +81,16 @@ public class GroupService {
     public List<GroupResult> findMine(UUID devicePublicId) {
         Device device = findDevice(devicePublicId);
 
-        return groupMemberRepository.findByDeviceIdAndLeftAtIsNull(device.getId()).stream()
-                .filter(member -> !member.getGroup().isDeleted())
-                .sorted(Comparator.comparing(GroupMember::getCreatedAt))
-                .map(member -> toResult(member.getGroup(), member.getRole()))
+        return groupMemberRepository.findMine(device.getId()).stream()
+                .map(this::toResult)
+                .toList();
+    }
+
+    public List<GroupStampItemResult> findMyStamps(UUID devicePublicId) {
+        Device device = findDevice(devicePublicId);
+
+        return groupStampRepository.findMyStamps(device.getId()).stream()
+                .map(GroupStampItemResult::from)
                 .toList();
     }
 
@@ -218,6 +225,14 @@ public class GroupService {
     private Device findDevice(UUID devicePublicId) {
         return deviceRepository.findByPublicId(devicePublicId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+    }
+
+    private GroupResult toResult(GroupListProjection projection) {
+        if (projection.getStampFrame() == null) {
+            throw new GroupException(GROUP_NOT_FOUND);
+        }
+
+        return GroupResult.from(projection);
     }
 
     private void flushRename() {
