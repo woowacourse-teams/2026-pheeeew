@@ -130,7 +130,7 @@ fun SettingsScreen(
                                             { if (it) "success" else "failed" },
                                         ) { permissionSettingsLauncher.openAppSettings() }
                                 ) {
-                                    snackbarHostState.showSnackbar("설정 화면을 열지 못했어요.")
+                                    snackbarHostState.showSnackbar("설정 화면을 열지 못했어.")
                                 }
                             }
                         },
@@ -154,7 +154,7 @@ fun SettingsScreen(
                             )
                             if (!opened) {
                                 coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("메일 앱을 열 수 없어요.")
+                                    snackbarHostState.showSnackbar("메일 앱을 열 수 없어.")
                                 }
                             }
                         },

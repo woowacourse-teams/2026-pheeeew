@@ -110,7 +110,7 @@ private class IosAudioPlayback : AudioPlayback {
                 }
         } catch (_: Exception) {
             stop()
-            mutable.value = state.value.copy(error = "녹음을 재생할 수 없어요. 다시 시도해주세요")
+            mutable.value = state.value.copy(error = "녹음을 재생할 수 없어. 다시 시도해.")
         }
     }
 

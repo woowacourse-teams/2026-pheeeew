@@ -157,7 +157,7 @@ private fun SuccessCheckMark() {
 @Composable
 private fun SnackbarPreview() {
     Snackbar(
-        message = "신고가 접수되었습니다.",
+        message = "신고가 접수됐어.",
         onDismiss = {},
     )
 }

@@ -155,8 +155,8 @@ fun App(
     if (suggestedUpdate != null && !suggestionDismissed) {
         AlertDialog(
             onDismissRequest = { suggestionDismissed = true },
-            title = { Text("새로운 버전이 나왔어요") },
-            text = { Text("최신 버전으로 업데이트하면 더 나은 앱을 이용할 수 있어요.") },
+            title = { Text("새로운 버전이 나왔어") },
+            text = { Text("최신 버전으로 업데이트하면 더 나은 앱을 이용할 수 있어.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -324,13 +324,13 @@ fun App(
                         onBlockSucceeded = {
                             detailViewModel.dismiss()
                             mapViewModel.refreshEmotionPins()
-                            moderationMessage = "차단되었습니다."
+                            moderationMessage = "차단했어."
                         },
                         monitoringVisible = !isSettingsVisible && reportTarget == null,
                         onDeleteSucceeded = {
                             detailViewModel.dismiss()
                             mapViewModel.refreshEmotionPins()
-                            moderationMessage = "삭제되었습니다."
+                            moderationMessage = "삭제했어."
                         },
                     )
                 }
@@ -463,14 +463,14 @@ private fun RequiredUpdateDialog(
                     .RoundedCornerShape(20.dp),
         ) {
             Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("앱 업데이트가 필요해요", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("앱 업데이트가 필요해", fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text =
                         if (storeOpenError) {
-                            "스토어를 열 수 없어요. 다시 시도하거나 앱 버전을 확인해 주세요."
+                            "스토어를 열 수 없어. 다시 시도하거나 앱 버전을 확인해."
                         } else {
-                            "현재 버전은 더 이상 지원되지 않아요. 최신 버전으로 업데이트한 뒤 이용해 주세요."
+                            "현재 버전은 더 이상 지원되지 않아. 최신 버전으로 업데이트한 뒤 이용해."
                         },
                     fontSize = 14.sp,
                     lineHeight = 22.sp,

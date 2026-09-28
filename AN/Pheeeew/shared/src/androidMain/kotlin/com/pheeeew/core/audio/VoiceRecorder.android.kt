@@ -167,7 +167,7 @@ private class AndroidVoiceRecorder(
 
     private fun fail() {
         clear()
-        mutable.value = state.value.copy(error = "녹음할 수 없어요. 마이크를 확인하고 다시 시도해주세요")
+        mutable.value = state.value.copy(error = "녹음할 수 없어. 마이크를 확인하고 다시 시도해.")
     }
 
     override fun stop() {
@@ -209,7 +209,7 @@ private class AndroidVoiceRecorder(
                     }
                     it.setOnErrorListener { _, _, _ ->
                         pause()
-                        mutable.value = state.value.copy(error = "녹음을 재생할 수 없어요")
+                        mutable.value = state.value.copy(error = "녹음을 재생할 수 없어")
                         true
                     }
                 }
@@ -232,7 +232,7 @@ private class AndroidVoiceRecorder(
             audioManager.abandonAudioFocusRequest(focus)
             player?.release()
             player = null
-            mutable.value = state.value.copy(playing = false, error = "녹음을 재생할 수 없어요")
+            mutable.value = state.value.copy(playing = false, error = "녹음을 재생할 수 없어")
         }
     }
 

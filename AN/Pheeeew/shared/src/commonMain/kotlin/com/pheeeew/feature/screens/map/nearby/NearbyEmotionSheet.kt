@@ -310,9 +310,9 @@ fun NearbyEmotionSheet(
                         shape = RoundedCornerShape(16.dp),
                     ) {
                         if (state.groupsLoading) {
-                            Text("가입 그룹을 불러오는 중이에요", Modifier.padding(16.dp))
+                            Text("가입 그룹을 불러오는 중이야", Modifier.padding(16.dp))
                         } else {
-                            TextButton(onClick = viewModel::loadGroups) { Text("그룹을 불러오지 못했어요 · 다시 시도") }
+                            TextButton(onClick = viewModel::loadGroups) { Text("그룹을 불러오지 못했어 · 다시 시도") }
                         }
                     }
                 }
@@ -322,10 +322,10 @@ fun NearbyEmotionSheet(
     state.blockId?.let { id ->
         AlertDialog(
             onDismissRequest = { if (id !in state.pendingIds) viewModel.requestBlock(null) },
-            title = { Text("이 감정을 차단할까요?") },
+            title = { Text("이 감정을 차단할까?") },
             text = {
                 Column {
-                    Text("이 감정 글 하나가 내 지도와 목록에서 숨겨져요.")
+                    Text("이 감정 글 하나가 내 지도와 목록에서 숨겨져.")
                     state.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 }
             },

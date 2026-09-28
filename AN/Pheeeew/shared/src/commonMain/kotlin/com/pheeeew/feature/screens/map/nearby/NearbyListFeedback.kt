@@ -52,9 +52,9 @@ internal fun NearbyEmptyState(
                     )
                 }
         }
-        Text("여기에 첫 마음을 남겨볼까요?", color = FeedbackInk, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text("여기에 첫 마음을 남겨볼까?", color = FeedbackInk, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         Text(
-            "아직 이곳에 보이는 스탬프가 없어요.\n지금의 감정을 가볍게 찍어보세요.",
+            "아직 이곳에 보이는 스탬프가 없어.\n지금의 감정을 가볍게 찍어봐.",
             color = FeedbackSecondary,
             fontSize = 13.sp,
             lineHeight = 19.sp,
@@ -88,7 +88,7 @@ internal fun NearbyLoadError(
                 ) { Text("!", color = FeedbackSecondary, fontWeight = FontWeight.Bold, fontSize = 20.sp) }
             }
             Text(
-                if (hasItems) "다음 감정을 불러오지 못했어요" else "감정을 불러오지 못했어요",
+                if (hasItems) "다음 감정을 불러오지 못했어" else "감정을 불러오지 못했어",
                 color = FeedbackInk,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
