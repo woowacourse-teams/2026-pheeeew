@@ -212,37 +212,26 @@ private fun AppContent(
 
     if (!onboardingCompleted) {
         val onboardingRecorder = rememberVoiceRecorder()
-        val onboardingScope = rememberCoroutineScope()
-        var requestingPermissions by remember { mutableStateOf(false) }
         OnboardingScreen(
             monitoring = apiDependencies.client.monitoring,
             onFinished = {
-                if (!requestingPermissions) {
-                    requestingPermissions = true
-                    onboardingScope.launch {
-                        try {
-                            try {
-                                locationDependencies.permissionController.requestPermission()
-                            } catch (cancellation: CancellationException) {
-                                throw cancellation
-                            } catch (_: Exception) {
-                                // A failed permission request must not block onboarding.
-                            }
-                            try {
-                                onboardingRecorder.requestMicrophonePermission()
-                                onboardingRecorder.state.first { !it.requestingPermission }
-                            } catch (cancellation: CancellationException) {
-                                throw cancellation
-                            } catch (_: Exception) {
-                                // Recording can request permission again when the user needs it.
-                            }
-                            onOnboardingCompleted()
-                            onboardingCompleted = true
-                        } finally {
-                            requestingPermissions = false
-                        }
-                    }
+                try {
+                    locationDependencies.permissionController.requestPermission()
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    // A failed permission request must not block onboarding.
                 }
+                try {
+                    onboardingRecorder.requestMicrophonePermission()
+                    onboardingRecorder.state.first { !it.requestingPermission }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    // Recording can request permission again when the user needs it.
+                }
+                onOnboardingCompleted()
+                onboardingCompleted = true
             },
         )
         return

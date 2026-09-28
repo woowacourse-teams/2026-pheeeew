@@ -102,7 +102,7 @@ fun GroupDetailScreen(
             state = pullState,
             enabled =
                 uiState.overlay == GroupDetailOverlay.None && uiState.pressStatus == GroupPressStatus.Idle &&
-                    (uiState.content is GroupDetailContent.Ready || uiState.content == GroupDetailContent.LoadFailed),
+                    uiState.content is GroupDetailContent.Ready,
             modifier = Modifier.fillMaxSize(),
         ) {
             Column(

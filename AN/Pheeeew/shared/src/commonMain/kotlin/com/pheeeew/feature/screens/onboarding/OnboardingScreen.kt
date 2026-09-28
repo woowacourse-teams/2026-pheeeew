@@ -23,6 +23,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -81,7 +83,7 @@ private val onboardingPages =
 
 @Composable
 fun OnboardingScreen(
-    onFinished: () -> Unit,
+    onFinished: suspend () -> Unit,
     modifier: Modifier = Modifier,
     initialPage: Int = 0,
     monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
@@ -105,15 +107,23 @@ fun OnboardingScreen(
             )
         }
     }
-    val completed = androidx.compose.runtime.remember { booleanArrayOf(false) }
+    val completed = remember { mutableStateOf(false) }
+    val isFinishing = remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
 
     fun finish(outcome: String) {
-        if (completed[0]) return
-        completed[0] = true
-        telemetry.emit("onboarding_finished", labels("outcome" to outcome))
-        onFinished()
+        if (completed.value || isFinishing.value) return
+        isFinishing.value = true
+        coroutineScope.launch {
+            try {
+                onFinished()
+                telemetry.emit("onboarding_finished", labels("outcome" to outcome))
+                completed.value = true
+            } finally {
+                isFinishing.value = false
+            }
+        }
     }
-    val coroutineScope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == onboardingPages.lastIndex
 
     Column(
