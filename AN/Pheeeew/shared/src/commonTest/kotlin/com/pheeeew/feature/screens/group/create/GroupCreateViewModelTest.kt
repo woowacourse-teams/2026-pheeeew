@@ -41,7 +41,7 @@ class GroupCreateViewModelTest {
     }
 
     @Test
-    fun `이름 설명 제한을 API 계약에 맞춰 적용한다`() {
+    fun `그룹 이름과 설명은 입력 단계에서 API 길이 제한을 적용한다`() {
         val viewModel = createViewModel()
         viewModel.onNameChanged("가")
         viewModel.onStampLabelChanged("기록")
@@ -55,8 +55,9 @@ class GroupCreateViewModelTest {
 
         viewModel.onCancelConfirmation()
         viewModel.onDescriptionChanged("설명".repeat(51))
+        assertEquals(100, viewModel.formRules.count(viewModel.uiState.value.draft.description))
         viewModel.onCreateClick()
-        assertEquals(GroupCreateFieldError.TooLong, viewModel.uiState.value.fieldErrors.description)
+        assertIs<GroupCreateSubmissionState.Confirming>(viewModel.uiState.value.submission)
     }
 
     @Test

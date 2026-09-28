@@ -87,7 +87,10 @@ class WeeklyRankingViewModel(
         load(state.weeksAgo, preserveContent = state.status == WeeklyRankingStatus.Ready)
     }
 
-    private fun load(weeksAgo: Int, preserveContent: Boolean = false) {
+    private fun load(
+        weeksAgo: Int,
+        preserveContent: Boolean = false,
+    ) {
         requestJob?.cancel()
         val requestId = ++requestGeneration
         val currentWeekLabel = _uiState.value.weekLabel

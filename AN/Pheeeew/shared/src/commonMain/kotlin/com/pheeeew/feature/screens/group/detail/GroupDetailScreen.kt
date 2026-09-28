@@ -37,8 +37,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.DetailTopBar
@@ -142,6 +142,7 @@ fun GroupDetailScreen(
                                 pressStatus = uiState.pressStatus,
                                 pendingEmotionPresses = uiState.pendingEmotionPresses,
                                 onInviteClick = actions.onInviteClick,
+                                onRetry = actions.onRetry,
                                 onEmotionTap = actions.onEmotionTap,
                                 onResolvePressOutcome = actions.onResolvePressOutcome,
                                 fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,

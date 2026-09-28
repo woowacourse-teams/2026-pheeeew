@@ -124,7 +124,12 @@ fun OnboardingScreen(
                 .safeDrawingPadding(),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 16.dp).padding(top = 12.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {

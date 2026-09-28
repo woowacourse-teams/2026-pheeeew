@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.group.detail
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -74,6 +76,7 @@ internal fun GroupDetailReadyContent(
     pressStatus: GroupPressStatus,
     pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
     onInviteClick: () -> Unit,
+    onRetry: () -> Unit,
     onEmotionTap: (EmotionKind) -> Boolean,
     onResolvePressOutcome: () -> Unit,
     fixtureFeedbackOnAcceptedPress: Boolean = false,
@@ -83,7 +86,7 @@ internal fun GroupDetailReadyContent(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
             if (hasRefreshError) {
-                RefreshBanner()
+                RefreshBanner(onRetry = onRetry)
             }
             GroupSummary(memberCount = detail.group.memberCount, onInviteClick = onInviteClick)
             Spacer(Modifier.height(8.dp))
@@ -131,6 +134,7 @@ private fun GroupDetailReadyContentPreview() {
         canTapEmotion = true,
         pressStatus = GroupPressStatus.Idle,
         onInviteClick = {},
+        onRetry = {},
         onEmotionTap = { true },
         onResolvePressOutcome = {},
     )
@@ -301,6 +305,7 @@ private fun GroupDetailCopyKey.toStringResource() =
 
 @Composable
 private fun RefreshBanner(
+    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Text(
@@ -310,6 +315,7 @@ private fun RefreshBanner(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFFF3F4F2))
+                .clickable(role = Role.Button, onClick = onRetry)
                 .padding(horizontal = 14.dp, vertical = 11.dp),
         color = AppColors.RankingSecondaryContent,
         fontSize = 12.sp,
