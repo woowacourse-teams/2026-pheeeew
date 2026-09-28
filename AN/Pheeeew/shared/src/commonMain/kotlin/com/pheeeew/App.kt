@@ -1,5 +1,8 @@
 package com.pheeeew
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -220,7 +223,22 @@ fun App(
                 }
             }
 
-            composable<GroupRootDestination> {
+            composable<GroupRootDestination>(
+                enterTransition = {
+                    if (initialState.destination.route == RankingRootDestination::class.qualifiedName) {
+                        slideInHorizontally(tween(300)) { -it }
+                    } else {
+                        null
+                    }
+                },
+                exitTransition = {
+                    if (targetState.destination.route == RankingRootDestination::class.qualifiedName) {
+                        slideOutHorizontally(tween(300)) { -it }
+                    } else {
+                        null
+                    }
+                },
+            ) {
                 GroupFeatureHost(
                     dependencies = groupDependencies,
                     modifier = Modifier.fillMaxSize(),
@@ -233,7 +251,22 @@ fun App(
                 )
             }
 
-            composable<RankingRootDestination> {
+            composable<RankingRootDestination>(
+                enterTransition = {
+                    if (initialState.destination.route == GroupRootDestination::class.qualifiedName) {
+                        slideInHorizontally(tween(300)) { it }
+                    } else {
+                        null
+                    }
+                },
+                exitTransition = {
+                    if (targetState.destination.route == GroupRootDestination::class.qualifiedName) {
+                        slideOutHorizontally(tween(300)) { it }
+                    } else {
+                        null
+                    }
+                },
+            ) {
                 WeeklyRankingRoute(
                     apiDependencies.client,
                     Modifier.fillMaxSize(),
