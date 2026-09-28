@@ -9,6 +9,7 @@ data class GroupJoinDependencies(
     val errorReporter: GroupJoinErrorReporter,
     val operationKeyAllocator: GroupOperationKeyAllocator,
     val requestPolicy: GroupJoinRequestPolicy = GroupJoinRequestPolicy(),
+    val monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
 )
 
 /** API 정책이 정해지기 전 조회/참여 작업의 개발용 제한 시간입니다. */

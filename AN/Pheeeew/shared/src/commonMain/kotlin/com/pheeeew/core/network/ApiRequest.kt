@@ -21,6 +21,8 @@ data class ApiRequest(
     val body: Any? = null,
     /** Opt in only for a body that can be transmitted again after a pre-handler AUTH-001. */
     val replayAfterAuthentication: Boolean = body == null && kind == RequestKind.READ,
+    /** Fixed endpoint name for monitoring; never derive this from the runtime path. */
+    val monitoringEndpoint: String? = null,
 ) {
     init {
         require(path.isNotBlank()) { "API path는 비어 있을 수 없습니다." }

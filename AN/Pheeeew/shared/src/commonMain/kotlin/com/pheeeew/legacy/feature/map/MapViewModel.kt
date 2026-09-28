@@ -2,8 +2,8 @@ package com.pheeeew.legacy.feature.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.feature.monitoring.compat.Monitoring
 import com.pheeeew.legacy.core.audio.BreathInputError
-import com.pheeeew.legacy.core.monitoring.Monitoring
 import com.pheeeew.legacy.core.permission.LocationPermissionStatus
 import com.pheeeew.legacy.di.LocationDependencies
 import com.pheeeew.legacy.domain.exception.ApiException

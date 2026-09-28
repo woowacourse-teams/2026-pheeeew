@@ -11,4 +11,5 @@ fun createNearbyEmotionViewModel(client: ApiClient): NearbyEmotionViewModel =
     NearbyEmotionViewModel(
         EmotionRepositoryImpl(EmotionApi(client.requests)),
         GroupStampListRepositoryImpl(GroupStampListApi(client.requests)),
+        client.monitoring,
     )

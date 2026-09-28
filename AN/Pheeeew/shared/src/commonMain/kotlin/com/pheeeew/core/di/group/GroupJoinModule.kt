@@ -20,7 +20,8 @@ fun createGroupJoinDependencies(
     val repository = GroupJoinRepositoryImpl(GroupJoinApi(apiClient.requests))
     return GroupJoinDependencies(
         lookupGroupAction = ApiLookupGroupAction(repository),
-        joinGroupAction = ApiJoinGroupAction(repository, groupListSource),
+        joinGroupAction = ApiJoinGroupAction(repository, groupListSource, apiClient.monitoring),
+        monitoring = apiClient.monitoring,
         errorReporter = errorReporter,
         operationKeyAllocator = operationKeyAllocator,
     )

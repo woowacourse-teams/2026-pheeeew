@@ -26,7 +26,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,14 +55,18 @@ fun Snackbar(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
     isError: Boolean = false,
+    presentationKey: Any? = message,
+    onShown: () -> Unit = {},
 ) {
     var lastMessage by remember { mutableStateOf(message) }
 
-    LaunchedEffect(message) {
+    val currentOnShown by rememberUpdatedState(onShown)
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    LaunchedEffect(message, presentationKey) {
         if (message != null) {
             lastMessage = message
             delay(REPORT_SNACKBAR_DURATION_MILLIS)
-            onDismiss()
+            currentOnDismiss()
         }
     }
 
@@ -70,6 +76,12 @@ fun Snackbar(
         exit = fadeOut() + slideOutVertically { it / 2 },
         modifier = modifier,
     ) {
+        LaunchedEffect(message, presentationKey) {
+            if (message != null) {
+                withFrameNanos { }
+                currentOnShown()
+            }
+        }
         Surface(
             modifier =
                 Modifier

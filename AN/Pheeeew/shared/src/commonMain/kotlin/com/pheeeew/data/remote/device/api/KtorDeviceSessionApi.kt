@@ -60,5 +60,18 @@ class KtorDeviceSessionApi(
     private fun post(
         path: String,
         body: Any?,
-    ) = ApiRequest(HttpMethod.Post, path, RequestKind.WRITE, AuthenticationRequirement.NONE, body = body)
+    ) = ApiRequest(
+        HttpMethod.Post,
+        path,
+        RequestKind.WRITE,
+        AuthenticationRequirement.NONE,
+        body = body,
+        monitoringEndpoint =
+            when (path) {
+                "/api/v2/devices" -> "device_register"
+                "/api/v2/devices/tokens" -> "device_refresh"
+                "/api/v2/devices/challenge" -> "device_challenge"
+                else -> null
+            },
+    )
 }

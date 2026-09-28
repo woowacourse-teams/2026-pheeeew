@@ -29,6 +29,7 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.di.createWeeklyRankingViewModel
 import com.pheeeew.core.network.ApiClient
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
+import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.ranking.components.RankingRow
 import com.pheeeew.feature.screens.ranking.components.TopThreeRanking
 import com.pheeeew.feature.screens.ranking.components.WeekSelector
@@ -47,6 +48,7 @@ fun WeeklyRankingRoute(
     viewModel: WeeklyRankingViewModel,
     modifier: Modifier = Modifier,
 ) {
+    ProductScreen(viewModel.telemetry, true, "ranking_viewed")
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     WeeklyRankingScreen(
         uiState = uiState,

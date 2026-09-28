@@ -21,6 +21,7 @@ class GroupJoinApi(
                 path = SEARCH_PATH,
                 kind = RequestKind.READ,
                 queryParameters = mapOf(INVITE_CODE_PARAMETER to normalizedCode),
+                monitoringEndpoint = "group_lookup",
             ),
         ) { response -> response.body<GroupPreviewResponseDto>() }
 
@@ -33,6 +34,7 @@ class GroupJoinApi(
                 body = GroupJoinRequestDto(normalizedCode),
                 // AUTH-001 is rejected before the handler; replaying this membership operation is safe.
                 replayAfterAuthentication = true,
+                monitoringEndpoint = "group_join",
             ),
         ) { response -> response.body<GroupJoinResponseDto>() }
 

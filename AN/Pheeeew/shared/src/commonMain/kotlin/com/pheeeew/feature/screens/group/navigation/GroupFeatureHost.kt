@@ -70,6 +70,7 @@ fun GroupFeatureHost(
             val createViewModel: GroupCreateViewModel =
                 viewModel {
                     GroupCreateViewModel(
+                        monitoring = dependencies.join.monitoring,
                         createGroupAction = dependencies.createActions.create,
                         errorReporter = dependencies.createErrorReporter,
                         operationKeyAllocator = dependencies.operationKeyAllocator,

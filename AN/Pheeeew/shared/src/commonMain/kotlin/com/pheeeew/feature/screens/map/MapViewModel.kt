@@ -3,6 +3,8 @@ package com.pheeeew.feature.screens.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.di.LocationDependencies
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
@@ -11,6 +13,10 @@ import com.pheeeew.domain.model.emotion.EmotionMapPin
 import com.pheeeew.domain.usecase.FindEmotionMapPageUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase
 import com.pheeeew.domain.usecase.RefreshLocationUseCase
+import com.pheeeew.feature.monitoring.product.MonitoredLocationPermission
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.screens.map.monitoring.ContentLoad
+import com.pheeeew.feature.screens.map.monitoring.ContentMonitoring
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -25,9 +31,43 @@ class MapViewModel(
     private val refreshLocation: RefreshLocationUseCase,
     private val findEmotionMapPage: FindEmotionMapPageUseCase,
     private val findEmotionMapSnapshot: FindEmotionMapSnapshotUseCase,
+    monitoring: Monitoring = NoOpMonitoring,
 ) : ViewModel() {
     private val _uiModel = MutableStateFlow(MapUiModel())
     val uiModel: StateFlow<MapUiModel> = _uiModel.asStateFlow()
+
+    private val telemetry = ProductMonitoring(monitoring, "map")
+    private var mapLoad: com.pheeeew.feature.monitoring.product.ProductOperation? = null
+    val exploration = ContentMonitoring(monitoring, viewModelScope, "map")
+
+    fun contentVisibility(visible: Boolean) {
+        if (exploration.visibility(visible) && _uiModel.value.emotionContentLoad != null) {
+            val load =
+                exploration
+                    .load(
+                        "resume",
+                        "cache",
+                        _uiModel.value.emotionContentLoad?.loadId,
+                    ).also { it.ready() }
+            _uiModel.value = _uiModel.value.copy(emotionContentLoad = load)
+        }
+    }
+
+    override fun onCleared() {
+        exploration.close()
+        super.onCleared()
+    }
+
+    fun contentPresented(
+        loadId: String,
+        entryIds: List<String>,
+    ) {
+        _uiModel.value.emotionContentLoad?.takeIf { it.loadId == loadId }?.let {
+            val ids = entryIds.mapNotNull { id -> id.toLongOrNull() }.distinct()
+            exploration.presented(it, ids.size)
+            ids.forEach { id -> exploration.itemVisible(id) }
+        }
+    }
 
     private var hasStarted = false
     private var locationRequestJob: Job? = null
@@ -52,7 +92,8 @@ class MapViewModel(
         _uiModel.value = _uiModel.value.copy(hiddenEmotionIds = _uiModel.value.hiddenEmotionIds + id)
     }
 
-    fun onMyLocationClick() {
+    fun onMyLocationClick(fromUser: Boolean = true) {
+        if (fromUser) telemetry.emit("map_location_requested")
         requestCurrentLocation(moveCamera = true, requestPermission = true)
     }
 
@@ -93,6 +134,7 @@ class MapViewModel(
         if (bounds == requestedBounds && (viewportJob?.isActive == true || emotionMapJob?.isActive == true)) return
         if (bounds == displayedBounds && emotionMapJob?.isActive != true) return
         requestedBounds = bounds
+        exploration.supersede()
         publishSnapshot(bounds)
         val generation = ++queryGeneration
         viewportJob?.cancel()
@@ -163,9 +205,20 @@ class MapViewModel(
                 cursor?.let(usedCursors::add)
                 var firstPage = request.startCursor == null
                 var invalidCount = if (firstPage) 0 else _uiModel.value.invalidEmotionPinCount
+                var observation: ContentLoad? = null
                 try {
                     while (true) {
                         if (request.generation != queryGeneration) return@launch
+                        observation =
+                            exploration.load(
+                                if (cursor != null) {
+                                    "pagination"
+                                } else if (request.bypassCache) {
+                                    "refresh"
+                                } else {
+                                    "viewport"
+                                },
+                            )
                         when (
                             val result =
                                 findEmotionMapPage(
@@ -175,6 +228,7 @@ class MapViewModel(
                                 )
                         ) {
                             is EmotionMapPageResult.Failure -> {
+                                observation.failed()
                                 if (request.generation == queryGeneration) {
                                     retryCursor = cursor
                                     _uiModel.value =
@@ -190,20 +244,26 @@ class MapViewModel(
 
                             is EmotionMapPageResult.Success -> {
                                 val page = result.page
+                                val origin = if (result.fromCache) "cache" else "network"
                                 invalidCount += page.invalidItemCount
                                 page.pins.forEach { pins[it.id] = it }
                                 if (request.generation != queryGeneration) {
+                                    observation.hidden()
+                                    observation.ready(origin)
                                     if (!_uiModel.value.isRecordLocationPicking) {
                                         requestedBounds?.let(::publishSnapshot)
                                     }
                                     return@launch
                                 }
+                                _uiModel.value.emotionContentLoad?.hidden()
+                                val displayLoad = exploration.display(observation, origin)
                                 displayedBounds = request.bounds
                                 displayedPins = pins
                                 val ordered = pins.values.toOrderedUiPins()
                                 _uiModel.value =
                                     _uiModel.value.copy(
                                         emotionPins = ordered,
+                                        emotionContentLoad = displayLoad,
                                         isLoadingEmotionPins = false,
                                         isLoadingMoreEmotionPins = page.hasNext,
                                         hasPartialEmotionPins = false,
@@ -229,8 +289,10 @@ class MapViewModel(
                         }
                     }
                 } catch (cancellation: CancellationException) {
+                    observation?.cancelled()
                     throw cancellation
                 } catch (_: Exception) {
+                    observation?.failed()
                     if (request.generation == queryGeneration) {
                         retryCursor = cursor
                         _uiModel.value =
@@ -271,22 +333,34 @@ class MapViewModel(
     private fun publishSnapshot(bounds: EmotionMapBounds) {
         val pins = findEmotionMapSnapshot(bounds)?.pins ?: return
         displayedPins = pins.associateByTo(linkedMapOf()) { it.id }
-        _uiModel.value = _uiModel.value.copy(emotionPins = pins.toOrderedUiPins())
+        _uiModel.value.emotionContentLoad?.hidden()
+        val load = exploration.load("cache", "cache").also { it.ready() }
+        _uiModel.value = _uiModel.value.copy(emotionPins = pins.toOrderedUiPins(), emotionContentLoad = load)
     }
 
     private fun Collection<EmotionMapPin>.toOrderedUiPins(): List<EmotionPinUiModel> =
         sortedWith(compareBy<EmotionMapPin> { Instant.parse(it.createdAt) }.thenBy { it.id })
             .map { it.toUiModel() }
 
+    fun onMapRendererAttached() {
+        mapLoad?.finish("cancelled")
+        mapLoad = telemetry.operation("map_load_finished")
+    }
+
     fun onMapError(error: MapErrorUiModel) {
+        if (_uiModel.value.mapError == error) return
+        mapLoad?.finish("failed")
         _uiModel.value = _uiModel.value.copy(mapError = error)
     }
 
     fun onMapRecovered() {
+        mapLoad?.finish("success")
         _uiModel.value = _uiModel.value.copy(mapError = null)
     }
 
     fun retryMap() {
+        mapLoad?.finish("cancelled")
+        mapLoad = telemetry.operation("map_load_finished")
         _uiModel.value =
             _uiModel.value.copy(
                 mapError = null,
@@ -303,7 +377,10 @@ class MapViewModel(
             viewModelScope.launch {
                 _uiModel.value = _uiModel.value.copy(isRequestingLocation = true)
                 try {
-                    val locationState = refreshLocation(requestPermission)
+                    val locationState =
+                        telemetry.operation("location_acquire_finished").observe({
+                            if (it is LocationState.Available) "success" else "unavailable"
+                        }) { refreshLocation(requestPermission) }
                     _uiModel.value = _uiModel.value.copy(locationState = locationState)
                     val location = (locationState as? LocationState.Available)?.location
                     if (moveCamera && location != null) {
@@ -353,15 +430,21 @@ class MapViewModel(
             locationDependencies: LocationDependencies,
             findEmotionMapPage: FindEmotionMapPageUseCase,
             findEmotionMapSnapshot: FindEmotionMapSnapshotUseCase,
+            monitoring: Monitoring = NoOpMonitoring,
         ): MapViewModel =
             MapViewModel(
                 refreshLocation =
                     RefreshLocationUseCase(
-                        permissionController = locationDependencies.permissionController,
+                        permissionController =
+                            MonitoredLocationPermission(
+                                locationDependencies.permissionController,
+                                monitoring,
+                            ),
                         repository = locationDependencies.repository,
                     ),
                 findEmotionMapPage = findEmotionMapPage,
                 findEmotionMapSnapshot = findEmotionMapSnapshot,
+                monitoring = monitoring,
             )
 
         private const val VIEWPORT_DEBOUNCE_MILLIS = 700L

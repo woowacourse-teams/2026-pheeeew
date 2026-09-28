@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.map.renderer
 
 import android.graphics.Color
+import android.graphics.RectF
 import android.view.Gravity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -25,6 +26,7 @@ import com.pheeeew.feature.screens.map.MapUiModel
 import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
 import com.pheeeew.feature.screens.map.record.location.destination
 import com.pheeeew.feature.screens.map.record.location.recordCameraBounds
+import com.pheeeew.feature.screens.map.symbolImageKey
 import org.json.JSONArray
 import org.json.JSONObject
 import org.maplibre.android.MapLibre
@@ -58,10 +60,12 @@ internal actual fun NativeMap(
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapBounds) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
+    onContentPresented: (String, List<String>) -> Unit,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
@@ -79,6 +83,7 @@ internal actual fun NativeMap(
                     onRecordViewportChanged = onRecordViewportChanged,
                     onViewportChanged = onViewportChanged,
                     onEmotionPinClick = { currentOnEmotionPinClick(it) },
+                    onContentPresented = { token, count -> currentOnContentPresented(token, count) },
                 )
             }
         }
@@ -123,6 +128,7 @@ private class AndroidFoundationMapHost(
     private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     private val onViewportChanged: (EmotionMapBounds) -> Unit,
     private val onEmotionPinClick: (Long) -> Unit,
+    private val onContentPresented: (String, List<String>) -> Unit,
 ) {
     private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
     private var map: MapLibreMap? = null
@@ -140,6 +146,36 @@ private class AndroidFoundationMapHost(
     private var didConfigureKoreanFontFaces = false
     private var pendingOriginalStyleJson: String? = null
     private var isRestoringOriginalStyle = false
+
+    private val idleListener = MapView.OnDidBecomeIdleListener { publishContent() }
+
+    private fun publishContent() {
+        val state = latestState ?: return
+        val token = state.emotionContentLoad?.loadId ?: return
+        val currentMap = map ?: return
+        if (released || !styleLoaded || state.isRecordLocationPicking || mapView.width <= 0 ||
+            mapView.height <= 0
+        ) {
+            return
+        }
+        val imageKeys = state.emotionPinSymbolImages.mapTo(mutableSetOf()) { it.key }
+        if (state.emotionPins.any { it.symbolImageKey() !in imageKeys }) return
+        val features =
+            currentMap.queryRenderedFeatures(
+                RectF(0f, 0f, mapView.width.toFloat(), mapView.height.toFloat()),
+                "emotion-pin-symbol-layer",
+            )
+        // Reject a native frame that still contains the previous asynchronous GeoJSON update.
+        if (features.any {
+                it.getProperty("monitoring-load-id")?.takeUnless { value -> value.isJsonNull }?.asString !=
+                    token
+            }
+        ) {
+            return
+        }
+        val ids = features.mapNotNull { it.id()?.takeIf { id -> id.toLongOrNull() != null } }.distinct()
+        onContentPresented(token, ids)
+    }
 
     private val mapLoadFailureListener =
         MapView.OnDidFailLoadingMapListener {
@@ -170,6 +206,7 @@ private class AndroidFoundationMapHost(
         }
         ViewCompat.requestApplyInsets(mapView)
         mapView.addOnDidFailLoadingMapListener(mapLoadFailureListener)
+        mapView.addOnDidBecomeIdleListener(idleListener)
         mapView.getMapAsync { readyMap ->
             if (released) return@getMapAsync
             map = readyMap
@@ -248,6 +285,7 @@ private class AndroidFoundationMapHost(
         released = true
         ViewCompat.setOnApplyWindowInsetsListener(mapView, null)
         mapView.removeOnDidFailLoadingMapListener(mapLoadFailureListener)
+        mapView.removeOnDidBecomeIdleListener(idleListener)
         mapView.onPause()
         mapView.onStop()
         mapView.onDestroy()
@@ -384,6 +422,7 @@ private class AndroidFoundationMapHost(
                 images = state.emotionPinSymbolImages,
                 visible = !state.isRecordLocationPicking,
                 densityDpi = mapView.resources.displayMetrics.densityDpi,
+                monitoringLoadId = state.emotionContentLoad?.loadId,
             )
         }
         val point =

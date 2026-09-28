@@ -16,6 +16,7 @@ class EmotionDeleteApi(
                 method = HttpMethod.Delete,
                 path = "/api/v1/emotions/$emotionId",
                 kind = RequestKind.WRITE,
+                monitoringEndpoint = "emotion_delete",
                 replayAfterAuthentication = false,
             ),
         )

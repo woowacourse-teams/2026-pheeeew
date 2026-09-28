@@ -18,6 +18,7 @@ class GroupDetailApi(
                 method = HttpMethod.Get,
                 path = "$GROUPS_PATH/$groupId",
                 kind = RequestKind.READ,
+                monitoringEndpoint = "group_detail",
             ),
         ) { response -> response.body<GroupDetailResponseDto>() }
 
@@ -28,6 +29,7 @@ class GroupDetailApi(
                 path = "$GROUPS_PATH/$groupId/members/me",
                 kind = RequestKind.WRITE,
                 replayAfterAuthentication = false,
+                monitoringEndpoint = "group_leave",
             ),
         )
 

@@ -28,6 +28,10 @@ sealed interface EmotionRegistrationResult {
         val id: Long,
     ) : EmotionRegistrationResult
 
+    /** The request was definitely not applied. */
+    data object Rejected : EmotionRegistrationResult
+
+    /** Application of the write could not be confirmed. */
     data object Unavailable : EmotionRegistrationResult
 
     data object AudioUnavailable : EmotionRegistrationResult

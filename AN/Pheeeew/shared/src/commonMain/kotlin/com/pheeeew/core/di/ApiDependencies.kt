@@ -1,6 +1,8 @@
 package com.pheeeew.core.di
 
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.network.ApiClient
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ApiResponseObserver
@@ -16,6 +18,7 @@ import com.pheeeew.domain.model.device.DeviceSessionDiagnostic
 import com.pheeeew.domain.model.device.DeviceSessionDiagnostics
 import com.pheeeew.domain.model.device.DeviceSessionStage
 import com.pheeeew.domain.model.device.recordSafely
+import com.pheeeew.feature.monitoring.network.MonitoringApiObserver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -47,21 +50,26 @@ class ApiDependencies private constructor(
             platform: DevicePlatform,
             createProofProvider: () -> DeviceProofProvider,
             diagnostics: DeviceSessionDiagnostics = DeviceSessionDiagnostics {},
+            monitoring: Monitoring = NoOpMonitoring,
         ): ApiDependencies {
             val attestationPolicy = build.policy(createProofProvider)
             val config = ApiConfig(build.baseUrl)
-            val bootstrap = createPlatformApiClient(config)
+            val attemptObserver = MonitoringApiObserver(monitoring)
+            val bootstrap = createPlatformApiClient(config, attemptObserver = attemptObserver, monitoring = monitoring)
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val now = { Clock.System.now().toEpochMilliseconds() }
             val session =
                 DeviceSessionManager(
-                    DeviceSessionRepositoryImpl(
-                        KtorDeviceSessionApi(bootstrap.requests, diagnostics),
-                        storage,
-                        platform,
-                        attestationPolicy,
-                        now,
-                        diagnostics,
+                    com.pheeeew.feature.monitoring.product.MonitoredDeviceSession(
+                        DeviceSessionRepositoryImpl(
+                            KtorDeviceSessionApi(bootstrap.requests, diagnostics),
+                            storage,
+                            platform,
+                            attestationPolicy,
+                            now,
+                            diagnostics,
+                        ),
+                        monitoring,
                     ),
                     scope,
                     now,
@@ -82,7 +90,12 @@ class ApiDependencies private constructor(
                         ),
                     )
                 }
-            return ApiDependencies(bootstrap, createPlatformApiClient(config, session, observer), session, scope)
+            return ApiDependencies(
+                bootstrap,
+                createPlatformApiClient(config, session, observer, attemptObserver, monitoring),
+                session,
+                scope,
+            )
         }
     }
 }

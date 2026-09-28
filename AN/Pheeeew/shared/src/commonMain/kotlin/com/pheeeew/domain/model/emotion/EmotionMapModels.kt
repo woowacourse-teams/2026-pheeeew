@@ -54,6 +54,7 @@ sealed interface EmotionMapFailure {
 sealed interface EmotionMapPageResult {
     data class Success(
         val page: EmotionMapPage,
+        val fromCache: Boolean = false,
     ) : EmotionMapPageResult
 
     data class Failure(

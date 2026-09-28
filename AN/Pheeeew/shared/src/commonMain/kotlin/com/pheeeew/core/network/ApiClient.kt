@@ -1,5 +1,7 @@
 package com.pheeeew.core.network
 
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.HttpClientEngine
 import io.ktor.client.plugins.HttpTimeout
@@ -15,6 +17,7 @@ import kotlinx.serialization.json.Json
 class ApiClient internal constructor(
     private val client: HttpClient,
     val requests: ApiRequestExecutor,
+    val monitoring: Monitoring = NoOpMonitoring,
 ) {
     fun close() = client.close()
 }
@@ -23,6 +26,8 @@ expect fun createPlatformApiClient(
     config: ApiConfig,
     accessTokenProvider: AccessTokenProvider? = null,
     observer: ApiResponseObserver? = null,
+    attemptObserver: ApiAttemptObserver? = null,
+    monitoring: Monitoring = NoOpMonitoring,
 ): ApiClient
 
 internal fun createApiClient(
@@ -30,6 +35,8 @@ internal fun createApiClient(
     config: ApiConfig,
     accessTokenProvider: AccessTokenProvider?,
     observer: ApiResponseObserver? = null,
+    attemptObserver: ApiAttemptObserver? = null,
+    monitoring: Monitoring = NoOpMonitoring,
 ): ApiClient {
     val json =
         Json {
@@ -48,6 +55,7 @@ internal fun createApiClient(
         }
     return ApiClient(
         client = httpClient,
-        requests = ApiRequestExecutor(httpClient, config, accessTokenProvider, json, observer),
+        requests = ApiRequestExecutor(httpClient, config, accessTokenProvider, json, observer, attemptObserver),
+        monitoring = monitoring,
     )
 }

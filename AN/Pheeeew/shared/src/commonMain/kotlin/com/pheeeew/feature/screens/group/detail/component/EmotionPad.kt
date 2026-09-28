@@ -72,6 +72,7 @@ import com.pheeeew.feature.screens.group.detail.model.EmotionCountUiModel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
@@ -88,6 +89,8 @@ internal fun EmotionPad(
     enabled: Boolean,
     onEmotionTap: (EmotionKind) -> Boolean,
     fixtureFeedbackOnAcceptedPress: Boolean = false,
+    feedbackOperationKey: () -> com.pheeeew.feature.screens.group.model.GroupOperationKey? = { null },
+    onFeedbackShown: (com.pheeeew.feature.screens.group.model.GroupOperationKey) -> Unit = {},
     preserveFeedbackWhileDisabled: Boolean = false,
     modifier: Modifier = Modifier,
     reducedMotion: Boolean = rememberTapReducedMotion(),
@@ -113,6 +116,9 @@ internal fun EmotionPad(
     val scope = rememberCoroutineScope()
     val reduce = reducedMotion || scope.coroutineContext[MotionDurationScale]?.scaleFactor == 0f
     val focused = LocalWindowInfo.current.isWindowFocused
+    val currentFocused by rememberUpdatedState(focused)
+    val operationKeyForFeedback by rememberUpdatedState(feedbackOperationKey)
+    val feedbackShown by rememberUpdatedState(onFeedbackShown)
     val callback by rememberUpdatedState(onEmotionTap)
     val inputEnabled by rememberUpdatedState(enabled)
     val byKind = remember(counts) { counts.associateBy { it.kind } }
@@ -350,6 +356,13 @@ internal fun EmotionPad(
                             if (callback(kind) || fixtureFeedbackOnAcceptedPress) {
                                 // Start visual feedback now; the ViewModel persists accepted taps asynchronously.
                                 addReaction(kind, x, y, pointer)
+                                val operationKey = operationKeyForFeedback()
+                                if (operationKey != null) {
+                                    scope.launch {
+                                        withFrameNanos { }
+                                        if (currentFocused) feedbackShown(operationKey)
+                                    }
+                                }
                             }
                             pointer = null
                             keyboardActivation = false
