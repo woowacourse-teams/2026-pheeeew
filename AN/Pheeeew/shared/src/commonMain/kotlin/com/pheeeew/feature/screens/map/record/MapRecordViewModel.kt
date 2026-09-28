@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.map.record
 
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
+import com.pheeeew.feature.screens.map.monitoring.RecordResultReceipt
 import com.pheeeew.feature.screens.map.monitoring.RecordFunnelMonitoring
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -187,7 +188,7 @@ class MapRecordViewModel(
                 groupId = state.selectedGroupId.takeUnless { it == NO_GROUP_ID },
                 content = content,
             ).also { pendingRegistration = it }
-        funnel.submit(
+        val submission = funnel.submit(
             registration.requestId,
             when (registration.content) {
                 is EmotionRegistrationContent.Memo -> "text"
@@ -201,12 +202,17 @@ class MapRecordViewModel(
         viewModelScope.launch {
             val result =
                 try {
-                    registrationRepository.register(registration)
+                    registrationRepository.register(registration) { observation ->
+                        submission?.audioFinished(observation)
+                    }
                 } catch (cancelled: CancellationException) {
+                    submission?.cancelled()
                     throw cancelled
                 } catch (_: Exception) {
                     EmotionRegistrationResult.Unavailable
                 }
+            // Record the API outcome before optional local persistence or UI work.
+            val receipt = submission?.finish(result)
             when (result) {
                 is EmotionRegistrationResult.Success -> {
                     try {
@@ -218,7 +224,7 @@ class MapRecordViewModel(
                     }
                     _uiModel.value = RecordBottomSheetUiModel()
                     pendingRegistration = null
-                    _notice.value = RecordNoticeUiModel("선택한 위치에 감정을 남겼어요", false)
+                    _notice.value = RecordNoticeUiModel("선택한 위치에 감정을 남겼어요", false, receipt)
                 }
 
                 else -> {
@@ -239,6 +245,7 @@ class MapRecordViewModel(
                                 }
                             },
                             true,
+                            receipt,
                         )
                 }
             }
@@ -412,4 +419,5 @@ class MapRecordViewModel(
 data class RecordNoticeUiModel(
     val message: String,
     val isError: Boolean,
+    val receipt: RecordResultReceipt? = null,
 )

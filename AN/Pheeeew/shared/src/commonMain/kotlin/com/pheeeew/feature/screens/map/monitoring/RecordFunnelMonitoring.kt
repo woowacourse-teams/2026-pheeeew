@@ -112,13 +112,17 @@ class RecordFunnelMonitoring(private val monitoring: Monitoring) {
         val fields = flowFields() ?: return
         emit(RecordFunnelEvents.inputFinished, flowContext, fields + mapOf("input_mode" to mode, "action" to if (skipped) "skip" else "next"))
     }
-    fun submit(registrationKey: String, mode: String, hasGroup: Boolean) {
-        val fields = flowFields() ?: return
+    fun submit(registrationKey: String, mode: String, hasGroup: Boolean): RecordSubmission? {
+        val fields = flowFields() ?: return null
         submissionContext = context(flowContext)
-        emit(RecordFunnelEvents.submit, submissionContext, fields + mapOf(
+        val context = submissionContext ?: return null
+        val submissionFields = fields + mapOf(
             "registration_key" to registrationKey, "input_mode" to mode,
             "group_selection" to if (hasGroup) "group" else "none",
-        ))
+        )
+        val submission = RecordSubmission(monitoring, context, submissionFields)
+        emit(RecordFunnelEvents.submit, context, submissionFields)
+        return submission
     }
     fun clearFlow() {
         flowId = null
