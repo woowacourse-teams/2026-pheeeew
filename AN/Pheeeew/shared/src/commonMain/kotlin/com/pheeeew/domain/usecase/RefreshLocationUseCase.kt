@@ -9,11 +9,11 @@ class RefreshLocationUseCase(
     private val permissionController: LocationPermissionController,
     private val repository: LocationRepository,
 ) {
-    suspend operator fun invoke(): LocationState {
+    suspend operator fun invoke(requestPermission: Boolean): LocationState {
         when (permissionController.currentStatus()) {
             LocationPermissionStatus.Denied,
             LocationPermissionStatus.ServicesDisabled,
-            -> permissionController.requestPermission()
+            -> if (requestPermission) permissionController.requestPermission()
 
             LocationPermissionStatus.Granted,
             LocationPermissionStatus.PermanentlyDenied,

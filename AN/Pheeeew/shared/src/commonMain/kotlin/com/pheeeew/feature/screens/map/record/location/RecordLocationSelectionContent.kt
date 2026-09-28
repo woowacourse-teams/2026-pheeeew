@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.map.record.location
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -12,8 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -34,8 +37,11 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.domain.model.GeoCoordinate
-import com.pheeeew.feature.component.stamp.GroupStamp
+import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
+import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
+import com.pheeeew.feature.screens.map.record.group.GroupSelectionStamp
 import com.pheeeew.feature.screens.map.record.noRippleClickable
+import org.jetbrains.compose.resources.painterResource
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -46,9 +52,9 @@ fun RecordLocationSelectionContent(
     origin: GeoCoordinate?,
     selectedCoordinate: GeoCoordinate?,
     viewport: RecordMapViewport?,
-    groupLabel: String,
-    locationMessage: String?,
-    submissionMessage: String?,
+    selectedEmotion: EmotionTypeUiModel,
+    selectedGroupStamp: StampAppearanceUiModel?,
+    isSubmitting: Boolean,
     canConfirm: Boolean,
     onCoordinateSelected: (Double, Double) -> Unit,
     onConfirm: () -> Unit,
@@ -57,7 +63,7 @@ fun RecordLocationSelectionContent(
 ) {
     val density = LocalDensity.current.density
     val latestOnSelected by rememberUpdatedState(onCoordinateSelected)
-    val latestCanMove by rememberUpdatedState(submissionMessage == null)
+    val latestCanMove by rememberUpdatedState(!isSubmitting)
     val latestViewport by rememberUpdatedState(viewport)
     val latestCoordinate by rememberUpdatedState(selectedCoordinate ?: origin)
     Box(modifier = modifier.fillMaxSize()) {
@@ -86,11 +92,10 @@ fun RecordLocationSelectionContent(
                 val angle = bearing(origin, selected)
                 val offsetX = (sin(angle) * meters / RECORD_RADIUS_METERS * radius).toFloat()
                 val offsetY = (-cos(angle) * meters / RECORD_RADIUS_METERS * radius).toFloat()
-                GroupStamp(
-                    label = groupLabel,
-                    size = 62.dp,
+                Box(
                     modifier =
                         Modifier
+                            .size(62.dp)
                             .offset {
                                 IntOffset(
                                     (center.x + offsetX - 31.dp.toPx()).roundToInt(),
@@ -133,7 +138,18 @@ fun RecordLocationSelectionContent(
                                     latestOnSelected(coordinate.latitude, coordinate.longitude)
                                 }
                             },
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (selectedGroupStamp == null) {
+                        Image(
+                            painter = painterResource(selectedEmotion.icon),
+                            contentDescription = selectedEmotion.label,
+                            modifier = Modifier.size(62.dp),
+                        )
+                    } else {
+                        GroupSelectionStamp(stamp = selectedGroupStamp, size = 62.dp)
+                    }
+                }
             }
         }
         Text(
@@ -144,11 +160,17 @@ fun RecordLocationSelectionContent(
                     .statusBarsPadding()
                     .padding(top = 30.dp)
                     .background(Color.Black.copy(alpha = 0.6f), AppShapes.Pill)
-                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                    .padding(horizontal = 32.dp, vertical = 8.dp),
             color = AppColors.Surface,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            fontWeight = FontWeight.SemiBold,
         )
+        if (isSubmitting) {
+            CircularProgressIndicator(
+                modifier = Modifier.align(Alignment.Center),
+                color = AppColors.Primary,
+            )
+        }
         Column(
             modifier =
                 Modifier
@@ -158,14 +180,6 @@ fun RecordLocationSelectionContent(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            (submissionMessage ?: locationMessage)?.let {
-                Text(
-                    text = it,
-                    modifier = Modifier.background(AppColors.Surface, AppShapes.Pill).padding(12.dp),
-                    color = AppColors.TextPrimary,
-                    fontSize = 13.sp,
-                )
-            }
             Box(
                 modifier =
                     Modifier
@@ -175,7 +189,7 @@ fun RecordLocationSelectionContent(
                         .background(
                             AppColors.Primary,
                             AppShapes.Button,
-                        ).noRippleClickable(enabled = canConfirm, onClick = onConfirm),
+                        ).noRippleClickable(enabled = canConfirm && !isSubmitting, onClick = onConfirm),
                 contentAlignment = Alignment.Center,
             ) {
                 Text("완료", color = AppColors.TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
@@ -212,9 +226,9 @@ private fun RecordLocationPreview(selected: GeoCoordinate) {
             origin = GeoCoordinate(37.5665, 126.9780),
             selectedCoordinate = selected,
             viewport = RecordMapViewport(201f, 437f, 153f),
-            groupLabel = "개인",
-            locationMessage = null,
-            submissionMessage = null,
+            selectedEmotion = EmotionTypeUiModel.FRUSTRATED,
+            selectedGroupStamp = null,
+            isSubmitting = false,
             canConfirm = true,
             onCoordinateSelected = { _, _ -> },
             onConfirm = {},
