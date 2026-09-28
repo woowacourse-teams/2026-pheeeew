@@ -225,8 +225,70 @@ private class AndroidFoundationMapHost(
                 fontFaces.put(fontName, JSONArray().put(face))
             }
             style.put("font-faces", fontFaces)
+
+            val layers = style.optJSONArray("layers") ?: return@runCatching style.toString()
+            for (index in 0 until layers.length()) {
+                val layer = layers.optJSONObject(index) ?: continue
+                if (layer.optString("type") != "symbol") continue
+                val layerId = layer.optString("id")
+                val layout = layer.optJSONObject("layout") ?: continue
+                if (layerId.startsWith("highway-shield-") || layerId.startsWith("road_shield_")) {
+                    layout.put("visibility", "none")
+                }
+                val sizeScale =
+                    when {
+                        layerId.startsWith("label_country_") -> 0.76
+                        layerId in CITY_LABEL_LAYER_IDS -> 1.0
+                        layerId == "label_other" -> 1.05
+                        else -> 0.92
+                    }
+                scaleTextSize(layout, sizeScale)
+                if (layerId.startsWith("label_country_")) layer.put("maxzoom", 12)
+                if (layerId == "label_other") {
+                    layer.put("minzoom", 7)
+                    layout.remove("text-transform")
+                }
+                layout.optJSONArray("text-font")?.let { fonts ->
+                    for (fontIndex in 0 until fonts.length()) {
+                        if (fonts.optString(fontIndex) == "Noto Sans Bold" ||
+                            (layerId == "label_other" && fonts.optString(fontIndex) == "Noto Sans Italic")
+                        ) {
+                            fonts.put(fontIndex, "Noto Sans Regular")
+                        }
+                    }
+                }
+            }
             style.toString()
         }.getOrNull()
+
+    private fun scaleTextSize(
+        layout: JSONObject,
+        scale: Double,
+    ) {
+        when (val textSize = layout.opt("text-size")) {
+            is Number -> {
+                layout.put("text-size", textSize.toDouble() * scale)
+            }
+
+            is JSONArray -> {
+                when (textSize.optString(0)) {
+                    "interpolate", "interpolate-hcl", "interpolate-lab" -> {
+                        for (index in 4 until textSize.length() step 2) {
+                            val output = textSize.opt(index)
+                            if (output is Number) textSize.put(index, output.toDouble() * scale)
+                        }
+                    }
+
+                    "step" -> {
+                        for (index in 2 until textSize.length() step 2) {
+                            val output = textSize.opt(index)
+                            if (output is Number) textSize.put(index, output.toDouble() * scale)
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     private fun installLoadedStyle(loadedStyle: Style) {
         style = loadedStyle
@@ -240,6 +302,7 @@ private class AndroidFoundationMapHost(
     }
 
     private companion object {
+        val CITY_LABEL_LAYER_IDS = setOf("label_city", "label_city_capital", "label_town", "label_village")
         val KOREAN_UNICODE_RANGES =
             listOf("U+1100-11FF", "U+3130-318F", "U+A960-A97F", "U+AC00-D7AF", "U+D7B0-D7FF")
     }

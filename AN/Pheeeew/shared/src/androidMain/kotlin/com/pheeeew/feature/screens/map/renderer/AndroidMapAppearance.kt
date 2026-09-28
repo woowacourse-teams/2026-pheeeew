@@ -28,12 +28,16 @@ internal object AndroidMapAppearance {
                     if (layerId == "background") layer.setProperties(backgroundColor(background))
                 }
 
-                is FillLayer -> fillColorFor(layer.sourceLayer.orEmpty().lowercase(), layerId)?.let { color ->
-                    layer.setProperties(fillColor(color))
+                is FillLayer -> {
+                    fillColorFor(layer.sourceLayer.orEmpty().lowercase(), layerId)?.let { color ->
+                        layer.setProperties(fillColor(color))
+                    }
                 }
 
-                is LineLayer -> lineColorFor(layer.sourceLayer.orEmpty().lowercase(), layerId)?.let { color ->
-                    layer.setProperties(lineColor(color))
+                is LineLayer -> {
+                    lineColorFor(layer.sourceLayer.orEmpty().lowercase(), layerId)?.let { color ->
+                        layer.setProperties(lineColor(color))
+                    }
                 }
             }
         }

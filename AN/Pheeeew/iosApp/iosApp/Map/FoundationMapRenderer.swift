@@ -81,8 +81,75 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             "Noto Sans Italic": fontFace(fonts.regular),
             "Noto Sans Bold": fontFace(fonts.bold),
         ]
+
+        if var layers = styleJSON["layers"] as? [[String: Any]] {
+            for index in layers.indices {
+                guard let layerID = layers[index]["id"] as? String,
+                      layers[index]["type"] as? String == "symbol",
+                      var layout = layers[index]["layout"] as? [String: Any]
+                else { continue }
+
+                if layerID.hasPrefix("highway-shield-") || layerID.hasPrefix("road_shield_") {
+                    layout["visibility"] = "none"
+                }
+                let cityLabelLayers = ["label_city", "label_city_capital", "label_town", "label_village"]
+                let sizeScale: Double
+                if layerID.hasPrefix("label_country_") {
+                    sizeScale = 0.76
+                } else if cityLabelLayers.contains(layerID) {
+                    sizeScale = 1.0
+                } else if layerID == "label_other" {
+                    sizeScale = 1.05
+                } else {
+                    sizeScale = 0.92
+                }
+                scaleTextSize(in: &layout, by: sizeScale)
+                if layerID.hasPrefix("label_country_") {
+                    layers[index]["maxzoom"] = 12
+                }
+                if layerID == "label_other" {
+                    layers[index]["minzoom"] = 7
+                    layout.removeValue(forKey: "text-transform")
+                }
+                if let fonts = layout["text-font"] as? [String] {
+                    layout["text-font"] = fonts.map {
+                        $0 == "Noto Sans Bold" || (layerID == "label_other" && $0 == "Noto Sans Italic")
+                            ? "Noto Sans Regular"
+                            : $0
+                    }
+                }
+                layers[index]["layout"] = layout
+            }
+            styleJSON["layers"] = layers
+        }
         guard let data = try? JSONSerialization.data(withJSONObject: styleJSON) else { return nil }
         return String(data: data, encoding: .utf8)
+    }
+
+    private func scaleTextSize(in layout: inout [String: Any], by scale: Double) {
+        if let textSize = layout["text-size"] as? NSNumber {
+            layout["text-size"] = textSize.doubleValue * scale
+            return
+        }
+        guard var expression = layout["text-size"] as? [Any],
+              let operatorName = expression.first as? String
+        else { return }
+
+        let outputIndices: [Int]
+        switch operatorName {
+        case "interpolate", "interpolate-hcl", "interpolate-lab":
+            outputIndices = Array(stride(from: 4, to: expression.count, by: 2))
+        case "step":
+            outputIndices = Array(stride(from: 2, to: expression.count, by: 2))
+        default:
+            return
+        }
+        for index in outputIndices {
+            if let output = expression[index] as? NSNumber {
+                expression[index] = output.doubleValue * scale
+            }
+        }
+        layout["text-size"] = expression
     }
 
     private func koreanFontURLs() -> (regular: URL, bold: URL)? {
