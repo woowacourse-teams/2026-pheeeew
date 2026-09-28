@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  ktlint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -40,15 +40,6 @@ jobs:
       - name: Ktlint check
         run: ./gradlew ktlintCheck
 
-      - name: Unit test (shared)
-        run: ./gradlew :shared:testAndroidHostTest
-
-      - name: Android lint
-        run: ./gradlew :androidApp:lintDebug
-
-      - name: Assemble debug APK
-        run: ./gradlew :androidApp:assembleDebug
-
       - name: Upload ktlint report
         if: failure()
         uses: actions/upload-artifact@v5
@@ -56,12 +47,54 @@ jobs:
           name: ktlint-report
           path: AN/Pheeeew/**/build/reports/ktlint/
 
+  shared-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Unit test (shared)
+        run: ./gradlew :shared:testAndroidHostTest
+
       - name: Upload test report
         if: failure()
         uses: actions/upload-artifact@v5
         with:
           name: test-report
           path: AN/Pheeeew/shared/build/reports/tests/
+
+  android-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Android lint and assemble debug APK
+        run: ./gradlew :androidApp:lintDebug :androidApp:assembleDebug
 
       - name: Upload lint report
         if: failure()
