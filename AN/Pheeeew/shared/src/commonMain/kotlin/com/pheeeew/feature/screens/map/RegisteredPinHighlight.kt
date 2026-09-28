@@ -24,24 +24,32 @@ data class HighlightedPinPosition(
 )
 
 @Composable
-internal fun RegisteredPinHighlight(position: HighlightedPinPosition) {
+internal fun RegisteredPinHighlight(
+    position: HighlightedPinPosition,
+    showBadge: Boolean = true,
+    repeatPulse: Boolean = false,
+    scale: Float = 1f,
+) {
     val pulse = remember(position.id) { Animatable(0f) }
     val density = LocalDensity.current
     val center = with(density) { Offset(position.x.dp.toPx(), position.y.dp.toPx()) }
-    LaunchedEffect(position.id) {
-        repeat(2) {
-            pulse.snapTo(0f)
-            pulse.animateTo(1f, tween(durationMillis = 700, easing = LinearOutSlowInEasing))
-        }
+    LaunchedEffect(position.id, repeatPulse) {
+        do {
+            repeat(2) {
+                pulse.snapTo(0f)
+                pulse.animateTo(1f, tween(durationMillis = 700, easing = LinearOutSlowInEasing))
+            }
+        } while (repeatPulse)
     }
     // This overlay only draws, so map gestures and pin taps pass through it.
     Canvas(Modifier.fillMaxSize().clipToBounds()) {
         drawCircle(
             color = Color(0xFF398CFF).copy(alpha = 0.5f * (1f - pulse.value)),
-            radius = (24f + 30f * pulse.value).dp.toPx(),
+            radius = (24f * scale + 30f * pulse.value).dp.toPx(),
             center = center,
             style = Stroke(width = 2.dp.toPx()),
         )
+        if (!showBadge) return@Canvas
         val badgeOffset = (EMOTION_PIN_SIZE / 2 - 3.dp).toPx()
         val badgeCenter = center + Offset(badgeOffset, -badgeOffset)
         drawCircle(

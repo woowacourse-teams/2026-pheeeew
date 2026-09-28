@@ -7,6 +7,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,12 +36,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.theme.AppTheme
+
+internal const val NEARBY_COLLAPSED_MAP_HEIGHT_FRACTION = 0.55f
 
 /** Non-modal sheet: uses the legacy SighListSheet middle ratio and drag thresholds. */
 @Composable
@@ -48,6 +53,7 @@ internal fun NearbySheetLayout(
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
+    onInteraction: () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
@@ -59,7 +65,7 @@ internal fun NearbySheetLayout(
             BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                 val density = LocalDensity.current
                 val availableHeightPx = constraints.maxHeight.toFloat()
-                val middleOffset = availableHeightPx * 0.55f
+                val middleOffset = availableHeightPx * NEARBY_COLLAPSED_MAP_HEIGHT_FRACTION
                 var dragging by remember { mutableStateOf(false) }
                 var draggedOffset by remember { mutableFloatStateOf(0f) }
                 var totalDrag by remember { mutableFloatStateOf(0f) }
@@ -98,6 +104,7 @@ internal fun NearbySheetLayout(
                 val latestExpanded by rememberUpdatedState(expanded)
                 val latestOnExpandedChange by rememberUpdatedState(onExpandedChange)
                 val latestOnDismiss by rememberUpdatedState(onDismiss)
+                val latestOnInteraction by rememberUpdatedState(onInteraction)
                 val listScrollConnection =
                     remember(availableHeightPx, collapseThreshold, dismissThreshold) {
                         NearbySheetNestedScrollConnection(
@@ -107,6 +114,7 @@ internal fun NearbySheetLayout(
                             dismissThreshold = dismissThreshold,
                             isExpanded = { latestExpanded },
                             onDrag = {
+                                latestOnInteraction()
                                 draggedOffset = it
                                 dragging = true
                             },
@@ -122,7 +130,29 @@ internal fun NearbySheetLayout(
                     modifier =
                         Modifier
                             .fillMaxWidth()
-                            .height(with(density) { (availableHeightPx - offset).coerceAtLeast(0f).toDp() }),
+                            .height(with(density) { (availableHeightPx - offset).coerceAtLeast(0f).toDp() })
+                            .pointerInput(Unit) {
+                                awaitEachGesture {
+                                    val down =
+                                        awaitFirstDown(
+                                            requireUnconsumed = false,
+                                            pass = PointerEventPass.Initial,
+                                        )
+                                    var moved = false
+                                    do {
+                                        val event = awaitPointerEvent(PointerEventPass.Initial)
+                                        val change = event.changes.firstOrNull { it.id == down.id }
+                                        val distance = change?.let { (it.position - down.position).getDistance() } ?: 0f
+                                        if (change == null || event.changes.size > 1 ||
+                                            distance > viewConfiguration.touchSlop
+                                        ) {
+                                            moved = true
+                                        }
+                                        // Observe before child click handlers so selecting an item can apply a new focus.
+                                        if (change != null && !change.pressed && !moved) latestOnInteraction()
+                                    } while (event.changes.any { it.pressed })
+                                }
+                            },
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                     color = Color(0xFFFAFAFA),
                     shadowElevation = 12.dp,
@@ -144,6 +174,7 @@ internal fun NearbySheetLayout(
                                     },
                                     onVerticalDrag = { change, amount ->
                                         change.consume()
+                                        if (amount > 0f) latestOnInteraction()
                                         totalDrag += amount
                                         draggedOffset = (draggedOffset + amount).coerceIn(0f, availableHeightPx)
                                     },

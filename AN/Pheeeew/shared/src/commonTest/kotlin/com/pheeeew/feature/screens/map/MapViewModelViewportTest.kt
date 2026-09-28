@@ -55,11 +55,13 @@ class MapViewModelViewportTest {
                 advanceTimeBy(700)
                 runCurrent()
                 assertTrue(viewModel.focusOnEmotion(1))
+                assertEquals(1L, viewModel.uiModel.value.focusedEmotionId)
 
                 viewModel.onViewportChanged(bounds(128.0, 37.5))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(listOf(2L), viewModel.pinIds())
+                assertEquals(1L, viewModel.uiModel.value.focusedEmotionId)
                 assertFalse(viewModel.focusOnEmotion(1))
 
                 val coordinate = GeoCoordinate(37.55, 127.02)
@@ -68,13 +70,31 @@ class MapViewModelViewportTest {
                 assertEquals(MapCameraActionUiModel.MoveToCoordinate, command.action)
                 assertEquals(coordinate.latitude, command.latitude)
                 assertEquals(coordinate.longitude, command.longitude)
+                assertEquals(0.33, command.verticalPosition, 0.000001)
                 assertTrue(viewModel.focusOnEmotion(1, coordinate))
                 val repeatedCommand = viewModel.uiModel.value.cameraCommand
                 assertEquals(command.id + 1, repeatedCommand?.id)
 
-                viewModel.onEmotionHidden(1)
-                assertFalse(viewModel.focusOnEmotion(1, coordinate))
+                viewModel.clearFocusedEmotion()
+                assertEquals(null, viewModel.uiModel.value.focusedEmotionId)
                 assertEquals(repeatedCommand, viewModel.uiModel.value.cameraCommand)
+                assertTrue(viewModel.focusOnEmotion(2))
+                assertEquals(2L, viewModel.uiModel.value.focusedEmotionId)
+                assertTrue(viewModel.focusOnEmotion(1, coordinate))
+                viewModel.focusOnCoordinate(coordinate)
+                assertEquals(1L, viewModel.uiModel.value.focusedEmotionId)
+                viewModel.onMyLocationClick()
+                assertEquals(1L, viewModel.uiModel.value.focusedEmotionId)
+                val lastCommand = viewModel.uiModel.value.cameraCommand
+
+                viewModel.onEmotionHidden(1)
+                assertEquals(null, viewModel.uiModel.value.focusedEmotionId)
+                assertFalse(viewModel.focusOnEmotion(1, coordinate))
+                assertEquals(lastCommand, viewModel.uiModel.value.cameraCommand)
+
+                viewModel.focusOnCoordinate(coordinate)
+                val centeredCommand = viewModel.uiModel.value.cameraCommand!!
+                assertEquals(0.5, centeredCommand.verticalPosition)
             } finally {
                 Dispatchers.resetMain()
             }
