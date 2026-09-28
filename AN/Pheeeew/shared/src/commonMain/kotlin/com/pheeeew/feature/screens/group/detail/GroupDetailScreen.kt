@@ -125,6 +125,7 @@ fun GroupDetailScreen(
                             fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
                         )
                     }
+                }
             }
         }
 
