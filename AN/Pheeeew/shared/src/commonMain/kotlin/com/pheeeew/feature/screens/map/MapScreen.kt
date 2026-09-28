@@ -157,9 +157,14 @@ fun MapScreen(
     val registeredEmotion by recordViewModel.registeredEmotion.collectAsState()
     var highlightedEmotion by remember { mutableStateOf<RegisteredEmotionUiModel?>(null) }
     var highlightedPinPosition by remember { mutableStateOf<HighlightedPinPosition?>(null) }
+    val highlightedId = uiModel.focusedEmotionId ?: highlightedEmotion?.id
     val clearHighlight = {
         highlightedEmotion = null
         highlightedPinPosition = null
+        viewModel.clearFocusedEmotion()
+    }
+    LaunchedEffect(uiModel.focusedEmotionId) {
+        if (uiModel.focusedEmotionId != null) highlightedEmotion = null
     }
     // Keep the loaded pin's badge for one minute; discard it if its refresh never arrives.
     LaunchedEffect(highlightedEmotion?.id, highlightedPinPosition?.id) {
@@ -281,7 +286,7 @@ fun MapScreen(
                             state =
                                 renderUiModel.copy(
                                     recordOrigin = recordUiModel.origin,
-                                    highlightedEmotionId = highlightedEmotion?.id,
+                                    highlightedEmotionId = highlightedId,
                                     pressedEmotionId = pressedPinId,
                                     pressedEmotionScale = pinPressScale.value,
                                     emotionContentLoad = renderUiModel.emotionContentLoad.takeIf { contentVisible },
@@ -323,18 +328,24 @@ fun MapScreen(
                             },
                             onContentPresented = viewModel::contentPresented,
                             onHighlightedPinPositionChanged = { position ->
-                                highlightedPinPosition = position?.takeIf { it.id == highlightedEmotion?.id }
+                                highlightedPinPosition = position?.takeIf { it.id == highlightedId }
                             },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
                     val highlightPosition = highlightedPinPosition
-                    if (highlightPosition != null && highlightPosition.id == highlightedEmotion?.id &&
+                    if (highlightPosition != null && highlightPosition.id == highlightedId &&
                         uiModel.mapError == null
                     ) {
                         val position = highlightPosition
-                        key(position.id) {
-                            RegisteredPinHighlight(position = position)
+                        val focused = uiModel.focusedEmotionId == position.id
+                        key(position.id, uiModel.cameraCommand?.id.takeIf { focused }) {
+                            RegisteredPinHighlight(
+                                position = position,
+                                showBadge = !focused,
+                                repeatPulse = focused,
+                                scale = if (focused) 1.3f else 1f,
+                            )
                         }
                     }
                 }
@@ -538,6 +549,7 @@ internal fun MapScreenContent(
 
         if (recordUiModel.step != RecordFlowStepUiModel.LocationSelection) {
             MapOverlay(
+                showNavigationButtons = recordUiModel.step == RecordFlowStepUiModel.Closed,
                 onListClick = onListClick,
                 onSettingClick = onSettingClick,
                 isEmotionSelectorExpanded = uiModel.isEmotionSelectorExpanded,
@@ -591,6 +603,9 @@ internal fun MapScreenContent(
 
             RecordFlowStepUiModel.LocationSelection -> {
                 RecordLocationSelectionContent(
+                    showDragGuide = !recordUiModel.hasMovedStamp,
+                    onMyLocationClick = onMyLocationClick,
+                    isRequestingLocation = uiModel.isRequestingLocation,
                     origin = recordUiModel.origin,
                     selectedCoordinate = recordUiModel.selectedCoordinate,
                     viewport = recordViewport,

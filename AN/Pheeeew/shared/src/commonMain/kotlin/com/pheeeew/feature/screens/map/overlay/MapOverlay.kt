@@ -64,6 +64,7 @@ fun MapOverlay(
     isRequestingLocation: Boolean,
     isMapError: Boolean,
     modifier: Modifier = Modifier,
+    showNavigationButtons: Boolean = true,
 ) {
     val promptTranslationY by
         animateFloatAsState(
@@ -96,43 +97,45 @@ fun MapOverlay(
                         .graphicsLayer { translationY = promptTranslationY.dp.toPx() },
             )
 
-            Box(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .align(Alignment.TopCenter),
-            ) {
-                Row(
+            if (showNavigationButtons) {
+                Box(
                     modifier =
                         Modifier
-                            .clip(RoundedCornerShape(100.dp))
-                            .background(AppColors.Surface)
-                            .border(
-                                width = AppBorders.Standard,
-                                color = AppColors.Border,
-                                shape = RoundedCornerShape(100.dp),
-                            ).clickable(onClick = onListClick)
-                            .padding(horizontal = 24.dp, vertical = 10.dp)
-                            .align(Alignment.Center),
-                    verticalAlignment = Alignment.CenterVertically,
+                            .fillMaxWidth()
+                            .align(Alignment.TopCenter),
                 ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_menu),
-                        contentDescription = "목록 열기",
-                        modifier = Modifier.size(24.dp),
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        text = "주변 감정",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
+                    Row(
+                        modifier =
+                            Modifier
+                                .clip(RoundedCornerShape(100.dp))
+                                .background(AppColors.Surface)
+                                .border(
+                                    width = AppBorders.Standard,
+                                    color = AppColors.Border,
+                                    shape = RoundedCornerShape(100.dp),
+                                ).clickable(onClick = onListClick)
+                                .padding(horizontal = 24.dp, vertical = 10.dp)
+                                .align(Alignment.Center),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            painter = painterResource(Res.drawable.ic_menu),
+                            contentDescription = "목록 열기",
+                            modifier = Modifier.size(24.dp),
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = "주변 감정",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+
+                    SettingsIconButton(
+                        onClick = onSettingClick,
+                        modifier = Modifier.align(Alignment.CenterStart),
                     )
                 }
-
-                SettingsIconButton(
-                    onClick = onSettingClick,
-                    modifier = Modifier.align(Alignment.CenterStart),
-                )
             }
 
             if (!isMapError) {
@@ -197,15 +200,16 @@ fun MapOverlay(
 }
 
 @Composable
-private fun MapControlButton(
+internal fun MapControlButton(
     icon: DrawableResource,
     contentDescription: String,
     onClick: () -> Unit,
     enabled: Boolean = true,
+    modifier: Modifier = Modifier,
 ) {
     Box(
         modifier =
-            Modifier
+            modifier
                 .size(48.dp)
                 .shadow(elevation = 4.dp, shape = CircleShape)
                 .clip(CircleShape)

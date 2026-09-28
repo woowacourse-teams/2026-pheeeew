@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.GroupStamp
@@ -93,7 +94,7 @@ internal fun StampColorSheet(
     ModalBottomSheet(
         onDismissRequest = dismissAndClose,
         sheetState = sheetState,
-        dragHandle = null,
+        dragHandle = { SheetDragHandle() },
         containerColor = Color.White,
         scrimColor = Color(0x61202323),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
@@ -107,15 +108,6 @@ internal fun StampColorSheet(
                     .padding(horizontal = 22.dp)
                     .padding(bottom = 20.dp),
         ) {
-            Box(
-                modifier =
-                    Modifier
-                        .align(Alignment.CenterHorizontally)
-                        .padding(top = 12.dp)
-                        .size(width = 44.dp, height = 4.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFD9DEDD)),
-            )
             val closeDescription = stringResource(Res.string.group_create_color_close)
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp),

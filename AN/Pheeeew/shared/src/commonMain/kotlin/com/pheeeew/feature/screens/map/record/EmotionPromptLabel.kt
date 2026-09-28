@@ -1,7 +1,5 @@
 package com.pheeeew.feature.screens.map.record
 
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
@@ -29,7 +27,6 @@ internal fun EmotionPromptLabel(
     Box(
         modifier =
             modifier
-                .animateContentSize(animationSpec = tween(durationMillis = 220))
                 .clip(shape)
                 .background(Color.White)
                 .border(width = AppBorders.Standard, color = Color(0xFF292B2A), shape = shape)

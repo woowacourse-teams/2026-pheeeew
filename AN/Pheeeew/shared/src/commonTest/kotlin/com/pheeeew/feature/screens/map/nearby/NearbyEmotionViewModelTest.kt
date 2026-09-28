@@ -60,6 +60,8 @@ class NearbyEmotionViewModelTest {
                     true
                 }
                 assertEquals(loaded, vm.state.value)
+                vm.openOnMap(1) { _, _ -> false }
+                assertTrue(vm.state.value.message != null)
                 assertEquals(listOf(BOUNDS), repo.bounds)
                 vm.dismiss()
             } finally {

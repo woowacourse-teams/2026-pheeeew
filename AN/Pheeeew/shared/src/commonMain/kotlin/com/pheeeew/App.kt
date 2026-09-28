@@ -290,6 +290,9 @@ private fun AppContent(
     val nearbyViewModel: NearbyEmotionViewModel =
         viewModel { createNearbyEmotionViewModel(apiDependencies.client, groupStampListRepository) }
     val nearbyState by nearbyViewModel.state.collectAsState()
+    LaunchedEffect(nearbyState.visible, mapViewModel) {
+        if (!nearbyState.visible) mapViewModel.clearFocusedEmotion()
+    }
     val mapUiModel by mapViewModel.uiModel.collectAsState()
     val recordUiModel by mapRecordViewModel.uiModel.collectAsState()
 
@@ -375,6 +378,8 @@ private fun AppContent(
                         },
                         onLeaveEmotion = mapViewModel::onEmotionSelectorOpen,
                         onOpenEmotionOnMap = mapViewModel::focusOnEmotion,
+                        onSheetInteraction = mapViewModel::clearFocusedEmotion,
+                        focusedEmotionId = mapUiModel.focusedEmotionId,
                         blockUser = moderation.block,
                         onReportEmotion = { id, stamp ->
                             nearbyState.items.firstOrNull { it.id == id && !it.isMine }?.let {

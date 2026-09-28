@@ -40,7 +40,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -53,6 +52,7 @@ import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
+import com.pheeeew.feature.screens.map.record.group.groupSelectorDialogProperties
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -70,6 +70,8 @@ fun NearbyEmotionSheet(
     blockUser: BlockUserUseCase,
     onReportEmotion: (Long, DrawableResource) -> Unit,
     monitoringVisible: Boolean = true,
+    onSheetInteraction: () -> Unit = {},
+    focusedEmotionId: Long? = null,
 ) {
     val state by viewModel.state.collectAsState()
     var expanded by remember(state.visible) { mutableStateOf(false) }
@@ -186,37 +188,15 @@ fun NearbyEmotionSheet(
         expanded = expanded,
         onExpandedChange = { expanded = it },
         onDismiss = viewModel::dismiss,
+        onInteraction = onSheetInteraction,
     ) {
         val group = state.groups.find { it.id == state.groupId } ?: ALL_GROUP_OPTION
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(
-                Modifier
-                    .heightIn(min = 48.dp)
-                    .semantics { contentDescription = "주변 감정 새로고침" }
-                    .noRippleClickable(enabled = !state.loading, onClick = viewModel::refreshCurrentViewport)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Box(
-                    Modifier.width(32.dp).height(if (group.showStamp) 32.dp else 20.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        painter = painterResource(Res.drawable.ic_refresh),
-                        contentDescription = null,
-                        tint = Color(0xFF252826),
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                Text("새로고침", color = Color(0xFF85877F), fontSize = 10.sp)
-            }
-            NearbyGroupFilter(group, onClick = viewModel::openGroups)
-        }
+        NearbySheetHeader(
+            group = group,
+            loading = state.loading,
+            onRefresh = viewModel::refreshCurrentViewport,
+            onOpenGroups = viewModel::openGroups,
+        )
 
         state.message?.let { NearbyNotice(it, viewModel::clearMessage) }
         playback.error?.let { NearbyNotice(it, player::stop) }
@@ -230,7 +210,7 @@ fun NearbyEmotionSheet(
                 state = scroll,
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
                 if (state.items.isEmpty() &&
                     state.error == null
@@ -249,6 +229,7 @@ fun NearbyEmotionSheet(
                     EmotionChatRow(
                         emotion,
                         selected = state.selectedId == emotion.id,
+                        focused = focusedEmotionId == emotion.id,
                         busy = emotion.id in state.pendingIds,
                         playing = playback.id == emotion.id,
                         audioLoading = state.audioLoadingId == emotion.id,
@@ -303,7 +284,7 @@ fun NearbyEmotionSheet(
     if (state.groupSelectorVisible) {
         Dialog(
             onDismissRequest = viewModel::dismissGroups,
-            properties = DialogProperties(usePlatformDefaultWidth = false),
+            properties = groupSelectorDialogProperties(),
         ) {
             Box(Modifier.fillMaxSize()) {
                 GroupSelectorContent(
