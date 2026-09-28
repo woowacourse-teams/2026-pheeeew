@@ -1,9 +1,6 @@
 package com.pheeeew.feature.component.stamp
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,7 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -26,7 +22,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppColors
 import org.jetbrains.compose.resources.painterResource
 
 /** 정사각형 슬롯 안에 모양의 비율을 유지해 그룹 스탬프를 그립니다. */
@@ -44,13 +39,8 @@ private fun GroupStampContent(
     appearance: StampAppearanceUiModel,
     size: Dp,
     modifier: Modifier = Modifier,
-    preserveLegacyCircleStyle: Boolean = false,
 ) {
-    if (preserveLegacyCircleStyle) {
-        LegacyCircleStamp(appearance = appearance, size = size, modifier = modifier)
-    } else {
-        AppearanceGroupStamp(appearance = appearance, size = size, modifier = modifier)
-    }
+    AppearanceGroupStamp(appearance = appearance, size = size, modifier = modifier)
 }
 
 @Composable
@@ -118,31 +108,6 @@ private fun AppearanceGroupStamp(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-    }
-}
-
-/** 공통 표시 모델을 사용하면서 기존 랭킹 스탬프의 모양과 크기를 유지합니다. */
-@Composable
-private fun LegacyCircleStamp(
-    appearance: StampAppearanceUiModel,
-    size: Dp,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier =
-            modifier
-                .size(size)
-                .border(2.dp, AppColors.RankingContent, CircleShape)
-                .padding(4.dp)
-                .background(AppColors.RankingAccent, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = appearance.label,
-            color = Color(appearance.textArgb.toInt()),
-            fontSize = 15.sp,
-            fontWeight = FontWeight.Bold,
-        )
     }
 }
 
