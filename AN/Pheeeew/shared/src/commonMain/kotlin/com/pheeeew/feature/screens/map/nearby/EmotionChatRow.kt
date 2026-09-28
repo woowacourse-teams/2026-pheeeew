@@ -11,14 +11,18 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.HorizontalDivider
@@ -43,16 +47,23 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.model.emotion.ReactionCount
+import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
+import com.pheeeew.feature.component.stamp.StampShapeId
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_plus
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.minutes
 
 @Composable
 internal fun EmotionChatRow(
@@ -391,5 +402,121 @@ private fun relativeTime(item: NearbyEmotionItemUiModel): String {
         seconds < 3600 -> "${seconds / 60}분 전"
         seconds < 86400 -> "${seconds / 3600}시간 전"
         else -> "${seconds / 86400}일 전"
+    }
+}
+
+internal fun nearbyPreviewItems(): List<NearbyEmotionItemUiModel> {
+    val previewStamp = StampAppearanceUiModel("산책", StampShapeId.FLOWER, 0xFFACD9EE, 0xFF252826)
+    val emotion =
+        NearbyEmotionItemUiModel(
+            id = 1L,
+            state = EmotionState.EXHAUSTED,
+            nickname = "느긋한 고양이",
+            createdAt = Clock.System.now() - 5.minutes,
+            isMine = true,
+            contentType = EmotionContentType.NONE,
+            memo = null,
+            reactions = emptyList(),
+            stamp = null,
+            audio = null,
+        )
+    return listOf(
+        // Empty reactions: the add button should sit at the right edge of my bubble.
+        emotion,
+        emotion.copy(id = 2L, nickname = "산책하는 토끼", isMine = false, stamp = previewStamp),
+        emotion.copy(
+            id = 3L,
+            state = EmotionState.FRUSTRATED,
+            contentType = EmotionContentType.MEMO,
+            memo = "오늘은 조금 지쳤지만, 잠깐 쉬어 가려고요.",
+            stamp = previewStamp,
+            reactions =
+                EmotionReactionType.entries.mapIndexed { index, type ->
+                    ReactionCount(type, (index + 1).toLong(), selected = index == 0)
+                },
+        ),
+        emotion.copy(
+            id = 4L,
+            nickname = "조용한 여행자",
+            isMine = false,
+            state = EmotionState.IRRITATED,
+            contentType = EmotionContentType.AUDIO,
+            reactions = listOf(ReactionCount(EmotionReactionType.HEART, 2L, selected = false)),
+        ),
+    )
+}
+
+@Preview(name = "Nearby · 감정·메모·녹음과 공감", widthDp = 402, heightDp = 850, showBackground = true)
+@Preview(name = "Nearby · 좁은 화면 줄바꿈", widthDp = 320, heightDp = 850, showBackground = true)
+@Composable
+private fun NearbyEmotionRowsPreview() {
+    val emotions = remember { nearbyPreviewItems() }
+    AppTheme {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().background(Color(0xFFFAFAFA)),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            items(emotions, key = { it.id }) { NearbyPreviewRow(it) }
+        }
+    }
+}
+
+@Composable
+internal fun NearbyPreviewRow(item: NearbyEmotionItemUiModel) {
+    var selected by remember { mutableStateOf(false) }
+    var playing by remember { mutableStateOf(false) }
+    EmotionChatRow(
+        item = item,
+        selected = selected,
+        busy = false,
+        playing = playing,
+        audioLoading = false,
+        onOpenOnMap = {},
+        onSelect = { selected = true },
+        onDismissMenu = { selected = false },
+        onReact = { selected = false },
+        onBlock = {},
+        onReport = {},
+        onPlay = { playing = !playing },
+    )
+}
+
+@Preview(name = "Nearby · 공감 전체 표시 / 줄바꿈", widthDp = 320, showBackground = true)
+@Composable
+private fun NearbyAllReactionsPreview() {
+    val emotion =
+        remember {
+            nearbyPreviewItems().first { it.contentType == EmotionContentType.MEMO }.copy(
+                reactions = EmotionReactionType.entries.map { ReactionCount(it, 1234L, selected = false) },
+            )
+        }
+    AppTheme {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            NearbyPreviewRow(emotion)
+            NearbyPreviewRow(emotion.copy(id = 5L, isMine = false, reactions = emotion.reactions.dropLast(1)))
+        }
+    }
+}
+
+@Preview(name = "Nearby · 메모 길이에 따른 말풍선", widthDp = 320, showBackground = true)
+@Composable
+private fun NearbyMemoSizePreview() {
+    val emotion =
+        remember {
+            nearbyPreviewItems().first { it.contentType == EmotionContentType.MEMO }.copy(reactions = emptyList())
+        }
+    AppTheme {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            NearbyPreviewRow(emotion.copy(memo = "휴…"))
+            NearbyPreviewRow(emotion.copy(id = 7L))
+            NearbyPreviewRow(
+                emotion.copy(
+                    id = 6L,
+                    isMine = false,
+                    memo = "오늘은 조금 지쳤지만 잠깐 쉬어 가려고요. 산책하면서 천천히 마음을 정리하고 싶어요.",
+                ),
+            )
+        }
     }
 }
