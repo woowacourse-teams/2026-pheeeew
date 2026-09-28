@@ -6,11 +6,15 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
@@ -19,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -57,6 +62,7 @@ internal fun LeaveGroupDialog(
     onResolveOutcome: () -> Unit,
 ) {
     val isWorking = overlay is GroupDetailOverlay.Leaving || overlay is GroupDetailOverlay.Left
+    val shape = RoundedCornerShape(16.dp)
     Dialog(
         onDismissRequest = onDismiss,
         properties =
@@ -74,11 +80,14 @@ internal fun LeaveGroupDialog(
                 modifier =
                     Modifier
                         .fillMaxWidth()
-                        .widthIn(max = 420.dp)
-                        .clip(RoundedCornerShape(24.dp))
+                        .widthIn(max = 380.dp)
+                        .heightIn(min = 176.dp)
+                        .shadow(elevation = 12.dp, shape = shape)
+                        .clip(shape)
                         .background(Color.White)
-                        .border(BorderStroke(1.5.dp, AppColors.GroupInk), RoundedCornerShape(24.dp))
-                        .padding(horizontal = 24.dp),
+                        .border(BorderStroke(1.dp, AppColors.GroupInk.copy(alpha = 0.72f)), shape)
+                        .padding(horizontal = 20.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.Top,
             ) {
                 when {
                     isWorking -> {
@@ -86,101 +95,56 @@ internal fun LeaveGroupDialog(
                     }
 
                     overlay == GroupDetailOverlay.LeaveFailed -> {
-                        Spacer(Modifier.height(30.dp))
-                        DialogTitle(stringResource(Res.string.group_detail_leave_error_title))
-                        DialogBody(stringResource(Res.string.group_detail_leave_error_body))
-                        Spacer(Modifier.height(26.dp))
-                        DetailDialogButton(
-                            text = stringResource(Res.string.group_detail_leave_retry),
-                            enabled = true,
-                            isPrimary = true,
-                            onClick = onRetry,
+                        LeaveDialogContent(
+                            title = stringResource(Res.string.group_detail_leave_error_title),
+                            body = stringResource(Res.string.group_detail_leave_error_body),
+                            primaryText = stringResource(Res.string.group_detail_leave_retry),
+                            secondaryText = stringResource(Res.string.group_detail_leave_failure_close),
+                            onPrimary = onRetry,
+                            onSecondary = onDismiss,
                         )
-                        Spacer(Modifier.height(10.dp))
-                        DetailDialogButton(
-                            text = stringResource(Res.string.group_detail_leave_failure_close),
-                            enabled = true,
-                            isPrimary = false,
-                            onClick = onDismiss,
-                        )
-                        Spacer(Modifier.height(28.dp))
                     }
 
                     overlay == GroupDetailOverlay.LeaveOutcomeUnknown -> {
-                        Spacer(Modifier.height(30.dp))
-                        DialogTitle(stringResource(Res.string.group_detail_leave_unknown_title))
-                        DialogBody(stringResource(Res.string.group_detail_leave_unknown_body))
-                        Spacer(Modifier.height(26.dp))
-                        DetailDialogButton(
-                            text = stringResource(Res.string.group_detail_leave_unknown_reconcile),
-                            enabled = true,
-                            isPrimary = true,
-                            onClick = onResolveOutcome,
+                        LeaveDialogContent(
+                            title = stringResource(Res.string.group_detail_leave_unknown_title),
+                            body = stringResource(Res.string.group_detail_leave_unknown_body),
+                            primaryText = stringResource(Res.string.group_detail_leave_unknown_reconcile),
+                            secondaryText = stringResource(Res.string.group_detail_leave_failure_close),
+                            onPrimary = onResolveOutcome,
+                            onSecondary = onDismiss,
                         )
-                        Spacer(Modifier.height(10.dp))
-                        DetailDialogButton(
-                            text = stringResource(Res.string.group_detail_leave_failure_close),
-                            enabled = true,
-                            isPrimary = false,
-                            onClick = onDismiss,
-                        )
-                        Spacer(Modifier.height(28.dp))
                     }
 
                     overlay == GroupDetailOverlay.LeaveStillMember -> {
-                        Spacer(Modifier.height(30.dp))
-                        DialogTitle(stringResource(Res.string.group_detail_leave_still_member_title))
-                        DialogBody(stringResource(Res.string.group_detail_leave_still_member_body))
-                        Spacer(Modifier.height(26.dp))
-                        DetailDialogButton(
-                            text = stringResource(Res.string.group_detail_leave_retry),
-                            enabled = true,
-                            isPrimary = true,
-                            onClick = onRetry,
+                        LeaveDialogContent(
+                            title = stringResource(Res.string.group_detail_leave_still_member_title),
+                            body = stringResource(Res.string.group_detail_leave_still_member_body),
+                            primaryText = stringResource(Res.string.group_detail_leave_retry),
+                            secondaryText = stringResource(Res.string.group_detail_leave_failure_close),
+                            onPrimary = onRetry,
+                            onSecondary = onDismiss,
                         )
-                        Spacer(Modifier.height(10.dp))
-                        DetailDialogButton(
-                            text = stringResource(Res.string.group_detail_leave_failure_close),
-                            enabled = true,
-                            isPrimary = false,
-                            onClick = onDismiss,
-                        )
-                        Spacer(Modifier.height(28.dp))
                     }
 
                     overlay == GroupDetailOverlay.OwnerCannotLeave -> {
-                        Spacer(Modifier.height(30.dp))
-                        DialogTitle(stringResource(Res.string.group_detail_owner_leave_title))
-                        DialogBody(stringResource(Res.string.group_detail_owner_leave_body))
-                        Spacer(Modifier.height(26.dp))
-                        DetailDialogButton(
-                            text = stringResource(Res.string.group_detail_leave_failure_close),
-                            enabled = true,
-                            isPrimary = true,
-                            onClick = onDismiss,
+                        LeaveDialogContent(
+                            title = stringResource(Res.string.group_detail_owner_leave_title),
+                            body = stringResource(Res.string.group_detail_owner_leave_body),
+                            primaryText = stringResource(Res.string.group_detail_leave_failure_close),
+                            onPrimary = onDismiss,
                         )
-                        Spacer(Modifier.height(28.dp))
                     }
 
                     else -> {
-                        Spacer(Modifier.height(30.dp))
-                        DialogTitle(stringResource(Res.string.group_detail_leave_title))
-                        DialogBody(stringResource(Res.string.group_detail_leave_body))
-                        Spacer(Modifier.height(26.dp))
-                        DetailDialogButton(
-                            text = stringResource(Res.string.group_detail_leave_confirm),
-                            enabled = true,
-                            isPrimary = true,
-                            onClick = onConfirm,
+                        LeaveDialogContent(
+                            title = stringResource(Res.string.group_detail_leave_title),
+                            body = stringResource(Res.string.group_detail_leave_body),
+                            primaryText = stringResource(Res.string.group_detail_leave_confirm),
+                            secondaryText = stringResource(Res.string.group_detail_leave_cancel),
+                            onPrimary = onConfirm,
+                            onSecondary = onDismiss,
                         )
-                        Spacer(Modifier.height(10.dp))
-                        DetailDialogButton(
-                            text = stringResource(Res.string.group_detail_leave_cancel),
-                            enabled = true,
-                            isPrimary = false,
-                            onClick = onDismiss,
-                        )
-                        Spacer(Modifier.height(28.dp))
                     }
                 }
             }
@@ -189,39 +153,86 @@ internal fun LeaveGroupDialog(
 }
 
 @Composable
-private fun WorkingContent() {
-    Column(
-        modifier = Modifier.fillMaxWidth().height(250.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        RowCenteredProgress()
-        Spacer(Modifier.height(10.dp))
-        Text(
-            text = stringResource(Res.string.group_detail_leaving_body),
-            color = AppColors.RankingSecondaryContent,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center,
-        )
+private fun LeaveDialogContent(
+    title: String,
+    body: String,
+    primaryText: String,
+    onPrimary: () -> Unit,
+    secondaryText: String? = null,
+    onSecondary: (() -> Unit)? = null,
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        DialogTitle(title)
+        DialogBody(body)
+        Spacer(Modifier.height(18.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (secondaryText != null && onSecondary != null) {
+                DetailDialogButton(
+                    text = secondaryText,
+                    enabled = true,
+                    isPrimary = false,
+                    onClick = onSecondary,
+                )
+                Spacer(Modifier.width(2.dp))
+            }
+            DetailDialogButton(
+                text = primaryText,
+                enabled = true,
+                isPrimary = true,
+                onClick = onPrimary,
+            )
+        }
     }
 }
 
 @Composable
-private fun RowCenteredProgress() {
-    androidx.compose.foundation.layout.Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
+private fun WorkingContent() {
+    Column(
+        modifier = Modifier.fillMaxWidth().height(198.dp),
+        horizontalAlignment = Alignment.Start,
     ) {
-        CircularProgressIndicator(modifier = Modifier.height(23.dp), color = AppColors.GroupInk, strokeWidth = 2.dp)
-        androidx.compose.foundation.layout
-            .Spacer(Modifier.padding(horizontal = 8.dp))
         Text(
             text = stringResource(Res.string.group_detail_leaving_title),
             color = AppColors.GroupInk,
-            fontSize = 17.sp,
-            fontWeight = FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Start,
         )
+        Text(
+            text = stringResource(Res.string.group_detail_leaving_body),
+            modifier = Modifier.padding(top = 8.dp),
+            color = AppColors.RankingSecondaryContent,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+        )
+        Spacer(Modifier.weight(1f))
+        Row(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .height(42.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(AppColors.Primary),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(16.dp),
+                color = AppColors.GroupInk,
+                strokeWidth = 1.8.dp,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(Res.string.group_detail_leaving_title),
+                color = AppColors.GroupInk,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
 }
 
@@ -231,9 +242,9 @@ private fun DialogTitle(text: String) {
         text = text,
         modifier = Modifier.fillMaxWidth(),
         color = AppColors.GroupInk,
-        fontSize = 23.sp,
+        fontSize = 18.sp,
         fontWeight = FontWeight.Bold,
-        textAlign = TextAlign.Center,
+        textAlign = TextAlign.Start,
     )
 }
 
@@ -241,10 +252,10 @@ private fun DialogTitle(text: String) {
 private fun DialogBody(text: String) {
     Text(
         text = text,
-        modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
         color = AppColors.RankingSecondaryContent,
-        fontSize = 14.sp,
-        lineHeight = 20.sp,
-        textAlign = TextAlign.Center,
+        fontSize = 12.sp,
+        lineHeight = 17.sp,
+        textAlign = TextAlign.Start,
     )
 }
