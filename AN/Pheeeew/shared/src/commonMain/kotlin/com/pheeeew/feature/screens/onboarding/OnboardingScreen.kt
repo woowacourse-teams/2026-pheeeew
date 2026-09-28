@@ -34,6 +34,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.ProductScreen
+import com.pheeeew.feature.monitoring.product.labels
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
@@ -82,8 +85,35 @@ fun OnboardingScreen(
     onFinished: () -> Unit,
     modifier: Modifier = Modifier,
     initialPage: Int = 0,
+    monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
 ) {
     val pagerState = rememberPagerState(initialPage = initialPage, pageCount = { onboardingPages.size })
+    val telemetry = androidx.compose.runtime.remember(monitoring) { ProductMonitoring(monitoring, "onboarding") }
+    ProductScreen(telemetry)
+    val foreground =
+        com.pheeeew.feature.screens.map.monitoring
+            .rememberMonitoringForeground()
+    androidx.compose.runtime.LaunchedEffect(pagerState.settledPage, foreground) {
+        if (foreground) {
+            androidx.compose.runtime.withFrameNanos { }
+            telemetry.emit(
+                "onboarding_step_viewed",
+                mapOf(
+                    "page_index" to
+                        com.pheeeew.core.monitoring.EventValue
+                            .Integer(pagerState.settledPage.toLong()),
+                ),
+            )
+        }
+    }
+    val completed = androidx.compose.runtime.remember { booleanArrayOf(false) }
+
+    fun finish(outcome: String) {
+        if (completed[0]) return
+        completed[0] = true
+        telemetry.emit("onboarding_finished", labels("outcome" to outcome))
+        onFinished()
+    }
     val coroutineScope = rememberCoroutineScope()
     val isLastPage = pagerState.currentPage == onboardingPages.lastIndex
 
@@ -110,7 +140,7 @@ fun OnboardingScreen(
                 text = "건너뛰기",
                 color = Color(0xFF777777),
                 fontSize = 11.sp,
-                modifier = Modifier.clickable(role = Role.Button, onClick = onFinished),
+                modifier = Modifier.clickable(role = Role.Button, onClick = { finish("skipped") }),
             )
         }
 
@@ -181,7 +211,7 @@ fun OnboardingScreen(
                     .background(Color(0xFF202323))
                     .clickable(role = Role.Button) {
                         if (isLastPage) {
-                            onFinished()
+                            finish("completed")
                         } else {
                             coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) }
                         }

@@ -29,6 +29,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.ProductScreen
+import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.screens.settings.components.ContactCard
 import com.pheeeew.feature.screens.settings.components.SETTINGS_CONTACT_EMAIL
 import com.pheeeew.feature.screens.settings.components.SettingsActionRow
@@ -96,9 +99,14 @@ fun SettingsScreen(
     appVersion: String,
     onBackClick: () -> Unit,
     permissionSettingsLauncher: LocationPermissionSettingsLauncher,
+    monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
     modifier: Modifier = Modifier,
 ) {
     var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
+    val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "settings") }
+    val legalTelemetry = remember(monitoring) { ProductMonitoring(monitoring, "legaldocument") }
+    ProductScreen(telemetry, selectedLegalDocument == null)
+    ProductScreen(legalTelemetry, selectedLegalDocument != null)
     val coroutineScope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     val snackbarHostState = remember { SnackbarHostState() }
@@ -112,20 +120,39 @@ fun SettingsScreen(
                         appVersion = appVersion,
                         onBackClick = onBackClick,
                         onPermissionClick = {
+                            telemetry.emit("settings_action_selected", labels("action" to "permission"))
                             coroutineScope.launch {
-                                if (!permissionSettingsLauncher.openAppSettings()) {
+                                if (!telemetry
+                                        .operation(
+                                            "settings_external_open_finished",
+                                            labels("action" to "permission"),
+                                        ).observe(
+                                            { if (it) "success" else "failed" },
+                                        ) { permissionSettingsLauncher.openAppSettings() }
+                                ) {
                                     snackbarHostState.showSnackbar("설정 화면을 열지 못했어요.")
                                 }
                             }
                         },
                         onPrivacyPolicyClick = {
+                            telemetry.emit("settings_action_selected", labels("action" to "privacy_policy"))
                             selectedLegalDocument = LegalDocument.PrivacyPolicy
                         },
                         onOpenSourceLicenseClick = {
+                            telemetry.emit("settings_action_selected", labels("action" to "licenses"))
                             selectedLegalDocument = LegalDocument.OpenSourceLicenses
                         },
                         onContactClick = {
-                            if (runCatching { uriHandler.openUri("mailto:$SETTINGS_CONTACT_EMAIL") }.isFailure) {
+                            telemetry.emit("settings_action_selected", labels("action" to "contact"))
+                            val opened = runCatching { uriHandler.openUri("mailto:$SETTINGS_CONTACT_EMAIL") }.isSuccess
+                            telemetry.emit(
+                                "settings_external_open_finished",
+                                labels(
+                                    "action" to "contact",
+                                    "outcome" to if (opened) "success" else "failed",
+                                ),
+                            )
+                            if (!opened) {
                                 coroutineScope.launch {
                                     snackbarHostState.showSnackbar("메일 앱을 열 수 없어요.")
                                 }

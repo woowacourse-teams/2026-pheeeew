@@ -43,8 +43,10 @@ import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.screens.group.navigation.GroupFeatureHost
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
+import com.pheeeew.feature.screens.map.detail.EmotionDetailLoadUiModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailOverlay
 import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
+import com.pheeeew.feature.screens.map.nearby.face
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionSheet
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
@@ -69,6 +71,7 @@ fun App(
     var onboardingCompleted by remember { mutableStateOf(hasCompletedOnboarding) }
     if (!onboardingCompleted) {
         OnboardingScreen(
+            monitoring = apiDependencies.client.monitoring,
             onFinished = {
                 onOnboardingCompleted()
                 onboardingCompleted = true
@@ -92,6 +95,7 @@ fun App(
                 locationDependencies,
                 emotionMapDependencies.findPage,
                 emotionMapDependencies.findSnapshot,
+                apiDependencies.client.monitoring,
             )
         }
     val registrationRepository =
@@ -119,7 +123,7 @@ fun App(
 
     val detailViewModel: EmotionDetailViewModel =
         viewModel {
-            EmotionDetailViewModel(detailRepository)
+            EmotionDetailViewModel(detailRepository, apiDependencies.client.monitoring)
         }
 
     val detailState by detailViewModel.uiModel.collectAsState()
@@ -146,7 +150,7 @@ fun App(
         }
 
     var isSettingsVisible by remember { mutableStateOf(false) }
-    var reportTarget by remember { mutableStateOf<Pair<Long, DrawableResource>?>(null) }
+    var reportTarget by remember { mutableStateOf<Triple<Long, DrawableResource, String>?>(null) }
     var moderationMessage by remember { mutableStateOf<String?>(null) }
     var isGroupDetailVisible by remember { mutableStateOf(false) }
     var isGroupCreateVisible by remember { mutableStateOf(false) }
@@ -162,7 +166,10 @@ fun App(
                     MapScreen(
                         viewModel = mapViewModel,
                         recordViewModel = mapRecordViewModel,
-                        onEmotionPinClick = detailViewModel::open,
+                        onEmotionPinClick = { id -> detailViewModel.open(id, mapViewModel.exploration.viewId) },
+                        monitoringVisible =
+                            !nearbyState.visible && detailState == EmotionDetailLoadUiModel.Closed &&
+                                !isSettingsVisible && reportTarget == null,
                         onListClick = nearbyViewModel::toggle,
                         onViewportChanged = nearbyViewModel::onViewportChanged,
                         onSettingClick = { isSettingsVisible = true },
@@ -179,6 +186,12 @@ fun App(
                             mapViewModel.refreshEmotionPins()
                         },
                         onLeaveEmotion = mapViewModel::onEmotionSelectorOpen,
+                        onReportEmotion = { id ->
+                            nearbyState.items.firstOrNull { it.id == id && !it.isMine }?.let { item ->
+                                reportTarget = Triple(id, item.state.face, "list")
+                            }
+                        },
+                        monitoringVisible = !isSettingsVisible && reportTarget == null,
                     )
 
                     EmotionDetailOverlay(
@@ -191,13 +204,14 @@ fun App(
                         moderation.delete,
                         onReportClick = { id, stamp ->
                             detailViewModel.dismiss()
-                            reportTarget = id to stamp
+                            reportTarget = Triple(id, stamp, "map")
                         },
                         onBlockSucceeded = {
                             detailViewModel.dismiss()
                             mapViewModel.refreshEmotionPins()
                             moderationMessage = "차단되었습니다."
                         },
+                        monitoringVisible = !isSettingsVisible && reportTarget == null,
                         onDeleteSucceeded = {
                             detailViewModel.dismiss()
                             mapViewModel.refreshEmotionPins()
@@ -208,19 +222,29 @@ fun App(
             }
 
             composable<GroupRootDestination> {
-                GroupFeatureHost(
-                    dependencies = groupDependencies,
-                    modifier = Modifier.fillMaxSize(),
-                    onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
-                    onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
-                )
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible provides
+                        (!isSettingsVisible && reportTarget == null),
+                ) {
+                    GroupFeatureHost(
+                        dependencies = groupDependencies,
+                        modifier = Modifier.fillMaxSize(),
+                        onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
+                        onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
+                    )
+                }
             }
 
             composable<RankingRootDestination> {
-                WeeklyRankingRoute(
-                    apiDependencies.client,
-                    Modifier.fillMaxSize(),
-                )
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible provides
+                        (!isSettingsVisible && reportTarget == null),
+                ) {
+                    WeeklyRankingRoute(
+                        apiDependencies.client,
+                        Modifier.fillMaxSize(),
+                    )
+                }
             }
         }
 
@@ -235,17 +259,20 @@ fun App(
                     .padding(16.dp),
         )
 
-        reportTarget?.let { (id, stamp) ->
+        reportTarget?.let { (id, stamp, source) ->
             ReportRoute(
                 emotionId = id,
                 emotionStamp = stamp,
                 reportEmotion = moderation.report,
+                entrySource = source,
+                monitoring = apiDependencies.client.monitoring,
                 onBack = { reportTarget = null },
             )
         }
 
         if (isSettingsVisible) {
             SettingsScreen(
+                monitoring = apiDependencies.client.monitoring,
                 appVersion = appVersion,
                 onBackClick = { isSettingsVisible = false },
                 permissionSettingsLauncher = permissionSettingsLauncher,
