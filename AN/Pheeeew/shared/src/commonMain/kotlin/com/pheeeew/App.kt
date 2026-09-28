@@ -102,6 +102,7 @@ fun App(
     var storeOpenError by remember { mutableStateOf(false) }
 
     LaunchedEffect(appVersionApi, appVersion, versionCheckAttempt) {
+        initialVersionCheckComplete = false
         try {
             val policy = withTimeout(VERSION_CHECK_TIMEOUT_MILLIS) { appVersionApi.getPolicy().toPolicy() }
             versionDecision = evaluateAppVersion(appVersion, policy)
@@ -145,6 +146,27 @@ fun App(
     }
 
     var onboardingCompleted by remember { mutableStateOf(hasCompletedOnboarding) }
+    val suggestedUpdate = versionDecision as? AppVersionDecision.UpdateSuggested
+    if (suggestedUpdate != null && !suggestionDismissed) {
+        AlertDialog(
+            onDismissRequest = { suggestionDismissed = true },
+            title = { Text("새로운 버전이 나왔어요") },
+            text = { Text("최신 버전으로 업데이트하면 더 나은 앱을 이용할 수 있어요.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (runCatching { uriHandler.openUri(suggestedUpdate.storeUrl) }.isSuccess) {
+                            suggestionDismissed = true
+                        }
+                    },
+                ) { Text("업데이트") }
+            },
+            dismissButton = {
+                TextButton(onClick = { suggestionDismissed = true }) { Text("나중에") }
+            },
+        )
+    }
+
     if (!onboardingCompleted) {
         OnboardingScreen(
             onFinished = {
@@ -357,26 +379,6 @@ fun App(
             )
         }
 
-        val suggestedUpdate = versionDecision as? AppVersionDecision.UpdateSuggested
-        if (onboardingCompleted && suggestedUpdate != null && !suggestionDismissed) {
-            AlertDialog(
-                onDismissRequest = { suggestionDismissed = true },
-                title = { Text("새로운 버전이 나왔어요") },
-                text = { Text("최신 버전으로 업데이트하면 더 나은 앱을 이용할 수 있어요.") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            if (runCatching { uriHandler.openUri(suggestedUpdate.storeUrl) }.isSuccess) {
-                                suggestionDismissed = true
-                            }
-                        },
-                    ) { Text("업데이트") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { suggestionDismissed = true }) { Text("나중에") }
-                },
-            )
-        }
     }
 }
 
