@@ -5,7 +5,7 @@ data class GroupFormRules(
     val groupNameMin: Int = 2,
     val groupNameMax: Int = 10,
     val descriptionMax: Int = 100,
-    val stampLabelMin: Int = 2,
+    val stampLabelMin: Int = 1,
     val stampLabelMax: Int = 4,
 ) {
     init {

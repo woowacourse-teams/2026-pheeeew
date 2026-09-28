@@ -63,7 +63,7 @@ internal object StampShapeCatalog {
                     fill = Res.drawable.group_stamp_circle_fill,
                     width = 40f,
                     height = 41f,
-                    textArea = StampTextArea(0.5f, 0.48f, 0.7f, 0.42f),
+                    textArea = StampTextArea(0.5f, 0.46f, 0.7f, 0.42f),
                 ),
             StampShapeId.TICKET to
                 definition(
@@ -71,7 +71,7 @@ internal object StampShapeCatalog {
                     fill = Res.drawable.group_stamp_ticket_fill,
                     width = 40f,
                     height = 25.85f,
-                    textArea = StampTextArea(0.48f, 0.49f, 0.68f, 0.4f),
+                    textArea = StampTextArea(0.48f, 0.47f, 0.68f, 0.55f),
                 ),
             StampShapeId.ROUNDED_RECTANGLE to
                 definition(
@@ -79,7 +79,7 @@ internal object StampShapeCatalog {
                     fill = Res.drawable.group_stamp_rounded_rectangle_fill,
                     width = 40f,
                     height = 40f,
-                    textArea = StampTextArea(0.49f, 0.47f, 0.67f, 0.42f),
+                    textArea = StampTextArea(0.49f, 0.45f, 0.67f, 0.42f),
                 ),
             StampShapeId.OVAL to
                 definition(
@@ -87,7 +87,7 @@ internal object StampShapeCatalog {
                     fill = Res.drawable.group_stamp_oval_fill,
                     width = 42f,
                     height = 34f,
-                    textArea = StampTextArea(0.48f, 0.46f, 0.68f, 0.44f),
+                    textArea = StampTextArea(0.48f, 0.44f, 0.68f, 0.44f),
                 ),
             StampShapeId.TAG to
                 definition(
@@ -96,7 +96,7 @@ internal object StampShapeCatalog {
                     overlay = Res.drawable.group_stamp_tag_overlay,
                     width = 42f,
                     height = 25.2f,
-                    textArea = StampTextArea(0.6f, 0.5f, 0.56f, 0.42f),
+                    textArea = StampTextArea(0.6f, 0.48f, 0.56f, 0.9f),
                 ),
             StampShapeId.FLOWER to
                 definition(
@@ -105,7 +105,7 @@ internal object StampShapeCatalog {
                     overlay = Res.drawable.group_stamp_flower_overlay,
                     width = 42f,
                     height = 40.568f,
-                    textArea = StampTextArea(0.5f, 0.5f, 0.5f, 0.3f),
+                    textArea = StampTextArea(0.5f, 0.49f, 0.5f, 0.64f),
                 ),
             StampShapeId.POSTAGE_STAMP to
                 definition(
@@ -114,7 +114,7 @@ internal object StampShapeCatalog {
                     overlay = Res.drawable.group_stamp_postage_stamp_overlay,
                     width = 42f,
                     height = 23.924f,
-                    textArea = StampTextArea(0.49f, 0.52f, 0.68f, 0.4f),
+                    textArea = StampTextArea(0.49f, 0.49f, 0.68f, 0.7f),
                 ),
             StampShapeId.VERTICAL_MEMO to
                 definition(
@@ -123,7 +123,7 @@ internal object StampShapeCatalog {
                     overlay = Res.drawable.group_stamp_vertical_memo_overlay,
                     width = 32.5f,
                     height = 60f,
-                    textArea = StampTextArea(0.51f, 0.5f, 0.68f, 0.32f),
+                    textArea = StampTextArea(0.51f, 0.46f, 0.68f, 0.82f),
                 ),
             StampShapeId.FOUR_LEAF to
                 definition(
@@ -132,7 +132,7 @@ internal object StampShapeCatalog {
                     overlay = Res.drawable.group_stamp_four_leaf_overlay,
                     width = 42f,
                     height = 42f,
-                    textArea = StampTextArea(0.5f, 0.51f, 0.48f, 0.3f),
+                    textArea = StampTextArea(0.5f, 0.49f, 0.48f, 0.62f),
                 ),
             StampShapeId.FOLDED_MEMO to
                 definition(
@@ -141,7 +141,7 @@ internal object StampShapeCatalog {
                     overlay = Res.drawable.group_stamp_folded_memo_overlay,
                     width = 42f,
                     height = 33f,
-                    textArea = StampTextArea(0.46f, 0.55f, 0.62f, 0.4f),
+                    textArea = StampTextArea(0.46f, 0.52f, 0.62f, 0.7f),
                 ),
         )
 

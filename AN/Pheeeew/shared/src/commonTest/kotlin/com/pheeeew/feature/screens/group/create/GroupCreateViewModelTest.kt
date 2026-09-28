@@ -17,15 +17,15 @@ import kotlin.test.assertNotNull
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupCreateViewModelTest {
     @Test
-    fun `정규화 후 최소 길이보다 짧은 스탬프 문구는 확인 단계로 넘어가지 않는다`() {
+    fun `정규화 후 한 글자 스탬프 문구는 확인 단계로 넘어간다`() {
         val viewModel = createViewModel()
         viewModel.onNameChanged("히유")
-        viewModel.onStampLabelChanged("가 ")
+        viewModel.onStampLabelChanged("가")
 
         viewModel.onCreateClick()
 
-        assertEquals(GroupCreateFieldError.TooShort, viewModel.uiState.value.fieldErrors.stampLabel)
-        assertIs<GroupCreateSubmissionState.Editing>(viewModel.uiState.value.submission)
+        assertEquals(null, viewModel.uiState.value.fieldErrors.stampLabel)
+        assertIs<GroupCreateSubmissionState.Confirming>(viewModel.uiState.value.submission)
     }
 
     @Test

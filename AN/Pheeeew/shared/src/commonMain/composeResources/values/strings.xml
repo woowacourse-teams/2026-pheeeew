@@ -25,9 +25,9 @@
     <string name="group_create_description_placeholder">그룹을 소개해 주세요 (선택)</string>
     <string name="group_create_description_error_long">그룹 설명은 100자 이내로 입력해 주세요.</string>
     <string name="group_create_label_label">스탬프 문구</string>
-    <string name="group_create_label_placeholder">스탬프에 넣을 2~4글자</string>
+    <string name="group_create_label_placeholder">스탬프에 넣을 1~4글자</string>
     <string name="group_create_label_error_required">스탬프 문구를 입력해 주세요.</string>
-    <string name="group_create_label_error_short">스탬프 문구는 2자 이상 입력해 주세요.</string>
+    <string name="group_create_label_error_short">스탬프 문구는 1자 이상 입력해 주세요.</string>
     <string name="group_create_label_error_long">스탬프 문구는 4자 이내로 입력해 주세요.</string>
     <string name="group_create_character_count">%1$d/%2$d</string>
     <string name="group_create_stamp_shape">스탬프 모양</string>
