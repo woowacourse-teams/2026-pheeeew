@@ -269,18 +269,6 @@ class MapRecordViewModel(
                         ),
                     )
                     funnel.clearFlow()
-                    registrationEvents.send(
-                        EmotionPinUiModel(
-                            id = result.id,
-                            latitude = registration.coordinate.latitude,
-                            longitude = registration.coordinate.longitude,
-                            createdAt = Clock.System.now().toString(),
-                            rotationDegrees = registration.rotationDegrees,
-                            emotion = emotion,
-                            stamp = _groupOptions.value.firstOrNull { it.id == state.selectedGroupId }?.stamp,
-                        ),
-                    )
-                    funnel.clearFlow()
                     _uiModel.value = RecordBottomSheetUiModel()
                     pendingRegistration = null
                     _notice.value = RecordNoticeUiModel("선택한 위치에 감정을 남겼어요", false, receipt)
