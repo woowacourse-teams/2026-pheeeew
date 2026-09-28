@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -62,14 +64,14 @@ fun EmotionDetailDialog(
     onNoticeDismiss: () -> Unit = {},
 ) {
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().noRippleClickable(true, onDismiss), contentAlignment = Alignment.Center) {
             EmotionDetailCard(
                 uiModel,
                 onDismiss,
                 onMoreClick,
                 onPlaybackClick,
                 onReactionClick,
-                Modifier.padding(24.dp),
+                Modifier.padding(24.dp).pointerInput(Unit) { detectTapGestures(onTap = {}) },
             )
             Snackbar(
                 message = notice,
