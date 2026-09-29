@@ -211,7 +211,7 @@ private fun RecordBottomSheetContent(
                             keyboardController?.hide()
                         }
                     }
-                }.padding(start = 20.dp, end = 20.dp, top = 16.dp),
+                }.padding(start = 20.dp, end = 20.dp, top = 4.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -259,7 +259,7 @@ private fun RecordBottomSheetContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         if (inputMode == RecordInputModeUiModel.Memo) {
             MemoPanel(
