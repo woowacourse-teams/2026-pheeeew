@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -33,16 +32,21 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.component.LoadErrorContent
+import com.pheeeew.core.designsystem.component.RefreshErrorBanner
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.screens.group.home.component.GroupListItem
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
+import com.pheeeew.feature.screens.group.preview.HomeFixtures
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -50,16 +54,12 @@ import pheeeew.shared.generated.resources.group_home_create
 import pheeeew.shared.generated.resources.group_home_empty_description
 import pheeeew.shared.generated.resources.group_home_empty_illustration
 import pheeeew.shared.generated.resources.group_home_empty_title
-import pheeeew.shared.generated.resources.group_home_error_description
-import pheeeew.shared.generated.resources.group_home_error_title
 import pheeeew.shared.generated.resources.group_home_group_count
 import pheeeew.shared.generated.resources.group_home_join
 import pheeeew.shared.generated.resources.group_home_loading
 import pheeeew.shared.generated.resources.group_home_my_groups
 import pheeeew.shared.generated.resources.group_home_refresh_error
-import pheeeew.shared.generated.resources.group_home_retry
 import pheeeew.shared.generated.resources.group_home_title
-import pheeeew.shared.generated.resources.ic_emotion_irritated
 
 /** 그룹 홈의 시각 상태와 사용자 입력을 표현합니다. */
 @Composable
@@ -192,7 +192,7 @@ private fun LoadingContent(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        CircularLoadingIndicator(color = AppColors.RankingAccent)
+        CircularLoadingIndicator(color = AppColors.Primary)
         Spacer(Modifier.height(12.dp))
         Text(
             text = stringResource(Res.string.group_home_loading),
@@ -233,6 +233,7 @@ private fun EmptyContent(
         }
         if (hasRefreshError) {
             RefreshErrorBanner(
+                message = stringResource(Res.string.group_home_refresh_error),
                 onRetry = onRetry,
                 modifier =
                     Modifier
@@ -257,43 +258,14 @@ private fun FailedContent(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
+    LoadErrorContent(
+        onRetry = onRetry,
         modifier =
             modifier
                 .fillMaxWidth()
                 .verticalScroll(rememberScrollState())
                 .padding(start = 32.dp, end = 32.dp, top = 96.dp, bottom = AppBottomNavigationBarOverlaySpace),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Top,
-    ) {
-        Image(
-            painter = painterResource(Res.drawable.ic_emotion_irritated),
-            contentDescription = null,
-            modifier = Modifier.size(96.dp),
-        )
-        Spacer(Modifier.height(24.dp))
-        Text(
-            text = stringResource(Res.string.group_home_error_title),
-            color = AppColors.RankingContent,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(19.dp))
-        Text(
-            text = stringResource(Res.string.group_home_error_description),
-            color = AppColors.RankingSecondaryContent,
-            fontSize = 12.sp,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(29.dp))
-        GroupHomeActionButton(
-            text = stringResource(Res.string.group_home_retry),
-            isPrimary = false,
-            onClick = onRetry,
-            modifier = Modifier.width(218.dp),
-        )
-    }
+    )
 }
 
 @Composable
@@ -338,7 +310,11 @@ private fun GroupListContent(
             }
             if (hasRefreshError) {
                 item(key = "home:refresh-error", contentType = "refresh-error") {
-                    RefreshErrorBanner(onRetry = onRetry, modifier = Modifier.padding(horizontal = 24.dp))
+                    RefreshErrorBanner(
+                        message = stringResource(Res.string.group_home_refresh_error),
+                        onRetry = onRetry,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                    )
                 }
             }
             items(
@@ -356,37 +332,39 @@ private fun GroupListContent(
     }
 }
 
+@Preview(name = "그룹 홈 - 조회 실패", widthDp = 360, heightDp = 800)
 @Composable
-private fun RefreshErrorBanner(
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(AppColors.RankingSurface)
-                .border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(12.dp))
-                .clickable(role = Role.Button, onClick = onRetry)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(
-            text = stringResource(Res.string.group_home_refresh_error),
-            modifier = Modifier.weight(1f),
-            color = AppColors.RankingContent,
-            fontSize = 13.sp,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-        )
-        Text(
-            text = stringResource(Res.string.group_home_retry),
-            color = AppColors.RankingContent,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 13.sp,
-            maxLines = 1,
+private fun GroupHomeFailedPreview() {
+    GroupHomeStatePreviewFrame(uiState = HomeFixtures.failedState)
+}
+
+@Preview(name = "그룹 홈 - 새로고침 실패", widthDp = 360, heightDp = 800)
+@Composable
+private fun GroupHomeRefreshFailedPreview() {
+    GroupHomeStatePreviewFrame(uiState = HomeFixtures.refreshFailedState)
+}
+
+@Preview(name = "그룹 홈 - 빈 목록 새로고침 실패", widthDp = 360, heightDp = 800)
+@Composable
+private fun GroupHomeEmptyRefreshFailedPreview() {
+    GroupHomeStatePreviewFrame(uiState = HomeFixtures.emptyRefreshFailedState)
+}
+
+@Preview(name = "그룹 홈 - 최초 로딩", widthDp = 360, heightDp = 800)
+@Composable
+private fun GroupHomeLoadingPreview() {
+    GroupHomeStatePreviewFrame(uiState = HomeFixtures.loadingState)
+}
+
+@Composable
+private fun GroupHomeStatePreviewFrame(uiState: GroupHomeUiState) {
+    AppTheme {
+        GroupHomeScreen(
+            uiState = uiState,
+            onCreateClick = {},
+            onJoinClick = {},
+            onGroupClick = {},
+            onRetry = {},
         )
     }
 }
