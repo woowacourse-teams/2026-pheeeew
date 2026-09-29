@@ -1,6 +1,10 @@
 # Pheeeew 운영 대시보드와 알림
 
-`pheeeew-prod.json`은 Grafana Cloud로 가져올 대시보드예요. JSON에는 토큰이나 특정 계정의 데이터 소스 ID가 없어요. 기존 알림 세 가지는 Grafana Cloud 화면에 설정했으며, 아래 V2 목록 지연 알림은 추가 적용 예정이에요. 이 파일을 배포한다고 Cloud 대시보드나 알림이 자동 생성되지는 않아요.
+**지금 쓰는 대시보드는 `pheeeew-prod-v2.json`, `pheeeew-dev-v2.json` 이에요.** `pheeeew-prod.json` 은 이전 구성 그대로 남겨 두었고 더 고치지 않아요.
+
+JSON 에는 토큰이나 특정 계정의 데이터 소스 ID 가 없어요. 기존 알림 세 가지는 Grafana Cloud 화면에 설정했으며, 아래 V2 목록 지연 알림은 추가 적용 예정이에요. 이 파일을 배포한다고 Cloud 대시보드나 알림이 자동 생성되지는 않아요.
+
+**알림은 대시보드에 묶여 있지 않아요.** 세 규칙 모두 `http_server_requests_seconds_*` 와 `up` 을 직접 조회하므로, v2 를 가져와도 알림이 옮겨 가거나 새로 생기지 않고 기존 규칙이 그대로 동작해요. 아래 알림 문서는 v1, v2 어느 쪽을 보든 동일하게 적용돼요.
 
 ## v2 대시보드
 
@@ -12,6 +16,8 @@
 | `pheeeew-dev-v2.json` | `pheeeew-dev-v2` | 개발 지표 저장소, 개발 로그 저장소 | `environment="dev"` |
 
 쿼리에 환경 라벨이 박혀 있어서 **파일을 바꿔 쓰면 안 돼요.** 운영 파일을 개발 저장소에 올리면 화면이 전부 비어요. UID가 서로 다르고 기존 `pheeeew-prod.json`(`pheeeew-prod-overview`)과도 달라서, 셋을 같이 두어도 덮어쓰지 않아요.
+
+`pheeeew-prod.json` 은 **그대로 두고 v2 로 옮겨 가요.** 예전 화면을 다시 보고 싶을 때와, 패널 ID 로 걸어 둔 링크를 잃지 않기 위해 남겨 둬요. 이 파일의 `pheeeew_sigh_map_query_*` 패널 두 개는 해당 지표를 앱이 등록한 적이 없어 처음부터 비어 있었고, 그 상태 그대로 둬요.
 
 | | `pheeeew-prod.json` | `pheeeew-prod-v2.json` |
 | --- | --- | --- |
@@ -27,10 +33,10 @@ DB 구역은 `spring.data.repository.invocations` 지표를 써요. Spring Data 
 
 ## JSON 파일의 역할
 
-`pheeeew-prod.json`에는 **Grafana가 어떤 데이터를 어떤 그래프로 보여줄지** 적혀 있어요. 화면에서 패널을 하나씩 만드는 대신, 이 파일을 가져와 미리 구성한 화면을 만들 수 있어요. 실제 지표·로그 데이터는 Grafana Cloud에 있고, JSON에는 데이터를 조회하는 방법과 화면 설정이 들어 있어요.
+대시보드 JSON에는 **Grafana가 어떤 데이터를 어떤 그래프로 보여줄지** 적혀 있어요. 화면에서 패널을 하나씩 만드는 대신, 이 파일을 가져와 미리 구성한 화면을 만들 수 있어요. 실제 지표·로그 데이터는 Grafana Cloud에 있고, JSON에는 데이터를 조회하는 방법과 화면 설정이 들어 있어요.
 
 ```text
-pheeeew-prod.json을 Grafana에 가져와요
+pheeeew-prod-v2.json을 Grafana에 가져와요
     ↓
 지표·로그 데이터 소스를 선택해요
     ↓
@@ -42,7 +48,7 @@ Grafana가 패널별 쿼리로 Cloud에 저장된 데이터를 읽어요
 | 설정 | 역할 |
 | --- | --- |
 | `title`, `uid` | 대시보드 이름과 고유 식별자예요 |
-| `panels` | 데이터 패널 33개와 구역 제목·안내 11개로 구성된 목록이에요 |
+| `panels` | 데이터 패널 29개와 구역 제목·안내 8개로 구성된 목록이에요 (v2 기준) |
 | `datasource`, `targets[].expr` | 어떤 저장소에서 어떤 쿼리로 데이터를 읽을지 정해요 |
 | `gridPos`, `fieldConfig` | 패널의 위치·크기, 초·바이트·백분율 같은 표시 단위를 정해요 |
 | `time`, `refresh` | 처음 볼 시간 범위와 화면을 새로 조회할 주기를 정해요 |
@@ -56,13 +62,13 @@ Grafana가 패널별 쿼리로 Cloud에 저장된 데이터를 읽어요
 ## 대시보드 연결
 
 1. 운영 배포 후 Explore에서 `up{job="pheeeew-api",environment="prod",instance="pheeeew-prod"}`가 `1`인지 확인해요. 연결이 아직 없으면 [Alloy 연결 안내](../alloy/README.md)를 먼저 따라요.
-2. Grafana의 `Dashboards → New → Import`에서 `pheeeew-prod.json`을 올려요.
+2. Grafana의 `Dashboards → New → Import`에서 `pheeeew-prod-v2.json`을 올려요. 개발 환경이면 `pheeeew-dev-v2.json`을 올리고 3번에서 개발 저장소를 골라요.
 3. `운영 지표 저장소`에는 기존 스택의 Prometheus 데이터 소스를, `운영 로그 저장소`에는 Loki 데이터 소스를 선택해요. Grafana Cloud가 제공하는 저장소를 선택하는 것이며 Prometheus 서버를 설치하는 단계가 아니에요.
 4. [Alloy 설정](../alloy/config.alloy)의 `prometheus.scrape "app"`에서 `scrape_interval = "60s"`인지 확인해요. 이 값이 앱 지표의 실제 수집 주기예요. 가져온 화면에서는 최근 1시간을 보고 새 요청이 발생한 뒤 2~5분 기다려요.
 
 Grafana의 Prometheus 데이터 소스에 있는 `Scrape interval`도 실제 수집 주기에 맞춰 `60s`로 설정해요. 이 값은 Grafana가 조회 간격 등을 계산할 때 참고하는 설정이며, 바꿔도 Alloy의 실제 수집 주기는 바뀌지 않아요. 대시보드의 각 지표 쿼리는 최소 간격이 이미 `1m`로 설정되어 있어요. [Grafana 데이터 소스 설정 안내](https://grafana.com/docs/grafana/latest/datasources/prometheus/configure/#interval-behavior)
 
-대시보드 UID는 `pheeeew-prod-overview`예요. 같은 UID가 이미 있다면 기존 팀 대시보드를 덮어쓸지 검토해요. JSON 가져오기는 대시보드만 생성하며 알림·수신자는 만들지 않아요.
+대시보드 UID는 `pheeeew-prod-v2`, `pheeeew-dev-v2`예요(이전 `pheeeew-prod.json`은 `pheeeew-prod-overview`). 같은 UID가 이미 있다면 기존 팀 대시보드를 덮어쓸지 검토해요. JSON 가져오기는 대시보드만 생성하며 알림·수신자는 만들지 않아요.
 
 ## 어떤 순서로 볼까요?
 
