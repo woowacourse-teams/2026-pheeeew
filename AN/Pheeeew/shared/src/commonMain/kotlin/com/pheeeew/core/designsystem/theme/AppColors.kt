@@ -3,34 +3,26 @@ package com.pheeeew.core.designsystem.theme
 import androidx.compose.ui.graphics.Color
 
 object AppColors {
-    val Black900 = Color(0xFF000000)
+    val GroupInk = Color(0xFF202323)
+    val GroupBackground = Color(0xFFFAFAFA)
+    val RankingContent = Color(0xFF15181B)
+    val RankingAccent = Color(0xFF9DE8D0)
+    val RankingSurface = Color(0xFFF3F4F5)
+    val RankingSecondaryContent = Color(0xFF808080)
+    val Background = Color.White
 
-    val Navy900 = Color(0xFF070A17)
-    val Navy850 = Color(0xFF11121A)
-    val Navy800 = Color(0xFF0E1328)
-    val Navy700 = Color(0xFF1A2044)
+    val Surface = Color(0xffFFFFFF)
 
-    val Navy600 = Color(0xFF303965)
+    val Primary = Color(0xffFFE164)
 
-    val Cream100 = Color(0xFFF5F2EA)
-    val Tan200 = Color(0xFFF0D9B5)
-    val Pink100 = Color(0xFFE5A6B8)
+    val Border = Color(0xFF000000)
 
-    // Periwinkle — cool accents
-    val Blue100 = Color(0xFFC8D4EE)
-    val Blue200 = Color(0xFFA8B8D8)
+    val TextPrimary = Color(0xFF000000)
+    val TextSecondary = Color(0xFF7D837A)
+    val Gray100 = Color(0xFFF0F1EC)
+    val RecordSheetInputSurface = Color(0xFFECECEC)
+    val RecordSheetAction = Color(0xFF202323)
+    val RecordSheetRecording = Color(0xFFE26962)
 
-    // Star — shared visual accents used by map-adjacent UI
-    val StarFresh = Color(0xFFBBD7FF)
-    val StarWarm = Color(0xFFF5D98B)
-    val StarDeep = Color(0xFFF2A05C)
-    val StarUnknown = Color(0xFFF4F2EC)
-
-    // Map controls — softened night-map surfaces
-    val MapControlBackground = Color(0xE6171B29)
-    val MapControlBorder = Color(0x80596078)
-    val MapControlContent = Color(0xFFE8E5DE)
-
-    // Red — destructive / alert actions
-    val Red400 = Color(0xFFE5484D)
+    val Error = Color(0xFFE26962)
 }

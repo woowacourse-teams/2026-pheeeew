@@ -18,7 +18,7 @@ class MonitoringSmokeTestActivity : ComponentActivity() {
         lifecycleScope.launch {
             // Let the application's foreground observer establish the visit context first.
             delay(1000)
-            val monitoring = (application as PheeeewApplication).monitoring
+            val monitoring = (application as PheeeewApplication).compatibilityMonitoring()
             if (intent.getBooleanExtra("analytics_failures", false)) {
                 monitoring.endAttempt(reason = "smoke_test_reset")
                 monitoring.mapVisitEnded("smoke_test_reset")

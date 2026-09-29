@@ -1,0 +1,163 @@
+package com.pheeeew.core.designsystem.component
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppColors
+import kotlinx.coroutines.delay
+import org.jetbrains.compose.resources.painterResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_error
+
+private const val REPORT_SNACKBAR_DURATION_MILLIS = 3_000L
+
+@Composable
+fun Snackbar(
+    message: String?,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+    isError: Boolean = false,
+    maxLines: Int = 1,
+    presentationKey: Any? = message,
+    onShown: () -> Unit = {},
+) {
+    var lastMessage by remember { mutableStateOf(message) }
+
+    val currentOnShown by rememberUpdatedState(onShown)
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
+    LaunchedEffect(message, presentationKey) {
+        if (message != null) {
+            lastMessage = message
+            delay(REPORT_SNACKBAR_DURATION_MILLIS)
+            currentOnDismiss()
+        }
+    }
+
+    AnimatedVisibility(
+        visible = message != null,
+        enter = fadeIn() + slideInVertically { it / 2 },
+        exit = fadeOut() + slideOutVertically { it / 2 },
+        modifier = modifier,
+    ) {
+        LaunchedEffect(message, presentationKey) {
+            if (message != null) {
+                withFrameNanos { }
+                currentOnShown()
+            }
+        }
+        Surface(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 354.dp)
+                    .heightIn(min = 48.dp),
+            shape = RoundedCornerShape(1.dp),
+            color = AppColors.Background,
+            contentColor = AppColors.TextPrimary,
+            border = androidx.compose.foundation.BorderStroke(AppBorders.Standard, AppColors.TextPrimary),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                if (isError) {
+                    Box(
+                        Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .border(width = AppBorders.Standard, color = AppColors.Border, shape = CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(painterResource(Res.drawable.ic_error), null, Modifier.size(24.dp), tint = AppColors.Error)
+                    }
+                } else {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(18.dp)
+                                .background(Color(0xFFFFE36E), CircleShape)
+                                .border(AppBorders.Standard, AppColors.TextPrimary, CircleShape),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        SuccessCheckMark()
+                    }
+                }
+
+                Text(
+                    text = lastMessage.orEmpty(),
+                    color = AppColors.TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = maxLines,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SuccessCheckMark() {
+    Canvas(Modifier.size(12.dp)) {
+        val check =
+            Path().apply {
+                moveTo(size.width * 0.22f, size.height * 0.52f)
+                lineTo(size.width * 0.42f, size.height * 0.72f)
+                lineTo(size.width * 0.80f, size.height * 0.30f)
+            }
+        drawPath(
+            path = check,
+            color = AppColors.GroupInk,
+            style = Stroke(width = 1.5.dp.toPx(), cap = StrokeCap.Round),
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun SnackbarPreview() {
+    Snackbar(
+        message = "신고가 접수됐어요.",
+        onDismiss = {},
+    )
+}

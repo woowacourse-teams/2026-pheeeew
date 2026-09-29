@@ -1,10 +1,10 @@
 package com.pheeeew.domain.repository
 
-import com.pheeeew.domain.model.location.LocationState
+import com.pheeeew.domain.model.LocationState
 import kotlinx.coroutines.flow.StateFlow
 
 interface LocationRepository {
-    val locationState: StateFlow<LocationState>
+    val state: StateFlow<LocationState>
 
-    suspend fun refreshCurrentLocation()
+    suspend fun refresh()
 }

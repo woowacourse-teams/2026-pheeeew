@@ -1,0 +1,455 @@
+package com.pheeeew.feature.screens.map.record
+
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pheeeew.feature.component.SoapBubble
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.painterResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_close
+import kotlin.time.TimeSource
+
+private const val BUBBLE_PRESS_MILLIS = 65
+private const val BUBBLE_MINIMUM_PRESS_MILLIS = 84L
+private const val BUBBLE_SPRING_DAMPING_RATIO = 0.4455f
+private const val BUBBLE_SPRING_STIFFNESS = 861.5385f
+private const val EMOTION_SPRING_DAMPING_RATIO = 0.5443f
+private const val EMOTION_SPRING_STIFFNESS = 527.7778f
+private const val EMOTION_INTERACTION_DAMPING_RATIO = 0.4694f
+private const val EMOTION_INTERACTION_STIFFNESS = 600f
+private val EMOTION_ICON_SIZE = 60.dp
+private val EMOTION_ICON_GAP = 4.dp
+private val BUBBLE_CLUSTER_WIDTH = 340.dp
+private val BUBBLE_EASE_OUT = CubicBezierEasing(0f, 0f, 0.58f, 1f)
+private val EMOTION_EASE_IN_OUT = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
+private val EMOTION_POSITION_SPRING =
+    spring<Float>(
+        dampingRatio = EMOTION_SPRING_DAMPING_RATIO,
+        stiffness = EMOTION_SPRING_STIFFNESS,
+        visibilityThreshold = 0.01f,
+    )
+private val EMOTION_SCALE_SPRING =
+    spring<Float>(
+        dampingRatio = EMOTION_SPRING_DAMPING_RATIO,
+        stiffness = EMOTION_SPRING_STIFFNESS,
+        visibilityThreshold = 0.001f,
+    )
+private val EMOTION_INTERACTION_SPRING =
+    spring<Float>(
+        dampingRatio = EMOTION_INTERACTION_DAMPING_RATIO,
+        stiffness = EMOTION_INTERACTION_STIFFNESS,
+        visibilityThreshold = 0.001f,
+    )
+
+@Composable
+internal fun EmotionBubbleCluster(
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    onEmotionClick: (EmotionTypeUiModel) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val toggleLabel = if (isExpanded) "감정 다시 담기" else "비눗방울 눌러 감정 꺼내기"
+    val interactionSource = remember { MutableInteractionSource() }
+    val isHeld by interactionSource.collectIsPressedAsState()
+    var isPressed by remember { mutableStateOf(false) }
+    var pressStartedAt by remember { mutableStateOf(TimeSource.Monotonic.markNow()) }
+    LaunchedEffect(isHeld) {
+        if (isHeld) {
+            pressStartedAt = TimeSource.Monotonic.markNow()
+            isPressed = true
+        } else {
+            val remainingPressMillis =
+                (BUBBLE_MINIMUM_PRESS_MILLIS - pressStartedAt.elapsedNow().inWholeMilliseconds)
+                    .coerceAtLeast(0)
+            if (remainingPressMillis > 0) delay(remainingPressMillis)
+            isPressed = false
+        }
+    }
+    val pressAnimation =
+        if (isPressed) {
+            tween<Float>(durationMillis = BUBBLE_PRESS_MILLIS, easing = BUBBLE_EASE_OUT)
+        } else {
+            spring(
+                dampingRatio = BUBBLE_SPRING_DAMPING_RATIO,
+                stiffness = BUBBLE_SPRING_STIFFNESS,
+                visibilityThreshold = 0.001f,
+            )
+        }
+    val pressScaleX by
+        animateFloatAsState(
+            targetValue = if (isPressed) 1.13f else 1f,
+            animationSpec = pressAnimation,
+            label = "emotionBubblePressScaleX",
+        )
+    val pressScaleY by
+        animateFloatAsState(
+            targetValue = if (isPressed) 0.82f else 1f,
+            animationSpec = pressAnimation,
+            label = "emotionBubblePressScaleY",
+        )
+    val pressTranslationY by
+        animateFloatAsState(
+            targetValue = if (isPressed) 9f else 0f,
+            animationSpec = pressAnimation,
+            label = "emotionBubblePressTranslationY",
+        )
+    val rippleProgress = remember { Animatable(1f) }
+    LaunchedEffect(isExpanded) {
+        if (isExpanded) {
+            rippleProgress.snapTo(0f)
+            rippleProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = 520, easing = BUBBLE_EASE_OUT),
+            )
+        }
+    }
+    val closeProgress by
+        animateFloatAsState(
+            targetValue = if (isExpanded) 1f else 0f,
+            animationSpec = tween(durationMillis = 150),
+            label = "emotionBubbleCloseProgress",
+        )
+
+    BoxWithConstraints(
+        modifier =
+            modifier
+                .size(width = BUBBLE_CLUSTER_WIDTH, height = 260.dp),
+    ) {
+        val clusterWidth = maxWidth
+        val bubbleOffsetX = (clusterWidth - 112.dp) / 2
+        if (isExpanded && rippleProgress.value < 1f) {
+            Canvas(
+                modifier =
+                    Modifier
+                        .offset(x = bubbleOffsetX, y = 140.dp)
+                        .size(112.dp),
+            ) {
+                drawCircle(
+                    color = Color(0xA6F7FFFF).copy(alpha = (1f - rippleProgress.value) * 0.6f * (166f / 255f)),
+                    radius = size.width / 2f * (0.72f + rippleProgress.value * 0.78f),
+                    style = Stroke(width = 2.dp.toPx()),
+                )
+            }
+        }
+
+        Box(
+            modifier =
+                Modifier
+                    .offset(x = bubbleOffsetX, y = 140.dp)
+                    .size(112.dp)
+                    .graphicsLayer {
+                        scaleX = pressScaleX
+                        scaleY = pressScaleY
+                        translationY = pressTranslationY.dp.toPx()
+                        transformOrigin = TransformOrigin(pivotFractionX = 0.5f, pivotFractionY = 0.7f)
+                    }.semantics {
+                        contentDescription = toggleLabel
+                        stateDescription = if (isExpanded) "펼침" else "닫힘"
+                    }.clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        role = Role.Button,
+                        onClickLabel = toggleLabel,
+                        onClick = onToggle,
+                    ),
+            contentAlignment = Alignment.Center,
+        ) {
+            SoapBubble(Modifier.fillMaxSize())
+            if (closeProgress > 0f) {
+                Icon(
+                    painterResource(Res.drawable.ic_close),
+                    contentDescription = "닫기",
+                    modifier =
+                        Modifier
+                            .size(26.dp)
+                            .graphicsLayer {
+                                alpha = closeProgress
+                                scaleX = 0.6f + 0.4f * closeProgress
+                                scaleY = scaleX
+                            },
+                    tint = Color(0xFF6A7778),
+                )
+            }
+        }
+
+        EmotionTypeUiModel.entries.forEach { emotion ->
+            EmotionBubble(
+                emotion = emotion,
+                clusterWidth = clusterWidth,
+                isExpanded = isExpanded,
+                isBubblePressed = isPressed,
+                onEmotionClick = onEmotionClick,
+            )
+        }
+    }
+}
+
+@Composable
+private fun EmotionBubble(
+    emotion: EmotionTypeUiModel,
+    clusterWidth: Dp,
+    isExpanded: Boolean,
+    isBubblePressed: Boolean,
+    onEmotionClick: (EmotionTypeUiModel) -> Unit,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val isHovered by interactionSource.collectIsHoveredAsState()
+    val interactionScale by
+        animateFloatAsState(
+            targetValue =
+                if (isPressed) {
+                    0.86f
+                } else if (isHovered && isExpanded) {
+                    1.13f
+                } else {
+                    1f
+                },
+            animationSpec = EMOTION_INTERACTION_SPRING,
+            label = "emotionFaceInteractionScale",
+        )
+    val faceHoverY by
+        animateFloatAsState(
+            targetValue = if (isHovered && isExpanded) -3f else 0f,
+            animationSpec = EMOTION_INTERACTION_SPRING,
+            label = "emotionFaceHoverOffset",
+        )
+    val baseOffset = emotion.offset(isExpanded, clusterWidth)
+    val targetOffset =
+        baseOffset.copy(
+            y = baseOffset.y + if (!isExpanded && isBubblePressed) 4.dp else 0.dp,
+        )
+    val targetScale = if (isExpanded) 1f else 32f / EMOTION_ICON_SIZE.value
+    val x = remember { Animatable(targetOffset.x.value) }
+    val y = remember { Animatable(targetOffset.y.value) }
+    val scale = remember { Animatable(targetScale) }
+    val velocities = remember { floatArrayOf(0f, 0f, 0f) }
+    val animationDelayMillis =
+        if (isExpanded) {
+            75L + emotion.ordinal * 65L
+        } else {
+            (EmotionTypeUiModel.entries.lastIndex - emotion.ordinal) * 18L
+        }
+    LaunchedEffect(targetOffset, targetScale, isExpanded) {
+        delay(animationDelayMillis)
+        coroutineScope {
+            launch {
+                x.animateTo(targetOffset.x.value, EMOTION_POSITION_SPRING, initialVelocity = velocities[0]) {
+                    velocities[0] = velocity
+                }
+                velocities[0] = 0f
+            }
+            launch {
+                y.animateTo(targetOffset.y.value, EMOTION_POSITION_SPRING, initialVelocity = velocities[1]) {
+                    velocities[1] = velocity
+                }
+                velocities[1] = 0f
+            }
+            launch {
+                scale.animateTo(
+                    targetValue = targetScale,
+                    animationSpec = EMOTION_SCALE_SPRING,
+                    initialVelocity = velocities[2],
+                ) {
+                    velocities[2] = velocity
+                }
+                velocities[2] = 0f
+            }
+        }
+    }
+    var floating by remember { mutableFloatStateOf(0f) }
+    LaunchedEffect(isExpanded) {
+        if (isExpanded) {
+            floating = 0f
+            return@LaunchedEffect
+        }
+        var startNanos = 0L
+        while (isActive) {
+            withFrameNanos { frameNanos ->
+                if (startNanos == 0L) startNanos = frameNanos
+                val elapsedSeconds = (frameNanos - startNanos).toDouble() / 1_000_000_000.0
+                val phase =
+                    ((elapsedSeconds + emotion.ordinal * 0.79) / (3.2 + emotion.ordinal * 0.29) % 1.0)
+                        .toFloat()
+                floating =
+                    if (phase < 0.5f) {
+                        EMOTION_EASE_IN_OUT.transform(phase * 2f)
+                    } else {
+                        1f - EMOTION_EASE_IN_OUT.transform((phase - 0.5f) * 2f)
+                    }
+            }
+        }
+    }
+    val labelAlpha by
+        animateFloatAsState(
+            targetValue = if (isExpanded) 1f else 0f,
+            animationSpec =
+                tween(
+                    durationMillis = 140,
+                    delayMillis = if (isExpanded) 240 + emotion.ordinal * 55 else 0,
+                ),
+            label = "emotionBubbleLabelAlpha",
+        )
+    Box(
+        modifier =
+            Modifier
+                .offset(
+                    x = x.value.dp,
+                    y = y.value.dp,
+                ).size(width = EMOTION_ICON_SIZE, height = EMOTION_ICON_SIZE + 24.dp),
+        contentAlignment = Alignment.TopCenter,
+    ) {
+        Image(
+            painter = painterResource(emotion.icon),
+            contentDescription = null,
+            modifier =
+                Modifier
+                    .size(EMOTION_ICON_SIZE)
+                    .graphicsLayer {
+                        val scaleCompensation = (1f - scale.value) * EMOTION_ICON_SIZE.value / 2f
+                        translationX = -scaleCompensation.dp.toPx() + floating.dp.toPx()
+                        translationY =
+                            -scaleCompensation.dp.toPx() -
+                            (5f * floating).dp.toPx() +
+                            faceHoverY.dp.toPx()
+                        scaleX = scale.value * interactionScale
+                        scaleY = scale.value * interactionScale
+                        rotationZ = if (isExpanded) 0f else -3f + floating * 7f
+                    }.clip(CircleShape)
+                    .hoverable(interactionSource, enabled = isExpanded)
+                    .then(
+                        if (isExpanded) {
+                            Modifier.clickable(
+                                interactionSource = interactionSource,
+                                indication = null,
+                                role = Role.Button,
+                                onClickLabel = "${emotion.label} 선택",
+                            ) { onEmotionClick(emotion) }
+                        } else {
+                            Modifier
+                        },
+                    ),
+        )
+        if (labelAlpha > 0f) {
+            Text(
+                text = emotion.label,
+                color = Color.Black,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+                modifier =
+                    Modifier
+                        .offset(y = EMOTION_ICON_SIZE + 5.dp)
+                        .width(72.dp)
+                        .graphicsLayer { alpha = labelAlpha },
+                style =
+                    LocalTextStyle.current.copy(
+                        shadow =
+                            Shadow(
+                                color = Color.White,
+                                offset = Offset.Zero,
+                                blurRadius = 10f,
+                            ),
+                    ),
+            )
+        }
+    }
+}
+
+private fun EmotionTypeUiModel.offset(
+    isExpanded: Boolean,
+    clusterWidth: Dp,
+): DpOffset =
+    if (isExpanded) {
+        val count = EmotionTypeUiModel.entries.size
+        val rowWidth = EMOTION_ICON_SIZE * count + EMOTION_ICON_GAP * (count - 1)
+        DpOffset(
+            x = (clusterWidth - rowWidth) / 2 + (EMOTION_ICON_SIZE + EMOTION_ICON_GAP) * ordinal,
+            y = 49.dp,
+        )
+    } else {
+        when (this) {
+            EmotionTypeUiModel.FRUSTRATED -> DpOffset(x = 127.dp, y = 180.dp)
+            EmotionTypeUiModel.IRRITATED -> DpOffset(x = 156.dp, y = 173.dp)
+            EmotionTypeUiModel.EXHAUSTED -> DpOffset(x = 185.dp, y = 180.dp)
+            EmotionTypeUiModel.DISCOURAGED -> DpOffset(x = 141.dp, y = 207.dp)
+            EmotionTypeUiModel.ANGRY -> DpOffset(x = 171.dp, y = 207.dp)
+        }.let { offset -> offset.copy(x = offset.x + (clusterWidth - BUBBLE_CLUSTER_WIDTH) / 2) }
+    }
+
+@Preview(name = "접힌 감정 비눗방울 · 좁은 화면", widthDp = 360, heightDp = 320, showBackground = true)
+@Preview(name = "접힌 감정 비눗방울", widthDp = 402, heightDp = 320, showBackground = true)
+@Composable
+fun EmotionBubbleClusterCollapsedPreview() {
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color(0xFFECEAE5)).padding(16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        EmotionBubbleCluster(isExpanded = false, onToggle = {}, onEmotionClick = {})
+    }
+}
+
+@Preview(name = "펼친 감정 비눗방울 · 좁은 화면", widthDp = 360, heightDp = 320, showBackground = true)
+@Preview(name = "펼친 감정 비눗방울", widthDp = 402, heightDp = 320, showBackground = true)
+@Composable
+fun EmotionBubbleClusterExpandedPreview() {
+    Box(
+        modifier = Modifier.fillMaxSize().background(Color(0xffc5e4b7)).padding(16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        EmotionBubbleCluster(isExpanded = true, onToggle = {}, onEmotionClick = {})
+    }
+}

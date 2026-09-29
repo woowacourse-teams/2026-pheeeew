@@ -169,7 +169,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "python3 \"$SRCROOT/../scripts/validate-monitoring-build.py\" || exit 1\nif [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
+			shellScript = "python3 \"$SRCROOT/../scripts/validate-device-session-build.py\" || exit 1\npython3 \"$SRCROOT/../scripts/validate-monitoring-build.py\" || exit 1\nif [ \"YES\" = \"$OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED\" ]; then\n  echo \"Skipping Gradle build task invocation due to OVERRIDE_KOTLIN_BUILD_IDE_SUPPORTED environment variable set to \\\"YES\\\"\"\n  exit 0\nfi\ncd \"$SRCROOT/..\"\n./gradlew :shared:embedAndSignAppleFrameworkForXcode\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -319,14 +319,14 @@
 				CODE_SIGN_ENTITLEMENTS = iosApp/Pheeeew.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iosApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "히유";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치 주변의 한숨을 지도에 표시하고, 한숨을 남길 위치를 흐리게 만드는 데 사용합니다. 실제 위치는 서버로 전송하지 않습니다.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "숨을 부는 세기를 감지해 별을 만듭니다. 녹음 내용을 저장하거나 전송하지 않습니다.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치 주변의 감정을 지도에 표시하고, 감정을 남길 위치를 선택할 때 사용해요.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "감정을 음성으로 녹음해 등록할 때 사용해요. 선택한 녹음은 서버에 전송돼요.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -336,7 +336,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 2.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.itda.pheeeew;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -349,18 +349,18 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = iosApp/Pheeeew.Debug.entitlements;
+				CODE_SIGN_ENTITLEMENTS = iosApp/Pheeeew.entitlements;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
 				DEVELOPMENT_TEAM = WKN466N42M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iosApp/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "히유";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치 주변의 한숨을 지도에 표시하고, 한숨을 남길 위치를 흐리게 만드는 데 사용합니다. 실제 위치는 서버로 전송하지 않습니다.";
-				INFOPLIST_KEY_NSMicrophoneUsageDescription = "숨을 부는 세기를 감지해 별을 만듭니다. 녹음 내용을 저장하거나 전송하지 않습니다.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "현재 위치 주변의 감정을 지도에 표시하고, 감정을 남길 위치를 선택할 때 사용해요.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "감정을 음성으로 녹음해 등록할 때 사용해요. 선택한 녹음은 서버에 전송돼요.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -370,8 +370,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.pheeeew;
+				MARKETING_VERSION = 2.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.itda.pheeeew;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
