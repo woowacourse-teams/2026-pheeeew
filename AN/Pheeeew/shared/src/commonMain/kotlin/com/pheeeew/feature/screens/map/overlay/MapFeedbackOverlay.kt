@@ -48,6 +48,7 @@ internal fun MapFeedbackOverlay(
     onDismissDetailError: () -> Unit,
     onAction: (MapFeedbackAction) -> Unit,
     modifier: Modifier = Modifier,
+    suppressConnectionFeedback: Boolean = false,
 ) {
     Column(
         modifier.statusBarsPadding().padding(top = 76.dp, start = 16.dp, end = 16.dp).widthIn(max = 560.dp),
@@ -64,7 +65,7 @@ internal fun MapFeedbackOverlay(
             onShown = { notice?.receipt?.shown() },
         )
         Snackbar(message, onMessageDismiss, maxLines = 3)
-        uiModel.primaryFeedback()?.let { feedback ->
+        uiModel.primaryFeedback()?.takeUnless { suppressConnectionFeedback && uiModel.isOffline }?.let { feedback ->
             MapErrorBanner(
                 message = feedback.message,
                 actionLabel = feedback.action?.label,
@@ -83,14 +84,15 @@ internal fun MapFeedbackOverlay(
 }
 
 @Composable
-private fun MapErrorBanner(
+internal fun MapErrorBanner(
     message: String,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
     onDismiss: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+        modifier = modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
         shape = RoundedCornerShape(12.dp),
         color = AppColors.Background,
         border = BorderStroke(AppBorders.Standard, AppColors.Error),

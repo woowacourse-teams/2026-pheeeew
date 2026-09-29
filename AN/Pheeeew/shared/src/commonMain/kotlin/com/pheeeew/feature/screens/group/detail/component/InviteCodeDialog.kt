@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -56,7 +58,10 @@ internal fun InviteCodeDialog(
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
         Box(
-            modifier = Modifier.fillMaxSize(),
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(onDismiss) { detectTapGestures(onTap = { onDismiss() }) },
             contentAlignment = Alignment.Center,
         ) {
             Column(
@@ -68,6 +73,7 @@ internal fun InviteCodeDialog(
                         .clip(RoundedCornerShape(20.dp))
                         .background(Color.White)
                         .border(AppBorders.Standard, AppColors.GroupInk, RoundedCornerShape(20.dp))
+                        .pointerInput(Unit) { detectTapGestures(onTap = {}) }
                         .padding(horizontal = 24.dp, vertical = 22.dp),
             ) {
                 Text(

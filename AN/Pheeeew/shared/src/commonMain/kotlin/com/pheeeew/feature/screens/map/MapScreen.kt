@@ -39,12 +39,14 @@ import com.pheeeew.feature.screens.map.overlay.MapFeedbackOverlay
 import com.pheeeew.feature.screens.map.overlay.MapOverlay
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
+import com.pheeeew.feature.screens.map.record.RecordConnectionNotice
 import com.pheeeew.feature.screens.map.record.RegisteredEmotionUiModel
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import com.pheeeew.feature.screens.map.record.group.groupSelectorDialogProperties
 import com.pheeeew.feature.screens.map.record.location.RecordLocationSelectionContent
 import com.pheeeew.feature.screens.map.record.location.RecordMapViewport
+import com.pheeeew.feature.screens.map.record.rememberRecordConnectionMessage
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheet
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheetUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
@@ -450,6 +452,7 @@ fun MapScreen(
         )
         MapFeedbackOverlay(
             uiModel = uiModel,
+            suppressConnectionFeedback = recordUiModel.step != RecordFlowStepUiModel.Closed,
             notice = notice,
             onDismissNotice = recordViewModel::dismissNotice,
             message = message,
@@ -565,6 +568,11 @@ internal fun MapScreenContent(
     onRecordCoordinateSelected: (Double, Double) -> Unit = { _, _ -> },
     onRecordPreviewScaleChanged: (Float) -> Unit = {},
 ) {
+    val connectionMessage =
+        rememberRecordConnectionMessage(
+            active = recordUiModel.step != RecordFlowStepUiModel.Closed,
+            isOffline = uiModel.isOffline,
+        )
     Box(modifier = modifier.fillMaxSize()) {
         val symbolImages = rememberEmotionPinSymbolImages(uiModel.emotionPins)
         mapContent(
@@ -604,24 +612,28 @@ internal fun MapScreenContent(
                     onGroupClick = onRecordGroupClick,
                     onNext = onRecordNext,
                     onSkip = onRecordSkip,
+                    connectionMessage = connectionMessage.takeUnless { recordUiModel.isGroupSelectorVisible },
                 )
                 if (recordUiModel.isGroupSelectorVisible) {
                     Dialog(
                         onDismissRequest = onRecordGroupSelectorDismiss,
                         properties = groupSelectorDialogProperties(),
                     ) {
-                        GroupSelectorContent(
-                            isVisible = true,
-                            groups = groupOptions,
-                            selectedGroupId = recordUiModel.pendingGroupId,
-                            dialProgress = recordUiModel.groupDialProgress,
-                            onDialProgressChange = onRecordGroupDialProgressChange,
-                            onDialProgressSettle = onRecordGroupDialProgressSettle,
-                            onSelectedGroupChange = onRecordPendingGroupChange,
-                            onDismiss = onRecordGroupSelectorDismiss,
-                            onComplete = onRecordGroupSelectionComplete,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                        Box(Modifier.fillMaxSize()) {
+                            GroupSelectorContent(
+                                isVisible = true,
+                                groups = groupOptions,
+                                selectedGroupId = recordUiModel.pendingGroupId,
+                                dialProgress = recordUiModel.groupDialProgress,
+                                onDialProgressChange = onRecordGroupDialProgressChange,
+                                onDialProgressSettle = onRecordGroupDialProgressSettle,
+                                onSelectedGroupChange = onRecordPendingGroupChange,
+                                onDismiss = onRecordGroupSelectorDismiss,
+                                onComplete = onRecordGroupSelectionComplete,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                            RecordConnectionNotice(connectionMessage)
+                        }
                     }
                 }
             }
@@ -641,11 +653,12 @@ internal fun MapScreenContent(
                     isSubmitting = recordUiModel.isSubmitting,
                     canConfirm =
                         recordUiModel.isSelectedCoordinateInRange && recordViewport != null &&
-                            uiModel.mapError == null && !recordUiModel.isSubmitting,
+                            uiModel.mapError == null && !recordUiModel.isSubmitting && !uiModel.isOffline,
                     onConfirm = onRecordConfirmLocation,
                     onBack = onRecordBackToInput,
                     modifier = Modifier.fillMaxSize(),
                 )
+                RecordConnectionNotice(connectionMessage)
             }
         }
     }
