@@ -453,9 +453,8 @@ private fun RecordInputModeToggle(
             modifier
                 .height(42.dp)
                 .clip(AppShapes.Pill)
-                .background(AppColors.Gray100)
-                .border(AppBorders.Standard, AppColors.Border, AppShapes.Pill)
-                .padding(4.dp),
+                .background(AppColors.Surface)
+                .border(AppBorders.Standard, AppColors.Border, AppShapes.Pill),
     ) {
         val tabWidth = maxWidth / 2
         val indicatorOffset by animateDpAsState(
@@ -470,7 +469,8 @@ private fun RecordInputModeToggle(
                     .width(tabWidth)
                     .fillMaxHeight()
                     .clip(AppShapes.Pill)
-                    .background(AppColors.Primary),
+                    .background(AppColors.Primary)
+                    .border(AppBorders.Standard, AppColors.Border, AppShapes.Pill),
         )
         Row(modifier = Modifier.fillMaxSize()) {
             RecordInputModeTab(
