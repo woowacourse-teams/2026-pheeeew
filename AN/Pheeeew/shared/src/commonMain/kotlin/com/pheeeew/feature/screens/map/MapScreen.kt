@@ -166,10 +166,10 @@ fun MapScreen(
     LaunchedEffect(uiModel.focusedEmotionId) {
         if (uiModel.focusedEmotionId != null) highlightedEmotion = null
     }
-    // Keep the loaded pin's badge for one minute; discard it if its refresh never arrives.
+    // Restart the 10-second timeout when the pin appears; discard it if its refresh never arrives.
     LaunchedEffect(highlightedEmotion?.id, highlightedPinPosition?.id) {
         if (highlightedEmotion != null) {
-            delay(if (highlightedPinPosition?.id == highlightedEmotion?.id) 60_000 else 10_000)
+            delay(10_000)
             clearHighlight()
         }
     }
