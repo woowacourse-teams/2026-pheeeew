@@ -100,18 +100,20 @@ internal fun AppBottomNavigationBar(
         contentAlignment = Alignment.CenterStart,
     ) {
         val itemWidth = maxWidth / destinations.size
+        val indicatorInset = AppBorders.Standard + 1.5.dp
+        val maximumIndicatorOffset = itemWidth * destinations.lastIndex + indicatorInset
         val selectedIndicatorOffset by
             animateDpAsState(
-                targetValue = itemWidth * selectedIndex,
+                targetValue = itemWidth * selectedIndex + indicatorInset,
                 animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
                 label = "bottomNavigationIndicatorOffset",
             )
         Box(
             modifier =
                 Modifier
-                    .offset(x = selectedIndicatorOffset)
-                    .width(itemWidth)
-                    .height(AppBottomNavigationBarHeight)
+                    .offset(x = selectedIndicatorOffset.coerceIn(indicatorInset, maximumIndicatorOffset))
+                    .width(itemWidth - indicatorInset * 2)
+                    .height(AppBottomNavigationBarHeight - indicatorInset * 2)
                     .clip(CircleShape)
                     .background(AppColors.Primary)
                     .border(AppBorders.Standard, NavigationInk, CircleShape),
