@@ -20,6 +20,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.security.crypto)
+    androidTestImplementation(libs.maplibre.android)
 
     implementation(libs.androidx.activity.compose)
 
@@ -58,6 +59,7 @@ android {
 
     defaultConfig {
         applicationId = "com.pheeeew"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         minSdk =
             libs.versions.android.minSdk
                 .get()

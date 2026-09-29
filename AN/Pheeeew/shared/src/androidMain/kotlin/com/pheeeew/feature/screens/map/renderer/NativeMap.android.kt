@@ -4,17 +4,23 @@ import android.graphics.Color
 import android.graphics.PointF
 import android.graphics.RectF
 import android.view.Gravity
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -69,6 +75,12 @@ internal actual fun NativeMap(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val density = LocalDensity.current
+    val statusBarInset = WindowInsets.statusBars.getTop(density)
+    val navigationBarInset = WindowInsets.navigationBars.getBottom(density)
+    // NavHost restores saveable state, but recreates the native MapView on tab return.
+    var savedCamera by rememberSaveable { mutableStateOf<DoubleArray?>(null) }
+    var savedCameraCommandId by rememberSaveable { mutableLongStateOf(0L) }
     val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
     val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
@@ -90,6 +102,12 @@ internal actual fun NativeMap(
                     onEmotionPinClick = { currentOnEmotionPinClick(it) },
                     onHighlightedPinPositionChanged = { currentOnHighlightPosition(it) },
                     onContentPresented = { token, count -> currentOnContentPresented(token, count) },
+                    restoredCamera = savedCamera,
+                    restoredCameraCommandId = savedCameraCommandId,
+                    onCameraSaved = { camera, commandId ->
+                        savedCamera = camera
+                        savedCameraCommandId = commandId
+                    },
                 )
             }
         }
@@ -123,7 +141,7 @@ internal actual fun NativeMap(
     AndroidView(
         factory = { host.mapView },
         modifier = modifier,
-        update = { host.render(state) },
+        update = { host.render(state, statusBarInset, navigationBarInset) },
     )
 }
 
@@ -136,6 +154,9 @@ private class AndroidFoundationMapHost(
     private val onEmotionPinClick: (Long) -> Unit,
     private val onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     private val onContentPresented: (String, List<String>) -> Unit,
+    private val restoredCamera: DoubleArray?,
+    restoredCameraCommandId: Long,
+    private val onCameraSaved: (DoubleArray, Long) -> Unit,
 ) {
     private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
     private var map: MapLibreMap? = null
@@ -145,7 +166,7 @@ private class AndroidFoundationMapHost(
     private var styleLoaded = false
     private var didSetInitialCamera = false
     private var initialCameraUsedFallback = false
-    private var lastAppliedCameraCommandId = 0L
+    private var lastAppliedCameraCommandId = restoredCameraCommandId
     private var fittedOrigin: GeoCoordinate? = null
     private var cameraBoundsInstalled = false
     private var statusBarInsetPx = 0
@@ -204,14 +225,6 @@ private class AndroidFoundationMapHost(
         }
 
     init {
-        ViewCompat.setOnApplyWindowInsetsListener(mapView) { _, insets ->
-            statusBarInsetPx = insets.getInsets(WindowInsetsCompat.Type.statusBars()).top
-            navigationBarInsetPx = insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom
-            applyCompassMargins()
-            applyAttributionMargins()
-            insets
-        }
-        ViewCompat.requestApplyInsets(mapView)
         mapView.addOnDidFailLoadingMapListener(mapLoadFailureListener)
         mapView.addOnDidBecomeIdleListener(idleListener)
         mapView.getMapAsync { readyMap ->
@@ -243,10 +256,12 @@ private class AndroidFoundationMapHost(
             applyCompassMargins()
             applyAttributionMargins()
             readyMap.addOnCameraMoveListener {
+                saveCamera()
                 publishHighlightedPinPosition()
                 publishRecordViewport()
             }
             readyMap.addOnCameraIdleListener {
+                saveCamera()
                 publishRecordViewport()
                 publishViewport()
             }
@@ -282,7 +297,15 @@ private class AndroidFoundationMapHost(
         }
     }
 
-    fun render(state: MapUiModel) {
+    fun render(
+        state: MapUiModel,
+        statusBarInset: Int,
+        navigationBarInset: Int,
+    ) {
+        statusBarInsetPx = statusBarInset
+        navigationBarInsetPx = navigationBarInset
+        applyCompassMargins()
+        applyAttributionMargins()
         latestState = state
         renderLatestState()
         publishViewport()
@@ -290,8 +313,8 @@ private class AndroidFoundationMapHost(
 
     fun release() {
         if (released) return
+        saveCamera()
         released = true
-        ViewCompat.setOnApplyWindowInsetsListener(mapView, null)
         mapView.removeOnDidFailLoadingMapListener(mapLoadFailureListener)
         mapView.removeOnDidBecomeIdleListener(idleListener)
         mapView.onPause()
@@ -299,6 +322,23 @@ private class AndroidFoundationMapHost(
         mapView.onDestroy()
         map = null
         style = null
+    }
+
+    private fun saveCamera() {
+        if (!didSetInitialCamera || released) return
+        val camera = map?.cameraPosition ?: return
+        val target = camera.target ?: return
+        onCameraSaved(
+            doubleArrayOf(
+                target.latitude,
+                target.longitude,
+                camera.zoom,
+                camera.bearing,
+                camera.tilt,
+                if (initialCameraUsedFallback) 1.0 else 0.0,
+            ),
+            lastAppliedCameraCommandId,
+        )
     }
 
     private fun withKoreanFontFaces(styleJson: String): String? =
@@ -438,6 +478,18 @@ private class AndroidFoundationMapHost(
         val point =
             currentLocation?.let { LatLng(it.latitude, it.longitude) }
                 ?: LatLng(FALLBACK_LATITUDE, FALLBACK_LONGITUDE)
+        if (!didSetInitialCamera && restoredCamera != null) {
+            currentMap.cameraPosition =
+                CameraPosition
+                    .Builder()
+                    .target(LatLng(restoredCamera[0], restoredCamera[1]))
+                    .zoom(restoredCamera[2])
+                    .bearing(restoredCamera[3])
+                    .tilt(restoredCamera[4])
+                    .build()
+            didSetInitialCamera = true
+            initialCameraUsedFallback = restoredCamera[5] == 1.0
+        }
         if (!didSetInitialCamera || (initialCameraUsedFallback && currentLocation != null)) {
             currentMap.cameraPosition =
                 CameraPosition
