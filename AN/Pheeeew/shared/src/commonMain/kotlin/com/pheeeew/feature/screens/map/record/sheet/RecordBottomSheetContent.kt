@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -64,6 +65,7 @@ import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.VoiceRecordingState
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.SheetDragHandle
+import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
@@ -335,6 +337,7 @@ private fun RecordSheetActions(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(20.dp),
@@ -345,12 +348,20 @@ private fun RecordSheetActions(
                 Modifier
                     .weight(1f)
                     .height(48.dp)
-                    .clip(AppShapes.Pill)
-                    .background(AppColors.RecordSheetAction.copy(alpha = if (enabled) 1f else 0.35f))
-                    .noRippleClickable(enabled = enabled, onClick = onNext),
+                    .raisedButtonBorder(
+                        AppShapes.Pill,
+                        interactionSource = interactionSource,
+                        elevated = enabled,
+                    ).clip(AppShapes.Pill)
+                    .background(if (enabled) AppColors.Primary else AppColors.Gray100)
+                    .noRippleClickable(
+                        enabled = enabled,
+                        interactionSource = interactionSource,
+                        onClick = onNext,
+                    ),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = "다음", color = AppColors.Surface, fontSize = 16.sp, fontWeight = FontWeight.Normal)
+            Text(text = "다음", color = AppColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
         Box(
             modifier =

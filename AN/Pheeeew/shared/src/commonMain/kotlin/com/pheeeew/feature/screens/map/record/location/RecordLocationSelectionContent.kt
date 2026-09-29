@@ -7,6 +7,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -44,7 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.BasicTopBar
 import com.pheeeew.core.designsystem.component.SheetDragHandle
-import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.domain.model.GeoCoordinate
@@ -77,6 +78,7 @@ fun RecordLocationSelectionContent(
     showDragGuide: Boolean = true,
     onStampScaleChanged: (Float) -> Unit = {},
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     val density = LocalDensity.current.density
     val latestOnSelected by rememberUpdatedState(onCoordinateSelected)
     val latestCanMove by rememberUpdatedState(!isSubmitting)
@@ -251,11 +253,19 @@ fun RecordLocationSelectionContent(
                         Modifier
                             .fillMaxWidth()
                             .height(48.dp)
-                            .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Button)
-                            .background(
+                            .raisedButtonBorder(
+                                AppShapes.Button,
+                                interactionSource = interactionSource,
+                                elevated =
+                                    canConfirm && !isSubmitting,
+                            ).background(
                                 if (canConfirm && !isSubmitting) AppColors.Primary else AppColors.Gray100,
                                 AppShapes.Button,
-                            ).noRippleClickable(enabled = canConfirm && !isSubmitting, onClick = onConfirm),
+                            ).noRippleClickable(
+                                enabled = canConfirm && !isSubmitting,
+                                interactionSource = interactionSource,
+                                onClick = onConfirm,
+                            ),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text("여기에 남기기", color = AppColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)

@@ -1,8 +1,8 @@
 package com.pheeeew.feature.screens.group.detail
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,6 +21,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,7 +31,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.detail.component.EmotionPad
 import com.pheeeew.feature.screens.group.detail.component.GroupSummary
@@ -268,14 +269,22 @@ internal fun DetailOutlineButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     OutlinedButton(
         onClick = onClick,
+        interactionSource = interactionSource,
         enabled = enabled,
-        modifier = modifier.height(50.dp),
+        modifier =
+            modifier
+                .height(
+                    50.dp,
+                ).raisedButtonBorder(CircleShape, interactionSource = interactionSource, elevated = enabled),
         shape = CircleShape,
-        border = BorderStroke(AppBorders.Standard, AppColors.GroupInk),
+        border = null,
         colors =
             ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.White,
+                disabledContainerColor = Color.White,
                 contentColor = AppColors.GroupInk,
                 disabledContentColor = AppColors.GroupInk,
             ),

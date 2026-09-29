@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.group.join
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.SheetDragHandle
+import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
@@ -400,20 +402,27 @@ private fun JoinPrimaryButton(
     isLoading: Boolean,
     onClick: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     val buttonFont = notoSansKrFontFamily()
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
                 .height(50.dp)
-                .clip(JoinButtonShape)
+                .raisedButtonBorder(
+                    shape = JoinButtonShape,
+                    interactionSource = interactionSource,
+                    color = if (enabled) AppColors.GroupInk else AppColors.GroupInk.copy(alpha = 0.38f),
+                    elevated = enabled,
+                ).clip(JoinButtonShape)
                 .background(if (enabled) AppColors.Primary else Color(0xFFE3E8E5))
-                .border(
-                    AppBorders.Standard,
-                    if (enabled) AppColors.GroupInk else AppColors.GroupInk.copy(alpha = 0.38f),
-                    JoinButtonShape,
-                ).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-                .semantics { contentDescription = text },
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    enabled = enabled,
+                    role = Role.Button,
+                    onClick = onClick,
+                ).semantics { contentDescription = text },
         contentAlignment = Alignment.Center,
     ) {
         Row(
