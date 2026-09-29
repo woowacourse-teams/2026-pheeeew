@@ -1,39 +1,39 @@
 package com.pheeeew.report.application.dto;
 
 import com.pheeeew.report.domain.DeviceBlock;
-import com.pheeeew.report.domain.SighBlock;
+import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.report.domain.repository.projection.BlockProjection;
-import com.pheeeew.sigh.domain.Sigh;
+import com.pheeeew.emotion.domain.Emotion;
 import java.time.Instant;
 
-public record BlockResult(Long blockId, Long sighId, String nickname, String memo, Instant createdAt) {
+public record BlockResult(Long blockId, Long emotionId, String nickname, String memo, Instant createdAt) {
 
     public static BlockResult from(BlockProjection projection) {
         return new BlockResult(
                 projection.getBlockId(),
-                projection.getSighId(),
+                projection.getEmotionId(),
                 projection.getNickname(),
                 projection.getMemo(),
                 projection.getCreatedAt()
         );
     }
 
-    public static BlockResult of(SighBlock block, Sigh sigh) {
+    public static BlockResult of(EmotionBlock block, Emotion emotion) {
         return new BlockResult(
                 block.getId(),
-                block.getSighId(),
-                sigh.getNickname(),
-                sigh.getMemo(),
+                block.getEmotionId(),
+                emotion.getNickname(),
+                emotion.getMemo(),
                 block.getCreatedAt()
         );
     }
 
-    public static BlockResult of(DeviceBlock block, Sigh originSigh) {
+    public static BlockResult of(DeviceBlock block, Emotion originEmotion) {
         return new BlockResult(
                 block.getId(),
-                block.getOriginSighId(),
-                originSigh.getNickname(),
-                originSigh.getMemo(),
+                block.getOriginEmotionId(),
+                originEmotion.getNickname(),
+                originEmotion.getMemo(),
                 block.getCreatedAt()
         );
     }

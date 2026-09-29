@@ -22,7 +22,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Order(Ordered.LOWEST_PRECEDENCE - 10)
 public class DeviceActivityFilter extends OncePerRequestFilter {
 
-    private static final Set<String> ACTIVITY_METHODS = Set.of("GET", "POST", "DELETE");
+    private static final Set<String> ACTIVITY_METHODS = Set.of("GET", "POST", "PUT", "DELETE");
 
     private final DeviceActivityRecorder recorder;
     private final Clock clock;
@@ -30,8 +30,7 @@ public class DeviceActivityFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI().substring(request.getContextPath().length());
-        boolean activityPath = path.equals("/api/v1/sighs")
-                || path.equals("/api/v2/sighs") || path.startsWith("/api/v2/sighs/")
+        boolean activityPath = path.equals("/api/v1/emotions") || path.startsWith("/api/v1/emotions/")
                 || path.equals("/api/v2/reports") || path.startsWith("/api/v2/blocks/");
         return !ACTIVITY_METHODS.contains(request.getMethod()) || !activityPath;
     }

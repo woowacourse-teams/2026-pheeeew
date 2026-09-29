@@ -6,7 +6,7 @@ public interface BlockProjection {
 
     Long getBlockId();
 
-    Long getSighId();
+    Long getEmotionId();
 
     String getNickname();
 

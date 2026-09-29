@@ -72,10 +72,10 @@ class DeviceActivityFilterTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"GET,/api/v1/sighs,200", "POST,/api/v1/sighs,201", "GET,/api/v2/sighs,200",
-            "GET,/api/v2/sighs/1,200", "POST,/api/v2/sighs,201", "POST,/api/v2/sighs/1/likes,200",
-            "POST,/api/v2/reports,201", "GET,/api/v2/blocks/sighs,200", "POST,/api/v2/blocks/devices,201",
-            "DELETE,/api/v2/blocks/sighs/1,204", "DELETE,/api/v2/blocks/devices/1,204"})
+    @CsvSource({"GET,/api/v1/emotions,200", "POST,/api/v1/emotions,200", "GET,/api/v1/emotions/1,200",
+            "PUT,/api/v1/emotions/1/emojis/HEART,204", "DELETE,/api/v1/emotions/1/emojis/HEART,204",
+            "POST,/api/v2/reports,201", "GET,/api/v2/blocks/emotions,200", "POST,/api/v2/blocks/devices,201",
+            "DELETE,/api/v2/blocks/emotions/1,204", "DELETE,/api/v2/blocks/devices/1,204"})
     void 빈_조회와_쓰기_성공은_인증된_기기와_요청_시각으로_기록한다(String method, String path, int status) {
         // given / when
         client.method(HttpMethod.valueOf(method))
@@ -103,7 +103,7 @@ class DeviceActivityFilterTest {
     @ValueSource(ints = {302, 400, 404, 500})
     void 성공하지_않은_서비스_응답은_제외한다(int status) {
         // given / when
-        client.get().uri("/api/v2/sighs?status={status}", status)
+        client.get().uri("/api/v1/emotions?status={status}", status)
                 .header("Authorization", "Bearer access-token").exchange().expectStatus().isEqualTo(status);
 
         // then
@@ -116,9 +116,8 @@ class DeviceActivityFilterTest {
         when(jwtDecoder.decode("invalid")).thenThrow(new BadJwtException("invalid token"));
 
         // when
-        client.get().uri("/api/v1/sighs").exchange().expectStatus().isOk();
-        client.get().uri("/api/v2/sighs").exchange().expectStatus().isUnauthorized();
-        client.get().uri("/api/v2/sighs").header("Authorization", "Bearer invalid")
+        client.get().uri("/api/v1/emotions").exchange().expectStatus().isUnauthorized();
+        client.get().uri("/api/v1/emotions").header("Authorization", "Bearer invalid")
                 .exchange().expectStatus().isUnauthorized();
 
         // then
@@ -129,7 +128,7 @@ class DeviceActivityFilterTest {
     void 처리되지_않은_예외는_기본_200_상태여도_활동으로_기록하지_않는다() {
         // given
         SecurityContextHolder.getContext().setAuthentication(AccessTokenFixture.인증된_기기(DEVICE_ID));
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v2/sighs");
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/emotions");
         ServletException failure = new ServletException("request failed");
 
         // when / then

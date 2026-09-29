@@ -35,7 +35,7 @@ public class DeviceBlockController implements DeviceBlockControllerApi {
             @CurrentDevice UUID devicePublicId,
             @Valid @RequestBody BlockCreateRequest request
     ) {
-        BlockSaveResult result = deviceBlockService.save(request.sighId(), devicePublicId);
+        BlockSaveResult result = deviceBlockService.save(request.emotionId(), devicePublicId);
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {

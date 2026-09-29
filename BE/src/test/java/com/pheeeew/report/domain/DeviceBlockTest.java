@@ -36,6 +36,6 @@ class DeviceBlockTest {
         // then
         assertThat(block.getBlockerDeviceId()).isEqualTo(기기_식별자);
         assertThat(block.getBlockedDeviceId()).isEqualTo(2L);
-        assertThat(block.getOriginSighId()).isNotNull();
+        assertThat(block.getOriginEmotionId()).isNotNull();
     }
 }

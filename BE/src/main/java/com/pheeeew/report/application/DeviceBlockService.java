@@ -4,7 +4,7 @@ import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.report.exception.BlockErrorCode.BLOCK_AUTHOR_UNKNOWN;
 import static com.pheeeew.report.exception.BlockErrorCode.BLOCK_SAVE_FAILED;
 import static com.pheeeew.report.exception.BlockErrorCode.BLOCK_SELF_NOT_ALLOWED;
-import static com.pheeeew.sigh.exception.SighErrorCode.SIGH_NOT_FOUND;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -16,9 +16,9 @@ import com.pheeeew.report.domain.DeviceBlock;
 import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.domain.repository.projection.BlockProjection;
 import com.pheeeew.report.exception.BlockException;
-import com.pheeeew.sigh.domain.Sigh;
-import com.pheeeew.sigh.domain.repository.SighRepository;
-import com.pheeeew.sigh.exception.SighException;
+import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.domain.repository.EmotionRepository;
+import com.pheeeew.emotion.exception.EmotionException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,22 +34,22 @@ public class DeviceBlockService {
     private static final int PAGE_SIZE = 50;
 
     private final DeviceBlockRepository deviceBlockRepository;
-    private final SighRepository sighRepository;
+    private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
 
-    public BlockSaveResult save(Long sighId, UUID devicePublicId) {
-        Sigh sigh = findSigh(sighId);
-        Long blockedDeviceId = findAuthorDeviceId(sigh);
+    public BlockSaveResult save(Long emotionId, UUID devicePublicId) {
+        Emotion emotion = findEmotion(emotionId);
+        Long blockedDeviceId = findAuthorDeviceId(emotion);
         Long blockerDeviceId = findBlockerDeviceId(devicePublicId);
         validateNotSelf(blockerDeviceId, blockedDeviceId);
 
         Optional<DeviceBlock> existingBlock =
                 deviceBlockRepository.findByBlockerDeviceIdAndBlockedDeviceId(blockerDeviceId, blockedDeviceId);
         if (existingBlock.isPresent()) {
-            return BlockSaveResult.of(toResult(existingBlock.get(), sigh), false);
+            return BlockSaveResult.of(toResult(existingBlock.get(), emotion), false);
         }
 
-        return saveNewBlock(blockerDeviceId, blockedDeviceId, sigh);
+        return saveNewBlock(blockerDeviceId, blockedDeviceId, emotion);
     }
 
     @Transactional
@@ -82,13 +82,13 @@ public class DeviceBlockService {
         return BlockListResult.of(items, hasNext, nextCursor);
     }
 
-    private Sigh findSigh(Long sighId) {
-        return sighRepository.findById(sighId)
-                .orElseThrow(() -> new SighException(SIGH_NOT_FOUND));
+    private Emotion findEmotion(Long emotionId) {
+        return emotionRepository.findById(emotionId)
+                .orElseThrow(() -> new EmotionException(EMOTION_NOT_FOUND));
     }
 
-    private Long findAuthorDeviceId(Sigh sigh) {
-        Long authorDeviceId = sigh.getDeviceId();
+    private Long findAuthorDeviceId(Emotion emotion) {
+        Long authorDeviceId = emotion.getDeviceId();
         if (authorDeviceId == null) {
             throw new BlockException(BLOCK_AUTHOR_UNKNOWN);
         }
@@ -108,36 +108,36 @@ public class DeviceBlockService {
         }
     }
 
-    private BlockResult toResult(DeviceBlock block, Sigh requestedSigh) {
-        if (block.getOriginSighId().equals(requestedSigh.getId())) {
-            return BlockResult.of(block, requestedSigh);
+    private BlockResult toResult(DeviceBlock block, Emotion requestedEmotion) {
+        if (block.getOriginEmotionId().equals(requestedEmotion.getId())) {
+            return BlockResult.of(block, requestedEmotion);
         }
 
-        return BlockResult.of(block, findSigh(block.getOriginSighId()));
+        return BlockResult.of(block, findEmotion(block.getOriginEmotionId()));
     }
 
-    private BlockSaveResult saveNewBlock(Long blockerDeviceId, Long blockedDeviceId, Sigh sigh) {
+    private BlockSaveResult saveNewBlock(Long blockerDeviceId, Long blockedDeviceId, Emotion emotion) {
         DeviceBlock block = DeviceBlock.builder()
                 .blockerDeviceId(blockerDeviceId)
                 .blockedDeviceId(blockedDeviceId)
-                .originSighId(sigh.getId())
+                .originEmotionId(emotion.getId())
                 .build();
 
         try {
-            return BlockSaveResult.of(BlockResult.of(deviceBlockRepository.saveAndFlush(block), sigh), true);
+            return BlockSaveResult.of(BlockResult.of(deviceBlockRepository.saveAndFlush(block), emotion), true);
         } catch (DataIntegrityViolationException cause) {
-            return findExistingBlock(blockerDeviceId, blockedDeviceId, sigh, cause);
+            return findExistingBlock(blockerDeviceId, blockedDeviceId, emotion, cause);
         }
     }
 
     private BlockSaveResult findExistingBlock(
             Long blockerDeviceId,
             Long blockedDeviceId,
-            Sigh sigh,
+            Emotion emotion,
             DataIntegrityViolationException cause
     ) {
         return deviceBlockRepository.findByBlockerDeviceIdAndBlockedDeviceId(blockerDeviceId, blockedDeviceId)
-                .map(block -> BlockSaveResult.of(toResult(block, sigh), false))
+                .map(block -> BlockSaveResult.of(toResult(block, emotion), false))
                 .orElseThrow(() -> new BlockException(BLOCK_SAVE_FAILED, cause));
     }
 
