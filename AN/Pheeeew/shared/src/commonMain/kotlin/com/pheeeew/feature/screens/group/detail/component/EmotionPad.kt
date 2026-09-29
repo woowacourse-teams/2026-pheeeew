@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -433,23 +434,30 @@ internal fun EmotionPad(
                 key(particle.id) {
                     val reaction = particle.reaction
                     val emotion = TapCatalog.emotion(particle.key)
+                    // Alpha compositing clips to the layer bounds, so include the sticker shadow.
+                    val shadowPadding =
+                        when (reaction.kind) {
+                            TapReactionKind.Text, TapReactionKind.Plus -> 4.dp
+                            else -> 0.dp
+                        }
                     Box(
                         modifier =
                             Modifier
-                                .requiredSize(particle.width.dp, particle.height.dp)
-                                .graphicsLayer {
+                                .requiredSize(
+                                    particle.width.dp + shadowPadding * 2,
+                                    particle.height.dp + shadowPadding * 2,
+                                ).graphicsLayer {
                                     val transform = particle.flight.sample(frameTime.value - particle.started)
-                                    translationX =
-                                        ((particle.flight.left - padPosition.x + transform.x) * density.density)
-                                            .toFloat()
-                                    translationY =
-                                        ((particle.flight.top - padPosition.y + transform.y) * density.density)
-                                            .toFloat()
+                                    val left = particle.flight.left - padPosition.x - shadowPadding.value
+                                    val top = particle.flight.top - padPosition.y - shadowPadding.value
+                                    translationX = ((left + transform.x) * density.density).toFloat()
+                                    translationY = ((top + transform.y) * density.density).toFloat()
                                     scaleX = transform.scale.toFloat()
                                     scaleY = scaleX
                                     rotationZ = transform.rotation.toFloat()
                                     alpha = transform.alpha.toFloat()
-                                }.testTag("tap-particle"),
+                                }.padding(shadowPadding)
+                                .testTag("tap-particle"),
                         contentAlignment = Alignment.Center,
                     ) {
                         when (reaction.kind) {
