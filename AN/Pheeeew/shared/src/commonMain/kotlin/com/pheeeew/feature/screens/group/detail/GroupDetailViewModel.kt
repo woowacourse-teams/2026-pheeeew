@@ -56,7 +56,7 @@ class GroupDetailViewModel(
             hasResumed = true
             return
         }
-        onRefresh()
+        onRefresh(showRefreshIndicator = false)
     }
 
     fun onRetry() {
@@ -69,7 +69,7 @@ class GroupDetailViewModel(
         onRefresh()
     }
 
-    fun onRefresh() {
+    fun onRefresh(showRefreshIndicator: Boolean = true) {
         val state = _uiState.value
         if (state.overlay != GroupDetailOverlay.None || state.content is GroupDetailContent.MembershipChanged ||
             state.content is GroupDetailContent.NotFound
@@ -92,7 +92,7 @@ class GroupDetailViewModel(
                 Unit
             }
         }
-        loadDetail()
+        loadDetail(showRefreshIndicator = showRefreshIndicator)
     }
 
     /** Accepts taps while a press request is in flight and submits them in order. */
@@ -419,6 +419,7 @@ class GroupDetailViewModel(
     private fun loadDetail(
         reconcileLeaveOutcome: Boolean = false,
         reconcilePressOperationKey: GroupOperationKey? = null,
+        showRefreshIndicator: Boolean = true,
     ) {
         if (loadJob?.isActive == true) return
         val currentPressStatus = _uiState.value.pressStatus
@@ -436,7 +437,12 @@ class GroupDetailViewModel(
         _uiState.update { state ->
             state.copy(
                 content = if (hasSnapshot) state.content else GroupDetailContent.Loading,
-                refreshStatus = if (hasSnapshot) GroupDetailRefreshStatus.Refreshing else GroupDetailRefreshStatus.Idle,
+                refreshStatus =
+                    if (hasSnapshot && showRefreshIndicator) {
+                        GroupDetailRefreshStatus.Refreshing
+                    } else {
+                        GroupDetailRefreshStatus.Idle
+                    },
             )
         }
 
