@@ -255,6 +255,12 @@ private class AndroidFoundationMapHost(
             }
             applyCompassMargins()
             applyAttributionMargins()
+            readyMap.addOnCameraMoveStartedListener { reason ->
+                if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE && didSetInitialCamera) {
+                    initialCameraUsedFallback = false
+                    saveCamera()
+                }
+            }
             readyMap.addOnCameraMoveListener {
                 saveCamera()
                 publishHighlightedPinPosition()

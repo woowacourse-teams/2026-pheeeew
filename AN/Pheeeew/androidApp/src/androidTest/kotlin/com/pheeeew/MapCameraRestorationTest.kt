@@ -27,8 +27,7 @@ class MapCameraRestorationTest {
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP),
             )
         val initial = awaitMap(activity)
-        // Let the initial asynchronous location acquisition settle before moving the camera.
-        SystemClock.sleep(5000)
+        awaitInitialLocationCamera(initial.second)
         onMain {
             initial.second.cameraPosition =
                 CameraPosition
@@ -73,6 +72,21 @@ class MapCameraRestorationTest {
             SystemClock.sleep(100)
         }
         error("Map did not become ready within 30 seconds")
+    }
+
+    private fun awaitInitialLocationCamera(map: MapLibreMap) {
+        val deadline = SystemClock.uptimeMillis() + 30000
+        while (SystemClock.uptimeMillis() < deadline) {
+            val target = onMain { map.cameraPosition.target }
+            if (target != null &&
+                (kotlin.math.abs(target.latitude - 37.4409230460675) > 0.00001 ||
+                    kotlin.math.abs(target.longitude - 127.147538132656) > 0.00001)
+            ) {
+                return
+            }
+            SystemClock.sleep(100)
+        }
+        error("Initial camera did not move from fallback to the acquired location within 30 seconds")
     }
 
     private fun findMap(view: View): MapView? {
