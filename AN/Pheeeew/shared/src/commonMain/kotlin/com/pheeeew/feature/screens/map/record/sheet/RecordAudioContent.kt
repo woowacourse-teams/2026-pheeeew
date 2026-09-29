@@ -132,14 +132,6 @@ private fun AudioReadyPanel(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text(
-            text = "목소리로 남겨볼까요?",
-            modifier = Modifier.fillMaxWidth(),
-            color = AppColors.TextPrimary,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-
         Box(
             modifier =
                 Modifier
