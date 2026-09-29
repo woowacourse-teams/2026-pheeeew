@@ -113,6 +113,11 @@ private fun MapUiModel.toFoundationIosRenderUiModel(): FoundationIosMapRenderUiM
         cameraCommandValue = cameraCommand?.value ?: 0.0,
         cameraVerticalPosition = cameraCommand?.verticalPosition ?: 0.5,
         isRecordLocationPicking = isRecordLocationPicking,
+        recordPreviewScale = recordPreviewScale,
+        recordPreviewPin =
+            recordPreviewPin?.let {
+                FoundationIosEmotionPinCoordinateUiModel(it.id, it.latitude, it.longitude, it.symbolImageKey(), 0.0)
+            },
         recordOrigin = recordOrigin?.let { FoundationIosMapCoordinateUiModel(it.latitude, it.longitude) },
         highlightedEmotionId = highlightedEmotionId,
         pressedEmotionId = pressedEmotionId,
