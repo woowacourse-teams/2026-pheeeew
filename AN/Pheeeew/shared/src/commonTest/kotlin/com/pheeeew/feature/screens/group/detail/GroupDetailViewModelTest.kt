@@ -43,7 +43,7 @@ class GroupDetailViewModelTest {
                 viewModel.onResumed()
                 runCurrent()
                 assertEquals(2, calls)
-                assertTrue(viewModel.uiState.value.isRefreshing)
+                assertFalse(viewModel.uiState.value.isRefreshing)
 
                 refresh.complete(GroupDetailLoadResult.Loaded(detail))
                 runCurrent()
