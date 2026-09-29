@@ -124,7 +124,7 @@ fun RecordBottomSheet(
         scrimColor = Color.Black.copy(alpha = 0.3f),
         dragHandle = { SheetDragHandle() },
     ) {
-        RecordConnectionNotice(connectionMessage, Modifier.padding(horizontal = 20.dp))
+        RecordConnectionNotice(connectionMessage)
         RecordBottomSheetContent(
             selectedEmotion = selectedEmotion,
             inputMode = inputMode,

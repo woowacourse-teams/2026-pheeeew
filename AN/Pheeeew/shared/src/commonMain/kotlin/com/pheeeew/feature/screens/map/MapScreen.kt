@@ -6,7 +6,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -429,6 +428,7 @@ fun MapScreen(
         )
         MapFeedbackOverlay(
             uiModel = uiModel,
+            suppressConnectionFeedback = recordUiModel.step != RecordFlowStepUiModel.Closed,
             notice = notice,
             onDismissNotice = recordViewModel::dismissNotice,
             message = message,
@@ -587,7 +587,7 @@ internal fun MapScreenContent(
                     onGroupClick = onRecordGroupClick,
                     onNext = onRecordNext,
                     onSkip = onRecordSkip,
-                    connectionMessage = connectionMessage,
+                    connectionMessage = connectionMessage.takeUnless { recordUiModel.isGroupSelectorVisible },
                 )
                 if (recordUiModel.isGroupSelectorVisible) {
                     Dialog(
@@ -607,10 +607,7 @@ internal fun MapScreenContent(
                                 onComplete = onRecordGroupSelectionComplete,
                                 modifier = Modifier.fillMaxSize(),
                             )
-                            RecordConnectionNotice(
-                                connectionMessage,
-                                Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(16.dp),
-                            )
+                            RecordConnectionNotice(connectionMessage)
                         }
                     }
                 }
@@ -635,14 +632,7 @@ internal fun MapScreenContent(
                     onBack = onRecordBackToInput,
                     modifier = Modifier.fillMaxSize(),
                 )
-                RecordConnectionNotice(
-                    connectionMessage,
-                    Modifier
-                        .align(
-                            Alignment.TopCenter,
-                        ).statusBarsPadding()
-                        .padding(top = 72.dp, start = 16.dp, end = 16.dp),
-                )
+                RecordConnectionNotice(connectionMessage)
             }
         }
     }
