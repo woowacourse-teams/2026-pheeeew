@@ -6,8 +6,8 @@ prometheus.scrape "app" {
 	targets = [{
 		__address__ = "app:8080",
 		application = "pheeeew",
-		environment = "prod",
-		instance    = "pheeeew-prod",
+		environment = "dev",
+		instance    = "pheeeew-dev",
 	}]
 	job_name        = "pheeeew-api"
 	honor_labels    = true
@@ -58,8 +58,8 @@ loki.source.file "app" {
 		__path__    = "/var/log/pheeeew/application.json",
 		job         = "pheeeew-api",
 		application = "pheeeew",
-		environment = "prod",
-		instance    = "pheeeew-prod",
+		environment = "dev",
+		instance    = "pheeeew-dev",
 	}]
 	forward_to = [loki.process.http_requests.receiver]
 }
