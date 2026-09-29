@@ -398,7 +398,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
                 "imageKey": pin.imageKey,
                 "rotationDegrees": pin.rotationDegrees,
                 "focusScale": pin.id == focusedId ? 1.3 : 1.0,
-                "focusPriority": pin.id == focusedId ? 1 : 0,
+                "focusPriority": pin.id == focusedId ? topPriority : index,
             ]
             return feature
         }

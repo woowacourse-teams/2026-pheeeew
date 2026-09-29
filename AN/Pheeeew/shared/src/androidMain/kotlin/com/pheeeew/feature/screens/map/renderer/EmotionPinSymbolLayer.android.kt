@@ -97,8 +97,9 @@ internal class EmotionPinSymbolLayer {
         ) {
             return
         }
+        val topPriority = renderedPins.size
         val features: List<Feature> =
-            renderedPins.map { pin ->
+            renderedPins.mapIndexed { index, pin ->
                 val properties =
                     JsonObject().apply {
                         addProperty("monitoring-load-id", monitoringLoadId)
@@ -106,7 +107,7 @@ internal class EmotionPinSymbolLayer {
                         addProperty(ROTATION_PROPERTY, pin.rotationDegrees)
                         addProperty(PIN_ID_PROPERTY, pin.id)
                         addProperty(SCALE_PROPERTY, if (pin.id == focusedId) 1.3 else 1.0)
-                        addProperty(PRIORITY_PROPERTY, if (pin.id == focusedId) 1 else 0)
+                        addProperty(PRIORITY_PROPERTY, if (pin.id == focusedId) topPriority else index)
                     }
                 Feature.fromGeometry(
                     Point.fromLngLat(pin.longitude, pin.latitude),
