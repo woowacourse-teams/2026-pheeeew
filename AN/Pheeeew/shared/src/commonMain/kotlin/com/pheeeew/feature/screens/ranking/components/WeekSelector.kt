@@ -69,6 +69,8 @@ private fun WeekArrow(
         Modifier
             .size(width = 44.dp, height = 36.dp)
             .clickable(
+                interactionSource = null,
+                indication = null,
                 enabled = enabled,
                 onClickLabel = if (isPrevious) "이전 주" else "다음 주",
                 onClick = onClick,
