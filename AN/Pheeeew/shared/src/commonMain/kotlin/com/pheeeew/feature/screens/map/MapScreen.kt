@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -39,12 +40,14 @@ import com.pheeeew.feature.screens.map.overlay.MapFeedbackOverlay
 import com.pheeeew.feature.screens.map.overlay.MapOverlay
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
+import com.pheeeew.feature.screens.map.record.RecordConnectionNotice
 import com.pheeeew.feature.screens.map.record.RegisteredEmotionUiModel
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import com.pheeeew.feature.screens.map.record.group.groupSelectorDialogProperties
 import com.pheeeew.feature.screens.map.record.location.RecordLocationSelectionContent
 import com.pheeeew.feature.screens.map.record.location.RecordMapViewport
+import com.pheeeew.feature.screens.map.record.rememberRecordConnectionMessage
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheet
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheetUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
@@ -540,6 +543,11 @@ internal fun MapScreenContent(
     recordViewport: RecordMapViewport? = null,
     onRecordCoordinateSelected: (Double, Double) -> Unit = { _, _ -> },
 ) {
+    val connectionMessage =
+        rememberRecordConnectionMessage(
+            active = recordUiModel.step != RecordFlowStepUiModel.Closed,
+            isOffline = uiModel.isOffline,
+        )
     Box(modifier = modifier.fillMaxSize()) {
         val symbolImages = rememberEmotionPinSymbolImages(uiModel.emotionPins)
         mapContent(
@@ -579,24 +587,31 @@ internal fun MapScreenContent(
                     onGroupClick = onRecordGroupClick,
                     onNext = onRecordNext,
                     onSkip = onRecordSkip,
+                    connectionMessage = connectionMessage,
                 )
                 if (recordUiModel.isGroupSelectorVisible) {
                     Dialog(
                         onDismissRequest = onRecordGroupSelectorDismiss,
                         properties = groupSelectorDialogProperties(),
                     ) {
-                        GroupSelectorContent(
-                            isVisible = true,
-                            groups = groupOptions,
-                            selectedGroupId = recordUiModel.pendingGroupId,
-                            dialProgress = recordUiModel.groupDialProgress,
-                            onDialProgressChange = onRecordGroupDialProgressChange,
-                            onDialProgressSettle = onRecordGroupDialProgressSettle,
-                            onSelectedGroupChange = onRecordPendingGroupChange,
-                            onDismiss = onRecordGroupSelectorDismiss,
-                            onComplete = onRecordGroupSelectionComplete,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                        Box(Modifier.fillMaxSize()) {
+                            GroupSelectorContent(
+                                isVisible = true,
+                                groups = groupOptions,
+                                selectedGroupId = recordUiModel.pendingGroupId,
+                                dialProgress = recordUiModel.groupDialProgress,
+                                onDialProgressChange = onRecordGroupDialProgressChange,
+                                onDialProgressSettle = onRecordGroupDialProgressSettle,
+                                onSelectedGroupChange = onRecordPendingGroupChange,
+                                onDismiss = onRecordGroupSelectorDismiss,
+                                onComplete = onRecordGroupSelectionComplete,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                            RecordConnectionNotice(
+                                connectionMessage,
+                                Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(16.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -615,10 +630,18 @@ internal fun MapScreenContent(
                     isSubmitting = recordUiModel.isSubmitting,
                     canConfirm =
                         recordUiModel.isSelectedCoordinateInRange && recordViewport != null &&
-                            uiModel.mapError == null && !recordUiModel.isSubmitting,
+                            uiModel.mapError == null && !recordUiModel.isSubmitting && !uiModel.isOffline,
                     onConfirm = onRecordConfirmLocation,
                     onBack = onRecordBackToInput,
                     modifier = Modifier.fillMaxSize(),
+                )
+                RecordConnectionNotice(
+                    connectionMessage,
+                    Modifier
+                        .align(
+                            Alignment.TopCenter,
+                        ).statusBarsPadding()
+                        .padding(top = 72.dp, start = 16.dp, end = 16.dp),
                 )
             }
         }
