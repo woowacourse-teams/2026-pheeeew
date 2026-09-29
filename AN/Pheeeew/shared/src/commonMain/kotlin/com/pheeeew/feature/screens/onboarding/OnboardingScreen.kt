@@ -144,7 +144,7 @@ fun OnboardingScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = "PHEEEW!",
+                text = "히유",
                 color = Color(0xFF202323),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
@@ -153,7 +153,13 @@ fun OnboardingScreen(
                 text = "건너뛰기",
                 color = Color(0xFF777777),
                 fontSize = 11.sp,
-                modifier = Modifier.clickable(role = Role.Button, onClick = { finish("skipped") }),
+                modifier =
+                    Modifier.clickable(
+                        interactionSource = null,
+                        indication = null,
+                        role = Role.Button,
+                        onClick = { finish("skipped") },
+                    ),
             )
         }
 
