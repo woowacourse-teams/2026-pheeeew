@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.ranking.RankingMember
 import com.pheeeew.feature.screens.ranking.sampleRankings
@@ -64,28 +65,37 @@ fun RankingMemberCard(
             )
         }
         GroupStamp(member.stamp, if (member.rank == 1) 62.dp else 56.dp)
-        Text(
-            member.name,
-            color = AppColors.RankingContent,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Medium,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            lineHeight = 17.sp,
-        )
-        Text(
-            "감정 개수 ${member.score}개",
-            color = AppColors.RankingContent,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-        )
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                member.name,
+                color = AppColors.RankingContent,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                maxLines = 2,
+                lineHeight = 17.sp,
+            )
+            Text("감정 개수", color = AppColors.RankingContent, fontSize = 10.sp, lineHeight = 12.sp)
+            Text(
+                "${member.score}개",
+                color = AppColors.RankingContent,
+                fontSize = 12.sp,
+                lineHeight = 14.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+            )
+        }
     }
 }
 
 @Preview
 @Composable
 private fun RankingMemberCardPreview() {
-    RankingMemberCard(sampleRankings.first(), 196.dp, Modifier.padding(16.dp))
+    AppTheme {
+        RankingMemberCard(sampleRankings.first(), 196.dp, Modifier.padding(16.dp))
+    }
 }
