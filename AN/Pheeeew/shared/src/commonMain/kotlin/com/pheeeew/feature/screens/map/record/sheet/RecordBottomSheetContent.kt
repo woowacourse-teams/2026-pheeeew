@@ -211,7 +211,7 @@ private fun RecordBottomSheetContent(
                             keyboardController?.hide()
                         }
                     }
-                }.padding(start = 20.dp, end = 20.dp, top = 4.dp),
+                }.padding(start = 20.dp, end = 20.dp, bottom = 4.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
