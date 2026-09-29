@@ -205,7 +205,7 @@ private fun RecordBottomSheetContent(
                             keyboardController?.hide()
                         }
                     }
-                }.padding(horizontal = 20.dp, vertical = 16.dp),
+                }.padding(start = 20.dp, end = 20.dp, top = 16.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -228,7 +228,7 @@ private fun RecordBottomSheetContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         Text(
             text = "메모와 녹음 중 선택한 한 가지만 등록돼요.",
@@ -253,7 +253,7 @@ private fun RecordBottomSheetContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
         if (inputMode == RecordInputModeUiModel.Memo) {
             MemoPanel(
@@ -436,7 +436,7 @@ private fun RecordInputModeToggle(
     BoxWithConstraints(
         modifier =
             modifier
-                .height(45.dp)
+                .height(42.dp)
                 .clip(AppShapes.Pill)
                 .background(AppColors.Gray100)
                 .border(AppBorders.Standard, AppColors.Border, AppShapes.Pill)
