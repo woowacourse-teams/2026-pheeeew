@@ -92,6 +92,12 @@ class GroupDetailViewModel(
                 Unit
             }
         }
+        if (loadJob?.isActive == true) {
+            if (showRefreshIndicator && state.detail != null) {
+                _uiState.update { current -> current.copy(refreshStatus = GroupDetailRefreshStatus.Refreshing) }
+            }
+            return
+        }
         loadDetail(showRefreshIndicator = showRefreshIndicator)
     }
 
