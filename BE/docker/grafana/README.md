@@ -2,6 +2,22 @@
 
 `pheeeew-prod.json`은 Grafana Cloud로 가져올 대시보드예요. JSON에는 토큰이나 특정 계정의 데이터 소스 ID가 없어요. 기존 알림 세 가지는 Grafana Cloud 화면에 설정했으며, 아래 V2 목록 지연 알림은 추가 적용 예정이에요. 이 파일을 배포한다고 Cloud 대시보드나 알림이 자동 생성되지는 않아요.
 
+## pheeeew-prod-v2.json
+
+같은 데이터를 **경로와 조회 단위로 다시 구성한** 대시보드예요. UID가 `pheeeew-prod-v2`라 기존 `pheeeew-prod.json`과 나란히 두 개를 가져올 수 있고, 서로 덮어쓰지 않아요.
+
+| | `pheeeew-prod.json` | `pheeeew-prod-v2.json` |
+| --- | --- | --- |
+| 구역 | 7개 | 5개 |
+| API 지연 | 전체 합산 p95, p99 | 경로별 평균, p95, p99 상위 열 개 |
+| DB 지연 | 감정 목록 조회 하나 | 리포지터리 조회 전체를 `repository`, `method` 로 나눠서 |
+| 감정, 그룹 | 별도 구역 | `01 API` 구역에 합쳐서 |
+
+v2 의 DB 구역은 `spring.data.repository.invocations` 지표를 써요. Spring Data 가 리포지터리 메서드 호출을 자동으로 재는 지표이고, `application-prod.yml` 의 SLO 경계와 [Alloy 수집 목록](../alloy/config.alloy)에 둘 다 들어 있어야 값이 보여요. 리포지터리를 거치지 않는 `EntityManager` 직접 호출은 잡히지 않아요.
+
+가져오는 절차와 데이터 소스 선택은 아래 `대시보드 연결`과 같아요. 파일 이름과 UID 만 달라요.
+
+
 ## JSON 파일의 역할
 
 `pheeeew-prod.json`에는 **Grafana가 어떤 데이터를 어떤 그래프로 보여줄지** 적혀 있어요. 화면에서 패널을 하나씩 만드는 대신, 이 파일을 가져와 미리 구성한 화면을 만들 수 있어요. 실제 지표·로그 데이터는 Grafana Cloud에 있고, JSON에는 데이터를 조회하는 방법과 화면 설정이 들어 있어요.
