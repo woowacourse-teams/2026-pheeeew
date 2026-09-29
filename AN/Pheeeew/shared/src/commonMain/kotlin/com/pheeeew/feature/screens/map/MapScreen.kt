@@ -271,6 +271,24 @@ fun MapScreen(
         if (currentLocation != null) recordViewModel.onOriginLocationAvailable(currentLocation)
     }
 
+    var previewScale by remember { mutableStateOf(1f) }
+    val previewCoordinate = recordUiModel.selectedCoordinate ?: recordUiModel.origin
+    val previewPin =
+        previewCoordinate
+            ?.takeIf {
+                recordUiModel.step == RecordFlowStepUiModel.LocationSelection
+            }?.let {
+                EmotionPinUiModel(
+                    id = Long.MIN_VALUE,
+                    latitude = it.latitude,
+                    longitude = it.longitude,
+                    createdAt = "",
+                    rotationDegrees = 0.0,
+                    emotion = recordUiModel.selectedEmotion ?: EmotionTypeUiModel.FRUSTRATED,
+                    stamp = groupOptions.firstOrNull { group -> group.id == recordUiModel.selectedGroupId }?.stamp,
+                )
+            }
+    val previewImages = rememberEmotionPinSymbolImages(listOfNotNull(previewPin))
     Box(modifier.fillMaxSize()) {
         MapScreenContent(
             uiModel = uiModel,
@@ -278,6 +296,7 @@ fun MapScreen(
             voiceRecorder = voiceRecorder,
             recordViewport = recordViewport,
             onRecordCoordinateSelected = recordViewModel::onLocationSelected,
+            onRecordPreviewScaleChanged = { previewScale = it },
             groupOptions = groupOptions,
             mapContent = { renderUiModel, mapModifier ->
                 Box(mapModifier) {
@@ -286,6 +305,11 @@ fun MapScreen(
                             state =
                                 renderUiModel.copy(
                                     recordOrigin = recordUiModel.origin,
+                                    recordPreviewPin = previewPin,
+                                    recordPreviewScale = previewScale,
+                                    emotionPinSymbolImages =
+                                        (renderUiModel.emotionPinSymbolImages + previewImages)
+                                            .distinctBy { it.key },
                                     highlightedEmotionId = highlightedId,
                                     pressedEmotionId = pressedPinId,
                                     pressedEmotionScale = pinPressScale.value,
@@ -539,6 +563,7 @@ internal fun MapScreenContent(
     voiceRecorder: VoiceRecorder? = null,
     recordViewport: RecordMapViewport? = null,
     onRecordCoordinateSelected: (Double, Double) -> Unit = { _, _ -> },
+    onRecordPreviewScaleChanged: (Float) -> Unit = {},
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         val symbolImages = rememberEmotionPinSymbolImages(uiModel.emotionPins)
@@ -610,6 +635,7 @@ internal fun MapScreenContent(
                     selectedCoordinate = recordUiModel.selectedCoordinate,
                     viewport = recordViewport,
                     onCoordinateSelected = onRecordCoordinateSelected,
+                    onStampScaleChanged = onRecordPreviewScaleChanged,
                     selectedEmotion = recordUiModel.selectedEmotion ?: EmotionTypeUiModel.FRUSTRATED,
                     selectedGroupStamp = groupOptions.firstOrNull { it.id == recordUiModel.selectedGroupId }?.stamp,
                     isSubmitting = recordUiModel.isSubmitting,

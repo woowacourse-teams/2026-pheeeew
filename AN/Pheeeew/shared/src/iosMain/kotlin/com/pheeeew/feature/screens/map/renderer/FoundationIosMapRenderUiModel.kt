@@ -15,6 +15,8 @@ data class FoundationIosMapRenderUiModel(
     val pressedEmotionId: Long?,
     val pressedEmotionScale: Float,
     val focusedEmotionId: Long?,
+    val recordPreviewScale: Float,
+    val recordPreviewPin: FoundationIosEmotionPinCoordinateUiModel?,
     val recordOrigin: FoundationIosMapCoordinateUiModel?,
     val emotionPinCoordinates: List<FoundationIosEmotionPinCoordinateUiModel>,
     val emotionPinSymbolImages: List<FoundationIosMapSymbolImageUiModel>,

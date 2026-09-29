@@ -138,6 +138,8 @@ private class AndroidFoundationMapHost(
     private val onContentPresented: (String, List<String>) -> Unit,
 ) {
     private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
+    private val recordStampLayer = AndroidRecordStampLayer()
+    private val recordRangeLayer = AndroidRecordRangeLayer()
     private var map: MapLibreMap? = null
     private var style: Style? = null
     private var released = false
@@ -385,8 +387,10 @@ private class AndroidFoundationMapHost(
     private fun installLoadedStyle(loadedStyle: Style) {
         style = loadedStyle
         AndroidMapAppearance.apply(loadedStyle)
-        AndroidCurrentLocationLayer.install(loadedStyle)
         emotionPinSymbolLayer.install(loadedStyle)
+        recordRangeLayer.install(loadedStyle)
+        AndroidCurrentLocationLayer.install(loadedStyle)
+        recordStampLayer.install(loadedStyle)
         styleLoaded = true
         onMapRecovered()
         renderLatestState()
@@ -423,6 +427,7 @@ private class AndroidFoundationMapHost(
         val state = latestState ?: return
         val currentLocation = (state.locationState as? LocationState.Available)?.location
         AndroidCurrentLocationLayer.update(style, currentLocation)
+        recordRangeLayer.update(style, state.recordOrigin.takeIf { state.isRecordLocationPicking })
         style?.let { loadedStyle ->
             emotionPinSymbolLayer.update(
                 style = loadedStyle,
@@ -434,6 +439,7 @@ private class AndroidFoundationMapHost(
                 focusedId = state.focusedEmotionId,
             )
             emotionPinSymbolLayer.updatePress(loadedStyle, state.pressedEmotionId, state.pressedEmotionScale)
+            recordStampLayer.update(loadedStyle, state.recordPreviewPin, state.recordPreviewScale)
         }
         val point =
             currentLocation?.let { LatLng(it.latitude, it.longitude) }
@@ -598,13 +604,13 @@ private class AndroidFoundationMapHost(
         if (!state.isRecordLocationPicking || !styleLoaded || mapView.width == 0) return
         val origin = state.recordOrigin ?: return
         val currentMap = map ?: return
-        val center = currentMap.projection.toScreenLocation(LatLng(origin.latitude, origin.longitude))
+        val originPoint = currentMap.projection.toScreenLocation(LatLng(origin.latitude, origin.longitude))
         val north = destination(origin, RECORD_RADIUS_METERS, 0.0)
         val edge = currentMap.projection.toScreenLocation(LatLng(north.latitude, north.longitude))
         val density = mapView.resources.displayMetrics.density
-        val radius = hypot(edge.x - center.x, edge.y - center.y) / density
+        val radius = hypot(edge.x - originPoint.x, edge.y - originPoint.y) / density
         if (radius > 0 && radius.isFinite()) {
-            onRecordViewportChanged(center.x / density, center.y / density, radius)
+            onRecordViewportChanged(originPoint.x / density, originPoint.y / density, radius)
         }
     }
 

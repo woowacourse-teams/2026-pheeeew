@@ -14,6 +14,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private var lastAppliedCameraCommandId: Int64 = 0
     private var currentLocationSource: MLNShapeSource?
     private var emotionPinSource: MLNShapeSource?
+    private let recordStampLayer = FoundationRecordStampLayer()
+    private let recordRangeLayer = FoundationRecordRangeLayer()
     private var lastEmotionPinImageKeys = Set<String>()
     private var lastEmotionPinCoordinates: [FoundationIosEmotionPinCoordinateUiModel]?
     private var lastPressedEmotionId: Int64?
@@ -64,6 +66,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         pendingState = state
         guard styleIsReady else { return }
         FoundationCurrentLocationLayer.update(currentLocation: state.currentLocation, source: currentLocationSource)
+        recordRangeLayer.update(state: state)
         updateEmotionPins(state)
         updateEmotionPinPress(state)
         applyInitialCameraIfNeeded(state)
@@ -186,14 +189,17 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         }
         FoundationMapStyle.applyMutedPalette(to: style)
         styleIsReady = true
-        currentLocationSource = FoundationCurrentLocationLayer.install(on: style)
         emotionPinSource = installEmotionPinLayer(on: style)
+        recordRangeLayer.install(on: style)
+        recordStampLayer.install(on: style)
+        currentLocationSource = FoundationCurrentLocationLayer.install(on: style)
         lastEmotionPinImageKeys.removeAll()
         lastEmotionPinCoordinates = nil
         lastPressedEmotionId = nil
         lastPressedEmotionScale = 1
         eventSink.onMapRecovered()
         if let pendingState {
+            recordRangeLayer.update(state: pendingState)
             FoundationCurrentLocationLayer.update(
                 currentLocation: pendingState.currentLocation,
                 source: currentLocationSource
@@ -317,11 +323,11 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         guard let state = pendingState, state.isRecordLocationPicking, let origin = state.recordOrigin else { return }
         let centerCoordinate = CLLocationCoordinate2D(latitude: origin.latitude, longitude: origin.longitude)
         let northCoordinate = CLLocationCoordinate2D(latitude: origin.latitude + 500.0 / 6_371_000.0 * 180.0 / .pi, longitude: origin.longitude)
-        let center = mapView.convert(centerCoordinate, toPointTo: mapView)
+        let originPoint = mapView.convert(centerCoordinate, toPointTo: mapView)
         let north = mapView.convert(northCoordinate, toPointTo: mapView)
-        let radius = hypot(north.x - center.x, north.y - center.y)
+        let radius = hypot(north.x - originPoint.x, north.y - originPoint.y)
         guard radius > 0, radius.isFinite else { return }
-        eventSink.onRecordViewportChanged(centerX: Float(center.x), centerY: Float(center.y), radius: Float(radius))
+        eventSink.onRecordViewportChanged(centerX: Float(originPoint.x), centerY: Float(originPoint.y), radius: Float(radius))
     }
 
     private func publishHighlightedPinPosition() {
@@ -382,13 +388,15 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         }
         lastEmotionPinImageKeys.subtracting(imageKeys).forEach { style.removeImage(forName: $0) }
         lastEmotionPinImageKeys.formIntersection(imageKeys)
+        recordStampLayer.update(state.recordPreviewPin, scale: state.recordPreviewScale, style: style)
 
         // Rasterization completes after pin data arrives. Publish only drawable features,
         // and leave the source untouched when unrelated Compose state changes.
         let coordinates = state.emotionPinCoordinates.filter { lastEmotionPinImageKeys.contains($0.imageKey) }
         let focusedId = state.focusedEmotionId?.int64Value
         guard coordinates != lastEmotionPinCoordinates || focusedId != lastFocusedEmotionId else { return }
-        let features = coordinates.map { pin -> MLNPointFeature in
+        let topPriority = coordinates.count
+        let features = coordinates.enumerated().map { index, pin -> MLNPointFeature in
             let feature = MLNPointFeature()
             feature.coordinate = CLLocationCoordinate2D(latitude: pin.latitude, longitude: pin.longitude)
             feature.identifier = NSNumber(value: pin.id)
