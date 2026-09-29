@@ -23,12 +23,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -312,13 +314,21 @@ private fun EmotionActionsMenu(
             ) {
                 EmotionReactionType.entries.forEach { type ->
                     val selected = reactions.any { it.first == type && it.second }
-                    val actionLabel = if (selected) "취소" else "공감"
+                    val actionLabel = if (selected) "공감 완료" else "공감"
                     Box(
                         Modifier
                             .weight(1f)
                             .height(44.dp)
-                            .clickable(enabled = !busy, role = Role.Button) { onReact(type) }
-                            .semantics { contentDescription = "${type.label} $actionLabel" },
+                            .clip(CircleShape)
+                            .clickable(
+                                enabled = !busy,
+                                role = Role.Button,
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = ripple(bounded = false, radius = 22.dp),
+                            ) {
+                                onDismiss()
+                                if (!selected) onReact(type)
+                            }.semantics { contentDescription = "${type.label} $actionLabel" },
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(type.glyph, fontSize = 18.sp)

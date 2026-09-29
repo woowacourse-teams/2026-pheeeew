@@ -1,14 +1,11 @@
 package com.pheeeew.feature.screens.ranking.components
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -18,7 +15,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.ranking.RankingMember
@@ -29,15 +25,13 @@ fun RankingRow(
     member: RankingMember,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(15.dp)
     Row(
         modifier =
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .border(AppBorders.Standard, AppColors.RankingContent, shape)
-                .background(AppColors.Background, shape)
                 .height(73.dp)
+                .rankingCardBorder()
                 .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),

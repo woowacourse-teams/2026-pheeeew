@@ -14,8 +14,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -46,6 +48,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -160,16 +163,18 @@ internal fun EmotionBubbleCluster(
             label = "emotionBubbleCloseProgress",
         )
 
-    Box(
+    BoxWithConstraints(
         modifier =
             modifier
                 .size(width = BUBBLE_CLUSTER_WIDTH, height = 260.dp),
     ) {
+        val clusterWidth = maxWidth
+        val bubbleOffsetX = (clusterWidth - 112.dp) / 2
         if (isExpanded && rippleProgress.value < 1f) {
             Canvas(
                 modifier =
                     Modifier
-                        .offset(x = 114.dp, y = 140.dp)
+                        .offset(x = bubbleOffsetX, y = 140.dp)
                         .size(112.dp),
             ) {
                 drawCircle(
@@ -183,7 +188,7 @@ internal fun EmotionBubbleCluster(
         Box(
             modifier =
                 Modifier
-                    .offset(x = 114.dp, y = 140.dp)
+                    .offset(x = bubbleOffsetX, y = 140.dp)
                     .size(112.dp)
                     .graphicsLayer {
                         scaleX = pressScaleX
@@ -223,6 +228,7 @@ internal fun EmotionBubbleCluster(
         EmotionTypeUiModel.entries.forEach { emotion ->
             EmotionBubble(
                 emotion = emotion,
+                clusterWidth = clusterWidth,
                 isExpanded = isExpanded,
                 isBubblePressed = isPressed,
                 onEmotionClick = onEmotionClick,
@@ -234,6 +240,7 @@ internal fun EmotionBubbleCluster(
 @Composable
 private fun EmotionBubble(
     emotion: EmotionTypeUiModel,
+    clusterWidth: Dp,
     isExpanded: Boolean,
     isBubblePressed: Boolean,
     onEmotionClick: (EmotionTypeUiModel) -> Unit,
@@ -260,7 +267,7 @@ private fun EmotionBubble(
             animationSpec = EMOTION_INTERACTION_SPRING,
             label = "emotionFaceHoverOffset",
         )
-    val baseOffset = emotion.offset(isExpanded)
+    val baseOffset = emotion.offset(isExpanded, clusterWidth)
     val targetOffset =
         baseOffset.copy(
             y = baseOffset.y + if (!isExpanded && isBubblePressed) 4.dp else 0.dp,
@@ -402,12 +409,15 @@ private fun EmotionBubble(
     }
 }
 
-private fun EmotionTypeUiModel.offset(isExpanded: Boolean): DpOffset =
+private fun EmotionTypeUiModel.offset(
+    isExpanded: Boolean,
+    clusterWidth: Dp,
+): DpOffset =
     if (isExpanded) {
         val count = EmotionTypeUiModel.entries.size
         val rowWidth = EMOTION_ICON_SIZE * count + EMOTION_ICON_GAP * (count - 1)
         DpOffset(
-            x = (BUBBLE_CLUSTER_WIDTH - rowWidth) / 2 + (EMOTION_ICON_SIZE + EMOTION_ICON_GAP) * ordinal,
+            x = (clusterWidth - rowWidth) / 2 + (EMOTION_ICON_SIZE + EMOTION_ICON_GAP) * ordinal,
             y = 49.dp,
         )
     } else {
@@ -417,25 +427,27 @@ private fun EmotionTypeUiModel.offset(isExpanded: Boolean): DpOffset =
             EmotionTypeUiModel.EXHAUSTED -> DpOffset(x = 185.dp, y = 180.dp)
             EmotionTypeUiModel.DISCOURAGED -> DpOffset(x = 141.dp, y = 207.dp)
             EmotionTypeUiModel.ANGRY -> DpOffset(x = 171.dp, y = 207.dp)
-        }
+        }.let { offset -> offset.copy(x = offset.x + (clusterWidth - BUBBLE_CLUSTER_WIDTH) / 2) }
     }
 
+@Preview(name = "접힌 감정 비눗방울 · 좁은 화면", widthDp = 360, heightDp = 320, showBackground = true)
 @Preview(name = "접힌 감정 비눗방울", widthDp = 402, heightDp = 320, showBackground = true)
 @Composable
 fun EmotionBubbleClusterCollapsedPreview() {
     Box(
-        modifier = Modifier.size(width = 402.dp, height = 320.dp).background(Color(0xFFECEAE5)),
+        modifier = Modifier.fillMaxSize().background(Color(0xFFECEAE5)).padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {
         EmotionBubbleCluster(isExpanded = false, onToggle = {}, onEmotionClick = {})
     }
 }
 
+@Preview(name = "펼친 감정 비눗방울 · 좁은 화면", widthDp = 360, heightDp = 320, showBackground = true)
 @Preview(name = "펼친 감정 비눗방울", widthDp = 402, heightDp = 320, showBackground = true)
 @Composable
 fun EmotionBubbleClusterExpandedPreview() {
     Box(
-        modifier = Modifier.size(width = 402.dp, height = 320.dp).background(Color(0xffc5e4b7)),
+        modifier = Modifier.fillMaxSize().background(Color(0xffc5e4b7)).padding(16.dp),
         contentAlignment = Alignment.Center,
     ) {
         EmotionBubbleCluster(isExpanded = true, onToggle = {}, onEmotionClick = {})

@@ -50,7 +50,7 @@ fun GroupDetailRoute(
     LaunchedEffect(lifecycleOwner, viewModel, isCurrentDestination) {
         if (!isCurrentDestination) return@LaunchedEffect
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            viewModel.onRefresh()
+            viewModel.onResumed()
             viewModel.uiState.collect { state ->
                 state.membershipEvent?.let { event ->
                     currentOnMembershipUnavailable(viewModel.groupId, event.reason, event.operationKey)

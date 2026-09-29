@@ -44,9 +44,19 @@ class GroupDetailViewModel(
         private set
     private var loadGeneration = 0L
     private var pressGeneration = 0L
+    private var hasResumed = false
 
     init {
         loadDetail()
+    }
+
+    fun onResumed() {
+        // 첫 화면 활성화는 init의 조회를 사용하고, 이후 복귀할 때만 다시 조회합니다.
+        if (!hasResumed) {
+            hasResumed = true
+            return
+        }
+        onRefresh()
     }
 
     fun onRetry() {

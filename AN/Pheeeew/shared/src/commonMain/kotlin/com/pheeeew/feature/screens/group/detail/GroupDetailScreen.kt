@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -104,6 +105,15 @@ fun GroupDetailScreen(
                 uiState.overlay == GroupDetailOverlay.None && uiState.pressStatus == GroupPressStatus.Idle &&
                     uiState.content is GroupDetailContent.Ready,
             modifier = Modifier.fillMaxSize(),
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    state = pullState,
+                    isRefreshing = uiState.isRefreshing,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    containerColor = AppColors.Surface,
+                    color = AppColors.Primary,
+                )
+            },
         ) {
             Column(
                 modifier =
