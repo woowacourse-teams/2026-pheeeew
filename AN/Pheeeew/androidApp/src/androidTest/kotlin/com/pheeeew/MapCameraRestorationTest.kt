@@ -79,8 +79,10 @@ class MapCameraRestorationTest {
         while (SystemClock.uptimeMillis() < deadline) {
             val target = onMain { map.cameraPosition.target }
             if (target != null &&
-                (kotlin.math.abs(target.latitude - 37.4409230460675) > 0.00001 ||
-                    kotlin.math.abs(target.longitude - 127.147538132656) > 0.00001)
+                (
+                    kotlin.math.abs(target.latitude - 37.4409230460675) > 0.00001 ||
+                        kotlin.math.abs(target.longitude - 127.147538132656) > 0.00001
+                )
             ) {
                 return
             }
