@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,6 +29,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -34,6 +37,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.screens.group.create.GroupCreateFailure
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -77,71 +81,88 @@ internal fun CreateConfirmationDialog(
             ),
     ) {
         Box(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            modifier = Modifier.fillMaxSize().padding(24.dp),
             contentAlignment = Alignment.Center,
         ) {
             if (isSubmitting) {
                 SubmittingProgressCard(title = title)
             } else {
-                Column(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .widthIn(max = 420.dp)
-                            .height(294.dp)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(Color.White)
-                            .border(DialogBorder, RoundedCornerShape(24.dp))
-                            .padding(horizontal = 24.dp),
-                ) {
-                    Spacer(Modifier.height(32.dp))
-                    Text(
-                        text = title,
-                        modifier = Modifier.fillMaxWidth(),
-                        color = AppColors.GroupInk,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Column(
-                        modifier = Modifier.fillMaxWidth().height(40.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            text =
-                                stringResource(
-                                    Res.string.group_create_confirm_group_stamp_summary,
-                                    groupName,
-                                    stampLabel,
-                                ),
-                            color = AppColors.RankingSecondaryContent,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp,
-                            textAlign = TextAlign.Center,
-                        )
-                        Text(
-                            text = stringResource(Res.string.group_create_confirm_body),
-                            color = AppColors.RankingSecondaryContent,
-                            fontSize = 14.sp,
-                            lineHeight = 20.sp,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                    Spacer(Modifier.weight(1f))
-                    DialogPrimaryAction(
-                        text = stringResource(Res.string.group_create_confirm),
-                        onClick = onConfirm,
-                    )
-                    Spacer(Modifier.height(10.dp))
-                    DialogSecondaryAction(
-                        text = stringResource(Res.string.group_create_confirm_cancel),
-                        onClick = onDismiss,
-                    )
-                    Spacer(Modifier.height(32.dp))
-                }
+                CreateConfirmationCard(
+                    title = title,
+                    groupName = groupName,
+                    stampLabel = stampLabel,
+                    onDismiss = onDismiss,
+                    onConfirm = onConfirm,
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun CreateConfirmationCard(
+    title: String,
+    groupName: String,
+    stampLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    Column(
+        modifier =
+            Modifier
+                .widthIn(max = 420.dp)
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color.White)
+                .border(DialogBorder, RoundedCornerShape(24.dp))
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp),
+    ) {
+        Spacer(Modifier.height(32.dp))
+        Text(
+            text = title,
+            modifier = Modifier.fillMaxWidth(),
+            color = AppColors.GroupInk,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(12.dp))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text =
+                    stringResource(
+                        Res.string.group_create_confirm_group_stamp_summary,
+                        groupName,
+                        stampLabel,
+                    ),
+                color = AppColors.RankingSecondaryContent,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = stringResource(Res.string.group_create_confirm_body),
+                color = AppColors.RankingSecondaryContent,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(20.dp))
+        DialogPrimaryAction(
+            text = stringResource(Res.string.group_create_confirm),
+            onClick = onConfirm,
+        )
+        Spacer(Modifier.height(10.dp))
+        DialogSecondaryAction(
+            text = stringResource(Res.string.group_create_confirm_cancel),
+            onClick = onDismiss,
+        )
+        Spacer(Modifier.height(32.dp))
     }
 }
 
@@ -308,5 +329,44 @@ private fun DialogSecondaryAction(
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
         )
+    }
+}
+
+@Preview(name = "그룹 생성 확인 - 기본", widthDp = 360, heightDp = 640)
+@Composable
+private fun CreateConfirmationCardPreview() {
+    CreateConfirmationPreviewFrame(groupName = "우리 동네", stampLabel = "히유")
+}
+
+@Preview(name = "그룹 생성 확인 - 좁은 화면과 긴 그룹명", widthDp = 320, heightDp = 640)
+@Composable
+private fun CreateConfirmationCardNarrowPreview() {
+    CreateConfirmationPreviewFrame(groupName = "가나다라마바사아자차", stampLabel = "가나다라")
+}
+
+@Preview(name = "그룹 생성 확인 - 큰 글씨", widthDp = 320, heightDp = 480, fontScale = 1.5f)
+@Composable
+private fun CreateConfirmationCardLargeFontPreview() {
+    CreateConfirmationPreviewFrame(groupName = "가나다라마바사아자차", stampLabel = "가나다라")
+}
+
+@Composable
+private fun CreateConfirmationPreviewFrame(
+    groupName: String,
+    stampLabel: String,
+) {
+    AppTheme {
+        Box(
+            modifier = Modifier.fillMaxSize().background(AppColors.GroupBackground).padding(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            CreateConfirmationCard(
+                title = stringResource(Res.string.group_create_confirm_title),
+                groupName = groupName,
+                stampLabel = stampLabel,
+                onDismiss = {},
+                onConfirm = {},
+            )
+        }
     }
 }
