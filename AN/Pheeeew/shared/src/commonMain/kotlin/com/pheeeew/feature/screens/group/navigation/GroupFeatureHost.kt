@@ -100,7 +100,10 @@ fun GroupFeatureHost(
             val homeBackStackEntry = remember(navController) { navController.getBackStackEntry<GroupHomeDestination>() }
             val homeViewModel = rememberGroupHomeViewModel(homeBackStackEntry, dependencies)
             val detailViewModel: GroupDetailViewModel =
-                viewModel {
+                viewModel(
+                    viewModelStoreOwner = homeBackStackEntry,
+                    key = "group-detail-${groupId.value}",
+                ) {
                     GroupDetailViewModel(
                         groupId = groupId,
                         dependencies = dependencies.detail,
