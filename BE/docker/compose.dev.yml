@@ -44,6 +44,13 @@ services:
       S3_KEY_PREFIX: ${S3_KEY_PREFIX:?}
       S3_REGION: ${S3_REGION:?}
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60"
+    volumes:
+      - app-logs:/app/logs
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,3 +87,4 @@ services:
 
 volumes:
   postgres-data:
+  app-logs:

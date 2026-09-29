@@ -13,6 +13,28 @@ spring:
       on-profile: dev
 
 logging:
+  structured:
+    format:
+      # 콘솔은 사람이 읽는 형식을 유지하고, Alloy 가 읽는 파일만 JSON 으로 둔다.
+      file: logstash
+    json:
+      add:
+        application: ${spring.application.name}
+        environment: dev
+  file:
+    name: logs/application.json
+  logback:
+    rollingpolicy:
+      file-name-pattern: logs/application.%d{yyyy-MM-dd}.%i.json
+      max-file-size: 10MB
+      max-history: 3
+      total-size-cap: 50MB
+      clean-history-on-start: true
+  threshold:
+    # 콘솔은 DEBUG 를 유지하고 파일에는 INFO 이상만 남긴다.
+    # SQL DEBUG 에는 파라미터 값이 섞일 수 있고 파일도 빠르게 커진다.
+    # Alloy 가 전송하는 요청 실패, 느린 요청, 활동 오류는 WARN 과 ERROR 라 제외되지 않는다.
+    file: INFO
   level:
     com.pheeeew: DEBUG
     org.hibernate.SQL: DEBUG
