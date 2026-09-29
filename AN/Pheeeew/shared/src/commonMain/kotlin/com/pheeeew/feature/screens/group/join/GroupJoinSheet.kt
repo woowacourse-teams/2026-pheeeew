@@ -1,0 +1,440 @@
+package com.pheeeew.feature.screens.group.join
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.component.SheetDragHandle
+import com.pheeeew.core.designsystem.theme.AppBorders
+import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
+import com.pheeeew.feature.screens.group.join.component.GroupJoinPreviewCard
+import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.group_join_code_count
+import pheeeew.shared.generated.resources.group_join_code_format_hint
+import pheeeew.shared.generated.resources.group_join_code_invalid_characters
+import pheeeew.shared.generated.resources.group_join_code_placeholder
+import pheeeew.shared.generated.resources.group_join_code_too_long
+import pheeeew.shared.generated.resources.group_join_code_too_short
+import pheeeew.shared.generated.resources.group_join_description
+import pheeeew.shared.generated.resources.group_join_failure_already_member
+import pheeeew.shared.generated.resources.group_join_failure_outcome_unknown
+import pheeeew.shared.generated.resources.group_join_failure_rate_limited
+import pheeeew.shared.generated.resources.group_join_failure_rate_limited_wait
+import pheeeew.shared.generated.resources.group_join_failure_rejected
+import pheeeew.shared.generated.resources.group_join_failure_unavailable
+import pheeeew.shared.generated.resources.group_join_hint
+import pheeeew.shared.generated.resources.group_join_join
+import pheeeew.shared.generated.resources.group_join_joining
+import pheeeew.shared.generated.resources.group_join_lookup_failure
+import pheeeew.shared.generated.resources.group_join_lookup_rate_limited
+import pheeeew.shared.generated.resources.group_join_lookup_rate_limited_wait
+import pheeeew.shared.generated.resources.group_join_not_found
+import pheeeew.shared.generated.resources.group_join_preview_stale
+import pheeeew.shared.generated.resources.group_join_search
+import pheeeew.shared.generated.resources.group_join_searching
+import pheeeew.shared.generated.resources.group_join_title
+import pheeeew.shared.generated.resources.group_join_verify_membership
+
+private val JoinButtonShape = RoundedCornerShape(20.dp)
+private val JoinInputShape = RoundedCornerShape(10.dp)
+private val JoinErrorColor = Color(0xFFC94D43)
+
+/** 코드 입력 → 명시적 조회 → 그룹 확인 → 참여의 전체 바텀시트입니다. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GroupJoinSheet(
+    uiState: GroupJoinUiState,
+    onCodeChanged: (String) -> Unit,
+    onSearchClick: () -> Unit,
+    onJoinClick: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scope = rememberCoroutineScope()
+    val latestDismiss by rememberUpdatedState(onDismiss)
+    val latestDismissBlocked by rememberUpdatedState(uiState.isDismissBlocked)
+    val keyboardController = LocalSoftwareKeyboardController.current
+    var isDismissing by remember { mutableStateOf(false) }
+    val sheetState =
+        rememberModalBottomSheetState(
+            skipPartiallyExpanded = true,
+            confirmValueChange = { targetValue ->
+                !latestDismissBlocked || targetValue != androidx.compose.material3.SheetValue.Hidden
+            },
+        )
+
+    fun dismissSheet() {
+        if (uiState.isDismissBlocked || isDismissing) return
+        isDismissing = true
+        scope.launch {
+            try {
+                sheetState.hide()
+                if (!sheetState.isVisible) latestDismiss()
+            } finally {
+                isDismissing = false
+            }
+        }
+    }
+
+    ModalBottomSheet(
+        modifier = modifier,
+        onDismissRequest = ::dismissSheet,
+        sheetState = sheetState,
+        dragHandle = { SheetDragHandle() },
+        containerColor = AppColors.GroupBackground,
+        contentColor = AppColors.GroupInk,
+    ) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+        ) {
+            Text(
+                text = stringResource(Res.string.group_join_title),
+                color = AppColors.GroupInk,
+                fontSize = 21.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Text(
+                text = stringResource(Res.string.group_join_description),
+                modifier = Modifier.padding(top = 5.dp),
+                color = AppColors.RankingSecondaryContent,
+                fontSize = 13.sp,
+            )
+
+            Spacer(Modifier.height(22.dp))
+            OutlinedTextField(
+                value = uiState.input,
+                onValueChange = onCodeChanged,
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .border(
+                            AppBorders.Standard,
+                            when {
+                                uiState.isInteractionLocked || isDismissing -> AppColors.GroupInk.copy(alpha = 0.38f)
+                                uiState.shouldShowCodeValidationError -> JoinErrorColor
+                                else -> AppColors.GroupInk
+                            },
+                            JoinInputShape,
+                        ),
+                enabled = !uiState.isInteractionLocked && !isDismissing,
+                isError = uiState.shouldShowCodeValidationError,
+                placeholder = { Text(stringResource(Res.string.group_join_code_placeholder)) },
+                singleLine = true,
+                shape = JoinInputShape,
+                keyboardOptions =
+                    KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Characters,
+                        imeAction = ImeAction.Search,
+                        keyboardType = KeyboardType.Ascii,
+                    ),
+                keyboardActions =
+                    KeyboardActions(
+                        onSearch = {
+                            keyboardController?.hide()
+                            onSearchClick()
+                        },
+                    ),
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        disabledBorderColor = Color.Transparent,
+                        errorBorderColor = Color.Transparent,
+                        focusedContainerColor = Color(0xFFF2F4F3),
+                        unfocusedContainerColor = Color(0xFFF2F4F3),
+                        disabledContainerColor = Color(0xFFF2F4F3),
+                        focusedTextColor = AppColors.GroupInk,
+                        unfocusedTextColor = AppColors.GroupInk,
+                        disabledTextColor = AppColors.GroupInk,
+                        cursorColor = AppColors.GroupInk,
+                    ),
+            )
+
+            CodeInputFeedback(uiState = uiState)
+            LookupMessage(lookup = uiState.lookup)
+            val hasInlineRateLimitMessage =
+                when (uiState.rateLimit?.operation) {
+                    GroupJoinRateLimitOperation.Lookup -> {
+                        uiState.lookup is GroupLookupState.RateLimited
+                    }
+
+                    GroupJoinRateLimitOperation.Join -> {
+                        (uiState.submission as? GroupJoinSubmissionState.Failed)?.reason == GroupJoinFailure.RateLimited
+                    }
+
+                    null -> {
+                        true
+                    }
+                }
+            if (uiState.rateLimit != null && !hasInlineRateLimitMessage) {
+                RateLimitMessage(operation = uiState.rateLimit.operation)
+            }
+            uiState.foundGroup?.let { group ->
+                Spacer(Modifier.height(12.dp))
+                GroupJoinPreviewCard(group = group)
+            }
+            SubmissionMessage(submission = uiState.submission)
+
+            Spacer(Modifier.height(18.dp))
+            val joining = uiState.submission is GroupJoinSubmissionState.Submitting
+            val needsMembershipVerification = uiState.needsMembershipVerification
+            val showJoinAction = uiState.hasJoinTarget
+            val buttonText =
+                when {
+                    joining -> stringResource(Res.string.group_join_joining)
+                    needsMembershipVerification -> stringResource(Res.string.group_join_verify_membership)
+                    uiState.isJoinRetryBlocked -> stringResource(Res.string.group_join_failure_rate_limited_wait)
+                    showJoinAction -> stringResource(Res.string.group_join_join)
+                    uiState.isLookupRetryBlocked -> stringResource(Res.string.group_join_lookup_rate_limited_wait)
+                    uiState.isLookingUp -> stringResource(Res.string.group_join_searching)
+                    else -> stringResource(Res.string.group_join_search)
+                }
+            val buttonEnabled =
+                !isDismissing &&
+                    when {
+                        needsMembershipVerification -> true
+                        joining -> false
+                        uiState.isJoinRetryBlocked || uiState.isLookupRetryBlocked -> false
+                        showJoinAction -> uiState.canJoin
+                        else -> uiState.canSearch
+                    }
+            JoinPrimaryButton(
+                text = buttonText,
+                enabled = buttonEnabled,
+                isLoading = joining || uiState.isLookingUp,
+                onClick = {
+                    when {
+                        needsMembershipVerification -> {
+                            dismissSheet()
+                        }
+
+                        showJoinAction -> {
+                            keyboardController?.hide()
+                            onJoinClick()
+                        }
+
+                        else -> {
+                            keyboardController?.hide()
+                            onSearchClick()
+                        }
+                    }
+                },
+            )
+            Text(
+                text = stringResource(Res.string.group_join_hint),
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                color = AppColors.RankingSecondaryContent,
+                fontSize = 11.sp,
+                textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CodeInputFeedback(uiState: GroupJoinUiState) {
+    val errorMessage =
+        when (uiState.codeValidation) {
+            is GroupCodeValidation.TooShort -> stringResource(Res.string.group_join_code_too_short)
+
+            is GroupCodeValidation.TooLong -> stringResource(Res.string.group_join_code_too_long)
+
+            GroupCodeValidation.InvalidCharacters -> stringResource(Res.string.group_join_code_invalid_characters)
+
+            GroupCodeValidation.Empty,
+            is GroupCodeValidation.Valid,
+            -> null
+        }
+    val message = if (uiState.shouldShowCodeValidationError) errorMessage else null
+    val messageColor = if (message != null) JoinErrorColor else AppColors.RankingSecondaryContent
+
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(top = 5.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = message ?: stringResource(Res.string.group_join_code_format_hint),
+            modifier = Modifier.weight(1f),
+            color = messageColor,
+            fontSize = 11.sp,
+        )
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text = stringResource(Res.string.group_join_code_count, uiState.codeLength, GROUP_INVITATION_CODE_LENGTH),
+            color = if (uiState.shouldShowCodeValidationError) JoinErrorColor else AppColors.RankingSecondaryContent,
+            fontSize = 11.sp,
+        )
+    }
+}
+
+@Composable
+private fun LookupMessage(lookup: GroupLookupState) {
+    val message =
+        when (lookup) {
+            is GroupLookupState.NotFound -> stringResource(Res.string.group_join_not_found)
+
+            is GroupLookupState.PreviewStale -> stringResource(Res.string.group_join_preview_stale)
+
+            is GroupLookupState.RateLimited -> stringResource(Res.string.group_join_lookup_rate_limited)
+
+            is GroupLookupState.Failed -> stringResource(Res.string.group_join_lookup_failure)
+
+            GroupLookupState.Idle,
+            is GroupLookupState.Found,
+            is GroupLookupState.Loading,
+            -> null
+        }
+    if (message != null) {
+        Text(
+            text = message,
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            color = JoinErrorColor,
+            fontSize = 12.sp,
+        )
+    }
+}
+
+@Composable
+private fun RateLimitMessage(operation: GroupJoinRateLimitOperation) {
+    val message =
+        when (operation) {
+            GroupJoinRateLimitOperation.Lookup -> stringResource(Res.string.group_join_lookup_rate_limited)
+            GroupJoinRateLimitOperation.Join -> stringResource(Res.string.group_join_failure_rate_limited)
+        }
+    Text(
+        text = message,
+        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+        color = JoinErrorColor,
+        fontSize = 12.sp,
+    )
+}
+
+@Composable
+private fun SubmissionMessage(submission: GroupJoinSubmissionState) {
+    val message =
+        when (submission) {
+            is GroupJoinSubmissionState.Failed -> {
+                when (submission.reason) {
+                    GroupJoinFailure.Rejected -> stringResource(Res.string.group_join_failure_rejected)
+                    GroupJoinFailure.Unavailable -> stringResource(Res.string.group_join_failure_unavailable)
+                    GroupJoinFailure.AlreadyMember -> stringResource(Res.string.group_join_failure_already_member)
+                    GroupJoinFailure.RateLimited -> stringResource(Res.string.group_join_failure_rate_limited)
+                    GroupJoinFailure.OutcomeUnknown -> stringResource(Res.string.group_join_failure_outcome_unknown)
+                }
+            }
+
+            GroupJoinSubmissionState.Idle,
+            is GroupJoinSubmissionState.Submitting,
+            is GroupJoinSubmissionState.Succeeded,
+            -> {
+                null
+            }
+        }
+    if (message != null) {
+        Text(
+            text = message,
+            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            color = JoinErrorColor,
+            fontSize = 12.sp,
+            textAlign = TextAlign.Center,
+        )
+    }
+}
+
+@Composable
+private fun JoinPrimaryButton(
+    text: String,
+    enabled: Boolean,
+    isLoading: Boolean,
+    onClick: () -> Unit,
+) {
+    val buttonFont = notoSansKrFontFamily()
+    Box(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .clip(JoinButtonShape)
+                .background(if (enabled) AppColors.Primary else Color(0xFFE3E8E5))
+                .border(
+                    AppBorders.Standard,
+                    if (enabled) AppColors.GroupInk else AppColors.GroupInk.copy(alpha = 0.38f),
+                    JoinButtonShape,
+                ).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+                .semantics { contentDescription = text },
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (isLoading) {
+                CircularLoadingIndicator(
+                    modifier = Modifier.size(17.dp),
+                    color = if (enabled) AppColors.TextPrimary else AppColors.GroupInk,
+                    strokeWidth = 2.dp,
+                )
+                Spacer(Modifier.size(8.dp))
+            }
+            Text(
+                text = text,
+                color = if (enabled) AppColors.TextPrimary else AppColors.RankingSecondaryContent,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                fontFamily = buttonFont,
+            )
+        }
+    }
+}

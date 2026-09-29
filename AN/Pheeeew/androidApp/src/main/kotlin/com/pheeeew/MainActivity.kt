@@ -1,137 +1,67 @@
 package com.pheeeew
 
-import android.content.SharedPreferences
-import android.graphics.Color
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
-import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.Composable
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import com.pheeeew.core.network.ApiConfig
-import com.pheeeew.data.local.device.AndroidDeviceIdStorage
-import com.pheeeew.data.local.device.InMemoryAccessTokenStore
-import com.pheeeew.data.remote.version.createAppVersionApi
-import com.pheeeew.di.LocationDependencies
-import com.pheeeew.di.SighModule
-import com.pheeeew.di.createAndroidDeviceRegistrationDependencies
-import com.pheeeew.di.createAndroidDeviceRegistrationWithPlayIntegrityDependencies
-import com.pheeeew.di.createAndroidLocationDependencies
-import com.pheeeew.feature.map.guide.resolveFirstSighGuideCompleted
+import com.pheeeew.core.di.AndroidApiDependencies
+import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.network.AndroidConnectivityObserver
+import com.pheeeew.core.permission.AndroidAppSettingsLauncher
+import com.pheeeew.data.local.group.AndroidLastRecordedGroupRepository
+import com.pheeeew.data.location.platform.android.LocationDependenciesHolder
+import com.pheeeew.data.location.platform.android.createAndroidLocationDependencies
+import com.pheeeew.data.remote.version.AppVersionApi
+import com.pheeeew.feature.screens.onboarding.WELCOME_ONBOARDING_COMPLETED_KEY
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
-        )
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
 
-        val firstSighGuidePreferences =
-            resolveFirstSighGuidePreferences(getSharedPreferences(APP_PREFERENCES_NAME, MODE_PRIVATE))
-
-        val holder = ViewModelProvider(this)[LocationDependenciesHolder::class.java]
+        val dependenciesHolder = ViewModelProvider(this)[LocationDependenciesHolder::class.java]
         val locationDependencies =
             createAndroidLocationDependencies(
                 activity = this,
-                retainedDependencies = holder.dependencies,
-            ).also { holder.dependencies = it }
-        val appPreferences = getSharedPreferences(APP_PREFERENCES_NAME, MODE_PRIVATE)
-        val accessTokenStore = InMemoryAccessTokenStore()
-        val deviceDependencies =
-            if (
-                !BuildConfig.DEBUG && BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER > 0L
-            ) {
-                createAndroidDeviceRegistrationWithPlayIntegrityDependencies(
-                    context = this,
-                    config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
-                    cloudProjectNumber = BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
-                    accessTokenStore = accessTokenStore,
-                )
-            } else {
-                createAndroidDeviceRegistrationDependencies(
-                    context = this,
-                    config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
-                    accessTokenStore = accessTokenStore,
-                )
-            }
-        val sighDependencies =
-            SighModule.create(
-                config = ApiConfig(baseUrl = BuildConfig.API_BASE_URL),
-                deviceIdStorage = AndroidDeviceIdStorage(this),
-                accessTokenStore = accessTokenStore,
-                refreshAccessToken = {
-                    deviceDependencies.ensureRegistered().getOrThrow().accessToken
-                },
+                retainedDependencies = dependenciesHolder.dependencies,
+            ).also { dependenciesHolder.dependencies = it }
+        val onboardingPreferences = getSharedPreferences("pheeeew_preferences", MODE_PRIVATE)
+        val hasCompletedOnboarding = onboardingPreferences.getBoolean(WELCOME_ONBOARDING_COMPLETED_KEY, false)
+        val lastRecordedGroupRepository = AndroidLastRecordedGroupRepository(applicationContext)
+        val apiDependencies =
+            AndroidApiDependencies.get(
+                applicationContext,
+                DeviceSessionBuildConfig(
+                    BuildConfig.DEBUG,
+                    BuildConfig.DEVICE_ENVIRONMENT,
+                    BuildConfig.API_BASE_URL,
+                    BuildConfig.DEVICE_ATTESTATION_MODE,
+                    "${BuildConfig.VERSION_NAME}+${BuildConfig.VERSION_CODE}",
+                ),
+                BuildConfig.APPLICATION_ID,
+                BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
                 monitoring = (application as PheeeewApplication).monitoring,
             )
-        val appVersionApi = createAppVersionApi(ApiConfig(baseUrl = BuildConfig.API_BASE_URL), "android")
-        val connectivityObserver = AndroidConnectivityObserver(this)
+        val appVersionApi = AppVersionApi(apiDependencies.client.requests, "android")
+        val connectivityObserver = AndroidConnectivityObserver(applicationContext)
+        val appSettingsLauncher = AndroidAppSettingsLauncher(this@MainActivity)
 
         setContent {
             App(
-                appVersion = BuildConfig.VERSION_NAME,
-                monitoring = (application as PheeeewApplication).monitoring,
-                appVersionApi = appVersionApi,
-                connectivityObserver = connectivityObserver,
-                hasCompletedOnboarding = firstSighGuidePreferences.hasCompletedOnboarding,
-                hasCompletedFirstSighGuide = firstSighGuidePreferences.hasCompletedFirstSighGuide,
-                onOnboardingCompleted = {
-                    appPreferences
-                        .edit()
-                        .putBoolean(KEY_ONBOARDING_COMPLETED, true)
-                        .putBoolean(KEY_FIRST_SIGH_GUIDE_COMPLETED, false)
-                        .apply()
-                },
-                onFirstSighGuideCompleted = {
-                    appPreferences.edit().putBoolean(KEY_FIRST_SIGH_GUIDE_COMPLETED, true).apply()
-                },
                 locationDependencies = locationDependencies,
-                sighRepository = sighDependencies.repository,
-                createSigh = sighDependencies.createSigh,
-                blockUser = sighDependencies.blockUser,
-                reportSigh = sighDependencies.reportSigh,
-                mapPerformanceLogger = { event ->
-                    if (BuildConfig.DEBUG) Log.d("Pheeeew.MapPerf", event)
+                connectivityObserver = connectivityObserver,
+                lastRecordedGroupRepository = lastRecordedGroupRepository,
+                hasCompletedOnboarding = hasCompletedOnboarding,
+                onOnboardingCompleted = {
+                    onboardingPreferences.edit().putBoolean(WELCOME_ONBOARDING_COMPLETED_KEY, true).apply()
                 },
-                ensureDeviceRegistered = deviceDependencies.ensureRegistered,
+                appVersion = BuildConfig.VERSION_NAME,
+                appVersionApi = appVersionApi,
+                permissionSettingsLauncher = appSettingsLauncher,
+                appSettingsLauncher = appSettingsLauncher,
+                apiDependencies = apiDependencies,
             )
         }
-    }
-}
-
-private const val APP_PREFERENCES_NAME = "pheeeew_preferences"
-private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
-private const val KEY_FIRST_SIGH_GUIDE_COMPLETED = "first_sigh_guide_completed_v1"
-
-private data class FirstSighGuidePreferences(
-    val hasCompletedOnboarding: Boolean,
-    val hasCompletedFirstSighGuide: Boolean,
-)
-
-private fun resolveFirstSighGuidePreferences(preferences: SharedPreferences): FirstSighGuidePreferences {
-    val hasCompletedOnboarding = preferences.getBoolean(KEY_ONBOARDING_COMPLETED, false)
-    val storedGuideCompletion =
-        if (preferences.contains(KEY_FIRST_SIGH_GUIDE_COMPLETED)) {
-            preferences.getBoolean(KEY_FIRST_SIGH_GUIDE_COMPLETED, false)
-        } else {
-            null
-        }
-    val hasCompletedFirstSighGuide =
-        resolveFirstSighGuideCompleted(hasCompletedOnboarding, storedGuideCompletion)
-    if (storedGuideCompletion == null && hasCompletedOnboarding) {
-        preferences.edit().putBoolean(KEY_FIRST_SIGH_GUIDE_COMPLETED, true).apply()
-    }
-    return FirstSighGuidePreferences(hasCompletedOnboarding, hasCompletedFirstSighGuide)
-}
-
-class LocationDependenciesHolder : ViewModel() {
-    var dependencies: LocationDependencies? = null
-
-    override fun onCleared() {
-        (dependencies?.permissionController as? AutoCloseable)?.close()
     }
 }
