@@ -1,14 +1,11 @@
 package com.pheeeew.feature.screens.ranking.components
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -19,7 +16,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.ranking.RankingMember
@@ -34,13 +30,11 @@ fun RankingMemberCard(
     height: Dp,
     modifier: Modifier = Modifier,
 ) {
-    val shape = RoundedCornerShape(if (member.rank == 1) 22.dp else 18.dp)
     Column(
         modifier =
             modifier
                 .height(height)
-                .border(AppBorders.Standard, AppColors.RankingContent, shape)
-                .background(AppColors.Background, shape)
+                .rankingCardBorder()
                 .padding(
                     start = 8.dp,
                     top = if (member.rank == 1) 10.dp else 8.dp,
