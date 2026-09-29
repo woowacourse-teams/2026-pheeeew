@@ -486,7 +486,7 @@ private fun AppContent(
             )
         }
 
-        if (!isSettingsVisible && !nearbyState.visible && !isEmotionRecordFlowActive &&
+        if (reportTarget == null && !isSettingsVisible && !nearbyState.visible && !isEmotionRecordFlowActive &&
             (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible))
         ) {
             AppBottomNavigationBar(

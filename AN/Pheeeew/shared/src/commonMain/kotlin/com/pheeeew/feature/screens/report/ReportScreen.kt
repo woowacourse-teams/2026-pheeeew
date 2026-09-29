@@ -73,7 +73,6 @@ fun ReportScreen(
                 .imePadding(),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            Spacer(Modifier.height(28.dp))
             ReportHeader(onBack = onBack, enabled = !uiState.isSubmitting)
 
             Column(
