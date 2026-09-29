@@ -147,9 +147,10 @@ fun RecordBottomSheet(
     if (showOtherInputDialog) {
         val selectedInput = if (inputMode == RecordInputModeUiModel.Memo) "메모" else "녹음"
         val excludedInput = if (inputMode == RecordInputModeUiModel.Memo) "녹음" else "메모"
+        val excludedParticle = if (inputMode == RecordInputModeUiModel.Memo) "은" else "는"
         ConfirmDialog(
             title = "작성한 내용이 제외돼요.",
-            content = "이번 등록에는 ${selectedInput}만 포함되고 ${excludedInput}은 저장되지 않아요.\n계속할까요?",
+            content = "이번 등록에는 ${selectedInput}만 포함되고 ${excludedInput}${excludedParticle} 저장되지 않아요.\n계속할까요?",
             confirmText = "${selectedInput}만 등록",
             cancelText = "계속 작성",
             onConfirm = {
