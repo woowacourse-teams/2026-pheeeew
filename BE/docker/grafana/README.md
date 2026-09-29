@@ -2,9 +2,16 @@
 
 `pheeeew-prod.json`은 Grafana Cloud로 가져올 대시보드예요. JSON에는 토큰이나 특정 계정의 데이터 소스 ID가 없어요. 기존 알림 세 가지는 Grafana Cloud 화면에 설정했으며, 아래 V2 목록 지연 알림은 추가 적용 예정이에요. 이 파일을 배포한다고 Cloud 대시보드나 알림이 자동 생성되지는 않아요.
 
-## pheeeew-prod-v2.json
+## v2 대시보드
 
-같은 데이터를 **경로와 조회 단위로 다시 구성한** 대시보드예요. UID가 `pheeeew-prod-v2`라 기존 `pheeeew-prod.json`과 나란히 두 개를 가져올 수 있고, 서로 덮어쓰지 않아요.
+같은 데이터를 **경로와 조회 단위로 다시 구성한** 대시보드예요. 운영과 개발이 파일로 나뉘어 있어요.
+
+| 파일 | UID | 가져올 때 고르는 저장소 | 보는 데이터 |
+| --- | --- | --- | --- |
+| `pheeeew-prod-v2.json` | `pheeeew-prod-v2` | 운영 지표 저장소, 운영 로그 저장소 | `environment="prod"` |
+| `pheeeew-dev-v2.json` | `pheeeew-dev-v2` | 개발 지표 저장소, 개발 로그 저장소 | `environment="dev"` |
+
+쿼리에 환경 라벨이 박혀 있어서 **파일을 바꿔 쓰면 안 돼요.** 운영 파일을 개발 저장소에 올리면 화면이 전부 비어요. UID가 서로 다르고 기존 `pheeeew-prod.json`(`pheeeew-prod-overview`)과도 달라서, 셋을 같이 두어도 덮어쓰지 않아요.
 
 | | `pheeeew-prod.json` | `pheeeew-prod-v2.json` |
 | --- | --- | --- |
@@ -13,9 +20,9 @@
 | DB 지연 | 감정 목록 조회 하나 | 리포지터리 조회 전체를 `repository`, `method` 로 나눠서 |
 | 감정, 그룹 | 별도 구역 | `01 API` 구역에 합쳐서 |
 
-v2 의 DB 구역은 `spring.data.repository.invocations` 지표를 써요. Spring Data 가 리포지터리 메서드 호출을 자동으로 재는 지표이고, `application-prod.yml` 의 SLO 경계와 [Alloy 수집 목록](../alloy/config.alloy)에 둘 다 들어 있어야 값이 보여요. 리포지터리를 거치지 않는 `EntityManager` 직접 호출은 잡히지 않아요.
+DB 구역은 `spring.data.repository.invocations` 지표를 써요. Spring Data 가 리포지터리 메서드 호출을 자동으로 재는 지표이고, `application-prod.yml`, `application-dev.yml` 의 SLO 경계와 [Alloy 수집 목록](../alloy/config.alloy)에 둘 다 들어 있어야 값이 보여요. 리포지터리를 거치지 않는 `EntityManager` 직접 호출은 잡히지 않아요.
 
-가져오는 절차와 데이터 소스 선택은 아래 `대시보드 연결`과 같아요. 파일 이름과 UID 만 달라요.
+가져오는 절차는 아래 `대시보드 연결`과 같아요. 파일 이름과 고르는 저장소만 달라요.
 
 
 ## JSON 파일의 역할
