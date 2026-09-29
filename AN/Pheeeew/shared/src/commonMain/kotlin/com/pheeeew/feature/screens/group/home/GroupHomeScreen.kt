@@ -136,7 +136,7 @@ private fun GroupHomeActions(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 15.dp),
-        horizontalArrangement = Arrangement.spacedBy(24.dp),
+        horizontalArrangement = Arrangement.spacedBy(15.dp),
     ) {
         GroupHomeActionButton(
             text = stringResource(Res.string.group_home_create),
