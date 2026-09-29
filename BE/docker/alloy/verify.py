@@ -14,7 +14,7 @@ import uuid
 DIRECTORY = Path(__file__).resolve().parent
 IMAGE = re.search(r"image: (grafana/alloy:[^\s]+)",
                   (DIRECTORY.parent / "compose.monitoring.yml").read_text()).group(1)
-CONFIG = (DIRECTORY / "config.alloy").read_text()
+CONFIGS = {"config.alloy": "prod", "config.dev.alloy": "dev"}
 
 
 def docker(*args, check=True):
@@ -22,8 +22,8 @@ def docker(*args, check=True):
                           check=check, timeout=30)
 
 
-def verify_metrics():
-    pattern = re.search(r'regex\s*=\s*"([^"]+)"', CONFIG).group(1)
+def verify_metrics(config):
+    pattern = re.search(r'regex\s*=\s*"([^"]+)"', config).group(1)
     accepted = ["up", "scrape_duration_seconds", "scrape_samples_scraped",
                 "pheeeew_app_version_checks_total", "jvm_threads_live_threads",
                 "process_cpu_usage", "process_uptime_seconds", "system_cpu_usage",
@@ -52,7 +52,7 @@ def verify_metrics():
     print(f"지표 이름 검증 통과: 허용 {len(accepted)}, 차단 {len(rejected)}")
 
 
-def verify_logs():
+def verify_logs(config):
     http = "com.pheeeew.common.logging.RequestLogWriter"
     recorder = "com.pheeeew.activity.infra.DeviceActivityRecorder"
     scheduler = "com.pheeeew.activity.infra.DeviceActivityAggregationScheduler"
@@ -81,7 +81,7 @@ def verify_logs():
     entries.append("malformed fixture-999")
 
     # 실제 필터를 그대로 사용하고 전송 대상만 컨테이너 표준 출력으로 바꾼다.
-    pipeline = CONFIG.split('loki.process "http_requests" {', 1)[1].split('loki.write "grafana" {', 1)[0]
+    pipeline = config.split('loki.process "http_requests" {', 1)[1].split('loki.write "grafana" {', 1)[0]
     pipeline = 'loki.process "http_requests" {' + pipeline.replace(
         "loki.write.grafana.receiver", "loki.echo.accepted.receiver")
     fixture_config = '''logging {
@@ -127,8 +127,26 @@ loki.echo "accepted" {}
             docker("rm", "--force", name, check=False)
 
 
-def main():
-    verify_metrics()
+def verify_labels(name, config, environment):
+    for key, value in (("environment", environment), ("instance", f"pheeeew-{environment}")):
+        found = re.findall(rf'{key}\s*=\s*"([^"]+)"', config)
+        if found != [value, value]:
+            raise AssertionError(f"{name}: {key} 라벨이 수집·로그 두 곳 모두 {value} 여야 합니다. 실제 {found}")
+    print(f"{name}: 환경 라벨 검증 통과 ({environment})")
+
+
+def verify_same_filters(configs):
+    def parts(config):
+        return (re.search(r'regex\s*=\s*"([^"]+)"', config).group(1),
+                config.split('loki.process "http_requests" {', 1)[1].split('loki.write "grafana" {', 1)[0])
+
+    unique = {parts(config) for config in configs.values()}
+    if len(unique) != 1:
+        raise AssertionError("설정 파일의 지표 허용 목록 또는 로그 필터가 다릅니다. 한쪽만 수정했는지 확인하세요.")
+    print(f"설정 {len(configs)}개의 허용 목록·로그 필터 동일성 검증 통과")
+
+
+def validate(name):
     # 실제 설정 전체를 가짜 환경 변수로 검증한다. 컨테이너 외부 통신은 차단한다.
     command = ["run", "--rm", "--network", "none", "--mount",
                f"type=bind,src={DIRECTORY},dst=/config,readonly"]
@@ -137,11 +155,21 @@ def main():
                        "GRAFANA_METRICS_USER": "fixture", "GRAFANA_LOGS_USER": "fixture",
                        "GRAFANA_CLOUD_TOKEN": "fixture"}.items():
         command.extend(["--env", f"{key}={value}"])
-    result = docker(*command, IMAGE, "validate", "/config/config.alloy", check=False)
+    result = docker(*command, IMAGE, "validate", f"/config/{name}", check=False)
     if result.returncode:
         raise AssertionError(result.stdout + result.stderr)
-    print(f"전체 Alloy 설정 검증 통과: {IMAGE}")
-    verify_logs()
+    print(f"전체 Alloy 설정 검증 통과: {name} ({IMAGE})")
+
+
+def main():
+    configs = {name: (DIRECTORY / name).read_text() for name in CONFIGS}
+    verify_same_filters(configs)
+    for name, environment in CONFIGS.items():
+        verify_metrics(configs[name])
+        verify_labels(name, configs[name], environment)
+        validate(name)
+    # 로그 필터가 두 설정에서 동일함을 확인했으므로 실제 파이프라인 검증은 한 번만 실행한다.
+    verify_logs(configs["config.alloy"])
 
 
 if __name__ == "__main__":
