@@ -13,6 +13,8 @@ interface FoundationIosMapEventSink {
 
     fun onEmotionPinClick(id: Long)
 
+    fun onMapBackgroundClick()
+
     fun onRendererUnavailable()
 
     fun onStyleLoadFailed()

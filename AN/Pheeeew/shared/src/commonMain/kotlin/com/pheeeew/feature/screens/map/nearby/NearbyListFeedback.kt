@@ -1,10 +1,8 @@
 package com.pheeeew.feature.screens.map.nearby
 
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -86,10 +84,11 @@ internal fun NearbyLoadError(
             verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
         ) {
             if (!hasItems) {
-                Box(
-                    Modifier.size(32.dp).background(Color.White, CircleShape),
-                    contentAlignment = Alignment.Center,
-                ) { Text("!", color = FeedbackSecondary, fontWeight = FontWeight.Bold, fontSize = 20.sp) }
+                Image(
+                    painter = painterResource(EmotionState.FRUSTRATED.face),
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                )
             }
             Text(
                 if (hasItems) "다음 감정을 불러오지 못했어요" else "감정을 불러오지 못했어요",

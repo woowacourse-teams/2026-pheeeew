@@ -104,14 +104,14 @@ private class AndroidVoiceRecorder(
             val launch = launchPermissionRequest
             if (launch == null) {
                 startAfterPermission = false
-                mutable.value = state.value.copy(requestingPermission = false)
+                mutable.value = state.value.copy(requestingPermission = false, microphonePermissionDenied = true)
                 return
             }
             try {
                 launch()
             } catch (_: IllegalStateException) {
                 startAfterPermission = false
-                mutable.value = state.value.copy(requestingPermission = false)
+                mutable.value = state.value.copy(requestingPermission = false, microphonePermissionDenied = true)
             }
             return
         }

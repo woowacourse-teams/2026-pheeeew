@@ -21,7 +21,7 @@ internal data class MapFeedbackUiModel(
 internal fun MapUiModel.primaryFeedback(): MapFeedbackUiModel? =
     when {
         isOffline -> {
-            MapFeedbackUiModel("인터넷 연결을 확인해 주세요. 연결되면 다시 불러올게요.")
+            MapFeedbackUiModel("인터넷 연결이 끊겼어요. 연결 상태를 확인해주세요.")
         }
 
         mapError != null -> {

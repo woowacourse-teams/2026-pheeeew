@@ -3,7 +3,9 @@ package com.pheeeew.feature.screens.map.record.group
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -29,9 +31,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -59,7 +61,6 @@ import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.map.record.noRippleClickable
-import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -77,8 +78,7 @@ private const val DIAL_BACKGROUND_RADIUS_TO_WIDTH = 0.82f
 
 private const val DIAL_CENTER_Y = 445f
 private const val DIAL_STEP_DEGREES = 18.5f
-private const val DIAL_SPRING_DAMPING_RATIO = 0.873f
-private const val DIAL_SPRING_STIFFNESS = 525f
+private const val DIAL_SCROLL_DURATION_MILLIS = 420
 private const val DIAL_SHEET_DAMPING_RATIO = 0.912f
 private const val DIAL_SHEET_STIFFNESS = 390f
 private const val DIAL_SHEET_START_OFFSET_DP = 320
@@ -99,7 +99,19 @@ fun GroupSelectorContent(
     val interactionSource = remember { MutableInteractionSource() }
     val selectedIndex = groups.indexOfFirst { it.id == selectedGroupId }.coerceAtLeast(0)
     val selectedGroup = groups.getOrNull(selectedIndex) ?: return
-    val dialProgressState by rememberUpdatedState(dialProgress)
+    var isDragging by remember { mutableStateOf(false) }
+    val animatedDialProgress by animateFloatAsState(
+        targetValue = dialProgress,
+        animationSpec =
+            if (isDragging || !isVisible) {
+                snap()
+            } else {
+                tween(durationMillis = DIAL_SCROLL_DURATION_MILLIS, easing = FastOutSlowInEasing)
+            },
+    )
+    val visibleDialProgress = if (isDragging) dialProgress else animatedDialProgress
+    val dialProgressState by rememberUpdatedState(visibleDialProgress)
+    val selectedIndexState by rememberUpdatedState(selectedIndex)
     val onDialProgressChangeState by rememberUpdatedState(onDialProgressChange)
     val onDialProgressSettleState by rememberUpdatedState(onDialProgressSettle)
     val onSelectedGroupChangeState by rememberUpdatedState(onSelectedGroupChange)
@@ -159,13 +171,15 @@ fun GroupSelectorContent(
                     Modifier
                         .fillMaxSize()
                         .clipToBounds()
-                        .pointerInput(groups, selectedGroupId) {
+                        .pointerInput(groups) {
                             val velocityTracker = VelocityTracker()
                             var dragStartProgress = dialProgressState
                             var dragDistancePx = 0f
                             detectHorizontalDragGestures(
                                 onDragStart = {
                                     dragStartProgress = dialProgressState
+                                    isDragging = true
+                                    onDialProgressChangeState(dragStartProgress)
                                     dragDistancePx = 0f
                                     velocityTracker.resetTracking()
                                 },
@@ -179,6 +193,7 @@ fun GroupSelectorContent(
                                     onDialProgressChangeState(progress)
                                 },
                                 onDragEnd = {
+                                    isDragging = false
                                     val velocityBoost =
                                         (velocityTracker.calculateVelocity().x / densityScale / 1400f)
                                             .coerceIn(-0.6f, 0.6f)
@@ -191,12 +206,13 @@ fun GroupSelectorContent(
                                             .coerceIn(0, groups.lastIndex)
                                     val nextGroup = groups[nextIndex]
                                     onDialProgressSettleState(nextIndex.toFloat())
-                                    if (nextIndex != selectedIndex) {
+                                    if (nextIndex != selectedIndexState) {
                                         onSelectedGroupChangeState(nextGroup)
                                     }
                                 },
                                 onDragCancel = {
-                                    onDialProgressSettleState(selectedIndex.toFloat())
+                                    isDragging = false
+                                    onDialProgressSettleState(selectedIndexState.toFloat())
                                 },
                             )
                         },
@@ -243,43 +259,45 @@ fun GroupSelectorContent(
                 val items =
                     groups
                         .mapIndexedNotNull { index, group ->
-                            val slot = index - dialProgress
+                            val slot = index - visibleDialProgress
                             group.takeIf { abs(slot) < 2.8f }?.let { Triple(it, index, slot) }
                         }.sortedByDescending { abs(it.third) }
 
                 items.forEach { (group, index, slot) ->
-                    val angle = slot * DIAL_STEP_DEGREES * PI.toFloat() / 180f
-                    val centerX = constraints.maxWidth / 2f + sin(angle) * dialRadiusPx
-                    val centerY = dialCenterYPx - cos(angle) * dialRadiusPx
-                    val scale = max(0.82f, 1f - abs(slot) * 0.1f)
+                    key(group.id) {
+                        val angle = slot * DIAL_STEP_DEGREES * PI.toFloat() / 180f
+                        val centerX = constraints.maxWidth / 2f + sin(angle) * dialRadiusPx
+                        val centerY = dialCenterYPx - cos(angle) * dialRadiusPx
+                        val scale = max(0.82f, 1f - abs(slot) * 0.1f)
 
-                    Box(
-                        modifier =
-                            Modifier
-                                .offset {
-                                    IntOffset(
-                                        x = (centerX - dialItemHalfSizePx).roundToInt(),
-                                        y = (centerY - dialItemHalfSizePx).roundToInt(),
-                                    )
-                                }.size(DIAL_ITEM_SIZE)
-                                .graphicsLayer {
-                                    rotationZ = slot * 9f
-                                    scaleX = scale
-                                    scaleY = scale
-                                    alpha = if (index == selectedIndex) 1f else 0.58f
-                                }.zIndex(if (index == selectedIndex) 1f else 0f)
-                                .noRippleClickable(enabled = abs(index - selectedIndex) <= 2) {
-                                    if (index != selectedIndex) {
-                                        onDialProgressSettleState(index.toFloat())
-                                        onSelectedGroupChangeState(group)
-                                    }
-                                },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (group.showStamp) {
-                            GroupSelectionStamp(stamp = group.stamp, size = DIAL_ITEM_SIZE)
-                        } else {
-                            GroupSelectionStamp(stamp = null, size = DIAL_ITEM_SIZE, emptyLabel = group.name)
+                        Box(
+                            modifier =
+                                Modifier
+                                    .offset {
+                                        IntOffset(
+                                            x = (centerX - dialItemHalfSizePx).roundToInt(),
+                                            y = (centerY - dialItemHalfSizePx).roundToInt(),
+                                        )
+                                    }.size(DIAL_ITEM_SIZE)
+                                    .graphicsLayer {
+                                        rotationZ = slot * 9f
+                                        scaleX = scale
+                                        scaleY = scale
+                                        alpha = 1f - abs(slot).coerceAtMost(1f) * 0.42f
+                                    }.zIndex(3f - abs(slot))
+                                    .noRippleClickable(enabled = abs(index - selectedIndex) <= 2) {
+                                        if (index != selectedIndex) {
+                                            onDialProgressSettleState(index.toFloat())
+                                            onSelectedGroupChangeState(group)
+                                        }
+                                    },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            if (group.showStamp) {
+                                GroupSelectionStamp(stamp = group.stamp, size = DIAL_ITEM_SIZE)
+                            } else {
+                                GroupSelectionStamp(stamp = null, size = DIAL_ITEM_SIZE, emptyLabel = group.name)
+                            }
                         }
                     }
                 }
@@ -369,8 +387,7 @@ private fun GroupSelectorPreviewContent(
         )
     var selectedGroupId by remember { mutableStateOf(initialSelectedGroupId) }
     val selectedIndex = groups.indexOfFirst { it.id == selectedGroupId }.coerceAtLeast(0)
-    val dialProgress = remember { Animatable(selectedIndex.toFloat()) }
-    val coroutineScope = rememberCoroutineScope()
+    var dialProgress by remember { mutableStateOf(selectedIndex.toFloat()) }
 
     AppTheme {
         Box(
@@ -380,22 +397,9 @@ private fun GroupSelectorPreviewContent(
                 isVisible = true,
                 groups = groups,
                 selectedGroupId = selectedGroupId,
-                dialProgress = dialProgress.value,
-                onDialProgressChange = { progress ->
-                    coroutineScope.launch { dialProgress.snapTo(progress) }
-                },
-                onDialProgressSettle = { progress ->
-                    coroutineScope.launch {
-                        dialProgress.animateTo(
-                            targetValue = progress,
-                            animationSpec =
-                                spring(
-                                    dampingRatio = DIAL_SPRING_DAMPING_RATIO,
-                                    stiffness = DIAL_SPRING_STIFFNESS,
-                                ),
-                        )
-                    }
-                },
+                dialProgress = dialProgress,
+                onDialProgressChange = { dialProgress = it },
+                onDialProgressSettle = { dialProgress = it },
                 onSelectedGroupChange = { selectedGroupId = it.id },
                 onDismiss = {},
                 onComplete = { selectedGroupId = it.id },

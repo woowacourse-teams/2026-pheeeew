@@ -100,7 +100,7 @@ android {
             buildConfigField("String", "DEVICE_ENVIRONMENT", "\"prod\"")
             buildConfigField("String", "DEVICE_ATTESTATION_MODE", "\"required\"")
             buildConfigField("String", "MONITORING_ENVIRONMENT", "\"prod\"")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             buildConfigField(
                 "String",
                 "API_BASE_URL",

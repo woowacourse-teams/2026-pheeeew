@@ -12,11 +12,11 @@ class RefreshLocationUseCase(
     suspend operator fun invoke(requestPermission: Boolean): LocationState {
         when (permissionController.currentStatus()) {
             LocationPermissionStatus.Denied,
+            LocationPermissionStatus.PermanentlyDenied,
             LocationPermissionStatus.ServicesDisabled,
             -> if (requestPermission) permissionController.requestPermission()
 
             LocationPermissionStatus.Granted,
-            LocationPermissionStatus.PermanentlyDenied,
             -> Unit
         }
         repository.refresh()
