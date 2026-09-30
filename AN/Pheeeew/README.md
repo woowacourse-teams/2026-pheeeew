@@ -47,6 +47,12 @@ Text("굵은 제목", fontWeight = FontWeight.Bold)
 새 `TextStyle(...)` 대신 테마 스타일을 복사하면 폰트 설정을 유지할 수 있습니다.
 단독 Preview에서 전역 폰트를 보려면 `AppTheme { ... }`으로 감쌉니다.
 
+앱 UI는 `AppFontScale`에서 시스템 화면 밀도를 유지하고 글꼴 배율을 `1f`로 고정합니다.
+별도 Compose 루트를 생성하는 창은 `AppDialog`, `AppAlertDialog`, `AppPopup`,
+`AppModalBottomSheet`를 사용해 창 내부에서도 같은 배율을 적용합니다.
+Android 약관 WebView는 `textZoom = 100`을 사용합니다.
+운영체제가 표시하는 권한 요청 창은 이 설정의 적용 대상이 아닙니다.
+
 ### Running the apps
 
 Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
