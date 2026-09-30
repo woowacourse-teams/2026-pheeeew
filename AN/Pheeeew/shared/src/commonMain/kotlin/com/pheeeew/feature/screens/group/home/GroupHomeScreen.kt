@@ -19,11 +19,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -92,6 +94,14 @@ fun GroupHomeScreen(
                 textAlign = TextAlign.Center,
             )
         }
+        if (uiState.isRefreshing) {
+            Box(
+                modifier = Modifier.fillMaxWidth().height(40.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularLoadingIndicator(modifier = Modifier.size(24.dp), color = AppColors.Primary)
+            }
+        }
         if (uiState.content !is GroupHomeContent.Ready) {
             Spacer(Modifier.height(16.dp))
             GroupHomeActions(onCreateClick = onCreateClick, onJoinClick = onJoinClick)
@@ -118,6 +128,7 @@ fun GroupHomeScreen(
             is GroupHomeContent.Ready -> {
                 GroupListContent(
                     groups = content.groups,
+                    isRefreshing = uiState.isRefreshing,
                     hasRefreshError = uiState.hasRefreshError,
                     onCreateClick = onCreateClick,
                     onJoinClick = onJoinClick,
@@ -277,6 +288,7 @@ private fun FailedContent(
 @Composable
 private fun GroupListContent(
     groups: List<GroupSummaryUiModel>,
+    isRefreshing: Boolean,
     hasRefreshError: Boolean,
     onCreateClick: () -> Unit,
     onJoinClick: () -> Unit,
@@ -284,8 +296,13 @@ private fun GroupListContent(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(isRefreshing) {
+        if (isRefreshing) listState.scrollToItem(0)
+    }
     Box(modifier = modifier.fillMaxWidth()) {
         LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = AppBottomNavigationBarOverlaySpace),
             verticalArrangement = Arrangement.spacedBy(17.dp),

@@ -18,7 +18,10 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
@@ -51,8 +54,14 @@ import pheeeew.shared.generated.resources.ic_emotion_frustrated
 fun WeeklyRankingRoute(
     apiClient: ApiClient,
     modifier: Modifier = Modifier,
+    onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
 ) {
     val viewModel: WeeklyRankingViewModel = viewModel { createWeeklyRankingViewModel(apiClient) }
+    val currentOnRefreshActionChanged by rememberUpdatedState(onRefreshActionChanged)
+    DisposableEffect(viewModel) {
+        currentOnRefreshActionChanged(viewModel::onRefresh)
+        onDispose { currentOnRefreshActionChanged(null) }
+    }
     WeeklyRankingRoute(viewModel = viewModel, modifier = modifier)
 }
 
@@ -83,6 +92,12 @@ fun WeeklyRankingScreen(
     modifier: Modifier = Modifier,
 ) {
     val pullState = rememberPullToRefreshState()
+    val scrollState = rememberScrollState()
+    LaunchedEffect(uiState.isRefreshing, uiState.status) {
+        if (uiState.isRefreshing || uiState.status == WeeklyRankingStatus.Loading) {
+            scrollState.scrollTo(0)
+        }
+    }
     val pullDistance = with(LocalDensity.current) { 56.dp.toPx() }
     Column(
         modifier = modifier.fillMaxSize().background(AppColors.Background).statusBarsPadding(),
@@ -110,7 +125,7 @@ fun WeeklyRankingScreen(
                         .fillMaxSize()
                         .graphicsLayer {
                             translationY = pullState.distanceFraction.coerceIn(0f, 1f) * pullDistance
-                        }.verticalScroll(rememberScrollState()),
+                        }.verticalScroll(scrollState),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 BasicTopBar(
