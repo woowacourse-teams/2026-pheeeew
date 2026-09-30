@@ -138,7 +138,7 @@ fun MapOverlay(
                 }
             }
 
-            if (!isMapError) {
+            if (!isMapError && !isEmotionSelectorExpanded) {
                 Column(
                     modifier =
                         Modifier
