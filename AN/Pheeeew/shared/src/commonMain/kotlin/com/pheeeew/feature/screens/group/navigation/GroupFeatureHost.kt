@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -42,12 +43,10 @@ fun GroupFeatureHost(
     val clipboardManager = LocalClipboardManager.current
     val currentOnRefreshActionChanged by rememberUpdatedState(onRefreshActionChanged)
 
-    LaunchedEffect(currentBackStackEntry?.destination?.route) {
-        val detailRoute = GroupDetailDestination::class.qualifiedName.orEmpty()
-        val currentRoute = currentBackStackEntry?.destination?.route.orEmpty()
-        onGroupDetailVisibilityChanged(currentRoute.startsWith(detailRoute))
-        val createRoute = GroupCreateDestination::class.qualifiedName.orEmpty()
-        onGroupCreateVisibilityChanged(currentRoute.startsWith(createRoute))
+    LaunchedEffect(currentBackStackEntry?.destination) {
+        val destination = currentBackStackEntry?.destination
+        onGroupDetailVisibilityChanged(destination?.hasRoute<GroupDetailDestination>() == true)
+        onGroupCreateVisibilityChanged(destination?.hasRoute<GroupCreateDestination>() == true)
     }
 
     NavHost(
