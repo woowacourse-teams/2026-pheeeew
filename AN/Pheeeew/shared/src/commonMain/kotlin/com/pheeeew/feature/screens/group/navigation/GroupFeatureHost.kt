@@ -56,7 +56,14 @@ fun GroupFeatureHost(
                 viewModel = homeViewModel,
                 isCurrentDestination = currentBackStackEntry == entry,
                 onCreateClick = { navController.navigate(GroupCreateDestination) },
-                onGroupClick = { groupId -> navController.navigate(GroupDetailDestination(groupId.value)) },
+                onGroupClick = { groupId ->
+                    // Read the live entry so repeated taps are ignored before recomposition.
+                    if (navController.currentBackStackEntry == entry) {
+                        navController.navigate(GroupDetailDestination(groupId.value)) {
+                            launchSingleTop = true
+                        }
+                    }
+                },
                 onJoinSucceeded = { groupId, _ ->
                     onMembershipChanged()
                     navController.navigate(GroupDetailDestination(groupId.value)) {
