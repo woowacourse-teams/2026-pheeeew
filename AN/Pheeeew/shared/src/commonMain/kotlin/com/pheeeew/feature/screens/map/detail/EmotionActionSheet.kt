@@ -22,8 +22,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.theme.AppColors
 
 @Composable
@@ -34,7 +34,7 @@ internal fun EmotionActionSheet(
     onDeleteClick: () -> Unit,
     onCancelClick: () -> Unit,
 ) {
-    Dialog(onDismissRequest = onCancelClick, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    AppDialog(onDismissRequest = onCancelClick, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Box(Modifier.fillMaxSize().clickable(onClick = onCancelClick), contentAlignment = Alignment.BottomCenter) {
             Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
                 Surface(

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -43,6 +41,8 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pheeeew.core.audio.rememberVoiceRecorder
+import com.pheeeew.core.designsystem.component.AppAlertDialog
+import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
@@ -193,7 +193,7 @@ private fun AppContent(
     var onboardingCompleted by remember { mutableStateOf(hasCompletedOnboarding) }
     val suggestedUpdate = versionDecision as? AppVersionDecision.UpdateSuggested
     if (suggestedUpdate != null && !suggestionDismissed) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { suggestionDismissed = true },
             title = { Text("새로운 버전이 나왔어요") },
             text = { Text("최신 버전으로 업데이트하면 더 나은 앱을 이용할 수 있어요.") },
@@ -548,7 +548,7 @@ private fun RequiredUpdateDialog(
     onOpenStore: () -> Unit,
     onRetry: () -> Unit,
 ) {
-    Dialog(
+    AppDialog(
         onDismissRequest = {},
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
     ) {

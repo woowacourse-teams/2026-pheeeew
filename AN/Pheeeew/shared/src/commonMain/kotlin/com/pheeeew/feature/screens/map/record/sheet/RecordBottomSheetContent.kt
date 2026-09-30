@@ -28,7 +28,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -63,6 +62,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.component.AppModalBottomSheet
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
@@ -105,7 +105,7 @@ fun RecordBottomSheet(
             onDismissRequest()
         }
     }
-    ModalBottomSheet(
+    AppModalBottomSheet(
         onDismissRequest = handleDismissRequest,
         modifier = modifier,
         sheetState =
