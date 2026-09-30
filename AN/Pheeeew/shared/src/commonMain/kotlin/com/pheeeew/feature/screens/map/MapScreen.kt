@@ -24,12 +24,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.rememberVoiceRecorder
+import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.core.permission.AppSettingsLauncher
@@ -635,7 +635,7 @@ internal fun MapScreenContent(
                     },
                 )
                 if (recordUiModel.isGroupSelectorVisible) {
-                    Dialog(
+                    AppDialog(
                         onDismissRequest = onRecordGroupSelectorDismiss,
                         properties = groupSelectorDialogProperties(),
                     ) {

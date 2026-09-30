@@ -16,7 +16,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.pheeeew.core.designsystem.theme.AppColors
 
 @Composable
@@ -28,7 +27,7 @@ fun ConfirmDialog(
     onConfirm: () -> Unit,
     onCancel: () -> Unit,
 ) {
-    Dialog(onDismissRequest = onCancel) {
+    AppDialog(onDismissRequest = onCancel) {
         ConfirmDialogContent(title, content, confirmText, cancelText, onConfirm, onCancel)
     }
 }

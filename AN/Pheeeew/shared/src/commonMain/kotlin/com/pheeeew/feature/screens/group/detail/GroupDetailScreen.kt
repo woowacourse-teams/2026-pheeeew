@@ -41,6 +41,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.AppPopup
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.DetailTopBar
 import com.pheeeew.core.designsystem.theme.AppColors
@@ -294,7 +295,7 @@ private fun GroupDetailTopBar(
                 }
             }
             if (overlay == GroupDetailOverlay.Menu) {
-                androidx.compose.ui.window.Popup(
+                AppPopup(
                     alignment = Alignment.TopEnd,
                     offset = with(LocalDensity.current) { IntOffset(0, 48.dp.roundToPx()) },
                     onDismissRequest = actions.onDismissOverlay,
