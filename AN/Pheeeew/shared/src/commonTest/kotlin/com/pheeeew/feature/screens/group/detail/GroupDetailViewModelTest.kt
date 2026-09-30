@@ -43,6 +43,40 @@ class GroupDetailViewModelTest {
                 viewModel.onResumed()
                 runCurrent()
                 assertEquals(2, calls)
+                assertFalse(viewModel.uiState.value.isRefreshing)
+
+                refresh.complete(GroupDetailLoadResult.Loaded(detail))
+                runCurrent()
+                assertFalse(viewModel.uiState.value.isRefreshing)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `manual refresh shows indicator while silent resume refresh is in progress`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var calls = 0
+                val refresh = CompletableDeferred<GroupDetailLoadResult>()
+                val viewModel =
+                    createViewModel {
+                        calls += 1
+                        if (calls == 1) GroupDetailLoadResult.Loaded(detail) else refresh.await()
+                    }
+
+                runCurrent()
+                viewModel.onResumed()
+                runCurrent()
+                viewModel.onResumed()
+                runCurrent()
+                assertEquals(2, calls)
+                assertFalse(viewModel.uiState.value.isRefreshing)
+
+                viewModel.onRefresh()
+                runCurrent()
+                assertEquals(2, calls)
                 assertTrue(viewModel.uiState.value.isRefreshing)
 
                 refresh.complete(GroupDetailLoadResult.Loaded(detail))

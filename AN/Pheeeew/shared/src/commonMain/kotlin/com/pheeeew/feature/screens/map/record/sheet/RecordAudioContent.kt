@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -28,11 +30,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
@@ -124,11 +126,16 @@ private fun AudioReadyPanel(
     audio: VoiceRecordingState,
     onStartRecording: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Column(
         modifier =
             Modifier
                 .fillMaxSize()
-                .noRippleClickable(enabled = !audio.requestingPermission, onClick = onStartRecording),
+                .noRippleClickable(
+                    enabled = !audio.requestingPermission,
+                    interactionSource = interactionSource,
+                    onClick = onStartRecording,
+                ),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -136,8 +143,11 @@ private fun AudioReadyPanel(
             modifier =
                 Modifier
                     .size(52.dp)
-                    .clip(CircleShape)
-                    .border(AppBorders.Standard, AppColors.TextPrimary, CircleShape)
+                    .raisedButtonBorder(
+                        CircleShape,
+                        interactionSource = interactionSource,
+                        elevated = !audio.requestingPermission,
+                    ).clip(CircleShape)
                     .background(AppColors.Primary),
             contentAlignment = Alignment.Center,
         ) {

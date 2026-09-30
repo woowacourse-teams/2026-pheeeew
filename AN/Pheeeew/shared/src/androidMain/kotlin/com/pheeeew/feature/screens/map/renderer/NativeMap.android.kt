@@ -69,6 +69,7 @@ internal actual fun NativeMap(
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapBounds) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
+    onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
     modifier: Modifier,
@@ -83,6 +84,7 @@ internal actual fun NativeMap(
     var savedCameraCommandId by rememberSaveable { mutableLongStateOf(0L) }
     val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
+    val currentOnMapBackgroundClick by rememberUpdatedState(onMapBackgroundClick)
     val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
@@ -100,6 +102,7 @@ internal actual fun NativeMap(
                     onRecordViewportChanged = onRecordViewportChanged,
                     onViewportChanged = onViewportChanged,
                     onEmotionPinClick = { currentOnEmotionPinClick(it) },
+                    onMapBackgroundClick = { currentOnMapBackgroundClick() },
                     onHighlightedPinPositionChanged = { currentOnHighlightPosition(it) },
                     onContentPresented = { token, count -> currentOnContentPresented(token, count) },
                     restoredCamera = savedCamera,
@@ -152,6 +155,7 @@ private class AndroidFoundationMapHost(
     private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     private val onViewportChanged: (EmotionMapBounds) -> Unit,
     private val onEmotionPinClick: (Long) -> Unit,
+    private val onMapBackgroundClick: () -> Unit,
     private val onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     private val onContentPresented: (String, List<String>) -> Unit,
     private val restoredCamera: DoubleArray?,
@@ -232,6 +236,7 @@ private class AndroidFoundationMapHost(
         mapView.getMapAsync { readyMap ->
             if (released) return@getMapAsync
             map = readyMap
+            // MapLibre dispatches this only after confirming a single tap (not a double tap).
             readyMap.addOnMapClickListener { coordinate ->
                 if (released || latestState?.isRecordLocationPicking == true) return@addOnMapClickListener false
                 val point = readyMap.projection.toScreenLocation(coordinate)
@@ -241,8 +246,8 @@ private class AndroidFoundationMapHost(
                         .firstOrNull()
                         ?.id()
                         ?.toLongOrNull()
-                if (id != null) onEmotionPinClick(id)
-                id != null
+                if (id != null) onEmotionPinClick(id) else onMapBackgroundClick()
+                true
             }
             readyMap.setMinZoomPreference(MINIMUM_ZOOM)
             readyMap.setMaxZoomPreference(MAXIMUM_ZOOM)

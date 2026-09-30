@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.group.home.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -26,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.raisedPressEffect
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.GroupStamp
@@ -42,6 +45,7 @@ fun GroupListItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(16.dp)
     Box(
         modifier =
@@ -63,11 +67,16 @@ fun GroupListItem(
                 Modifier
                     .fillMaxWidth()
                     .height(83.dp)
+                    .raisedPressEffect(interactionSource)
                     .clip(shape)
                     .background(Color.White)
                     .border(width = AppBorders.Standard, color = AppColors.GroupInk, shape = shape)
-                    .clickable(role = Role.Button, onClick = onClick)
-                    .padding(horizontal = 16.dp),
+                    .clickable(
+                        interactionSource = interactionSource,
+                        indication = null,
+                        role = Role.Button,
+                        onClick = onClick,
+                    ).padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             GroupStamp(appearance = group.stamp, size = 52.dp)

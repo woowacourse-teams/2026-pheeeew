@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,7 +28,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalTextStyle
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -62,14 +62,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.audio.VoiceRecorder
 import com.pheeeew.core.audio.VoiceRecordingState
+import com.pheeeew.core.designsystem.component.AppModalBottomSheet
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.SheetDragHandle
+import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
-import com.pheeeew.feature.screens.map.record.RecordConnectionNotice
 import com.pheeeew.feature.screens.map.record.group.GroupSelectionButton
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -92,7 +93,7 @@ fun RecordBottomSheet(
     onSkip: () -> Unit,
     modifier: Modifier = Modifier,
     voiceRecorder: VoiceRecorder? = null,
-    connectionMessage: String? = null,
+    feedbackContent: @Composable () -> Unit = {},
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
@@ -104,7 +105,7 @@ fun RecordBottomSheet(
             onDismissRequest()
         }
     }
-    ModalBottomSheet(
+    AppModalBottomSheet(
         onDismissRequest = handleDismissRequest,
         modifier = modifier,
         sheetState =
@@ -124,7 +125,7 @@ fun RecordBottomSheet(
         scrimColor = Color.Black.copy(alpha = 0.3f),
         dragHandle = { SheetDragHandle() },
     ) {
-        RecordConnectionNotice(connectionMessage)
+        feedbackContent()
         RecordBottomSheetContent(
             selectedEmotion = selectedEmotion,
             inputMode = inputMode,
@@ -209,7 +210,7 @@ private fun RecordBottomSheetContent(
                             keyboardController?.hide()
                         }
                     }
-                }.padding(start = 20.dp, end = 20.dp, top = 16.dp),
+                }.padding(start = 20.dp, end = 20.dp, bottom = 4.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -257,7 +258,7 @@ private fun RecordBottomSheetContent(
             )
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(4.dp))
 
         if (inputMode == RecordInputModeUiModel.Memo) {
             MemoPanel(
@@ -335,6 +336,7 @@ private fun RecordSheetActions(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(20.dp),
@@ -345,12 +347,20 @@ private fun RecordSheetActions(
                 Modifier
                     .weight(1f)
                     .height(48.dp)
-                    .clip(AppShapes.Pill)
-                    .background(AppColors.RecordSheetAction.copy(alpha = if (enabled) 1f else 0.35f))
-                    .noRippleClickable(enabled = enabled, onClick = onNext),
+                    .raisedButtonBorder(
+                        AppShapes.Pill,
+                        interactionSource = interactionSource,
+                        elevated = enabled,
+                    ).clip(AppShapes.Pill)
+                    .background(if (enabled) AppColors.Primary else AppColors.Gray100)
+                    .noRippleClickable(
+                        enabled = enabled,
+                        interactionSource = interactionSource,
+                        onClick = onNext,
+                    ),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = "다음", color = AppColors.Surface, fontSize = 16.sp, fontWeight = FontWeight.Normal)
+            Text(text = "다음", color = AppColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
         Box(
             modifier =
@@ -442,9 +452,8 @@ private fun RecordInputModeToggle(
             modifier
                 .height(42.dp)
                 .clip(AppShapes.Pill)
-                .background(AppColors.Gray100)
-                .border(AppBorders.Standard, AppColors.Border, AppShapes.Pill)
-                .padding(4.dp),
+                .background(AppColors.Surface)
+                .border(AppBorders.Standard, AppColors.Border, AppShapes.Pill),
     ) {
         val tabWidth = maxWidth / 2
         val indicatorOffset by animateDpAsState(
@@ -459,7 +468,8 @@ private fun RecordInputModeToggle(
                     .width(tabWidth)
                     .fillMaxHeight()
                     .clip(AppShapes.Pill)
-                    .background(AppColors.Primary),
+                    .background(AppColors.Primary)
+                    .border(AppBorders.Standard, AppColors.Border, AppShapes.Pill),
         )
         Row(modifier = Modifier.fillMaxSize()) {
             RecordInputModeTab(

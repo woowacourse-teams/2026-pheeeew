@@ -39,9 +39,15 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             UIImage(systemName: "info.circle")?.withRenderingMode(.alwaysTemplate),
             for: .normal
         )
-        let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleEmotionPinTap(_:)))
+        let tapRecognizer = UITapGestureRecognizer(target: self, action: #selector(handleMapTap(_:)))
         tapRecognizer.cancelsTouchesInView = false
         tapRecognizer.delegate = self
+        // Confirm a single tap only after the built-in double-tap zoom has failed.
+        for recognizer in mapView.gestureRecognizers ?? [] {
+            if let tap = recognizer as? UITapGestureRecognizer, tap.numberOfTapsRequired > 1 {
+                tapRecognizer.require(toFail: tap)
+            }
+        }
         mapView.addGestureRecognizer(tapRecognizer)
         mapView.minimumZoomLevel = FoundationMapStyle.minimumZoom
         mapView.maximumZoomLevel = FoundationMapStyle.maximumZoom
@@ -49,12 +55,14 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         mapView.allowsZooming = true
     }
 
-    @objc private func handleEmotionPinTap(_ recognizer: UITapGestureRecognizer) {
+    @objc private func handleMapTap(_ recognizer: UITapGestureRecognizer) {
         guard recognizer.state == .ended, styleIsReady, pendingState?.isRecordLocationPicking != true else { return }
         let point = recognizer.location(in: mapView)
         let features = mapView.visibleFeatures(at: point, styleLayerIdentifiers: Set(["foundation-emotion-pin-layer"]))
         if let id = features.first?.identifier as? NSNumber {
             eventSink.onEmotionPinClick(id: id.int64Value)
+        } else {
+            eventSink.onMapBackgroundClick()
         }
     }
 

@@ -616,7 +616,7 @@ sealed interface NearbyEmotionEvent {
 private fun EmotionFailure.message(): String =
     when (this) {
         EmotionFailure.NOT_FOUND -> "삭제되었거나 더 이상 볼 수 없는 감정이에요."
-        EmotionFailure.AUTHENTICATION -> "기기 인증을 확인하지 못했어요. 다시 시도해 주세요."
+        EmotionFailure.AUTHENTICATION -> "처리 중에 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."
         EmotionFailure.INVALID_REQUEST -> "요청을 처리하지 못했어요. 새로고침해 주세요."
         EmotionFailure.FORBIDDEN -> "이 감정에는 해당 동작을 할 수 없어요."
         EmotionFailure.UNAVAILABLE -> "연결을 확인하고 다시 시도해 주세요."

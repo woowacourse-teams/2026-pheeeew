@@ -94,29 +94,32 @@ internal fun AppBottomNavigationBar(
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .height(AppBottomNavigationBarHeight)
+                .clip(CircleShape)
                 .background(Color.White, CircleShape)
-                .border(AppBorders.Standard, NavigationInk, CircleShape)
-                .padding(horizontal = 6.dp, vertical = 5.dp),
+                .border(AppBorders.Standard, NavigationInk, CircleShape),
         contentAlignment = Alignment.CenterStart,
     ) {
         val itemWidth = maxWidth / destinations.size
+        val indicatorInset = AppBorders.Standard + 1.5.dp
+        val maximumIndicatorOffset = itemWidth * destinations.lastIndex + indicatorInset
         val selectedIndicatorOffset by
             animateDpAsState(
-                targetValue = itemWidth * selectedIndex + 2.dp,
+                targetValue = itemWidth * selectedIndex + indicatorInset,
                 animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
                 label = "bottomNavigationIndicatorOffset",
             )
         Box(
             modifier =
                 Modifier
-                    .offset(x = selectedIndicatorOffset)
-                    .width(itemWidth - 4.dp)
-                    .height(43.dp)
+                    .offset(x = selectedIndicatorOffset.coerceIn(indicatorInset, maximumIndicatorOffset))
+                    .width(itemWidth - indicatorInset * 2)
+                    .height(AppBottomNavigationBarHeight - indicatorInset * 2)
                     .clip(CircleShape)
-                    .background(AppColors.Primary),
+                    .background(AppColors.Primary)
+                    .border(AppBorders.Standard, NavigationInk, CircleShape),
         )
         Row(
-            modifier = Modifier.fillMaxWidth().height(43.dp),
+            modifier = Modifier.fillMaxWidth().height(AppBottomNavigationBarHeight),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             destinations.forEach { destination ->
@@ -126,7 +129,7 @@ internal fun AppBottomNavigationBar(
                     modifier =
                         Modifier
                             .weight(1f)
-                            .height(43.dp)
+                            .height(AppBottomNavigationBarHeight)
                             .clickable(
                                 interactionSource = null,
                                 indication = null,

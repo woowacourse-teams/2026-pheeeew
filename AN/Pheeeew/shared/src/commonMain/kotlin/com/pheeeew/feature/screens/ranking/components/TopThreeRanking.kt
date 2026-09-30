@@ -22,9 +22,9 @@ fun TopThreeRanking(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.Bottom,
     ) {
-        RankingMemberCard(members[1], 166.dp, Modifier.weight(1f))
-        RankingMemberCard(members[0], 196.dp, Modifier.weight(1f))
-        RankingMemberCard(members[2], 160.dp, Modifier.weight(1f))
+        RankingMemberCard(members[1], Modifier.weight(1f))
+        RankingMemberCard(members[0], Modifier.weight(1f))
+        RankingMemberCard(members[2], Modifier.weight(1f))
     }
 }
 

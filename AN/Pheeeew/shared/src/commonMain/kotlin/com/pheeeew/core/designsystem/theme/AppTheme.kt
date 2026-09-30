@@ -44,5 +44,7 @@ fun AppTheme(content: @Composable () -> Unit) {
             )
         }
 
-    MaterialTheme(typography = typography, content = content)
+    AppFontScale {
+        MaterialTheme(typography = typography, content = content)
+    }
 }

@@ -89,7 +89,11 @@ class MapViewModel(
     fun start() {
         if (hasStarted) return
         hasStarted = true
-        requestCurrentLocation(moveCamera = false, requestPermission = false)
+        requestCurrentLocation(moveCamera = false, requestPermission = true)
+    }
+
+    fun dismissLocationPermissionDialog() {
+        _uiModel.value = _uiModel.value.copy(showLocationPermissionDialog = false)
     }
 
     fun onEmotionRegistered(pin: EmotionPinUiModel) {
@@ -442,6 +446,9 @@ class MapViewModel(
                         _uiModel.value.copy(
                             locationState = locationState,
                             locationError = (locationState as? LocationState.Unavailable)?.reason.takeIf { moveCamera },
+                            showLocationPermissionDialog =
+                                requestPermission &&
+                                    locationState == LocationState.Unavailable(LocationError.PermissionDenied),
                         )
                     val location = (locationState as? LocationState.Available)?.location
                     if (moveCamera && location != null) {
