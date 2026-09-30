@@ -73,6 +73,7 @@ fun MapScreen(
     recordViewModel: MapRecordViewModel,
     onEmotionPinClick: (Long) -> Unit,
     onListClick: () -> Unit,
+    onMapBackgroundClick: () -> Unit,
     onSettingClick: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
     onViewportChanged: (EmotionBounds) -> Unit = {},
@@ -367,6 +368,7 @@ fun MapScreen(
                                         onEmotionPinClick(id)
                                     }
                             },
+                            onMapBackgroundClick = onMapBackgroundClick,
                             onContentPresented = viewModel::contentPresented,
                             onHighlightedPinPositionChanged = { position ->
                                 highlightedPinPosition = position?.takeIf { it.id == highlightedId }

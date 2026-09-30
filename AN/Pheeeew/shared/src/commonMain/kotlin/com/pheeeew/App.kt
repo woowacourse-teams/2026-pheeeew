@@ -370,6 +370,9 @@ private fun AppContent(
                             !nearbyState.visible && detailState == EmotionDetailLoadUiModel.Closed &&
                                 !isSettingsVisible && reportTarget == null,
                         onListClick = nearbyViewModel::toggle,
+                        onMapBackgroundClick = {
+                            if (nearbyState.visible) nearbyViewModel.dismiss()
+                        },
                         onViewportChanged = nearbyViewModel::onViewportChanged,
                         onSettingClick = { isSettingsVisible = true },
                         onEmotionBubbleClick = {},
