@@ -3,7 +3,6 @@ package com.pheeeew.feature.screens.ranking.components
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
@@ -13,7 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
@@ -28,13 +26,11 @@ import pheeeew.shared.generated.resources.weekly_ranking_crown
 @Composable
 fun RankingMemberCard(
     member: RankingMember,
-    height: Dp,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier =
             modifier
-                .height(height)
                 .rankingCardBorder()
                 .padding(
                     start = 8.dp,
@@ -48,7 +44,7 @@ fun RankingMemberCard(
                         },
                 ),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text("${member.rank}위", color = AppColors.RankingContent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         if (member.rank == 1) {
@@ -72,7 +68,7 @@ fun RankingMemberCard(
                 maxLines = 2,
                 lineHeight = 17.sp,
             )
-            Text("감정 개수", color = AppColors.RankingContent, fontSize = 10.sp, lineHeight = 12.sp)
+            Text("감정 스탬프", color = AppColors.RankingContent, fontSize = 10.sp, lineHeight = 12.sp)
             Text(
                 "${member.score}개",
                 color = AppColors.RankingContent,
@@ -90,6 +86,6 @@ fun RankingMemberCard(
 @Composable
 private fun RankingMemberCardPreview() {
     AppTheme {
-        RankingMemberCard(sampleRankings.first(), 196.dp, Modifier.padding(16.dp))
+        RankingMemberCard(sampleRankings.first(), Modifier.padding(16.dp))
     }
 }
