@@ -71,7 +71,6 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
-import com.pheeeew.feature.screens.map.record.RecordConnectionNotice
 import com.pheeeew.feature.screens.map.record.group.GroupSelectionButton
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -94,7 +93,7 @@ fun RecordBottomSheet(
     onSkip: () -> Unit,
     modifier: Modifier = Modifier,
     voiceRecorder: VoiceRecorder? = null,
-    connectionMessage: String? = null,
+    feedbackContent: @Composable () -> Unit = {},
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
@@ -126,7 +125,7 @@ fun RecordBottomSheet(
         scrimColor = Color.Black.copy(alpha = 0.3f),
         dragHandle = { SheetDragHandle() },
     ) {
-        RecordConnectionNotice(connectionMessage)
+        feedbackContent()
         RecordBottomSheetContent(
             selectedEmotion = selectedEmotion,
             inputMode = inputMode,

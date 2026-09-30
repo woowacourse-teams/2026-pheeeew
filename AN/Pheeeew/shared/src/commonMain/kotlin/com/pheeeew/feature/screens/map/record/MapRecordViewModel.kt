@@ -456,7 +456,12 @@ class MapRecordViewModel(
                     GroupStampListLoadResult.Unavailable -> {
                         _uiModel.value =
                             _uiModel.value.copy(isGroupSelectorVisible = false, isGroupSelectionLoading = false)
-                        _notice.value = RecordNoticeUiModel("그룹 목록을 불러오지 못했어요. 다시 시도해 주세요", true)
+                        _notice.value =
+                            RecordNoticeUiModel(
+                                "그룹 목록을 불러오지 못했어요. 다시 시도해 주세요",
+                                isError = true,
+                                suppressWhenOffline = true,
+                            )
                     }
                 }
             }
@@ -482,4 +487,5 @@ data class RecordNoticeUiModel(
     val message: String,
     val isError: Boolean,
     val receipt: RecordResultReceipt? = null,
+    val suppressWhenOffline: Boolean = false,
 )
