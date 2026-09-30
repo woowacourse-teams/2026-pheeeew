@@ -74,6 +74,9 @@ public interface EmotionControllerApi {
             다른 기기가 사용한 requestId는 409입니다. 녹음은 업로드 완료된 audioUploadId로 연결합니다.
             groupId를 전달하면 현재 소속된 그룹의 스탬프를 연결합니다. 생략하거나 null이면 그룹 스탬프가 없습니다.
             연결된 스탬프가 변경되면 기존 감정에도 최신 모양을 표시합니다.
+
+            한 기기는 1초에 한 번만 등록할 수 있습니다. 초과하면 429와 Retry-After 헤더를 반환합니다.
+            재시도할 때 같은 requestId를 보내면 감정이 중복 생성되지 않습니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "저장된 감정 ID"),
@@ -81,6 +84,10 @@ public interface EmotionControllerApi {
             @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
             @ApiResponse(responseCode = "404", description = "녹음 업로드가 없거나 해당 기기의 업로드가 아님, 또는 사용할 수 없는 그룹"),
             @ApiResponse(responseCode = "409", description = "요청 식별자 충돌 또는 녹음 미완료·이미 사용됨"),
+            @ApiResponse(responseCode = "429", description = "같은 기기가 1초 안에 다시 생성을 요청함",
+                    headers = @Header(name = "Retry-After", description = "다시 시도하기까지 기다려야 하는 초입니다.",
+                            schema = @Schema(type = "string", example = "1")),
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "503", description = "녹음 확인 기능을 사용할 수 없음")
     })
     ResponseEntity<EmotionCreateResponse> save(@Valid EmotionCreateRequest request,

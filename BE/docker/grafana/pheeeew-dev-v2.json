@@ -1710,6 +1710,80 @@
       "id": 115
     },
     {
+      "type": "timeseries",
+      "title": "차단된 감정 생성",
+      "description": "기기별 초당 1회 제한에 걸려 429 로 돌려보낸 감정 생성 요청이에요. 평소에는 0 이고, 솟으면 한 기기가 연타하고 있다는 뜻이에요. 정상 앱은 1초에 두 번 등록하지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 38
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 9,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(rate(pheeeew_emotion_create_throttled_total{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval]))",
+          "legendFormat": "차단"
+        }
+      ],
+      "id": 124
+    },
+    {
       "type": "row",
       "title": "02  DB 조회  /  어느 조회가 얼마나 걸리나요?",
       "collapsed": false,
@@ -1718,7 +1792,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 38
+        "y": 46
       },
       "id": 116
     },
@@ -1732,7 +1806,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 39,
+        "y": 47,
         "w": 12,
         "h": 8
       },
@@ -1806,7 +1880,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 39,
+        "y": 47,
         "w": 12,
         "h": 8
       },
@@ -1880,7 +1954,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 47,
+        "y": 55,
         "w": 12,
         "h": 8
       },
@@ -1954,7 +2028,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 47,
+        "y": 55,
         "w": 12,
         "h": 8
       },
@@ -2027,7 +2101,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 55
+        "y": 63
       },
       "id": 121
     },
@@ -2042,7 +2116,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 56,
+        "y": 64,
         "w": 12,
         "h": 8
       },
@@ -2192,7 +2266,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 56,
+        "y": 64,
         "w": 12,
         "h": 8
       },
@@ -2272,7 +2346,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 64,
+        "y": 72,
         "w": 12,
         "h": 8
       },
@@ -2376,7 +2450,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 64,
+        "y": 72,
         "w": 12,
         "h": 8
       },
@@ -2453,7 +2527,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 72
+        "y": 80
       },
       "id": 122
     },
@@ -2464,7 +2538,7 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 73,
+        "y": 81,
         "w": 24,
         "h": 3
       },
@@ -2484,7 +2558,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 76,
+        "y": 84,
         "w": 24,
         "h": 11
       },
@@ -2519,7 +2593,7 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 87,
+        "y": 95,
         "w": 24,
         "h": 4
       },
@@ -2537,7 +2611,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 91
+        "y": 99
       },
       "id": 123
     },
@@ -2552,7 +2626,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 92,
+        "y": 100,
         "w": 12,
         "h": 8
       },
@@ -2644,7 +2718,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 92,
+        "y": 100,
         "w": 12,
         "h": 8
       },

@@ -16,6 +16,9 @@ spring:
       mode: never
 
 pheeeew:
+  rate-limit:
+    emotion-create:
+      enabled: true
   s3:
     bucket: ${S3_BUCKET:}
     key-prefix: ${S3_KEY_PREFIX:}
