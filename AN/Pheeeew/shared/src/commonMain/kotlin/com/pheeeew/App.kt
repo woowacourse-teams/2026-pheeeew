@@ -504,6 +504,10 @@ private fun AppContent(
                 entrySource = source,
                 monitoring = apiDependencies.client.monitoring,
                 onBack = { reportTarget = null },
+                onReportSucceeded = {
+                    reportTarget = null
+                    moderationMessage = "신고가 접수됐어요."
+                },
             )
         }
 
