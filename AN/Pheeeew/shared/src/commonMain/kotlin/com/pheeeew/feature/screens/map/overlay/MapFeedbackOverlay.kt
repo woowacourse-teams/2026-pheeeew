@@ -12,7 +12,6 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.feature.screens.map.MapFeedbackAction
 import com.pheeeew.feature.screens.map.MapUiModel
@@ -89,7 +88,7 @@ internal fun MapFeedbackOverlay(
         }
     Popup(
         popupPositionProvider = MapFeedbackPosition(top),
-        properties = PopupProperties(focusable = false),
+        properties = mapFeedbackPopupProperties(),
     ) {
         Snackbar(
             message = text,
