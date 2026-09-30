@@ -145,12 +145,14 @@ fun MapScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     val uiModel by viewModel.uiModel.collectAsState()
+    val activePermissionDialog =
+        permissionDialog ?: PermissionDialogUiModel.Location.takeIf { uiModel.showLocationPermissionDialog }
     val recordUiModel by recordViewModel.uiModel.collectAsState()
     val groupOptions by recordViewModel.groupOptions.collectAsState()
     val contentVisible =
         monitoringResumed && monitoringVisible && uiModel.mapError == null &&
             !uiModel.isEmotionSelectorExpanded && recordUiModel.step == RecordFlowStepUiModel.Closed &&
-            permissionDialog == null
+            activePermissionDialog == null
     DisposableEffect(viewModel, contentVisible) {
         viewModel.contentVisibility(contentVisible)
         onDispose { viewModel.contentVisibility(false) }
@@ -388,9 +390,7 @@ fun MapScreen(
                         try {
                             val status = locationPermissionController.currentStatus()
                             val result =
-                                if (status == LocationPermissionStatus.Granted ||
-                                    status == LocationPermissionStatus.ServicesDisabled
-                                ) {
+                                if (status == LocationPermissionStatus.Granted) {
                                     status
                                 } else {
                                     requestedPermission = true
@@ -502,7 +502,7 @@ fun MapScreen(
             onCancel = { showDiscardDialog = false },
         )
     }
-    permissionDialog?.let { dialog ->
+    activePermissionDialog?.let { dialog ->
         ConfirmDialog(
             title =
                 when (dialog) {
@@ -512,7 +512,7 @@ fun MapScreen(
                 },
             content =
                 when (dialog) {
-                    PermissionDialogUiModel.Location -> "감정을 남기려면 위치 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요."
+                    PermissionDialogUiModel.Location -> "현재 위치를 확인하고 감정을 남기려면 위치 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요."
                     PermissionDialogUiModel.LocationServices -> "감정을 남기려면 위치 서비스를 켜주세요."
                     PermissionDialogUiModel.Microphone -> "음성을 녹음하려면 마이크 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요."
                 },
@@ -520,6 +520,7 @@ fun MapScreen(
             cancelText = "취소",
             onConfirm = {
                 permissionDialog = null
+                if (dialog == PermissionDialogUiModel.Location) viewModel.dismissLocationPermissionDialog()
                 if (dialog == PermissionDialogUiModel.Microphone) voiceRecorder.clear()
                 coroutineScope.launch {
                     if (dialog == PermissionDialogUiModel.LocationServices) {
@@ -531,6 +532,7 @@ fun MapScreen(
             },
             onCancel = {
                 permissionDialog = null
+                if (dialog == PermissionDialogUiModel.Location) viewModel.dismissLocationPermissionDialog()
                 if (dialog == PermissionDialogUiModel.Microphone) voiceRecorder.clear()
             },
         )

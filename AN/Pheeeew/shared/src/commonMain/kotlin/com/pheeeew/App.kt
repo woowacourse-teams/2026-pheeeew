@@ -43,6 +43,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pheeeew.core.audio.rememberVoiceRecorder
+import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
@@ -88,6 +89,7 @@ import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.feature.screens.splash.SplashScreen
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
@@ -212,16 +214,11 @@ private fun AppContent(
 
     if (!onboardingCompleted) {
         val onboardingRecorder = rememberVoiceRecorder()
+        val onboardingScope = rememberCoroutineScope()
+        var microphoneDialogResult by remember { mutableStateOf<CompletableDeferred<Unit>?>(null) }
         OnboardingScreen(
             monitoring = apiDependencies.client.monitoring,
             onFinished = {
-                try {
-                    locationDependencies.permissionController.requestPermission()
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (_: Exception) {
-                    // A failed permission request must not block onboarding.
-                }
                 try {
                     onboardingRecorder.requestMicrophonePermission()
                     onboardingRecorder.state.first { !it.requestingPermission }
@@ -230,10 +227,37 @@ private fun AppContent(
                 } catch (_: Exception) {
                     // Recording can request permission again when the user needs it.
                 }
+                if (!onboardingRecorder.state.value.microphonePermissionGranted) {
+                    val result = CompletableDeferred<Unit>()
+                    microphoneDialogResult = result
+                    try {
+                        result.await()
+                    } finally {
+                        microphoneDialogResult = null
+                    }
+                }
                 onOnboardingCompleted()
                 onboardingCompleted = true
             },
         )
+        microphoneDialogResult?.let { result ->
+            ConfirmDialog(
+                title = "마이크 권한이 필요해요",
+                content = "음성을 녹음하려면 마이크 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요.",
+                confirmText = "설정으로 이동",
+                cancelText = "취소",
+                onConfirm = {
+                    onboardingScope.launch {
+                        try {
+                            permissionSettingsLauncher.openAppSettings()
+                        } finally {
+                            result.complete(Unit)
+                        }
+                    }
+                },
+                onCancel = { result.complete(Unit) },
+            )
+        }
         return
     }
 
