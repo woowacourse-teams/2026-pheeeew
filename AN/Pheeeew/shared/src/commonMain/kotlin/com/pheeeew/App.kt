@@ -36,6 +36,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -335,10 +336,9 @@ private fun AppContent(
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
 
     val selectedDestination =
-        when (currentBackStackEntry?.destination?.route) {
-            MapRootDestination::class.qualifiedName -> AppDestination.Map
-            GroupRootDestination::class.qualifiedName -> AppDestination.Group
-            RankingRootDestination::class.qualifiedName -> AppDestination.Ranking
+        when {
+            currentBackStackEntry?.destination?.hasRoute<GroupRootDestination>() == true -> AppDestination.Group
+            currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> AppDestination.Ranking
             else -> AppDestination.Map
         }
 
@@ -436,14 +436,14 @@ private fun AppContent(
 
             composable<GroupRootDestination>(
                 enterTransition = {
-                    if (initialState.destination.route == RankingRootDestination::class.qualifiedName) {
+                    if (initialState.destination.hasRoute<RankingRootDestination>()) {
                         slideInHorizontally(tween(300)) { -it }
                     } else {
                         null
                     }
                 },
                 exitTransition = {
-                    if (targetState.destination.route == RankingRootDestination::class.qualifiedName) {
+                    if (targetState.destination.hasRoute<RankingRootDestination>()) {
                         slideOutHorizontally(tween(300)) { -it }
                     } else {
                         null
@@ -470,14 +470,14 @@ private fun AppContent(
 
             composable<RankingRootDestination>(
                 enterTransition = {
-                    if (initialState.destination.route == GroupRootDestination::class.qualifiedName) {
+                    if (initialState.destination.hasRoute<GroupRootDestination>()) {
                         slideInHorizontally(tween(300)) { it }
                     } else {
                         null
                     }
                 },
                 exitTransition = {
-                    if (targetState.destination.route == GroupRootDestination::class.qualifiedName) {
+                    if (targetState.destination.hasRoute<GroupRootDestination>()) {
                         slideOutHorizontally(tween(300)) { it }
                     } else {
                         null
@@ -535,7 +535,7 @@ private fun AppContent(
                             AppDestination.Ranking -> RankingRootDestination
                         }
 
-                    if (navController.currentDestination?.route == route::class.qualifiedName) {
+                    if (navController.currentDestination?.hasRoute(route::class) == true) {
                         when (destination) {
                             AppDestination.Map -> mapViewModel.refreshEmotionPins()
                             AppDestination.Group -> refreshGroup?.invoke()
