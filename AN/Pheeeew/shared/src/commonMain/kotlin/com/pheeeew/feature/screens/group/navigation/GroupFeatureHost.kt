@@ -1,8 +1,11 @@
 package com.pheeeew.feature.screens.group.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
@@ -32,10 +35,12 @@ fun GroupFeatureHost(
     onGroupDetailVisibilityChanged: (Boolean) -> Unit = {},
     onGroupCreateVisibilityChanged: (Boolean) -> Unit = {},
     onMembershipChanged: () -> Unit = {},
+    onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
 ) {
     val navController = rememberNavController()
     val currentBackStackEntry = navController.currentBackStackEntryAsState().value
     val clipboardManager = LocalClipboardManager.current
+    val currentOnRefreshActionChanged by rememberUpdatedState(onRefreshActionChanged)
 
     LaunchedEffect(currentBackStackEntry?.destination?.route) {
         val detailRoute = GroupDetailDestination::class.qualifiedName.orEmpty()
@@ -52,6 +57,10 @@ fun GroupFeatureHost(
     ) {
         composable<GroupHomeDestination> { entry ->
             val homeViewModel = rememberGroupHomeViewModel(entry, dependencies)
+            DisposableEffect(homeViewModel) {
+                currentOnRefreshActionChanged(homeViewModel::refresh)
+                onDispose { currentOnRefreshActionChanged(null) }
+            }
             GroupHomeRoute(
                 viewModel = homeViewModel,
                 isCurrentDestination = currentBackStackEntry == entry,

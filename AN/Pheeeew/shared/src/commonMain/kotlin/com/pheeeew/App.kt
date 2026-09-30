@@ -347,6 +347,8 @@ private fun AppContent(
     var moderationMessage by remember { mutableStateOf<String?>(null) }
     var isGroupDetailVisible by remember { mutableStateOf(false) }
     var isGroupCreateVisible by remember { mutableStateOf(false) }
+    var refreshGroup by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var refreshRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
     val isEmotionRecordFlowActive =
         selectedDestination == AppDestination.Map &&
             (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
@@ -461,6 +463,7 @@ private fun AppContent(
                             groupStampListRepository.invalidate()
                             nearbyViewModel.onMembershipChanged()
                         },
+                        onRefreshActionChanged = { refreshGroup = it },
                     )
                 }
             }
@@ -488,6 +491,7 @@ private fun AppContent(
                     WeeklyRankingRoute(
                         apiDependencies.client,
                         Modifier.fillMaxSize(),
+                        onRefreshActionChanged = { refreshRanking = it },
                     )
                 }
             }
@@ -531,10 +535,18 @@ private fun AppContent(
                             AppDestination.Ranking -> RankingRootDestination
                         }
 
-                    navController.navigate(route) {
-                        popUpTo<MapRootDestination> { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
+                    if (navController.currentDestination?.route == route::class.qualifiedName) {
+                        when (destination) {
+                            AppDestination.Map -> mapViewModel.refreshEmotionPins()
+                            AppDestination.Group -> refreshGroup?.invoke()
+                            AppDestination.Ranking -> refreshRanking?.invoke()
+                        }
+                    } else {
+                        navController.navigate(route) {
+                            popUpTo<MapRootDestination> { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 },
             )
