@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -27,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.core.navigation.PredictiveBackContent
@@ -130,7 +132,10 @@ fun SettingsScreen(
                                             { if (it) "success" else "failed" },
                                         ) { permissionSettingsLauncher.openAppSettings() }
                                 ) {
-                                    snackbarHostState.showSnackbar("설정 화면을 열지 못했어요.")
+                                    snackbarHostState.showSnackbar(
+                                        "설정 화면을 열지 못했어요.",
+                                        duration = SnackbarDuration.Indefinite,
+                                    )
                                 }
                             }
                         },
@@ -154,7 +159,10 @@ fun SettingsScreen(
                             )
                             if (!opened) {
                                 coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("메일 앱을 열 수 없어요.")
+                                    snackbarHostState.showSnackbar(
+                                        "메일 앱을 열 수 없어요.",
+                                        duration = SnackbarDuration.Indefinite,
+                                    )
                                 }
                             }
                         },
@@ -176,7 +184,16 @@ fun SettingsScreen(
 
             SnackbarHost(
                 hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding(),
+                modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp),
+                snackbar = { data ->
+                    Snackbar(
+                        message = data.visuals.message,
+                        onDismiss = data::dismiss,
+                        isError = true,
+                        maxLines = 3,
+                        presentationKey = data,
+                    )
+                },
             )
         }
     }

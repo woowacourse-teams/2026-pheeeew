@@ -39,11 +39,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.audio.rememberEmotionAudioPlayer
+import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.navigation.PredictiveBackEffect
 import com.pheeeew.domain.model.GeoCoordinate
@@ -282,7 +282,7 @@ fun NearbyEmotionSheet(
         }
     }
     if (state.groupSelectorVisible) {
-        Dialog(
+        AppDialog(
             onDismissRequest = viewModel::dismissGroups,
             properties = groupSelectorDialogProperties(),
         ) {

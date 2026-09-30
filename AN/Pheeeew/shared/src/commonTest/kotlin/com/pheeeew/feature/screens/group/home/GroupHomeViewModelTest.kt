@@ -17,6 +17,8 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -28,6 +30,75 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupHomeViewModelTest {
+    @Test
+    fun `fast refresh keeps content and loading feedback for at least 1000 milliseconds`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val initialGroup = group("initial")
+                val source =
+                    QueuedGroupListSource(
+                        CompletableDeferred(GroupListResult.Success(listOf(initialGroup))),
+                        CompletableDeferred(GroupListResult.Unavailable),
+                    )
+                val viewModel = createViewModel(source)
+                advanceUntilIdle()
+
+                viewModel.refresh()
+                runCurrent()
+                advanceTimeBy(999)
+                runCurrent()
+                assertEquals(GroupRefreshStatus.Refreshing, viewModel.uiState.value.refreshStatus)
+                assertEquals(GroupHomeContent.Ready(listOf(initialGroup)), viewModel.uiState.value.content)
+                viewModel.refresh()
+                assertEquals(2, source.calls)
+
+                advanceTimeBy(1)
+                runCurrent()
+                assertEquals(GroupRefreshStatus.Failed, viewModel.uiState.value.refreshStatus)
+                assertEquals(GroupHomeContent.Ready(listOf(initialGroup)), viewModel.uiState.value.content)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `returning to home only reloads after membership changes`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val initialGroup = group("initial")
+                val updatedGroup = group("updated")
+                val source =
+                    QueuedGroupListSource(
+                        CompletableDeferred(GroupListResult.Success(listOf(initialGroup))),
+                        CompletableDeferred(GroupListResult.Success(listOf(updatedGroup))),
+                    )
+                val viewModel = createViewModel(source)
+
+                advanceUntilIdle()
+                assertEquals(1, source.calls)
+                repeat(2) {
+                    viewModel.refreshIfDirty()
+                    advanceUntilIdle()
+                }
+                assertEquals(1, source.calls)
+                assertEquals(GroupHomeContent.Ready(listOf(initialGroup)), viewModel.uiState.value.content)
+
+                viewModel.invalidateMembership()
+                viewModel.refreshIfDirty()
+                advanceUntilIdle()
+                assertEquals(2, source.calls)
+                assertEquals(GroupHomeContent.Ready(listOf(updatedGroup)), viewModel.uiState.value.content)
+
+                viewModel.refreshIfDirty()
+                advanceUntilIdle()
+                assertEquals(2, source.calls)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     @Test
     fun `initial failure is separate from refresh failure and keeps loaded groups`() =
         runTest {
@@ -44,27 +115,27 @@ class GroupHomeViewModelTest {
                     )
                 val viewModel = createViewModel(source)
 
-                runCurrent()
+                advanceUntilIdle()
                 assertIs<GroupHomeContent.Failed>(viewModel.uiState.value.content)
 
                 viewModel.onRetry()
-                runCurrent()
+                advanceUntilIdle()
                 assertEquals(2, source.calls)
                 assertEquals(GroupHomeContent.Loading, viewModel.uiState.value.content)
                 assertEquals(GroupRefreshStatus.Idle, viewModel.uiState.value.refreshStatus)
 
                 retryResponse.complete(GroupListResult.Success(listOf(group)))
-                runCurrent()
+                advanceUntilIdle()
                 assertEquals(GroupHomeContent.Ready(listOf(group)), viewModel.uiState.value.content)
                 assertEquals(GroupRefreshStatus.Idle, viewModel.uiState.value.refreshStatus)
 
                 viewModel.refresh()
-                runCurrent()
+                advanceUntilIdle()
                 assertEquals(3, source.calls)
                 assertEquals(GroupRefreshStatus.Refreshing, viewModel.uiState.value.refreshStatus)
 
                 refreshFailure.complete(GroupListResult.Unavailable)
-                runCurrent()
+                advanceUntilIdle()
                 assertEquals(GroupHomeContent.Ready(listOf(group)), viewModel.uiState.value.content)
                 assertEquals(GroupRefreshStatus.Failed, viewModel.uiState.value.refreshStatus)
             } finally {
@@ -82,20 +153,20 @@ class GroupHomeViewModelTest {
                 val source = QueuedGroupListSource(first, second)
                 val viewModel = createViewModel(source)
 
-                runCurrent()
+                advanceUntilIdle()
                 viewModel.refresh()
-                runCurrent()
+                advanceUntilIdle()
                 assertEquals(1, source.calls)
 
                 first.complete(GroupListResult.Success(listOf(group("first"))))
-                runCurrent()
+                advanceUntilIdle()
                 viewModel.refresh()
                 viewModel.refresh()
-                runCurrent()
+                advanceUntilIdle()
                 assertEquals(2, source.calls)
 
                 second.complete(GroupListResult.Success(listOf(group("second"))))
-                runCurrent()
+                advanceUntilIdle()
             } finally {
                 Dispatchers.resetMain()
             }
@@ -111,18 +182,18 @@ class GroupHomeViewModelTest {
                 val source = QueuedGroupListSource(oldResponse, currentResponse)
                 val viewModel = createViewModel(source)
 
-                runCurrent()
+                advanceUntilIdle()
                 viewModel.invalidateMembership()
                 viewModel.refresh()
-                runCurrent()
+                advanceUntilIdle()
                 assertEquals(2, source.calls)
 
                 val currentGroup = group("current")
                 currentResponse.complete(GroupListResult.Success(listOf(currentGroup)))
-                runCurrent()
+                advanceUntilIdle()
 
                 oldResponse.complete(GroupListResult.Success(listOf(group("stale"))))
-                runCurrent()
+                advanceUntilIdle()
 
                 assertEquals(GroupHomeContent.Ready(listOf(currentGroup)), viewModel.uiState.value.content)
             } finally {
@@ -154,27 +225,27 @@ class GroupHomeViewModelTest {
                             ),
                     )
 
-                runCurrent()
+                advanceUntilIdle()
                 viewModel.openJoinSheet()
                 viewModel.onJoinCodeChanged("ABC123")
                 viewModel.onJoinSearchClick()
-                runCurrent()
+                advanceUntilIdle()
                 assertIs<GroupLookupState.Found>(viewModel.joinUiState.value.lookup)
 
                 viewModel.onJoinClick()
-                runCurrent()
+                advanceUntilIdle()
 
                 val succeeded = assertIs<GroupJoinSubmissionState.Succeeded>(viewModel.joinUiState.value.submission)
                 assertEquals(joinedGroupId, succeeded.groupId)
                 assertTrue(viewModel.consumeJoinAndClose(succeeded.operationKey))
 
                 viewModel.refreshIfDirty()
-                runCurrent()
+                advanceUntilIdle()
                 assertEquals(2, source.calls)
 
                 val joinedGroup = group(joinedGroupId.value)
                 refreshedGroups.complete(GroupListResult.Success(listOf(joinedGroup)))
-                runCurrent()
+                advanceUntilIdle()
 
                 assertEquals(GroupHomeContent.Ready(listOf(joinedGroup)), viewModel.uiState.value.content)
             } finally {

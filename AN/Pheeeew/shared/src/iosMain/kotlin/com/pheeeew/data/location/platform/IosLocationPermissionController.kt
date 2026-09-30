@@ -49,7 +49,13 @@ private class PermissionDelegate(
     suspend fun requestPermission(): LocationPermissionStatus {
         val status = locationManager.authorizationStatus
         if (status != kCLAuthorizationStatusNotDetermined) {
-            return status.toLocationPermissionStatus(locationServicesEnabled = true)
+            if (status == kCLAuthorizationStatusDenied || status == kCLAuthorizationStatusRestricted) {
+                // The OS may suppress the prompt after denial; still attempt the system request first.
+                locationManager.requestWhenInUseAuthorization()
+            }
+            return locationManager.authorizationStatus.toLocationPermissionStatus(
+                CLLocationManager.locationServicesEnabled(),
+            )
         }
         return suspendCancellableCoroutine { requestContinuation ->
             continuation?.cancel()

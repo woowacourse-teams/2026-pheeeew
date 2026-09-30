@@ -27,6 +27,7 @@ internal actual fun NativeMap(
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapBounds) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
+    onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
     modifier: Modifier,
@@ -34,6 +35,7 @@ internal actual fun NativeMap(
     val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
     val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
+    val currentOnMapBackgroundClick by rememberUpdatedState(onMapBackgroundClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
     val currentOnRecordViewportChanged by rememberUpdatedState(onRecordViewportChanged)
@@ -51,6 +53,8 @@ internal actual fun NativeMap(
                 ) = currentOnContentPresented(loadId, entryIds)
 
                 override fun onEmotionPinClick(id: Long) = currentOnEmotionPinClick(id)
+
+                override fun onMapBackgroundClick() = currentOnMapBackgroundClick()
 
                 override fun onRendererUnavailable() = currentOnMapError(MapErrorUiModel.RendererUnavailable)
 

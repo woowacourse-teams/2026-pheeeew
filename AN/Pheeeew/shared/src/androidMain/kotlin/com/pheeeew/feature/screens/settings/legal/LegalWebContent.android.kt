@@ -199,6 +199,7 @@ private class LegalDocumentWebViewClient(
 
 private fun configureLegalDocumentWebView(webView: WebView) {
     webView.settings.apply {
+        textZoom = 100
         javaScriptEnabled = false
         domStorageEnabled = false
         allowFileAccess = false

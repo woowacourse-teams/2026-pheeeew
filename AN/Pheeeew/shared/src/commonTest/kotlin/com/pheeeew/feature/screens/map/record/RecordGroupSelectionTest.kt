@@ -153,6 +153,7 @@ class RecordGroupSelectionTest {
                 assertEquals(listOf("none"), model.groupOptions.value.map { it.id })
                 assertTrue(!model.uiModel.value.isGroupSelectorVisible)
                 assertTrue(model.notice.value?.isError == true)
+                assertTrue(model.notice.value?.suppressWhenOffline == true)
             } finally {
                 Dispatchers.resetMain()
             }

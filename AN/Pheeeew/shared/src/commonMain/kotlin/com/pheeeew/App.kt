@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,7 +30,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -43,6 +41,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pheeeew.core.audio.rememberVoiceRecorder
+import com.pheeeew.core.designsystem.component.AppAlertDialog
+import com.pheeeew.core.designsystem.component.AppDialog
+import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
@@ -88,6 +89,7 @@ import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.feature.screens.splash.SplashScreen
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
@@ -191,7 +193,7 @@ private fun AppContent(
     var onboardingCompleted by remember { mutableStateOf(hasCompletedOnboarding) }
     val suggestedUpdate = versionDecision as? AppVersionDecision.UpdateSuggested
     if (suggestedUpdate != null && !suggestionDismissed) {
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { suggestionDismissed = true },
             title = { Text("새로운 버전이 나왔어요") },
             text = { Text("최신 버전으로 업데이트하면 더 나은 앱을 이용할 수 있어요.") },
@@ -212,16 +214,11 @@ private fun AppContent(
 
     if (!onboardingCompleted) {
         val onboardingRecorder = rememberVoiceRecorder()
+        val onboardingScope = rememberCoroutineScope()
+        var microphoneDialogResult by remember { mutableStateOf<CompletableDeferred<Unit>?>(null) }
         OnboardingScreen(
             monitoring = apiDependencies.client.monitoring,
             onFinished = {
-                try {
-                    locationDependencies.permissionController.requestPermission()
-                } catch (cancellation: CancellationException) {
-                    throw cancellation
-                } catch (_: Exception) {
-                    // A failed permission request must not block onboarding.
-                }
                 try {
                     onboardingRecorder.requestMicrophonePermission()
                     onboardingRecorder.state.first { !it.requestingPermission }
@@ -230,10 +227,37 @@ private fun AppContent(
                 } catch (_: Exception) {
                     // Recording can request permission again when the user needs it.
                 }
+                if (!onboardingRecorder.state.value.microphonePermissionGranted) {
+                    val result = CompletableDeferred<Unit>()
+                    microphoneDialogResult = result
+                    try {
+                        result.await()
+                    } finally {
+                        microphoneDialogResult = null
+                    }
+                }
                 onOnboardingCompleted()
                 onboardingCompleted = true
             },
         )
+        microphoneDialogResult?.let { result ->
+            ConfirmDialog(
+                title = "마이크 권한이 필요해요",
+                content = "음성을 녹음하려면 마이크 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요.",
+                confirmText = "설정으로 이동",
+                cancelText = "취소",
+                onConfirm = {
+                    onboardingScope.launch {
+                        try {
+                            permissionSettingsLauncher.openAppSettings()
+                        } finally {
+                            result.complete(Unit)
+                        }
+                    }
+                },
+                onCancel = { result.complete(Unit) },
+            )
+        }
         return
     }
 
@@ -323,6 +347,8 @@ private fun AppContent(
     var moderationMessage by remember { mutableStateOf<String?>(null) }
     var isGroupDetailVisible by remember { mutableStateOf(false) }
     var isGroupCreateVisible by remember { mutableStateOf(false) }
+    var refreshGroup by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var refreshRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
     val isEmotionRecordFlowActive =
         selectedDestination == AppDestination.Map &&
             (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
@@ -346,6 +372,9 @@ private fun AppContent(
                             !nearbyState.visible && detailState == EmotionDetailLoadUiModel.Closed &&
                                 !isSettingsVisible && reportTarget == null,
                         onListClick = nearbyViewModel::toggle,
+                        onMapBackgroundClick = {
+                            if (nearbyState.visible) nearbyViewModel.dismiss()
+                        },
                         onViewportChanged = nearbyViewModel::onViewportChanged,
                         onSettingClick = { isSettingsVisible = true },
                         onEmotionBubbleClick = {},
@@ -434,6 +463,7 @@ private fun AppContent(
                             groupStampListRepository.invalidate()
                             nearbyViewModel.onMembershipChanged()
                         },
+                        onRefreshActionChanged = { refreshGroup = it },
                     )
                 }
             }
@@ -461,6 +491,7 @@ private fun AppContent(
                     WeeklyRankingRoute(
                         apiDependencies.client,
                         Modifier.fillMaxSize(),
+                        onRefreshActionChanged = { refreshRanking = it },
                     )
                 }
             }
@@ -504,10 +535,18 @@ private fun AppContent(
                             AppDestination.Ranking -> RankingRootDestination
                         }
 
-                    navController.navigate(route) {
-                        popUpTo<MapRootDestination> { saveState = true }
-                        launchSingleTop = true
-                        restoreState = true
+                    if (navController.currentDestination?.route == route::class.qualifiedName) {
+                        when (destination) {
+                            AppDestination.Map -> mapViewModel.refreshEmotionPins()
+                            AppDestination.Group -> refreshGroup?.invoke()
+                            AppDestination.Ranking -> refreshRanking?.invoke()
+                        }
+                    } else {
+                        navController.navigate(route) {
+                            popUpTo<MapRootDestination> { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
                     }
                 },
             )
@@ -521,7 +560,7 @@ private fun RequiredUpdateDialog(
     onOpenStore: () -> Unit,
     onRetry: () -> Unit,
 ) {
-    Dialog(
+    AppDialog(
         onDismissRequest = {},
         properties = DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),
     ) {

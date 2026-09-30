@@ -12,7 +12,7 @@ data class RankingMember(
 
 private val previewRankingStamp =
     StampAppearanceUiModel(
-        label = "하유",
+        label = "히유",
         shape = StampShapeId.CIRCLE,
         fillArgb = 0xFF9DEBD5,
         textArgb = 0xFF17191A,
@@ -20,11 +20,11 @@ private val previewRankingStamp =
 
 internal val sampleRankings =
     listOf(
-        RankingMember(1, "우테코 8기 민준", 111),
-        RankingMember(2, "우테코 8기 하유", 98),
-        RankingMember(3, "우테코 8기 서연", 87),
-        RankingMember(4, "우테코 8기 유나", 76),
-        RankingMember(5, "우테코 8기 지호", 65),
+        RankingMember(1, "우테코 8기 별터", 111),
+        RankingMember(2, "우테코 8기 모스", 98),
+        RankingMember(3, "우테코 8기 허닛", 87),
+        RankingMember(4, "우테코 8기 어셔", 76),
+        RankingMember(5, "우테코 8기 스타크", 65),
         RankingMember(6, "우테코 8기 지민", 54),
         RankingMember(7, "우테코 8기 수빈", 43),
     )

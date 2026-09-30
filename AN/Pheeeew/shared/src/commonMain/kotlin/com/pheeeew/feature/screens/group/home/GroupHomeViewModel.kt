@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.group.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.utils.withMinimumLoadingTime
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.group.join.GroupJoinDependencies
@@ -167,10 +168,12 @@ class GroupHomeViewModel(
             viewModelScope.launch {
                 try {
                     val result =
-                        telemetry
-                            .operation(
-                                "group_list_load_finished",
-                            ).observe(::resultLabel) { requestGroups() }
+                        withMinimumLoadingTime {
+                            telemetry
+                                .operation(
+                                    "group_list_load_finished",
+                                ).observe(::resultLabel) { requestGroups() }
+                        }
                     if (requestId != requestGeneration) return@launch
 
                     when (result) {

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,9 +29,8 @@ fun RankingRow(
             modifier
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
-                .height(73.dp)
                 .rankingCardBorder()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
@@ -51,10 +49,10 @@ fun RankingRow(
             color = AppColors.RankingContent,
             fontSize = 13.sp,
             fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
+            maxLines = 2,
         )
         Column(horizontalAlignment = Alignment.End) {
-            Text("감정 개수", color = AppColors.RankingSecondaryContent, fontSize = 11.sp)
+            Text("감정 스탬프", color = AppColors.RankingSecondaryContent, fontSize = 11.sp)
             Text("${member.score}개", color = AppColors.RankingContent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
     }
@@ -63,5 +61,5 @@ fun RankingRow(
 @Preview
 @Composable
 private fun RankingRowPreview() {
-    RankingRow(sampleRankings[3], Modifier.padding(vertical = 16.dp))
+    RankingRow(sampleRankings[0], Modifier.padding(vertical = 16.dp))
 }

@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.ranking
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.utils.withMinimumLoadingTime
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.resultLabel
 import kotlinx.coroutines.CancellationException
@@ -105,15 +106,17 @@ class WeeklyRankingViewModel(
                 try {
                     when (
                         val result =
-                            telemetry
-                                .operation(
-                                    "ranking_load_finished",
-                                    mapOf(
-                                        "weeks_ago" to
-                                            com.pheeeew.core.monitoring.EventValue
-                                                .Integer(weeksAgo.toLong()),
-                                    ),
-                                ).observe(::resultLabel) { source.load(weeksAgo) }
+                            withMinimumLoadingTime {
+                                telemetry
+                                    .operation(
+                                        "ranking_load_finished",
+                                        mapOf(
+                                            "weeks_ago" to
+                                                com.pheeeew.core.monitoring.EventValue
+                                                    .Integer(weeksAgo.toLong()),
+                                        ),
+                                    ).observe(::resultLabel) { source.load(weeksAgo) }
+                            }
                     ) {
                         is WeeklyRankingLoadResult.Loaded -> {
                             if (requestId != requestGeneration) return@launch

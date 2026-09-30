@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.group.create.component
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,6 +23,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,9 +32,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
+import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.create.GroupCreateRecoveryState
@@ -57,7 +60,7 @@ internal fun CreateOutcomeUnknownDialog(
     onSelectCandidate: (GroupId) -> Unit,
     onRetryCreate: () -> Unit,
 ) {
-    Dialog(
+    AppDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
@@ -190,9 +193,16 @@ private fun RecoveryButton(
     text: String,
     onClick: () -> Unit,
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
     Button(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(50.dp),
+        interactionSource = interactionSource,
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .height(
+                    50.dp,
+                ).raisedButtonBorder(CircleShape, interactionSource = interactionSource),
         shape = CircleShape,
     ) {
         Text(text = text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)

@@ -19,7 +19,7 @@ internal fun RecordInputSupportingText(
 ) {
     Text(
         text = text,
-        modifier = Modifier.fillMaxWidth().padding(top = 6.dp, end = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(top = 2.dp, end = 4.dp),
         color = color,
         fontSize = 12.sp,
         textAlign = textAlign,

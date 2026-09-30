@@ -36,7 +36,7 @@ fun GroupHomeRoute(
     LaunchedEffect(lifecycleOwner, viewModel, isCurrentDestination) {
         if (!isCurrentDestination) return@LaunchedEffect
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
-            viewModel.refresh()
+            viewModel.refreshIfDirty()
             viewModel.joinUiState.collect { state ->
                 val result = state.submission as? GroupJoinSubmissionState.Succeeded ?: return@collect
                 viewModel.invalidateMembership()
