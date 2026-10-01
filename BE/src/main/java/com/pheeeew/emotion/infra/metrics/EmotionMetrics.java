@@ -1,5 +1,6 @@
 package com.pheeeew.emotion.infra.metrics;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
@@ -10,11 +11,15 @@ public class EmotionMetrics {
 
     private final MeterRegistry registry;
     private final Timer listQueryTimer;
+    private final Counter createThrottledCounter;
 
     public EmotionMetrics(MeterRegistry registry) {
         this.registry = registry;
         listQueryTimer = Timer.builder("pheeeew.sigh.list.query")
                 .description("List repository call duration, including failed calls")
+                .register(registry);
+        createThrottledCounter = Counter.builder("pheeeew.emotion.create.throttled")
+                .description("Emotion create requests rejected by the per-device rate limit")
                 .register(registry);
         registerListResults(registry, "first", true);
         registerListResults(registry, "first", false);
@@ -28,6 +33,10 @@ public class EmotionMetrics {
 
     public void recordListQuery(Timer.Sample sample) {
         sample.stop(listQueryTimer);
+    }
+
+    public void recordCreateThrottled() {
+        createThrottledCounter.increment();
     }
 
     public void recordListResult(String page, int returnedCount, boolean hasNext) {

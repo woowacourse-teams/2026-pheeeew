@@ -60,4 +60,5 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    systemProperty 'pheeeew.rate-limit.emotion-create.enabled', 'false'
 }

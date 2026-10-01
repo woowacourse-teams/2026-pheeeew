@@ -112,8 +112,9 @@ class EmotionAudioPlaybackIntegrationTest {
                     assertThat(item.hasAudio()).isTrue();
                     assertThat(item.audio()).isEqualTo(first);
                 });
+        assertThat(page.items()).extracting(item -> item.id()).containsExactlyInAnyOrder(emotion.getId(), memo.getId());
         assertThat(page.items()).filteredOn(item -> !item.id().equals(emotion.getId()))
-                .hasSize(2).allSatisfy(item -> {
+                .hasSize(1).allSatisfy(item -> {
                     assertThat(item.hasAudio()).isFalse();
                     assertThat(item.audio()).isNull();
                 });
@@ -121,6 +122,7 @@ class EmotionAudioPlaybackIntegrationTest {
         assertThat(refreshed.items()).filteredOn(item -> item.id().equals(emotion.getId()))
                 .singleElement().satisfies(item -> assertThat(item.audio()).isEqualTo(second));
         assertThat(queryService.findById(memo.getId(), viewer.getPublicId()).audio()).isNull();
+        assertThat(page.items()).extracting(item -> item.id()).doesNotContain(empty.getId());
         assertThat(queryService.findById(empty.getId(), viewer.getPublicId()).audio()).isNull();
         verify(issuer, times(2)).issuePlayback(OBJECT_KEY);
         verifyNoMoreInteractions(issuer);
@@ -130,6 +132,7 @@ class EmotionAudioPlaybackIntegrationTest {
     void 목록은_현재_페이지의_녹음에만_URL을_발급하며_다음_커서에서도_반환한다() {
         // given
         for (int i = 0; i < 20; i++) {
+            emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).memo("메모").build());
             emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).build());
         }
         entityManager.flush();
@@ -152,6 +155,64 @@ class EmotionAudioPlaybackIntegrationTest {
         assertThat(second.hasNext()).isFalse();
         assertThat(second.nextCursor()).isNull();
         verify(issuer).issuePlayback(OBJECT_KEY);
+    }
+
+    @Test
+    void 내용_조건은_목록의_페이지_제한_전에_적용하고_지도는_모든_유형을_유지한다() {
+        // given: 가장 오래된 녹음 앞뒤로 내용 없는 감정과 메모를 섞는다.
+        Emotion oldestEmpty = emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).build());
+        entityManager.flush();
+        entityManager.createNativeQuery("UPDATE emotions SET created_at = '2025-01-01T00:00:00Z' WHERE id = :id")
+                .setParameter("id", oldestEmpty.getId()).executeUpdate();
+        for (int i = 0; i < 20; i++) {
+            emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).memo("메모").build());
+            emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).memo("   ").build());
+        }
+        entityManager.flush();
+        entityManager.clear();
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+        PlaybackUrl playback = PlaybackUrl.of("https://audio.example.test/signed", Instant.now().plusSeconds(3600));
+        when(issuer.issuePlayback(OBJECT_KEY)).thenReturn(playback);
+
+        // when
+        var first = queryService.findFirstListPage(bounds, viewer.getPublicId());
+        var second = queryService.findNextListPage(first.nextCursor(), viewer.getPublicId());
+        var map = queryService.findFirstMapPage(bounds, viewer.getPublicId(), null);
+
+        // then
+        assertThat(first.items()).hasSize(20).allSatisfy(item -> assertThat(item.memo()).isEqualTo("메모"));
+        assertThat(first.hasNext()).isTrue();
+        assertThat(first.nextCursor()).isNotBlank();
+        assertThat(second.items()).singleElement().satisfies(item -> {
+            assertThat(item.id()).isEqualTo(emotion.getId());
+            assertThat(item.audio()).isEqualTo(playback);
+        });
+        assertThat(second.hasNext()).isFalse();
+        assertThat(second.nextCursor()).isNull();
+        assertThat(map.items()).hasSize(42).extracting(EmotionMapItemView::id)
+                .contains(emotion.getId(), oldestEmpty.getId())
+                .containsAll(first.items().stream().map(item -> item.id()).toList());
+        verify(issuer).issuePlayback(OBJECT_KEY);
+    }
+
+    @Test
+    void 내용_없는_감정만_있으면_목록은_빈_마지막_페이지이고_지도에는_표시한다() {
+        // given
+        emotionRepository.findById(emotion.getId()).orElseThrow().delete();
+        Emotion empty = emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).memo("   ").build());
+        entityManager.flush();
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+
+        // when
+        var list = queryService.findFirstListPage(bounds, viewer.getPublicId());
+        var map = queryService.findFirstMapPage(bounds, viewer.getPublicId(), null);
+
+        // then
+        assertThat(list.items()).isEmpty();
+        assertThat(list.hasNext()).isFalse();
+        assertThat(list.nextCursor()).isNull();
+        assertThat(map.items()).extracting(EmotionMapItemView::id).containsExactly(empty.getId());
+        verifyNoInteractions(issuer);
     }
 
     @ParameterizedTest
