@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.ranking.components
+package com.pheeeew.feature.screens.ranking.stamp.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border

@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.ranking
+package com.pheeeew.feature.screens.ranking.stamp
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -10,12 +10,13 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Instant
 
 data class WeeklyRankingUiState(
     val weeksAgo: Int = 0,
-    val weekLabel: String = "",
+    val weekLabel: String = koreanWeekRangeLabel(),
     val hasPrevious: Boolean = false,
     val rankings: List<RankingMember> = emptyList(),
     val status: WeeklyRankingStatus = WeeklyRankingStatus.Loading,
@@ -94,12 +95,12 @@ class WeeklyRankingViewModel(
     ) {
         requestJob?.cancel()
         val requestId = ++requestGeneration
-        val currentWeekLabel = _uiState.value.weekLabel
+        val requestedWeekLabel = koreanWeekRangeLabel(weeksAgo)
         _uiState.value =
             if (preserveContent) {
                 _uiState.value.copy(isRefreshing = true, hasRefreshError = false)
             } else {
-                WeeklyRankingUiState(weeksAgo = weeksAgo, weekLabel = currentWeekLabel)
+                WeeklyRankingUiState(weeksAgo = weeksAgo, weekLabel = requestedWeekLabel)
             }
         requestJob =
             viewModelScope.launch {
@@ -138,7 +139,7 @@ class WeeklyRankingViewModel(
                                     } else {
                                         WeeklyRankingUiState(
                                             weeksAgo = weeksAgo,
-                                            weekLabel = currentWeekLabel,
+                                            weekLabel = requestedWeekLabel,
                                             status = WeeklyRankingStatus.Failed,
                                         )
                                     }
@@ -155,7 +156,7 @@ class WeeklyRankingViewModel(
                             } else {
                                 WeeklyRankingUiState(
                                     weeksAgo = weeksAgo,
-                                    weekLabel = currentWeekLabel,
+                                    weekLabel = requestedWeekLabel,
                                     status = WeeklyRankingStatus.Failed,
                                 )
                             }
@@ -181,3 +182,20 @@ private fun String.toKoreanDate(): String =
             .take(10)
             .replace('-', '.')
     }.getOrElse { take(10).replace('-', '.') }
+
+private const val KOREA_OFFSET_MILLIS = 9 * 60 * 60 * 1_000L
+private const val MILLIS_PER_DAY = 24 * 60 * 60 * 1_000L
+
+private fun koreanWeekRangeLabel(weeksAgo: Int = 0): String {
+    val todayInKorea = (Clock.System.now().toEpochMilliseconds() + KOREA_OFFSET_MILLIS) / MILLIS_PER_DAY
+    val daysSinceMonday = ((todayInKorea + 3) % 7 + 7) % 7
+    val monday = todayInKorea - daysSinceMonday - weeksAgo * 7L
+    return "${dateFromEpochDay(monday)} ~ ${dateFromEpochDay(monday + 7)}"
+}
+
+private fun dateFromEpochDay(epochDay: Long): String =
+    Instant
+        .fromEpochMilliseconds(epochDay * MILLIS_PER_DAY)
+        .toString()
+        .take(10)
+        .replace('-', '.')

@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.ranking.components
+package com.pheeeew.feature.screens.ranking.stamp.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -17,8 +17,8 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.component.stamp.GroupStamp
-import com.pheeeew.feature.screens.ranking.RankingMember
-import com.pheeeew.feature.screens.ranking.sampleRankings
+import com.pheeeew.feature.screens.ranking.stamp.RankingMember
+import com.pheeeew.feature.screens.ranking.stamp.sampleRankings
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.weekly_ranking_crown

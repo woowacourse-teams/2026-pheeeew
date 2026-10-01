@@ -10,6 +10,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.filterIsInstance
@@ -19,20 +20,22 @@ import kotlinx.coroutines.flow.filterIsInstance
 internal fun Modifier.raisedPressEffect(
     interactionSource: InteractionSource,
     enabled: Boolean = true,
+    restingOffset: Dp = 0.dp,
+    pressedOffset: Dp = 2.dp,
 ): Modifier {
-    val pressOffset = remember { Animatable(0f) }
-    LaunchedEffect(interactionSource, enabled) {
-        pressOffset.snapTo(0f)
+    val pressOffset = remember(restingOffset) { Animatable(restingOffset.value) }
+    LaunchedEffect(interactionSource, enabled, restingOffset, pressedOffset) {
+        pressOffset.snapTo(restingOffset.value)
         if (enabled) {
             interactionSource.interactions.filterIsInstance<PressInteraction>().collectLatest { interaction ->
                 when (interaction) {
                     is PressInteraction.Press -> {
-                        pressOffset.snapTo(2f)
+                        pressOffset.snapTo(pressedOffset.value)
                     }
 
                     is PressInteraction.Release, is PressInteraction.Cancel -> {
                         pressOffset.animateTo(
-                            targetValue = 0f,
+                            targetValue = restingOffset.value,
                             animationSpec = tween(80, easing = CubicBezierEasing(0.25f, 0.1f, 0.25f, 1f)),
                         )
                     }

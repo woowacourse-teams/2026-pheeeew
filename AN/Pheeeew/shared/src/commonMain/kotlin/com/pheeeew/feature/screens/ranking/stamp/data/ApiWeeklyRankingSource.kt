@@ -1,12 +1,12 @@
-package com.pheeeew.feature.screens.ranking.data
+package com.pheeeew.feature.screens.ranking.stamp.data
 
 import com.pheeeew.domain.repository.GroupRankingLoadResult
 import com.pheeeew.domain.repository.GroupRankingRepository
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.toUiShape
-import com.pheeeew.feature.screens.ranking.RankingMember
-import com.pheeeew.feature.screens.ranking.WeeklyRankingLoadResult
-import com.pheeeew.feature.screens.ranking.WeeklyRankingSource
+import com.pheeeew.feature.screens.ranking.stamp.RankingMember
+import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingLoadResult
+import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingSource
 
 class ApiWeeklyRankingSource(
     private val repository: GroupRankingRepository,
