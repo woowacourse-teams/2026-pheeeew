@@ -31,3 +31,9 @@ pheeeew:
     require-attestation: true
   app-attest:
     require-attestation: true
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
