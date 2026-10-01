@@ -580,6 +580,7 @@ class EmotionQueryServiceIntegrationTest {
                 .requestId(UUID.randomUUID())
                 .location(서울시청_좌표())
                 .state(EmotionState.FRUSTRATED)
+                .memo("메모")
                 .nickname("먼지구름")
                 .deviceId(author.getId())
                 .groupStamp(stamp)
@@ -593,6 +594,7 @@ class EmotionQueryServiceIntegrationTest {
                 .requestId(UUID.randomUUID())
                 .location(location)
                 .state(EmotionState.FRUSTRATED)
+                .memo("메모")
                 .nickname("먼지구름")
                 .deviceId(authorId)
                 .build());

@@ -78,7 +78,7 @@ public class EmotionQueryService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
         return emotionRepository.findVisiblePageWithinBounds(
-                bounds, snapshotAt, lastCreatedAt, lastId, deviceId, null, limit
+                bounds, snapshotAt, lastCreatedAt, lastId, deviceId, null, false, limit
         ).stream().map(EmotionListItemView::from).toList();
     }
 
@@ -128,7 +128,7 @@ public class EmotionQueryService {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
         List<Emotion> found = emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), PAGE_SIZE + 1);
+                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), true, PAGE_SIZE + 1);
         boolean hasNext = found.size() > PAGE_SIZE;
         List<Emotion> page = hasNext ? found.subList(0, PAGE_SIZE) : found;
         Map<Long, EnumMap<EmojiType, EmotionEmojiResult>> counts = new HashMap<>();
@@ -155,7 +155,7 @@ public class EmotionQueryService {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
         List<Emotion> found = emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), MAP_PAGE_SIZE + 1);
+                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), false, MAP_PAGE_SIZE + 1);
         boolean hasNext = found.size() > MAP_PAGE_SIZE;
         List<Emotion> page = hasNext ? found.subList(0, MAP_PAGE_SIZE) : found;
         Map<Long, GroupStampResult> stamps = findStamps(page);
