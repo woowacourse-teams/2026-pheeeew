@@ -87,7 +87,7 @@ import com.pheeeew.feature.screens.map.nearby.face
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
-import com.pheeeew.feature.screens.ranking.press.PressRankingScreen
+import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
@@ -518,7 +518,11 @@ private fun AppContent(
                             onRefreshActionChanged = { refreshRanking = it },
                         )
                     } else {
-                        PressRankingScreen(Modifier.fillMaxSize())
+                        PressRankingRoute(
+                            apiDependencies.client,
+                            Modifier.fillMaxSize(),
+                            onRefreshActionChanged = { refreshRanking = it },
+                        )
                     }
                 }
             }

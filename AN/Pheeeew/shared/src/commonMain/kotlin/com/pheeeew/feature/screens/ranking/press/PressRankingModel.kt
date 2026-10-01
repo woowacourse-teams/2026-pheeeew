@@ -3,13 +3,14 @@ package com.pheeeew.feature.screens.ranking.press
 internal enum class PressEmotion(
     val label: String,
     val phrase: String,
+    val apiState: String?,
 ) {
-    All("전체", ""),
-    Frustrated("답답", "답답한"),
-    Annoyed("짜증", "짜증나는"),
-    Tired("지침", "지친"),
-    Discouraged("좌절", "좌절한"),
-    Angry("분노", "분노한"),
+    All("전체", "", null),
+    Frustrated("답답", "답답한", "FRUSTRATED"),
+    Annoyed("짜증", "짜증나는", "IRRITATED"),
+    Tired("지침", "지친", "EXHAUSTED"),
+    Discouraged("좌절", "좌절한", "DISCOURAGED"),
+    Angry("분노", "분노한", "ANGRY"),
 }
 
 internal data class PressGroupRank(
