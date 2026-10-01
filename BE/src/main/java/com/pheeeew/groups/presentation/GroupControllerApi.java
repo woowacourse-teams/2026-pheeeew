@@ -7,6 +7,7 @@ import com.pheeeew.groups.presentation.dto.GroupPressRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -40,7 +41,7 @@ public interface GroupControllerApi {
             @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름")
     })
     ResponseEntity<GroupResponse> save(
-            GroupCreateRequest request,
+            @Valid GroupCreateRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
@@ -125,7 +126,7 @@ public interface GroupControllerApi {
     })
     GroupResponse update(
             UUID groupId,
-            GroupUpdateRequest request,
+            @Valid GroupUpdateRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
@@ -147,7 +148,7 @@ public interface GroupControllerApi {
     })
     GroupPressCountResponse press(
             UUID groupId,
-            GroupPressRequest request,
+            @Valid GroupPressRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
