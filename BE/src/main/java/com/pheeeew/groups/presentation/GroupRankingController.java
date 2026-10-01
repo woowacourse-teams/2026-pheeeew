@@ -2,6 +2,9 @@ package com.pheeeew.groups.presentation;
 
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.GroupRankingService;
+import com.pheeeew.auth.presentation.annotation.CurrentDevice;
+import com.pheeeew.groups.presentation.dto.GroupPressRankingResponse;
+import java.util.UUID;
 import com.pheeeew.groups.presentation.dto.GroupRankingResponse;
 import com.pheeeew.groups.presentation.dto.GroupStatePressRankingResponse;
 import lombok.RequiredArgsConstructor;
@@ -28,18 +31,24 @@ public class GroupRankingController implements GroupRankingControllerApi {
 
     @Override
     @GetMapping("/press-rankings")
-    public GroupRankingResponse findPressRanking(
-            @RequestParam(defaultValue = "0") int weeksAgo
+    public GroupPressRankingResponse findPressRanking(
+            @RequestParam(defaultValue = "0") int weeksAgo,
+            @CurrentDevice UUID devicePublicId
     ) {
-        return GroupRankingResponse.from(groupRankingService.findPressRanking(weeksAgo));
+        return GroupPressRankingResponse.from(
+                groupRankingService.findPressRanking(devicePublicId, weeksAgo)
+        );
     }
 
     @Override
     @GetMapping("/press-rankings/states/{state}")
     public GroupStatePressRankingResponse findPressRankingByState(
             @PathVariable EmotionState state,
-            @RequestParam(defaultValue = "0") int weeksAgo
+            @RequestParam(defaultValue = "0") int weeksAgo,
+            @CurrentDevice UUID devicePublicId
     ) {
-        return GroupStatePressRankingResponse.from(groupRankingService.findPressRankingByState(state, weeksAgo));
+        return GroupStatePressRankingResponse.from(
+                groupRankingService.findPressRankingByState(devicePublicId, state, weeksAgo)
+        );
     }
 }

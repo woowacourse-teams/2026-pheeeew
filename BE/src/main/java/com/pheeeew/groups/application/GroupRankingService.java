@@ -1,15 +1,21 @@
 package com.pheeeew.groups.application;
 
+import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.groups.application.dto.GroupPressRankingItem;
+import com.pheeeew.groups.application.dto.GroupPressRankingResult;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupRankingResult;
+import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
+import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
+import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRankingRepository;
 import com.pheeeew.groups.domain.repository.projection.GroupScoreProjection;
 import java.time.Clock;
-import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
-import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.BiFunction;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,13 +27,14 @@ public class GroupRankingService {
 
     private final GroupRankingRepository groupRankingRepository;
     private final GroupDailyPressRepository groupDailyPressRepository;
+    private final GroupMemberRepository groupMemberRepository;
     private final Clock clock;
 
     public GroupRankingResult findGroupRanking(int weeksAgo) {
         RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
         List<GroupScoreProjection> scores =
                 groupRankingRepository.findGroupScores(week.startAt(), week.endAt());
-        List<GroupRankingItem> items = rank(scores);
+        List<GroupRankingItem> items = rank(scores, GroupRankingItem::of);
 
         return GroupRankingResult.of(
                 weeksAgo,
@@ -38,21 +45,25 @@ public class GroupRankingService {
         );
     }
 
-    public GroupRankingResult findPressRanking(int weeksAgo) {
+    public GroupPressRankingResult findPressRanking(UUID devicePublicId, int weeksAgo) {
         RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
         List<GroupScoreProjection> scores =
                 groupDailyPressRepository.findPressScores(week.startDate(), week.endDate());
 
-        return GroupRankingResult.of(
+        return GroupPressRankingResult.of(
                 weeksAgo,
                 week.startAt(),
                 week.endAt(),
                 groupDailyPressRepository.existsPressBefore(week.startDate()),
-                rank(scores)
+                rankPresses(scores, devicePublicId)
         );
     }
 
-    public GroupStatePressRankingResult findPressRankingByState(EmotionState state, int weeksAgo) {
+    public GroupStatePressRankingResult findPressRankingByState(
+            UUID devicePublicId,
+            EmotionState state,
+            int weeksAgo
+    ) {
         RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
         List<GroupScoreProjection> scores =
                 groupDailyPressRepository.findPressScoresByState(state, week.startDate(), week.endDate());
@@ -63,12 +74,22 @@ public class GroupRankingService {
                 week.startAt(),
                 week.endAt(),
                 groupDailyPressRepository.existsPressBefore(week.startDate()),
-                rank(scores)
+                rankPresses(scores, devicePublicId)
         );
     }
 
-    private List<GroupRankingItem> rank(List<GroupScoreProjection> scores) {
-        List<GroupRankingItem> items = new ArrayList<>(scores.size());
+    private List<GroupPressRankingItem> rankPresses(List<GroupScoreProjection> scores, UUID devicePublicId) {
+        Set<UUID> myGroupPublicIds = Set.copyOf(groupMemberRepository.findMyGroupPublicIds(devicePublicId));
+
+        return rank(scores, (rank, score) ->
+                GroupPressRankingItem.of(rank, score, myGroupPublicIds.contains(score.getGroupPublicId())));
+    }
+
+    private <T> List<T> rank(
+            List<GroupScoreProjection> scores,
+            BiFunction<Integer, GroupScoreProjection, T> toItem
+    ) {
+        List<T> items = new ArrayList<>(scores.size());
         int rank = 0;
         long previousScore = Long.MIN_VALUE;
         for (int index = 0; index < scores.size(); index++) {
@@ -77,7 +98,7 @@ public class GroupRankingService {
                 rank = index + 1;
                 previousScore = score.getScore();
             }
-            items.add(GroupRankingItem.of(rank, score));
+            items.add(toItem.apply(rank, score));
         }
 
         return items;

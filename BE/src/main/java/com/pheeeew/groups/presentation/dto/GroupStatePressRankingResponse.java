@@ -11,7 +11,7 @@ public record GroupStatePressRankingResponse(
         Instant startAt,
         Instant endAt,
         boolean hasPrevious,
-        List<GroupRankingResponse.Item> items
+        List<GroupPressRankingResponse.Item> items
 ) {
     public static GroupStatePressRankingResponse from(GroupStatePressRankingResult result) {
         return new GroupStatePressRankingResponse(
@@ -20,7 +20,7 @@ public record GroupStatePressRankingResponse(
                 result.startAt(),
                 result.endAt(),
                 result.hasPrevious(),
-                result.items().stream().map(GroupRankingResponse.Item::from).toList()
+                result.items().stream().map(GroupPressRankingResponse.Item::from).toList()
         );
     }
 }

@@ -1,5 +1,7 @@
 package com.pheeeew.groups.presentation;
 
+import com.pheeeew.groups.presentation.dto.GroupPressRankingResponse;
+import java.util.UUID;
 import com.pheeeew.groups.presentation.dto.GroupRankingResponse;
 import com.pheeeew.groups.presentation.dto.GroupStatePressRankingResponse;
 import com.pheeeew.emotion.domain.EmotionState;
@@ -45,12 +47,13 @@ public interface GroupRankingControllerApi {
                     그룹끼리 겨룹니다. 점수는 **그 주에 그 그룹에서 누른 감정 버튼 수**입니다.
                     다섯 감정을 모두 합친 수이며, 감정별로 나눠 보려면 `/press-rankings/states` 를 씁니다.
 
-                    - **지도에 남긴 감정을 세는 `/rankings` 와는 다른 순위입니다.** 두 점수는 섞이지 않습니다.
+                    - **스탬프 랭킹(`/rankings`)과는 다른 순위입니다.** 두 점수는 섞이지 않습니다.
                     - **로그인한 누구나 볼 수 있습니다.** 어느 그룹에도 속하지 않아도 됩니다.
                     - 주는 **월요일 00:00 KST** 에 바뀝니다. `/rankings` 와 같은 경계입니다.
                     - `weeksAgo` 로 몇 주 전인지 고릅니다. `0` 이 이번 주, `1` 이 지난주입니다.
                     - 동점은 **공동 순위**입니다. 1, 2, 2, 4 로 매깁니다.
                     - 그 주에 한 번도 누르지 않은 그룹은 나오지 않습니다.
+                    - 각 항목의 `mine` 은 **요청한 기기가 그 그룹의 멤버인지**입니다. 내 그룹을 강조하는 데 씁니다.
                     - 응답의 `hasPrevious` 가 `false` 면 그보다 이전에는 누른 기록이 없습니다.
 
                     **순위를 저장해 두지 않고 요청할 때마다 다시 셉니다.**
@@ -61,10 +64,12 @@ public interface GroupRankingControllerApi {
             @ApiResponse(responseCode = "400", description = "weeksAgo 값이 올바르지 않음"),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음")
     })
-    GroupRankingResponse findPressRanking(
+    GroupPressRankingResponse findPressRanking(
             @Min(value = 0, message = "몇 주 전인지는 0 이상이어야 합니다.")
             @Max(value = 520, message = "몇 주 전인지는 520 이하여야 합니다.")
-            int weeksAgo
+            int weeksAgo,
+
+            UUID devicePublicId
     );
 
     @Operation(
@@ -76,7 +81,7 @@ public interface GroupRankingControllerApi {
                       그 밖의 값을 보내면 `400` 입니다.
                     - 그 감정을 그 주에 한 번도 누르지 않았으면 `items` 가 **빈 배열**입니다. 오류가 아닙니다.
                     - 응답의 `state` 에 조회한 감정이 그대로 담겨 옵니다. 여러 감정을 동시에 요청할 때 짝을 맞추는 데 씁니다.
-                    - 기간, 공동 순위, `hasPrevious` 규칙은 `/press-rankings` 와 같습니다.
+                    - 기간, 공동 순위, `mine`, `hasPrevious` 규칙은 `/press-rankings` 와 같습니다.
                     - 다섯 감정을 합친 순위는 `/press-rankings` 에서 봅니다.
                     """
     )
@@ -91,6 +96,8 @@ public interface GroupRankingControllerApi {
 
             @Min(value = 0, message = "몇 주 전인지는 0 이상이어야 합니다.")
             @Max(value = 520, message = "몇 주 전인지는 520 이하여야 합니다.")
-            int weeksAgo
+            int weeksAgo,
+
+            UUID devicePublicId
     );
 }
