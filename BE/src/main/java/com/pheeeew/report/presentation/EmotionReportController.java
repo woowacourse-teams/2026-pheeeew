@@ -5,6 +5,7 @@ import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.report.application.dto.EmotionReportResult;
 import com.pheeeew.report.presentation.dto.EmotionReportCreateRequest;
 import com.pheeeew.report.presentation.dto.EmotionReportResponse;
+import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,7 +26,7 @@ public class EmotionReportController implements EmotionReportControllerApi {
     @PostMapping
     public ResponseEntity<EmotionReportResponse> save(
             @CurrentDevice UUID devicePublicId,
-            @RequestBody EmotionReportCreateRequest request
+            @Valid @RequestBody EmotionReportCreateRequest request
     ) {
         EmotionReportResult result = emotionReportService.save(request.emotionId(), devicePublicId, request.reason());
 

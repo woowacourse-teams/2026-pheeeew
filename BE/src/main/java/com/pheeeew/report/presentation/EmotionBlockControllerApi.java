@@ -4,7 +4,6 @@ import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.report.presentation.dto.BlockCreateRequest;
 import com.pheeeew.report.presentation.dto.EmotionBlockResponse;
-import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -115,7 +114,7 @@ public interface EmotionBlockControllerApi {
     })
     ResponseEntity<EmotionBlockResponse> save(
             @Parameter(hidden = true) UUID devicePublicId,
-            @Valid BlockCreateRequest request
+            BlockCreateRequest request
     );
 
     @Operation(

@@ -7,6 +7,7 @@ import com.pheeeew.groups.application.InviteCodeGenerator;
 import com.pheeeew.groups.presentation.dto.GroupJoinRequest;
 import com.pheeeew.groups.presentation.dto.GroupPreviewResponse;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
+import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +41,7 @@ public class GroupMemberController implements GroupMemberControllerApi {
     @Override
     @PostMapping("/join")
     public ResponseEntity<GroupResponse> join(
-            @RequestBody GroupJoinRequest request,
+            @Valid @RequestBody GroupJoinRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
         GroupResult result = groupService.join(devicePublicId, request.inviteCode());

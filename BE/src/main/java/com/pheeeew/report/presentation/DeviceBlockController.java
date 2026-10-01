@@ -7,6 +7,7 @@ import com.pheeeew.report.application.dto.BlockListResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.presentation.dto.BlockCreateRequest;
 import com.pheeeew.report.presentation.dto.DeviceBlockResponse;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +33,7 @@ public class DeviceBlockController implements DeviceBlockControllerApi {
     @PostMapping
     public ResponseEntity<DeviceBlockResponse> save(
             @CurrentDevice UUID devicePublicId,
-            @RequestBody BlockCreateRequest request
+            @Valid @RequestBody BlockCreateRequest request
     ) {
         BlockSaveResult result = deviceBlockService.save(request.emotionId(), devicePublicId);
 
