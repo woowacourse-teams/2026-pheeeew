@@ -3,6 +3,7 @@ package com.pheeeew.report.presentation;
 import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.report.presentation.dto.EmotionReportCreateRequest;
 import com.pheeeew.report.presentation.dto.EmotionReportResponse;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -104,6 +105,6 @@ public interface EmotionReportControllerApi {
     })
     ResponseEntity<EmotionReportResponse> save(
             @Parameter(hidden = true) UUID devicePublicId,
-            EmotionReportCreateRequest request
+            @Valid EmotionReportCreateRequest request
     );
 }

@@ -4,6 +4,7 @@ import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.report.presentation.dto.BlockCreateRequest;
 import com.pheeeew.report.presentation.dto.DeviceBlockResponse;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -140,7 +141,7 @@ public interface DeviceBlockControllerApi {
     })
     ResponseEntity<DeviceBlockResponse> save(
             @Parameter(hidden = true) UUID devicePublicId,
-            BlockCreateRequest request
+            @Valid BlockCreateRequest request
     );
 
     @Operation(

@@ -6,6 +6,7 @@ import com.pheeeew.device.presentation.dto.AccessTokenResponse;
 import com.pheeeew.device.presentation.dto.DeviceChallengeResponse;
 import com.pheeeew.device.presentation.dto.DeviceCreateRequest;
 import com.pheeeew.device.presentation.dto.DeviceTokenResponse;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -147,7 +148,7 @@ public interface DeviceControllerApi {
                     )
             )
     })
-    ResponseEntity<DeviceTokenResponse> save(DeviceCreateRequest request);
+    ResponseEntity<DeviceTokenResponse> save(@Valid DeviceCreateRequest request);
 
     @Operation(
             summary = "무결성 증명 challenge 발급",
@@ -252,5 +253,5 @@ public interface DeviceControllerApi {
                     )
             )
     })
-    AccessTokenResponse reissueAccessToken(AccessTokenReissueRequest request);
+    AccessTokenResponse reissueAccessToken(@Valid AccessTokenReissueRequest request);
 }

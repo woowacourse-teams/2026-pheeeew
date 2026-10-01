@@ -7,7 +7,6 @@ import com.pheeeew.report.application.dto.BlockListResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.presentation.dto.BlockCreateRequest;
 import com.pheeeew.report.presentation.dto.EmotionBlockResponse;
-import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +32,7 @@ public class EmotionBlockController implements EmotionBlockControllerApi {
     @PostMapping
     public ResponseEntity<EmotionBlockResponse> save(
             @CurrentDevice UUID devicePublicId,
-            @Valid @RequestBody BlockCreateRequest request
+            @RequestBody BlockCreateRequest request
     ) {
         BlockSaveResult result = emotionBlockService.save(request.emotionId(), devicePublicId);
 

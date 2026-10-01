@@ -3,6 +3,7 @@ package com.pheeeew.groups.presentation;
 import com.pheeeew.groups.presentation.dto.GroupJoinRequest;
 import com.pheeeew.groups.presentation.dto.GroupPreviewResponse;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -57,7 +58,7 @@ public interface GroupMemberControllerApi {
             @ApiResponse(responseCode = "409", description = "이미 속해 있음")
     })
     ResponseEntity<GroupResponse> join(
-            GroupJoinRequest request,
+            @Valid GroupJoinRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 

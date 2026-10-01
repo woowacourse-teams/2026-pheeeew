@@ -12,7 +12,6 @@ import com.pheeeew.device.presentation.dto.AccessTokenResponse;
 import com.pheeeew.device.presentation.dto.DeviceChallengeResponse;
 import com.pheeeew.device.presentation.dto.DeviceCreateRequest;
 import com.pheeeew.device.presentation.dto.DeviceTokenResponse;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,7 +32,7 @@ public class DeviceController implements DeviceControllerApi {
     @Override
     @PostMapping
     public ResponseEntity<DeviceTokenResponse> save(
-            @Valid @RequestBody DeviceCreateRequest request
+            @RequestBody DeviceCreateRequest request
     ) {
         DeviceSaveResult result = deviceService.save(
                 request.requestId(),
@@ -65,7 +64,7 @@ public class DeviceController implements DeviceControllerApi {
     @Override
     @PostMapping("/tokens")
     public AccessTokenResponse reissueAccessToken(
-            @Valid @RequestBody AccessTokenReissueRequest request
+            @RequestBody AccessTokenReissueRequest request
     ) {
         AccessTokenResult result = deviceTokenService.reissueAccessToken(request.refreshToken());
 
