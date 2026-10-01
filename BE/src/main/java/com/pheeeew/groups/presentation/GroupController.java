@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
@@ -108,6 +109,18 @@ public class GroupController implements GroupControllerApi {
     ) {
         return GroupPressCountResponse.from(
                 groupService.press(groupId, devicePublicId, request.state())
+        );
+    }
+
+    @Override
+    @GetMapping("/{groupId}/presses")
+    public GroupPressCountResponse findWeeklyPresses(
+            @PathVariable UUID groupId,
+            @RequestParam(defaultValue = "0") int weeksAgo,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        return GroupPressCountResponse.from(
+                groupService.findWeeklyPresses(groupId, devicePublicId, weeksAgo)
         );
     }
 

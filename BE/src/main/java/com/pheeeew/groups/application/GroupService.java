@@ -32,6 +32,7 @@ import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.domain.repository.projection.GroupListProjection;
+import com.pheeeew.groups.domain.repository.projection.GroupPressSumProjection;
 import com.pheeeew.groups.exception.GroupException;
 import java.time.Clock;
 import java.time.Instant;
@@ -131,6 +132,22 @@ public class GroupService {
         return pressesOf(group, today);
     }
 
+    @Transactional(readOnly = true)
+    public GroupPressCountResult findWeeklyPresses(UUID groupPublicId, UUID devicePublicId, int weeksAgo) {
+        Group group = findGroup(groupPublicId);
+        requireMember(group, devicePublicId);
+        RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
+        List<GroupPressSumProjection> summed = groupDailyPressRepository.sumByGroupIdAndPressDateBetween(
+                group.getId(), week.startDate(), week.endDate());
+
+        Map<EmotionState, Long> counts = emptyCounts();
+        for (GroupPressSumProjection press : summed) {
+            counts.put(press.getState(), press.getPressCount());
+        }
+
+        return GroupPressCountResult.from(counts);
+    }
+
     @Transactional
     public GroupResult update(
             UUID groupPublicId,
@@ -209,10 +226,7 @@ public class GroupService {
     }
 
     private GroupPressCountResult pressesOf(Group group, LocalDate date) {
-        Map<EmotionState, Long> counts = new EnumMap<>(EmotionState.class);
-        for (EmotionState state : EmotionState.values()) {
-            counts.put(state, 0L);
-        }
+        Map<EmotionState, Long> counts = emptyCounts();
         List<GroupDailyPress> pressed =
                 groupDailyPressRepository.findByGroupIdAndPressDate(group.getId(), date);
         for (GroupDailyPress press : pressed) {
@@ -220,6 +234,15 @@ public class GroupService {
         }
 
         return GroupPressCountResult.from(counts);
+    }
+
+    private Map<EmotionState, Long> emptyCounts() {
+        Map<EmotionState, Long> counts = new EnumMap<>(EmotionState.class);
+        for (EmotionState state : EmotionState.values()) {
+            counts.put(state, 0L);
+        }
+
+        return counts;
     }
 
     private Device findDevice(UUID devicePublicId) {

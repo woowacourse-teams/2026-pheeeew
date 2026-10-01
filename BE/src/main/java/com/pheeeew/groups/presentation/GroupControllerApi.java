@@ -8,6 +8,8 @@ import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -149,6 +151,34 @@ public interface GroupControllerApi {
     GroupPressCountResponse press(
             UUID groupId,
             @Valid GroupPressRequest request,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
+
+    @Operation(
+            summary = "감정 버튼 주간 집계",
+            description = """
+                    그 주에 그룹이 누른 감정 버튼을 감정별로 합쳐서 돌려줍니다. **그룹 멤버만** 볼 수 있습니다.
+
+                    - 주는 **월요일 00:00 KST** 에 바뀝니다. 그룹 간 주간 랭킹과 같은 경계입니다.
+                    - `weeksAgo` 로 몇 주 전인지 고릅니다. `0` 이 이번 주, `1` 이 지난주입니다.
+                    - 누르지 않은 감정도 `0` 으로 내려와 **다섯 감정이 항상 모두 있습니다.**
+                    - `POST /api/v2/groups/{groupId}/presses` 와 그룹 상세의 집계는 **오늘치**입니다.
+                      이 API 만 주간입니다.
+                    - **지도에 남긴 감정과는 다릅니다.** 그룹 점수와 순위는 지도 감정만 세고,
+                      버튼 누르기는 이 집계에만 들어갑니다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "weeksAgo 값이 올바르지 않음"),
+            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
+    })
+    GroupPressCountResponse findWeeklyPresses(
+            UUID groupId,
+            @Min(value = 0, message = "몇 주 전인지는 0 이상이어야 합니다.")
+            @Max(value = 520, message = "몇 주 전인지는 520 이하여야 합니다.")
+            int weeksAgo,
             @Parameter(hidden = true) UUID devicePublicId
     );
 

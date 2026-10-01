@@ -1,6 +1,7 @@
 package com.pheeeew.groups.domain.repository;
 
 import com.pheeeew.groups.domain.GroupDailyPress;
+import com.pheeeew.groups.domain.repository.projection.GroupPressSumProjection;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -27,4 +28,18 @@ public interface GroupDailyPressRepository extends JpaRepository<GroupDailyPress
     );
 
     List<GroupDailyPress> findByGroupIdAndPressDate(Long groupId, LocalDate pressDate);
+
+    @Query("""
+            SELECT press.state AS state, SUM(press.pressCount) AS pressCount
+            FROM GroupDailyPress press
+            WHERE press.groupId = :groupId
+              AND press.pressDate >= :startDate
+              AND press.pressDate < :endDate
+            GROUP BY press.state
+            """)
+    List<GroupPressSumProjection> sumByGroupIdAndPressDateBetween(
+            @Param("groupId") Long groupId,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate
+    );
 }
