@@ -62,6 +62,7 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
             FROM emotions emotion
             CROSS JOIN bounds
             WHERE emotion.deleted_at IS NULL
+              AND (:contentOnly = FALSE OR emotion.memo IS NOT NULL OR emotion.audio_object_key IS NOT NULL)
               AND emotion.created_at <= :snapshotAt
               AND (emotion.created_at, emotion.id) < (:lastCreatedAt, :lastId)
               AND (CAST(:groupId AS UUID) IS NULL OR EXISTS (
@@ -90,6 +91,7 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
             @Param("lastId") long lastId,
             @Param("deviceId") Long deviceId,
             @Param("groupId") UUID groupId,
+            @Param("contentOnly") boolean contentOnly,
             @Param("limit") int limit
     );
 
