@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.ranking
+package com.pheeeew.feature.screens.ranking.stamp
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

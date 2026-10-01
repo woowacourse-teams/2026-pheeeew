@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.ranking.components
+package com.pheeeew.feature.screens.ranking.stamp.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -9,8 +9,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.pheeeew.feature.screens.ranking.RankingMember
-import com.pheeeew.feature.screens.ranking.sampleRankings
+import com.pheeeew.feature.screens.ranking.stamp.RankingMember
+import com.pheeeew.feature.screens.ranking.stamp.sampleRankings
 
 @Composable
 fun TopThreeRanking(

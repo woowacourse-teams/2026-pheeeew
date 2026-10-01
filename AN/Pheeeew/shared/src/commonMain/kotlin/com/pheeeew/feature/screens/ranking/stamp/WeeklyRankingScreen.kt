@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.ranking
+package com.pheeeew.feature.screens.ranking.stamp
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -43,8 +43,8 @@ import com.pheeeew.core.di.createWeeklyRankingViewModel
 import com.pheeeew.core.network.ApiClient
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.monitoring.product.ProductScreen
-import com.pheeeew.feature.screens.ranking.components.RankingRow
-import com.pheeeew.feature.screens.ranking.components.TopThreeRanking
+import com.pheeeew.feature.screens.ranking.stamp.components.RankingRow
+import com.pheeeew.feature.screens.ranking.stamp.components.TopThreeRanking
 import com.pheeeew.feature.screens.ranking.components.WeekSelector
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res

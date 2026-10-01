@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.ranking.components
+package com.pheeeew.feature.screens.ranking.stamp.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,8 +16,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.GroupStamp
-import com.pheeeew.feature.screens.ranking.RankingMember
-import com.pheeeew.feature.screens.ranking.sampleRankings
+import com.pheeeew.feature.screens.ranking.stamp.RankingMember
+import com.pheeeew.feature.screens.ranking.stamp.sampleRankings
 
 @Composable
 fun RankingRow(

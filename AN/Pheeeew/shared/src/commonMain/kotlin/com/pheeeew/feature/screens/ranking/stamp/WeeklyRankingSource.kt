@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.ranking
+package com.pheeeew.feature.screens.ranking.stamp
 
 interface WeeklyRankingSource {
     suspend fun load(weeksAgo: Int): WeeklyRankingLoadResult

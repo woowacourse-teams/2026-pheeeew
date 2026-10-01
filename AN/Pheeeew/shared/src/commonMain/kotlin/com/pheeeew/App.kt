@@ -85,7 +85,7 @@ import com.pheeeew.feature.screens.map.nearby.face
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
-import com.pheeeew.feature.screens.ranking.WeeklyRankingRoute
+import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.feature.screens.splash.SplashScreen

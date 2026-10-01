@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.ranking
+package com.pheeeew.feature.screens.ranking.stamp
 
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
