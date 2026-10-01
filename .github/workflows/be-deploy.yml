@@ -73,6 +73,23 @@ jobs:
             fi
           done
 
+      - name: 무결성 증명 Secrets 확인
+        env:
+          PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64: ${{ secrets.PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64 }}
+          PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${{ secrets.PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER }}
+        run: |
+          set -eu
+          # 운영은 무결성 증명을 강제하므로 자격증명이 비면 앱이 부팅하지 못한다.
+          # 부팅 실패와 롤백 대신 여기서 멈춰 원인을 분명히 남긴다.
+          if [[ -z "${PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64:-}" ]]; then
+            echo "::error::production Secrets에 PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64 값이 등록되어 있지 않거나 비어 있습니다."
+            exit 1
+          fi
+          if [[ ! "${PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER:-}" =~ ^[0-9]+$ ]]; then
+            echo "::error::production Secrets의 PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER 값은 숫자여야 합니다."
+            exit 1
+          fi
+
       - name: Alloy Secrets 확인 및 환경 파일 생성
         env:
           GRAFANA_METRICS_URL: ${{ secrets.GRAFANA_METRICS_URL }}
