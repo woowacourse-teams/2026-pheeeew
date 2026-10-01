@@ -2,6 +2,8 @@ package com.pheeeew.groups.presentation;
 
 import com.pheeeew.groups.presentation.dto.GroupRankingResponse;
 import com.pheeeew.groups.presentation.dto.GroupStatePressRankingResponse;
+import com.pheeeew.emotion.domain.EmotionState;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -66,23 +68,27 @@ public interface GroupRankingControllerApi {
     );
 
     @Operation(
-            summary = "감정별 그룹 간 주간 감정 버튼 랭킹",
+            summary = "감정 하나의 그룹 간 주간 감정 버튼 랭킹",
             description = """
-                    감정 하나하나에 대해 그룹 순위를 매깁니다. **다섯 감정의 순위표를 한 번에** 돌려줍니다.
+                    **감정 하나**에 대한 그룹 순위를 매깁니다. 다섯 감정을 모두 보려면 감정마다 한 번씩 호출합니다.
 
-                    - 감정은 `FRUSTRATED`, `IRRITATED`, `EXHAUSTED`, `DISCOURAGED`, `ANGRY` 순서로 나옵니다.
-                    - 그 감정을 한 번도 누르지 않은 주에는 그 감정의 `items` 가 **빈 배열**입니다.
-                      감정 자체는 다섯 개가 항상 내려갑니다.
+                    - `state` 는 `FRUSTRATED`, `IRRITATED`, `EXHAUSTED`, `DISCOURAGED`, `ANGRY` 중 하나입니다.
+                      그 밖의 값을 보내면 `400` 입니다.
+                    - 그 감정을 그 주에 한 번도 누르지 않았으면 `items` 가 **빈 배열**입니다. 오류가 아닙니다.
+                    - 응답의 `state` 에 조회한 감정이 그대로 담겨 옵니다. 여러 감정을 동시에 요청할 때 짝을 맞추는 데 씁니다.
                     - 기간, 공동 순위, `hasPrevious` 규칙은 `/press-rankings` 와 같습니다.
-                    - 전체 합계 순위는 `/press-rankings` 에서 봅니다.
+                    - 다섯 감정을 합친 순위는 `/press-rankings` 에서 봅니다.
                     """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "weeksAgo 값이 올바르지 않음"),
+            @ApiResponse(responseCode = "400", description = "감정 값이나 weeksAgo 값이 올바르지 않음"),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음")
     })
     GroupStatePressRankingResponse findPressRankingByState(
+            @Parameter(description = "순위를 매길 감정", required = true, example = "ANGRY")
+            EmotionState state,
+
             @Min(value = 0, message = "몇 주 전인지는 0 이상이어야 합니다.")
             @Max(value = 520, message = "몇 주 전인지는 520 이하여야 합니다.")
             int weeksAgo

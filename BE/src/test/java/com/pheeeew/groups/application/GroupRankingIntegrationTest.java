@@ -21,7 +21,6 @@ import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
-import com.pheeeew.groups.application.dto.GroupStatePressRankingGroup;
 import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
 import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
 import java.time.LocalDate;
@@ -278,18 +277,34 @@ class GroupRankingIntegrationTest {
     }
 
     @Test
-    void 감정별_버튼_랭킹은_다섯_감정을_항상_돌려준다() {
+    void 감정별_버튼_랭킹은_그_감정만_센다() {
+        // given
+        GroupResult 그룹 = 그룹을_만든다("한모임");
+        눌린_것으로_둔다(그룹, 이번_주_월요일(), EmotionState.ANGRY, 4);
+        눌린_것으로_둔다(그룹, 이번_주_월요일(), EmotionState.EXHAUSTED, 9);
+
+        // when
+        GroupStatePressRankingResult 결과 =
+                groupRankingService.findPressRankingByState(EmotionState.ANGRY, 0);
+
+        // then
+        assertThat(결과.state()).isEqualTo(EmotionState.ANGRY);
+        assertThat(결과.items()).extracting(GroupRankingItem::name, GroupRankingItem::score)
+                .containsExactly(tuple("한모임", 4L));
+    }
+
+    @Test
+    void 아무도_누르지_않은_감정은_빈_순위표를_돌려준다() {
         // given
         눌린_것으로_둔다(그룹을_만든다("한모임"), 이번_주_월요일(), EmotionState.ANGRY, 1);
 
         // when
-        GroupStatePressRankingResult 결과 = groupRankingService.findPressRankingByState(0);
+        GroupStatePressRankingResult 결과 =
+                groupRankingService.findPressRankingByState(EmotionState.DISCOURAGED, 0);
 
         // then
-        assertThat(결과.states()).extracting(GroupStatePressRankingGroup::state)
-                .containsExactly(EmotionState.values());
-        assertThat(결과.states()).filteredOn(state -> state.state() != EmotionState.ANGRY)
-                .allMatch(state -> state.items().isEmpty());
+        assertThat(결과.state()).isEqualTo(EmotionState.DISCOURAGED);
+        assertThat(결과.items()).isEmpty();
     }
 
     @Test
@@ -303,14 +318,15 @@ class GroupRankingIntegrationTest {
         눌린_것으로_둔다(나모임, 이번_주_월요일(), EmotionState.EXHAUSTED, 7);
 
         // when
-        GroupStatePressRankingResult 결과 = groupRankingService.findPressRankingByState(0);
+        List<GroupRankingItem> 분노_순위표 =
+                groupRankingService.findPressRankingByState(EmotionState.ANGRY, 0).items();
+        List<GroupRankingItem> 지침_순위표 =
+                groupRankingService.findPressRankingByState(EmotionState.EXHAUSTED, 0).items();
 
         // then
-        assertThat(감정_순위표(결과, EmotionState.ANGRY))
-                .extracting(GroupRankingItem::name, GroupRankingItem::score)
+        assertThat(분노_순위표).extracting(GroupRankingItem::name, GroupRankingItem::score)
                 .containsExactly(tuple("가모임", 5L), tuple("나모임", 1L));
-        assertThat(감정_순위표(결과, EmotionState.EXHAUSTED))
-                .extracting(GroupRankingItem::name, GroupRankingItem::score)
+        assertThat(지침_순위표).extracting(GroupRankingItem::name, GroupRankingItem::score)
                 .containsExactly(tuple("나모임", 7L), tuple("가모임", 1L));
     }
 
@@ -331,14 +347,6 @@ class GroupRankingIntegrationTest {
                 .containsExactly(tuple("지도모임", 4L));
         assertThat(버튼_랭킹.items()).extracting(GroupRankingItem::name, GroupRankingItem::score)
                 .containsExactly(tuple("버튼모임", 6L));
-    }
-
-    private List<GroupRankingItem> 감정_순위표(GroupStatePressRankingResult 결과, EmotionState 감정) {
-        return 결과.states().stream()
-                .filter(state -> state.state() == 감정)
-                .findFirst()
-                .orElseThrow()
-                .items();
     }
 
     private LocalDate 이번_주_월요일() {

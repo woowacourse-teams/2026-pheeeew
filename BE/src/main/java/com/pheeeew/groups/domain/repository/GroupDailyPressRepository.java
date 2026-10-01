@@ -1,9 +1,9 @@
 package com.pheeeew.groups.domain.repository;
 
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.domain.GroupDailyPress;
 import com.pheeeew.groups.domain.repository.projection.GroupPressSumProjection;
 import com.pheeeew.groups.domain.repository.projection.GroupScoreProjection;
-import com.pheeeew.groups.domain.repository.projection.GroupStatePressScoreProjection;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -54,8 +54,7 @@ public interface GroupDailyPressRepository extends JpaRepository<GroupDailyPress
     );
 
     @Query("""
-            SELECT press.state AS state,
-                   g.publicId AS groupPublicId,
+            SELECT g.publicId AS groupPublicId,
                    g.name AS name,
                    s.text AS stampText,
                    s.textColor AS stampTextColor,
@@ -66,12 +65,14 @@ public interface GroupDailyPressRepository extends JpaRepository<GroupDailyPress
             JOIN s.group g
             WHERE g.id = press.groupId
               AND g.deletedAt IS NULL
+              AND press.state = :state
               AND press.pressDate >= :startDate
               AND press.pressDate < :endDate
-            GROUP BY press.state, g.publicId, g.name, s.text, s.textColor, s.backgroundColor, s.frame
-            ORDER BY press.state, SUM(press.pressCount) DESC, g.name
+            GROUP BY g.publicId, g.name, s.text, s.textColor, s.backgroundColor, s.frame
+            ORDER BY SUM(press.pressCount) DESC, g.name
             """)
-    List<GroupStatePressScoreProjection> findPressScoresByState(
+    List<GroupScoreProjection> findPressScoresByState(
+            @Param("state") EmotionState state,
             @Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate
     );

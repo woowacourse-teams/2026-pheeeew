@@ -13,9 +13,7 @@ import com.pheeeew.groups.application.dto.GroupRankingResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.groups.application.dto.GroupStatePressRankingGroup;
 import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
-import java.util.Arrays;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -157,21 +155,34 @@ class GroupRankingControllerTest {
     }
 
     @Test
-    void 감정별_버튼_랭킹은_감정마다_순위표를_돌려준다() {
+    void 감정별_버튼_랭킹은_요청한_감정의_순위표를_돌려준다() {
         // given
-        when(groupRankingService.findPressRankingByState(0)).thenReturn(기본_감정별_랭킹());
+        when(groupRankingService.findPressRankingByState(EmotionState.ANGRY, 0))
+                .thenReturn(기본_감정별_랭킹(EmotionState.ANGRY));
 
         // when
         RestTestClient.ResponseSpec result = client.get()
-                .uri(GROUPS_URI + "/press-rankings/states")
+                .uri(GROUPS_URI + "/press-rankings/states/ANGRY")
                 .exchange();
 
         // then
         result.expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.states.length()").isEqualTo(EmotionState.values().length)
-                .jsonPath("$.states[0].state").isEqualTo(EmotionState.values()[0].name());
-        verify(groupRankingService).findPressRankingByState(0);
+                .jsonPath("$.state").isEqualTo("ANGRY")
+                .jsonPath("$.items[0].name").isEqualTo("한숨모임");
+        verify(groupRankingService).findPressRankingByState(EmotionState.ANGRY, 0);
+    }
+
+    @Test
+    void 없는_감정을_요청하면_조회하지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings/states/HAPPY")
+                .exchange();
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupRankingService);
     }
 
     @Test
@@ -186,15 +197,14 @@ class GroupRankingControllerTest {
         verifyNoInteractions(groupRankingService);
     }
 
-    private GroupStatePressRankingResult 기본_감정별_랭킹() {
+    private GroupStatePressRankingResult 기본_감정별_랭킹(EmotionState state) {
         return GroupStatePressRankingResult.of(
+                state,
                 0,
                 Instant.parse("2026-09-20T15:00:00Z"),
                 Instant.parse("2026-09-27T15:00:00Z"),
                 true,
-                Arrays.stream(EmotionState.values())
-                        .map(state -> GroupStatePressRankingGroup.of(state, 기본_그룹_랭킹().items()))
-                        .toList()
+                기본_그룹_랭킹().items()
         );
     }
 

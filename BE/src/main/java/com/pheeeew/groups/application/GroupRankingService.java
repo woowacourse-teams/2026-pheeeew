@@ -6,12 +6,8 @@ import com.pheeeew.groups.domain.repository.GroupRankingRepository;
 import com.pheeeew.groups.domain.repository.projection.GroupScoreProjection;
 import java.time.Clock;
 import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.groups.application.dto.GroupStatePressRankingGroup;
 import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
 import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
-import com.pheeeew.groups.domain.repository.projection.GroupStatePressScoreProjection;
-import java.util.EnumMap;
-import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -56,30 +52,18 @@ public class GroupRankingService {
         );
     }
 
-    public GroupStatePressRankingResult findPressRankingByState(int weeksAgo) {
+    public GroupStatePressRankingResult findPressRankingByState(EmotionState state, int weeksAgo) {
         RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
-        List<GroupStatePressScoreProjection> scores =
-                groupDailyPressRepository.findPressScoresByState(week.startDate(), week.endDate());
-
-        Map<EmotionState, List<GroupScoreProjection>> grouped = new EnumMap<>(EmotionState.class);
-        for (EmotionState state : EmotionState.values()) {
-            grouped.put(state, new ArrayList<>());
-        }
-        for (GroupStatePressScoreProjection score : scores) {
-            grouped.get(score.getState()).add(score);
-        }
-
-        List<GroupStatePressRankingGroup> states = new ArrayList<>(EmotionState.values().length);
-        for (EmotionState state : EmotionState.values()) {
-            states.add(GroupStatePressRankingGroup.of(state, rank(grouped.get(state))));
-        }
+        List<GroupScoreProjection> scores =
+                groupDailyPressRepository.findPressScoresByState(state, week.startDate(), week.endDate());
 
         return GroupStatePressRankingResult.of(
+                state,
                 weeksAgo,
                 week.startAt(),
                 week.endAt(),
                 groupDailyPressRepository.existsPressBefore(week.startDate()),
-                states
+                rank(scores)
         );
     }
 
