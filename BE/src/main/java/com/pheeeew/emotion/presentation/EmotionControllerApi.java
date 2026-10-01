@@ -27,6 +27,8 @@ import org.springframework.http.ResponseEntity;
 public interface EmotionControllerApi {
 
     @Operation(summary = "바텀시트 감정 목록 조회", description = """
+            메모 또는 녹음이 있는 감정(contentType=MEMO, AUDIO)만 반환합니다. 감정 상태만 기록한 NONE은 제외합니다.
+            내용 조건은 페이지 제한 전에 적용하며 별도의 유형 필터 파라미터는 받지 않습니다.
             첫 페이지에는 minLongitude, minLatitude, maxLongitude, maxLatitude를 전달합니다.
             groupId를 생략하면 그룹 없는 감정까지 전체 조회하며, 지정하면 해당 그룹의 스탬프만 조회합니다.
             그룹 필터는 공개 감정의 조회 조건이며 그룹 가입 여부로 제한하지 않습니다.
@@ -36,7 +38,7 @@ public interface EmotionControllerApi {
             각 항목은 GeoJSON Feature이며 여섯 이모지 집계와 본인 선택 여부를 포함합니다.
             각 항목의 properties.isMine은 인증된 기기가 작성했는지 나타내며 작성 기기가 없으면 false입니다.
             contentType이 AUDIO이면 audio.playbackUrl과 audio.expiresAt을 함께 반환합니다.
-            재생 URL은 1시간 동안 유효하며 만료되면 목록 또는 상세를 다시 조회합니다. MEMO와 NONE의 audio는 null입니다.
+            재생 URL은 1시간 동안 유효하며 만료되면 목록 또는 상세를 다시 조회합니다. MEMO의 audio는 null입니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "감정 목록과 다음 커서"),
@@ -49,6 +51,7 @@ public interface EmotionControllerApi {
 
 
     @Operation(summary = "지도 스탬프 조회", description = """
+            내용 유무와 관계없이 NONE, MEMO, AUDIO 유형의 감정을 모두 조회합니다.
             지도 표시에 필요한 감정 ID·좌표·작성 시각·상태·각도·그룹 스탬프만 반환합니다.
             메모·닉네임·이모지 집계·본인 작성 여부·녹음 재생 URL은 포함하지 않습니다. 바텀시트는 감정 목록 API로 조회합니다.
             첫 페이지에는 minLongitude, minLatitude, maxLongitude, maxLatitude를 전달합니다.

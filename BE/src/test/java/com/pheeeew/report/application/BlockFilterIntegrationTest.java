@@ -243,11 +243,12 @@ class BlockFilterIntegrationTest {
     private Long 한숨을_저장한다(Long deviceId) {
         등록_순번++;
         return jdbcClient.sql("""
-                        INSERT INTO emotions (request_id, location, nickname, device_id, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, memo, device_id, created_at, updated_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
                             '외로운 회사원',
+                            '차단 조회 검증용 메모',
                             :deviceId,
                             TIMESTAMPTZ '2026-09-01T10:00:00Z' + :sequence * INTERVAL '1 minute',
                             TIMESTAMPTZ '2026-09-01T10:00:00Z' + :sequence * INTERVAL '1 minute'
