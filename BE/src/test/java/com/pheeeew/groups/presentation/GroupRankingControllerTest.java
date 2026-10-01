@@ -12,6 +12,10 @@ import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupRankingResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.StampFrame;
+import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.groups.application.dto.GroupStatePressRankingGroup;
+import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
+import java.util.Arrays;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -117,6 +121,81 @@ class GroupRankingControllerTest {
         // then
         result.expectStatus().isBadRequest();
         verifyNoInteractions(groupRankingService);
+    }
+
+    @Test
+    void 버튼_랭킹_경로가_그룹_상세로_잘못_라우팅되지_않는다() {
+        // given
+        when(groupRankingService.findPressRanking(0)).thenReturn(기본_그룹_랭킹());
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings")
+                .exchange();
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.items[0].name").isEqualTo("한숨모임")
+                .jsonPath("$.items[0].score").isEqualTo(7);
+        verify(groupRankingService).findPressRanking(0);
+    }
+
+    @Test
+    void 버튼_랭킹은_몇_주_전인지_골라_조회한다() {
+        // given
+        when(groupRankingService.findPressRanking(3)).thenReturn(기본_그룹_랭킹());
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings?weeksAgo=3")
+                .exchange();
+
+        // then
+        result.expectStatus().isOk();
+        verify(groupRankingService).findPressRanking(3);
+    }
+
+    @Test
+    void 감정별_버튼_랭킹은_감정마다_순위표를_돌려준다() {
+        // given
+        when(groupRankingService.findPressRankingByState(0)).thenReturn(기본_감정별_랭킹());
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings/states")
+                .exchange();
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.states.length()").isEqualTo(EmotionState.values().length)
+                .jsonPath("$.states[0].state").isEqualTo(EmotionState.values()[0].name());
+        verify(groupRankingService).findPressRankingByState(0);
+    }
+
+    @Test
+    void 버튼_랭킹은_몇_주_전인지가_음수면_조회하지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings?weeksAgo=-1")
+                .exchange();
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupRankingService);
+    }
+
+    private GroupStatePressRankingResult 기본_감정별_랭킹() {
+        return GroupStatePressRankingResult.of(
+                0,
+                Instant.parse("2026-09-20T15:00:00Z"),
+                Instant.parse("2026-09-27T15:00:00Z"),
+                true,
+                Arrays.stream(EmotionState.values())
+                        .map(state -> GroupStatePressRankingGroup.of(state, 기본_그룹_랭킹().items()))
+                        .toList()
+        );
     }
 
     private GroupRankingResult 기본_그룹_랭킹() {

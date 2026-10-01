@@ -3,6 +3,7 @@ package com.pheeeew.groups.application;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -20,6 +21,12 @@ import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
+import com.pheeeew.groups.application.dto.GroupStatePressRankingGroup;
+import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
+import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
+import java.time.LocalDate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -59,12 +66,19 @@ class GroupRankingIntegrationTest {
     private DeviceRepository deviceRepository;
 
     @Autowired
+    private GroupDailyPressRepository groupDailyPressRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
+
+    @Autowired
     private JdbcClient jdbcClient;
 
     @AfterEach
     void tearDown() {
         emotionEmojiRepository.deleteAllInBatch();
         emotionRepository.deleteAllInBatch();
+        groupDailyPressRepository.deleteAllInBatch();
         groupMemberRepository.deleteAllInBatch();
         groupStampRepository.deleteAllInBatch();
         groupRepository.deleteAllInBatch();
@@ -213,6 +227,131 @@ class GroupRankingIntegrationTest {
 
         // then
         assertThat(지난주.endAt()).isEqualTo(이번주.startAt());
+    }
+
+    @Test
+    void 버튼_랭킹은_그룹별로_이번주_누른_수를_합친다() {
+        // given
+        GroupResult 많은_그룹 = 그룹을_만든다("많은모임");
+        GroupResult 적은_그룹 = 그룹을_만든다("적은모임");
+        눌린_것으로_둔다(많은_그룹, 이번_주_월요일(), EmotionState.ANGRY, 3);
+        눌린_것으로_둔다(많은_그룹, 이번_주_월요일().plusDays(2), EmotionState.EXHAUSTED, 2);
+        눌린_것으로_둔다(적은_그룹, 이번_주_월요일(), EmotionState.ANGRY, 1);
+
+        // when
+        GroupRankingResult 결과 = groupRankingService.findPressRanking(0);
+
+        // then
+        assertThat(결과.items()).extracting(GroupRankingItem::name, GroupRankingItem::score)
+                .containsExactly(tuple("많은모임", 5L), tuple("적은모임", 1L));
+    }
+
+    @Test
+    void 버튼_랭킹도_동점이면_공동_순위를_준다() {
+        // given
+        눌린_것으로_둔다(그룹을_만든다("가모임"), 이번_주_월요일(), EmotionState.ANGRY, 2);
+        눌린_것으로_둔다(그룹을_만든다("나모임"), 이번_주_월요일(), EmotionState.ANGRY, 2);
+        눌린_것으로_둔다(그룹을_만든다("다모임"), 이번_주_월요일(), EmotionState.ANGRY, 1);
+
+        // when
+        List<GroupRankingItem> 순위표 = groupRankingService.findPressRanking(0).items();
+
+        // then
+        assertThat(순위표).extracting(GroupRankingItem::rank).containsExactly(1, 1, 3);
+    }
+
+    @Test
+    void 버튼_랭킹은_누르지_않은_그룹과_지난주_기록을_빼놓는다() {
+        // given
+        GroupResult 활동한_그룹 = 그룹을_만든다("활동모임");
+        GroupResult 지난주만_그룹 = 그룹을_만든다("지난주모임");
+        그룹을_만든다("조용한모임");
+        눌린_것으로_둔다(활동한_그룹, 이번_주_월요일(), EmotionState.ANGRY, 1);
+        눌린_것으로_둔다(지난주만_그룹, 이번_주_월요일().minusDays(1), EmotionState.ANGRY, 9);
+
+        // when
+        GroupRankingResult 결과 = groupRankingService.findPressRanking(0);
+
+        // then
+        assertThat(결과.items()).hasSize(1);
+        assertThat(결과.items().getFirst().name()).isEqualTo("활동모임");
+    }
+
+    @Test
+    void 감정별_버튼_랭킹은_다섯_감정을_항상_돌려준다() {
+        // given
+        눌린_것으로_둔다(그룹을_만든다("한모임"), 이번_주_월요일(), EmotionState.ANGRY, 1);
+
+        // when
+        GroupStatePressRankingResult 결과 = groupRankingService.findPressRankingByState(0);
+
+        // then
+        assertThat(결과.states()).extracting(GroupStatePressRankingGroup::state)
+                .containsExactly(EmotionState.values());
+        assertThat(결과.states()).filteredOn(state -> state.state() != EmotionState.ANGRY)
+                .allMatch(state -> state.items().isEmpty());
+    }
+
+    @Test
+    void 감정별_버튼_랭킹은_감정마다_순위를_따로_매긴다() {
+        // given
+        GroupResult 가모임 = 그룹을_만든다("가모임");
+        GroupResult 나모임 = 그룹을_만든다("나모임");
+        눌린_것으로_둔다(가모임, 이번_주_월요일(), EmotionState.ANGRY, 5);
+        눌린_것으로_둔다(나모임, 이번_주_월요일(), EmotionState.ANGRY, 1);
+        눌린_것으로_둔다(가모임, 이번_주_월요일(), EmotionState.EXHAUSTED, 1);
+        눌린_것으로_둔다(나모임, 이번_주_월요일(), EmotionState.EXHAUSTED, 7);
+
+        // when
+        GroupStatePressRankingResult 결과 = groupRankingService.findPressRankingByState(0);
+
+        // then
+        assertThat(감정_순위표(결과, EmotionState.ANGRY))
+                .extracting(GroupRankingItem::name, GroupRankingItem::score)
+                .containsExactly(tuple("가모임", 5L), tuple("나모임", 1L));
+        assertThat(감정_순위표(결과, EmotionState.EXHAUSTED))
+                .extracting(GroupRankingItem::name, GroupRankingItem::score)
+                .containsExactly(tuple("나모임", 7L), tuple("가모임", 1L));
+    }
+
+    @Test
+    void 지도_감정_랭킹과_버튼_랭킹은_서로_섞이지_않는다() {
+        // given
+        GroupResult 지도만_그룹 = 그룹을_만든다("지도모임");
+        GroupResult 버튼만_그룹 = 그룹을_만든다("버튼모임");
+        이번주_감정을_남긴다(지도만_그룹, 4);
+        눌린_것으로_둔다(버튼만_그룹, 이번_주_월요일(), EmotionState.ANGRY, 6);
+
+        // when
+        GroupRankingResult 지도_랭킹 = groupRankingService.findGroupRanking(0);
+        GroupRankingResult 버튼_랭킹 = groupRankingService.findPressRanking(0);
+
+        // then
+        assertThat(지도_랭킹.items()).extracting(GroupRankingItem::name, GroupRankingItem::score)
+                .containsExactly(tuple("지도모임", 4L));
+        assertThat(버튼_랭킹.items()).extracting(GroupRankingItem::name, GroupRankingItem::score)
+                .containsExactly(tuple("버튼모임", 6L));
+    }
+
+    private List<GroupRankingItem> 감정_순위표(GroupStatePressRankingResult 결과, EmotionState 감정) {
+        return 결과.states().stream()
+                .filter(state -> state.state() == 감정)
+                .findFirst()
+                .orElseThrow()
+                .items();
+    }
+
+    private LocalDate 이번_주_월요일() {
+        return RankingWeek.of(Instant.now(), 0).startDate();
+    }
+
+    private void 눌린_것으로_둔다(GroupResult 그룹, LocalDate 날짜, EmotionState 감정, int 횟수) {
+        Long groupId = groupRepository.findByPublicIdAndDeletedAtIsNull(그룹.publicId()).orElseThrow().getId();
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            for (int i = 0; i < 횟수; i++) {
+                groupDailyPressRepository.increase(groupId, 날짜, 감정.name(), Instant.now());
+            }
+        });
     }
 
     private GroupResult 그룹을_만든다(String name) {
