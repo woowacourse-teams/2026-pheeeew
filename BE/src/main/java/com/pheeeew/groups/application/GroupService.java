@@ -17,6 +17,7 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupPreviewResult;
+import com.pheeeew.groups.application.dto.GroupPressRankingItem;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
@@ -32,6 +33,7 @@ import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.domain.repository.projection.GroupListProjection;
+import com.pheeeew.groups.domain.repository.projection.GroupPressSumProjection;
 import com.pheeeew.groups.exception.GroupException;
 import java.time.Clock;
 import java.time.Instant;
@@ -108,16 +110,23 @@ public class GroupService {
     public GroupDetailResult findOne(UUID groupPublicId, UUID devicePublicId) {
         Group group = findGroup(groupPublicId);
         GroupMember member = requireMember(group, devicePublicId);
-        GroupRankingItem ranked = groupRankingService.findGroupRanking(0).items().stream()
+        GroupRankingItem stampRanked = groupRankingService.findGroupRanking(0).items().stream()
                 .filter(item -> item.groupPublicId().equals(groupPublicId))
                 .findFirst()
                 .orElse(null);
+        GroupPressRankingItem pressRanked =
+                groupRankingService.findPressRanking(devicePublicId, 0).items().stream()
+                        .filter(item -> item.groupPublicId().equals(groupPublicId))
+                        .findFirst()
+                        .orElse(null);
 
         return GroupDetailResult.of(
                 toResult(group, member.getRole()),
                 pressesOf(group, LocalDate.now(clock)),
-                ranked == null ? 0 : ranked.score(),
-                ranked == null ? null : ranked.rank()
+                weeklyPressesOf(group, 0),
+                stampRanked == null ? 0 : stampRanked.score(),
+                stampRanked == null ? null : stampRanked.rank(),
+                pressRanked == null ? null : pressRanked.rank()
         );
     }
 
@@ -129,6 +138,13 @@ public class GroupService {
         groupDailyPressRepository.increase(group.getId(), today, state.name(), clock.instant());
 
         return pressesOf(group, today);
+    }
+
+    @Transactional(readOnly = true)
+    public GroupPressCountResult findWeeklyPresses(UUID groupPublicId, UUID devicePublicId, int weeksAgo) {
+        Group group = findGroup(groupPublicId);
+        requireMember(group, devicePublicId);
+        return weeklyPressesOf(group, weeksAgo);
     }
 
     @Transactional
@@ -209,10 +225,7 @@ public class GroupService {
     }
 
     private GroupPressCountResult pressesOf(Group group, LocalDate date) {
-        Map<EmotionState, Long> counts = new EnumMap<>(EmotionState.class);
-        for (EmotionState state : EmotionState.values()) {
-            counts.put(state, 0L);
-        }
+        Map<EmotionState, Long> counts = emptyCounts();
         List<GroupDailyPress> pressed =
                 groupDailyPressRepository.findByGroupIdAndPressDate(group.getId(), date);
         for (GroupDailyPress press : pressed) {
@@ -220,6 +233,28 @@ public class GroupService {
         }
 
         return GroupPressCountResult.from(counts);
+    }
+
+    private GroupPressCountResult weeklyPressesOf(Group group, int weeksAgo) {
+        RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
+        List<GroupPressSumProjection> summed = groupDailyPressRepository.sumByGroupIdAndPressDateBetween(
+                group.getId(), week.startDate(), week.endDate());
+
+        Map<EmotionState, Long> counts = emptyCounts();
+        for (GroupPressSumProjection press : summed) {
+            counts.put(press.getState(), press.getPressCount());
+        }
+
+        return GroupPressCountResult.from(counts);
+    }
+
+    private Map<EmotionState, Long> emptyCounts() {
+        Map<EmotionState, Long> counts = new EnumMap<>(EmotionState.class);
+        for (EmotionState state : EmotionState.values()) {
+            counts.put(state, 0L);
+        }
+
+        return counts;
     }
 
     private Device findDevice(UUID devicePublicId) {

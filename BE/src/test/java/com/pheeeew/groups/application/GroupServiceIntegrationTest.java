@@ -28,6 +28,8 @@ import com.pheeeew.support.PostgisDataJpaTest;
 import jakarta.persistence.EntityManagerFactory;
 import java.util.ArrayList;
 import java.util.List;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -43,6 +45,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,6 +71,9 @@ class GroupServiceIntegrationTest {
 
     @Autowired
     private GroupDailyPressRepository groupDailyPressRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Autowired
     private DeviceRepository deviceRepository;
@@ -400,6 +407,90 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
+    void 주간_집계는_그_주의_모든_날을_합산한다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        LocalDate 월요일 = 이번_주_월요일();
+        눌린_것으로_둔다(그룹.publicId(), 월요일, EmotionState.ANGRY, 3);
+        눌린_것으로_둔다(그룹.publicId(), 월요일.plusDays(3), EmotionState.ANGRY, 2);
+        눌린_것으로_둔다(그룹.publicId(), 월요일.plusDays(6), EmotionState.EXHAUSTED, 4);
+
+        // when
+        GroupPressCountResult 결과 = groupService.findWeeklyPresses(그룹.publicId(), 그룹장.getPublicId(), 0);
+
+        // then
+        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(5);
+        assertThat(결과.counts().get(EmotionState.EXHAUSTED)).isEqualTo(4);
+        assertThat(결과.total()).isEqualTo(9);
+    }
+
+    @Test
+    void 주간_집계는_주_경계_밖의_기록을_세지_않는다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        LocalDate 월요일 = 이번_주_월요일();
+        눌린_것으로_둔다(그룹.publicId(), 월요일.minusDays(1), EmotionState.ANGRY, 7);
+        눌린_것으로_둔다(그룹.publicId(), 월요일.plusDays(7), EmotionState.ANGRY, 9);
+        눌린_것으로_둔다(그룹.publicId(), 월요일, EmotionState.ANGRY, 1);
+
+        // when
+        GroupPressCountResult 결과 = groupService.findWeeklyPresses(그룹.publicId(), 그룹장.getPublicId(), 0);
+
+        // then
+        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(1);
+        assertThat(결과.total()).isEqualTo(1);
+    }
+
+    @Test
+    void 주간_집계는_지난주도_조회할_수_있다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        LocalDate 지난주_월요일 = 이번_주_월요일().minusWeeks(1);
+        눌린_것으로_둔다(그룹.publicId(), 지난주_월요일.plusDays(2), EmotionState.IRRITATED, 6);
+
+        // when
+        GroupPressCountResult 이번주 = groupService.findWeeklyPresses(그룹.publicId(), 그룹장.getPublicId(), 0);
+        GroupPressCountResult 지난주 = groupService.findWeeklyPresses(그룹.publicId(), 그룹장.getPublicId(), 1);
+
+        // then
+        assertThat(이번주.total()).isZero();
+        assertThat(지난주.counts().get(EmotionState.IRRITATED)).isEqualTo(6);
+        assertThat(지난주.total()).isEqualTo(6);
+    }
+
+    @Test
+    void 주간_집계도_누르지_않은_감정을_영으로_내려준다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+
+        // when
+        GroupPressCountResult 결과 = groupService.findWeeklyPresses(그룹.publicId(), 그룹장.getPublicId(), 0);
+
+        // then
+        assertThat(결과.counts()).hasSize(EmotionState.values().length);
+        assertThat(결과.counts().values()).allMatch(count -> count == 0L);
+        assertThat(결과.total()).isZero();
+    }
+
+    @Test
+    void 주간_집계는_멤버가_아니면_볼_수_없다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        Device 남 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+
+        // when
+        Throwable 예외 = catchThrowable(() -> groupService.findWeeklyPresses(그룹.publicId(), 남.getPublicId(), 0));
+
+        // then
+        assertThat(예외).isInstanceOf(GroupException.class);
+    }
+
+    @Test
     void 누르지_않은_감정도_영으로_내려준다() {
         // given
         Device 그룹장 = 기기를_저장한다();
@@ -463,6 +554,7 @@ class GroupServiceIntegrationTest {
         assertThat(상세.todayPresses().total()).isEqualTo(2);
         assertThat(상세.weeklyScore()).isZero();
         assertThat(상세.weeklyRank()).isNull();
+        assertThat(상세.weeklyPressRank()).isOne();
     }
 
     @Test
@@ -478,6 +570,70 @@ class GroupServiceIntegrationTest {
         assertThat(상세.group().name()).isEqualTo("한숨모임");
         assertThat(상세.group().memberCount()).isOne();
         assertThat(상세.todayPresses().total()).isZero();
+    }
+
+    @Test
+    void 상세_조회는_오늘과_이번_주_프레스를_함께_준다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        눌린_것으로_둔다(그룹.publicId(), 이번_주_월요일(), EmotionState.ANGRY, 4);
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.EXHAUSTED);
+
+        // when
+        GroupDetailResult 상세 = groupService.findOne(그룹.publicId(), 그룹장.getPublicId());
+
+        // then
+        assertThat(상세.todayPresses().total()).isOne();
+        assertThat(상세.weeklyPresses().counts().get(EmotionState.ANGRY)).isEqualTo(4);
+        assertThat(상세.weeklyPresses().counts().get(EmotionState.EXHAUSTED)).isOne();
+        assertThat(상세.weeklyPresses().total()).isEqualTo(5);
+    }
+
+    @Test
+    void 상세_조회의_주간_프레스는_지난주를_빼놓는다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        눌린_것으로_둔다(그룹.publicId(), 이번_주_월요일().minusDays(1), EmotionState.ANGRY, 9);
+        눌린_것으로_둔다(그룹.publicId(), 이번_주_월요일(), EmotionState.ANGRY, 2);
+
+        // when
+        GroupDetailResult 상세 = groupService.findOne(그룹.publicId(), 그룹장.getPublicId());
+
+        // then
+        assertThat(상세.weeklyPresses().total()).isEqualTo(2);
+    }
+
+    @Test
+    void 상세_조회는_스탬프_순위와_프레스_순위를_따로_준다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 내_그룹 = groupService.save(그룹장.getPublicId(), "내모임", null, 스탬프("기본"));
+        GroupResult 남의_그룹 = groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, 스탬프("기본"));
+        눌린_것으로_둔다(남의_그룹.publicId(), 이번_주_월요일(), EmotionState.ANGRY, 9);
+        눌린_것으로_둔다(내_그룹.publicId(), 이번_주_월요일(), EmotionState.ANGRY, 1);
+
+        // when
+        GroupDetailResult 상세 = groupService.findOne(내_그룹.publicId(), 그룹장.getPublicId());
+
+        // then
+        assertThat(상세.weeklyPressRank()).isEqualTo(2);
+        assertThat(상세.weeklyRank()).isNull();
+    }
+
+    @Test
+    void 한_번도_누르지_않았으면_프레스_순위가_없다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+
+        // when
+        GroupDetailResult 상세 = groupService.findOne(그룹.publicId(), 그룹장.getPublicId());
+
+        // then
+        assertThat(상세.weeklyPressRank()).isNull();
+        assertThat(상세.weeklyPresses().total()).isZero();
     }
 
     @Test
@@ -656,6 +812,19 @@ class GroupServiceIntegrationTest {
         } finally {
             실행기.shutdownNow();
         }
+    }
+
+    private LocalDate 이번_주_월요일() {
+        return RankingWeek.of(Instant.now(), 0).startDate();
+    }
+
+    private void 눌린_것으로_둔다(UUID groupPublicId, LocalDate 날짜, EmotionState 감정, int 횟수) {
+        Long groupId = groupRepository.findByPublicIdAndDeletedAtIsNull(groupPublicId).orElseThrow().getId();
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            for (int i = 0; i < 횟수; i++) {
+                groupDailyPressRepository.increase(groupId, 날짜, 감정.name(), Instant.now());
+            }
+        });
     }
 
     private Device 기기를_저장한다() {
