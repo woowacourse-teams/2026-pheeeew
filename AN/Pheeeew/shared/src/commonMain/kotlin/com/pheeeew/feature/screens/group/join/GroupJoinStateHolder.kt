@@ -57,7 +57,7 @@ class GroupJoinStateHolder(
         invalidateRequests()
         _uiState.update { state ->
             state.copy(
-                input = value.uppercase().take(GROUP_INVITATION_CODE_LENGTH),
+                input = GroupCodeRules.normalize(value).take(GROUP_INVITATION_CODE_LENGTH),
                 hasAttemptedSearch = false,
                 lookup = GroupLookupState.Idle,
                 submission = GroupJoinSubmissionState.Idle,
