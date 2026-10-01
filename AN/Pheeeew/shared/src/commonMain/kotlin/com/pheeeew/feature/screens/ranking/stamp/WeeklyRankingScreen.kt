@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.ranking.stamp
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +26,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -33,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.pheeeew.core.designsystem.component.BasicTopBar
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
@@ -43,9 +44,12 @@ import com.pheeeew.core.di.createWeeklyRankingViewModel
 import com.pheeeew.core.network.ApiClient
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.monitoring.product.ProductScreen
+import com.pheeeew.feature.screens.ranking.components.RankingTopBarHeight
+import com.pheeeew.feature.screens.ranking.components.RankingTopBarOverlay
+import com.pheeeew.feature.screens.ranking.components.WeekSelector
+import com.pheeeew.feature.screens.ranking.components.rememberRankingTopBarScrollBehavior
 import com.pheeeew.feature.screens.ranking.stamp.components.RankingRow
 import com.pheeeew.feature.screens.ranking.stamp.components.TopThreeRanking
-import com.pheeeew.feature.screens.ranking.components.WeekSelector
 import org.jetbrains.compose.resources.painterResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_emotion_frustrated
@@ -93,9 +97,11 @@ fun WeeklyRankingScreen(
 ) {
     val pullState = rememberPullToRefreshState()
     val scrollState = rememberScrollState()
+    val topBarBehavior = rememberRankingTopBarScrollBehavior()
     LaunchedEffect(uiState.isRefreshing, uiState.status) {
         if (uiState.isRefreshing || uiState.status == WeeklyRankingStatus.Loading) {
             scrollState.scrollTo(0)
+            topBarBehavior.show()
         }
     }
     val pullDistance = with(LocalDensity.current) { 56.dp.toPx() }
@@ -119,68 +125,73 @@ fun WeeklyRankingScreen(
                 )
             },
         ) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .graphicsLayer {
-                            translationY = pullState.distanceFraction.coerceIn(0f, 1f) * pullDistance
-                        }.verticalScroll(scrollState),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                BasicTopBar(
-                    title = "주간 랭킹",
-                    titleColor = AppColors.RankingContent,
-                )
-                Spacer(Modifier.height(12.dp))
-                WeekSelector(
-                    week = uiState.weekLabel.ifBlank { "주간 랭킹" },
-                    onPrevious = onPreviousWeek,
-                    onNext = onNextWeek,
-                    modifier = Modifier.padding(horizontal = 24.dp),
-                    canGoPrevious = uiState.status == WeeklyRankingStatus.Ready && uiState.hasPrevious,
-                    canGoNext = uiState.status == WeeklyRankingStatus.Ready && uiState.weeksAgo > 0,
-                )
-                Spacer(Modifier.height(22.dp))
-                if (uiState.hasRefreshError) {
-                    RefreshErrorBanner(
-                        message = "랭킹을 새로고침하지 못했어요.",
-                        onRetry = onRefresh,
-                        modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
+            Box(Modifier.fillMaxSize()) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .nestedScroll(topBarBehavior.nestedScrollConnection)
+                            .graphicsLayer {
+                                translationY = pullState.distanceFraction.coerceIn(0f, 1f) * pullDistance
+                            }.verticalScroll(scrollState),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Spacer(Modifier.height(RankingTopBarHeight))
+                    Spacer(Modifier.height(12.dp))
+                    WeekSelector(
+                        week = uiState.weekLabel,
+                        onPrevious = onPreviousWeek,
+                        onNext = onNextWeek,
+                        modifier = Modifier.padding(horizontal = 24.dp),
+                        canGoPrevious = uiState.status == WeeklyRankingStatus.Ready && uiState.hasPrevious,
+                        canGoNext = uiState.status == WeeklyRankingStatus.Ready && uiState.weeksAgo > 0,
                     )
-                }
-                when (uiState.status) {
-                    WeeklyRankingStatus.Loading -> {
-                        Spacer(Modifier.height(48.dp))
-                        CircularLoadingIndicator(color = AppColors.Primary)
-                    }
-
-                    WeeklyRankingStatus.Failed -> {
-                        LoadErrorContent(
-                            onRetry = onRetry,
-                            modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 96.dp),
+                    Spacer(Modifier.height(22.dp))
+                    if (uiState.hasRefreshError) {
+                        RefreshErrorBanner(
+                            message = "랭킹을 새로고침하지 못했어요.",
+                            onRetry = onRefresh,
+                            modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 12.dp),
                         )
                     }
+                    when (uiState.status) {
+                        WeeklyRankingStatus.Loading -> {
+                            Spacer(Modifier.height(48.dp))
+                            CircularLoadingIndicator(color = AppColors.Primary)
+                        }
 
-                    WeeklyRankingStatus.Ready -> {
-                        if (uiState.rankings.isEmpty()) {
-                            EmptyRankingContent(
+                        WeeklyRankingStatus.Failed -> {
+                            LoadErrorContent(
+                                onRetry = onRetry,
                                 modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 96.dp),
                             )
-                        } else if (uiState.rankings.size >= 3) {
-                            TopThreeRanking(members = uiState.rankings.take(3))
-                            Spacer(Modifier.height(22.dp))
-                            uiState.rankings.drop(3).forEach { member ->
-                                RankingRow(member = member, modifier = Modifier.padding(bottom = 14.dp))
-                            }
-                        } else {
-                            uiState.rankings.forEach { member ->
-                                RankingRow(member = member, modifier = Modifier.padding(bottom = 14.dp))
+                        }
+
+                        WeeklyRankingStatus.Ready -> {
+                            if (uiState.rankings.isEmpty()) {
+                                EmptyRankingContent(
+                                    modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 96.dp),
+                                )
+                            } else if (uiState.rankings.size >= 3) {
+                                TopThreeRanking(members = uiState.rankings.take(3))
+                                Spacer(Modifier.height(22.dp))
+                                uiState.rankings.drop(3).forEach { member ->
+                                    RankingRow(member = member, modifier = Modifier.padding(bottom = 14.dp))
+                                }
+                            } else {
+                                uiState.rankings.forEach { member ->
+                                    RankingRow(member = member, modifier = Modifier.padding(bottom = 14.dp))
+                                }
                             }
                         }
                     }
+                    Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
                 }
-                Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
+                RankingTopBarOverlay(
+                    title = "스탬프 주간 랭킹",
+                    behavior = topBarBehavior,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
             }
         }
     }
