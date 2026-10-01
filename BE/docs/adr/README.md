@@ -111,6 +111,7 @@ Accepted (YYYY-MM-DD)
 | [0024](0024-filter-blocks-with-not-exists.md) | 차단 필터를 `NOT EXISTS` 로 | nullable 컬럼에서 `NOT IN` 은 행을 조용히 지워요 |
 | [0025](0025-check-sigh-expiration-on-detail-request.md) | 한숨의 조회 기간 만료를 상세 재요청 시 판정 | 목록은 이어서 조회하고, 만료된 상세 요청은 전용 코드로 소멸을 안내해요 |
 | [0026](0026-record-device-activity-asynchronously-with-local-cache.md) | 기기 활동 비동기 기록과 로컬 캐시 | 중복 저장 시도를 줄이고 재시작 시 미저장 활동의 유실 가능성을 받아들여요 |
+| [0027](0027-accept-group-presses-without-request-records.md) | 그룹 감정 입력의 단일 API와 합산 | Proposed: 목록형 입력을 한 트랜잭션으로 합산하고 요청별 중복 방지 기록은 저장하지 않아요 |
 
 ## AI 사용
 

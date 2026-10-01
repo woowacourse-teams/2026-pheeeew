@@ -3,6 +3,7 @@ package com.pheeeew.groups.application;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.groups.fixture.GroupFixture.일반_멤버_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -12,6 +13,7 @@ import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
+import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
@@ -27,6 +29,9 @@ import com.pheeeew.groups.exception.GroupException;
 import com.pheeeew.support.PostgisDataJpaTest;
 import jakarta.persistence.EntityManagerFactory;
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -42,6 +47,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -333,18 +339,149 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
-    void 버튼을_누르면_오늘_집계가_올라간다() {
+    void 같은_입력도_요청마다_새로_집계한다() {
         // given
         Device 그룹장 = 기기를_저장한다();
         GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupPressCommand 요청 = GroupPressCommand.from(Map.of(EmotionState.ANGRY, 5));
 
         // when
-        groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
-        GroupPressCountResult 결과 = groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(), 요청);
+        GroupPressCountResult 결과 = groupService.press(그룹.publicId(), 그룹장.getPublicId(), 요청);
 
         // then
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(2);
-        assertThat(결과.total()).isEqualTo(2);
+        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(10);
+        assertThat(결과.total()).isEqualTo(10);
+        assertThat(groupDailyPressRepository.count()).isOne();
+    }
+
+    @Test
+    void 여러_감정의_횟수를_기존_집계에_더한다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(), 감정_입력(EmotionState.ANGRY));
+        GroupPressCommand 요청 = GroupPressCommand.from(Map.of(EmotionState.ANGRY, 12, EmotionState.IRRITATED, 3));
+
+        // when
+        GroupPressCountResult 결과 = groupService.press(그룹.publicId(), 그룹장.getPublicId(), 요청);
+
+        // then
+        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(13);
+        assertThat(결과.counts().get(EmotionState.IRRITATED)).isEqualTo(3);
+        assertThat(결과.total()).isEqualTo(16);
+        assertThat(groupDailyPressRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void 다섯_감정을_합계_100회까지_한꺼번에_반영한다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        Map<EmotionState, Integer> 입력들 = new EnumMap<>(EmotionState.class);
+        for (EmotionState state : EmotionState.values()) {
+            입력들.put(state, 20);
+        }
+
+        // when
+        GroupPressCountResult 결과 = groupService.press(
+                그룹.publicId(), 그룹장.getPublicId(), GroupPressCommand.from(입력들)
+        );
+
+        // then
+        assertThat(결과.counts()).hasSize(5);
+        assertThat(결과.counts().values()).containsOnly(20L);
+        assertThat(결과.total()).isEqualTo(100);
+        assertThat(groupDailyPressRepository.count()).isEqualTo(5);
+    }
+
+    @Test
+    void 감정_순서가_다른_동시_요청도_증가량을_잃지_않는다() throws Exception {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        List<Callable<Boolean>> 작업들 = new ArrayList<>();
+        for (int index = 0; index < 동시_요청_수; index++) {
+            Map<EmotionState, Integer> 입력들 = new LinkedHashMap<>();
+            if (index % 2 == 0) {
+                입력들.put(EmotionState.ANGRY, 12);
+                입력들.put(EmotionState.IRRITATED, 3);
+            } else {
+                입력들.put(EmotionState.IRRITATED, 3);
+                입력들.put(EmotionState.ANGRY, 12);
+            }
+            GroupPressCommand 요청 = GroupPressCommand.from(입력들);
+            작업들.add(() -> {
+                groupService.press(그룹.publicId(), 그룹장.getPublicId(), 요청);
+                return true;
+            });
+        }
+
+        // when
+        List<Boolean> 결과들 = 실행한다(작업들);
+
+        // then
+        assertThat(결과들).hasSize(동시_요청_수).containsOnly(true);
+        GroupPressCountResult 집계 = groupService.findOne(그룹.publicId(), 그룹장.getPublicId()).todayPresses();
+        assertThat(집계.counts().get(EmotionState.ANGRY)).isEqualTo(12L * 동시_요청_수);
+        assertThat(집계.counts().get(EmotionState.IRRITATED)).isEqualTo(3L * 동시_요청_수);
+        assertThat(집계.total()).isEqualTo(15L * 동시_요청_수);
+    }
+
+    @Test
+    void 중간_증가가_실패하면_앞선_감정의_증가도_롤백한다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(), 감정_입력(EmotionState.IRRITATED));
+        jdbcClient.sql("""
+                        UPDATE group_daily_presses SET press_count = ?
+                        WHERE group_id = (SELECT id FROM groups WHERE public_id = ?) AND state = 'IRRITATED'
+                        """)
+                .param(Long.MAX_VALUE).param(그룹.publicId()).update();
+        GroupPressCommand 요청 = GroupPressCommand.from(Map.of(EmotionState.ANGRY, 3, EmotionState.IRRITATED, 2));
+
+        // when / then
+        assertThatThrownBy(() -> groupService.press(그룹.publicId(), 그룹장.getPublicId(), 요청))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThat(groupDailyPressRepository.findAll()).singleElement().satisfies(press -> {
+            assertThat(press.getState()).isEqualTo(EmotionState.IRRITATED);
+            assertThat(press.getPressCount()).isEqualTo(Long.MAX_VALUE);
+        });
+    }
+
+    @Test
+    void 탈퇴한_멤버는_감정_입력을_보낼_수_없다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        Device 멤버 = 기기를_저장한다();
+        groupService.join(멤버.getPublicId(), 그룹.inviteCode());
+        groupService.leave(그룹.publicId(), 멤버.getPublicId());
+        GroupPressCommand 요청 = GroupPressCommand.from(Map.of(EmotionState.ANGRY, 12, EmotionState.IRRITATED, 3));
+
+        // when
+        Throwable throwable = catchThrowable(() -> groupService.press(그룹.publicId(), 멤버.getPublicId(), 요청));
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_MEMBER_ONLY);
+        assertThat(groupDailyPressRepository.count()).isZero();
+    }
+
+    @Test
+    void 삭제된_그룹에는_감정_입력을_보낼_수_없다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        groupService.delete(그룹.publicId(), 그룹장.getPublicId());
+        GroupPressCommand 요청 = GroupPressCommand.from(Map.of(EmotionState.ANGRY, 12, EmotionState.IRRITATED, 3));
+
+        // when
+        Throwable throwable = catchThrowable(() -> groupService.press(그룹.publicId(), 그룹장.getPublicId(), 요청));
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_NOT_FOUND);
+        assertThat(groupDailyPressRepository.count()).isZero();
     }
 
     @Test
@@ -355,10 +492,10 @@ class GroupServiceIntegrationTest {
 
         // when
         for (int 회차 = 0; 회차 < 50; 회차++) {
-            groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+            groupService.press(그룹.publicId(), 그룹장.getPublicId(), 감정_입력(EmotionState.ANGRY));
         }
         GroupPressCountResult 결과 =
-                groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.IRRITATED);
+                groupService.press(그룹.publicId(), 그룹장.getPublicId(), 감정_입력(EmotionState.IRRITATED));
 
         // then
         assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(50);
@@ -374,9 +511,9 @@ class GroupServiceIntegrationTest {
         groupService.join(멤버.getPublicId(), 그룹.inviteCode());
 
         // when
-        groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(), 감정_입력(EmotionState.ANGRY));
         GroupPressCountResult 결과 =
-                groupService.press(그룹.publicId(), 멤버.getPublicId(), EmotionState.ANGRY);
+                groupService.press(그룹.publicId(), 멤버.getPublicId(), 감정_입력(EmotionState.ANGRY));
 
         // then
         assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(2);
@@ -389,11 +526,11 @@ class GroupServiceIntegrationTest {
         Device 그룹장 = 기기를_저장한다();
         GroupResult 내_그룹 = groupService.save(그룹장.getPublicId(), "내모임", null, 스탬프("기본"));
         GroupResult 옆_그룹 = groupService.save(그룹장.getPublicId(), "옆모임", null, 스탬프("기본"));
-        groupService.press(옆_그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+        groupService.press(옆_그룹.publicId(), 그룹장.getPublicId(), 감정_입력(EmotionState.ANGRY));
 
         // when
         GroupPressCountResult 결과 =
-                groupService.press(내_그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+                groupService.press(내_그룹.publicId(), 그룹장.getPublicId(), 감정_입력(EmotionState.ANGRY));
 
         // then
         assertThat(결과.total()).isOne();
@@ -407,7 +544,7 @@ class GroupServiceIntegrationTest {
 
         // when
         GroupPressCountResult 결과 =
-                groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+                groupService.press(그룹.publicId(), 그룹장.getPublicId(), 감정_입력(EmotionState.ANGRY));
 
         // then
         assertThat(결과.counts()).hasSize(EmotionState.values().length);
@@ -419,7 +556,7 @@ class GroupServiceIntegrationTest {
         // given
         Device 그룹장 = 기기를_저장한다();
         GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(), 감정_입력(EmotionState.ANGRY));
         어제로_넘긴다(그룹.publicId());
 
         // when
@@ -441,7 +578,7 @@ class GroupServiceIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(
-                () -> groupService.press(그룹.publicId(), 남.getPublicId(), EmotionState.ANGRY)
+                () -> groupService.press(그룹.publicId(), 남.getPublicId(), 감정_입력(EmotionState.ANGRY))
         );
 
         // then
@@ -453,14 +590,14 @@ class GroupServiceIntegrationTest {
         // given
         Device 그룹장 = 기기를_저장한다();
         GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.ANGRY);
-        groupService.press(그룹.publicId(), 그룹장.getPublicId(), EmotionState.IRRITATED);
+        groupService.press(그룹.publicId(), 그룹장.getPublicId(),
+                GroupPressCommand.from(Map.of(EmotionState.ANGRY, 12, EmotionState.IRRITATED, 3)));
 
         // when
         GroupDetailResult 상세 = groupService.findOne(그룹.publicId(), 그룹장.getPublicId());
 
         // then
-        assertThat(상세.todayPresses().total()).isEqualTo(2);
+        assertThat(상세.todayPresses().total()).isEqualTo(15);
         assertThat(상세.weeklyScore()).isZero();
         assertThat(상세.weeklyRank()).isNull();
     }
@@ -656,6 +793,10 @@ class GroupServiceIntegrationTest {
         } finally {
             실행기.shutdownNow();
         }
+    }
+
+    private GroupPressCommand 감정_입력(EmotionState state) {
+        return GroupPressCommand.from(Map.of(state, 1));
     }
 
     private Device 기기를_저장한다() {

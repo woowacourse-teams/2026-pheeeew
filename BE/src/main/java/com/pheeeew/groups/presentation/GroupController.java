@@ -108,7 +108,7 @@ public class GroupController implements GroupControllerApi {
             @CurrentDevice UUID devicePublicId
     ) {
         return GroupPressCountResponse.from(
-                groupService.press(groupId, devicePublicId, request.state())
+                groupService.press(groupId, devicePublicId, request.toCommand())
         );
     }
 

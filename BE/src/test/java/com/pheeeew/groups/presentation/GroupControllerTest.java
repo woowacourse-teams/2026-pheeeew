@@ -12,6 +12,7 @@ import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.GroupService;
+import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
@@ -20,6 +21,7 @@ import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.exception.GroupErrorCode;
 import com.pheeeew.groups.exception.GroupException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -250,31 +252,106 @@ class GroupControllerTest {
         result.expectStatus().isForbidden();
     }
 
-    @Test
-    void 감정_버튼을_누르면_오늘_집계를_돌려준다() {
+    @ParameterizedTest
+    @ValueSource(ints = {1, 100})
+    void 한_감정을_1회부터_100회까지_같은_API로_보낸다(int 횟수) {
         // given
-        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, EmotionState.ANGRY))
-                .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 2L)));
+        GroupPressCommand command = GroupPressCommand.from(Map.of(EmotionState.ANGRY, 횟수));
+        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, command))
+                .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.ANGRY, (long) 횟수)));
 
         // when
-        RestTestClient.ResponseSpec result = 누른다("\"ANGRY\"");
+        RestTestClient.ResponseSpec result = 누른다("""
+                {"presses":[{"state":"ANGRY","count":%d}]}
+                """.formatted(횟수));
 
         // then
-        result.expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.counts.ANGRY").isEqualTo(2)
-                .jsonPath("$.total").isEqualTo(2);
-        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, EmotionState.ANGRY);
+        result.expectStatus().isOk().expectBody()
+                .jsonPath("$.counts.ANGRY").isEqualTo(횟수)
+                .jsonPath("$.total").isEqualTo(횟수);
+        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, command);
+    }
+
+    @Test
+    void 여러_입력의_같은_감정은_합산해_전달한다() {
+        // given
+        GroupPressCommand command = GroupPressCommand.from(Map.of(EmotionState.ANGRY, 12, EmotionState.IRRITATED, 3));
+        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, command))
+                .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 12L, EmotionState.IRRITATED, 3L)));
+
+        // when
+        RestTestClient.ResponseSpec result = 누른다("""
+                {"presses":[{"state":"ANGRY","count":5},{"state":"IRRITATED","count":3},
+                            {"state":"ANGRY","count":7}]}
+                """);
+
+        // then
+        result.expectStatus().isOk().expectBody().jsonPath("$.total").isEqualTo(15);
+        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, command);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"null", "\"\"", "\"HAPPY\"", "\"angry\""})
-    void 다루지_않는_감정을_보내면_400이고_서비스를_부르지_않는다(String 보낸_값) {
+    @ValueSource(strings = {
+            "null", "[]", "[null]", "[{}]", "[{\"state\":\"ANGRY\"}]",
+            "[{\"state\":\"HAPPY\",\"count\":1}]", "[{\"state\":null,\"count\":1}]",
+            "[{\"state\":\"angry\",\"count\":1}]", "[{\"state\":\"\",\"count\":1}]",
+            "[{\"state\":\"ANGRY\",\"count\":null}]", "[{\"state\":\"ANGRY\",\"count\":0}]",
+            "[{\"state\":\"ANGRY\",\"count\":-1}]", "[{\"state\":\"ANGRY\",\"count\":101}]",
+            "[{\"state\":\"ANGRY\",\"count\":1.5}]",
+            "[{\"state\":\"ANGRY\",\"count\":2147483648}]",
+            "[{\"state\":\"ANGRY\",\"count\":60},{\"state\":\"ANGRY\",\"count\":41}]",
+            "[{\"state\":\"ANGRY\",\"count\":60},{\"state\":\"IRRITATED\",\"count\":41}]"
+    })
+    void 잘못된_입력은_400이고_서비스를_부르지_않는다(String 입력들) {
         // when
-        RestTestClient.ResponseSpec result = 누른다(보낸_값);
+        RestTestClient.ResponseSpec result = 누른다("""
+                {"presses":%s}
+                """.formatted(입력들));
 
         // then
         result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupService);
+    }
+
+    @Test
+    void 입력_항목이_5개를_넘으면_400이다() {
+        // given
+        String 입력들 = String.join(",", Collections.nCopies(6, "{\"state\":\"ANGRY\",\"count\":1}"));
+
+        // when
+        RestTestClient.ResponseSpec result = 누른다("""
+                {"presses":[%s]}
+                """.formatted(입력들));
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"state\":\"ANGRY\"}"})
+    void 입력_목록이_없는_이전_단건_본문은_400이다(String body) {
+        // when
+        RestTestClient.ResponseSpec result = 누른다(body);
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupService);
+    }
+
+    @Test
+    void 별도의_batch_경로는_제공하지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = client.post()
+                .uri(GROUPS_URI + "/" + 그룹_공개_식별자 + "/presses/batch")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("""
+                        {"presses":[{"state":"ANGRY","count":1}]}
+                        """)
+                .exchange();
+
+        // then
+        result.expectStatus().isNotFound();
         verifyNoInteractions(groupService);
     }
 
@@ -364,13 +441,11 @@ class GroupControllerTest {
                 .exchange();
     }
 
-    private RestTestClient.ResponseSpec 누른다(String 보낸_값) {
+    private RestTestClient.ResponseSpec 누른다(String body) {
         return client.post()
                 .uri(GROUPS_URI + "/" + 그룹_공개_식별자 + "/presses")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body("""
-                        {"state": %s}
-                        """.formatted(보낸_값))
+                .body(body)
                 .exchange();
     }
 
