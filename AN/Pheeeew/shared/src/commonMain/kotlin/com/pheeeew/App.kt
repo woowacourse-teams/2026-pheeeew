@@ -3,6 +3,7 @@ package com.pheeeew
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -73,6 +74,7 @@ import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppDestination
+import com.pheeeew.feature.component.RankingBottomNavigationDestination
 import com.pheeeew.feature.screens.group.navigation.GroupFeatureHost
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
@@ -85,6 +87,7 @@ import com.pheeeew.feature.screens.map.nearby.face
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
+import com.pheeeew.feature.screens.ranking.press.PressRankingScreen
 import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.SettingsScreen
@@ -349,6 +352,7 @@ private fun AppContent(
     var isGroupCreateVisible by remember { mutableStateOf(false) }
     var refreshGroup by remember { mutableStateOf<(() -> Unit)?>(null) }
     var refreshRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var rankingDestination by remember { mutableStateOf(RankingBottomNavigationDestination.Stamp) }
     val isEmotionRecordFlowActive =
         selectedDestination == AppDestination.Map &&
             (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
@@ -362,7 +366,22 @@ private fun AppContent(
             startDestination = MapRootDestination,
             modifier = Modifier.fillMaxSize(),
         ) {
-            composable<MapRootDestination> {
+            composable<MapRootDestination>(
+                enterTransition = {
+                    if (initialState.destination.hasRoute<RankingRootDestination>()) {
+                        slideInHorizontally(tween(300)) { -it }
+                    } else {
+                        null
+                    }
+                },
+                exitTransition = {
+                    if (targetState.destination.hasRoute<RankingRootDestination>()) {
+                        slideOutHorizontally(tween(300)) { -it }
+                    } else {
+                        null
+                    }
+                },
+            ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     MapScreen(
                         viewModel = mapViewModel,
@@ -470,14 +489,18 @@ private fun AppContent(
 
             composable<RankingRootDestination>(
                 enterTransition = {
-                    if (initialState.destination.hasRoute<GroupRootDestination>()) {
+                    if (initialState.destination.hasRoute<GroupRootDestination>() ||
+                        initialState.destination.hasRoute<MapRootDestination>()
+                    ) {
                         slideInHorizontally(tween(300)) { it }
                     } else {
                         null
                     }
                 },
                 exitTransition = {
-                    if (targetState.destination.hasRoute<GroupRootDestination>()) {
+                    if (targetState.destination.hasRoute<GroupRootDestination>() ||
+                        targetState.destination.hasRoute<MapRootDestination>()
+                    ) {
                         slideOutHorizontally(tween(300)) { it }
                     } else {
                         null
@@ -488,11 +511,15 @@ private fun AppContent(
                     com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible provides
                         (!isSettingsVisible && reportTarget == null),
                 ) {
-                    WeeklyRankingRoute(
-                        apiDependencies.client,
-                        Modifier.fillMaxSize(),
-                        onRefreshActionChanged = { refreshRanking = it },
-                    )
+                    if (rankingDestination == RankingBottomNavigationDestination.Stamp) {
+                        WeeklyRankingRoute(
+                            apiDependencies.client,
+                            Modifier.fillMaxSize(),
+                            onRefreshActionChanged = { refreshRanking = it },
+                        )
+                    } else {
+                        PressRankingScreen(Modifier.fillMaxSize())
+                    }
                 }
             }
         }
@@ -530,8 +557,21 @@ private fun AppContent(
                         .align(Alignment.BottomCenter)
                         .padding(bottom = AppBottomNavigationBarBottomSpacing),
                 selectedDestination = selectedDestination,
+                rankingDestination = rankingDestination,
+                onRankingBackClick = {
+                    nearbyViewModel.dismiss()
+                    if (!navController.popBackStack()) {
+                        navController.navigate(MapRootDestination) { launchSingleTop = true }
+                    }
+                },
+                onRankingDestinationSelected = { destination ->
+                    rankingDestination = destination
+                },
                 onDestinationSelected = { destination ->
                     nearbyViewModel.dismiss()
+                    if (destination == AppDestination.Ranking) {
+                        rankingDestination = RankingBottomNavigationDestination.Stamp
+                    }
                     val route =
                         when (destination) {
                             AppDestination.Map -> MapRootDestination
