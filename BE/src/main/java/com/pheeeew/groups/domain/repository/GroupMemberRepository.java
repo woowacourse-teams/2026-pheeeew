@@ -4,6 +4,7 @@ import com.pheeeew.groups.domain.GroupMember;
 import com.pheeeew.groups.domain.repository.projection.GroupListProjection;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -36,6 +37,16 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
             ORDER BY member.createdAt, member.id
             """)
     List<GroupListProjection> findMine(@Param("deviceId") Long deviceId);
+
+    @Query("""
+            SELECT g.publicId
+            FROM GroupMember member
+            JOIN member.group g
+            WHERE member.device.publicId = :devicePublicId
+              AND member.leftAt IS NULL
+              AND g.deletedAt IS NULL
+            """)
+    List<UUID> findMyGroupPublicIds(@Param("devicePublicId") UUID devicePublicId);
 
     long countByGroupIdAndLeftAtIsNull(Long groupId);
 }

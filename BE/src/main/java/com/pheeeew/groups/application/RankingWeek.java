@@ -20,4 +20,12 @@ public record RankingWeek(Instant startAt, Instant endAt) {
 
         return new RankingWeek(start.toInstant(), start.plusWeeks(1).toInstant());
     }
+
+    public LocalDate startDate() {
+        return startAt.atZone(KOREA).toLocalDate();
+    }
+
+    public LocalDate endDate() {
+        return endAt.atZone(KOREA).toLocalDate();
+    }
 }

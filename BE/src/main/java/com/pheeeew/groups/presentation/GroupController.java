@@ -12,7 +12,6 @@ import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampRequest;
 import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
-import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.UUID;
@@ -25,6 +24,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
@@ -37,7 +37,7 @@ public class GroupController implements GroupControllerApi {
     @Override
     @PostMapping
     public ResponseEntity<GroupResponse> save(
-            @Valid @RequestBody GroupCreateRequest request,
+            @RequestBody GroupCreateRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
         GroupStampRequest stamp = request.stamp();
@@ -85,7 +85,7 @@ public class GroupController implements GroupControllerApi {
     @PutMapping("/{groupId}")
     public GroupResponse update(
             @PathVariable UUID groupId,
-            @Valid @RequestBody GroupUpdateRequest request,
+            @RequestBody GroupUpdateRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
         GroupStampRequest stamp = request.stamp();
@@ -104,11 +104,23 @@ public class GroupController implements GroupControllerApi {
     @PostMapping("/{groupId}/presses")
     public GroupPressCountResponse press(
             @PathVariable UUID groupId,
-            @Valid @RequestBody GroupPressRequest request,
+            @RequestBody GroupPressRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
         return GroupPressCountResponse.from(
                 groupService.press(groupId, devicePublicId, request.state())
+        );
+    }
+
+    @Override
+    @GetMapping("/{groupId}/presses")
+    public GroupPressCountResponse findWeeklyPresses(
+            @PathVariable UUID groupId,
+            @RequestParam(defaultValue = "0") int weeksAgo,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        return GroupPressCountResponse.from(
+                groupService.findWeeklyPresses(groupId, devicePublicId, weeksAgo)
         );
     }
 
