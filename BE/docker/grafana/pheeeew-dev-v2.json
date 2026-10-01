@@ -2784,6 +2784,203 @@
           "interval": "1m"
         }
       ]
+    },
+    {
+      "type": "row",
+      "title": "06  무결성 증명  /  기기 등록이 정상 앱에서 오나요?",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 108
+      },
+      "id": 125
+    },
+    {
+      "type": "timeseries",
+      "title": "무결성 증명 수락과 거부",
+      "description": "기기 등록에서 증명을 받아들인 건수와 거부한 건수예요. 거부는 reason 으로 갈려요. 강제가 꺼져 있으면 증명을 보낸 요청만 세고, 안 보낸 요청은 어느 쪽에도 잡히지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 109
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 9,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(rate(pheeeew_device_attestation_accepted_total{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval]))",
+          "legendFormat": "안드로이드 수락"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum by (reason) (rate(pheeeew_device_attestation_rejected_total{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval]))",
+          "legendFormat": "안드로이드 거부 · {{reason}}"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(rate(pheeeew_device_appattest_accepted_total{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval]))",
+          "legendFormat": "iOS 수락"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum by (reason) (rate(pheeeew_device_appattest_rejected_total{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval]))",
+          "legendFormat": "iOS 거부 · {{reason}}"
+        }
+      ],
+      "id": 126
+    },
+    {
+      "type": "timeseries",
+      "title": "증명 판정 내용",
+      "description": "구글이 돌려준 판정이에요. appRecognition 이 PLAY_RECOGNIZED 가 아니거나 deviceIntegrity 가 false 면 변조나 에뮬레이터를 의심해요. skipped 는 검증을 건너뛴 건수이고 운영에서는 0 이어야 해요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 109
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 9,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum by (appRecognition, deviceIntegrity) (rate(pheeeew_device_attestation_verdict_total{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval]))",
+          "legendFormat": "{{appRecognition}} · 무결성 {{deviceIntegrity}}"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "expr": "sum(rate(pheeeew_device_attestation_skipped_total{job=\"pheeeew-api\",environment=\"dev\"}[$__rate_interval]))",
+          "legendFormat": "검증 건너뜀"
+        }
+      ],
+      "id": 127
     }
   ]
 }
