@@ -12,6 +12,7 @@ import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.GroupService;
+import com.pheeeew.groups.application.dto.GroupDetailResult;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
@@ -236,6 +237,27 @@ class GroupControllerTest {
     }
 
     @Test
+    void 상세_조회는_주간_프레스와_두_순위를_함께_내려준다() {
+        // given
+        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세());
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/" + 그룹_공개_식별자)
+                .exchange();
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.todayPresses.total").isEqualTo(2)
+                .jsonPath("$.weeklyPresses.counts.ANGRY").isEqualTo(7)
+                .jsonPath("$.weeklyPresses.total").isEqualTo(7)
+                .jsonPath("$.weeklyScore").isEqualTo(5)
+                .jsonPath("$.weeklyRank").isEqualTo(1)
+                .jsonPath("$.weeklyPressRank").isEqualTo(3);
+    }
+
+    @Test
     void 속하지_않은_그룹을_조회하면_403을_반환한다() {
         // given
         when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자))
@@ -411,6 +433,25 @@ class GroupControllerTest {
         return client.get()
                 .uri(GROUPS_URI + "/" + 그룹_공개_식별자 + "/presses" + 쿼리)
                 .exchange();
+    }
+
+    private GroupDetailResult 기본_상세() {
+        return GroupDetailResult.of(
+                new GroupResult(
+                        그룹_공개_식별자,
+                        "한숨모임",
+                        "설명",
+                        "ABCD1234",
+                        GroupRole.OWNER,
+                        1,
+                        new GroupStampResult("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
+                ),
+                GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 2L)),
+                GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 7L)),
+                5,
+                1,
+                3
+        );
     }
 
     private RestTestClient.ResponseSpec 누른다(String 보낸_값) {

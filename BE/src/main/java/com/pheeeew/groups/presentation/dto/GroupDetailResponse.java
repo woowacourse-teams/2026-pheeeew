@@ -14,13 +14,13 @@ public record GroupDetailResponse(
         long memberCount,
         GroupStampResponse stamp,
         GroupPressCountResponse todayPresses,
+        GroupPressCountResponse weeklyPresses,
         long weeklyScore,
-        Integer weeklyRank
+        Integer weeklyRank,
+        Integer weeklyPressRank
 ) {
-
     public static GroupDetailResponse from(GroupDetailResult result) {
         GroupResult group = result.group();
-
         return new GroupDetailResponse(
                 group.publicId(),
                 group.name(),
@@ -30,8 +30,10 @@ public record GroupDetailResponse(
                 group.memberCount(),
                 GroupStampResponse.from(group.stamp()),
                 GroupPressCountResponse.from(result.todayPresses()),
+                GroupPressCountResponse.from(result.weeklyPresses()),
                 result.weeklyScore(),
-                result.weeklyRank()
+                result.weeklyRank(),
+                result.weeklyPressRank()
         );
     }
 }

@@ -17,6 +17,7 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupPreviewResult;
+import com.pheeeew.groups.application.dto.GroupPressRankingItem;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
@@ -109,16 +110,23 @@ public class GroupService {
     public GroupDetailResult findOne(UUID groupPublicId, UUID devicePublicId) {
         Group group = findGroup(groupPublicId);
         GroupMember member = requireMember(group, devicePublicId);
-        GroupRankingItem ranked = groupRankingService.findGroupRanking(0).items().stream()
+        GroupRankingItem stampRanked = groupRankingService.findGroupRanking(0).items().stream()
                 .filter(item -> item.groupPublicId().equals(groupPublicId))
                 .findFirst()
                 .orElse(null);
+        GroupPressRankingItem pressRanked =
+                groupRankingService.findPressRanking(devicePublicId, 0).items().stream()
+                        .filter(item -> item.groupPublicId().equals(groupPublicId))
+                        .findFirst()
+                        .orElse(null);
 
         return GroupDetailResult.of(
                 toResult(group, member.getRole()),
                 pressesOf(group, LocalDate.now(clock)),
-                ranked == null ? 0 : ranked.score(),
-                ranked == null ? null : ranked.rank()
+                weeklyPressesOf(group, 0),
+                stampRanked == null ? 0 : stampRanked.score(),
+                stampRanked == null ? null : stampRanked.rank(),
+                pressRanked == null ? null : pressRanked.rank()
         );
     }
 
@@ -136,16 +144,7 @@ public class GroupService {
     public GroupPressCountResult findWeeklyPresses(UUID groupPublicId, UUID devicePublicId, int weeksAgo) {
         Group group = findGroup(groupPublicId);
         requireMember(group, devicePublicId);
-        RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
-        List<GroupPressSumProjection> summed = groupDailyPressRepository.sumByGroupIdAndPressDateBetween(
-                group.getId(), week.startDate(), week.endDate());
-
-        Map<EmotionState, Long> counts = emptyCounts();
-        for (GroupPressSumProjection press : summed) {
-            counts.put(press.getState(), press.getPressCount());
-        }
-
-        return GroupPressCountResult.from(counts);
+        return weeklyPressesOf(group, weeksAgo);
     }
 
     @Transactional
@@ -230,6 +229,19 @@ public class GroupService {
         List<GroupDailyPress> pressed =
                 groupDailyPressRepository.findByGroupIdAndPressDate(group.getId(), date);
         for (GroupDailyPress press : pressed) {
+            counts.put(press.getState(), press.getPressCount());
+        }
+
+        return GroupPressCountResult.from(counts);
+    }
+
+    private GroupPressCountResult weeklyPressesOf(Group group, int weeksAgo) {
+        RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
+        List<GroupPressSumProjection> summed = groupDailyPressRepository.sumByGroupIdAndPressDateBetween(
+                group.getId(), week.startDate(), week.endDate());
+
+        Map<EmotionState, Long> counts = emptyCounts();
+        for (GroupPressSumProjection press : summed) {
             counts.put(press.getState(), press.getPressCount());
         }
 
