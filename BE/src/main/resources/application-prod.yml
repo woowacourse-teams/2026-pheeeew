@@ -25,3 +25,9 @@ management:
       slo:
         "[http.server.requests]": 50ms,100ms,250ms,500ms,1s,2s,5s
         "[spring.data.repository.invocations]": 50ms,100ms,200ms,500ms,1s,3s
+
+pheeeew:
+  play-integrity:
+    require-attestation: true
+  app-attest:
+    require-attestation: true
