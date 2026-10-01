@@ -69,7 +69,7 @@ public interface GroupRankingControllerApi {
             @Max(value = 520, message = "몇 주 전인지는 520 이하여야 합니다.")
             int weeksAgo,
 
-            UUID devicePublicId
+            @Parameter(hidden = true) UUID devicePublicId
     );
 
     @Operation(
@@ -98,6 +98,6 @@ public interface GroupRankingControllerApi {
             @Max(value = 520, message = "몇 주 전인지는 520 이하여야 합니다.")
             int weeksAgo,
 
-            UUID devicePublicId
+            @Parameter(hidden = true) UUID devicePublicId
     );
 }
