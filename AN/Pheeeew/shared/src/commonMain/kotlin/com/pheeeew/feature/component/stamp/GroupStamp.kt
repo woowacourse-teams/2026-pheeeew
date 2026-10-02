@@ -107,14 +107,17 @@ private fun AppearanceGroupStamp(
             val fontSize =
                 if (appearance.shape == StampShapeId.VERTICAL_MEMO && textLayout.characterCount == 2) {
                     val labelWidth =
-                        textMeasurer.measure(
-                            text = textLayout.text,
-                            style = LocalTextStyle.current.copy(
-                                fontSize = baseFontSize,
-                                fontWeight = FontWeight.Bold,
-                            ),
-                            softWrap = false,
-                        ).size.width.coerceAtLeast(1)
+                        textMeasurer
+                            .measure(
+                                text = textLayout.text,
+                                style =
+                                    LocalTextStyle.current.copy(
+                                        fontSize = baseFontSize,
+                                        fontWeight = FontWeight.Bold,
+                                    ),
+                                softWrap = false,
+                            ).size.width
+                            .coerceAtLeast(1)
                     val fitScale = (textWidthPx * 0.95f / labelWidth).coerceAtMost(1f)
                     (baseFontSize.value * fitScale).sp
                 } else {
