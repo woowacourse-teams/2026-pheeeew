@@ -86,35 +86,37 @@ internal fun MapFeedbackOverlay(
             MapFeedbackSource.Map -> mapFeedback?.action?.let { action -> { onAction(action) } }
             else -> null
         }
-    AppPopup(
-        popupPositionProvider = MapFeedbackPosition(top),
-        properties = mapFeedbackPopupProperties(),
-    ) {
-        Snackbar(
-            message = text,
-            isError =
-                when (source) {
-                    MapFeedbackSource.Connection -> uiModel.isOffline
-                    MapFeedbackSource.Record -> notice?.isError == true
-                    MapFeedbackSource.Detail, MapFeedbackSource.Map -> true
-                    else -> false
-                },
-            onDismiss = dismiss,
-            maxLines = 3,
-            presentationKey = if (source == MapFeedbackSource.Record) notice else source to text,
-            onShown = { if (source == MapFeedbackSource.Record) notice?.receipt?.shown() },
-            durationMillis =
-                if (source == MapFeedbackSource.Record || source == MapFeedbackSource.Message) 3_000L else null,
-            actionLabel =
-                when {
-                    action == null -> null
-                    source == MapFeedbackSource.Detail -> "다시 시도"
-                    else -> mapFeedback?.action?.label
-                },
-            onAction = action,
-            showDismissAction = source == MapFeedbackSource.Detail,
-            modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 16.dp),
-        )
+    if (text != null) {
+        AppPopup(
+            popupPositionProvider = MapFeedbackPosition(top),
+            properties = mapFeedbackPopupProperties(),
+        ) {
+            Snackbar(
+                message = text,
+                isError =
+                    when (source) {
+                        MapFeedbackSource.Connection -> uiModel.isOffline
+                        MapFeedbackSource.Record -> notice?.isError == true
+                        MapFeedbackSource.Detail, MapFeedbackSource.Map -> true
+                        else -> false
+                    },
+                onDismiss = dismiss,
+                maxLines = 3,
+                presentationKey = if (source == MapFeedbackSource.Record) notice else source to text,
+                onShown = { if (source == MapFeedbackSource.Record) notice?.receipt?.shown() },
+                durationMillis =
+                    if (source == MapFeedbackSource.Record || source == MapFeedbackSource.Message) 3_000L else null,
+                actionLabel =
+                    when {
+                        action == null -> null
+                        source == MapFeedbackSource.Detail -> "다시 시도"
+                        else -> mapFeedback?.action?.label
+                    },
+                onAction = action,
+                showDismissAction = source == MapFeedbackSource.Detail,
+                modifier = Modifier.widthIn(max = 560.dp).fillMaxWidth().padding(horizontal = 16.dp),
+            )
+        }
     }
 }
 

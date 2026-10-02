@@ -22,6 +22,7 @@ ktlintGradle = "14.2.0"
 maplibre = "13.6.0"
 play-services-location = "21.3.0"
 play-integrity = "1.5.0"
+sentryGradle = "6.22.0"
 
 [libraries]
 sentry = { module = "io.sentry:sentry-kotlin-multiplatform", version = "0.27.0" }
@@ -67,3 +68,4 @@ composeCompiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "k
 kotlinMultiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlinSerialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlintGradle" }
+sentryAndroid = { id = "io.sentry.android.gradle", version.ref = "sentryGradle" }

@@ -21,6 +21,7 @@ fun ReportRoute(
     emotionStamp: DrawableResource,
     reportEmotion: ReportEmotionUseCase,
     onBack: () -> Unit,
+    onReportSucceeded: () -> Unit,
     entrySource: String = "map",
     monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
 ) {
@@ -72,7 +73,8 @@ fun ReportRoute(
                 uiState =
                     when (result) {
                         EmotionModerationResult.Success -> {
-                            uiState.copy(isSubmitting = false, successMessage = "신고가 접수됐어요.")
+                            onReportSucceeded()
+                            uiState.copy(isSubmitting = false)
                         }
 
                         EmotionModerationResult.OwnEmotion -> {
