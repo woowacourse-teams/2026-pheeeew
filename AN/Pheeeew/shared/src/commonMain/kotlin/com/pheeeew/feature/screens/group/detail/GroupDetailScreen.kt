@@ -228,7 +228,7 @@ fun GroupDetailScreen(
         GroupDetailOverlay.LeaveOutcomeUnknown,
         is GroupDetailOverlay.Leaving,
         is GroupDetailOverlay.Left,
-            -> {
+        -> {
             LeaveGroupDialog(
                 overlay = uiState.overlay,
                 onDismiss = actions.onDismissOverlay,
@@ -240,7 +240,7 @@ fun GroupDetailScreen(
 
         GroupDetailOverlay.None,
         GroupDetailOverlay.Menu,
-            -> {
+        -> {
         }
     }
 }
