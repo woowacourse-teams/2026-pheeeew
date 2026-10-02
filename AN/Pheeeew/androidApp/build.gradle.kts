@@ -1,3 +1,7 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.TaskAction
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.net.URI
 import java.util.Properties
@@ -5,6 +9,20 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.sentryAndroid)
+}
+
+abstract class ValidateReleaseSentryUpload : DefaultTask() {
+    @get:Internal
+    abstract val authToken: Property<String>
+
+    @TaskAction
+    fun validate() {
+        check(!authToken.orNull.isNullOrBlank()) {
+            "Set SENTRY_AUTH_TOKEN in the environment or monitoring.local.properties, " +
+                "or sentryAuthToken in user Gradle properties before building release."
+        }
+    }
 }
 
 kotlin {
@@ -36,6 +54,24 @@ val monitoringProperties =
 
 fun monitoringValue(key: String): String =
     providers.environmentVariable(key).orNull ?: monitoringProperties.getProperty(key, "").trim()
+
+val sentryAuthToken =
+    providers
+        .environmentVariable("SENTRY_AUTH_TOKEN")
+        .orElse(providers.gradleProperty("sentryAuthToken"))
+        .orElse(providers.provider { monitoringProperties.getProperty("SENTRY_AUTH_TOKEN", "").trim() })
+
+sentry {
+    org = "pheeeew"
+    projectName = "pheeeew-client"
+    authToken = sentryAuthToken.orNull
+    includeProguardMapping = true
+    autoUploadProguardMapping = true
+    includeSourceContext = false
+    autoInstallation { enabled.set(false) }
+    tracingInstrumentation { enabled.set(false) }
+    runtimeOptimizations { enabled.set(false) }
+}
 
 fun quotedConfig(value: String): String =
     "\"" +
@@ -152,8 +188,11 @@ val validateReleaseMonitoring by tasks.registering {
         }
     }
 }
+val validateReleaseSentryUpload by tasks.registering(ValidateReleaseSentryUpload::class) {
+    authToken.set(sentryAuthToken)
+}
 tasks.matching { it.name == "preReleaseBuild" || it.name == "generateReleaseBuildConfig" }.configureEach {
-    dependsOn(validateReleaseMonitoring)
+    dependsOn(validateReleaseMonitoring, validateReleaseSentryUpload)
 }
 
 // Inspect the actual variant fields used by BuildConfig, including flavor/plugin overrides.
