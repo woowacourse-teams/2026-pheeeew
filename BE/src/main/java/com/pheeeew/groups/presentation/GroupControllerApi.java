@@ -7,6 +7,9 @@ import com.pheeeew.groups.presentation.dto.GroupPressRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -40,7 +43,7 @@ public interface GroupControllerApi {
             @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름")
     })
     ResponseEntity<GroupResponse> save(
-            GroupCreateRequest request,
+            @Valid GroupCreateRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
@@ -83,14 +86,24 @@ public interface GroupControllerApi {
                     - `inviteCode` 는 **모든 멤버**에게 보입니다. 재발급만 그룹장 권한입니다.
                     - `role` 로 요청한 기기가 그룹장인지 알 수 있습니다.
 
-                    화면에 필요한 숫자 셋을 함께 내려줍니다.
+                    화면에 필요한 숫자들을 함께 내려줍니다. **스탬프와 프레스는 서로 다른 지표입니다.**
+                    스탬프는 지도에 남긴 감정이고, 프레스는 감정 버튼을 누른 횟수입니다. 둘은 섞이지 않습니다.
 
-                    - `todayPresses` — **오늘** 그룹 전체가 감정 버튼을 누른 횟수입니다.
-                      다섯 감정을 0 인 것까지 **항상 전부** 담고 `total` 은 그 합입니다. 하루는 한국시간 자정에 바뀝니다.
-                    - `weeklyScore` — 이번 주 그 그룹으로 **지도에 남긴 감정 수**입니다. 그룹 간 랭킹 점수와 같은 값입니다.
+                    감정 버튼(프레스)
+
+                    - `weeklyPresses` — **이번 주** 그룹 전체가 감정 버튼을 누른 횟수입니다.
+                      다섯 감정을 0 인 것까지 **항상 전부** 담고, `total` 이 이번 주 프레스 총합입니다.
+                    - `todayPresses` — 같은 형태의 **오늘** 집계입니다. 하루는 한국시간 자정에 바뀝니다.
+                    - `weeklyPressRank` — 이번 주 프레스 수로 매긴 전체 그룹 중 순위입니다.
+                      한 번도 누르지 않았으면 순위표에 오르지 않으므로 **`null`** 입니다.
+
+                    지도 감정(스탬프)
+
+                    - `weeklyScore` — 이번 주 그 그룹으로 **지도에 남긴 감정 수**입니다.
                       **버튼을 누른 횟수는 여기 들어가지 않습니다.**
-                    - `weeklyRank` — 이번 주 전체 그룹 중 순위입니다. 동점은 공동 순위이며,
-                      `weeklyScore` 가 0 이면 순위표에 오르지 않으므로 **`null`** 입니다.
+                    - `weeklyRank` — 그 점수로 매긴 전체 그룹 중 순위입니다. `weeklyScore` 가 0 이면 **`null`** 입니다.
+
+                    두 순위 모두 주는 **월요일 00:00 KST** 에 바뀌고, 동점은 공동 순위(1, 2, 2, 4)입니다.
                     """
     )
     @ApiResponses({
@@ -125,7 +138,7 @@ public interface GroupControllerApi {
     })
     GroupResponse update(
             UUID groupId,
-            GroupUpdateRequest request,
+            @Valid GroupUpdateRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
@@ -147,7 +160,35 @@ public interface GroupControllerApi {
     })
     GroupPressCountResponse press(
             UUID groupId,
-            GroupPressRequest request,
+            @Valid GroupPressRequest request,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
+
+    @Operation(
+            summary = "감정 버튼 주간 집계",
+            description = """
+                    그 주에 그룹이 누른 감정 버튼을 감정별로 합쳐서 돌려줍니다. **그룹 멤버만** 볼 수 있습니다.
+
+                    - 주는 **월요일 00:00 KST** 에 바뀝니다. 그룹 간 주간 랭킹과 같은 경계입니다.
+                    - `weeksAgo` 로 몇 주 전인지 고릅니다. `0` 이 이번 주, `1` 이 지난주입니다.
+                    - 누르지 않은 감정도 `0` 으로 내려와 **다섯 감정이 항상 모두 있습니다.**
+                    - `POST /api/v2/groups/{groupId}/presses` 와 그룹 상세의 집계는 **오늘치**입니다.
+                      이 API 만 주간입니다.
+                    - **지도에 남긴 감정과는 다릅니다.** 그룹 점수와 순위는 지도 감정만 세고,
+                      버튼 누르기는 이 집계에만 들어갑니다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "weeksAgo 값이 올바르지 않음"),
+            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
+    })
+    GroupPressCountResponse findWeeklyPresses(
+            UUID groupId,
+            @Min(value = 0, message = "몇 주 전인지는 0 이상이어야 합니다.")
+            @Max(value = 520, message = "몇 주 전인지는 520 이하여야 합니다.")
+            int weeksAgo,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
