@@ -25,6 +25,7 @@ import pheeeew.shared.generated.resources.group_stamp_tag_fill
 import pheeeew.shared.generated.resources.group_stamp_tag_overlay
 import pheeeew.shared.generated.resources.group_stamp_ticket_backdrop
 import pheeeew.shared.generated.resources.group_stamp_ticket_fill
+import pheeeew.shared.generated.resources.group_stamp_ticket_overlay
 import pheeeew.shared.generated.resources.group_stamp_vertical_memo_backdrop
 import pheeeew.shared.generated.resources.group_stamp_vertical_memo_fill
 import pheeeew.shared.generated.resources.group_stamp_vertical_memo_overlay
@@ -69,9 +70,10 @@ internal object StampShapeCatalog {
                 definition(
                     backdrop = Res.drawable.group_stamp_ticket_backdrop,
                     fill = Res.drawable.group_stamp_ticket_fill,
-                    width = 40f,
-                    height = 25.85f,
-                    textArea = StampTextArea(0.48f, 0.47f, 0.68f, 0.55f),
+                    overlay = Res.drawable.group_stamp_ticket_overlay,
+                    width = 58f,
+                    height = 62f,
+                    textArea = StampTextArea(0.49f, 0.49f, 0.5f, 0.45f),
                 ),
             StampShapeId.ROUNDED_RECTANGLE to
                 definition(
