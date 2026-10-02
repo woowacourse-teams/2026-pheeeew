@@ -101,7 +101,25 @@ private fun AppearanceGroupStamp(
             val textHeight = maxHeight * textArea.heightFraction
             val textX = maxWidth * textArea.centerX - textWidth / 2
             val textY = maxHeight * textArea.centerY - textHeight / 2
-            val fontSize = stampFontSize(textLayout, size, fontScale = density.fontScale)
+            val textWidthPx = with(density) { textWidth.roundToPx().coerceAtLeast(1) }
+            val baseFontSize = stampFontSize(textLayout, size, fontScale = density.fontScale)
+            // The eighth shape is narrow: keep two characters on one line within its colored face.
+            val fontSize =
+                if (appearance.shape == StampShapeId.VERTICAL_MEMO && textLayout.characterCount == 2) {
+                    val labelWidth =
+                        textMeasurer.measure(
+                            text = textLayout.text,
+                            style = LocalTextStyle.current.copy(
+                                fontSize = baseFontSize,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            softWrap = false,
+                        ).size.width.coerceAtLeast(1)
+                    val fitScale = (textWidthPx * 0.95f / labelWidth).coerceAtMost(1f)
+                    (baseFontSize.value * fitScale).sp
+                } else {
+                    baseFontSize
+                }
             val lineHeight = stampLineHeight(fontSize)
             val textStyle =
                 LocalTextStyle.current.copy(
@@ -111,7 +129,6 @@ private fun AppearanceGroupStamp(
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                 )
-            val textWidthPx = with(density) { textWidth.roundToPx().coerceAtLeast(1) }
             val measuredLines =
                 textMeasurer
                     .measure(
