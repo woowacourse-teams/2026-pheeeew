@@ -121,9 +121,9 @@ internal object StampShapeCatalog {
                     backdrop = Res.drawable.group_stamp_vertical_memo_backdrop,
                     fill = Res.drawable.group_stamp_vertical_memo_fill,
                     overlay = Res.drawable.group_stamp_vertical_memo_overlay,
-                    width = 32.5f,
-                    height = 60f,
-                    textArea = StampTextArea(0.51f, 0.46f, 0.68f, 0.82f),
+                    width = 58f,
+                    height = 62f,
+                    textArea = StampTextArea(0.49f, 0.49f, 0.5f, 0.45f),
                 ),
             StampShapeId.FOUR_LEAF to
                 definition(
