@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -19,7 +18,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
@@ -44,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.AppPopup
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.DetailTopBar
+import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.detail.component.GroupDetailNoticeSnackbar
 import com.pheeeew.feature.screens.group.detail.component.InviteCodeDialog
@@ -57,8 +56,6 @@ import pheeeew.shared.generated.resources.group_detail_back
 import pheeeew.shared.generated.resources.group_detail_copy_failed
 import pheeeew.shared.generated.resources.group_detail_copy_succeeded
 import pheeeew.shared.generated.resources.group_detail_emotion_failed
-import pheeeew.shared.generated.resources.group_detail_load_error_body
-import pheeeew.shared.generated.resources.group_detail_load_error_title
 import pheeeew.shared.generated.resources.group_detail_loading
 import pheeeew.shared.generated.resources.group_detail_membership_changed_body
 import pheeeew.shared.generated.resources.group_detail_membership_changed_title
@@ -70,11 +67,8 @@ import pheeeew.shared.generated.resources.group_detail_press_blocked
 import pheeeew.shared.generated.resources.group_detail_press_failed
 import pheeeew.shared.generated.resources.group_detail_press_rate_limited
 import pheeeew.shared.generated.resources.group_detail_press_rate_limited_retry
-import pheeeew.shared.generated.resources.group_detail_retry
 import pheeeew.shared.generated.resources.group_detail_return_home
-import pheeeew.shared.generated.resources.group_home_error_illustration
 import pheeeew.shared.generated.resources.group_home_title
-import pheeeew.shared.generated.resources.ic_arrow_back
 import pheeeew.shared.generated.resources.ic_emotion_discouraged
 import pheeeew.shared.generated.resources.ic_emotion_exhausted
 
@@ -234,7 +228,7 @@ fun GroupDetailScreen(
         GroupDetailOverlay.LeaveOutcomeUnknown,
         is GroupDetailOverlay.Leaving,
         is GroupDetailOverlay.Left,
-        -> {
+            -> {
             LeaveGroupDialog(
                 overlay = uiState.overlay,
                 onDismiss = actions.onDismissOverlay,
@@ -246,7 +240,8 @@ fun GroupDetailScreen(
 
         GroupDetailOverlay.None,
         GroupDetailOverlay.Menu,
-        -> {}
+            -> {
+        }
     }
 }
 
@@ -346,12 +341,13 @@ private fun LoadingContent() {
 
 @Composable
 private fun FailedContent(onRetry: () -> Unit) {
-    DetailUnavailableContent(
-        title = stringResource(Res.string.group_detail_load_error_title),
-        body = stringResource(Res.string.group_detail_load_error_body),
-        actionLabel = stringResource(Res.string.group_detail_retry),
-        illustration = Res.drawable.ic_emotion_discouraged,
-        onAction = onRetry,
+    LoadErrorContent(
+        onRetry = onRetry,
+        modifier =
+            Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 25.dp, vertical = 96.dp),
     )
 }
 
@@ -373,7 +369,7 @@ private fun NotFoundContent(onReturnHome: () -> Unit) {
         title = stringResource(Res.string.group_detail_not_found_title),
         body = stringResource(Res.string.group_detail_not_found_body),
         actionLabel = stringResource(Res.string.group_detail_return_home),
-        illustration = Res.drawable.group_home_error_illustration,
+        illustration = Res.drawable.ic_emotion_discouraged,
         onAction = onReturnHome,
     )
 }
