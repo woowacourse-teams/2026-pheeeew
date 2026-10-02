@@ -1,10 +1,10 @@
-import java.net.URI
-import java.util.Properties
 import org.gradle.api.DefaultTask
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.net.URI
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.androidApplication)
@@ -56,7 +56,8 @@ fun monitoringValue(key: String): String =
     providers.environmentVariable(key).orNull ?: monitoringProperties.getProperty(key, "").trim()
 
 val sentryAuthToken =
-    providers.environmentVariable("SENTRY_AUTH_TOKEN")
+    providers
+        .environmentVariable("SENTRY_AUTH_TOKEN")
         .orElse(providers.gradleProperty("sentryAuthToken"))
         .orElse(providers.provider { monitoringProperties.getProperty("SENTRY_AUTH_TOKEN", "").trim() })
 
