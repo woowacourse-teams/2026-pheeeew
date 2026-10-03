@@ -25,6 +25,9 @@ import com.pheeeew.core.designsystem.component.raisedPressEffect
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.press_ranking_group
 
 @Composable
 internal fun PressRankingCardSurface(
@@ -79,7 +82,7 @@ internal fun PressRankingCardSurface(
 private fun PressRankingCardSurfacePreview() {
     AppTheme {
         PressRankingCardSurface(Modifier.padding(20.dp)) {
-            Text("프레스 그룹", Modifier.padding(24.dp))
+            Text(stringResource(Res.string.press_ranking_group), Modifier.padding(24.dp))
         }
     }
 }

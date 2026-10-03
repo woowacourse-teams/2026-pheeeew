@@ -20,7 +20,11 @@ import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.ranking.stamp.RankingMember
 import com.pheeeew.feature.screens.ranking.stamp.sampleRankings
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.group_detail_rank_number
+import pheeeew.shared.generated.resources.ranking_score_count
+import pheeeew.shared.generated.resources.ranking_stamp_label
 import pheeeew.shared.generated.resources.weekly_ranking_crown
 
 @Composable
@@ -46,7 +50,7 @@ fun RankingMemberCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("${member.rank}위", color = AppColors.RankingContent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(Res.string.group_detail_rank_number, member.rank), color = AppColors.RankingContent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
         if (member.rank == 1) {
             Image(
                 painter = painterResource(Res.drawable.weekly_ranking_crown),
@@ -68,9 +72,9 @@ fun RankingMemberCard(
                 maxLines = 2,
                 lineHeight = 17.sp,
             )
-            Text("감정 스탬프", color = AppColors.RankingContent, fontSize = 10.sp, lineHeight = 12.sp)
+            Text(stringResource(Res.string.ranking_stamp_label), color = AppColors.RankingContent, fontSize = 10.sp, lineHeight = 12.sp)
             Text(
-                "${member.score}개",
+                stringResource(Res.string.ranking_score_count, member.score),
                 color = AppColors.RankingContent,
                 fontSize = 12.sp,
                 lineHeight = 14.sp,

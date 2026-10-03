@@ -23,6 +23,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.report_description_label
 import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.report.component.ReportDescriptionInput
@@ -31,7 +34,6 @@ import com.pheeeew.feature.screens.report.component.ReportReasonOption
 import com.pheeeew.feature.screens.report.component.ReportStampPrompt
 import com.pheeeew.feature.screens.report.component.ReportSubmitButton
 import org.jetbrains.compose.resources.DrawableResource
-import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_emotion_angry
 
 internal val reportReasons =
@@ -96,7 +98,7 @@ fun ReportScreen(
                 }
 
                 Text(
-                    text = "상세 설명 (선택)",
+                    text = stringResource(Res.string.report_description_label),
                     modifier = Modifier.padding(top = 20.dp),
                     color = AppColors.GroupInk,
                     fontSize = 14.sp,

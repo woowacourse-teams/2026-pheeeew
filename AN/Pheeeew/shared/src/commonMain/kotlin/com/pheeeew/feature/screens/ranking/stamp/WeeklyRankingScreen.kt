@@ -51,8 +51,11 @@ import com.pheeeew.feature.screens.ranking.components.rememberRankingTopBarScrol
 import com.pheeeew.feature.screens.ranking.stamp.components.RankingRow
 import com.pheeeew.feature.screens.ranking.stamp.components.TopThreeRanking
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_emotion_frustrated
+import pheeeew.shared.generated.resources.ranking_empty_week
+import pheeeew.shared.generated.resources.ranking_stamp_title
 
 @Composable
 fun WeeklyRankingRoute(
@@ -188,7 +191,7 @@ fun WeeklyRankingScreen(
                     Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
                 }
                 RankingTopBarOverlay(
-                    title = "스탬프 주간 랭킹",
+                    title = stringResource(Res.string.ranking_stamp_title),
                     behavior = topBarBehavior,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
@@ -210,7 +213,7 @@ private fun EmptyRankingContent(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(24.dp))
         Text(
-            text = "해당 주에 랭킹이 없어요.",
+            text = stringResource(Res.string.ranking_empty_week),
             color = AppColors.RankingContent,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
