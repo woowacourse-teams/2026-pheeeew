@@ -7,6 +7,7 @@ import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
+import com.pheeeew.feature.screens.group.detail.model.withDominantEmotionSummary
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -147,9 +148,19 @@ internal class GroupEmotionPressSession(
 
     fun accept(emotion: EmotionKind): GroupOperationKey? = if (accessLost) null else coordinator.accept(emotion)
 
-    fun onDetailLoaded(detail: GroupDetailUiModel) {
-        latestDetail = detail.copy(emotionCounts = detail.emotionCounts.toList())
-        coordinator.onDetailSnapshot(GroupPressSnapshotUiModel(detail.emotionCounts, detail.todayTotal))
+    fun onDetailLoaded(detail: GroupDetailUiModel): GroupDetailUiModel {
+        val processedDetail =
+            detail
+                .withDominantEmotionSummary(latestDetail?.presentation?.summaryMessage)
+                .copy(emotionCounts = detail.emotionCounts.toList())
+        latestDetail = processedDetail
+        coordinator.onDetailSnapshot(
+            GroupPressSnapshotUiModel(
+                processedDetail.emotionCounts,
+                processedDetail.todayTotal,
+            ),
+        )
+        return processedDetail
     }
 
     fun resolveUnknown() {
@@ -199,8 +210,8 @@ internal class GroupEmotionPressSession(
                     when (result) {
                         is GroupDetailLoadResult.Loaded -> {
                             if (result.detail.group.id == groupId) {
-                                onDetailLoaded(result.detail)
-                                observers.toList().forEach { it.onReconciledDetail(result.detail) }
+                                val reconciledDetail = onDetailLoaded(result.detail)
+                                observers.toList().forEach { it.onReconciledDetail(reconciledDetail) }
                                 coordinator.onReconciliationResult(key, succeeded = true)
                             } else {
                                 dependencies.errorReporter.reportUnexpected(

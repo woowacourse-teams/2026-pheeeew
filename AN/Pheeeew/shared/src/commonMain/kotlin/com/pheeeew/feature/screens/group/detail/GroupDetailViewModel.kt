@@ -8,7 +8,6 @@ import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
-import com.pheeeew.feature.screens.group.detail.model.withDominantEmotionSummary
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -85,10 +84,7 @@ class GroupDetailViewModel(
                     state.copy(
                         content =
                             GroupDetailContent.Ready(
-                                detail
-                                    .withDominantEmotionSummary(
-                                        state.detail?.presentation?.summaryMessage,
-                                    ).ownedSnapshot(),
+                                detail.ownedSnapshot(),
                             ),
                         groupName = detail.group.name,
                         refreshStatus = GroupDetailRefreshStatus.Idle,
@@ -439,6 +435,11 @@ class GroupDetailViewModel(
                             IllegalStateException("상세 공급자가 요청한 그룹과 다른 ID를 반환했습니다."),
                         )
                     }
+                    val loadedDetail =
+                        (result as? GroupDetailLoadResult.Loaded)
+                            ?.detail
+                            ?.takeIf { it.group.id == groupId }
+                            ?.let(pressSession::onDetailLoaded)
 
                     val membershipEvent =
                         when (result) {
@@ -466,11 +467,8 @@ class GroupDetailViewModel(
                     _uiState.update { state ->
                         when (result) {
                             is GroupDetailLoadResult.Loaded -> {
-                                val detail =
-                                    result.detail
-                                        .withDominantEmotionSummary(state.detail?.presentation?.summaryMessage)
-                                        .ownedSnapshot()
-                                if (detail.group.id != groupId) {
+                                val detail = loadedDetail?.ownedSnapshot()
+                                if (detail == null) {
                                     state.copy(
                                         content =
                                             if (state.detail ==
@@ -544,22 +542,8 @@ class GroupDetailViewModel(
                             }
                         }
                     }
-                    when (result) {
-                        is GroupDetailLoadResult.Loaded -> {
-                            if (result.detail.group.id == groupId) {
-                                pressSession.onDetailLoaded(result.detail)
-                            }
-                        }
-
-                        GroupDetailLoadResult.MembershipChanged,
-                        GroupDetailLoadResult.NotFound,
-                        -> {
-                            pressSession.clearForAccessLoss()
-                        }
-
-                        GroupDetailLoadResult.Unavailable -> {
-                            Unit
-                        }
+                    if (result == GroupDetailLoadResult.MembershipChanged || result == GroupDetailLoadResult.NotFound) {
+                        pressSession.clearForAccessLoss()
                     }
                 } finally {
                     if (requestId == loadGeneration) {

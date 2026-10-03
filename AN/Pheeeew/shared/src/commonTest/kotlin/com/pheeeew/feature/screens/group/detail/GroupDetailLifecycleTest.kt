@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.group.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelStore
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
+import com.pheeeew.feature.screens.group.detail.model.GroupDetailCopyKey
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationKind
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
@@ -133,6 +134,94 @@ class GroupDetailLifecycleTest {
                 second.uiState.value.pendingEmotionPresses
                     .isEmpty(),
             )
+        }
+
+    @Test
+    fun `reentry during pending POST preserves the derived dominant emotion summary`() =
+        scenario {
+            val detailWithCounts =
+                detail.copy(
+                    emotionCounts =
+                        detail.emotionCounts.map { count ->
+                            count.copy(count = if (count.kind == EmotionKind.Blocked) 3L else 0L)
+                        },
+                )
+            val response = CompletableDeferred<PressGroupEmotionResult>()
+            val owner = owner()
+            val dependencies =
+                dependencies(
+                    source = { GroupDetailLoadResult.Loaded(detailWithCounts) },
+                    press = { _, _ -> response.await() },
+                )
+            val (first, store) = screen(dependencies, owner)
+            runCurrent()
+            val firstSummary =
+                first.uiState.value.detail
+                    ?.presentation
+                    ?.summaryMessage
+            assertEquals(GroupDetailCopyKey.SummaryBlocked, firstSummary)
+
+            assertTrue(first.onEmotionTap(emotion))
+            runCurrent()
+            store.clear()
+            val (reentered, _) = screen(dependencies, owner)
+            runCurrent()
+
+            val reenteredSummary =
+                reentered.uiState.value.detail
+                    ?.presentation
+                    ?.summaryMessage
+            assertEquals(GroupDetailCopyKey.SummaryBlocked, reenteredSummary)
+            response.complete(pressed(4L))
+            runCurrent()
+            val settledSummary =
+                reentered.uiState.value.detail
+                    ?.presentation
+                    ?.summaryMessage
+            assertEquals(GroupDetailCopyKey.SummaryBlocked, settledSummary)
+        }
+
+    @Test
+    fun `reconciliation publishes the processed dominant emotion summary`() =
+        scenario {
+            val initialDetail =
+                detail.copy(
+                    emotionCounts =
+                        detail.emotionCounts.map { count ->
+                            count.copy(count = if (count.kind == EmotionKind.Blocked) 3L else 0L)
+                        },
+                )
+            val reconciledDetail =
+                detail.copy(
+                    emotionCounts =
+                        detail.emotionCounts.map { count ->
+                            count.copy(count = if (count.kind == EmotionKind.Annoyed) 5L else 0L)
+                        },
+                )
+            val reconciliation = CompletableDeferred<GroupDetailLoadResult>()
+            var reads = 0
+            val owner = owner()
+            val dependencies =
+                dependencies(
+                    source = {
+                        if (++reads == 1) GroupDetailLoadResult.Loaded(initialDetail) else reconciliation.await()
+                    },
+                    press = { _, _ -> PressGroupEmotionResult.OutcomeUnknown },
+                )
+            val (viewModel, _) = screen(dependencies, owner)
+            runCurrent()
+            assertTrue(viewModel.onEmotionTap(emotion))
+            runCurrent()
+            assertEquals(2, reads)
+
+            reconciliation.complete(GroupDetailLoadResult.Loaded(reconciledDetail))
+            runCurrent()
+
+            val summary =
+                viewModel.uiState.value.detail
+                    ?.presentation
+                    ?.summaryMessage
+            assertEquals(GroupDetailCopyKey.SummaryAnnoyed, summary)
         }
 
     @Test
