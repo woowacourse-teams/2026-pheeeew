@@ -23,6 +23,7 @@ import com.pheeeew.feature.screens.group.create.GroupCreateViewModel
 import com.pheeeew.feature.screens.group.detail.GroupCopyCodeResult
 import com.pheeeew.feature.screens.group.detail.GroupDetailRoute
 import com.pheeeew.feature.screens.group.detail.GroupDetailViewModel
+import com.pheeeew.feature.screens.group.detail.GroupEmotionPressWorkOwner
 import com.pheeeew.feature.screens.group.home.GroupHomeRoute
 import com.pheeeew.feature.screens.group.home.GroupHomeViewModel
 import com.pheeeew.feature.screens.group.model.GroupId
@@ -114,14 +115,18 @@ fun GroupFeatureHost(
             val groupId = GroupId(destination.groupId)
             val homeBackStackEntry = remember(navController) { navController.getBackStackEntry<GroupHomeDestination>() }
             val homeViewModel = rememberGroupHomeViewModel(homeBackStackEntry, dependencies)
+            val pressWorkOwner: GroupEmotionPressWorkOwner =
+                viewModel(viewModelStoreOwner = homeBackStackEntry, key = "group-emotion-press-work") {
+                    GroupEmotionPressWorkOwner()
+                }
             val detailViewModel: GroupDetailViewModel =
                 viewModel(
-                    viewModelStoreOwner = homeBackStackEntry,
-                    key = "group-detail-${groupId.value}",
+                    viewModelStoreOwner = entry,
                 ) {
                     GroupDetailViewModel(
                         groupId = groupId,
                         dependencies = dependencies.detail,
+                        pressWorkOwner = pressWorkOwner,
                     )
                 }
 
