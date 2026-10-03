@@ -81,6 +81,28 @@ class RegionClassifierIntegrationTest {
         assertThat(result.classifiedAt()).isNotNull();
     }
 
+    @Test
+    void 면적_겹침_안의_좌표도_코드_순서로_하나의_행정동에만_분류한다() {
+        // given: 코드가 더 작은 행정동을 나중에 삽입한다.
+        jdbc.sql("""
+                INSERT INTO regions (code, level, name, parent_code, boundary, display_point)
+                VALUES ('11010529', 'EMD', '겹치는 합성 지역', '11010',
+                        ST_GeomFromText('MULTIPOLYGON(((127 37,129 37,129 39,127 39,127 37)))', 4326),
+                        ST_GeomFromText('POINT(128 38)', 4326))
+                """).update();
+        경계_검증을_완료한다();
+        assertThat(jdbc.sql("SELECT count(*) FROM regions WHERE level = 'EMD' "
+                + "AND ST_Covers(boundary, ST_GeomFromText('POINT(127.5 38)', 4326))")
+                .query(Long.class).single()).isEqualTo(2);
+
+        // when
+        var result = classifier.classify(point(127.5, 38));
+
+        // then
+        assertThat(result.regionCode()).isEqualTo("11010529");
+        assertThat(result.classifiedAt()).isNotNull();
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
     void 미검증과_누락_데이터셋은_정상_미매칭으로_처리하지_않는다(boolean missing) {
