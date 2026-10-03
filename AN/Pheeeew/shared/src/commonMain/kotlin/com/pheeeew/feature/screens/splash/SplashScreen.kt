@@ -42,7 +42,10 @@ import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.onboarding_brand
+import pheeeew.shared.generated.resources.splash_accessibility
 import pheeeew.shared.generated.resources.ic_emotion_angry
 import pheeeew.shared.generated.resources.ic_emotion_discouraged
 import pheeeew.shared.generated.resources.ic_emotion_exhausted
@@ -78,13 +81,14 @@ private fun SplashArtwork(
     progress: Float,
     modifier: Modifier = Modifier,
 ) {
+    val splashDescription = stringResource(Res.string.splash_accessibility)
     BoxWithConstraints(
         modifier =
             modifier
                 .fillMaxSize()
                 .background(SplashBackground)
                 .clipToBounds()
-                .clearAndSetSemantics { contentDescription = "히유, 시작하는 중" },
+                .clearAndSetSemantics { contentDescription = splashDescription },
         contentAlignment = Alignment.Center,
     ) {
         // Fit the reference composition uniformly, including on tablets and landscape screens.
@@ -165,7 +169,7 @@ private fun SplashArtwork(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "히유",
+                    text = stringResource(Res.string.onboarding_brand),
                     color = Color(0xFF202522),
                     fontWeight = FontWeight.Bold,
                     fontSize = (64f * scale / fontScale).sp,

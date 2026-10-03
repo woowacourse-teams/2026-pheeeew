@@ -48,6 +48,14 @@ import com.pheeeew.feature.screens.settings.components.SettingsSectionTitle
 import com.pheeeew.feature.screens.settings.legal.LegalDocument
 import com.pheeeew.feature.screens.settings.legal.LegalDocumentRoute
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.settings_permissions
+import pheeeew.shared.generated.resources.settings_app_section
+import pheeeew.shared.generated.resources.settings_help_section
+import pheeeew.shared.generated.resources.settings_legal_open_source
+import pheeeew.shared.generated.resources.settings_legal_privacy
+import pheeeew.shared.generated.resources.settings_app_version
 
 @Composable
 fun SettingsScreen(
@@ -71,10 +79,10 @@ fun SettingsScreen(
     ) {
         SettingsHeader(onBackClick = onBackClick)
         Spacer(Modifier.height(25.dp))
-        SettingsSectionTitle("앱 설정")
+        SettingsSectionTitle(stringResource(Res.string.settings_app_section))
         SettingsCard {
             SettingsActionRow(
-                title = "접근 권한 설정",
+                title = stringResource(Res.string.settings_permissions),
                 icon = SettingsIcon.Tune,
                 highlighted = true,
                 onClick = onPermissionClick,
@@ -82,13 +90,13 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(37.dp))
-        SettingsSectionTitle("이용 안내")
+        SettingsSectionTitle(stringResource(Res.string.settings_help_section))
         SettingsCard {
-            SettingsActionRow("개인정보 처리방침", SettingsIcon.Shield, onClick = onPrivacyPolicyClick)
+            SettingsActionRow(stringResource(Res.string.settings_legal_privacy), SettingsIcon.Shield, onClick = onPrivacyPolicyClick)
             SettingsDivider()
-            SettingsActionRow("오픈소스 라이선스", SettingsIcon.Document, onClick = onOpenSourceLicenseClick)
+            SettingsActionRow(stringResource(Res.string.settings_legal_open_source), SettingsIcon.Document, onClick = onOpenSourceLicenseClick)
             SettingsDivider()
-            SettingsActionRow("앱 버전", SettingsIcon.Info, trailingText = appVersion)
+            SettingsActionRow(stringResource(Res.string.settings_app_version), SettingsIcon.Info, trailingText = appVersion)
         }
 
         Spacer(Modifier.height(32.dp))

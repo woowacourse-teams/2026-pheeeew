@@ -28,6 +28,13 @@ import com.pheeeew.core.designsystem.component.BasicTopBar
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.legal_confirm
+import pheeeew.shared.generated.resources.legal_external_page_unavailable
+import pheeeew.shared.generated.resources.legal_load_error
+import pheeeew.shared.generated.resources.legal_loading
+import pheeeew.shared.generated.resources.legal_retry
 
 @Composable
 internal fun LegalDocumentScreen(
@@ -45,7 +52,7 @@ internal fun LegalDocumentScreen(
                 .statusBarsPadding(),
     ) {
         BasicTopBar(
-            title = document.title,
+            title = stringResource(document.title),
             onBack = { onAction(LegalDocumentAction.Back) },
             titleColor = AppColors.GroupInk,
         )
@@ -92,7 +99,7 @@ private fun LegalDocumentLoading(modifier: Modifier = Modifier) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             CircularLoadingIndicator(color = AppColors.GroupInk)
             Text(
-                text = "문서를 불러오는 중이에요.",
+                text = stringResource(Res.string.legal_loading),
                 fontFamily = notoSansKrFontFamily(),
                 fontSize = 14.sp,
                 color = AppColors.GroupInk,
@@ -119,7 +126,7 @@ private fun LegalDocumentErrorContent(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = "문서를 불러오지 못했어요.",
+                text = stringResource(Res.string.legal_load_error),
             fontFamily = notoSansKrFontFamily(),
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
@@ -136,7 +143,7 @@ private fun LegalDocumentErrorContent(
         )
         TextButton(onClick = onRetry, modifier = Modifier.padding(top = 8.dp)) {
             Text(
-                text = "다시 시도",
+                text = stringResource(Res.string.legal_retry),
                 fontFamily = notoSansKrFontFamily(),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -166,7 +173,7 @@ private fun BoxScope.LegalDocumentBlockedNavigationNotice(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "이 화면에서는 다른 페이지를 열 수 없어요.",
+                text = stringResource(Res.string.legal_external_page_unavailable),
                 fontFamily = notoSansKrFontFamily(),
                 fontSize = 14.sp,
                 color = AppColors.GroupInk,
@@ -174,7 +181,7 @@ private fun BoxScope.LegalDocumentBlockedNavigationNotice(
             )
             TextButton(onClick = onDismiss) {
                 Text(
-                    text = "확인",
+                    text = stringResource(Res.string.legal_confirm),
                     fontFamily = notoSansKrFontFamily(),
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,

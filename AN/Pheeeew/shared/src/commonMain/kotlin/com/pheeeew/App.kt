@@ -98,6 +98,20 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.app_cancel
+import pheeeew.shared.generated.resources.app_microphone_permission_message
+import pheeeew.shared.generated.resources.app_microphone_permission_title
+import pheeeew.shared.generated.resources.app_open_settings
+import pheeeew.shared.generated.resources.app_update
+import pheeeew.shared.generated.resources.app_update_later
+import pheeeew.shared.generated.resources.app_update_required_message
+import pheeeew.shared.generated.resources.app_update_required_title
+import pheeeew.shared.generated.resources.app_update_retry
+import pheeeew.shared.generated.resources.app_update_store_error
+import pheeeew.shared.generated.resources.app_update_suggested_message
+import pheeeew.shared.generated.resources.app_update_suggested_title
 
 @Composable
 fun App(
@@ -199,8 +213,8 @@ private fun AppContent(
     if (suggestedUpdate != null && !suggestionDismissed) {
         AppAlertDialog(
             onDismissRequest = { suggestionDismissed = true },
-            title = { Text("새로운 버전이 나왔어요") },
-            text = { Text("최신 버전으로 업데이트하면 더 나은 앱을 이용할 수 있어요.") },
+            title = { Text(stringResource(Res.string.app_update_suggested_title)) },
+            text = { Text(stringResource(Res.string.app_update_suggested_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -208,10 +222,10 @@ private fun AppContent(
                             suggestionDismissed = true
                         }
                     },
-                ) { Text("업데이트") }
+                ) { Text(stringResource(Res.string.app_update)) }
             },
             dismissButton = {
-                TextButton(onClick = { suggestionDismissed = true }) { Text("나중에") }
+                TextButton(onClick = { suggestionDismissed = true }) { Text(stringResource(Res.string.app_update_later)) }
             },
         )
     }
@@ -246,10 +260,10 @@ private fun AppContent(
         )
         microphoneDialogResult?.let { result ->
             ConfirmDialog(
-                title = "마이크 권한이 필요해요",
-                content = "음성을 녹음하려면 마이크 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요.",
-                confirmText = "설정으로 이동",
-                cancelText = "취소",
+                title = stringResource(Res.string.app_microphone_permission_title),
+                content = stringResource(Res.string.app_microphone_permission_message),
+                confirmText = stringResource(Res.string.app_open_settings),
+                cancelText = stringResource(Res.string.app_cancel),
                 onConfirm = {
                     onboardingScope.launch {
                         try {
@@ -619,22 +633,22 @@ private fun RequiredUpdateDialog(
                     .RoundedCornerShape(20.dp),
         ) {
             Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("앱 업데이트가 필요해요", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(Res.string.app_update_required_title), fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text =
                         if (storeOpenError) {
-                            "스토어를 열 수 없어요. 다시 시도하거나 앱 버전을 확인해 주세요."
+                            stringResource(Res.string.app_update_store_error)
                         } else {
-                            "현재 버전은 더 이상 지원되지 않아요. 최신 버전으로 업데이트한 뒤 이용해 주세요."
+                            stringResource(Res.string.app_update_required_message)
                         },
                     fontSize = 14.sp,
                     lineHeight = 22.sp,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(16.dp))
-                TextButton(onClick = onOpenStore) { Text("업데이트") }
-                TextButton(onClick = onRetry) { Text("다시 확인") }
+                TextButton(onClick = onOpenStore) { Text(stringResource(Res.string.app_update)) }
+                TextButton(onClick = onRetry) { Text(stringResource(Res.string.app_update_retry)) }
             }
         }
     }
