@@ -215,13 +215,14 @@ internal fun AppBottomNavigationBar(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = stringResource(
-                        when (destination) {
-                            AppDestination.Map -> Res.string.navigation_map
-                            AppDestination.Group -> Res.string.navigation_group
-                            AppDestination.Ranking -> Res.string.navigation_ranking
-                        },
-                    ),
+                    text =
+                        stringResource(
+                            when (destination) {
+                                AppDestination.Map -> Res.string.navigation_map
+                                AppDestination.Group -> Res.string.navigation_group
+                                AppDestination.Ranking -> Res.string.navigation_ranking
+                            },
+                        ),
                     color = NavigationInk,
                     fontSize = 14.sp,
                     fontFamily = navigationFont,

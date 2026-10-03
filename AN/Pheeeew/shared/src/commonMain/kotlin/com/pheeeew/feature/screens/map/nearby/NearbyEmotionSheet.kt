@@ -60,13 +60,13 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.ic_refresh
 import pheeeew.shared.generated.resources.app_cancel
 import pheeeew.shared.generated.resources.emotion_block_action
 import pheeeew.shared.generated.resources.emotion_block_confirm
 import pheeeew.shared.generated.resources.emotion_moderation_hidden_notice
-import pheeeew.shared.generated.resources.nearby_groups_loading
+import pheeeew.shared.generated.resources.ic_refresh
 import pheeeew.shared.generated.resources.nearby_groups_load_error
+import pheeeew.shared.generated.resources.nearby_groups_loading
 
 @Composable
 fun NearbyEmotionSheet(
@@ -313,7 +313,9 @@ fun NearbyEmotionSheet(
                         if (state.groupsLoading) {
                             Text(stringResource(Res.string.nearby_groups_loading), Modifier.padding(16.dp))
                         } else {
-                            TextButton(onClick = viewModel::loadGroups) { Text(stringResource(Res.string.nearby_groups_load_error)) }
+                            TextButton(
+                                onClick = viewModel::loadGroups,
+                            ) { Text(stringResource(Res.string.nearby_groups_load_error)) }
                         }
                     }
                 }

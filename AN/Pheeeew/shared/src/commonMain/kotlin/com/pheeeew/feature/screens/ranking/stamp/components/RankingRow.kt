@@ -57,8 +57,17 @@ fun RankingRow(
             maxLines = 2,
         )
         Column(horizontalAlignment = Alignment.End) {
-            Text(stringResource(Res.string.ranking_stamp_label), color = AppColors.RankingSecondaryContent, fontSize = 11.sp)
-            Text(stringResource(Res.string.ranking_score_count, member.score), color = AppColors.RankingContent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(Res.string.ranking_stamp_label),
+                color = AppColors.RankingSecondaryContent,
+                fontSize = 11.sp,
+            )
+            Text(
+                stringResource(Res.string.ranking_score_count, member.score),
+                color = AppColors.RankingContent,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }

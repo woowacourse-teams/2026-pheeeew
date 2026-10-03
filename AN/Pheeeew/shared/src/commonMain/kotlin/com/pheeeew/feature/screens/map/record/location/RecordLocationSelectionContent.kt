@@ -53,9 +53,9 @@ import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.overlay.MapControlButton
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.noRippleClickable
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_my_location
-import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.map_current_location
 import pheeeew.shared.generated.resources.record_choose_stamp_title
 import pheeeew.shared.generated.resources.record_location_confirm
@@ -276,7 +276,12 @@ fun RecordLocationSelectionContent(
                             ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(stringResource(Res.string.record_location_submit), color = AppColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        stringResource(Res.string.record_location_submit),
+                        color = AppColors.TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
                 Spacer(Modifier.height(24.dp))
             }

@@ -79,7 +79,6 @@ import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.group_emotion_button_base
 import pheeeew.shared.generated.resources.group_detail_emotion_angry
 import pheeeew.shared.generated.resources.group_detail_emotion_annoyed
 import pheeeew.shared.generated.resources.group_detail_emotion_blocked
@@ -87,6 +86,7 @@ import pheeeew.shared.generated.resources.group_detail_emotion_defeated
 import pheeeew.shared.generated.resources.group_detail_emotion_tap_accessibility
 import pheeeew.shared.generated.resources.group_detail_emotion_tired
 import pheeeew.shared.generated.resources.group_detail_feedback_plus_one
+import pheeeew.shared.generated.resources.group_emotion_button_base
 import kotlin.time.TimeSource
 
 /** Five emotion buttons and the independent reactions created by accepted presses. */

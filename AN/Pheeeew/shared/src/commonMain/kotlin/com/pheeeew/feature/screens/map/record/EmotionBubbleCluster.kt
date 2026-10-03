@@ -60,8 +60,8 @@ import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.ic_close
 import pheeeew.shared.generated.resources.emotion_detail_close
+import pheeeew.shared.generated.resources.ic_close
 import pheeeew.shared.generated.resources.record_emotion_choose
 import kotlin.time.TimeSource
 

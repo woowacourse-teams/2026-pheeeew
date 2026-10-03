@@ -126,7 +126,7 @@ private fun LegalDocumentErrorContent(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-                text = stringResource(Res.string.legal_load_error),
+            text = stringResource(Res.string.legal_load_error),
             fontFamily = notoSansKrFontFamily(),
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,

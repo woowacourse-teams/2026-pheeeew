@@ -38,7 +38,7 @@ internal fun SettingsIconButton(
     ) {
         Image(
             painter = painterResource(Res.drawable.ic_settings),
-                contentDescription = stringResource(Res.string.map_settings),
+            contentDescription = stringResource(Res.string.map_settings),
             modifier =
                 Modifier
                     .size(24.dp)

@@ -225,7 +225,9 @@ private fun AppContent(
                 ) { Text(stringResource(Res.string.app_update)) }
             },
             dismissButton = {
-                TextButton(onClick = { suggestionDismissed = true }) { Text(stringResource(Res.string.app_update_later)) }
+                TextButton(
+                    onClick = { suggestionDismissed = true },
+                ) { Text(stringResource(Res.string.app_update_later)) }
             },
         )
     }
@@ -633,7 +635,11 @@ private fun RequiredUpdateDialog(
                     .RoundedCornerShape(20.dp),
         ) {
             Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(stringResource(Res.string.app_update_required_title), fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    stringResource(Res.string.app_update_required_title),
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                )
                 Spacer(Modifier.height(12.dp))
                 Text(
                     text =

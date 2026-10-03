@@ -32,7 +32,7 @@ import com.pheeeew.domain.model.emotion.EmotionState
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.confirm
+import pheeeew.shared.generated.resources.nearby_confirm
 import pheeeew.shared.generated.resources.nearby_initial_empty_title
 import pheeeew.shared.generated.resources.nearby_leave_emotion
 import pheeeew.shared.generated.resources.nearby_load_error
@@ -62,7 +62,12 @@ internal fun NearbyEmptyState(
                     )
                 }
         }
-        Text(stringResource(Res.string.nearby_initial_empty_title), color = FeedbackInk, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text(
+            stringResource(Res.string.nearby_initial_empty_title),
+            color = FeedbackInk,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+        )
         Text(
             stringResource(Res.string.nearby_no_visible_stamps),
             color = FeedbackSecondary,
@@ -99,7 +104,13 @@ internal fun NearbyLoadError(
                 )
             }
             Text(
-                if (hasItems) stringResource(Res.string.nearby_next_load_error) else stringResource(Res.string.nearby_load_error),
+                if (hasItems) {
+                    stringResource(
+                        Res.string.nearby_next_load_error,
+                    )
+                } else {
+                    stringResource(Res.string.nearby_load_error)
+                },
                 color = FeedbackInk,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
@@ -126,7 +137,9 @@ internal fun NearbyNotice(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(message, Modifier.weight(1f), color = FeedbackInk, fontSize = 13.sp, lineHeight = 18.sp)
-            androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(Res.string.nearby_confirm), color = FeedbackInk) }
+            androidx.compose.material3.TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.nearby_confirm), color = FeedbackInk)
+            }
         }
     }
 }

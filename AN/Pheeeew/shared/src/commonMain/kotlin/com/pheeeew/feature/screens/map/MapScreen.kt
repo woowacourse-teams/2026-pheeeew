@@ -52,6 +52,14 @@ import com.pheeeew.feature.screens.map.record.rememberRecordConnectionMessage
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheet
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheetUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
+import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
+import com.pheeeew.feature.screens.map.renderer.NativeMap
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.app_cancel
@@ -65,14 +73,6 @@ import pheeeew.shared.generated.resources.permission_location_message
 import pheeeew.shared.generated.resources.permission_location_services_message
 import pheeeew.shared.generated.resources.permission_location_services_title
 import pheeeew.shared.generated.resources.permission_location_title
-import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
-import com.pheeeew.feature.screens.map.renderer.NativeMap
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
 
 private enum class PermissionDialogUiModel {
     Location,
@@ -537,15 +537,35 @@ fun MapScreen(
         ConfirmDialog(
             title =
                 when (dialog) {
-                    PermissionDialogUiModel.Location -> stringResource(Res.string.permission_location_title)
-                    PermissionDialogUiModel.LocationServices -> stringResource(Res.string.permission_location_services_title)
-                    PermissionDialogUiModel.Microphone -> stringResource(Res.string.app_microphone_permission_title)
+                    PermissionDialogUiModel.Location -> {
+                        stringResource(Res.string.permission_location_title)
+                    }
+
+                    PermissionDialogUiModel.LocationServices -> {
+                        stringResource(
+                            Res.string.permission_location_services_title,
+                        )
+                    }
+
+                    PermissionDialogUiModel.Microphone -> {
+                        stringResource(Res.string.app_microphone_permission_title)
+                    }
                 },
             content =
                 when (dialog) {
-                    PermissionDialogUiModel.Location -> stringResource(Res.string.permission_location_message)
-                    PermissionDialogUiModel.LocationServices -> stringResource(Res.string.permission_location_services_message)
-                    PermissionDialogUiModel.Microphone -> stringResource(Res.string.app_microphone_permission_message)
+                    PermissionDialogUiModel.Location -> {
+                        stringResource(Res.string.permission_location_message)
+                    }
+
+                    PermissionDialogUiModel.LocationServices -> {
+                        stringResource(
+                            Res.string.permission_location_services_message,
+                        )
+                    }
+
+                    PermissionDialogUiModel.Microphone -> {
+                        stringResource(Res.string.app_microphone_permission_message)
+                    }
                 },
             confirmText = stringResource(Res.string.app_open_settings),
             cancelText = stringResource(Res.string.app_cancel),

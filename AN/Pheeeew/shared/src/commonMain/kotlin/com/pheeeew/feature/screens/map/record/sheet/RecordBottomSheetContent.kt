@@ -79,16 +79,16 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.record_audio
-import pheeeew.shared.generated.resources.record_discard_title
 import pheeeew.shared.generated.resources.record_continue_editing
+import pheeeew.shared.generated.resources.record_discard_title
+import pheeeew.shared.generated.resources.record_emotion_prompt
 import pheeeew.shared.generated.resources.record_excluded_input_dialog
 import pheeeew.shared.generated.resources.record_memo
 import pheeeew.shared.generated.resources.record_memo_prompt
-import pheeeew.shared.generated.resources.record_emotion_prompt
 import pheeeew.shared.generated.resources.record_next
 import pheeeew.shared.generated.resources.record_single_attachment_hint
-import pheeeew.shared.generated.resources.record_submit_selected_input
 import pheeeew.shared.generated.resources.record_skip
+import pheeeew.shared.generated.resources.record_submit_selected_input
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -162,12 +162,36 @@ fun RecordBottomSheet(
         )
     }
     if (showOtherInputDialog) {
-        val selectedInput = stringResource(if (inputMode == RecordInputModeUiModel.Memo) Res.string.record_memo else Res.string.record_audio)
-        val excludedInput = stringResource(if (inputMode == RecordInputModeUiModel.Memo) Res.string.record_audio else Res.string.record_memo)
+        val selectedInput =
+            stringResource(
+                if (inputMode ==
+                    RecordInputModeUiModel.Memo
+                ) {
+                    Res.string.record_memo
+                } else {
+                    Res.string.record_audio
+                },
+            )
+        val excludedInput =
+            stringResource(
+                if (inputMode ==
+                    RecordInputModeUiModel.Memo
+                ) {
+                    Res.string.record_audio
+                } else {
+                    Res.string.record_memo
+                },
+            )
         val excludedParticle = if (inputMode == RecordInputModeUiModel.Memo) "은" else "는"
         ConfirmDialog(
             title = stringResource(Res.string.record_discard_title),
-            content = stringResource(Res.string.record_excluded_input_dialog, selectedInput, excludedInput, excludedParticle),
+            content =
+                stringResource(
+                    Res.string.record_excluded_input_dialog,
+                    selectedInput,
+                    excludedInput,
+                    excludedParticle,
+                ),
             confirmText = stringResource(Res.string.record_submit_selected_input, selectedInput),
             cancelText = stringResource(Res.string.record_continue_editing),
             onConfirm = {
@@ -378,7 +402,12 @@ private fun RecordSheetActions(
                     ),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = stringResource(Res.string.record_next), color = AppColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Text(
+                text = stringResource(Res.string.record_next),
+                color = AppColors.TextPrimary,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
         Box(
             modifier =

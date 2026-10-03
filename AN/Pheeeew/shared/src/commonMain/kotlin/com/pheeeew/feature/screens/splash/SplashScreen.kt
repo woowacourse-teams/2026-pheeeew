@@ -44,13 +44,13 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.onboarding_brand
-import pheeeew.shared.generated.resources.splash_accessibility
 import pheeeew.shared.generated.resources.ic_emotion_angry
 import pheeeew.shared.generated.resources.ic_emotion_discouraged
 import pheeeew.shared.generated.resources.ic_emotion_exhausted
 import pheeeew.shared.generated.resources.ic_emotion_frustrated
 import pheeeew.shared.generated.resources.ic_emotion_irritated
+import pheeeew.shared.generated.resources.onboarding_brand
+import pheeeew.shared.generated.resources.splash_accessibility
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin

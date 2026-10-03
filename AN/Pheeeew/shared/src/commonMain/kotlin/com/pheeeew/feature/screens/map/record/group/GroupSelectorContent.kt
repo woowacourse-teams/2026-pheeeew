@@ -29,10 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
-import org.jetbrains.compose.resources.stringResource
-import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.record_group_select
-import pheeeew.shared.generated.resources.record_group_select_done
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -65,6 +61,10 @@ import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.map.record.noRippleClickable
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.record_group_select
+import pheeeew.shared.generated.resources.record_group_select_done
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos

@@ -79,7 +79,13 @@ internal object TapCatalog {
                 TapEmotion(
                     color = Color(0xFFF8D3C0),
                     face = EmotionFeedbackCatalog.face(kind),
-                    texts = listOf(Res.string.tap_reaction_blocked_1, Res.string.tap_reaction_blocked_2, Res.string.tap_reaction_blocked_3, Res.string.tap_reaction_blocked_4),
+                    texts =
+                        listOf(
+                            Res.string.tap_reaction_blocked_1,
+                            Res.string.tap_reaction_blocked_2,
+                            Res.string.tap_reaction_blocked_3,
+                            Res.string.tap_reaction_blocked_4,
+                        ),
                     emojis = listOf("😮‍💨", "😤"),
                 )
             }
@@ -88,7 +94,13 @@ internal object TapCatalog {
                 TapEmotion(
                     color = Color(0xFFF3C7D6),
                     face = EmotionFeedbackCatalog.face(kind),
-                    texts = listOf(Res.string.tap_reaction_annoyed_1, Res.string.tap_reaction_annoyed_2, Res.string.tap_reaction_annoyed_3, Res.string.tap_reaction_annoyed_4),
+                    texts =
+                        listOf(
+                            Res.string.tap_reaction_annoyed_1,
+                            Res.string.tap_reaction_annoyed_2,
+                            Res.string.tap_reaction_annoyed_3,
+                            Res.string.tap_reaction_annoyed_4,
+                        ),
                     emojis = listOf("💢", "🙄", "😑"),
                 )
             }
@@ -97,7 +109,13 @@ internal object TapCatalog {
                 TapEmotion(
                     color = Color(0xFFE1D9F0),
                     face = EmotionFeedbackCatalog.face(kind),
-                    texts = listOf(Res.string.tap_reaction_tired_1, Res.string.tap_reaction_tired_2, Res.string.tap_reaction_tired_3, Res.string.tap_reaction_tired_4),
+                    texts =
+                        listOf(
+                            Res.string.tap_reaction_tired_1,
+                            Res.string.tap_reaction_tired_2,
+                            Res.string.tap_reaction_tired_3,
+                            Res.string.tap_reaction_tired_4,
+                        ),
                     emojis = listOf("🫠", "🥱", "🪫"),
                 )
             }
@@ -106,7 +124,13 @@ internal object TapCatalog {
                 TapEmotion(
                     color = Color(0xFFCCE5F2),
                     face = EmotionFeedbackCatalog.face(kind),
-                    texts = listOf(Res.string.tap_reaction_defeated_1, Res.string.tap_reaction_defeated_2, Res.string.tap_reaction_defeated_3, Res.string.tap_reaction_defeated_4),
+                    texts =
+                        listOf(
+                            Res.string.tap_reaction_defeated_1,
+                            Res.string.tap_reaction_defeated_2,
+                            Res.string.tap_reaction_defeated_3,
+                            Res.string.tap_reaction_defeated_4,
+                        ),
                     emojis = listOf("😭", "🥲", "💧"),
                 )
             }
@@ -115,7 +139,13 @@ internal object TapCatalog {
                 TapEmotion(
                     color = Color(0xFFF5BEB3),
                     face = EmotionFeedbackCatalog.face(kind),
-                    texts = listOf(Res.string.tap_reaction_angry_1, Res.string.tap_reaction_angry_2, Res.string.tap_reaction_angry_3, Res.string.tap_reaction_angry_4),
+                    texts =
+                        listOf(
+                            Res.string.tap_reaction_angry_1,
+                            Res.string.tap_reaction_angry_2,
+                            Res.string.tap_reaction_angry_3,
+                            Res.string.tap_reaction_angry_4,
+                        ),
                     emojis = listOf("😡", "🤬", "🔥"),
                 )
             }
@@ -129,10 +159,24 @@ internal object TapCatalog {
     ): TapReaction {
         val emotion = emotion(kind)
         return when (random.int(200)) {
-            in 0..79 -> TapReaction(TapReactionKind.Face, kind.name.lowercase())
-            in 80..154 -> TapReaction(TapReactionKind.Text, localizedTexts.getValue(emotion.texts[random.int(emotion.texts.size)]))
-            in 155..184 -> TapReaction(TapReactionKind.Emoji, emotion.emojis[random.int(emotion.emojis.size)])
-            else -> TapReaction(TapReactionKind.Plus, plusOne)
+            in 0..79 -> {
+                TapReaction(TapReactionKind.Face, kind.name.lowercase())
+            }
+
+            in 80..154 -> {
+                TapReaction(
+                    TapReactionKind.Text,
+                    localizedTexts.getValue(emotion.texts[random.int(emotion.texts.size)]),
+                )
+            }
+
+            in 155..184 -> {
+                TapReaction(TapReactionKind.Emoji, emotion.emojis[random.int(emotion.emojis.size)])
+            }
+
+            else -> {
+                TapReaction(TapReactionKind.Plus, plusOne)
+            }
         }
     }
 }

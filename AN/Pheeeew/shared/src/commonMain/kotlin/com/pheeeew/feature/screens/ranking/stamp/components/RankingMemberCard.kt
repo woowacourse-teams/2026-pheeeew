@@ -50,7 +50,12 @@ fun RankingMemberCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text(stringResource(Res.string.group_detail_rank_number, member.rank), color = AppColors.RankingContent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(
+            stringResource(Res.string.group_detail_rank_number, member.rank),
+            color = AppColors.RankingContent,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+        )
         if (member.rank == 1) {
             Image(
                 painter = painterResource(Res.drawable.weekly_ranking_crown),
@@ -72,7 +77,12 @@ fun RankingMemberCard(
                 maxLines = 2,
                 lineHeight = 17.sp,
             )
-            Text(stringResource(Res.string.ranking_stamp_label), color = AppColors.RankingContent, fontSize = 10.sp, lineHeight = 12.sp)
+            Text(
+                stringResource(Res.string.ranking_stamp_label),
+                color = AppColors.RankingContent,
+                fontSize = 10.sp,
+                lineHeight = 12.sp,
+            )
             Text(
                 stringResource(Res.string.ranking_score_count, member.score),
                 color = AppColors.RankingContent,

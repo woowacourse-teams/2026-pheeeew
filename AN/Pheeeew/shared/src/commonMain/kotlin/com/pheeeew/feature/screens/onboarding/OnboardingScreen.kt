@@ -44,15 +44,15 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.onboarding_brand
-import pheeeew.shared.generated.resources.onboarding_next
-import pheeeew.shared.generated.resources.onboarding_skip
-import pheeeew.shared.generated.resources.onboarding_start_recording
 import pheeeew.shared.generated.resources.ic_emotion_angry
 import pheeeew.shared.generated.resources.ic_emotion_discouraged
 import pheeeew.shared.generated.resources.ic_emotion_exhausted
 import pheeeew.shared.generated.resources.ic_emotion_frustrated
 import pheeeew.shared.generated.resources.ic_emotion_irritated
+import pheeeew.shared.generated.resources.onboarding_brand
+import pheeeew.shared.generated.resources.onboarding_next
+import pheeeew.shared.generated.resources.onboarding_skip
+import pheeeew.shared.generated.resources.onboarding_start_recording
 
 const val WELCOME_ONBOARDING_COMPLETED_KEY = "onboarding_completed"
 
@@ -244,7 +244,14 @@ fun OnboardingScreen(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = if (isLastPage) stringResource(Res.string.onboarding_start_recording) else stringResource(Res.string.onboarding_next),
+                text =
+                    if (isLastPage) {
+                        stringResource(
+                            Res.string.onboarding_start_recording,
+                        )
+                    } else {
+                        stringResource(Res.string.onboarding_next)
+                    },
                 color = Color.White,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,

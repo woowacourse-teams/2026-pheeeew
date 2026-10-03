@@ -22,10 +22,10 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_emotion_angry
 import pheeeew.shared.generated.resources.report_prompt_message
 import pheeeew.shared.generated.resources.report_prompt_title
 import pheeeew.shared.generated.resources.report_stamp_accessibility
-import pheeeew.shared.generated.resources.ic_emotion_angry
 
 @Composable
 fun ReportStampPrompt(

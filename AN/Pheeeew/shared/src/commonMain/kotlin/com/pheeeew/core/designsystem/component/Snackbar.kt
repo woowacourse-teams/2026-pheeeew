@@ -53,8 +53,8 @@ import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.snackbar_close
 import pheeeew.shared.generated.resources.ic_error
+import pheeeew.shared.generated.resources.snackbar_close
 
 private const val SNACKBAR_DURATION_MILLIS = 3_000L
 

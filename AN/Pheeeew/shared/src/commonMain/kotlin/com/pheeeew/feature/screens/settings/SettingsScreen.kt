@@ -50,12 +50,12 @@ import com.pheeeew.feature.screens.settings.legal.LegalDocumentRoute
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.settings_permissions
 import pheeeew.shared.generated.resources.settings_app_section
+import pheeeew.shared.generated.resources.settings_app_version
 import pheeeew.shared.generated.resources.settings_help_section
 import pheeeew.shared.generated.resources.settings_legal_open_source
 import pheeeew.shared.generated.resources.settings_legal_privacy
-import pheeeew.shared.generated.resources.settings_app_version
+import pheeeew.shared.generated.resources.settings_permissions
 
 @Composable
 fun SettingsScreen(
@@ -92,11 +92,23 @@ fun SettingsScreen(
         Spacer(Modifier.height(37.dp))
         SettingsSectionTitle(stringResource(Res.string.settings_help_section))
         SettingsCard {
-            SettingsActionRow(stringResource(Res.string.settings_legal_privacy), SettingsIcon.Shield, onClick = onPrivacyPolicyClick)
+            SettingsActionRow(
+                stringResource(Res.string.settings_legal_privacy),
+                SettingsIcon.Shield,
+                onClick = onPrivacyPolicyClick,
+            )
             SettingsDivider()
-            SettingsActionRow(stringResource(Res.string.settings_legal_open_source), SettingsIcon.Document, onClick = onOpenSourceLicenseClick)
+            SettingsActionRow(
+                stringResource(Res.string.settings_legal_open_source),
+                SettingsIcon.Document,
+                onClick = onOpenSourceLicenseClick,
+            )
             SettingsDivider()
-            SettingsActionRow(stringResource(Res.string.settings_app_version), SettingsIcon.Info, trailingText = appVersion)
+            SettingsActionRow(
+                stringResource(Res.string.settings_app_version),
+                SettingsIcon.Info,
+                trailingText = appVersion,
+            )
         }
 
         Spacer(Modifier.height(32.dp))

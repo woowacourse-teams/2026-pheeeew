@@ -23,12 +23,35 @@ class EmotionPinUiModelTest {
         val expected =
             mapOf(
                 EmotionState.FRUSTRATED to
-                    Triple(EmotionTypeUiModel.FRUSTRATED, Res.string.group_detail_emotion_blocked, Res.drawable.ic_emotion_frustrated),
-                EmotionState.IRRITATED to Triple(EmotionTypeUiModel.IRRITATED, Res.string.group_detail_emotion_annoyed, Res.drawable.ic_emotion_irritated),
-                EmotionState.EXHAUSTED to Triple(EmotionTypeUiModel.EXHAUSTED, Res.string.group_detail_emotion_tired, Res.drawable.ic_emotion_exhausted),
+                    Triple(
+                        EmotionTypeUiModel.FRUSTRATED,
+                        Res.string.group_detail_emotion_blocked,
+                        Res.drawable.ic_emotion_frustrated,
+                    ),
+                EmotionState.IRRITATED to
+                    Triple(
+                        EmotionTypeUiModel.IRRITATED,
+                        Res.string.group_detail_emotion_annoyed,
+                        Res.drawable.ic_emotion_irritated,
+                    ),
+                EmotionState.EXHAUSTED to
+                    Triple(
+                        EmotionTypeUiModel.EXHAUSTED,
+                        Res.string.group_detail_emotion_tired,
+                        Res.drawable.ic_emotion_exhausted,
+                    ),
                 EmotionState.DISCOURAGED to
-                    Triple(EmotionTypeUiModel.DISCOURAGED, Res.string.group_detail_emotion_defeated, Res.drawable.ic_emotion_discouraged),
-                EmotionState.ANGRY to Triple(EmotionTypeUiModel.ANGRY, Res.string.group_detail_emotion_angry, Res.drawable.ic_emotion_angry),
+                    Triple(
+                        EmotionTypeUiModel.DISCOURAGED,
+                        Res.string.group_detail_emotion_defeated,
+                        Res.drawable.ic_emotion_discouraged,
+                    ),
+                EmotionState.ANGRY to
+                    Triple(
+                        EmotionTypeUiModel.ANGRY,
+                        Res.string.group_detail_emotion_angry,
+                        Res.drawable.ic_emotion_angry,
+                    ),
             )
 
         expected.forEach { (state, mapping) ->
