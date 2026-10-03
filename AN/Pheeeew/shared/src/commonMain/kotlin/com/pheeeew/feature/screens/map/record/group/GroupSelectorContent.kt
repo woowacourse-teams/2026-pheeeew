@@ -29,6 +29,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Text
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.record_group_select
+import pheeeew.shared.generated.resources.record_group_select_done
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -231,7 +235,7 @@ fun GroupSelectorContent(
                 }
 
                 Text(
-                    text = "그룹 선택",
+                    text = stringResource(Res.string.record_group_select),
                     modifier = Modifier.align(Alignment.TopCenter).padding(top = 23.dp),
                     color = Color(0xff252826),
                     fontSize = 17.sp,
@@ -336,7 +340,7 @@ fun GroupSelectorContent(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "선택 완료",
+                        text = stringResource(Res.string.record_group_select_done),
                         color = Color(0xff252826),
                         fontSize = 15.sp,
                         fontWeight = FontWeight.ExtraBold,

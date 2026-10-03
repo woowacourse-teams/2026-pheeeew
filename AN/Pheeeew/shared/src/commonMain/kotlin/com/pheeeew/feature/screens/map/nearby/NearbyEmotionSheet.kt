@@ -58,8 +58,15 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_refresh
+import pheeeew.shared.generated.resources.app_cancel
+import pheeeew.shared.generated.resources.emotion_block_action
+import pheeeew.shared.generated.resources.emotion_block_confirm
+import pheeeew.shared.generated.resources.emotion_moderation_hidden_notice
+import pheeeew.shared.generated.resources.nearby_groups_loading
+import pheeeew.shared.generated.resources.nearby_groups_load_error
 
 @Composable
 fun NearbyEmotionSheet(
@@ -304,9 +311,9 @@ fun NearbyEmotionSheet(
                         shape = RoundedCornerShape(16.dp),
                     ) {
                         if (state.groupsLoading) {
-                            Text("가입 그룹을 불러오는 중이에요", Modifier.padding(16.dp))
+                            Text(stringResource(Res.string.nearby_groups_loading), Modifier.padding(16.dp))
                         } else {
-                            TextButton(onClick = viewModel::loadGroups) { Text("그룹을 불러오지 못했어요 · 다시 시도") }
+                            TextButton(onClick = viewModel::loadGroups) { Text(stringResource(Res.string.nearby_groups_load_error)) }
                         }
                     }
                 }
@@ -315,10 +322,10 @@ fun NearbyEmotionSheet(
     }
     state.blockId?.let { id ->
         ConfirmDialog(
-            title = "해당 사용자를 차단할까요?",
-            content = "차단 이후 해당 사용자가 올린 감정은 더 이상 보이지 않아요.",
-            confirmText = "차단하기",
-            cancelText = "취소",
+            title = stringResource(Res.string.emotion_block_confirm),
+            content = stringResource(Res.string.emotion_moderation_hidden_notice),
+            confirmText = stringResource(Res.string.emotion_block_action),
+            cancelText = stringResource(Res.string.app_cancel),
             onConfirm = { viewModel.confirmBlock(blockUser) },
             onCancel = { viewModel.requestBlock(null) },
         )

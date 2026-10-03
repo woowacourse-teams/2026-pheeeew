@@ -17,8 +17,10 @@ import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_settings
+import pheeeew.shared.generated.resources.map_settings
 
 @Composable
 internal fun SettingsIconButton(
@@ -36,7 +38,7 @@ internal fun SettingsIconButton(
     ) {
         Image(
             painter = painterResource(Res.drawable.ic_settings),
-            contentDescription = "설정 버튼",
+                contentDescription = stringResource(Res.string.map_settings),
             modifier =
                 Modifier
                     .size(24.dp)

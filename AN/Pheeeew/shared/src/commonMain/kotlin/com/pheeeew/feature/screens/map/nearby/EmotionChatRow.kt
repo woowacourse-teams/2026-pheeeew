@@ -62,7 +62,9 @@ import com.pheeeew.domain.model.emotion.ReactionCount
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.emotion_chat_add_reaction
 import pheeeew.shared.generated.resources.ic_plus
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
@@ -83,6 +85,7 @@ internal fun EmotionChatRow(
     onPlay: () -> Unit,
     focused: Boolean = false,
 ) {
+    val addReactionDescription = stringResource(Res.string.emotion_chat_add_reaction)
     val alignment = if (item.isMine) Alignment.End else Alignment.Start
     val visibleReactions = item.reactions.filter { it.count > 0 || it.selected }
     val showAddReaction = EmotionReactionType.entries.any { type -> visibleReactions.none { it.type == type } }
@@ -240,12 +243,12 @@ internal fun EmotionChatRow(
                         .clickable(enabled = !busy, role = Role.Button) {
                             reactionOnly = true
                             onSelect()
-                        }.semantics { contentDescription = "공감 추가" },
+                        }.semantics { contentDescription = addReactionDescription },
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         painterResource(Res.drawable.ic_plus),
-                        contentDescription = "공감 추가",
+                        contentDescription = addReactionDescription,
                         tint = Color.Black,
                         modifier = Modifier.size(14.dp),
                     )
