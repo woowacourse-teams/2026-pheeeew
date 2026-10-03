@@ -1,13 +1,13 @@
 package com.pheeeew.domain.repository.group
 
 import com.pheeeew.domain.model.group.GroupId
+import com.pheeeew.domain.model.group.GroupPressBatch
 import com.pheeeew.domain.model.group.GroupPressCounts
-import com.pheeeew.domain.model.group.GroupPressState
 
 interface GroupPressRepository {
     suspend fun press(
         groupId: GroupId,
-        state: GroupPressState,
+        batch: GroupPressBatch,
     ): GroupPressResult
 }
 

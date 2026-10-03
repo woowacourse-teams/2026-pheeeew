@@ -181,8 +181,10 @@
     <string name="group_detail_press_check">기록 확인</string>
     <string name="group_detail_press_failed">감정을 기록하지 못했어요.</string>
     <string name="group_detail_press_rate_limited">요청이 많아요. 잠시 후 다시 눌러 주세요.</string>
-    <string name="group_detail_press_rate_limited_retry">요청이 많아요. %1$d초 후 다시 눌러 주세요.</string>
+    <string name="group_detail_press_rate_limited_retry">요청이 많아요. 지금 누르는 입력은 보관해 %1$d초 후 전송할게요.</string>
     <string name="group_detail_press_blocked">감정 전송이 끝난 뒤 그룹을 나갈 수 있어요.</string>
+    <string name="group_detail_press_cooldown">요청 제한이 풀릴 때까지 입력을 대기열에 보관해 전송합니다.</string>
+    <string name="group_detail_press_queue_full">전송 대기 입력이 많아요. 전송이 끝나면 다시 입력할 수 있어요.</string>
     <string name="group_detail_feedback_plus_one">+1</string>
     <string name="group_detail_sticker_blocked_1">으아!!</string>
     <string name="group_detail_sticker_blocked_2">꽉 막혔어</string>

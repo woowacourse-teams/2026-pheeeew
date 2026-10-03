@@ -11,8 +11,17 @@ import com.pheeeew.feature.screens.group.model.GroupId
 fun interface PressGroupEmotionAction {
     suspend fun press(
         groupId: GroupId,
-        emotion: EmotionKind,
+        increments: List<EmotionPressIncrement>,
     ): PressGroupEmotionResult
+}
+
+data class EmotionPressIncrement(
+    val emotion: EmotionKind,
+    val count: Int,
+) {
+    init {
+        require(count > 0) { "감정 입력 횟수는 양수여야 합니다." }
+    }
 }
 
 sealed interface PressGroupEmotionResult {

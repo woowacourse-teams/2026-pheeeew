@@ -47,8 +47,14 @@ class GroupDetailViewModel(
             dependencies = dependencies,
             scope = viewModelScope,
             telemetry = telemetry,
-            onStateChanged = { status, pending ->
-                _uiState.update { it.copy(pressStatus = status, pendingEmotionPresses = pending) }
+            onStateChanged = { status, pending, canAcceptAnotherPress ->
+                _uiState.update {
+                    it.copy(
+                        pressStatus = status,
+                        pendingEmotionPresses = pending,
+                        canAcceptEmotionPress = canAcceptAnotherPress,
+                    )
+                }
             },
             onBeforeSend = ::invalidateLoad,
             onSnapshot = { snapshot, pending ->
@@ -110,6 +116,7 @@ class GroupDetailViewModel(
         }
         when (state.pressStatus) {
             is GroupPressStatus.Sending,
+            is GroupPressStatus.CoolingDown,
             is GroupPressStatus.Reconciling,
             -> {
                 return

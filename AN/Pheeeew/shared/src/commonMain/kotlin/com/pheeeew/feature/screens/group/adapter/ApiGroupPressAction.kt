@@ -1,8 +1,11 @@
 package com.pheeeew.feature.screens.group.adapter
 
+import com.pheeeew.domain.model.group.GroupPressBatch
+import com.pheeeew.domain.model.group.GroupPressIncrement
 import com.pheeeew.domain.model.group.GroupPressState
 import com.pheeeew.domain.repository.group.GroupPressRepository
 import com.pheeeew.domain.repository.group.GroupPressResult
+import com.pheeeew.feature.screens.group.detail.EmotionPressIncrement
 import com.pheeeew.feature.screens.group.detail.GroupPressSnapshotUiModel
 import com.pheeeew.feature.screens.group.detail.PressGroupEmotionAction
 import com.pheeeew.feature.screens.group.detail.PressGroupEmotionResult
@@ -16,10 +19,18 @@ class ApiGroupPressAction(
 ) : PressGroupEmotionAction {
     override suspend fun press(
         groupId: GroupId,
-        emotion: EmotionKind,
+        increments: List<EmotionPressIncrement>,
     ): PressGroupEmotionResult {
         val domainGroupId = DomainGroupId.parse(groupId.value) ?: return PressGroupEmotionResult.Unavailable
-        return when (val result = repository.press(domainGroupId, emotion.toDomainState())) {
+        val batch =
+            runCatching {
+                GroupPressBatch(
+                    increments.map { increment ->
+                        GroupPressIncrement(increment.emotion.toDomainState(), increment.count)
+                    },
+                )
+            }.getOrElse { return PressGroupEmotionResult.Unavailable }
+        return when (val result = repository.press(domainGroupId, batch)) {
             is GroupPressResult.Pressed -> {
                 val snapshot = result.counts
                 PressGroupEmotionResult.Pressed(
