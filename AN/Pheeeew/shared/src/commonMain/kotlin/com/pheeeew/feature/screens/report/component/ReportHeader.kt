@@ -5,6 +5,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.pheeeew.core.designsystem.component.BasicTopBar
 import com.pheeeew.core.designsystem.theme.AppColors
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.report_title
 
 @Composable
 fun ReportHeader(
@@ -13,7 +16,7 @@ fun ReportHeader(
     enabled: Boolean = true,
 ) {
     BasicTopBar(
-        title = "신고",
+        title = stringResource(Res.string.report_title),
         onBack = onBack,
         modifier = modifier,
         enabled = enabled,

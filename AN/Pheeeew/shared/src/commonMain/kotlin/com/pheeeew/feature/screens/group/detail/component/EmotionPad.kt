@@ -77,7 +77,15 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.Font
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.group_detail_emotion_angry
+import pheeeew.shared.generated.resources.group_detail_emotion_annoyed
+import pheeeew.shared.generated.resources.group_detail_emotion_blocked
+import pheeeew.shared.generated.resources.group_detail_emotion_defeated
+import pheeeew.shared.generated.resources.group_detail_emotion_tap_accessibility
+import pheeeew.shared.generated.resources.group_detail_emotion_tired
+import pheeeew.shared.generated.resources.group_detail_feedback_plus_one
 import pheeeew.shared.generated.resources.group_emotion_button_base
 import kotlin.time.TimeSource
 
@@ -183,6 +191,8 @@ internal fun EmotionPad(
         val unit = (maxWidth.value / 354f).coerceAtMost(1f)
         val inset = (maxWidth.value - 354 * unit) / 2
         val particles = remember(tick) { feedback.particles.toList() }
+        val localizedTapTexts = TapCatalog.localizedTexts()
+        val plusOne = stringResource(Res.string.group_detail_feedback_plus_one)
         val origins = listOf(0f to 0f, 124.5f to 0f, 249f to 0f, 62.25f to 177f, 186.75f to 177f)
 
         fun rootPoint(
@@ -203,7 +213,7 @@ internal fun EmotionPad(
             originY: Float,
             pointer: Offset?,
         ) {
-            val reaction = TapCatalog.pick(kind, random)
+            val reaction = TapCatalog.pick(kind, random, localizedTapTexts, plusOne)
             val measured =
                 measurer
                     .measure(
@@ -253,6 +263,16 @@ internal fun EmotionPad(
         Box(Modifier.fillMaxWidth().height((345 * unit).dp)) {
             EmotionKind.entries.forEachIndexed { index, kind ->
                 val emotion = TapCatalog.emotion(kind)
+                val emotionLabel =
+                    stringResource(
+                        when (kind) {
+                            EmotionKind.Blocked -> Res.string.group_detail_emotion_blocked
+                            EmotionKind.Annoyed -> Res.string.group_detail_emotion_annoyed
+                            EmotionKind.Tired -> Res.string.group_detail_emotion_tired
+                            EmotionKind.Defeated -> Res.string.group_detail_emotion_defeated
+                            EmotionKind.Angry -> Res.string.group_detail_emotion_angry
+                        },
+                    )
                 val motion = motions.getValue(kind)
                 val (originX, originY) = origins[index]
                 val x = inset + originX * unit
@@ -269,6 +289,12 @@ internal fun EmotionPad(
                 }
 
                 val count = (byKind[kind]?.count ?: 0L) + (optimisticPressCounts[kind] ?: 0L)
+                val accessibilityDescription =
+                    stringResource(
+                        Res.string.group_detail_emotion_tap_accessibility,
+                        emotionLabel,
+                        formatCount(count),
+                    )
                 val buttonModifier =
                     Modifier
                         .size((105 * unit).dp, (110 * unit).dp)
@@ -365,9 +391,7 @@ internal fun EmotionPad(
                             pointer = null
                             keyboardActivation = false
                             refresh()
-                        }.semantics {
-                            contentDescription = "${emotion.label} 표현하기, ${formatCount(count)}번"
-                        }
+                        }.semantics { contentDescription = accessibilityDescription }
 
                 Box(Modifier.offset(x.dp, y.dp).size((105 * unit).dp, (168 * unit).dp)) {
                     Box(
@@ -400,7 +424,7 @@ internal fun EmotionPad(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         BasicText(
-                            text = emotion.label,
+                            text = emotionLabel,
                             modifier = Modifier.fillMaxWidth(),
                             style =
                                 TextStyle(

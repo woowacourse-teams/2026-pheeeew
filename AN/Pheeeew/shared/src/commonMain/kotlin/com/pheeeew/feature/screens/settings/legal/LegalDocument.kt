@@ -1,15 +1,20 @@
 package com.pheeeew.feature.screens.settings.legal
 
+import org.jetbrains.compose.resources.StringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.settings_legal_open_source
+import pheeeew.shared.generated.resources.settings_legal_privacy
+
 enum class LegalDocument(
-    val title: String,
+    val title: StringResource,
     internal val path: String,
 ) {
     OpenSourceLicenses(
-        title = "오픈소스 라이선스",
+        title = Res.string.settings_legal_open_source,
         path = "/2026-pheeeew/open-source-licenses.html",
     ),
     PrivacyPolicy(
-        title = "개인정보 처리방침",
+        title = Res.string.settings_legal_privacy,
         path = "/2026-pheeeew/privacy-policy.html",
     ),
     ;

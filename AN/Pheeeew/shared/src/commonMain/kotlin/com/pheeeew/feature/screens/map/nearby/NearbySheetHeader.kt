@@ -17,8 +17,10 @@ import androidx.compose.ui.unit.dp
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_refresh
+import pheeeew.shared.generated.resources.map_refresh_nearby
 
 @Composable
 internal fun NearbySheetHeader(
@@ -27,6 +29,7 @@ internal fun NearbySheetHeader(
     onRefresh: () -> Unit,
     onOpenGroups: () -> Unit,
 ) {
+    val refreshDescription = stringResource(Res.string.map_refresh_nearby)
     Row(
         Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -35,7 +38,7 @@ internal fun NearbySheetHeader(
         Box(
             Modifier
                 .size(48.dp)
-                .semantics { contentDescription = "주변 감정 새로고침" }
+                .semantics { contentDescription = refreshDescription }
                 .noRippleClickable(enabled = !loading, onClick = onRefresh),
             contentAlignment = Alignment.Center,
         ) {

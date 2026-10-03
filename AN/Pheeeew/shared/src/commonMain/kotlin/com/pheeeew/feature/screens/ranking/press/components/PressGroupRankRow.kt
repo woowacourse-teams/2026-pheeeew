@@ -22,6 +22,9 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.screens.ranking.press.PressGroupRank
 import com.pheeeew.feature.screens.ranking.press.samplePressGroupRanks
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.press_ranking_my_group
 
 @Composable
 internal fun PressGroupRankRow(
@@ -79,7 +82,7 @@ internal fun PressGroupRankRow(
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
-                        text = "내 그룹",
+                        text = stringResource(Res.string.press_ranking_my_group),
                         color = AppColors.RankingSecondaryContent,
                         fontSize = 12.sp,
                     )

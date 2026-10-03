@@ -20,8 +20,12 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_emotion_angry
+import pheeeew.shared.generated.resources.report_prompt_message
+import pheeeew.shared.generated.resources.report_prompt_title
+import pheeeew.shared.generated.resources.report_stamp_accessibility
 
 @Composable
 fun ReportStampPrompt(
@@ -34,20 +38,20 @@ fun ReportStampPrompt(
     ) {
         Image(
             painter = painterResource(emotionStamp),
-            contentDescription = "감정 스탬프",
+            contentDescription = stringResource(Res.string.report_stamp_accessibility),
             modifier = Modifier.size(56.dp),
         )
         Spacer(Modifier.width(16.dp))
         Column {
             Text(
-                text = "이 감정, 선 넘었나요?",
+                text = stringResource(Res.string.report_prompt_title),
                 color = AppColors.GroupInk,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = "동네 평화를 위해 이유를 골라주세요.",
+                text = stringResource(Res.string.report_prompt_message),
                 color = AppColors.TextSecondary,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
