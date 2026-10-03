@@ -8,7 +8,6 @@ import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
-import com.pheeeew.feature.screens.group.detail.model.withDominantEmotionSummary
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -25,12 +24,17 @@ class GroupDetailViewModel(
     val groupId: GroupId,
     private val dependencies: GroupDetailDependencies,
     initialGroupName: String? = null,
+    pressWorkOwner: GroupEmotionPressWorkOwner? = null,
 ) : ViewModel() {
     val telemetry = ProductMonitoring(dependencies.monitoring, "group_detail", labels("group_key" to groupId.value))
+    private val ownsPressWorkOwner = pressWorkOwner == null
+    private val workOwner = pressWorkOwner ?: GroupEmotionPressWorkOwner()
+    private val pressSession = workOwner.session(groupId, dependencies)
     private val _uiState =
         MutableStateFlow(
             GroupDetailUiState(
                 groupName = initialGroupName,
+                content = pressSession.latestDetail?.let(GroupDetailContent::Ready) ?: GroupDetailContent.Loading,
             ),
         )
     val uiState = _uiState.asStateFlow()
@@ -41,17 +45,24 @@ class GroupDetailViewModel(
         private set
     private var loadGeneration = 0L
     private var hasResumed = false
-    private val pressCoordinator =
-        GroupEmotionPressCoordinator(
-            groupId = groupId,
-            dependencies = dependencies,
-            scope = viewModelScope,
-            telemetry = telemetry,
-            onStateChanged = { status, pending ->
+    private var needsInitialLoad = true
+    private var hasAttachedPressObserver = false
+    private val pressObserver =
+        object : GroupEmotionPressSession.Observer {
+            override fun onStateChanged(
+                status: GroupPressStatus,
+                pending: Map<EmotionKind, Long>,
+            ) {
                 _uiState.update { it.copy(pressStatus = status, pendingEmotionPresses = pending) }
-            },
-            onBeforeSend = ::invalidateLoad,
-            onSnapshot = { snapshot, pending ->
+                requestDeferredInitialLoad()
+            }
+
+            override fun onBeforeSend() = invalidateLoad()
+
+            override fun onSnapshot(
+                snapshot: GroupPressSnapshotUiModel,
+                pending: Map<EmotionKind, Long>,
+            ) {
                 _uiState.update { state ->
                     val detail = state.detail
                     if (detail?.group?.id == groupId) {
@@ -64,22 +75,60 @@ class GroupDetailViewModel(
                         state
                     }
                 }
-            },
-            onReconciliationRequested = { loadDetail(reconcilePressOperationKey = it) },
-            onAccessLost = ::markMembershipUnavailable,
-            onNotice = ::showNotice,
-            canContinue = {
-                val state = _uiState.value
-                state.detail?.group?.id == groupId &&
-                    state.content !is GroupDetailContent.MembershipChanged &&
-                    state.content !is GroupDetailContent.NotFound &&
-                    state.overlay !is GroupDetailOverlay.Leaving &&
-                    state.overlay !is GroupDetailOverlay.Left
-            },
-        )
+                requestDeferredInitialLoad()
+            }
+
+            override fun onReconciledDetail(detail: GroupDetailUiModel) {
+                needsInitialLoad = false
+                _uiState.update { state ->
+                    state.copy(
+                        content =
+                            GroupDetailContent.Ready(
+                                detail.ownedSnapshot(),
+                            ),
+                        groupName = detail.group.name,
+                        refreshStatus = GroupDetailRefreshStatus.Idle,
+                    )
+                }
+            }
+
+            override fun onAccessLost(
+                key: GroupOperationKey,
+                reason: GroupDetailAccessLoss,
+            ) {
+                markMembershipUnavailable(key, reason)
+            }
+
+            override fun onNotice(
+                kind: GroupDetailNoticeKind,
+                retryAfterMillis: Long?,
+            ) {
+                showNotice(kind, retryAfterMillis)
+            }
+        }
 
     init {
+        pressSession.attach(pressObserver)
+        hasAttachedPressObserver = true
         loadDetail()
+    }
+
+    override fun onCleared() {
+        hasAttachedPressObserver = false
+        pressSession.detach(pressObserver)
+        if (ownsPressWorkOwner) pressSession.close()
+        super.onCleared()
+    }
+
+    private fun requestDeferredInitialLoad() {
+        if (!needsInitialLoad || !hasAttachedPressObserver) return
+        viewModelScope.launch {
+            if (needsInitialLoad && !pressSession.accessLost && !pressSession.hasPendingWork &&
+                pressSession.status == GroupPressStatus.Idle
+            ) {
+                loadDetail()
+            }
+        }
     }
 
     fun onResumed() {
@@ -138,7 +187,7 @@ class GroupDetailViewModel(
         lastAcceptedPressKey = null
         val current = _uiState.value
         if (current.detail?.group?.id != groupId || current.overlay != GroupDetailOverlay.None) return false
-        lastAcceptedPressKey = pressCoordinator.accept(emotion)
+        lastAcceptedPressKey = pressSession.accept(emotion)
         return lastAcceptedPressKey != null
     }
 
@@ -163,7 +212,7 @@ class GroupDetailViewModel(
     }
 
     fun onLeaveMenuClick() {
-        if (pressCoordinator.hasPendingWork) {
+        if (pressSession.hasPendingWork) {
             _uiState.update { state ->
                 if (state.overlay == GroupDetailOverlay.Menu) state.copy(overlay = GroupDetailOverlay.None) else state
             }
@@ -312,8 +361,7 @@ class GroupDetailViewModel(
     /** Resolves an uncertain press with a read; the POST is never submitted again. */
     fun onResolvePressOutcome() {
         if (loadJob?.isActive == true) return
-        val operationKey = pressCoordinator.resolveUnknown() ?: return
-        loadDetail(reconcilePressOperationKey = operationKey)
+        pressSession.resolveUnknown()
     }
 
     fun acknowledgeLeft(operationKey: GroupOperationKey) {
@@ -334,20 +382,21 @@ class GroupDetailViewModel(
 
     private fun loadDetail(
         reconcileLeaveOutcome: Boolean = false,
-        reconcilePressOperationKey: GroupOperationKey? = null,
         showRefreshIndicator: Boolean = true,
     ) {
         if (loadJob?.isActive == true) return
         val currentPressStatus = _uiState.value.pressStatus
-        if (currentPressStatus is GroupPressStatus.Sending ||
-            (
-                currentPressStatus is GroupPressStatus.Reconciling &&
-                    currentPressStatus.operationKey != reconcilePressOperationKey
-            )
+        if (currentPressStatus is GroupPressStatus.OutcomeUnknown) {
+            pressSession.resolveUnknown()
+            return
+        }
+        if (pressSession.hasPendingWork || currentPressStatus is GroupPressStatus.Sending ||
+            currentPressStatus is GroupPressStatus.Reconciling
         ) {
             return
         }
 
+        needsInitialLoad = false
         val requestId = ++loadGeneration
         val hasSnapshot = _uiState.value.detail != null
         _uiState.update { state ->
@@ -370,11 +419,11 @@ class GroupDetailViewModel(
                             .operation(
                                 "group_detail_load_finished",
                             ).observe(::resultLabel) { requestDetail() }
-                    if (reconcileLeaveOutcome || reconcilePressOperationKey != null) {
+                    if (reconcileLeaveOutcome) {
                         telemetry.emit(
                             "operation_reconciled",
                             labels(
-                                "operation_kind" to if (reconcileLeaveOutcome) "group_leave" else "group_press",
+                                "operation_kind" to "group_leave",
                                 "outcome" to resultLabel(result),
                             ),
                         )
@@ -386,6 +435,11 @@ class GroupDetailViewModel(
                             IllegalStateException("상세 공급자가 요청한 그룹과 다른 ID를 반환했습니다."),
                         )
                     }
+                    val loadedDetail =
+                        (result as? GroupDetailLoadResult.Loaded)
+                            ?.detail
+                            ?.takeIf { it.group.id == groupId }
+                            ?.let(pressSession::onDetailLoaded)
 
                     val membershipEvent =
                         when (result) {
@@ -413,11 +467,8 @@ class GroupDetailViewModel(
                     _uiState.update { state ->
                         when (result) {
                             is GroupDetailLoadResult.Loaded -> {
-                                val detail =
-                                    result.detail
-                                        .withDominantEmotionSummary(state.detail?.presentation?.summaryMessage)
-                                        .ownedSnapshot()
-                                if (detail.group.id != groupId) {
+                                val detail = loadedDetail?.ownedSnapshot()
+                                if (detail == null) {
                                     state.copy(
                                         content =
                                             if (state.detail ==
@@ -491,32 +542,12 @@ class GroupDetailViewModel(
                             }
                         }
                     }
-                    when (result) {
-                        is GroupDetailLoadResult.Loaded -> {
-                            if (result.detail.group.id == groupId) {
-                                pressCoordinator.onDetailSnapshot(
-                                    GroupPressSnapshotUiModel(result.detail.emotionCounts, result.detail.todayTotal),
-                                )
-                                reconcilePressOperationKey?.let { pressCoordinator.onReconciliationResult(it, true) }
-                            } else {
-                                reconcilePressOperationKey?.let { pressCoordinator.onReconciliationResult(it, false) }
-                            }
-                        }
-
-                        GroupDetailLoadResult.MembershipChanged,
-                        GroupDetailLoadResult.NotFound,
-                        -> {
-                            pressCoordinator.clearForAccessLoss()
-                        }
-
-                        GroupDetailLoadResult.Unavailable -> {
-                            reconcilePressOperationKey?.let { pressCoordinator.onReconciliationResult(it, false) }
-                        }
+                    if (result == GroupDetailLoadResult.MembershipChanged || result == GroupDetailLoadResult.NotFound) {
+                        pressSession.clearForAccessLoss()
                     }
                 } finally {
                     if (requestId == loadGeneration) {
                         loadJob = null
-                        if (reconcilePressOperationKey != null) pressCoordinator.drainAfterReconciliation()
                     }
                 }
             }
@@ -536,7 +567,7 @@ class GroupDetailViewModel(
 
     private fun submitLeave(expectedOverlay: GroupDetailOverlay) {
         val current = _uiState.value
-        if (pressCoordinator.hasPendingWork) {
+        if (pressSession.hasPendingWork) {
             showNotice(GroupDetailNoticeKind.PressBlockedWhilePending)
             return
         }
@@ -590,7 +621,7 @@ class GroupDetailViewModel(
                             LeaveGroupResult.Left,
                             LeaveGroupResult.MembershipChanged,
                             LeaveGroupResult.NotFound,
-                            -> pressCoordinator.clearForAccessLoss()
+                            -> pressSession.clearForAccessLoss()
 
                             else -> Unit
                         }
@@ -690,6 +721,7 @@ class GroupDetailViewModel(
         operationKey: GroupOperationKey,
         reason: GroupDetailAccessLoss,
     ) {
+        invalidateLoad()
         val event = GroupDetailMembershipEvent(operationKey, reason)
         _uiState.update { state ->
             state.copy(

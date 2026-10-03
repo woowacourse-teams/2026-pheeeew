@@ -27,6 +27,7 @@ internal class GroupEmotionPressCoordinator(
     private val onAccessLost: (GroupOperationKey, GroupDetailAccessLoss) -> Unit,
     private val onNotice: (GroupDetailNoticeKind, Long?) -> Unit,
     private val canContinue: () -> Boolean,
+    private val onWorkFinished: () -> Unit = {},
 ) {
     private data class AcceptedPress(
         val emotion: EmotionKind,
@@ -88,6 +89,9 @@ internal class GroupEmotionPressCoordinator(
 
     fun clearForAccessLoss() {
         generation++
+        val activeJob = job
+        job = null
+        activeJob?.cancel()
         queue.clear()
         pending.clear()
         status = GroupPressStatus.Idle
@@ -141,6 +145,7 @@ internal class GroupEmotionPressCoordinator(
                         job = null
                         drain()
                     }
+                    onWorkFinished()
                 }
             }
     }
