@@ -14,7 +14,6 @@ import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -38,13 +37,46 @@ class GroupDetailViewModel(
 
     private var loadJob: Job? = null
     private var leaveJob: Job? = null
-    private var pressJob: Job? = null
-    private val queuedEmotionPresses = ArrayDeque<Pair<EmotionKind, GroupOperationKey>>()
     var lastAcceptedPressKey: GroupOperationKey? = null
         private set
     private var loadGeneration = 0L
-    private var pressGeneration = 0L
     private var hasResumed = false
+    private val pressCoordinator =
+        GroupEmotionPressCoordinator(
+            groupId = groupId,
+            dependencies = dependencies,
+            scope = viewModelScope,
+            telemetry = telemetry,
+            onStateChanged = { status, pending ->
+                _uiState.update { it.copy(pressStatus = status, pendingEmotionPresses = pending) }
+            },
+            onBeforeSend = ::invalidateLoad,
+            onSnapshot = { snapshot, pending ->
+                _uiState.update { state ->
+                    val detail = state.detail
+                    if (detail?.group?.id == groupId) {
+                        state.copy(
+                            content = GroupDetailContent.Ready(detail.withPressSnapshot(snapshot)),
+                            pressStatus = GroupPressStatus.Idle,
+                            pendingEmotionPresses = pending,
+                        )
+                    } else {
+                        state
+                    }
+                }
+            },
+            onReconciliationRequested = { loadDetail(reconcilePressOperationKey = it) },
+            onAccessLost = ::markMembershipUnavailable,
+            onNotice = ::showNotice,
+            canContinue = {
+                val state = _uiState.value
+                state.detail?.group?.id == groupId &&
+                    state.content !is GroupDetailContent.MembershipChanged &&
+                    state.content !is GroupDetailContent.NotFound &&
+                    state.overlay !is GroupDetailOverlay.Leaving &&
+                    state.overlay !is GroupDetailOverlay.Left
+            },
+        )
 
     init {
         loadDetail()
@@ -106,117 +138,8 @@ class GroupDetailViewModel(
         lastAcceptedPressKey = null
         val current = _uiState.value
         if (current.detail?.group?.id != groupId || current.overlay != GroupDetailOverlay.None) return false
-
-        when (current.pressStatus) {
-            is GroupPressStatus.Sending -> {
-                val operationKey = dependencies.operationKeyAllocator.next()
-                lastAcceptedPressKey = operationKey
-                queuedEmotionPresses.addLast(emotion to operationKey)
-                _uiState.update { state -> state.withPendingPress(emotion, 1) }
-                return true
-            }
-
-            GroupPressStatus.Idle -> {
-                val operationKey = dependencies.operationKeyAllocator.next()
-                lastAcceptedPressKey = operationKey
-                _uiState.update { state -> state.withPendingPress(emotion, 1) }
-                if (pressJob?.isActive == true) {
-                    queuedEmotionPresses.addLast(emotion to operationKey)
-                } else {
-                    submitEmotionPress(emotion, operationKey)
-                }
-                return true
-            }
-
-            is GroupPressStatus.Reconciling,
-            is GroupPressStatus.OutcomeUnknown,
-            -> {
-                return false
-            }
-        }
-    }
-
-    private fun submitEmotionPress(
-        emotion: EmotionKind,
-        operationKey: GroupOperationKey,
-    ) {
-        val current = _uiState.value
-        if (current.detail?.group?.id != groupId || current.pressStatus != GroupPressStatus.Idle) {
-            return
-        }
-
-        val requestGeneration = ++pressGeneration
-        invalidateLoad()
-        _uiState.update { state ->
-            if (state.pressStatus == GroupPressStatus.Idle && state.detail?.group?.id == groupId) {
-                state.copy(pressStatus = GroupPressStatus.Sending(operationKey, emotion))
-            } else {
-                state
-            }
-        }
-        if ((_uiState.value.pressStatus as? GroupPressStatus.Sending)?.operationKey != operationKey) return
-
-        pressJob =
-            viewModelScope.launch {
-                try {
-                    val result =
-                        try {
-                            withTimeoutOrNull(dependencies.requestPolicy.timeoutMillis) {
-                                telemetry
-                                    .operation(
-                                        "group_emotion_press_finished",
-                                        labels(
-                                            "group_operation_key" to
-                                                "${operationKey.ownerInstanceId}:${operationKey.sequence}",
-                                        ),
-                                        started = "group_emotion_press_started",
-                                    ).observe(
-                                        ::resultLabel,
-                                    ) { dependencies.pressGroupEmotionAction.press(groupId, emotion) }
-                            } ?: PressGroupEmotionResult.OutcomeUnknown
-                        } catch (cancellation: CancellationException) {
-                            _uiState.update { state ->
-                                if ((state.pressStatus as? GroupPressStatus.Sending)?.operationKey == operationKey) {
-                                    state.copy(pressStatus = GroupPressStatus.OutcomeUnknown(operationKey, emotion))
-                                } else {
-                                    state
-                                }
-                            }
-                            throw cancellation
-                        } catch (exception: Exception) {
-                            dependencies.errorReporter.reportUnexpected(exception)
-                            PressGroupEmotionResult.OutcomeUnknown
-                        }
-                    if (requestGeneration != pressGeneration) {
-                        return@launch
-                    }
-                    handlePressResult(operationKey, emotion, result)
-                    if (result is PressGroupEmotionResult.RateLimited) {
-                        delay((result.retryAfterMillis ?: DEFAULT_PRESS_RETRY_DELAY_MILLIS).coerceAtLeast(0L))
-                    }
-                } finally {
-                    if (pressJob === currentCoroutineContext()[Job]) {
-                        pressJob = null
-                        submitNextQueuedEmotionPress()
-                    }
-                }
-            }
-    }
-
-    private fun submitNextQueuedEmotionPress() {
-        val state = _uiState.value
-        if (pressJob?.isActive == true || state.pressStatus != GroupPressStatus.Idle) return
-        if (state.overlay is GroupDetailOverlay.Leaving || state.overlay is GroupDetailOverlay.Left) return
-        if (state.detail?.group?.id != groupId ||
-            state.content is GroupDetailContent.MembershipChanged ||
-            state.content is GroupDetailContent.NotFound
-        ) {
-            queuedEmotionPresses.clear()
-            _uiState.update { it.copy(pendingEmotionPresses = emptyMap()) }
-            return
-        }
-        val (emotion, operationKey) = queuedEmotionPresses.removeFirstOrNull() ?: return
-        submitEmotionPress(emotion, operationKey)
+        lastAcceptedPressKey = pressCoordinator.accept(emotion)
+        return lastAcceptedPressKey != null
     }
 
     fun onMoreClick() {
@@ -240,7 +163,7 @@ class GroupDetailViewModel(
     }
 
     fun onLeaveMenuClick() {
-        if (hasPendingEmotionPresses(_uiState.value)) {
+        if (pressCoordinator.hasPendingWork) {
             _uiState.update { state ->
                 if (state.overlay == GroupDetailOverlay.Menu) state.copy(overlay = GroupDetailOverlay.None) else state
             }
@@ -258,12 +181,6 @@ class GroupDetailViewModel(
             }
         }
     }
-
-    private fun hasPendingEmotionPresses(state: GroupDetailUiState): Boolean =
-        state.pressStatus != GroupPressStatus.Idle ||
-            pressJob?.isActive == true ||
-            queuedEmotionPresses.isNotEmpty() ||
-            state.pendingEmotionPresses.isNotEmpty()
 
     fun onDismissOverlay() {
         _uiState.update { state ->
@@ -394,16 +311,9 @@ class GroupDetailViewModel(
 
     /** Resolves an uncertain press with a read; the POST is never submitted again. */
     fun onResolvePressOutcome() {
-        val status = _uiState.value.pressStatus as? GroupPressStatus.OutcomeUnknown ?: return
         if (loadJob?.isActive == true) return
-        _uiState.update { state ->
-            if ((state.pressStatus as? GroupPressStatus.OutcomeUnknown)?.operationKey == status.operationKey) {
-                state.copy(pressStatus = GroupPressStatus.Reconciling(status.operationKey, status.emotion))
-            } else {
-                state
-            }
-        }
-        loadDetail(reconcilePressOperationKey = status.operationKey)
+        val operationKey = pressCoordinator.resolveUnknown() ?: return
+        loadDetail(reconcilePressOperationKey = operationKey)
     }
 
     fun acknowledgeLeft(operationKey: GroupOperationKey) {
@@ -523,33 +433,12 @@ class GroupDetailViewModel(
                                             } else {
                                                 GroupDetailRefreshStatus.Failed
                                             },
-                                        pressStatus =
-                                            state.pressStatus.afterPressReconciliation(
-                                                reconcilePressOperationKey,
-                                                false,
-                                            ),
                                     )
                                 } else {
                                     state.copy(
                                         content = GroupDetailContent.Ready(detail),
                                         groupName = detail.group.name,
                                         refreshStatus = GroupDetailRefreshStatus.Idle,
-                                        pendingEmotionPresses =
-                                            if (reconcilePressOperationKey != null) {
-                                                val reconciliation = state.pressStatus as? GroupPressStatus.Reconciling
-                                                if (reconciliation?.operationKey == reconcilePressOperationKey) {
-                                                    state.pendingEmotionPresses.without(reconciliation.emotion)
-                                                } else {
-                                                    state.pendingEmotionPresses
-                                                }
-                                            } else {
-                                                state.pendingEmotionPresses
-                                            },
-                                        pressStatus =
-                                            state.pressStatus.afterPressReconciliation(
-                                                reconcilePressOperationKey,
-                                                true,
-                                            ),
                                         overlay =
                                             if (reconcileLeaveOutcome &&
                                                 state.overlay == GroupDetailOverlay.LeaveOutcomeUnknown
@@ -568,13 +457,7 @@ class GroupDetailViewModel(
                                     refreshStatus = GroupDetailRefreshStatus.Idle,
                                     overlay = GroupDetailOverlay.None,
                                     copyRequest = null,
-                                    pendingEmotionPresses = emptyMap(),
                                     membershipEvent = membershipEvent,
-                                    pressStatus =
-                                        state.pressStatus.afterPressReconciliation(
-                                            reconcilePressOperationKey,
-                                            true,
-                                        ),
                                 )
                             }
 
@@ -584,13 +467,7 @@ class GroupDetailViewModel(
                                     refreshStatus = GroupDetailRefreshStatus.Idle,
                                     overlay = GroupDetailOverlay.None,
                                     copyRequest = null,
-                                    pendingEmotionPresses = emptyMap(),
                                     membershipEvent = membershipEvent,
-                                    pressStatus =
-                                        state.pressStatus.afterPressReconciliation(
-                                            reconcilePressOperationKey,
-                                            true,
-                                        ),
                                 )
                             }
 
@@ -610,19 +487,36 @@ class GroupDetailViewModel(
                                         } else {
                                             GroupDetailRefreshStatus.Failed
                                         },
-                                    pressStatus =
-                                        state.pressStatus.afterPressReconciliation(
-                                            reconcilePressOperationKey,
-                                            false,
-                                        ),
                                 )
                             }
+                        }
+                    }
+                    when (result) {
+                        is GroupDetailLoadResult.Loaded -> {
+                            if (result.detail.group.id == groupId) {
+                                pressCoordinator.onDetailSnapshot(
+                                    GroupPressSnapshotUiModel(result.detail.emotionCounts, result.detail.todayTotal),
+                                )
+                                reconcilePressOperationKey?.let { pressCoordinator.onReconciliationResult(it, true) }
+                            } else {
+                                reconcilePressOperationKey?.let { pressCoordinator.onReconciliationResult(it, false) }
+                            }
+                        }
+
+                        GroupDetailLoadResult.MembershipChanged,
+                        GroupDetailLoadResult.NotFound,
+                        -> {
+                            pressCoordinator.clearForAccessLoss()
+                        }
+
+                        GroupDetailLoadResult.Unavailable -> {
+                            reconcilePressOperationKey?.let { pressCoordinator.onReconciliationResult(it, false) }
                         }
                     }
                 } finally {
                     if (requestId == loadGeneration) {
                         loadJob = null
-                        if (reconcilePressOperationKey != null) submitNextQueuedEmotionPress()
+                        if (reconcilePressOperationKey != null) pressCoordinator.drainAfterReconciliation()
                     }
                 }
             }
@@ -642,7 +536,7 @@ class GroupDetailViewModel(
 
     private fun submitLeave(expectedOverlay: GroupDetailOverlay) {
         val current = _uiState.value
-        if (hasPendingEmotionPresses(current)) {
+        if (pressCoordinator.hasPendingWork) {
             showNotice(GroupDetailNoticeKind.PressBlockedWhilePending)
             return
         }
@@ -696,7 +590,7 @@ class GroupDetailViewModel(
                             LeaveGroupResult.Left,
                             LeaveGroupResult.MembershipChanged,
                             LeaveGroupResult.NotFound,
-                            -> queuedEmotionPresses.clear()
+                            -> pressCoordinator.clearForAccessLoss()
 
                             else -> Unit
                         }
@@ -714,7 +608,6 @@ class GroupDetailViewModel(
                                         groupName = state.detail?.group?.name ?: state.groupName,
                                         overlay = GroupDetailOverlay.Left(operationKey),
                                         membershipEvent = null,
-                                        pendingEmotionPresses = emptyMap(),
                                     )
                                 }
 
@@ -723,7 +616,6 @@ class GroupDetailViewModel(
                                         content = GroupDetailContent.MembershipChanged,
                                         groupName = state.detail?.group?.name ?: state.groupName,
                                         overlay = GroupDetailOverlay.None,
-                                        pendingEmotionPresses = emptyMap(),
                                         membershipEvent =
                                             GroupDetailMembershipEvent(
                                                 operationKey,
@@ -737,7 +629,6 @@ class GroupDetailViewModel(
                                         content = GroupDetailContent.NotFound,
                                         groupName = state.detail?.group?.name ?: state.groupName,
                                         overlay = GroupDetailOverlay.None,
-                                        pendingEmotionPresses = emptyMap(),
                                         membershipEvent =
                                             GroupDetailMembershipEvent(operationKey, GroupDetailAccessLoss.NotFound),
                                     )
@@ -795,158 +686,29 @@ class GroupDetailViewModel(
         _uiState.update { state -> state.copy(notice = notice) }
     }
 
-    private fun handlePressResult(
-        operationKey: GroupOperationKey,
-        emotion: EmotionKind,
-        result: PressGroupEmotionResult,
-    ) {
-        val isCurrentRequest =
-            (_uiState.value.pressStatus as? GroupPressStatus.Sending)?.operationKey == operationKey &&
-                _uiState.value.detail
-                    ?.group
-                    ?.id == groupId
-        if (!isCurrentRequest) return
-
-        when (result) {
-            is PressGroupEmotionResult.Pressed -> {
-                _uiState.update { state ->
-                    val sending = state.pressStatus as? GroupPressStatus.Sending
-                    val detail = state.detail
-                    if (sending?.operationKey != operationKey || detail == null || detail.group.id != groupId) {
-                        state
-                    } else {
-                        state.copy(
-                            content = GroupDetailContent.Ready(detail.withPressSnapshot(result.snapshot)),
-                            pressStatus = GroupPressStatus.Idle,
-                            pendingEmotionPresses = state.pendingEmotionPresses.without(emotion),
-                        )
-                    }
-                }
-            }
-
-            PressGroupEmotionResult.MembershipChanged -> {
-                queuedEmotionPresses.clear()
-                markMembershipUnavailable(operationKey, GroupDetailAccessLoss.MembershipChanged)
-            }
-
-            PressGroupEmotionResult.NotFound -> {
-                queuedEmotionPresses.clear()
-                markMembershipUnavailable(operationKey, GroupDetailAccessLoss.NotFound)
-            }
-
-            is PressGroupEmotionResult.RateLimited -> {
-                _uiState.update { state ->
-                    if ((state.pressStatus as? GroupPressStatus.Sending)?.operationKey == operationKey) {
-                        state.copy(
-                            pressStatus = GroupPressStatus.Idle,
-                            pendingEmotionPresses = state.pendingEmotionPresses.without(emotion),
-                        )
-                    } else {
-                        state
-                    }
-                }
-                showNotice(GroupDetailNoticeKind.PressRateLimited, result.retryAfterMillis)
-            }
-
-            PressGroupEmotionResult.Rejected -> {
-                _uiState.update { state ->
-                    if ((state.pressStatus as? GroupPressStatus.Sending)?.operationKey == operationKey) {
-                        state.copy(
-                            pressStatus = GroupPressStatus.Idle,
-                            pendingEmotionPresses = state.pendingEmotionPresses.without(emotion),
-                        )
-                    } else {
-                        state
-                    }
-                }
-                showNotice(GroupDetailNoticeKind.PressRejected)
-            }
-
-            PressGroupEmotionResult.Unavailable -> {
-                _uiState.update { state ->
-                    if ((state.pressStatus as? GroupPressStatus.Sending)?.operationKey == operationKey) {
-                        state.copy(
-                            pressStatus = GroupPressStatus.Idle,
-                            pendingEmotionPresses = state.pendingEmotionPresses.without(emotion),
-                        )
-                    } else {
-                        state
-                    }
-                }
-                showNotice(GroupDetailNoticeKind.PressUnavailable)
-            }
-
-            PressGroupEmotionResult.OutcomeUnknown -> {
-                _uiState.update { state ->
-                    if ((state.pressStatus as? GroupPressStatus.Sending)?.operationKey == operationKey) {
-                        state.copy(pressStatus = GroupPressStatus.Reconciling(operationKey, emotion))
-                    } else {
-                        state
-                    }
-                }
-                loadDetail(reconcilePressOperationKey = operationKey)
-            }
-        }
-    }
-
     private fun markMembershipUnavailable(
         operationKey: GroupOperationKey,
         reason: GroupDetailAccessLoss,
     ) {
         val event = GroupDetailMembershipEvent(operationKey, reason)
         _uiState.update { state ->
-            if ((state.pressStatus as? GroupPressStatus.Sending)?.operationKey != operationKey) {
-                state
-            } else {
-                state.copy(
-                    content =
-                        if (reason == GroupDetailAccessLoss.MembershipChanged) {
-                            GroupDetailContent.MembershipChanged
-                        } else {
-                            GroupDetailContent.NotFound
-                        },
-                    refreshStatus = GroupDetailRefreshStatus.Idle,
-                    overlay = GroupDetailOverlay.None,
-                    copyRequest = null,
-                    pressStatus = GroupPressStatus.Idle,
-                    pendingEmotionPresses = emptyMap(),
-                    membershipEvent = event,
-                )
-            }
-        }
-    }
-
-    private fun GroupPressStatus.afterPressReconciliation(
-        operationKey: GroupOperationKey?,
-        succeeded: Boolean,
-    ): GroupPressStatus {
-        val reconciling = this as? GroupPressStatus.Reconciling ?: return this
-        if (reconciling.operationKey != operationKey) return this
-        return if (succeeded) {
-            GroupPressStatus.Idle
-        } else {
-            GroupPressStatus.OutcomeUnknown(reconciling.operationKey, reconciling.emotion)
+            state.copy(
+                content =
+                    if (reason == GroupDetailAccessLoss.MembershipChanged) {
+                        GroupDetailContent.MembershipChanged
+                    } else {
+                        GroupDetailContent.NotFound
+                    },
+                refreshStatus = GroupDetailRefreshStatus.Idle,
+                overlay = GroupDetailOverlay.None,
+                copyRequest = null,
+                membershipEvent = event,
+            )
         }
     }
 
     private fun GroupDetailUiModel.ownedSnapshot(): GroupDetailUiModel = copy(emotionCounts = emotionCounts.toList())
 }
-
-private fun GroupDetailUiState.withPendingPress(
-    emotion: EmotionKind,
-    amount: Long,
-): GroupDetailUiState =
-    copy(
-        pendingEmotionPresses =
-            pendingEmotionPresses + (emotion to ((pendingEmotionPresses[emotion] ?: 0L) + amount)),
-    )
-
-private fun Map<EmotionKind, Long>.without(emotion: EmotionKind): Map<EmotionKind, Long> {
-    val count = this[emotion] ?: return this
-    return if (count <= 1L) this - emotion else this + (emotion to (count - 1L))
-}
-
-private const val DEFAULT_PRESS_RETRY_DELAY_MILLIS = 1_000L
 
 enum class GroupCopyCodeResult {
     Copied,
