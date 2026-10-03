@@ -1,0 +1,50 @@
+--------- beginning of main
+10-02 20:50:07.835 29221 29221 D PheeeewMapPerf: tMs=1491787715 stage=feature-build durationMs=0 count=0 
+10-02 20:50:07.835 29221 29221 D PheeeewMapPerf: tMs=1491787715 stage=source-set durationMs=0 count=0 
+10-02 20:50:07.836 29221 29221 D PheeeewMapPerf: tMs=1491787716 stage=viewport durationMs=-1 count=-1 
+10-02 20:50:09.164 29221 29221 D PheeeewMapPerf: tMs=1491789043 stage=api-decode durationMs=63 count=139 
+10-02 20:50:09.164 29221 29221 D PheeeewMapPerf: tMs=1491789043 stage=api-total durationMs=621 count=-1 cursor=false
+10-02 20:50:09.173 29221 29221 D PheeeewMapPerf: tMs=1491789052 stage=dto-map durationMs=8 count=139 
+10-02 20:50:09.173 29221 29221 D PheeeewMapPerf: tMs=1491789053 stage=page-result durationMs=631 count=139 origin=network hasNext=false
+10-02 20:50:09.181 29221 29221 D PheeeewMapPerf: tMs=1491789061 stage=pin-order durationMs=7 count=139 
+10-02 20:50:09.221 29221 29221 D PheeeewMapPerf: tMs=1491789101 stage=feature-build durationMs=0 count=0 
+10-02 20:50:09.221 29221 29221 D PheeeewMapPerf: tMs=1491789101 stage=source-set durationMs=0 count=0 
+10-02 20:50:09.267 29221 29221 D PheeeewMapPerf: tMs=1491789147 stage=raster-image durationMs=41 count=-1 pixels=113 attempt=1
+10-02 20:50:09.289 29221 29221 D PheeeewMapPerf: tMs=1491789168 stage=raster-image durationMs=20 count=-1 pixels=113 attempt=1
+10-02 20:50:09.304 29221 29221 D PheeeewMapPerf: tMs=1491789184 stage=raster-image durationMs=15 count=-1 pixels=113 attempt=1
+10-02 20:50:09.320 29221 29221 D PheeeewMapPerf: tMs=1491789200 stage=raster-image durationMs=15 count=-1 pixels=113 attempt=1
+10-02 20:50:09.327 29221 29221 D PheeeewMapPerf: tMs=1491789206 stage=raster-image durationMs=5 count=-1 pixels=113 attempt=1
+10-02 20:50:09.332 29221 29221 D PheeeewMapPerf: tMs=1491789212 stage=raster-image durationMs=5 count=-1 pixels=113 attempt=1
+10-02 20:50:09.338 29221 29221 D PheeeewMapPerf: tMs=1491789217 stage=raster-image durationMs=5 count=-1 pixels=113 attempt=1
+10-02 20:50:09.342 29221 29221 D PheeeewMapPerf: tMs=1491789222 stage=raster-image durationMs=4 count=-1 pixels=113 attempt=1
+10-02 20:50:09.347 29221 29221 D PheeeewMapPerf: tMs=1491789227 stage=raster-image durationMs=4 count=-1 pixels=113 attempt=1
+10-02 20:50:09.350 29221 29221 D PheeeewMapPerf: tMs=1491789230 stage=raster-image durationMs=2 count=-1 pixels=113 attempt=1
+10-02 20:50:09.358 29221 29221 D PheeeewMapPerf: tMs=1491789237 stage=raster-image durationMs=7 count=-1 pixels=113 attempt=1
+10-02 20:50:09.366 29221 29221 D PheeeewMapPerf: tMs=1491789246 stage=raster-image durationMs=8 count=-1 pixels=113 attempt=1
+10-02 20:50:09.371 29221 29221 D PheeeewMapPerf: tMs=1491789251 stage=raster-image durationMs=4 count=-1 pixels=113 attempt=1
+10-02 20:50:09.376 29221 29221 D PheeeewMapPerf: tMs=1491789256 stage=raster-image durationMs=4 count=-1 pixels=113 attempt=1
+10-02 20:50:09.426 29221 29221 D PheeeewMapPerf: tMs=1491789306 stage=bitmap-convert durationMs=38 count=14 
+10-02 20:50:09.426 29221 29221 D PheeeewMapPerf: tMs=1491789306 stage=style-add-image durationMs=0 count=14 
+10-02 20:50:09.432 29221 29221 D PheeeewMapPerf: tMs=1491789311 stage=feature-build durationMs=4 count=139 
+10-02 20:50:09.432 29221 29221 D PheeeewMapPerf: tMs=1491789312 stage=source-set durationMs=0 count=139 
+10-02 20:50:09.448 29221 29221 D PheeeewMapPerf: tMs=1491789328 stage=viewport durationMs=-1 count=-1 
+10-02 20:50:09.477 29221 29221 D PheeeewMapPerf: tMs=1491789357 stage=feature-build durationMs=3 count=133 
+10-02 20:50:09.477 29221 29221 D PheeeewMapPerf: tMs=1491789357 stage=source-set durationMs=0 count=133 
+10-02 20:50:10.222 29221 29221 D PheeeewMapPerf: tMs=1491790102 stage=map-idle-rendered durationMs=-1 count=133 loadId=b32d8b45-ef82-4927-896a-9e6fc3f2df5a
+10-02 20:50:10.534 29221 29221 D PheeeewMapPerf: tMs=1491790413 stage=map-idle-rendered durationMs=-1 count=133 loadId=b32d8b45-ef82-4927-896a-9e6fc3f2df5a
+10-02 20:50:10.580 29221 29221 D PheeeewMapPerf: tMs=1491790460 stage=api-decode durationMs=38 count=166 
+10-02 20:50:10.581 29221 29221 D PheeeewMapPerf: tMs=1491790460 stage=api-total durationMs=424 count=-1 cursor=false
+10-02 20:50:10.588 29221 29221 D PheeeewMapPerf: tMs=1491790467 stage=dto-map durationMs=7 count=166 
+10-02 20:50:10.588 29221 29221 D PheeeewMapPerf: tMs=1491790468 stage=page-result durationMs=432 count=166 origin=network hasNext=false
+10-02 20:50:10.596 29221 29221 D PheeeewMapPerf: tMs=1491790476 stage=pin-order durationMs=7 count=166 
+10-02 20:50:10.614 29221 29221 D PheeeewMapPerf: tMs=1491790493 stage=feature-build durationMs=4 count=166 
+10-02 20:50:10.614 29221 29221 D PheeeewMapPerf: tMs=1491790493 stage=source-set durationMs=0 count=166 
+10-02 20:50:10.997 29221 29221 D PheeeewMapPerf: tMs=1491790876 stage=map-idle-rendered durationMs=-1 count=166 loadId=cb1f6ac1-78de-4cb1-b27e-5cbe0bcb8060
+10-02 20:50:43.710 29221 29221 D PheeeewMapPerf: tMs=1491823589 stage=feature-build durationMs=51 count=166 
+10-02 20:50:43.713 29221 29221 D PheeeewMapPerf: tMs=1491823593 stage=source-set durationMs=3 count=166 
+10-02 20:50:47.859 29221 29221 D PheeeewMapPerf: tMs=1491827739 stage=feature-build durationMs=6 count=166 
+10-02 20:50:47.859 29221 29221 D PheeeewMapPerf: tMs=1491827739 stage=source-set durationMs=0 count=166 
+10-02 20:50:48.001 29221 29221 D PheeeewMapPerf: tMs=1491827880 stage=map-idle-rendered durationMs=-1 count=166 loadId=cb1f6ac1-78de-4cb1-b27e-5cbe0bcb8060
+10-02 20:50:48.027 29221 29221 D PheeeewMapPerf: tMs=1491827907 stage=feature-build durationMs=6 count=166 
+10-02 20:50:48.027 29221 29221 D PheeeewMapPerf: tMs=1491827907 stage=source-set durationMs=0 count=166 
+10-02 20:50:48.437 29221 29221 D PheeeewMapPerf: tMs=1491828316 stage=map-idle-rendered durationMs=-1 count=166 loadId=985345e4-7adf-4fb0-bcf0-3274441850bd

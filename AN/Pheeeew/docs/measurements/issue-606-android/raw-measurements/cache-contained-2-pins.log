@@ -1,0 +1,21 @@
+--------- beginning of main
+10-03 00:10:41.733 23756 23756 D PheeeewMapPerf: tMs=1503818008 stage=map-idle-rendered durationMs=-1 count=0 loadId=7f3c367c-1661-4c28-9180-2cac8237b951
+10-03 00:10:42.115 23756 23756 D PheeeewMapPerf: tMs=1503818390 stage=viewport durationMs=-1 count=-1 bounds=EmotionMapBounds(minLongitude=127.13126027913773, minLatitude=37.44206780768465, maxLongitude=127.1642192631943, maxLatitude=37.498744509192505)
+10-03 00:10:42.124 23756 23756 D PheeeewMapPerf: tMs=1503818400 stage=feature-build durationMs=0 count=0 
+10-03 00:10:42.124 23756 23756 D PheeeewMapPerf: tMs=1503818400 stage=source-set durationMs=0 count=0 
+10-03 00:10:42.135 23756 23756 D PheeeewMapPerf: tMs=1503818411 stage=raster-image durationMs=8 count=-1 pixels=113 attempt=1
+10-03 00:10:42.138 23756 23756 D PheeeewMapPerf: tMs=1503818413 stage=raster-image durationMs=2 count=-1 pixels=113 attempt=1
+10-03 00:10:42.141 23756 23756 D PheeeewMapPerf: tMs=1503818416 stage=bitmap-convert durationMs=0 count=2 
+10-03 00:10:42.141 23756 23756 D PheeeewMapPerf: tMs=1503818416 stage=style-add-image durationMs=0 count=2 
+10-03 00:10:42.141 23756 23756 D PheeeewMapPerf: tMs=1503818417 stage=feature-build durationMs=0 count=2 
+10-03 00:10:42.141 23756 23756 D PheeeewMapPerf: tMs=1503818417 stage=source-set durationMs=0 count=2 
+10-03 00:10:42.167 23756 23756 D PheeeewMapPerf: tMs=1503818443 stage=first-pin-frame durationMs=-1 count=2 loadId=25ad4696-3ef4-416f-925a-94e81300b2ad fully=true
+10-03 00:10:42.167 23756 23756 D PheeeewMapPerf: tMs=1503818443 stage=all-pages-frame durationMs=-1 count=2 loadId=25ad4696-3ef4-416f-925a-94e81300b2ad fully=true
+10-03 00:10:42.468 23756 23756 D PheeeewMapPerf: tMs=1503818744 stage=map-idle-rendered durationMs=-1 count=2 loadId=25ad4696-3ef4-416f-925a-94e81300b2ad
+10-03 00:10:42.816 23756 23756 D PheeeewMapPerf: tMs=1503819092 stage=page-result durationMs=0 count=2 origin=cache hasNext=false
+10-03 00:10:42.816 23756 23756 D PheeeewMapPerf: tMs=1503819092 stage=pin-order durationMs=0 count=2 
+10-03 00:10:42.822 23756 23756 D PheeeewMapPerf: tMs=1503819097 stage=feature-build durationMs=0 count=2 
+10-03 00:10:42.822 23756 23756 D PheeeewMapPerf: tMs=1503819097 stage=source-set durationMs=0 count=2 
+10-03 00:10:43.137 23756 23756 D PheeeewMapPerf: tMs=1503819412 stage=first-pin-frame durationMs=-1 count=2 loadId=41236749-e5e3-4501-9145-9e728b17a0bd fully=true
+10-03 00:10:43.137 23756 23756 D PheeeewMapPerf: tMs=1503819413 stage=all-pages-frame durationMs=-1 count=2 loadId=41236749-e5e3-4501-9145-9e728b17a0bd fully=true
+10-03 00:10:43.138 23756 23756 D PheeeewMapPerf: tMs=1503819413 stage=map-idle-rendered durationMs=-1 count=2 loadId=41236749-e5e3-4501-9145-9e728b17a0bd

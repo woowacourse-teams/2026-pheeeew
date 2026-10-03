@@ -1,0 +1,14 @@
+--------- beginning of main
+10-03 00:15:42.411 23756 23756 D PheeeewMapPerf: tMs=1504118686 stage=refresh durationMs=-1 count=-1 bounds=EmotionMapBounds(minLongitude=127.13126027913773, minLatitude=37.44206780768465, maxLongitude=127.1642192631943, maxLatitude=37.498744509192505)
+10-03 00:15:42.431 23756 23756 D PheeeewMapPerf: tMs=1504118706 stage=map-idle-rendered durationMs=-1 count=2 loadId=41236749-e5e3-4501-9145-9e728b17a0bd
+10-03 00:15:42.740 23756 23756 D PheeeewMapPerf: tMs=1504119015 stage=map-idle-rendered durationMs=-1 count=2 loadId=41236749-e5e3-4501-9145-9e728b17a0bd
+10-03 00:15:43.273 23756 23756 D PheeeewMapPerf: tMs=1504119549 stage=api-decode durationMs=0 count=2 
+10-03 00:15:43.273 23756 23756 D PheeeewMapPerf: tMs=1504119549 stage=api-total durationMs=862 count=-1 cursor=false
+10-03 00:15:43.274 23756 23756 D PheeeewMapPerf: tMs=1504119549 stage=dto-map durationMs=0 count=2 
+10-03 00:15:43.274 23756 23756 D PheeeewMapPerf: tMs=1504119549 stage=page-result durationMs=862 count=2 origin=network hasNext=false
+10-03 00:15:43.274 23756 23756 D PheeeewMapPerf: tMs=1504119549 stage=pin-order durationMs=0 count=2 
+10-03 00:15:43.284 23756 23756 D PheeeewMapPerf: tMs=1504119560 stage=feature-build durationMs=0 count=2 
+10-03 00:15:43.285 23756 23756 D PheeeewMapPerf: tMs=1504119560 stage=source-set durationMs=0 count=2 
+10-03 00:15:43.604 23756 23756 D PheeeewMapPerf: tMs=1504119879 stage=first-pin-frame durationMs=-1 count=2 loadId=b8e84886-67c2-4b74-b794-ddf82dfb3780 fully=true
+10-03 00:15:43.604 23756 23756 D PheeeewMapPerf: tMs=1504119880 stage=all-pages-frame durationMs=-1 count=2 loadId=b8e84886-67c2-4b74-b794-ddf82dfb3780 fully=true
+10-03 00:15:43.605 23756 23756 D PheeeewMapPerf: tMs=1504119880 stage=map-idle-rendered durationMs=-1 count=2 loadId=b8e84886-67c2-4b74-b794-ddf82dfb3780
