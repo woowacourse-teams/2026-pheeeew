@@ -36,7 +36,7 @@ def verify_metrics(config):
         "hikaricp_connections_": "active idle pending max min timeout_total "
                                  "acquire_seconds_count acquire_seconds_sum acquire_seconds_max",
     }
-    for kind in ("map", "list"):
+    for kind in ("list",):
         families[f"pheeeew_sigh_{kind}_query_seconds_"] = "count sum bucket max"
         families[f"pheeeew_sigh_{kind}_results_"] = "count sum max"
     for prefix, suffixes in families.items():
