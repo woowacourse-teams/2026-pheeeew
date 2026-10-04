@@ -28,6 +28,8 @@ JSON 에는 토큰이나 특정 계정의 데이터 소스 ID 가 없어요. 기
 
 DB 구역은 `spring.data.repository.invocations` 지표를 써요. Spring Data 가 리포지터리 메서드 호출을 자동으로 재는 지표이고, `application-prod.yml`, `application-dev.yml` 의 SLO 경계와 [Alloy 수집 목록](../alloy/config.alloy)에 둘 다 들어 있어야 값이 보여요. 리포지터리를 거치지 않는 `EntityManager` 직접 호출은 잡히지 않아요.
 
+앱 자원 구역의 톰캣 스레드 패널은 `tomcat_threads_*` 지표를 써요. `application-prod.yml`, `application-dev.yml` 의 `server.tomcat.mbeanregistry.enabled` 와 [Alloy 수집 목록](../alloy/config.alloy)에 둘 다 들어 있어야 값이 보여요. 사용 중은 지금 요청을 처리하는 스레드 수, 생성됨은 만들어져 있는 스레드 수, 최대는 설정한 한도예요(기본 200). 여유 스레드는 최대에서 사용 중을 뺀 값이고, 0에 가까워지면 새 요청이 스레드를 기다려요.
+
 가져오는 절차는 아래 `대시보드 연결`과 같아요. 파일 이름과 고르는 저장소만 달라요.
 
 
@@ -48,7 +50,7 @@ Grafana가 패널별 쿼리로 Cloud에 저장된 데이터를 읽어요
 | 설정 | 역할 |
 | --- | --- |
 | `title`, `uid` | 대시보드 이름과 고유 식별자예요 |
-| `panels` | 데이터 패널 29개와 구역 제목·안내 8개로 구성된 목록이에요 (v2 기준) |
+| `panels` | 데이터 패널 34개와 구역 제목·안내 9개로 구성된 목록이에요 (v2 기준) |
 | `datasource`, `targets[].expr` | 어떤 저장소에서 어떤 쿼리로 데이터를 읽을지 정해요 |
 | `gridPos`, `fieldConfig` | 패널의 위치·크기, 초·바이트·백분율 같은 표시 단위를 정해요 |
 | `time`, `refresh` | 처음 볼 시간 범위와 화면을 새로 조회할 주기를 정해요 |
@@ -77,7 +79,7 @@ Grafana의 Prometheus 데이터 소스에 있는 `Scrape interval`도 실제 수
 | 전체 상태 | 수집 성공 여부, 선택 기간의 추정 API 요청 수·5xx 비율·p95, 현재 힙 사용률·DB 연결 대기 |
 | HTTP와 지도 | 경로별 요청량, API 응답 p95·p99, 지도 HTTP 응답과 Repository 조회 시간 |
 | 지도 결과 | 평균 반환 개수, 500개 제한으로 잘린 완료 호출 비율 |
-| 앱 자원 | JVM 힙·프로세스 CPU, HikariCP 사용 중·유휴·최대 연결과 대기 |
+| 앱 자원 | JVM 힙·프로세스 CPU, HikariCP 사용 중·유휴·최대 연결과 대기, 톰캣 스레드 사용 중, 생성됨, 최대와 여유 |
 | HTTP 로그 | 오류·1초 이상 느린 요청의 JSON, 추적용 correlationId |
 
 지도 조회는 현재 `GET /api/v1/sighs`예요. 전체 API 패널과 오류 알림은 `uri=~"/api/.*"`로 Actuator 수집 요청을 제외해요. 경로가 매핑되지 않아 `UNKNOWN`·`NOT_FOUND` 등으로 기록되는 요청도 제외되므로, 서버가 받은 모든 요청의 통계는 아니에요. 엔드포인트가 바뀌면 지도 쿼리를 함께 수정해요.

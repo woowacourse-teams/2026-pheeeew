@@ -42,6 +42,7 @@ def verify_metrics(config):
     for prefix, suffixes in families.items():
         accepted.extend(prefix + suffix for suffix in suffixes.split())
     accepted.extend(f"jvm_memory_{kind}_bytes" for kind in ("used", "committed", "max"))
+    accepted.extend(f"tomcat_threads_{kind}_threads" for kind in ("busy", "current", "config_max"))
     rejected = ["pheeeew_activity_device_id", "pheeeew_activity_dau_created",
                 "pheeeew_app_version_checks_created", "pheeeew_sigh_list_results_bucket",
                 "pheeeew_unreviewed_total", "unreviewed_metric"]

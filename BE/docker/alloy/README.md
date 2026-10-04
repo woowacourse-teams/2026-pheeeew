@@ -74,7 +74,8 @@
 
 ## 수집 범위와 자원
 
-- 지표: HTTP 요청 시간·횟수, 지도·V2 목록 조회 시간·결과, 플랫폼별 앱 버전 확인 횟수와 DAU·MAU, 활동 수집 시작·마지막 집계 성공 시각과 기록·집계 실패 횟수, JVM 메모리·GC·스레드, 앱 프로세스 CPU·가동 시간, DB 커넥션 풀, 수집 상태. `config.alloy`의 이름 허용 목록 밖 지표는 보내지 않아요.
+- 지표: HTTP 요청 시간·횟수, 지도·V2 목록 조회 시간·결과, 플랫폼별 앱 버전 확인 횟수와 DAU·MAU, 활동 수집 시작·마지막 집계 성공 시각과 기록·집계 실패 횟수, JVM 메모리·GC·스레드, 톰캣 요청 처리 스레드(사용 중, 생성됨, 최대), 앱 프로세스 CPU·가동 시간, DB 커넥션 풀, 수집 상태. `config.alloy`의 이름 허용 목록 밖 지표는 보내지 않아요.
+- 톰캣 스레드 지표는 `application-dev.yml`, `application-prod.yml`의 `server.tomcat.mbeanregistry.enabled`가 켜져 있어야 앱이 내보내요. 이 설정을 끄면 허용 목록에 있어도 값이 없어요.
 - 로그: 아래 클래스와 이벤트 조합만 전송해요. 다른 logger, 다른 event, 잘못된 JSON은 제외해요. `correlationId`와 오류 위치 등은 JSON 본문에 유지하며 라벨로 승격하지 않아요.
 - 앱에서 제공하는 JVM·프로세스 지표가 중심이에요. EC2 전체 메모리·디스크, CPU 크레딧, RDS 내부 상태, nginx·Cloudflare 로그, traces·profiles는 이번 수집 범위에 없어요. HTTP 지표 또한 앱에 도달한 요청만 반영해요.
 - Alloy 메모리 상한은 256MiB, Go 메모리 목표는 192MiB, CPU 상한은 0.25 CPU예요. 실제 사용량이나 운영 EC2의 여유를 보장하는 값은 아니에요. 최초 배포 전 `free -h`, `df -h`, `docker stats --no-stream`으로 확인하고 배포 후에도 실제 부하에서 관찰해요.
