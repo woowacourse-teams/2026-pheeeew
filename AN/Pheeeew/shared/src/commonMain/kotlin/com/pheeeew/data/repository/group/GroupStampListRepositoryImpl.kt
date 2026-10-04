@@ -7,6 +7,7 @@ import com.pheeeew.domain.repository.group.GroupStampListLoadResult
 import com.pheeeew.domain.repository.group.GroupStampListRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -18,6 +19,7 @@ class GroupStampListRepositoryImpl(
 ) : GroupStampListRepository {
     private val mutex = Mutex()
     private val revision = MutableStateFlow(0L)
+    override val membershipChanges = revision.asStateFlow()
     private var cached: GroupStampListLoadResult.Loaded? = null
     private var cachedAtMillis: Long? = null
     private var cachedRevision = -1L

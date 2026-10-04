@@ -351,9 +351,11 @@ private fun AppContent(
             createEmotionModerationDependencies(apiDependencies.client)
         }
     val groupDependencies =
-        remember(apiDependencies.client, groupCreateSessionStore) {
+        remember(apiDependencies.client, groupStampListRepository, groupCreateSessionStore) {
             createGroupDependencies(
                 apiClient = apiDependencies.client,
+                membershipChanges = groupStampListRepository.membershipChanges,
+                invalidateSharedMembership = groupStampListRepository::invalidate,
                 createSessionStore = groupCreateSessionStore,
             )
         }
@@ -503,7 +505,6 @@ private fun AppContent(
                         onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
                         onMembershipChanged = {
                             groupStampListRepository.invalidate()
-                            nearbyViewModel.onMembershipChanged()
                         },
                         onRefreshActionChanged = { refreshGroup = it },
                     )

@@ -102,7 +102,6 @@ fun GroupFeatureHost(
                 onBack = { navController.popBackStack() },
                 onCreated = { groupId, _ ->
                     onMembershipChanged()
-                    homeViewModel.invalidateMembership()
                     navController.navigate(GroupDetailDestination(groupId.value)) {
                         popUpTo<GroupHomeDestination> { inclusive = false }
                         launchSingleTop = true
@@ -133,7 +132,6 @@ fun GroupFeatureHost(
 
             fun returnHomeAndRefresh(removedGroupId: GroupId) {
                 onMembershipChanged()
-                homeViewModel.invalidateMembership()
                 homeViewModel.removeGroup(removedGroupId)
                 navController.popBackStack<GroupHomeDestination>(inclusive = false)
             }
@@ -168,6 +166,8 @@ private fun rememberGroupHomeViewModel(
         GroupHomeViewModel(
             groupListSource = dependencies.groupListSource,
             groupJoinDependencies = dependencies.join,
+            membershipChanges = dependencies.membershipChanges,
+            invalidateSharedMembership = dependencies.invalidateSharedMembership,
         )
     }
 
