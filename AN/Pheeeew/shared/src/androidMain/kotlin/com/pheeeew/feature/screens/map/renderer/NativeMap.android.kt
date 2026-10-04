@@ -181,6 +181,8 @@ private class AndroidFoundationMapHost(
     private var pendingOriginalStyleJson: String? = null
     private var isRestoringOriginalStyle = false
     private var lastScheduledPinLoadId: String? = null
+    private var lastSavedCamera: DoubleArray? = restoredCamera?.copyOf()
+    private var lastSavedCameraCommandId = restoredCameraCommandId
 
     private val idleListener = MapView.OnDidBecomeIdleListener { publishContent() }
 
@@ -269,11 +271,10 @@ private class AndroidFoundationMapHost(
             readyMap.addOnCameraMoveStartedListener { reason ->
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE && didSetInitialCamera) {
                     initialCameraUsedFallback = false
-                    saveCamera()
                 }
             }
+            // Camera persistence is handled at idle/release; per-move state writes re-render the AndroidView.
             readyMap.addOnCameraMoveListener {
-                saveCamera()
                 publishHighlightedPinPosition()
                 publishRecordViewport()
             }
@@ -345,7 +346,7 @@ private class AndroidFoundationMapHost(
         if (!didSetInitialCamera || released) return
         val camera = map?.cameraPosition ?: return
         val target = camera.target ?: return
-        onCameraSaved(
+        val savedCamera =
             doubleArrayOf(
                 target.latitude,
                 target.longitude,

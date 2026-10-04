@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -65,6 +66,37 @@ private enum class PermissionDialogUiModel {
     Location,
     LocationServices,
     Microphone,
+}
+
+@Composable
+private fun HighlightedEmotionPinOverlay(
+    position: MutableState<HighlightedPinPosition?>,
+    highlightedId: Long?,
+    focusedId: Long?,
+    focusCameraCommandId: Long?,
+    highlightedEmotionId: Long?,
+    hasMapError: Boolean,
+    onTimeout: () -> Unit,
+) {
+    val currentPosition = position.value
+    LaunchedEffect(highlightedEmotionId, currentPosition?.id) {
+        if (highlightedEmotionId != null) {
+            delay(10_000)
+            onTimeout()
+        }
+    }
+
+    if (currentPosition != null && currentPosition.id == highlightedId && !hasMapError) {
+        val focused = focusedId == currentPosition.id
+        key(currentPosition.id, focusCameraCommandId.takeIf { focused }) {
+            RegisteredPinHighlight(
+                position = currentPosition,
+                showBadge = !focused,
+                repeatPulse = focused,
+                scale = if (focused) 1.3f else 1f,
+            )
+        }
+    }
 }
 
 @Composable
@@ -174,22 +206,16 @@ fun MapScreen(
     }
     val registeredEmotion by recordViewModel.registeredEmotion.collectAsState()
     var highlightedEmotion by remember { mutableStateOf<RegisteredEmotionUiModel?>(null) }
-    var highlightedPinPosition by remember { mutableStateOf<HighlightedPinPosition?>(null) }
+    // Per-frame camera coordinates are read only by the small overlay composable below.
+    val highlightedPinPosition = remember { mutableStateOf<HighlightedPinPosition?>(null) }
     val highlightedId = uiModel.focusedEmotionId ?: highlightedEmotion?.id
     val clearHighlight = {
         highlightedEmotion = null
-        highlightedPinPosition = null
+        highlightedPinPosition.value = null
         viewModel.clearFocusedEmotion()
     }
     LaunchedEffect(uiModel.focusedEmotionId) {
         if (uiModel.focusedEmotionId != null) highlightedEmotion = null
-    }
-    // Restart the 10-second timeout when the pin appears; discard it if its refresh never arrives.
-    LaunchedEffect(highlightedEmotion?.id, highlightedPinPosition?.id) {
-        if (highlightedEmotion != null) {
-            delay(10_000)
-            clearHighlight()
-        }
     }
     LaunchedEffect(recordViewModel, monitoringResumed, monitoringVisible) {
         if (monitoringResumed && monitoringVisible) {
@@ -271,7 +297,7 @@ fun MapScreen(
             voiceRecorder.clear()
             viewModel.onRecordLocationPickingChanged(false)
             recordViewModel.consumeRegisteredEmotion()?.let { emotion ->
-                highlightedPinPosition = null
+                highlightedPinPosition.value = null
                 highlightedEmotion = emotion
                 viewModel.focusOnCoordinate(emotion.coordinate)
             }
@@ -371,26 +397,20 @@ fun MapScreen(
                             onMapBackgroundClick = onMapBackgroundClick,
                             onContentPresented = viewModel::contentPresented,
                             onHighlightedPinPositionChanged = { position ->
-                                highlightedPinPosition = position?.takeIf { it.id == highlightedId }
+                                highlightedPinPosition.value = position?.takeIf { it.id == highlightedId }
                             },
                             modifier = Modifier.fillMaxSize(),
                         )
                     }
-                    val highlightPosition = highlightedPinPosition
-                    if (highlightPosition != null && highlightPosition.id == highlightedId &&
-                        uiModel.mapError == null
-                    ) {
-                        val position = highlightPosition
-                        val focused = uiModel.focusedEmotionId == position.id
-                        key(position.id, uiModel.cameraCommand?.id.takeIf { focused }) {
-                            RegisteredPinHighlight(
-                                position = position,
-                                showBadge = !focused,
-                                repeatPulse = focused,
-                                scale = if (focused) 1.3f else 1f,
-                            )
-                        }
-                    }
+                    HighlightedEmotionPinOverlay(
+                        position = highlightedPinPosition,
+                        highlightedId = highlightedId,
+                        focusedId = uiModel.focusedEmotionId,
+                        focusCameraCommandId = uiModel.cameraCommand?.id,
+                        highlightedEmotionId = highlightedEmotion?.id,
+                        hasMapError = uiModel.mapError != null,
+                        onTimeout = clearHighlight,
+                    )
                 }
             },
             onListClick = onListClick,
