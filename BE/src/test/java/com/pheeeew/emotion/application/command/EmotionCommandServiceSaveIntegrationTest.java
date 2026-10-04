@@ -5,6 +5,8 @@ import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.AudioUploadFixture.기본_업로드_빌더;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_UPLOAD_ALREADY_USED;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE;
+import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -31,6 +33,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
@@ -68,6 +71,8 @@ class EmotionCommandServiceSaveIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        검증용_지역_계층을_저장한다(jdbc);
+        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = CURRENT_TIMESTAMP").update();
         device = deviceRepository.save(기본_기기_빌더().build());
         upload = uploads.save(기본_업로드_빌더().deviceId(device.getId())
                 .expiresAt(Instant.now().plusSeconds(3600)).build());
@@ -80,6 +85,8 @@ class EmotionCommandServiceSaveIntegrationTest {
         deviceRepository.deleteAllInBatch();
         jdbc.sql("ALTER TABLE emotions DROP CONSTRAINT IF EXISTS test_emotion_insert_failure").update();
         jdbc.sql("ALTER TABLE emotions DROP CONSTRAINT IF EXISTS test_emotion_update_failure").update();
+        jdbc.sql("DELETE FROM regions").update();
+        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
     }
 
     @ParameterizedTest
@@ -99,6 +106,8 @@ class EmotionCommandServiceSaveIntegrationTest {
         assertThat(loaded.getState()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(loaded.getDeviceId()).isEqualTo(device.getId());
         assertThat(loaded.getNickname()).isNotBlank();
+        assertThat(loaded.getRegionCode()).isEqualTo("11010530");
+        assertThat(loaded.getRegionClassifiedAt()).isNotNull();
         assertThat(linkCount()).isZero();
     }
 
@@ -111,7 +120,10 @@ class EmotionCommandServiceSaveIntegrationTest {
         Emotion saved = save(requestId, null, upload.getUploadId());
 
         // then
-        assertThat(emotionRepository.findById(saved.getId()).orElseThrow().getContent().getAudio().getObjectKey())
+        Emotion loaded = emotionRepository.findById(saved.getId()).orElseThrow();
+        assertThat(loaded.getRegionCode()).isEqualTo("11010530");
+        assertThat(loaded.getRegionClassifiedAt()).isNotNull();
+        assertThat(loaded.getContent().getAudio().getObjectKey())
                 .isEqualTo(upload.getObjectKey());
         assertThat(uploads.findByUploadId(upload.getUploadId()).orElseThrow().getClaimedRequestId())
                 .isEqualTo(requestId);
@@ -136,6 +148,56 @@ class EmotionCommandServiceSaveIntegrationTest {
         save(requestId, null, upload.getUploadId());
         assertThat(linkCount()).isOne();
         assertThat(emotionRepository.count()).isOne();
+    }
+
+    @Test
+    void 검증된_경계_밖의_생성은_미매칭_코드와_분류_완료_시각을_저장한다() {
+        // given / when
+        Emotion saved = commandService.save(UUID.randomUUID(), EmotionState.FRUSTRATED,
+                0, 0, 35.5, null, null, null, device.getPublicId());
+        Emotion loaded = emotionRepository.findById(saved.getId()).orElseThrow();
+
+        // then
+        assertThat(loaded.getRegionCode()).isNull();
+        assertThat(loaded.getRegionClassifiedAt()).isNotNull();
+        assertThat(loaded.getLongitude()).isZero();
+        assertThat(loaded.getLatitude()).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"unverified", "sqlFailure"})
+    void 지역_분류가_실패하면_녹음_연결도_롤백하고_복구_후_재사용한다(String failure) {
+        // given: 녹음 claim 다음에 실제 분류 경로에서 오류를 발생시킨다.
+        UUID requestId = UUID.randomUUID();
+        boolean unavailableTable = failure.equals("sqlFailure");
+        if (unavailableTable) {
+            jdbc.sql("ALTER TABLE regions RENAME TO unavailable_regions").update();
+        } else {
+            jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
+        }
+
+        // when / then
+        try {
+            var assertion = assertThatThrownBy(() -> save(requestId, null, upload.getUploadId()));
+            if (unavailableTable) {
+                assertion.isInstanceOf(DataAccessException.class);
+            } else {
+                assertion.isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_REGION_DATA_UNAVAILABLE));
+            }
+            assertThat(emotionRepository.count()).isZero();
+            assertThat(linkCount()).isZero();
+        } finally {
+            if (unavailableTable) {
+                jdbc.sql("ALTER TABLE unavailable_regions RENAME TO regions").update();
+            }
+        }
+        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = CURRENT_TIMESTAMP").update();
+        Emotion saved = save(requestId, null, upload.getUploadId());
+        assertThat(emotionRepository.findById(saved.getId()).orElseThrow().getRegionCode())
+                .isEqualTo("11010530");
+        assertThat(emotionRepository.count()).isOne();
+        assertThat(linkCount()).isOne();
     }
 
     @Test
@@ -184,6 +246,8 @@ class EmotionCommandServiceSaveIntegrationTest {
     void 수정_실패시_새_녹음_연결도_롤백하고_기존_내용을_유지한다() {
         // given
         Emotion original = save(UUID.randomUUID(), "기존 메모", null);
+        Emotion stored = emotionRepository.findById(original.getId()).orElseThrow();
+        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
         jdbc.sql("ALTER TABLE emotions ADD CONSTRAINT test_emotion_update_failure CHECK (state <> 'ANGRY')").update();
 
         // when / then
@@ -193,9 +257,14 @@ class EmotionCommandServiceSaveIntegrationTest {
         Emotion unchanged = emotionRepository.findById(original.getId()).orElseThrow();
         assertThat(unchanged.getMemo()).isEqualTo("기존 메모");
         assertThat(unchanged.getState()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(unchanged.getRegionCode()).isEqualTo(stored.getRegionCode());
+        assertThat(unchanged.getRegionClassifiedAt()).isEqualTo(stored.getRegionClassifiedAt());
         commandService.update(original.getId(), device.getPublicId(), EmotionState.EXHAUSTED,
                 null, upload.getUploadId(), false, null);
         assertThat(linkCount()).isOne();
+        Emotion updated = emotionRepository.findById(original.getId()).orElseThrow();
+        assertThat(updated.getRegionCode()).isEqualTo(stored.getRegionCode());
+        assertThat(updated.getRegionClassifiedAt()).isEqualTo(stored.getRegionClassifiedAt());
         assertThat(emotionRepository.findById(original.getId()).orElseThrow().getContent().getAudio().getObjectKey())
                 .isEqualTo(upload.getObjectKey());
         assertThat(uploads.findByUploadId(upload.getUploadId()).orElseThrow().getClaimedRequestId())
