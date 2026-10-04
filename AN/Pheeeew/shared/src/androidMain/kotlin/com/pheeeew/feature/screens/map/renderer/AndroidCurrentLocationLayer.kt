@@ -18,8 +18,12 @@ internal object AndroidCurrentLocationLayer {
     private const val BORDER_LAYER_ID = "foundation-current-location-border"
     private const val DOT_LAYER_ID = "foundation-current-location-dot"
     private const val LOCATION_BLUE = 0xFF2F80ED.toInt()
+    private var lastLocation: CurrentLocation? = null
+    private var hasRenderedLocation = false
 
     fun install(style: Style) {
+        lastLocation = null
+        hasRenderedLocation = false
         if (style.getSource(SOURCE_ID) == null) {
             style.addSource(GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(emptyList())))
         }
@@ -47,14 +51,16 @@ internal object AndroidCurrentLocationLayer {
         style: Style?,
         location: CurrentLocation?,
     ) {
+        val validLocation = location?.takeIf { it.latitude.isFinite() && it.longitude.isFinite() }
+        if (hasRenderedLocation && validLocation == lastLocation) return
         val features =
-            location
-                ?.takeIf { it.latitude.isFinite() && it.longitude.isFinite() }
+            validLocation
                 ?.let { Feature.fromGeometry(Point.fromLngLat(it.longitude, it.latitude)) }
                 ?.let(::listOf)
                 ?: emptyList()
-        style
-            ?.getSourceAs<GeoJsonSource>(SOURCE_ID)
-            ?.setGeoJson(FeatureCollection.fromFeatures(features))
+        val source = style?.getSourceAs<GeoJsonSource>(SOURCE_ID) ?: return
+        source.setGeoJson(FeatureCollection.fromFeatures(features))
+        lastLocation = validLocation
+        hasRenderedLocation = true
     }
 }

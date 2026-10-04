@@ -104,7 +104,7 @@ internal actual fun NativeMap(
                     onEmotionPinClick = { currentOnEmotionPinClick(it) },
                     onMapBackgroundClick = { currentOnMapBackgroundClick() },
                     onHighlightedPinPositionChanged = { currentOnHighlightPosition(it) },
-                    onContentPresented = { token, count -> currentOnContentPresented(token, count) },
+                    onContentPresented = { token, ids -> currentOnContentPresented(token, ids) },
                     restoredCamera = savedCamera,
                     restoredCameraCommandId = savedCameraCommandId,
                     onCameraSaved = { camera, commandId ->
@@ -180,32 +180,38 @@ private class AndroidFoundationMapHost(
     private var didConfigureKoreanFontFaces = false
     private var pendingOriginalStyleJson: String? = null
     private var isRestoringOriginalStyle = false
+    private var lastScheduledPinLoadId: String? = null
+    private var lastSavedCamera: DoubleArray? = restoredCamera?.copyOf()
+    private var lastSavedCameraCommandId = restoredCameraCommandId
 
     private val idleListener = MapView.OnDidBecomeIdleListener { publishContent() }
 
     private fun publishContent() {
         val state = latestState ?: return
-        val token = state.emotionContentLoad?.loadId ?: return
         val currentMap = map ?: return
         if (released || !styleLoaded || state.isRecordLocationPicking || mapView.width <= 0 ||
             mapView.height <= 0
         ) {
             return
         }
-        val imageKeys = state.emotionPinSymbolImages.mapTo(mutableSetOf()) { it.key }
-        if (state.emotionPins.any { it.symbolImageKey() !in imageKeys }) return
+        val token = state.emotionContentLoad?.loadId ?: return
+        if (!emotionPinSymbolLayer.isCurrentLoad(token) ||
+            !emotionPinSymbolLayer.hasImagesFor(state.emotionPins)
+        ) {
+            return
+        }
         val features =
             currentMap.queryRenderedFeatures(
                 RectF(0f, 0f, mapView.width.toFloat(), mapView.height.toFloat()),
                 "emotion-pin-symbol-layer",
             )
-        // Reject a native frame that still contains the previous asynchronous GeoJSON update.
-        if (features.any {
-                it.getProperty("monitoring-load-id")?.takeUnless { value -> value.isJsonNull }?.asString !=
-                    token
-            }
-        ) {
-            return
+        // Wait until the displayed feature set reflects the current source revision.
+        if (!emotionPinSymbolLayer.isCurrentFrame(features)) return
+        style?.let { loadedStyle ->
+            emotionPinSymbolLayer.pruneObsoleteImages(
+                loadedStyle,
+                state.emotionPinSymbolImages.mapTo(mutableSetOf()) { it.key },
+            )
         }
         val ids = features.mapNotNull { it.id()?.takeIf { id -> id.toLongOrNull() != null } }.distinct()
         onContentPresented(token, ids)
@@ -265,11 +271,10 @@ private class AndroidFoundationMapHost(
             readyMap.addOnCameraMoveStartedListener { reason ->
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE && didSetInitialCamera) {
                     initialCameraUsedFallback = false
-                    saveCamera()
                 }
             }
+            // Camera persistence is handled at idle/release; per-move state writes re-render the AndroidView.
             readyMap.addOnCameraMoveListener {
-                saveCamera()
                 publishHighlightedPinPosition()
                 publishRecordViewport()
             }
@@ -341,7 +346,7 @@ private class AndroidFoundationMapHost(
         if (!didSetInitialCamera || released) return
         val camera = map?.cameraPosition ?: return
         val target = camera.target ?: return
-        onCameraSaved(
+        val savedCamera =
             doubleArrayOf(
                 target.latitude,
                 target.longitude,
@@ -349,9 +354,11 @@ private class AndroidFoundationMapHost(
                 camera.bearing,
                 camera.tilt,
                 if (initialCameraUsedFallback) 1.0 else 0.0,
-            ),
-            lastAppliedCameraCommandId,
-        )
+            )
+        if (savedCamera.contentEquals(lastSavedCamera) && lastSavedCameraCommandId == lastAppliedCameraCommandId) return
+        lastSavedCamera = savedCamera
+        lastSavedCameraCommandId = lastAppliedCameraCommandId
+        onCameraSaved(savedCamera, lastAppliedCameraCommandId)
     }
 
     private fun withKoreanFontFaces(styleJson: String): String? =
@@ -479,18 +486,26 @@ private class AndroidFoundationMapHost(
         val currentLocation = (state.locationState as? LocationState.Available)?.location
         AndroidCurrentLocationLayer.update(style, currentLocation)
         recordRangeLayer.update(style, state.recordOrigin.takeIf { state.isRecordLocationPicking })
+        var pinSourceUpdated = false
         style?.let { loadedStyle ->
-            emotionPinSymbolLayer.update(
-                style = loadedStyle,
-                pins = state.emotionPins,
-                images = state.emotionPinSymbolImages,
-                visible = true,
-                densityDpi = mapView.resources.displayMetrics.densityDpi,
-                monitoringLoadId = state.emotionContentLoad?.loadId,
-                focusedId = state.focusedEmotionId,
-            )
+            pinSourceUpdated =
+                emotionPinSymbolLayer.update(
+                    style = loadedStyle,
+                    pins = state.emotionPins,
+                    images = state.emotionPinSymbolImages,
+                    visible = true,
+                    monitoringLoadId = state.emotionContentLoad?.loadId,
+                    focusedId = state.focusedEmotionId,
+                )
             emotionPinSymbolLayer.updatePress(loadedStyle, state.pressedEmotionId, state.pressedEmotionScale)
             recordStampLayer.update(loadedStyle, state.recordPreviewPin, state.recordPreviewScale)
+        }
+        val loadId = state.emotionContentLoad?.loadId
+        if (!pinSourceUpdated && loadId != null && loadId != lastScheduledPinLoadId) {
+            lastScheduledPinLoadId = loadId
+            mapView.post {
+                if (!released) publishContent()
+            }
         }
         val point =
             currentLocation?.let { LatLng(it.latitude, it.longitude) }
