@@ -56,12 +56,15 @@ def verify_logs(config):
     http = "com.pheeeew.common.logging.RequestLogWriter"
     recorder = "com.pheeeew.activity.infra.DeviceActivityRecorder"
     scheduler = "com.pheeeew.activity.infra.DeviceActivityAggregationScheduler"
+    task = "com.pheeeew.common.logging.ScheduledTaskErrorHandler"
     contracts = [(http, "http_request_failed", "ERROR"), (http, "http_request_slow", "WARN"),
                  (recorder, "device_activity_record_failed", "ERROR"),
-                 (scheduler, "device_activity_aggregation_failed", "ERROR")]
+                 (scheduler, "device_activity_aggregation_failed", "ERROR"),
+                 (task, "scheduled_task_failed", "ERROR")]
     events = {event for _, event, _ in contracts} | {"unknown", None}
     cases = []
-    for logger, event in itertools.product((http, recorder, scheduler, "unknown", None), sorted(events, key=str)):
+    for logger, event in itertools.product((http, recorder, scheduler, task, "unknown", None),
+                                           sorted(events, key=str)):
         cases.append(({"logger_name": logger, "event": event, "level": "ERROR"},
                       any(logger == owner and event == allowed for owner, allowed, _ in contracts)))
     for logger, event, _ in contracts[2:]:

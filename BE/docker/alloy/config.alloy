@@ -82,7 +82,7 @@ loki.process "http_requests" {
 	}
 	// 개인정보 검토를 마친 클래스와 해당 이벤트의 조합만 전송한다.
 	stage.match {
-		selector            = "{job=\"pheeeew-api\", logger!~\"com[.]pheeeew[.](common[.]logging[.]RequestLogWriter|activity[.]infra[.](DeviceActivityRecorder|DeviceActivityAggregationScheduler))\"}"
+		selector            = "{job=\"pheeeew-api\", logger!~\"com[.]pheeeew[.](common[.]logging[.](RequestLogWriter|ScheduledTaskErrorHandler)|activity[.]infra[.](DeviceActivityRecorder|DeviceActivityAggregationScheduler))\"}"
 		action              = "drop"
 		drop_counter_reason = "unreviewed_logger"
 	}
@@ -106,7 +106,13 @@ loki.process "http_requests" {
 	}
 
 	stage.match {
-		selector            = "{job=\"pheeeew-api\", logger=~\"com[.]pheeeew[.]activity[.]infra[.](DeviceActivityRecorder|DeviceActivityAggregationScheduler)\", level!=\"ERROR\"}"
+		selector            = "{job=\"pheeeew-api\", logger=\"com.pheeeew.common.logging.ScheduledTaskErrorHandler\", event!=\"scheduled_task_failed\"}"
+		action              = "drop"
+		drop_counter_reason = "unreviewed_event"
+	}
+
+	stage.match {
+		selector            = "{job=\"pheeeew-api\", logger=~\"com[.]pheeeew[.](common[.]logging[.]ScheduledTaskErrorHandler|activity[.]infra[.](DeviceActivityRecorder|DeviceActivityAggregationScheduler))\", level!=\"ERROR\"}"
 		action              = "drop"
 		drop_counter_reason = "unreviewed_level"
 	}
