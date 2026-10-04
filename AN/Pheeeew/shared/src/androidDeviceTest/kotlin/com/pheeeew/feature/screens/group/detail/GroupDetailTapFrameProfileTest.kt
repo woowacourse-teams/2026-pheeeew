@@ -1,6 +1,5 @@
 package com.pheeeew.feature.screens.group.detail
 
-import android.graphics.Rect
 import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Debug
@@ -9,9 +8,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.view.Display
 import android.view.FrameMetrics
-import android.view.MotionEvent
 import android.view.Window
-import android.view.accessibility.AccessibilityNodeInfo
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.SideEffect
@@ -22,6 +19,9 @@ import androidx.compose.runtime.setValue
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationKind
 import org.junit.runner.RunWith
@@ -89,17 +89,10 @@ class GroupDetailTapFrameProfileTest {
             }
         }
         instrumentation.waitForIdleSync()
-        val uiAutomation = instrumentation.uiAutomation
-        awaitEmotionButton()
-        val root = requireNotNull(uiAutomation.rootInActiveWindow) { "Active accessibility root is missing" }
-        val button = requireNotNull(findEmotionButton(root)) { "Emotion button is not accessible" }
-        val buttonBounds = Rect()
-        button.getBoundsInScreen(buttonBounds)
-        check(!buttonBounds.isEmpty) { "Emotion button has no screen bounds: $button" }
-        button.recycle()
-        root.recycle()
+        val device = UiDevice.getInstance(instrumentation)
+        awaitEmotionButton(device)
         repeat(WARMUP_TAP_COUNT) {
-            injectTap(uiAutomation, buttonBounds)
+            tapEmotion(device)
             SystemClock.sleep(INPUT_INTERVAL_MILLIS)
         }
         instrumentation.waitForIdleSync()
@@ -112,7 +105,7 @@ class GroupDetailTapFrameProfileTest {
 
         try {
             repeat(TAP_COUNT) {
-                injectTap(uiAutomation, buttonBounds)
+                tapEmotion(device)
                 SystemClock.sleep(INPUT_INTERVAL_MILLIS)
             }
             instrumentation.waitForIdleSync()
@@ -183,54 +176,15 @@ class GroupDetailTapFrameProfileTest {
         }
     }
 
-    private fun awaitEmotionButton() {
-        val deadline = SystemClock.elapsedRealtime() + ACCESSIBILITY_TIMEOUT_MILLIS
-        while (SystemClock.elapsedRealtime() < deadline) {
-            val currentRoot = InstrumentationRegistry.getInstrumentation().uiAutomation.rootInActiveWindow
-            if (currentRoot != null) {
-                val found = findEmotionButton(currentRoot)
-                found?.recycle()
-                currentRoot.recycle()
-                if (found != null) return
-            }
-            SystemClock.sleep(ACCESSIBILITY_POLL_INTERVAL_MILLIS)
+    private fun awaitEmotionButton(device: UiDevice) {
+        check(device.wait(Until.hasObject(ANGRY_BUTTON), ACCESSIBILITY_TIMEOUT_MILLIS)) {
+            "Emotion button did not appear in the accessibility tree"
         }
-        error("Emotion button did not appear in the accessibility tree")
     }
 
-    private fun findEmotionButton(root: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-        val description = "분노 표현하기"
-        if (root.contentDescription?.toString()?.contains(description) == true) {
-            return root
-        }
-        for (index in 0 until root.childCount) {
-            val child = root.getChild(index) ?: continue
-            val found = findEmotionButton(child)
-            if (found != null) {
-                if (found !== child) child.recycle()
-                return found
-            }
-            child.recycle()
-        }
-        return null
-    }
-
-    private fun injectTap(
-        uiAutomation: android.app.UiAutomation,
-        bounds: Rect,
-    ) {
-        val x = bounds.exactCenterX()
-        val y = bounds.exactCenterY()
-        val downTime = SystemClock.uptimeMillis()
-        val down = MotionEvent.obtain(downTime, downTime, MotionEvent.ACTION_DOWN, x, y, 0)
-        val up = MotionEvent.obtain(downTime, downTime + 1L, MotionEvent.ACTION_UP, x, y, 0)
-        try {
-            check(uiAutomation.injectInputEvent(down, false)) { "Touch down injection failed" }
-            check(uiAutomation.injectInputEvent(up, false)) { "Touch up injection failed" }
-        } finally {
-            down.recycle()
-            up.recycle()
-        }
+    private fun tapEmotion(device: UiDevice) {
+        val button = requireNotNull(device.findObject(ANGRY_BUTTON)) { "Emotion button is missing" }
+        button.click()
     }
 
     private data class FrameSample(
@@ -245,7 +199,7 @@ class GroupDetailTapFrameProfileTest {
         const val FINAL_FRAME_DRAIN_MILLIS = 500L
         const val FINAL_MEMORY_SETTLE_MILLIS = 2_000L
         const val ACCESSIBILITY_TIMEOUT_MILLIS = 5_000L
-        const val ACCESSIBILITY_POLL_INTERVAL_MILLIS = 50L
         const val NANOS_PER_MILLI = 1_000_000L
+        val ANGRY_BUTTON = By.descContains("분노 표현하기")
     }
 }

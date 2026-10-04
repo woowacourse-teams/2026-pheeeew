@@ -90,6 +90,7 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.androidx.testExt.junit)
             implementation(libs.androidx.test.runner)
+            implementation(libs.androidx.uiautomator)
         }
     }
 }
