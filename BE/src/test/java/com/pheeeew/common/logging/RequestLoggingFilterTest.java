@@ -16,6 +16,7 @@ import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.common.exception.PheeeewException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,6 +50,7 @@ class RequestLoggingFilterTest {
     private final AtomicLong ticks = new AtomicLong();
     private long durationNanos;
     private final RequestLoggingFilter filter = new RequestLoggingFilter(() -> ticks.getAndAdd(durationNanos));
+    private final TestController controller = new TestController();
     private AppenderBase<ILoggingEvent> appender;
     private MockMvc client;
 
@@ -67,7 +69,7 @@ class RequestLoggingFilterTest {
         appender.setContext(logger.getLoggerContext());
         appender.start();
         logger.addAppender(appender);
-        client = MockMvcBuilders.standaloneSetup(new TestController())
+        client = MockMvcBuilders.standaloneSetup(controller)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .addFilters(filter)
                 .build();
@@ -102,7 +104,7 @@ class RequestLoggingFilterTest {
     }
 
     @Test
-    void 서버_오류는_요청값과_예외_원문_없이_경로_템플릿과_발생_위치를_기록한다() throws Exception {
+    void 서버_오류는_요청값_없이_경로_템플릿과_발생_위치와_예외_메시지를_기록한다() throws Exception {
         // given
         String sensitive = "private-location-memo-token";
 
@@ -125,11 +127,17 @@ class RequestLoggingFilterTest {
                 .containsEntry("method", "POST")
                 .containsEntry("level", "ERROR")
                 .containsEntry("errorCode", "COMMON-002")
-                .containsEntry("correlationId", response.getResponse().getHeader("X-Correlation-ID"));
+                .containsEntry("exceptionType", "IllegalArgumentException")
+                .containsEntry("errorMessages", List.of(
+                        "java.lang.IllegalStateException: 집계 상태가 초기화되지 않았습니다.",
+                        "java.lang.IllegalArgumentException: 날짜 순서가 올바르지 않습니다."))
+                .containsEntry("correlationId", response.getResponse().getHeader("X-Correlation-ID"))
+                .doesNotContainKeys("params", "sqlState");
         assertThat(((Number) event.get("status")).intValue()).isEqualTo(500);
+        assertThat(event.get("origin").toString()).matches("RequestLoggingFilterTest\\$TestController\\.fail:\\d+");
         assertThat(event.get("errorStack").toString())
                 .contains("IllegalStateException", "IllegalArgumentException", "TestController.fail");
-        assertThat(json).doesNotContain(sensitive, "37.1234567", "secret-cause", "secret-suppressed", "stack_trace");
+        assertThat(json).doesNotContain(sensitive, "37.1234567", "secret-suppressed", "stack_trace");
         assertThat(MDC.get("correlationId")).isNull();
     }
 
@@ -141,8 +149,8 @@ class RequestLoggingFilterTest {
 
         // then
         assertThat(output).hasSize(1);
-        assertThat(output.getFirst()).contains("COMMON-002", "PheeeewException")
-                .doesNotContain("secret-cause");
+        assertThat(output.getFirst()).contains("COMMON-002", "PheeeewException", "service-cause")
+                .doesNotContain("invalid-cause");
     }
 
     @Test
@@ -177,24 +185,118 @@ class RequestLoggingFilterTest {
     }
 
     @Test
-    void 미처리_예외의_HTTP_로그는_원문을_제외하고_전파_후_MDC를_정리한다() {
+    void 미처리_예외의_HTTP_로그는_요청_경로와_메서드_원문_없이_남고_전파_후_MDC를_정리한다() {
         // given
         MockHttpServletRequest request = new MockHttpServletRequest("PRIVATE-METHOD", "/private-path");
         MockHttpServletResponse response = new MockHttpServletResponse();
-        IOException failure = new IOException("private-exception");
-        failure.initCause(new IllegalStateException("private-cause", failure));
+        IOException failure = new IOException("unhandled-failure");
+        failure.initCause(new IllegalStateException("unhandled-cause", failure));
 
         // when / then
         assertThatThrownBy(() -> filter.doFilter(request, response, (req, res) -> { throw failure; }))
                 .isSameAs(failure);
         assertThat(output).hasSize(1);
-        assertThat(output.getFirst()).contains("UNMAPPED", "OTHER", "IOException")
-                .doesNotContain("PRIVATE-METHOD", "private-path", "private-exception", "private-cause");
+        assertThat(output.getFirst()).contains("UNMAPPED", "OTHER", "IOException", "unhandled-failure", "unhandled-cause")
+                .doesNotContain("PRIVATE-METHOD", "private-path", "sqlState");
+        assertThat(MDC.get("correlationId")).isNull();
+    }
+
+    @Test
+    void 서버_오류에는_허용한_이름의_경로와_쿼리_값만_실린다() throws Exception {
+        // given
+        String groupId = "0b0e6f0a-1c2d-4e3f-8a9b-7c6d5e4f3a2b";
+        String requestId = "11111111-2222-4333-8444-555555555555";
+
+        // when
+        client.perform(post("/test/values/" + groupId + "/HEART/PATH-INVITE-CODE")
+                        .queryParam("weeksAgo", "1")
+                        .queryParam("blockId", "7")
+                        .queryParam("latitude", "37.1234567")
+                        .queryParam("cursor", "CURSOR-QUERY")
+                        .queryParam("inviteCode", "INVITE-QUERY")
+                        .queryParam("memo", "MEMO-QUERY")
+                        .queryParam("refreshToken", "REFRESH-QUERY")
+                        .queryParam("requestId", requestId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"state\":\"BODY-STATE\",\"memo\":\"MEMO-BODY\"}"))
+                .andExpect(status().isInternalServerError());
+
+        // then
+        assertThat(output).hasSize(1);
+        assertThat(JsonParserFactory.getJsonParser().parseMap(output.getFirst())).containsEntry("params",
+                Map.of("groupId", groupId, "emojiType", "HEART", "weeksAgo", "1", "blockId", "7"));
+        assertThat(output.getFirst()).doesNotContain("PATH-INVITE-CODE", "37.1234567", "CURSOR-QUERY", "INVITE-QUERY",
+                "MEMO-QUERY", "REFRESH-QUERY", requestId, "BODY-STATE", "MEMO-BODY");
+    }
+
+    @Test
+    void 허용한_이름이어도_형식에_맞지_않는_값은_실리지_않는다() throws Exception {
+        // given
+        String tooLong = "a".repeat(37);
+
+        // when
+        client.perform(post("/test/values/" + tooLong + "/bad.shape/CODE")
+                        .queryParam("weeksAgo", "37.1234567")
+                        .queryParam("state", "free text with spaces")
+                        .queryParam("platform", "한글값")
+                        .queryParam("blockId", "12\n34"))
+                .andExpect(status().isInternalServerError());
+
+        // then
+        assertThat(output).hasSize(1);
+        assertThat(JsonParserFactory.getJsonParser().parseMap(output.getFirst())).doesNotContainKey("params");
+        assertThat(output.getFirst())
+                .doesNotContain(tooLong, "bad.shape", "37.1234567", "free text with spaces", "한글값");
+    }
+
+    @Test
+    void DB_원인이면_감싼_예외의_메시지까지_모두_버리고_SQL_상태만_남긴다() throws Exception {
+        // given
+        controller.failure = new PheeeewException(INTERNAL_SERVER_ERROR, new IllegalStateException(
+                "could not execute statement [wrapper-secret]", new SQLException("Key (memo)=(row-secret)", "23505")));
+
+        // when
+        client.perform(get("/test/raise")).andExpect(status().isInternalServerError());
+
+        // then
+        assertThat(output).hasSize(1);
+        assertThat(JsonParserFactory.getJsonParser().parseMap(output.getFirst()))
+                .containsEntry("sqlState", "23505")
+                .containsEntry("exceptionType", "SQLException")
+                .doesNotContainKey("errorMessages");
+        assertThat(output.getFirst())
+                .doesNotContain("wrapper-secret", "row-secret", "could not execute", "서버 내부 오류");
+    }
+
+    @Test
+    void 로그를_만들다_실패해도_응답과_예외_전파는_그대로이고_건너뜀_경고만_남는다() throws Exception {
+        // given
+        controller.failure = new IllegalStateException("outer",
+                new MessageFailingException(new IllegalArgumentException("inner")));
+        RuntimeException unhandled = new MessageFailingException(null);
+
+        // when
+        MvcResult handled = client.perform(get("/test/raise"))
+                .andExpect(status().isInternalServerError()).andReturn();
+        assertThatThrownBy(() -> filter.doFilter(new MockHttpServletRequest("GET", "/test"),
+                new MockHttpServletResponse(), (req, res) -> { throw unhandled; })).isSameAs(unhandled);
+
+        // then
+        assertThat(handled.getResponse().getContentAsString()).contains("COMMON-002");
+        assertThat(output).hasSize(2).allSatisfy(line -> {
+            assertThat(JsonParserFactory.getJsonParser().parseMap(line))
+                    .containsEntry("event", "http_request_log_skipped")
+                    .containsEntry("level", "WARN")
+                    .containsEntry("skippedBy", "java.lang.UnsupportedOperationException");
+            assertThat(line).doesNotContain("http_request_failed", "message-read-secret");
+        });
         assertThat(MDC.get("correlationId")).isNull();
     }
 
     @RestController
     static class TestController {
+
+        private Exception failure;
 
         @GetMapping("/test/ok")
         String ok() {
@@ -203,20 +305,42 @@ class RequestLoggingFilterTest {
 
         @PostMapping("/test/fail/{id}")
         void fail() {
-            IllegalStateException failure = new IllegalStateException("private-location-memo-token",
-                    new IllegalArgumentException("secret-cause"));
+            IllegalStateException failure = new IllegalStateException("집계 상태가 초기화되지 않았습니다.",
+                    new IllegalArgumentException("날짜 순서가 올바르지 않습니다."));
             failure.addSuppressed(new IllegalStateException("secret-suppressed"));
             throw failure;
         }
 
         @GetMapping("/test/service-failure")
         void serviceFailure() {
-            throw new PheeeewException(INTERNAL_SERVER_ERROR, new IllegalStateException("secret-cause"));
+            throw new PheeeewException(INTERNAL_SERVER_ERROR, new IllegalStateException("service-cause"));
         }
 
         @GetMapping("/test/invalid")
         void invalid() {
-            throw new PheeeewException(INVALID_REQUEST, new IllegalArgumentException("secret-cause"));
+            throw new PheeeewException(INVALID_REQUEST, new IllegalArgumentException("invalid-cause"));
+        }
+
+        @GetMapping("/test/raise")
+        void raise() throws Exception {
+            throw failure;
+        }
+
+        @PostMapping("/test/values/{groupId}/{emojiType}/{inviteCode}")
+        void values() {
+            throw new IllegalStateException("values-failure");
+        }
+    }
+
+    static class MessageFailingException extends RuntimeException {
+
+        MessageFailingException(Throwable cause) {
+            super("original-message", cause);
+        }
+
+        @Override
+        public String getMessage() {
+            throw new UnsupportedOperationException("message-read-secret");
         }
     }
 }
