@@ -21,6 +21,7 @@ logging:
       add:
         application: ${spring.application.name}
         environment: dev
+        release: ${APP_RELEASE:unknown}
   file:
     name: logs/application.json
   logback:
@@ -54,6 +55,7 @@ logging:
       add:
         application: ${spring.application.name}
         environment: prod
+        release: ${APP_RELEASE:unknown}
   file:
     name: logs/application.json
   logback:

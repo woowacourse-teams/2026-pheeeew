@@ -18,6 +18,9 @@ WORKDIR /app
 
 COPY --from=builder /workspace/build/libs/*.jar app.jar
 
+ARG APP_RELEASE=unknown
+ENV APP_RELEASE=${APP_RELEASE}
+
 EXPOSE 8080
 
 ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "/app/app.jar"]
