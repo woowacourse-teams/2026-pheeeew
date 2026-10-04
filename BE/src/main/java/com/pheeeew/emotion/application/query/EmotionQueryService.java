@@ -20,6 +20,7 @@ import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.application.dto.EmotionDetailView;
 import com.pheeeew.emotion.application.dto.EmotionListItemView;
 import com.pheeeew.emotion.application.dto.RegionEmotionSummary;
+import com.pheeeew.emotion.application.dto.EmotionRegionMapItemView;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
@@ -31,6 +32,9 @@ import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
+import com.pheeeew.region.application.RegionClassifier;
+import com.pheeeew.region.domain.Region;
+import com.pheeeew.region.domain.RegionLevel;
 import com.pheeeew.region.domain.repository.RegionRepository;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -62,6 +66,20 @@ public class EmotionQueryService {
     private final EmotionEmojiRepository emotionEmojiRepository;
     private final GroupStampRepository groupStampRepository;
     private final RegionRepository regionRepository;
+    private final RegionClassifier regionClassifier;
+
+    public List<EmotionRegionMapItemView> findRegionMap(EmotionSearchBounds bounds, RegionLevel level, UUID groupId) {
+        List<Region> regions = regionClassifier.findIntersectingRegions(bounds, level);
+        List<String> regionCodes = regions.stream()
+                .map(Region::code)
+                .toList();
+        Map<String, RegionEmotionSummary> summaries = findSummariesByRegionCodes(regionCodes, groupId);
+
+        return regions.stream()
+                .filter(region -> summaries.containsKey(region.code()))
+                .map(region -> EmotionRegionMapItemView.of(region, summaries.get(region.code())))
+                .toList();
+    }
 
     public Map<String, RegionEmotionSummary> findSummariesByRegionCodes(List<String> regionCodes, UUID groupId) {
         if (!regionRepository.isAggregationReady()) {

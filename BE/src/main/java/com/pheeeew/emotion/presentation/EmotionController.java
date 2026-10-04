@@ -4,6 +4,9 @@ import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionMapResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionRegionMapRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
+import com.pheeeew.emotion.application.dto.EmotionRegionMapItemView;
 import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.presentation.dto.EmotionUpdateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionContentType;
@@ -15,6 +18,7 @@ import com.pheeeew.emotion.presentation.dto.EmotionDetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateResponse;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
@@ -64,6 +68,22 @@ public class EmotionController implements EmotionControllerApi {
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(CursorResponse.of(page.items().stream().map(EmotionMapResponse::from).toList(),
                         page.hasNext(), page.nextCursor()));
+    }
+
+    @Override
+    @GetMapping(value = "/map/regions", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<CursorResponse<EmotionRegionMapResponse>> findRegionMap(
+            @ModelAttribute EmotionRegionMapRequest request,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        List<EmotionRegionMapItemView> items = emotionQueryService.findRegionMap(request.toBounds(), request.level(), request.groupId());
+        List<EmotionRegionMapResponse> responses = items.stream()
+                .map(EmotionRegionMapResponse::from)
+                .toList();
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noCache().cachePrivate())
+                .body(CursorResponse.of(responses, false, null));
     }
 
     @Override

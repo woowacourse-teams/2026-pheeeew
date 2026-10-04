@@ -18,7 +18,6 @@ import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupStamp;
-import com.pheeeew.region.application.RegionClassifier;
 import com.pheeeew.region.domain.RegionLevel;
 import com.pheeeew.report.domain.DeviceBlock;
 import com.pheeeew.report.domain.EmotionBlock;
@@ -48,8 +47,6 @@ class EmotionRegionCountIntegrationTest {
 
     @Autowired
     private EmotionQueryService service;
-    @Autowired
-    private RegionClassifier classifier;
     @Autowired
     private EntityManager entityManager;
     @Autowired
@@ -115,6 +112,11 @@ class EmotionRegionCountIntegrationTest {
         // when / then: 서로 겹치는 계층의 결과끼리 다시 합산하지 않는다.
         assertThat(counts(List.of("11", "11010", EMD, "11"), null))
                 .containsExactlyInAnyOrderEntriesOf(Map.of("11", 1L, "11010", 1L, EMD, 1L));
+        assertThat(service.findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), RegionLevel.EMD, null))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.summary().totalCount()).isEqualTo(1L);
+                    assertThat(item.summary().representativeState()).isNull();
+                });
     }
 
     @ParameterizedTest
@@ -137,7 +139,6 @@ class EmotionRegionCountIntegrationTest {
         jdbc.sql("UPDATE emotions SET created_at = '2100-01-01T00:00:00Z' WHERE id = :id").param("id", future.getId()).update();
         entityManager.clear();
         var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
-        var codes = classifier.findIntersectingRegions(bounds, level).stream().map(region -> region.code()).toList();
 
         // when / then: 과거 기간 하한도, 개별 지도 200개 제한도 적용하지 않는다.
         String code = switch (level) {
@@ -145,8 +146,16 @@ class EmotionRegionCountIntegrationTest {
             case SIGUNGU -> "11010";
             case EMD -> EMD;
         };
-        assertThat(service.findSummariesByRegionCodes(codes, null)).containsOnlyKeys(code)
-                .containsEntry(code, RegionEmotionSummary.of(204L, EmotionState.ANGRY));
+        assertThat(service.findRegionMap(bounds, level, null)).singleElement().satisfies(item -> {
+            assertThat(item.region().code()).isEqualTo(code);
+            assertThat(item.region().level()).isEqualTo(level);
+            assertThat(item.region().name()).isEqualTo("검증용 " + level);
+            assertThat(item.region().parentCode()).isEqualTo(level == RegionLevel.SIDO ? null :
+                    code.substring(0, code.length() == 5 ? 2 : 5));
+            assertThat(item.region().longitude()).isEqualTo(127);
+            assertThat(item.region().latitude()).isEqualTo(38);
+            assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(204L, EmotionState.ANGRY));
+        });
     }
 
     @ParameterizedTest
@@ -191,6 +200,37 @@ class EmotionRegionCountIntegrationTest {
         assertThat(counts(List.of(code), UUID.randomUUID())).isEmpty();
         assertThat(service.findFirstMapPage(EmotionSearchBounds.of(126, 37, 128, 39),
                 viewer.getPublicId(), target.getPublicId()).items()).isEmpty();
+        RegionLevel level = switch (code.length()) {
+            case 2 -> RegionLevel.SIDO;
+            case 5 -> RegionLevel.SIGUNGU;
+            default -> RegionLevel.EMD;
+        };
+        assertThat(service.findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), level, target.getPublicId()))
+                .singleElement().satisfies(item -> {
+                    assertThat(item.region().code()).isEqualTo(code);
+                    assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(2L, EmotionState.IRRITATED));
+                });
+        assertThat(service.findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), level, UUID.randomUUID())).isEmpty();
+    }
+
+    @Test
+    void 빈_지역은_제외하고_삭제_후_재조회도_코드순의_완전한_목록을_반환한다() {
+        // given: 같은 화면에 3개 지역이 걸치지만 기록은 두 지역에만 있다.
+        addRegion("11010529", RegionLevel.EMD, "11010");
+        addRegion("11010531", RegionLevel.EMD, "11010");
+        Emotion removed = save(classified().state(EmotionState.FRUSTRATED));
+        save(classified().regionCode("11010529").state(EmotionState.ANGRY));
+        entityManager.flush();
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 39);
+
+        // when / then
+        assertThat(service.findRegionMap(bounds, RegionLevel.EMD, null))
+                .extracting(item -> item.region().code()).containsExactly("11010529", EMD);
+        removed.delete();
+        entityManager.flush();
+        assertThat(service.findRegionMap(bounds, RegionLevel.EMD, null))
+                .extracting(item -> item.region().code()).containsExactly("11010529");
+        assertThat(service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.EMD, null)).isEmpty();
     }
 
     @ParameterizedTest
@@ -250,13 +290,18 @@ class EmotionRegionCountIntegrationTest {
         assertThatThrownBy(() -> counts(empty ? List.of() : List.of(EMD), null))
                 .isInstanceOfSatisfying(EmotionException.class,
                         error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_REGION_DATA_UNAVAILABLE));
+        var bounds = empty ? EmotionSearchBounds.of(130, 40, 132, 42) : EmotionSearchBounds.of(126, 37, 128, 39);
+        assertThatThrownBy(() -> service.findRegionMap(bounds, RegionLevel.EMD, null))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_REGION_DATA_UNAVAILABLE));
     }
 
     @Test
     void 집계할_코드나_기록이_없으면_내부_개수_맵도_비어있다() {
-        // given / when / then: 공개 API의 0개 지역 표시 정책은 별도로 결정한다.
+        // given / when / then
         assertThat(counts(List.of(), null)).isEmpty();
         assertThat(counts(List.of(EMD), null)).isEmpty();
+        assertThat(service.findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), RegionLevel.EMD, null)).isEmpty();
     }
 
     @Test
