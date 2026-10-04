@@ -106,6 +106,60 @@ class RegionClassifierIntegrationTest {
         assertThat(result.classifiedAt()).isNotNull();
     }
 
+    @Test
+    void 포함된_행정동이_있으면_인접한_더_작은_코드보다_우선한다() {
+        // given
+        인접_행정동을_추가한다("11010529", 2.001);
+        경계_검증을_완료한다();
+
+        // when / then
+        assertThat(classifier.classify(point(128, 38)).regionCode()).isEqualTo("11010530");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"999.9,11010530", "1000,11010530", "1000.1,"})
+    void 경계에서_1km_이하만_배정하고_초과하면_미매칭을_기록한다(double meters, String expectedCode) {
+        // given: 동쪽 경계의 점에서 타원체 기준 동쪽으로 이동한 합성 좌표다.
+        경계_검증을_완료한다();
+        Point location = jdbc.sql("""
+                SELECT ST_X(p) AS longitude, ST_Y(p) AS latitude FROM (
+                    SELECT ST_Project(ST_SetSRID(ST_MakePoint(128, 38), 4326)::geography,
+                        :meters, radians(90))::geometry AS p
+                ) projected
+                """).param("meters", meters)
+                .query((row, index) -> point(row.getDouble("longitude"), row.getDouble("latitude"))).single();
+
+        // when
+        var result = classifier.classify(location);
+
+        // then
+        assertThat(result.regionCode()).isEqualTo(expectedCode);
+        assertThat(result.classifiedAt()).isNotNull();
+        assertThat(location.getSRID()).isEqualTo(4326);
+    }
+
+    @Test
+    void 표시점과_코드_순서보다_폴리곤까지의_최단_거리를_우선한다() {
+        // given: 두 지역 모두 1km 이내지만 더 작은 코드의 표시점만 더 가깝다.
+        인접_행정동을_추가한다("11010529", 2.017);
+        jdbc.sql("UPDATE regions SET display_point = ST_GeomFromText('POINT(128.017 38)', 4326) "
+                + "WHERE code = '11010529'").update();
+        경계_검증을_완료한다();
+
+        // when / then
+        assertThat(classifier.classify(point(128.007, 38)).regionCode()).isEqualTo("11010530");
+    }
+
+    @Test
+    void 경계_밖에서_거리가_같으면_삽입_순서와_관계없이_코드_순서로_선택한다() {
+        // given: 동일한 합성 도형으로 정확히 같은 거리를 만든다.
+        인접_행정동을_추가한다("11010529", 0);
+        경계_검증을_완료한다();
+
+        // when / then
+        assertThat(classifier.classify(point(128.005, 38)).regionCode()).isEqualTo("11010529");
+    }
+
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
     void 미검증과_누락_데이터셋은_정상_미매칭으로_처리하지_않는다(boolean missing) {
@@ -120,14 +174,15 @@ class RegionClassifierIntegrationTest {
                         error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_REGION_DATA_UNAVAILABLE));
     }
 
-    @Test
-    void 분류_SQL이_실패하면_정상_미매칭으로_처리하지_않는다() {
+    @ParameterizedTest
+    @ValueSource(doubles = {127, 128.005})
+    void 분류_SQL이_실패하면_정상_미매칭으로_처리하지_않는다(double longitude) {
         // given: 트랜잭션 종료 시 롤백될 DDL로 조회 장애를 만든다.
         경계_검증을_완료한다();
         jdbc.sql("ALTER TABLE regions RENAME TO unavailable_regions").update();
 
         // when / then
-        assertThatThrownBy(() -> classifier.classify(point(127, 38))).isInstanceOf(DataAccessException.class);
+        assertThatThrownBy(() -> classifier.classify(point(longitude, 38))).isInstanceOf(DataAccessException.class);
     }
 
     @ParameterizedTest
@@ -241,6 +296,15 @@ class RegionClassifierIntegrationTest {
 
     private void 경계_검증을_완료한다() {
         jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = CURRENT_TIMESTAMP").update();
+    }
+
+    private void 인접_행정동을_추가한다(String code, double longitudeShift) {
+        jdbc.sql("""
+                INSERT INTO regions (code, level, name, parent_code, boundary, display_point)
+                SELECT :code, level, name, parent_code,
+                    ST_Translate(boundary, :shift, 0), ST_Translate(display_point, :shift, 0)
+                FROM regions WHERE code = '11010530'
+                """).param("code", code).param("shift", longitudeShift).update();
     }
 
     private Point point(double longitude, double latitude) {

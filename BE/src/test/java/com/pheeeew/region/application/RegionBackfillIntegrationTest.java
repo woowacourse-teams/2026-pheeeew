@@ -15,6 +15,7 @@ import com.pheeeew.support.PostgisDataJpaTest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import javax.sql.DataSource;
@@ -45,6 +46,8 @@ class RegionBackfillIntegrationTest {
 
     @Autowired
     private EmotionRepository emotions;
+    @Autowired
+    private RegionClassifier classifier;
     @Autowired
     private JdbcClient jdbc;
     @Autowired
@@ -127,6 +130,47 @@ class RegionBackfillIntegrationTest {
         assertThat(stored(row).getRegionCode()).isNull();
         assertThat(stored(row).getRegionClassifiedAt()).isNotNull();
         assertThat(backfill(1, row.getId())).isZero();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"127,38,11010530", "128.005,38,11010530", "128.02,38,", "0,0,"})
+    void 앱_분류와_백필은_포함과_인접과_미매칭에_같은_결과를_사용한다(
+            double longitude, double latitude, String expectedCode
+    ) {
+        // given
+        var point = new GeometryFactory(new PrecisionModel(), 4326).createPoint(new Coordinate(longitude, latitude));
+        Emotion row = emotions.saveAndFlush(기본_한숨_빌더().location(point).build());
+        String before = unrelatedFields(row);
+        var appResult = classifier.classify(point);
+
+        // when
+        assertThat(backfill(1, row.getId())).isOne();
+        Emotion classified = stored(row);
+
+        // then
+        assertThat(appResult.regionCode()).isEqualTo(expectedCode);
+        assertThat(classified.getRegionCode()).isEqualTo(appResult.regionCode());
+        assertThat(classified.getRegionClassifiedAt()).isNotNull();
+        assertThat(unrelatedFields(row)).isEqualTo(before);
+        assertThat(backfill(1, row.getId())).isZero();
+        assertThat(stored(row).getRegionClassifiedAt()).isEqualTo(classified.getRegionClassifiedAt());
+    }
+
+    @Test
+    void 이미_미매칭으로_완료된_인접_기록은_일반_백필에서_재분류하지_않는다() {
+        // given: 새 함수로 배정할 수 있어도 기존 완료 기록은 별도 재분류 대상이다.
+        var point = new GeometryFactory(new PrecisionModel(), 4326).createPoint(new Coordinate(128.005, 38));
+        Emotion row = emotions.saveAndFlush(기본_한숨_빌더().location(point)
+                .regionClassifiedAt(Instant.parse("2026-10-04T00:00:00Z")).build());
+        var classifiedAt = stored(row).getRegionClassifiedAt();
+        String before = unrelatedFields(row);
+        assertThat(classifier.classify(point).regionCode()).isEqualTo("11010530");
+
+        // when / then
+        assertThat(backfill(1, row.getId())).isZero();
+        assertThat(stored(row).getRegionCode()).isNull();
+        assertThat(stored(row).getRegionClassifiedAt()).isEqualTo(classifiedAt);
+        assertThat(unrelatedFields(row)).isEqualTo(before);
     }
 
     @ParameterizedTest
