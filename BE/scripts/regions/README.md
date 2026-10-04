@@ -50,6 +50,72 @@ SGIS_SOURCE_DIRECTORY=/path/to/sgis-source ./gradlew test --rerun-tasks \
 표시점 분류는 저장 경계와 분류 코드의 연결 검사이며 실제 주소와 경계의 정확성까지 증명하지는 않아요.
 외부 원본은 Gradle 입력으로 추적하지 않으므로 재실행을 강제하고 테스트 결과의 실행 1건·건너뜀 0건을 확인해요.
 
+## ZIP 3종에서 전달할 SQL 준비
+
+준비·격리 검증과 실제 서버 적재는 별개예요. 아래 준비를 완료해도 개발·운영 실행 승인을 뜻하지 않아요.
+시도·시군구·읍면동 ZIP을 각각 DB에 넣는 대신 세 원본으로 만든 SQL 하나를 전달해요.
+ZIP과 SQL은 Git 밖에 보관하고, SQL을 만든 뒤 수정하면 다시 검증해요.
+
+### 원본을 풀고 SQL 생성
+
+먼저 ZIP 3개의 SHA-256을 아래 원본 기록과 대조해요. 같지 않으면 승인된 겹침 예외를 그대로 사용하지 않아요.
+새 작업 폴더의 `source`에 세 ZIP을 풀어요. 아래 경로는 예시이며 기존 폴더나 SQL은 덮어쓰지 않아요.
+
+```bash
+REGION_PACKAGE_DIR=/path/to/new-region-package
+mkdir "$REGION_PACKAGE_DIR"
+mkdir "$REGION_PACKAGE_DIR/source"
+for level in sido sigungu dong; do
+  unzip "/path/to/downloads/bnd_${level}_00_2025_2Q.zip" -d "$REGION_PACKAGE_DIR/source"
+done
+bash scripts/regions/prepare-import.sh "$REGION_PACKAGE_DIR/source" \
+  "$REGION_PACKAGE_DIR/sgis-2025-2Q-import.sql"
+```
+
+원본 DBF의 레코드 수는 시도 17·시군구 252·읍면동 3,559개예요. SQL 안에서 5179 경계를 4326으로 변환해요.
+생성 SQL에는 원본 staging 생성·적재, `regions` 입력과 staging 삭제가 모두 포함돼요.
+Flyway가 테이블·데이터셋 행을 만든 뒤에 실행하며, 기존 경계가 있으면 재적재를 거부해요.
+
+### 승인한 서버로 전달
+
+검증한 SQL과 같은 작업 커밋의 `verify.sql`을 EC2 작업 폴더에 전달해요. 원본 ZIP은 DB 서버에 필요하지 않아요.
+전송 전후 SHA-256을 대조해요. macOS는 `shasum -a 256`, Linux는 `sha256sum`을 사용할 수 있어요.
+SQL은 크므로 압축해서 전달할 수 있어요. 압축을 풀고 SQL의 체크섬을 대조한 뒤 아래 실행 명령을 사용해요.
+`shp2pgsql`·`pyproj`는 서버에 설치하지 않아요. 실행 환경에는 `psql`만 필요해요.
+
+개발 DB 컨테이너에서는 EC2 호스트의 SQL을 표준 입력으로 전달해요. 이 방식은 컨테이너 안에 파일을 복사하지 않아요.
+아래 명령은 전달한 두 파일이 있는 EC2 작업 폴더에서, 해당 대상의 적재 승인 후에 실행해요.
+
+```bash
+docker exec -i pheeeew-dev-postgres sh -c \
+  'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X --single-transaction \
+    -v ON_ERROR_STOP=1 -f -' < sgis-2025-2Q-import.sql
+docker exec -i pheeeew-dev-postgres sh -c \
+  'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X --single-transaction \
+    -v ON_ERROR_STOP=1 -v sido_count=17 -v sigungu_count=252 -v emd_count=3559 -f -' < verify.sql
+```
+
+운영 RDS는 접근 가능한 EC2에서 승인된 접속·인증·TLS 설정으로 실행해요.
+대상 확인은 아래 백필 절차의 `current_database()`, `current_user`와 데이터셋 조회를 사용해요.
+
+```bash
+psql -X --single-transaction -v ON_ERROR_STOP=1 -f sgis-2025-2Q-import.sql
+psql -X --single-transaction -v ON_ERROR_STOP=1 \
+  -v sido_count=17 -v sigungu_count=252 -v emd_count=3559 -f verify.sql
+```
+
+각 종료 코드 0을 확인해요. 적재와 품질 검증은 각각 별도 트랜잭션이므로 적재 성공만으로 공개하지 않아요.
+적재 실패는 그 트랜잭션을 롤백해요. 연결이 끊겼다면 커밋 여부를 추측하지 말고 경계 개수와 검증 시각을 확인해요.
+검증 실패 후 이미 들어간 경계를 임의 삭제하거나 재적재하지 않아요. 실패 원인과 실제 DB 상태를 먼저 검토해요.
+이 절차는 `backfill_verified_at`을 설정하지 않아요. 기존 감정 백필과 완료 검증은 아래 별도 절차예요.
+
+2026-10-04에 받은 ZIP 3종의 체크섬을 대조하고 전달용 SQL을 생성해 격리 검증했어요.
+SQL 크기는 639,871,612바이트이며 SHA-256은
+`8ff11e6b9c62b40cc2d6aec98ec236bff5b452910a818462ad47d816f3647a60`이에요.
+이 SQL의 격리 검증 1건이 실패·오류·건너뜀 없이 통과했어요.
+PostgreSQL 17.5 / PostGIS 3.5 이미지에서 Flyway 26개 적용과 전국 적재·품질·표시점 5개 분류를 확인했어요.
+이 결과는 운영 적재·백필 완료나 성능 개선의 증거가 아니에요.
+
 ## 2026-10-04 격리 검증 결과
 
 PostgreSQL 17.5 / PostGIS 3.5.2 Testcontainers에서 받은 전국 원본을 검사했어요.
