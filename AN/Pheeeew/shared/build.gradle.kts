@@ -40,7 +40,8 @@ kotlin {
             isIncludeAndroidResources = true
         }
         withDeviceTestBuilder {
-            sourceSetTreeName = "test"
+            // Keep device-only UI profiles separate: commonTest uses display names with spaces, which D8 cannot encode below dex v040.
+            sourceSetTreeName = "androidDeviceTest"
         }.configure {
             instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         }
@@ -82,6 +83,13 @@ kotlin {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
             implementation(libs.ktor.client.mock)
+        }
+    }
+    sourceSets.named("androidDeviceTest") {
+        dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.androidx.testExt.junit)
+            implementation(libs.androidx.test.runner)
         }
     }
 }
