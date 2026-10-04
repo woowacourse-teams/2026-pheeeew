@@ -22,6 +22,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 
@@ -85,8 +86,9 @@ public interface EmotionControllerApi {
             개인 감정 차단과 작성자 차단은 요약에 적용하지 않습니다. 기존 개별 조회의 차단 정책은 유지합니다.
             groupId를 생략하면 그룹 없는 감정까지 전체 조회하고 지정하면 해당 그룹만 집계합니다. 그룹 가입 여부로 제한하지 않습니다.
 
-            지역 코드순으로 모든 결과를 한 번에 반환하며 hasNext=false, nextCursor=null입니다. 0개 지역은 생략합니다.
-            items는 지역 코드를 문자열 id로 갖는 GeoJSON Feature이며 응답 전체는 application/json입니다.
+            지역 코드순으로 모든 결과를 최상위 JSON 배열로 한 번에 반환합니다. 페이지네이션 필드는 없습니다.
+            0개 지역은 생략하며 결과가 없으면 빈 배열을 반환합니다.
+            각 항목은 지역 코드를 문자열 id로 갖는 GeoJSON Feature이며 응답 전체는 application/json입니다.
             geometry는 지역 내부의 고정 표시점으로 요청 화면 밖일 수 있습니다. 좌표는 경도, 위도 순서입니다.
             대표 감정은 최빈값이며 동률은 ANGRY, DISCOURAGED, EXHAUSTED, FRUSTRATED, IRRITATED 순서입니다.
             NULL 상태도 총 개수에 포함하며 모든 대상의 상태가 NULL이면 대표 감정은 null입니다.
@@ -104,7 +106,7 @@ public interface EmotionControllerApi {
             @ApiResponse(responseCode = "503", description = "지역 요약 준비가 완료되지 않음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
-    ResponseEntity<CursorResponse<EmotionRegionMapResponse>> findRegionMap(
+    ResponseEntity<List<EmotionRegionMapResponse>> findRegionMap(
             @Valid EmotionRegionMapRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );

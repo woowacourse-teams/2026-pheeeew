@@ -44,12 +44,13 @@ Authorization: Bearer <access-token>
 ## 응답
 
 Content-Type은 `application/json`, Cache-Control은 `no-cache, private`예요.
-지역 코드순으로 모든 요약을 한 번에 반환하므로 `hasNext=false`, `nextCursor=null`이에요.
+지역 코드순으로 모든 요약을 최상위 JSON 배열로 한 번에 반환해요.
+이 API는 페이지네이션을 사용하지 않으므로 `items`, `hasNext`, `nextCursor` 래퍼 필드가 없어요.
 아래 지역 이름·좌표·개수는 형식 설명용 합성 값이며 실제 SGIS 값이나 운영 측정 결과가 아니에요.
 
 ```json
-{
-  "items": [{
+[
+  {
     "type": "Feature",
     "id": "11010530",
     "geometry": {"type": "Point", "coordinates": [127.0, 38.0]},
@@ -60,16 +61,14 @@ Content-Type은 `application/json`, Cache-Control은 `no-cache, private`예요.
       "totalCount": 3,
       "representativeState": "ANGRY"
     }
-  }],
-  "hasNext": false,
-  "nextCursor": null
-}
+  }
+]
 ```
 
 `id`는 감정 ID가 아닌 SGIS 지역 코드 문자열이에요. 기존 개별 지도 응답의 숫자 ID는 유지해요.
 `geometry`는 지역 내부의 고정 표시점이며 좌표 순서는 `[경도, 위도]`예요. 요청 화면 밖에 있을 수 있어요.
 `parentCode`는 상위 지역 코드이며 `SIDO`에서는 null이에요. 응답에는 지역 경계 도형을 포함하지 않아요.
-`totalCount`는 양수인 64비트 정수이며 0개 지역은 생략해요. 결과가 없으면 `items=[]`로 반환해요.
+`totalCount`는 양수인 64비트 정수이며 0개 지역은 생략해요. 결과가 없으면 `[]`로 반환해요.
 `representativeState`는 NULL을 제외한 최빈 감정이에요. 동률은 `ANGRY → DISCOURAGED → EXHAUSTED → FRUSTRATED → IRRITATED` 순서예요.
 NULL 상태 기록도 총 개수에 포함하며 모든 대상의 상태가 NULL이면 대표 감정은 null이에요.
 

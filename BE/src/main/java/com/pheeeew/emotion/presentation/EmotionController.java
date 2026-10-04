@@ -72,7 +72,7 @@ public class EmotionController implements EmotionControllerApi {
 
     @Override
     @GetMapping(value = "/map/regions", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<CursorResponse<EmotionRegionMapResponse>> findRegionMap(
+    public ResponseEntity<List<EmotionRegionMapResponse>> findRegionMap(
             @ModelAttribute EmotionRegionMapRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
@@ -83,7 +83,7 @@ public class EmotionController implements EmotionControllerApi {
 
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache().cachePrivate())
-                .body(CursorResponse.of(responses, false, null));
+                .body(responses);
     }
 
     @Override

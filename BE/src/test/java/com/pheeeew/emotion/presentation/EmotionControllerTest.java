@@ -554,10 +554,10 @@ class EmotionControllerTest {
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
                 .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-cache, private")
                 .expectBody().json("""
-                        {"items":[{"type":"Feature","id":"%s",
+                        [{"type":"Feature","id":"%s",
                          "geometry":{"type":"Point","coordinates":[127.0,38.0]},
                          "properties":{"level":"%s","name":"검증용 지역","parentCode":%s,
-                         "totalCount":3,"representativeState":"ANGRY"}}],"hasNext":false,"nextCursor":null}
+                         "totalCount":3,"representativeState":"ANGRY"}}]
                         """.formatted(code, level, parentCode == null ? "null" : "\"" + parentCode + "\""), JsonCompareMode.STRICT);
         verify(emotionQueryService).findRegionMap(bounds, level, groupId);
         org.mockito.Mockito.verifyNoMoreInteractions(emotionQueryService);
@@ -572,7 +572,7 @@ class EmotionControllerTest {
         // when / then
         request(HttpMethod.GET, REGION_MAP_URI + "?minLongitude=170&minLatitude=37&maxLongitude=-170&maxLatitude=39&level=EMD",
                 "access-token").expectStatus().isOk()
-                .expectBody().json("{\"items\":[],\"hasNext\":false,\"nextCursor\":null}", JsonCompareMode.STRICT);
+                .expectBody().json("[]", JsonCompareMode.STRICT);
         verify(emotionQueryService).findRegionMap(bounds, RegionLevel.EMD, null);
     }
 
