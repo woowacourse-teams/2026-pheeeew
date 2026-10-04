@@ -5,6 +5,7 @@ import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REQUEST_ID_CONFLICT;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_REQUIRED;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_LOCATION_OUT_OF_SERVICE_AREA;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
@@ -135,10 +136,13 @@ public class EmotionCommandService {
             throw new IllegalArgumentException("선택 위치는 유효한 WGS84 좌표여야 합니다.");
         }
         GroupStamp stamp = resolveGroupStamp(groupPublicId, deviceId, null);
-        EmotionContent content = contentResolver.resolve(memo, audioUploadId, deviceId, requestId);
-
         Point location = WGS84.createPoint(new Coordinate(longitude, latitude));
         var classification = regionClassifier.classify(location);
+        if (classification.regionCode() == null) {
+            throw new EmotionException(EMOTION_LOCATION_OUT_OF_SERVICE_AREA);
+        }
+
+        EmotionContent content = contentResolver.resolve(memo, audioUploadId, deviceId, requestId);
 
         return emotionRepository.saveAndFlush(Emotion.builder()
                 .requestId(requestId)
