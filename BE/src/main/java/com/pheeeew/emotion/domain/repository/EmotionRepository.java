@@ -1,6 +1,7 @@
 package com.pheeeew.emotion.domain.repository;
 
 import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.domain.repository.projection.RegionEmotionSummaryProjection;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import java.time.Instant;
 import java.util.List;
@@ -42,6 +43,50 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
               )
             """)
     Optional<Emotion> findVisibleById(@Param("id") Long id, @Param("deviceId") Long deviceId);
+
+    @Query(value = """
+            WITH RECURSIVE region_members(root_code, member_code) AS (
+                SELECT code, code FROM regions WHERE code IN (:regionCodes)
+                UNION ALL
+                SELECT parent.root_code, child.code
+                FROM region_members parent JOIN regions child ON child.parent_code = parent.member_code
+            ), eligible AS (
+                SELECT member.root_code AS region_code, emotion.state
+                FROM emotions emotion
+                JOIN region_members member ON member.member_code = emotion.region_code
+                WHERE emotion.deleted_at IS NULL
+                  AND emotion.created_at <= :snapshotAt
+                  AND (CAST(:groupId AS UUID) IS NULL OR EXISTS (
+                      SELECT 1 FROM group_stamps stamp JOIN groups stamp_group ON stamp_group.id = stamp.group_id
+                      WHERE stamp.id = emotion.group_stamp_id AND stamp_group.public_id = CAST(:groupId AS UUID)
+                  ))
+            ), state_counts AS (
+                SELECT region_code, state, count(*) AS state_count
+                FROM eligible GROUP BY region_code, state
+            ), ranked AS (
+                SELECT region_code, state,
+                    CAST(sum(state_count) OVER (PARTITION BY region_code) AS BIGINT) AS total_count,
+                    row_number() OVER (
+                        PARTITION BY region_code
+                        ORDER BY state IS NULL, state_count DESC,
+                            CASE state
+                                WHEN 'ANGRY' THEN 0
+                                WHEN 'DISCOURAGED' THEN 1
+                                WHEN 'EXHAUSTED' THEN 2
+                                WHEN 'FRUSTRATED' THEN 3
+                                WHEN 'IRRITATED' THEN 4
+                            END
+                    ) AS state_rank
+                FROM state_counts
+            )
+            SELECT region_code AS "regionCode", total_count AS "totalCount", state AS "representativeState"
+            FROM ranked WHERE state_rank = 1
+            """, nativeQuery = true)
+    List<RegionEmotionSummaryProjection> findSummariesByRegionCodes(
+            @Param("regionCodes") List<String> regionCodes,
+            @Param("groupId") UUID groupId,
+            @Param("snapshotAt") Instant snapshotAt
+    );
 
     @Query(value = """
             WITH bounds AS (

@@ -2,10 +2,14 @@ package com.pheeeew.region.application;
 
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE;
 
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
+import com.pheeeew.region.domain.Region;
+import com.pheeeew.region.domain.RegionLevel;
 import com.pheeeew.region.domain.repository.RegionRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Point;
@@ -32,6 +36,14 @@ public class RegionClassifier {
         }
         String code = regionRepository.findEmdCode(location.getX(), location.getY()).orElse(null);
         return Classification.of(code, Instant.now(clock));
+    }
+
+    public List<Region> findIntersectingRegions(EmotionSearchBounds bounds, RegionLevel level) {
+        if (!regionRepository.areBoundariesVerified()) {
+            throw new EmotionException(EMOTION_REGION_DATA_UNAVAILABLE);
+        }
+
+        return regionRepository.findIntersectingRegions(bounds, level);
     }
 
     public record Classification(String regionCode, Instant classifiedAt) {
