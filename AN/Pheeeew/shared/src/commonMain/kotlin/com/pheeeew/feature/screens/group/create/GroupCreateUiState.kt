@@ -25,14 +25,25 @@ data class GroupCreateUiState(
     val submission: GroupCreateSubmissionState = GroupCreateSubmissionState.Editing,
     val colorSheet: StampColorSheetState = StampColorSheetState.Closed,
     val recovery: GroupCreateRecoveryState = GroupCreateRecoveryState.Idle,
+    val restoration: GroupCreateRestorationState = GroupCreateRestorationState.Ready,
+    val isRecoveryDialogVisible: Boolean = false,
 ) {
     val canOpenColorSheet: Boolean
-        get() = submission == GroupCreateSubmissionState.Editing && colorSheet is StampColorSheetState.Closed
+        get() =
+            restoration == GroupCreateRestorationState.Ready &&
+                submission == GroupCreateSubmissionState.Editing &&
+                colorSheet is StampColorSheetState.Closed
 
     private companion object {
         const val DEFAULT_STAMP_FILL = 0xFFA7DCCFL
         val DEFAULT_STAMP_TEXT = StampTextColorOption.BLACK.argb
     }
+}
+
+enum class GroupCreateRestorationState {
+    Restoring,
+    Ready,
+    Unavailable,
 }
 
 sealed interface GroupCreateSubmissionState {

@@ -1,8 +1,10 @@
 package com.pheeeew.core.di.group
 
 import com.pheeeew.core.network.ApiClient
+import com.pheeeew.feature.screens.group.create.EmptyGroupCreateSessionStore
 import com.pheeeew.feature.screens.group.create.GroupCreateActions
 import com.pheeeew.feature.screens.group.create.GroupCreateErrorReporter
+import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
 import com.pheeeew.feature.screens.group.detail.GroupDetailDependencies
 import com.pheeeew.feature.screens.group.home.GroupListSource
 import com.pheeeew.feature.screens.group.join.GroupJoinDependencies
@@ -17,11 +19,13 @@ data class GroupDependencies(
     val operationKeyAllocator: GroupOperationKeyAllocator,
     val join: GroupJoinDependencies,
     val detail: GroupDetailDependencies,
+    val createSessionStore: GroupCreateSessionStore = EmptyGroupCreateSessionStore,
 )
 
 /** Builds feature adapters once from the app-owned authenticated client. */
 fun createGroupDependencies(
     apiClient: ApiClient,
+    createSessionStore: GroupCreateSessionStore = EmptyGroupCreateSessionStore,
     reportUnexpected: (Exception) -> Unit = ::reportUnexpectedGroupError,
 ): GroupDependencies {
     val operationKeyAllocator =
@@ -49,6 +53,7 @@ fun createGroupDependencies(
         operationKeyAllocator = operationKeyAllocator,
         join = joinDependencies,
         detail = detailDependencies,
+        createSessionStore = createSessionStore,
     )
 }
 

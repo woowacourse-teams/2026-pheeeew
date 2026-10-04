@@ -75,6 +75,7 @@ import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.component.RankingBottomNavigationDestination
+import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
 import com.pheeeew.feature.screens.group.navigation.GroupFeatureHost
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
@@ -118,6 +119,7 @@ fun App(
     locationDependencies: LocationDependencies,
     apiDependencies: ApiDependencies,
     lastRecordedGroupRepository: LastRecordedGroupRepository,
+    groupCreateSessionStore: GroupCreateSessionStore,
     appVersion: String,
     appVersionApi: AppVersionApi,
     permissionSettingsLauncher: AppSettingsLauncher,
@@ -131,6 +133,7 @@ fun App(
             locationDependencies = locationDependencies,
             apiDependencies = apiDependencies,
             lastRecordedGroupRepository = lastRecordedGroupRepository,
+            groupCreateSessionStore = groupCreateSessionStore,
             appVersion = appVersion,
             appVersionApi = appVersionApi,
             connectivityObserver = connectivityObserver,
@@ -147,6 +150,7 @@ private fun AppContent(
     locationDependencies: LocationDependencies,
     apiDependencies: ApiDependencies,
     lastRecordedGroupRepository: LastRecordedGroupRepository,
+    groupCreateSessionStore: GroupCreateSessionStore,
     appVersion: String,
     appVersionApi: AppVersionApi,
     connectivityObserver: ConnectivityObserver,
@@ -347,8 +351,11 @@ private fun AppContent(
             createEmotionModerationDependencies(apiDependencies.client)
         }
     val groupDependencies =
-        remember(apiDependencies.client) {
-            createGroupDependencies(apiDependencies.client)
+        remember(apiDependencies.client, groupCreateSessionStore) {
+            createGroupDependencies(
+                apiClient = apiDependencies.client,
+                createSessionStore = groupCreateSessionStore,
+            )
         }
 
     val navController = rememberNavController()

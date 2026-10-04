@@ -50,6 +50,7 @@ fun GroupCreateRoute(
         onCancelConfirmation = viewModel::onCancelConfirmation,
         onConfirmCreate = viewModel::onConfirmCreate,
         onDismissFailure = viewModel::onDismissFailure,
+        onShowRecoveryDialog = viewModel::onShowRecoveryDialog,
         onRetryFailure = viewModel::onRetryFailure,
         onCheckGroupsAfterUnknownOutcome = viewModel::onCheckGroupsAfterUnknownOutcome,
         onSelectRecoveryCandidate = viewModel::onSelectRecoveryCandidate,

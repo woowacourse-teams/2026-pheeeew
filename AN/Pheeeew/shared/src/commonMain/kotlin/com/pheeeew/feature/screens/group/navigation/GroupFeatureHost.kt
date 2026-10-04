@@ -93,6 +93,7 @@ fun GroupFeatureHost(
                         errorReporter = dependencies.createErrorReporter,
                         operationKeyAllocator = dependencies.operationKeyAllocator,
                         findCandidatesAction = dependencies.createActions.findCandidates,
+                        sessionStore = dependencies.createSessionStore,
                     )
                 }
             GroupCreateRoute(

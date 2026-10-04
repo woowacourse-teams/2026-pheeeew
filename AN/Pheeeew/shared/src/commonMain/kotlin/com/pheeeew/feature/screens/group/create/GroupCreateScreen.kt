@@ -47,6 +47,9 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_create_back
+import pheeeew.shared.generated.resources.group_create_recovery_resume
+import pheeeew.shared.generated.resources.group_create_restore_unavailable
+import pheeeew.shared.generated.resources.group_create_restoring
 import pheeeew.shared.generated.resources.group_create_submit
 import pheeeew.shared.generated.resources.group_create_title
 import pheeeew.shared.generated.resources.ic_arrow_back
@@ -66,6 +69,7 @@ fun GroupCreateScreen(
     onCancelConfirmation: () -> Unit,
     onConfirmCreate: () -> Unit,
     onDismissFailure: () -> Unit,
+    onShowRecoveryDialog: () -> Unit,
     onRetryFailure: () -> Unit,
     onCheckGroupsAfterUnknownOutcome: () -> Unit = {},
     onSelectRecoveryCandidate: (GroupId) -> Unit = {},
@@ -76,7 +80,9 @@ fun GroupCreateScreen(
     onApplyColor: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val enabled = uiState.submission == GroupCreateSubmissionState.Editing
+    val enabled =
+        uiState.restoration == GroupCreateRestorationState.Ready &&
+            uiState.submission == GroupCreateSubmissionState.Editing
     val backDescription = stringResource(Res.string.group_create_back)
     val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
     val focusManager = LocalFocusManager.current
@@ -104,6 +110,42 @@ fun GroupCreateScreen(
                 onBack()
             },
         )
+
+        when (uiState.restoration) {
+            GroupCreateRestorationState.Restoring -> {
+                Text(
+                    text = stringResource(Res.string.group_create_restoring),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+                    color = AppColors.RankingSecondaryContent,
+                    fontSize = 14.sp,
+                )
+            }
+
+            GroupCreateRestorationState.Unavailable -> {
+                Text(
+                    text = stringResource(Res.string.group_create_restore_unavailable),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+                    color = AppColors.RankingSecondaryContent,
+                    fontSize = 14.sp,
+                )
+            }
+
+            GroupCreateRestorationState.Ready -> {
+                Unit
+            }
+        }
+
+        if (uiState.submission is GroupCreateSubmissionState.Failed &&
+            uiState.submission.reason == GroupCreateFailure.OutcomeUnknown &&
+            !uiState.isRecoveryDialogVisible
+        ) {
+            androidx.compose.material3.TextButton(
+                onClick = onShowRecoveryDialog,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(Res.string.group_create_recovery_resume))
+            }
+        }
 
         GroupCreateForm(
             uiState = uiState,

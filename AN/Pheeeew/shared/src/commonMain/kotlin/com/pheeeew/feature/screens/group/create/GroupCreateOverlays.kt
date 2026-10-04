@@ -58,13 +58,15 @@ internal fun GroupCreateOverlays(
         is GroupCreateSubmissionState.Failed -> {
             when (submission.reason) {
                 GroupCreateFailure.OutcomeUnknown -> {
-                    CreateOutcomeUnknownDialog(
-                        recovery = uiState.recovery,
-                        onDismiss = onDismissFailure,
-                        onCheckGroups = onCheckGroupsAfterUnknownOutcome,
-                        onSelectCandidate = onSelectRecoveryCandidate,
-                        onRetryCreate = onRetryUnknownCreation,
-                    )
+                    if (uiState.isRecoveryDialogVisible) {
+                        CreateOutcomeUnknownDialog(
+                            recovery = uiState.recovery,
+                            onDismiss = onDismissFailure,
+                            onCheckGroups = onCheckGroupsAfterUnknownOutcome,
+                            onSelectCandidate = onSelectRecoveryCandidate,
+                            onRetryCreate = onRetryUnknownCreation,
+                        )
+                    }
                 }
 
                 GroupCreateFailure.Unavailable,

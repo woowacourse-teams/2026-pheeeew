@@ -111,6 +111,7 @@ private fun GroupCreatePreviewFrame(
         onCancelConfirmation = {},
         onConfirmCreate = {},
         onDismissFailure = {},
+        onShowRecoveryDialog = {},
         onRetryFailure = {},
         onOpenColorSheet = onOpenColorSheet,
         onColorSelectionChanged = onColorSelectionChanged,
