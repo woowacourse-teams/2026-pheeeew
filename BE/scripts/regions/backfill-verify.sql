@@ -1,6 +1,7 @@
 -- 수동 실행 전용. 모든 등록을 새 서버로 전환하고 구버전의 진행 중 등록을 끝낸 뒤 실행합니다.
 -- psql -X --single-transaction -v ON_ERROR_STOP=1 -qAt -f 이_파일
 -- 종료 코드 0일 때만 완료입니다. 완료 후 구버전·직접 SQL의 미분류 재유입을 차단하지 않습니다.
+-- ID 상한과 무관하게 전체 미분류·배정 가능한 NULL을 검사합니다. 범위 밖 정상 미매칭은 허용합니다.
 SET TRANSACTION ISOLATION LEVEL READ COMMITTED;
 SET LOCAL statement_timeout = '5s';
 
@@ -24,6 +25,12 @@ BEGIN
     END IF;
     IF EXISTS (SELECT 1 FROM public.emotions WHERE region_classified_at IS NULL) THEN
         RAISE EXCEPTION '미분류 감정이 남아 있습니다.';
+    END IF;
+    IF EXISTS (
+        SELECT 1 FROM public.emotions
+        WHERE region_code IS NULL AND public.find_emd_region_code(location) IS NOT NULL
+    ) THEN
+        RAISE EXCEPTION '지역 배정 가능한 미매칭 감정이 남아 있습니다.';
     END IF;
     UPDATE public.region_datasets
     SET backfill_verified_at = COALESCE(backfill_verified_at, clock_timestamp())
