@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashSet;
 import java.util.Set;
 import static com.pheeeew.appversion.fixture.AppVersionFixture.기본_앱_버전_정책_빌더;
+import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
@@ -106,6 +107,8 @@ class SecurityAuthorizationIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        검증용_지역_계층을_저장한다(jdbcClient);
+        jdbcClient.sql("UPDATE region_datasets SET boundaries_verified_at = CURRENT_TIMESTAMP").update();
         client = RestTestClient.bindToServer()
                 .baseUrl("http://localhost:" + port)
                 .build();
@@ -121,6 +124,8 @@ class SecurityAuthorizationIntegrationTest {
         deviceRefreshTokenRepository.deleteAll();
         deviceRepository.deleteAll();
         deviceChallengeRepository.deleteAll();
+        jdbcClient.sql("DELETE FROM regions").update();
+        jdbcClient.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
     }
 
     @Test

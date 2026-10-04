@@ -21,6 +21,7 @@ import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.exception.GroupException;
+import com.pheeeew.region.application.RegionClassifier;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
@@ -29,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.locationtech.jts.geom.Point;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -49,10 +51,11 @@ public class EmotionCommandService {
     private final EmotionContentResolver contentResolver;
     private final EmotionNicknameGenerator nicknameGenerator;
     private final PlatformTransactionManager transactionManager;
+    private final RegionClassifier regionClassifier;
 
     /**
      * ADR-0004에 따라 선조회와 실패 후 재조회를 저장 트랜잭션 밖에서 수행한다.
-     * 녹음 연결과 감정 삽입만 독립 트랜잭션으로 묶어 함께 커밋하거나 롤백한다.
+     * 녹음 연결, 지역 분류와 감정 삽입을 독립 트랜잭션으로 묶어 함께 커밋하거나 롤백한다.
      */
     public Emotion save(
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
@@ -134,10 +137,15 @@ public class EmotionCommandService {
         GroupStamp stamp = resolveGroupStamp(groupPublicId, deviceId, null);
         EmotionContent content = contentResolver.resolve(memo, audioUploadId, deviceId, requestId);
 
+        Point location = WGS84.createPoint(new Coordinate(longitude, latitude));
+        var classification = regionClassifier.classify(location);
+
         return emotionRepository.saveAndFlush(Emotion.builder()
                 .requestId(requestId)
                 .state(state)
-                .location(WGS84.createPoint(new Coordinate(longitude, latitude)))
+                .location(location)
+                .regionCode(classification.regionCode())
+                .regionClassifiedAt(classification.classifiedAt())
                 .rotationDegrees(rotationDegrees)
                 .memo(content.getMemo())
                 .audio(content.getAudio())

@@ -4,6 +4,7 @@ import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_INVALID_CURSOR;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.emotion.application.AudioUrlIssuer;
@@ -18,16 +19,23 @@ import com.pheeeew.emotion.application.dto.EmotionMapItemView;
 import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.application.dto.EmotionDetailView;
 import com.pheeeew.emotion.application.dto.EmotionListItemView;
+import com.pheeeew.emotion.application.dto.RegionEmotionSummary;
+import com.pheeeew.emotion.application.dto.EmotionRegionMapItemView;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.projection.EmotionEmojiCountProjection;
+import com.pheeeew.emotion.domain.repository.projection.RegionEmotionSummaryProjection;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
+import com.pheeeew.region.application.RegionClassifier;
+import com.pheeeew.region.domain.Region;
+import com.pheeeew.region.domain.RegionLevel;
+import com.pheeeew.region.domain.repository.RegionRepository;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.time.Instant;
@@ -57,6 +65,34 @@ public class EmotionQueryService {
     private final DeviceRepository deviceRepository;
     private final EmotionEmojiRepository emotionEmojiRepository;
     private final GroupStampRepository groupStampRepository;
+    private final RegionRepository regionRepository;
+    private final RegionClassifier regionClassifier;
+
+    public List<EmotionRegionMapItemView> findRegionMap(EmotionSearchBounds bounds, RegionLevel level, UUID groupId) {
+        List<Region> regions = regionClassifier.findIntersectingRegions(bounds, level);
+        List<String> regionCodes = regions.stream()
+                .map(Region::code)
+                .toList();
+        Map<String, RegionEmotionSummary> summaries = findSummariesByRegionCodes(regionCodes, groupId);
+
+        return regions.stream()
+                .filter(region -> summaries.containsKey(region.code()))
+                .map(region -> EmotionRegionMapItemView.of(region, summaries.get(region.code())))
+                .toList();
+    }
+
+    public Map<String, RegionEmotionSummary> findSummariesByRegionCodes(List<String> regionCodes, UUID groupId) {
+        if (!regionRepository.isAggregationReady()) {
+            throw new EmotionException(EMOTION_REGION_DATA_UNAVAILABLE);
+        }
+        if (regionCodes.isEmpty()) {
+            return Map.of();
+        }
+
+        Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
+        return emotionRepository.findSummariesByRegionCodes(regionCodes, groupId, snapshotAt).stream()
+                .collect(Collectors.toMap(RegionEmotionSummaryProjection::getRegionCode, RegionEmotionSummary::from));
+    }
 
     public EmotionDetailView findById(Long emotionId, UUID devicePublicId) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)

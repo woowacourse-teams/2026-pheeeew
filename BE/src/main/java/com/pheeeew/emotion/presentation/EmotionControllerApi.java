@@ -4,6 +4,8 @@ import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionMapResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionRegionMapRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionUpdateRequest;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.presentation.dto.EmotionDetailResponse;
@@ -20,6 +22,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 
@@ -71,12 +74,51 @@ public interface EmotionControllerApi {
             @Parameter(hidden = true) UUID devicePublicId
     );
 
+    @Operation(summary = "행정구역 지도 감정 요약 조회", description = """
+            minLongitude, minLatitude, maxLongitude, maxLatitude와 level은 필수입니다.
+            날짜변경선을 넘는 영역은 minLongitude > maxLongitude로 표현합니다.
+            클라이언트가 확대 정도에 따라 SIDO, SIGUNGU, EMD를 선택합니다. 서버는 계층을 자동으로 전환하지 않습니다.
+            SIGUNGU는 SGIS 시군구 계층입니다. 구가 있는 수원·성남·용인 등은 시 전체 대신 각 구를 반환합니다.
+
+            화면과 경계가 교차하는 지역을 선택하며 경계선 접촉도 포함합니다.
+            개수와 대표 감정은 화면이 아닌 선택한 지역 전체의 기간 하한 없는 누적 기록에서 계산합니다.
+            NONE, MEMO, AUDIO를 모두 포함하고 삭제·서비스 전체 비노출 기록은 제외합니다.
+            개인 감정 차단과 작성자 차단은 요약에 적용하지 않습니다. 기존 개별 조회의 차단 정책은 유지합니다.
+            groupId를 생략하면 그룹 없는 감정까지 전체 조회하고 지정하면 해당 그룹만 집계합니다. 그룹 가입 여부로 제한하지 않습니다.
+
+            지역 코드순으로 모든 결과를 최상위 JSON 배열로 한 번에 반환합니다. 페이지네이션 필드는 없습니다.
+            0개 지역은 생략하며 결과가 없으면 빈 배열을 반환합니다.
+            각 항목은 지역 코드를 문자열 id로 갖는 GeoJSON Feature이며 응답 전체는 application/json입니다.
+            geometry는 지역 내부의 고정 표시점으로 요청 화면 밖일 수 있습니다. 좌표는 경도, 위도 순서입니다.
+            대표 감정은 최빈값이며 동률은 ANGRY, DISCOURAGED, EXHAUSTED, FRUSTRATED, IRRITATED 순서입니다.
+            NULL 상태도 총 개수에 포함하며 모든 대상의 상태가 NULL이면 대표 감정은 null입니다.
+
+            최신 성공 응답이 현재 요청의 완전한 결과입니다. 이전 결과와 단순 병합하지 않습니다.
+            level·groupId·화면이 바뀐 요청과 늦게 도착한 이전 응답을 구분합니다.
+            지역 요약 준비가 완료되지 않으면 빈 결과 대신 EMOTION-013과 503을 반환합니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "행정구역별 누적 감정 요약"),
+            @ApiResponse(responseCode = "400", description = "필수 영역·계층이 누락됐거나 영역·계층·그룹 ID가 올바르지 않음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "지역 요약 준비가 완료되지 않음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<List<EmotionRegionMapResponse>> findRegionMap(
+            @Valid EmotionRegionMapRequest request,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
+
     @Operation(summary = "감정 등록", description = """
             선택 위치에 감정을 등록합니다. contentType은 NONE, MEMO, AUDIO 중 하나입니다.
             최초 등록과 같은 기기의 requestId 재시도 모두 최초 감정 ID를 200으로 반환합니다.
             다른 기기가 사용한 requestId는 409입니다. 녹음은 업로드 완료된 audioUploadId로 연결합니다.
             groupId를 전달하면 현재 소속된 그룹의 스탬프를 연결합니다. 생략하거나 null이면 그룹 스탬프가 없습니다.
             연결된 스탬프가 변경되면 기존 감정에도 최신 모양을 표시합니다.
+            서버의 지역 분류 준비가 완료되지 않은 경우 신규 등록이 일시적으로 제한되며, EMOTION-013과 503을 반환합니다.
+            같은 기기의 기존 requestId 재시도는 지역 자료 상태와 관계없이 최초 감정을 반환합니다.
 
             한 기기는 1초에 한 번만 등록할 수 있습니다. 초과하면 429와 Retry-After 헤더를 반환합니다.
             재시도할 때 같은 requestId를 보내면 감정이 중복 생성되지 않습니다.
@@ -91,7 +133,7 @@ public interface EmotionControllerApi {
                     headers = @Header(name = "Retry-After", description = "다시 시도하기까지 기다려야 하는 초입니다.",
                             schema = @Schema(type = "string", example = "1")),
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "503", description = "녹음 확인 기능을 사용할 수 없음")
+            @ApiResponse(responseCode = "503", description = "녹음 확인 기능을 사용할 수 없거나 서버의 지역 분류 준비가 완료되지 않음")
     })
     ResponseEntity<EmotionCreateResponse> save(@Valid EmotionCreateRequest request,
             @Parameter(hidden = true) UUID devicePublicId);

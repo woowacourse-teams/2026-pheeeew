@@ -111,6 +111,7 @@ Accepted (YYYY-MM-DD)
 | [0024](0024-filter-blocks-with-not-exists.md) | 차단 필터를 `NOT EXISTS` 로 | nullable 컬럼에서 `NOT IN` 은 행을 조용히 지워요 |
 | [0025](0025-check-sigh-expiration-on-detail-request.md) | 한숨의 조회 기간 만료를 상세 재요청 시 판정 | 목록은 이어서 조회하고, 만료된 상세 요청은 전용 코드로 소멸을 안내해요 |
 | [0026](0026-record-device-activity-asynchronously-with-local-cache.md) | 기기 활동 비동기 기록과 로컬 캐시 | 중복 저장 시도를 줄이고 재시작 시 미저장 활동의 유실 가능성을 받아들여요 |
+| [0027](0027-use-regions-for-emotion-map.md) | 넓은 지도의 서버 행정구역 집계 | 화면으로 지역을 선택하고 지역 전체 누적 개수·대표 감정을 반환해요. 운영 공개 전 경계·백필 검증이 필요해요 |
 
 ## AI 사용
 
