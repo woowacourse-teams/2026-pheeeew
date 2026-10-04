@@ -52,8 +52,15 @@ class GroupDetailViewModel(
             override fun onStateChanged(
                 status: GroupPressStatus,
                 pending: Map<EmotionKind, Long>,
+                canAcceptAnotherPress: Boolean,
             ) {
-                _uiState.update { it.copy(pressStatus = status, pendingEmotionPresses = pending) }
+                _uiState.update {
+                    it.copy(
+                        pressStatus = status,
+                        pendingEmotionPresses = pending,
+                        canAcceptEmotionPress = canAcceptAnotherPress,
+                    )
+                }
                 requestDeferredInitialLoad()
             }
 
@@ -159,6 +166,7 @@ class GroupDetailViewModel(
         }
         when (state.pressStatus) {
             is GroupPressStatus.Sending,
+            is GroupPressStatus.CoolingDown,
             is GroupPressStatus.Reconciling,
             -> {
                 return

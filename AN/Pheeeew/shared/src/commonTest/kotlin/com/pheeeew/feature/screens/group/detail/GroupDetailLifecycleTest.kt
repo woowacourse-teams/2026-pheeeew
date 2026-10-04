@@ -536,10 +536,11 @@ class GroupDetailLifecycleTest {
             runCurrent()
             assertEquals(2, posts)
             assertEquals(1, reads)
-            assertEquals(GroupPressStatus.Idle, second.uiState.value.pressStatus)
+            assertEquals(GroupPressStatus.CoolingDown(100L), second.uiState.value.pressStatus)
             advanceTimeBy(100L)
             runCurrent()
             assertEquals(2, reads)
+            assertEquals(GroupPressStatus.Idle, second.uiState.value.pressStatus)
             assertTrue(
                 second.uiState.value.pendingEmotionPresses
                     .isEmpty(),

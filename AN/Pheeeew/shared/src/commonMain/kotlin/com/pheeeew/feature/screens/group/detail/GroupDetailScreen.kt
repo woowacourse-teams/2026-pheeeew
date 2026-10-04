@@ -64,7 +64,9 @@ import pheeeew.shared.generated.resources.group_detail_more
 import pheeeew.shared.generated.resources.group_detail_not_found_body
 import pheeeew.shared.generated.resources.group_detail_not_found_title
 import pheeeew.shared.generated.resources.group_detail_press_blocked
+import pheeeew.shared.generated.resources.group_detail_press_cooldown
 import pheeeew.shared.generated.resources.group_detail_press_failed
+import pheeeew.shared.generated.resources.group_detail_press_queue_full
 import pheeeew.shared.generated.resources.group_detail_press_rate_limited
 import pheeeew.shared.generated.resources.group_detail_press_rate_limited_retry
 import pheeeew.shared.generated.resources.group_detail_return_home
@@ -181,6 +183,10 @@ fun GroupDetailScreen(
 
                     GroupDetailNoticeKind.PressBlockedWhilePending -> {
                         stringResource(Res.string.group_detail_press_blocked)
+                    }
+
+                    GroupDetailNoticeKind.PressQueueFull -> {
+                        stringResource(Res.string.group_detail_press_queue_full)
                     }
 
                     GroupDetailNoticeKind.PressRateLimited -> {

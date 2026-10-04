@@ -125,6 +125,7 @@ class GroupDetailViewModelTest {
                                 },
                                 errorReporter = { throw it },
                                 operationKeyAllocator = GroupOperationKeyAllocator("leave-guard-test"),
+                                requestPolicy = GroupDetailRequestPolicy(),
                             ),
                     )
                 runCurrent()
@@ -509,6 +510,7 @@ class GroupDetailViewModelTest {
                     leaveGroupAction = { LeaveGroupResult.Unavailable },
                     errorReporter = { throw it },
                     operationKeyAllocator = GroupOperationKeyAllocator("detail-test"),
+                    requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 300),
                 ),
         )
 }

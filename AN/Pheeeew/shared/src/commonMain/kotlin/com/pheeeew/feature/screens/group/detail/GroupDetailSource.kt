@@ -33,12 +33,19 @@ fun interface GroupDetailErrorReporter {
 
 data class GroupDetailRequestPolicy(
     val timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS,
+    /** 수용 후 서버 결과가 아직 확정되지 않은 입력의 상한입니다. */
+    val maxOutstandingPresses: Int = DEFAULT_MAX_OUTSTANDING_PRESSES,
+    val defaultRateLimitDelayMillis: Long = DEFAULT_RATE_LIMIT_DELAY_MILLIS,
 ) {
     init {
         require(timeoutMillis > 0L) { "timeoutMillis는 양수여야 합니다." }
+        require(maxOutstandingPresses > 0) { "maxOutstandingPresses는 양수여야 합니다." }
+        require(defaultRateLimitDelayMillis > 0L) { "defaultRateLimitDelayMillis는 양수여야 합니다." }
     }
 
     private companion object {
         const val DEFAULT_TIMEOUT_MILLIS = 15_000L
+        const val DEFAULT_MAX_OUTSTANDING_PRESSES = 300
+        const val DEFAULT_RATE_LIMIT_DELAY_MILLIS = 1_000L
     }
 }

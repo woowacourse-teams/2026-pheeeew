@@ -3,12 +3,15 @@ package com.pheeeew.feature.screens.group.detail
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
+import com.pheeeew.feature.screens.group.detail.model.EmotionCountUiModel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationKind
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -32,7 +35,7 @@ class GroupEmotionPressCoordinatorTest {
             val coordinator =
                 coordinator(
                     press = { _, _ -> responses[calls++].await() },
-                    onState = { _, counts -> pending = counts },
+                    onState = { _, counts, _ -> pending = counts },
                     onNotice = { kind, _ -> notices += kind },
                 )
             val keys = List(3) { assertNotNull(coordinator.accept(emotion)) }
@@ -93,9 +96,169 @@ class GroupEmotionPressCoordinatorTest {
             assertEquals(2, calls)
         }
 
+    @Test
+    fun `unknown batch remains pending through read reconciliation and is not replayed`() =
+        runTest {
+            var calls = 0
+            var readKey: GroupOperationKey? = null
+            var pending = emptyMap<EmotionKind, Long>()
+            val sent = mutableListOf<EmotionKind>()
+            val coordinator =
+                coordinator(
+                    press = { _, pressedEmotion ->
+                        calls++
+                        sent += pressedEmotion
+                        if (calls == 1) {
+                            PressGroupEmotionResult.OutcomeUnknown
+                        } else {
+                            PressGroupEmotionResult.Pressed(snapshot(calls.toLong()))
+                        }
+                    },
+                    requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 10),
+                    onState = { _, counts, _ -> pending = counts },
+                    onReconcile = { readKey = it },
+                )
+            val firstKey = assertNotNull(coordinator.accept(emotion))
+            assertNotNull(coordinator.accept(EmotionKind.entries[1]))
+            assertNotNull(coordinator.accept(emotion))
+            runCurrent()
+
+            assertEquals(1, calls)
+            assertEquals(firstKey, readKey)
+            assertEquals(3L, pending.values.sum())
+            assertIs<GroupPressStatus.Reconciling>(coordinator.status)
+
+            coordinator.onReconciliationResult(firstKey, succeeded = true)
+            coordinator.drainAfterReconciliation()
+            runCurrent()
+
+            assertEquals(listOf(emotion, EmotionKind.entries[1], emotion), sent)
+            assertEquals(3, calls)
+            assertEquals(emptyMap(), pending)
+        }
+
+    @Test
+    fun `accepted taps are sent as individual requests in FIFO order`() =
+        runTest {
+            val requests = mutableListOf<EmotionKind>()
+            val coordinator =
+                coordinator(
+                    press = { _, pressedEmotion ->
+                        requests += pressedEmotion
+                        PressGroupEmotionResult.Pressed(snapshot(requests.size.toLong()))
+                    },
+                    requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 300),
+                )
+            val accepted = List(8) { EmotionKind.entries[it % 2] }
+            accepted.forEach { assertNotNull(coordinator.accept(it)) }
+            runCurrent()
+
+            assertEquals(accepted, requests)
+            assertEquals(GroupPressStatus.Idle, coordinator.status)
+        }
+
+    @Test
+    fun `single state contract sends one request for each accepted tap`() =
+        runTest {
+            val requests = mutableListOf<EmotionKind>()
+            val coordinator =
+                coordinator(
+                    press = { _, pressedEmotion ->
+                        requests += pressedEmotion
+                        PressGroupEmotionResult.Pressed(snapshot(requests.size.toLong()))
+                    },
+                    requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 5),
+                )
+            val accepted = List(5) { emotion }
+            accepted.forEach { assertNotNull(coordinator.accept(it)) }
+            runCurrent()
+
+            assertEquals(accepted, requests)
+        }
+
+    @Test
+    fun `queue cap blocks only over capacity presses and restores capacity as requests finish`() =
+        runTest {
+            val firstResponse = CompletableDeferred<PressGroupEmotionResult>()
+            val notices = mutableListOf<GroupDetailNoticeKind>()
+            var canAccept = true
+            val coordinator =
+                coordinator(
+                    press = { _, _ -> firstResponse.await() },
+                    requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 3),
+                    onState = { _, _, capacity -> canAccept = capacity },
+                    onNotice = { kind, _ -> notices += kind },
+                )
+            repeat(3) { assertNotNull(coordinator.accept(emotion)) }
+            assertNull(coordinator.accept(emotion))
+            assertEquals(false, canAccept)
+            assertEquals(listOf(GroupDetailNoticeKind.PressQueueFull), notices)
+
+            runCurrent()
+            firstResponse.complete(PressGroupEmotionResult.Pressed(snapshot(1)))
+            runCurrent()
+
+            assertEquals(true, canAccept)
+            assertNotNull(coordinator.accept(emotion))
+        }
+
+    @Test
+    fun `rate limits use retry after or fallback and keep cooldown taps queued`() =
+        runTest {
+            var calls = 0
+            var pending = emptyMap<EmotionKind, Long>()
+            val coordinator =
+                coordinator(
+                    press = { _, _ ->
+                        when (++calls) {
+                            1 -> PressGroupEmotionResult.RateLimited(retryAfterMillis = null)
+                            2 -> PressGroupEmotionResult.RateLimited(retryAfterMillis = 500)
+                            else -> PressGroupEmotionResult.Pressed(snapshot(calls.toLong()))
+                        }
+                    },
+                    requestPolicy =
+                        GroupDetailRequestPolicy(
+                            maxOutstandingPresses = 10,
+                            defaultRateLimitDelayMillis = 200,
+                        ),
+                    onState = { _, counts, _ -> pending = counts },
+                )
+            assertNotNull(coordinator.accept(emotion))
+            runCurrent()
+            assertIs<GroupPressStatus.CoolingDown>(coordinator.status)
+            assertNotNull(coordinator.accept(EmotionKind.entries[1]))
+            advanceTimeBy(199)
+            runCurrent()
+            assertEquals(1, calls)
+
+            advanceTimeBy(1)
+            runCurrent()
+            assertEquals(2, calls)
+            assertNotNull(coordinator.accept(EmotionKind.entries[2]))
+            advanceTimeBy(499)
+            runCurrent()
+            assertEquals(2, calls)
+            advanceTimeBy(1)
+            runCurrent()
+            assertEquals(3, calls)
+            advanceUntilIdle()
+            assertEquals(GroupPressStatus.Idle, coordinator.status)
+            assertEquals(emptyMap(), pending)
+        }
+
+    private fun snapshot(total: Long) =
+        GroupPressSnapshotUiModel(
+            emotionCounts = EmotionKind.entries.map { EmotionCountUiModel(it, 0L) },
+            total = total,
+        )
+
     private fun kotlinx.coroutines.test.TestScope.coordinator(
         press: PressGroupEmotionAction,
-        onState: (GroupPressStatus, Map<EmotionKind, Long>) -> Unit = { _, _ -> },
+        requestPolicy: GroupDetailRequestPolicy =
+            GroupDetailRequestPolicy(
+                maxOutstandingPresses = 300,
+            ),
+        onState: (GroupPressStatus, Map<EmotionKind, Long>, Boolean) -> Unit = { _, _, _ -> },
         onNotice: (GroupDetailNoticeKind, Long?) -> Unit = { _, _ -> },
         onReconcile: (GroupOperationKey) -> Unit = {},
     ): GroupEmotionPressCoordinator {
@@ -106,6 +269,7 @@ class GroupEmotionPressCoordinatorTest {
                 leaveGroupAction = { LeaveGroupResult.Unavailable },
                 errorReporter = { throw it },
                 operationKeyAllocator = GroupOperationKeyAllocator("coordinator-test"),
+                requestPolicy = requestPolicy,
             )
         return GroupEmotionPressCoordinator(
             groupId = detail.group.id,

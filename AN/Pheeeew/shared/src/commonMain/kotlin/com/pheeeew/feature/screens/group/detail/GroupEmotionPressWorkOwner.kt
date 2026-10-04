@@ -64,6 +64,7 @@ internal class GroupEmotionPressSession(
         fun onStateChanged(
             status: GroupPressStatus,
             pending: Map<EmotionKind, Long>,
+            canAcceptAnotherPress: Boolean,
         )
 
         fun onBeforeSend()
@@ -95,6 +96,7 @@ internal class GroupEmotionPressSession(
         )
     private var reconciliationJob: Job? = null
     private var pendingCounts = emptyMap<EmotionKind, Long>()
+    private var canAcceptAnotherPress = true
     var latestDetail: GroupDetailUiModel? = null
         private set
     var accessLost = false
@@ -105,9 +107,10 @@ internal class GroupEmotionPressSession(
             dependencies = dependencies,
             scope = scope,
             telemetry = telemetry,
-            onStateChanged = { status, pending ->
+            onStateChanged = { status, pending, canAccept ->
                 pendingCounts = pending
-                observers.toList().forEach { it.onStateChanged(status, pending) }
+                canAcceptAnotherPress = canAccept
+                observers.toList().forEach { it.onStateChanged(status, pending, canAccept) }
                 onPossiblyFinished(this)
             },
             onBeforeSend = { observers.toList().forEach { it.onBeforeSend() } },
@@ -138,7 +141,7 @@ internal class GroupEmotionPressSession(
 
     fun attach(observer: Observer) {
         observers += observer
-        observer.onStateChanged(status, pendingCounts)
+        observer.onStateChanged(status, pendingCounts, canAcceptAnotherPress)
     }
 
     fun detach(observer: Observer) {
@@ -181,7 +184,7 @@ internal class GroupEmotionPressSession(
     }
 
     private fun publishSettledState() {
-        observers.toList().forEach { it.onStateChanged(status, pendingCounts) }
+        observers.toList().forEach { it.onStateChanged(status, pendingCounts, canAcceptAnotherPress) }
         onPossiblyFinished(this)
     }
 

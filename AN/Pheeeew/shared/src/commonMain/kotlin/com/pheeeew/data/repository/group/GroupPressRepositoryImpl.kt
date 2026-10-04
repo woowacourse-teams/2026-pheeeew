@@ -21,7 +21,7 @@ class GroupPressRepositoryImpl(
         groupId: GroupId,
         state: GroupPressState,
     ): GroupPressResult =
-        when (val result = api.press(groupId.value, state.name)) {
+        when (val result = api.press(groupId.value, state)) {
             is ApiResult.Success -> {
                 try {
                     GroupPressResult.Pressed(GroupPressCountResponseMapper.toDomain(result.value))

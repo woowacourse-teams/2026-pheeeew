@@ -13,6 +13,7 @@ data class GroupDetailUiState(
     val groupName: String? = null,
     val pressStatus: GroupPressStatus = GroupPressStatus.Idle,
     val pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
+    val canAcceptEmotionPress: Boolean = true,
     val membershipEvent: GroupDetailMembershipEvent? = null,
 ) {
     val detail: GroupDetailUiModel?
@@ -27,7 +28,12 @@ data class GroupDetailUiState(
     val canTapEmotion: Boolean
         get() =
             detail != null && overlay == GroupDetailOverlay.None &&
-                (pressStatus == GroupPressStatus.Idle || pressStatus is GroupPressStatus.Sending)
+                canAcceptEmotionPress &&
+                (
+                    pressStatus == GroupPressStatus.Idle ||
+                        pressStatus is GroupPressStatus.Sending ||
+                        pressStatus is GroupPressStatus.CoolingDown
+                )
 
     init {
         require(content is GroupDetailContent.Ready || refreshStatus == GroupDetailRefreshStatus.Idle) {
@@ -66,6 +72,10 @@ sealed interface GroupPressStatus {
     data class Sending(
         val operationKey: GroupOperationKey,
         val emotion: EmotionKind,
+    ) : GroupPressStatus
+
+    data class CoolingDown(
+        val retryAfterMillis: Long,
     ) : GroupPressStatus
 
     data class Reconciling(
@@ -124,6 +134,7 @@ enum class GroupDetailNoticeKind {
     PressUnavailable,
     PressRateLimited,
     PressBlockedWhilePending,
+    PressQueueFull,
 }
 
 data class GroupDetailMembershipEvent(
