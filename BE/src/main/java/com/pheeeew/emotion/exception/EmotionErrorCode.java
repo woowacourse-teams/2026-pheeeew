@@ -20,8 +20,8 @@ public enum EmotionErrorCode implements ErrorCode {
     EMOTION_AUDIO_PLAYBACK_UNAVAILABLE("EMOTION-009", "녹음 재생 주소를 발급할 수 없습니다.", HttpStatus.SERVICE_UNAVAILABLE),
     EMOTION_AUDIO_REQUIRED("EMOTION-010", "유지할 녹음이 없습니다. 녹음을 먼저 업로드해 주세요.", HttpStatus.BAD_REQUEST),
     EMOTION_NOT_FOUND("EMOTION-011", "감정을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
-    EMOTION_CREATE_RATE_LIMITED("EMOTION-012", "감정은 1초에 한 번만 남길 수 있습니다.",
-            HttpStatus.TOO_MANY_REQUESTS);
+    EMOTION_CREATE_RATE_LIMITED("EMOTION-012", "감정은 1초에 한 번만 남길 수 있습니다.", HttpStatus.TOO_MANY_REQUESTS),
+    EMOTION_REGION_DATA_UNAVAILABLE("EMOTION-013", "지역 분류 자료를 사용할 수 없습니다.", HttpStatus.SERVICE_UNAVAILABLE);
 
     private final String code;
     private final String message;
