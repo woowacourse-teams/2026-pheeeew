@@ -86,6 +86,7 @@
 | `com.pheeeew.common.logging.RequestLogWriter` | `http_request_failed`, `http_request_slow` | 기존 HTTP 로그 정책 유지 |
 | `com.pheeeew.activity.infra.DeviceActivityRecorder` | `device_activity_record_failed` | `ERROR`만 허용 |
 | `com.pheeeew.activity.infra.DeviceActivityAggregationScheduler` | `device_activity_aggregation_failed` | `ERROR`만 허용 |
+| `com.pheeeew.common.logging.ScheduledTaskErrorHandler` | `scheduled_task_failed` | `ERROR`만 허용 |
 
 활성 기기는 앱에서 기본 5분 간격으로 집계하고 Alloy는 마지막 성공 결과를 60초마다 읽어요. 초기 집계 전이나 KST 날짜가 바뀐 뒤 오늘 집계가 성공하기 전에는 활성 기기 수가 `NaN`이므로 0명으로 해석하지 않아요. 집계 시각 지표는 epoch 초 단위이며 갱신 지연을 판단할 때 사용해요.
 
