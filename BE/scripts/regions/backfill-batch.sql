@@ -11,6 +11,10 @@ INSERT INTO emotion_region_backfill_input VALUES (:'batch_size'::INTEGER, :'uppe
 
 DO $$
 BEGIN
+    -- (596, 1)은 같은 DB의 감정 행정동 백필 배치·완료 검증에 예약한 잠금 키입니다.
+    IF NOT pg_try_advisory_xact_lock(596, 1) THEN
+        RAISE EXCEPTION '다른 감정 행정동 백필 배치가 실행 중입니다.';
+    END IF;
     IF NOT EXISTS (
         SELECT 1 FROM public.region_datasets
         WHERE dataset_key = 'SGIS_2025_2Q' AND boundaries_verified_at IS NOT NULL
