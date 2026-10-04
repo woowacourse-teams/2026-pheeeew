@@ -1,7 +1,7 @@
 package com.pheeeew.feature.screens.map.renderer
 
-import android.graphics.Bitmap
 import android.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import com.google.gson.JsonObject
 import com.pheeeew.feature.screens.map.EmotionPinSymbolImage
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
@@ -67,7 +67,6 @@ internal class EmotionPinSymbolLayer {
         pins: List<EmotionPinUiModel>,
         images: List<EmotionPinSymbolImage>,
         visible: Boolean,
-        densityDpi: Int,
         monitoringLoadId: String?,
         focusedId: Long?,
     ) {
@@ -75,7 +74,8 @@ internal class EmotionPinSymbolLayer {
         val requiredImageKeys = images.mapTo(mutableSetOf(), EmotionPinSymbolImage::key)
         images.forEach { image ->
             if (style.getImage(image.key) == null) {
-                style.addImage(image.key, image.toAndroidBitmap(densityDpi))
+                val bitmap = image.androidImageBitmap?.asAndroidBitmap() ?: return@forEach
+                style.addImage(image.key, bitmap)
             }
         }
         // Drop obsolete raster images so viewport changes cannot grow the style indefinitely.
@@ -141,22 +141,6 @@ internal class EmotionPinSymbolLayer {
         layer.setProperties(iconSize(size))
         lastPressedId = pressedId
         lastPressedScale = scale
-    }
-
-    private fun EmotionPinSymbolImage.toAndroidBitmap(densityDpi: Int): Bitmap {
-        val pixels = IntArray(width * height)
-        var byteIndex = 0
-        pixels.indices.forEach { pixelIndex ->
-            val red = rgba[byteIndex++].toInt() and 0xff
-            val green = rgba[byteIndex++].toInt() and 0xff
-            val blue = rgba[byteIndex++].toInt() and 0xff
-            val alpha = rgba[byteIndex++].toInt() and 0xff
-            pixels[pixelIndex] = Color.argb(alpha, red, green, blue)
-        }
-        return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
-            setPixels(pixels, 0, width, 0, 0, width, height)
-            density = densityDpi
-        }
     }
 
     private companion object {

@@ -17,7 +17,6 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.drawText
@@ -27,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.pheeeew.feature.component.stamp.StampShapeCatalog
 import com.pheeeew.feature.component.stamp.balanceTwoLines
@@ -35,6 +35,7 @@ import com.pheeeew.feature.component.stamp.stampLineHeight
 import com.pheeeew.feature.component.stamp.toStampTextLayout
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.roundToInt
 import androidx.compose.foundation.Canvas as CanvasComposable
@@ -47,8 +48,10 @@ data class EmotionPinSymbolImage(
     val key: String,
     val width: Int,
     val height: Int,
-    /** Row-major, unpremultiplied RGBA bytes. */
+    /** Row-major, unpremultiplied RGBA bytes. Empty when Android uses [androidImageBitmap]. */
     val rgba: ByteArray,
+    val hasVisiblePixels: Boolean,
+    val androidImageBitmap: ImageBitmap? = null,
 )
 
 @Composable
@@ -95,88 +98,103 @@ private fun RasterizePinSymbol(
         baseTextStyle,
     ) {
         repeat(10) {
-            val bitmap = ImageBitmap(pixels, pixels)
-            CanvasDrawScope().draw(density, layoutDirection, Canvas(bitmap), Size(pixels.toFloat(), pixels.toFloat())) {
-                if (stamp == null || shape == null || backdrop == null || fill == null) {
-                    val intrinsic = emotionPainter.intrinsicSize
-                    val ratio =
-                        if (intrinsic.width.isFinite() &&
-                            intrinsic.height > 0
-                        ) {
-                            intrinsic.width / intrinsic.height
+            val image =
+                withContext(pinSymbolRasterDispatcher()) {
+                    val bitmap = ImageBitmap(pixels, pixels)
+                    CanvasDrawScope().draw(
+                        density,
+                        layoutDirection,
+                        Canvas(bitmap),
+                        Size(pixels.toFloat(), pixels.toFloat()),
+                    ) {
+                        if (stamp == null || shape == null || backdrop == null || fill == null) {
+                            val intrinsic = emotionPainter.intrinsicSize
+                            val ratio =
+                                if (intrinsic.width.isFinite() &&
+                                    intrinsic.height > 0
+                                ) {
+                                    intrinsic.width / intrinsic.height
+                                } else {
+                                    1f
+                                }
+                            val fitted =
+                                if (ratio >=
+                                    1f
+                                ) {
+                                    Size(size.width, size.height / ratio)
+                                } else {
+                                    Size(size.width * ratio, size.height)
+                                }
+                            translate((size.width - fitted.width) / 2, (size.height - fitted.height) / 2) {
+                                with(emotionPainter) { draw(fitted) }
+                            }
                         } else {
-                            1f
+                            val fitted =
+                                if (shape.aspectRatio >= 1f) {
+                                    Size(size.width, size.height / shape.aspectRatio)
+                                } else {
+                                    Size(size.width * shape.aspectRatio, size.height)
+                                }
+                            translate((size.width - fitted.width) / 2, (size.height - fitted.height) / 2) {
+                                with(backdrop) { draw(fitted) }
+                                with(fill) {
+                                    draw(
+                                        fitted,
+                                        colorFilter = ColorFilter.tint(Color(stamp.fillArgb.toInt())),
+                                    )
+                                }
+                                overlay?.let { with(it) { draw(fitted) } }
+                                val area = shape.textArea
+                                val layout = stamp.label.toStampTextLayout()
+                                val fontSize = stampFontSize(layout, EMOTION_PIN_SIZE, fontScale = density.fontScale)
+                                val textStyle =
+                                    baseTextStyle.copy(
+                                        color = Color(stamp.textArgb.toInt()),
+                                        fontSize = fontSize,
+                                        lineHeight = stampLineHeight(fontSize),
+                                        fontWeight = FontWeight.Bold,
+                                        textAlign = TextAlign.Center,
+                                    )
+                                val textWidth = (fitted.width * area.widthFraction).roundToInt()
+                                val maxLines = layout.characterCount.coerceAtLeast(1)
+                                val measuredLines =
+                                    textMeasurer
+                                        .measure(
+                                            layout.text,
+                                            style = textStyle,
+                                            overflow = TextOverflow.Clip,
+                                            maxLines = maxLines,
+                                            constraints = Constraints(minWidth = textWidth, maxWidth = textWidth),
+                                        ).lineCount
+                                val text =
+                                    textMeasurer.measure(
+                                        layout.balanceTwoLines(measuredLines),
+                                        style = textStyle,
+                                        overflow = TextOverflow.Clip,
+                                        maxLines = maxLines,
+                                        constraints =
+                                            Constraints(
+                                                minWidth = textWidth,
+                                                maxWidth = textWidth,
+                                                maxHeight = (fitted.height * area.heightFraction).roundToInt(),
+                                            ),
+                                    )
+                                drawText(
+                                    text,
+                                    topLeft =
+                                        Offset(
+                                            fitted.width * (area.centerX - area.widthFraction / 2),
+                                            fitted.height * area.centerY - text.size.height / 2f,
+                                        ),
+                                )
+                            }
                         }
-                    val fitted =
-                        if (ratio >=
-                            1f
-                        ) {
-                            Size(size.width, size.height / ratio)
-                        } else {
-                            Size(size.width * ratio, size.height)
-                        }
-                    translate((size.width - fitted.width) / 2, (size.height - fitted.height) / 2) {
-                        with(emotionPainter) { draw(fitted) }
                     }
-                } else {
-                    val fitted =
-                        if (shape.aspectRatio >= 1f) {
-                            Size(size.width, size.height / shape.aspectRatio)
-                        } else {
-                            Size(size.width * shape.aspectRatio, size.height)
-                        }
-                    translate((size.width - fitted.width) / 2, (size.height - fitted.height) / 2) {
-                        with(backdrop) { draw(fitted) }
-                        with(fill) { draw(fitted, colorFilter = ColorFilter.tint(Color(stamp.fillArgb.toInt()))) }
-                        overlay?.let { with(it) { draw(fitted) } }
-                        val area = shape.textArea
-                        val layout = stamp.label.toStampTextLayout()
-                        val fontSize = stampFontSize(layout, EMOTION_PIN_SIZE, fontScale = density.fontScale)
-                        val textStyle =
-                            baseTextStyle.copy(
-                                color = Color(stamp.textArgb.toInt()),
-                                fontSize = fontSize,
-                                lineHeight = stampLineHeight(fontSize),
-                                fontWeight = FontWeight.Bold,
-                                textAlign = TextAlign.Center,
-                            )
-                        val textWidth = (fitted.width * area.widthFraction).roundToInt()
-                        val maxLines = layout.characterCount.coerceAtLeast(1)
-                        val measuredLines =
-                            textMeasurer
-                                .measure(
-                                    layout.text,
-                                    style = textStyle,
-                                    overflow = TextOverflow.Clip,
-                                    maxLines = maxLines,
-                                    constraints = Constraints(minWidth = textWidth, maxWidth = textWidth),
-                                ).lineCount
-                        val text =
-                            textMeasurer.measure(
-                                layout.balanceTwoLines(measuredLines),
-                                style = textStyle,
-                                overflow = TextOverflow.Clip,
-                                maxLines = maxLines,
-                                constraints =
-                                    Constraints(
-                                        minWidth = textWidth,
-                                        maxWidth = textWidth,
-                                        maxHeight = (fitted.height * area.heightFraction).roundToInt(),
-                                    ),
-                            )
-                        drawText(
-                            text,
-                            topLeft =
-                                Offset(
-                                    fitted.width * (area.centerX - area.widthFraction / 2),
-                                    fitted.height * area.centerY - text.size.height / 2f,
-                                ),
-                        )
-                    }
+                    bitmap
+                        .toEmotionPinSymbolImage(pin.symbolImageKey(), (density.density * 160).roundToInt())
+                        .takeIf { it.hasVisiblePixels }
                 }
-            }
-            val image = bitmap.toSymbolImage(pin.symbolImageKey())
-            if ((3 until image.rgba.size step 4).any { image.rgba[it].toInt() and 0xff > 0 }) {
+            if (image != null) {
                 onRasterized(image)
                 return@LaunchedEffect
             }
@@ -184,27 +202,6 @@ private fun RasterizePinSymbol(
             withFrameNanos { }
         }
     }
-}
-
-private fun ImageBitmap.toSymbolImage(key: String): EmotionPinSymbolImage {
-    val pixelMap = toPixelMap()
-    val rgba = ByteArray(width * height * 4)
-    var index = 0
-    for (y in 0 until height) {
-        for (x in 0 until width) {
-            val pixel = pixelMap[x, y]
-            rgba[index++] = (pixel.red * 255).roundToInt().toByte()
-            rgba[index++] = (pixel.green * 255).roundToInt().toByte()
-            rgba[index++] = (pixel.blue * 255).roundToInt().toByte()
-            rgba[index++] = (pixel.alpha * 255).roundToInt().toByte()
-        }
-    }
-    return EmotionPinSymbolImage(
-        key = key,
-        width = width,
-        height = height,
-        rgba = rgba,
-    )
 }
 
 internal fun EmotionPinUiModel.symbolImageKey(): String =
@@ -247,24 +244,32 @@ private fun EmotionPinSymbolImagePreview() {
         Modifier.size(80.dp),
     ) {
         if (image != null) {
-            val pixelWidth = size.width / image.width
-            val pixelHeight = size.height / image.height
-            for (y in 0 until image.height) {
-                for (x in 0 until image.width) {
-                    val index = (y * image.width + x) * 4
-                    val alpha = image.rgba[index + 3].toInt() and 0xff
-                    if (alpha != 0) {
-                        drawRect(
-                            color =
-                                Color(
-                                    red = (image.rgba[index].toInt() and 0xff) / 255f,
-                                    green = (image.rgba[index + 1].toInt() and 0xff) / 255f,
-                                    blue = (image.rgba[index + 2].toInt() and 0xff) / 255f,
-                                    alpha = alpha / 255f,
-                                ),
-                            topLeft = Offset(x * pixelWidth, y * pixelHeight),
-                            size = Size(pixelWidth, pixelHeight),
-                        )
+            val platformBitmap = image.androidImageBitmap
+            if (platformBitmap != null) {
+                drawImage(
+                    platformBitmap,
+                    dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
+                )
+            } else {
+                val pixelWidth = size.width / image.width
+                val pixelHeight = size.height / image.height
+                for (y in 0 until image.height) {
+                    for (x in 0 until image.width) {
+                        val index = (y * image.width + x) * 4
+                        val alpha = image.rgba[index + 3].toInt() and 0xff
+                        if (alpha != 0) {
+                            drawRect(
+                                color =
+                                    Color(
+                                        red = (image.rgba[index].toInt() and 0xff) / 255f,
+                                        green = (image.rgba[index + 1].toInt() and 0xff) / 255f,
+                                        blue = (image.rgba[index + 2].toInt() and 0xff) / 255f,
+                                        alpha = alpha / 255f,
+                                    ),
+                                topLeft = Offset(x * pixelWidth, y * pixelHeight),
+                                size = Size(pixelWidth, pixelHeight),
+                            )
+                        }
                     }
                 }
             }

@@ -485,7 +485,6 @@ private class AndroidFoundationMapHost(
                 pins = state.emotionPins,
                 images = state.emotionPinSymbolImages,
                 visible = true,
-                densityDpi = mapView.resources.displayMetrics.densityDpi,
                 monitoringLoadId = state.emotionContentLoad?.loadId,
                 focusedId = state.focusedEmotionId,
             )
