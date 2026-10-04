@@ -67,7 +67,8 @@ private final class GroupDetailProfileMetrics: NSObject, ObservableObject {
     private var finishObserver: NSObjectProtocol?
     private var displayLink: CADisplayLink?
     private var previousTimestamp: CFTimeInterval?
-    private var frameIntervalsMillis: [Double] = []
+    private var previousExpectedFrameMillis: Double?
+    private var frameSamples: [FrameTimingSample] = []
     private var residentSamples: [UInt64] = []
     private var residentAtStart: UInt64?
     private var sampling = false
@@ -101,9 +102,10 @@ private final class GroupDetailProfileMetrics: NSObject, ObservableObject {
     }
 
     private func start() {
-        frameIntervalsMillis.removeAll(keepingCapacity: true)
+        frameSamples.removeAll(keepingCapacity: true)
         residentSamples.removeAll(keepingCapacity: true)
         previousTimestamp = nil
+        previousExpectedFrameMillis = nil
         residentAtStart = residentBytes()
         sampling = true
         displayLink?.invalidate()
@@ -119,7 +121,7 @@ private final class GroupDetailProfileMetrics: NSObject, ObservableObject {
         displayLink = nil
         let endResident = residentBytes()
         if let endResident { residentSamples.append(endResident) }
-        let sortedFrames = frameIntervalsMillis.sorted()
+        let sortedFrames = frameSamples.map(\.intervalMillis).sorted()
         let peakResident = residentSamples.max()
         let deltaMegabytes: Double? =
             if let residentAtStart, let peakResident {
@@ -129,8 +131,7 @@ private final class GroupDetailProfileMetrics: NSObject, ObservableObject {
             }
         let p50 = percentile(sortedFrames, 0.50)
         let p95 = percentile(sortedFrames, 0.95)
-        let expectedFrameMillis = 1000.0 / Double(UIScreen.main.maximumFramesPerSecond)
-        let hitches = sortedFrames.filter { $0 > expectedFrameMillis * 1.5 }.count
+        let hitches = frameSamples.filter { $0.intervalMillis > $0.expectedIntervalMillis * 1.5 }.count
         report = String(
             format: "iOS frames n=%d interval p50=%.2f p95=%.2f ms hitches=%d RSS peak Δ=%@ MB",
             sortedFrames.count,
@@ -145,12 +146,25 @@ private final class GroupDetailProfileMetrics: NSObject, ObservableObject {
     @objc private func sampleFrame(_ link: CADisplayLink) {
         guard sampling else { return }
         if let previousTimestamp {
-            frameIntervalsMillis.append((link.timestamp - previousTimestamp) * 1000.0)
+            if let previousExpectedFrameMillis {
+                frameSamples.append(
+                    FrameTimingSample(
+                        intervalMillis: (link.timestamp - previousTimestamp) * 1000.0,
+                        expectedIntervalMillis: previousExpectedFrameMillis
+                    )
+                )
+            }
         }
         previousTimestamp = link.timestamp
-        if frameIntervalsMillis.count.isMultiple(of: 30), let resident = residentBytes() {
+        previousExpectedFrameMillis = (link.targetTimestamp - link.timestamp) * 1000.0
+        if frameSamples.count.isMultiple(of: 30), let resident = residentBytes() {
             residentSamples.append(resident)
         }
+    }
+
+    private struct FrameTimingSample {
+        let intervalMillis: Double
+        let expectedIntervalMillis: Double
     }
 
     private func residentBytes() -> UInt64? {

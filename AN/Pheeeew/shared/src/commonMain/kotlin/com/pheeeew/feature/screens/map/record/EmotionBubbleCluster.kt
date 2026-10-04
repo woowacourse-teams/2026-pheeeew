@@ -58,8 +58,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.emotion_detail_close
 import pheeeew.shared.generated.resources.ic_close
+import pheeeew.shared.generated.resources.record_emotion_choose
 import kotlin.time.TimeSource
 
 private const val BUBBLE_PRESS_MILLIS = 65
@@ -211,7 +214,7 @@ internal fun EmotionBubbleCluster(
             if (closeProgress > 0f) {
                 Icon(
                     painterResource(Res.drawable.ic_close),
-                    contentDescription = "닫기",
+                    contentDescription = stringResource(Res.string.emotion_detail_close),
                     modifier =
                         Modifier
                             .size(26.dp)
@@ -245,6 +248,7 @@ private fun EmotionBubble(
     isBubblePressed: Boolean,
     onEmotionClick: (EmotionTypeUiModel) -> Unit,
 ) {
+    val emotionLabel = stringResource(emotion.label)
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val isHovered by interactionSource.collectIsHoveredAsState()
@@ -376,7 +380,7 @@ private fun EmotionBubble(
                                 interactionSource = interactionSource,
                                 indication = null,
                                 role = Role.Button,
-                                onClickLabel = "${emotion.label} 선택",
+                                onClickLabel = stringResource(Res.string.record_emotion_choose, emotionLabel),
                             ) { onEmotionClick(emotion) }
                         } else {
                             Modifier
@@ -385,7 +389,7 @@ private fun EmotionBubble(
         )
         if (labelAlpha > 0f) {
             Text(
-                text = emotion.label,
+                text = emotionLabel,
                 color = Color.Black,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,

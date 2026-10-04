@@ -38,7 +38,6 @@ fun GroupDetailProfileViewController() =
             }
         val pendingTapMarks = remember { mutableListOf<TimeMark>() }
         val renderLatencyMicros = remember { mutableListOf<Long>() }
-        val frameIntervalsNanos = remember { mutableListOf<Long>() }
         var acceptedPresses by remember { mutableIntStateOf(0) }
 
         val onEmotionTap: (EmotionKind) -> Boolean = { emotion ->
@@ -68,20 +67,13 @@ fun GroupDetailProfileViewController() =
                 aName = PROFILE_STARTED_NOTIFICATION,
                 `object` = null,
             )
-            var previousFrameNanos: Long? = null
             repeat(PROFILE_TAP_COUNT) {
                 onEmotionTap(EmotionKind.Angry)
-                val frameNanos =
-                    androidx.compose.runtime.withFrameNanos { it }
-                previousFrameNanos?.let { previous -> frameIntervalsNanos += frameNanos - previous }
-                previousFrameNanos = frameNanos
                 delay(PROFILE_TAP_INTERVAL_MILLIS)
             }
             androidx.compose.runtime.withFrameNanos { }
             println(
                 "IOS_GROUP_DETAIL_PROFILE taps=$acceptedPresses " +
-                    "frame_interval_p50_ms=${frameIntervalsNanos.percentileMillis(50)} " +
-                    "frame_interval_p95_ms=${frameIntervalsNanos.percentileMillis(95)} " +
                     "state_to_compose_p50_ms=${renderLatencyMicros.percentileMillisFromMicros(50)} " +
                     "state_to_compose_p95_ms=${renderLatencyMicros.percentileMillisFromMicros(95)}",
             )
@@ -115,13 +107,6 @@ fun GroupDetailProfileViewController() =
         }
     }
 
-private fun List<Long>.percentileMillis(percentile: Int): Double {
-    if (isEmpty()) return 0.0
-    val sorted = sorted()
-    val index = (((percentile.coerceIn(0, 100) / 100.0) * (sorted.size - 1)).toInt()).coerceIn(sorted.indices)
-    return sorted[index] / NANOS_PER_MILLI.toDouble()
-}
-
 private fun List<Long>.percentileMillisFromMicros(percentile: Int): Double {
     if (isEmpty()) return 0.0
     val sorted = sorted()
@@ -135,5 +120,4 @@ private const val INITIAL_TODAY_TOTAL = 1_238L
 private const val PROFILE_WARMUP_MILLIS = 1_500L
 private const val PROFILE_TAP_COUNT = 200
 private const val PROFILE_TAP_INTERVAL_MILLIS = 8L
-private const val NANOS_PER_MILLI = 1_000_000L
 private const val MICROS_PER_MILLI = 1_000L

@@ -102,24 +102,19 @@ class GroupEmotionPressCoordinatorTest {
             var calls = 0
             var readKey: GroupOperationKey? = null
             var pending = emptyMap<EmotionKind, Long>()
-            val sent = mutableListOf<Int>()
+            val sent = mutableListOf<EmotionKind>()
             val coordinator =
                 coordinator(
-                    press = { _, increments ->
+                    press = { _, pressedEmotion ->
                         calls++
-                        sent += increments.sumOf { it.count }
+                        sent += pressedEmotion
                         if (calls == 1) {
                             PressGroupEmotionResult.OutcomeUnknown
                         } else {
                             PressGroupEmotionResult.Pressed(snapshot(calls.toLong()))
                         }
                     },
-                    requestPolicy =
-                        GroupDetailRequestPolicy(
-                            maxOutstandingPresses = 10,
-                            maxPressesPerRequest = 2,
-                            pressBatchWindowMillis = 0,
-                        ),
+                    requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 10),
                     onState = { _, counts, _ -> pending = counts },
                     onReconcile = { readKey = it },
                 )
@@ -137,65 +132,48 @@ class GroupEmotionPressCoordinatorTest {
             coordinator.drainAfterReconciliation()
             runCurrent()
 
-            assertEquals(listOf(2, 1), sent)
-            assertEquals(2, calls)
+            assertEquals(listOf(emotion, EmotionKind.entries[1], emotion), sent)
+            assertEquals(3, calls)
             assertEquals(emptyMap(), pending)
         }
 
     @Test
-    fun `accepted taps are batched without losing per emotion counts`() =
+    fun `accepted taps are sent as individual requests in FIFO order`() =
         runTest {
-            val requests = mutableListOf<List<EmotionPressIncrement>>()
+            val requests = mutableListOf<EmotionKind>()
             val coordinator =
                 coordinator(
-                    press = { _, increments ->
-                        requests += increments
+                    press = { _, pressedEmotion ->
+                        requests += pressedEmotion
                         PressGroupEmotionResult.Pressed(snapshot(requests.size.toLong()))
                     },
-                    requestPolicy =
-                        GroupDetailRequestPolicy(
-                            maxOutstandingPresses = 300,
-                            maxPressesPerRequest = 100,
-                            pressBatchWindowMillis = 100,
-                        ),
+                    requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 300),
                 )
-            repeat(8) { index ->
-                assertNotNull(coordinator.accept(EmotionKind.entries[index % 2]))
-            }
-
-            advanceTimeBy(100)
+            val accepted = List(8) { EmotionKind.entries[it % 2] }
+            accepted.forEach { assertNotNull(coordinator.accept(it)) }
             runCurrent()
 
-            assertEquals(1, requests.size)
-            assertEquals(8, requests.single().sumOf { it.count })
-            assertEquals(
-                mapOf(EmotionKind.entries[0] to 4, EmotionKind.entries[1] to 4),
-                requests.single().associate { it.emotion to it.count },
-            )
+            assertEquals(accepted, requests)
             assertEquals(GroupPressStatus.Idle, coordinator.status)
         }
 
     @Test
-    fun `request batches obey their configured count limit`() =
+    fun `single state contract sends one request for each accepted tap`() =
         runTest {
-            val requests = mutableListOf<Int>()
+            val requests = mutableListOf<EmotionKind>()
             val coordinator =
                 coordinator(
-                    press = { _, increments ->
-                        requests += increments.sumOf { it.count }
+                    press = { _, pressedEmotion ->
+                        requests += pressedEmotion
                         PressGroupEmotionResult.Pressed(snapshot(requests.size.toLong()))
                     },
-                    requestPolicy =
-                        GroupDetailRequestPolicy(
-                            maxOutstandingPresses = 5,
-                            maxPressesPerRequest = 2,
-                            pressBatchWindowMillis = 0,
-                        ),
+                    requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 5),
                 )
-            repeat(5) { assertNotNull(coordinator.accept(emotion)) }
-            advanceUntilIdle()
+            val accepted = List(5) { emotion }
+            accepted.forEach { assertNotNull(coordinator.accept(it)) }
+            runCurrent()
 
-            assertEquals(listOf(2, 2, 1), requests)
+            assertEquals(accepted, requests)
         }
 
     @Test
@@ -207,12 +185,7 @@ class GroupEmotionPressCoordinatorTest {
             val coordinator =
                 coordinator(
                     press = { _, _ -> firstResponse.await() },
-                    requestPolicy =
-                        GroupDetailRequestPolicy(
-                            maxOutstandingPresses = 3,
-                            maxPressesPerRequest = 1,
-                            pressBatchWindowMillis = 0,
-                        ),
+                    requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 3),
                     onState = { _, _, capacity -> canAccept = capacity },
                     onNotice = { kind, _ -> notices += kind },
                 )
@@ -246,8 +219,6 @@ class GroupEmotionPressCoordinatorTest {
                     requestPolicy =
                         GroupDetailRequestPolicy(
                             maxOutstandingPresses = 10,
-                            maxPressesPerRequest = 1,
-                            pressBatchWindowMillis = 0,
                             defaultRateLimitDelayMillis = 200,
                         ),
                     onState = { _, counts, _ -> pending = counts },
@@ -286,8 +257,6 @@ class GroupEmotionPressCoordinatorTest {
         requestPolicy: GroupDetailRequestPolicy =
             GroupDetailRequestPolicy(
                 maxOutstandingPresses = 300,
-                maxPressesPerRequest = 1,
-                pressBatchWindowMillis = 0,
             ),
         onState: (GroupPressStatus, Map<EmotionKind, Long>, Boolean) -> Unit = { _, _, _ -> },
         onNotice: (GroupDetailNoticeKind, Long?) -> Unit = { _, _ -> },

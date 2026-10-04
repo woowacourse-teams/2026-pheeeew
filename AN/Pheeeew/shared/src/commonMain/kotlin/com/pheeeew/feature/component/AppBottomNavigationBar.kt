@@ -56,9 +56,15 @@ import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.hiyu_nav_face
 import pheeeew.shared.generated.resources.hiyu_nav_ticket
+import pheeeew.shared.generated.resources.navigation_group
+import pheeeew.shared.generated.resources.navigation_map
+import pheeeew.shared.generated.resources.navigation_press
+import pheeeew.shared.generated.resources.navigation_ranking
+import pheeeew.shared.generated.resources.ranking_stamps
 
 private val NavigationInk = Color(0xFF202323)
 internal val AppBottomNavigationBarHeight = 55.dp
@@ -67,19 +73,15 @@ internal val AppBottomNavigationBarContentGap = 12.dp
 internal val AppBottomNavigationBarOverlaySpace =
     AppBottomNavigationBarHeight + AppBottomNavigationBarBottomSpacing + AppBottomNavigationBarContentGap
 
-internal enum class AppDestination(
-    val label: String,
-) {
-    Map("지도"),
-    Group("그룹"),
-    Ranking("랭킹"),
+internal enum class AppDestination {
+    Map,
+    Group,
+    Ranking,
 }
 
-internal enum class RankingBottomNavigationDestination(
-    val label: String,
-) {
-    Stamp("스탬프"),
-    Press("프레스"),
+internal enum class RankingBottomNavigationDestination {
+    Stamp,
+    Press,
 }
 
 private enum class DestinationIcon(
@@ -213,7 +215,14 @@ internal fun AppBottomNavigationBar(
                 )
                 Spacer(Modifier.width(6.dp))
                 Text(
-                    text = destination.label,
+                    text =
+                        stringResource(
+                            when (destination) {
+                                AppDestination.Map -> Res.string.navigation_map
+                                AppDestination.Group -> Res.string.navigation_group
+                                AppDestination.Ranking -> Res.string.navigation_ranking
+                            },
+                        ),
                     color = NavigationInk,
                     fontSize = 14.sp,
                     fontFamily = navigationFont,
@@ -264,7 +273,7 @@ internal fun AppBottomNavigationBar(
                     DestinationIconView(DestinationIcon.Ranking, pressScale = 1f)
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = AppDestination.Ranking.label,
+                        text = stringResource(Res.string.navigation_ranking),
                         color = NavigationInk,
                         fontSize = 14.sp,
                         fontFamily = navigationFont,
@@ -288,7 +297,7 @@ internal fun AppBottomNavigationBar(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = RankingBottomNavigationDestination.Stamp.label,
+                        text = stringResource(Res.string.ranking_stamps),
                         color = NavigationInk,
                         fontSize = 14.sp,
                         fontFamily = navigationFont,
@@ -353,7 +362,7 @@ internal fun AppBottomNavigationBar(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = RankingBottomNavigationDestination.Press.label,
+                text = stringResource(Res.string.navigation_press),
                 color = NavigationInk,
                 fontSize = 14.sp,
                 fontFamily = navigationFont,

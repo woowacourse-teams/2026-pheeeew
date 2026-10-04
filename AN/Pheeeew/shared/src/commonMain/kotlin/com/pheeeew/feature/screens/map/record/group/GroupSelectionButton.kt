@@ -14,6 +14,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.record_group_accessibility
+import pheeeew.shared.generated.resources.record_group_change
+import pheeeew.shared.generated.resources.record_group_loading
+import pheeeew.shared.generated.resources.record_group_none
 
 @Composable
 internal fun GroupSelectionButton(
@@ -21,20 +27,24 @@ internal fun GroupSelectionButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     loading: Boolean = false,
-    emptyLabel: String = "없음",
-    groupName: String = stamp?.label ?: emptyLabel,
+    emptyLabel: String? = null,
+    groupName: String? = null,
 ) {
+    val resolvedEmptyLabel = emptyLabel ?: stringResource(Res.string.record_group_none)
+    val resolvedGroupName = groupName ?: stamp?.label ?: resolvedEmptyLabel
+    val accessibilityDescription = stringResource(Res.string.record_group_accessibility, resolvedGroupName)
+    val actionLabel = stringResource(if (loading) Res.string.record_group_loading else Res.string.record_group_change)
     Column(
         modifier =
             modifier
-                .semantics(mergeDescendants = true) { contentDescription = "$groupName, 그룹 변경" }
+                .semantics(mergeDescendants = true) { contentDescription = accessibilityDescription }
                 .clickable(enabled = !loading, role = Role.Button, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        GroupSelectionStamp(stamp = stamp, size = 36.dp, emptyLabel = emptyLabel)
+        GroupSelectionStamp(stamp = stamp, size = 36.dp, emptyLabel = resolvedEmptyLabel)
         Text(
-            text = if (loading) "그룹 확인 중" else "그룹 변경",
+            text = actionLabel,
             fontSize = 10.sp,
             color = AppColors.TextSecondary,
         )

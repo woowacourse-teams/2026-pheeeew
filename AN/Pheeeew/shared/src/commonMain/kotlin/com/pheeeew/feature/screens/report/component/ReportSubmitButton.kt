@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppColors
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.report_submit
 
 @Composable
 fun ReportSubmitButton(
@@ -54,7 +57,7 @@ fun ReportSubmitButton(
             )
         } else {
             Text(
-                text = "신고하고 동네 지키기",
+                text = stringResource(Res.string.report_submit),
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
             )

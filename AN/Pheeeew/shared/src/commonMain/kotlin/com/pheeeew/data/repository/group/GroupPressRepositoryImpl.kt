@@ -7,7 +7,7 @@ import com.pheeeew.core.network.NetworkFailure
 import com.pheeeew.data.remote.group.api.GroupPressApi
 import com.pheeeew.data.remote.group.mapper.GroupPressCountResponseMapper
 import com.pheeeew.domain.model.group.GroupId
-import com.pheeeew.domain.model.group.GroupPressBatch
+import com.pheeeew.domain.model.group.GroupPressState
 import com.pheeeew.domain.repository.group.GroupPressRepository
 import com.pheeeew.domain.repository.group.GroupPressResult
 import io.ktor.http.fromHttpToGmtDate
@@ -19,9 +19,9 @@ class GroupPressRepositoryImpl(
 ) : GroupPressRepository {
     override suspend fun press(
         groupId: GroupId,
-        batch: GroupPressBatch,
+        state: GroupPressState,
     ): GroupPressResult =
-        when (val result = api.press(groupId.value, batch)) {
+        when (val result = api.press(groupId.value, state)) {
             is ApiResult.Success -> {
                 try {
                     GroupPressResult.Pressed(GroupPressCountResponseMapper.toDomain(result.value))

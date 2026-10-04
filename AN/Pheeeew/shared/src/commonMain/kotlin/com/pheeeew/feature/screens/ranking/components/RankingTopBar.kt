@@ -25,6 +25,9 @@ import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.component.BasicTopBar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ranking_weekly_title
 
 internal val RankingTopBarHeight = 56.dp
 
@@ -88,7 +91,7 @@ internal fun RankingTopBarOverlay(
 private fun RankingTopBarPreview() {
     AppTheme {
         RankingTopBarOverlay(
-            title = "주간 랭킹",
+            title = stringResource(Res.string.ranking_weekly_title),
             behavior = rememberRankingTopBarScrollBehavior(),
         )
     }

@@ -18,6 +18,11 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.ranking.stamp.RankingMember
 import com.pheeeew.feature.screens.ranking.stamp.sampleRankings
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.group_detail_rank_number
+import pheeeew.shared.generated.resources.ranking_score_count
+import pheeeew.shared.generated.resources.ranking_stamp_label
 
 @Composable
 fun RankingRow(
@@ -35,7 +40,7 @@ fun RankingRow(
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Text(
-            "${member.rank}위",
+            stringResource(Res.string.group_detail_rank_number, member.rank),
             Modifier.weight(0.65f),
             color = AppColors.RankingContent,
             fontSize = 16.sp,
@@ -52,8 +57,17 @@ fun RankingRow(
             maxLines = 2,
         )
         Column(horizontalAlignment = Alignment.End) {
-            Text("감정 스탬프", color = AppColors.RankingSecondaryContent, fontSize = 11.sp)
-            Text("${member.score}개", color = AppColors.RankingContent, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(Res.string.ranking_stamp_label),
+                color = AppColors.RankingSecondaryContent,
+                fontSize = 11.sp,
+            )
+            Text(
+                stringResource(Res.string.ranking_score_count, member.score),
+                color = AppColors.RankingContent,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }

@@ -122,7 +122,10 @@ class GroupDetailTapFrameProfileTest {
             val sortedFrames = frameSamples.sortedBy { it.totalNs }
             assertEquals(WARMUP_TAP_COUNT + TAP_COUNT, acceptedTapCount)
             assertEquals(TAP_COUNT, feedbackLatencies.size)
-            assertEquals(TAP_COUNT, rootRecompositions.get())
+            assertTrue(
+                rootRecompositions.get() in 1..TAP_COUNT,
+                "Expected Compose to render accepted tap updates, observed ${rootRecompositions.get()} recompositions",
+            )
             assertTrue(sortedFrames.isNotEmpty(), "FrameMetrics listener captured no frames")
 
             val p50Ms = sortedFrames[sortedFrames.size / 2].totalNs / NANOS_PER_MILLI

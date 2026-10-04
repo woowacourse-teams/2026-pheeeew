@@ -23,122 +23,89 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupEmotionPressLoadProbeTest {
     @Test
-    fun `single tap latency is measured across batch window settings`() =
+    fun `single-state request starts immediately and confirms after fake response`() =
         runTest {
-            val windows = listOf(0L, 25L, 50L, 100L, 150L)
-            windows.forEach { window ->
-                val detail = fixtureDetail(todayTotal = 0L, presentation = GroupDetailPresentationKind.FirstStart)
-                var confirmedAt: Long? = null
-                val dependencies =
-                    probeDependencies(
-                        detail = detail,
-                        policy =
-                            GroupDetailRequestPolicy(
-                                maxOutstandingPresses = MAX_OUTSTANDING_PRESSES,
-                                maxPressesPerRequest = MAX_PRESSES_PER_REQUEST,
-                                pressBatchWindowMillis = window,
-                            ),
-                        press = { _, increments ->
-                            delay(RESPONSE_DELAY_MILLIS)
-                            assertEquals(1, increments.sumOf { it.count })
-                            PressGroupEmotionResult.Pressed(snapshot(1L))
-                        },
-                    )
-                val coordinator =
-                    probeCoordinator(
-                        scope = this,
-                        detail = detail,
-                        dependencies = dependencies,
-                        onSnapshot = { _, _ -> confirmedAt = testScheduler.currentTime },
-                    )
-                val acceptedAt = testScheduler.currentTime
-                assertNotNull(coordinator.accept(EmotionKind.entries.first()))
-                runCurrent()
-                advanceUntilIdle()
-
-                val latency = requireNotNull(confirmedAt) - acceptedAt
-                assertEquals(window + RESPONSE_DELAY_MILLIS, latency)
-                println("PRESS_SINGLE_PROBE window_ms=$window accept_confirm_ms=$latency")
-            }
-        }
-
-    @Test
-    fun `burst efficiency is compared across batch window settings`() =
-        runTest {
-            listOf(0L, 25L, 50L, 100L, 150L).forEach { window ->
-                val detail = fixtureDetail(todayTotal = 0L, presentation = GroupDetailPresentationKind.FirstStart)
-                val acceptedAt = mutableListOf<Long>()
-                val confirmedAt = mutableListOf<Long>()
-                var requestCount = 0
-                var activeBatchPressCount = 0
-                var maxOutstanding = 0
-                val counts = EmotionKind.entries.associateWith { 0L }.toMutableMap()
-                val dependencies =
-                    probeDependencies(
-                        detail = detail,
-                        policy =
-                            GroupDetailRequestPolicy(
-                                maxOutstandingPresses = MAX_OUTSTANDING_PRESSES,
-                                maxPressesPerRequest = MAX_PRESSES_PER_REQUEST,
-                                pressBatchWindowMillis = window,
-                            ),
-                        press = { _, increments ->
-                            requestCount++
-                            activeBatchPressCount = increments.sumOf { it.count }
-                            delay(RESPONSE_DELAY_MILLIS)
-                            increments.forEach { increment ->
-                                counts[increment.emotion] = counts.getValue(increment.emotion) + increment.count
-                            }
-                            PressGroupEmotionResult.Pressed(
-                                GroupPressSnapshotUiModel(
-                                    emotionCounts =
-                                        EmotionKind.entries.map { kind ->
-                                            EmotionCountUiModel(kind, counts.getValue(kind))
-                                        },
-                                    total = counts.values.sum(),
-                                ),
-                            )
-                        },
-                    )
-                val coordinator =
-                    probeCoordinator(
-                        scope = this,
-                        detail = detail,
-                        dependencies = dependencies,
-                        onState = { _, pending, _ ->
-                            maxOutstanding = maxOf(maxOutstanding, pending.values.sum().toInt())
-                        },
-                        onSnapshot = { _, _ ->
-                            repeat(activeBatchPressCount) { confirmedAt += testScheduler.currentTime }
-                        },
-                    )
-
-                repeat(PRESS_COUNT) { index ->
-                    assertNotNull(coordinator.accept(EmotionKind.entries[index % EmotionKind.entries.size]))
-                    acceptedAt += testScheduler.currentTime
-                    advanceTimeBy(INPUT_INTERVAL_MILLIS)
+            val detail = fixtureDetail(todayTotal = 0L, presentation = GroupDetailPresentationKind.FirstStart)
+            var requestCount = 0
+            var confirmedAt: Long? = null
+            val dependencies =
+                probeDependencies(detail) { _, _ ->
+                    requestCount++
+                    delay(RESPONSE_DELAY_MILLIS)
+                    PressGroupEmotionResult.Pressed(snapshot(1L))
                 }
-                advanceUntilIdle()
-
-                val latencies =
-                    confirmedAt
-                        .zip(
-                            acceptedAt,
-                        ).map { (confirmed, accepted) -> confirmed - accepted }
-                        .sorted()
-                assertEquals(PRESS_COUNT, confirmedAt.size)
-                assertTrue(maxOutstanding <= MAX_OUTSTANDING_PRESSES)
-                println(
-                    "PRESS_WINDOW_PROBE window_ms=$window presses=$PRESS_COUNT requests=$requestCount " +
-                        "max_outstanding=$maxOutstanding " +
-                        "p50_accept_confirm_ms=${latencies[latencies.lastIndex / 2]} " +
-                        "p95_accept_confirm_ms=${latencies[(latencies.size * 95 / 100) - 1]}",
+            val coordinator =
+                probeCoordinator(
+                    scope = this,
+                    detail = detail,
+                    dependencies = dependencies,
+                    onSnapshot = { _, _ -> confirmedAt = testScheduler.currentTime },
                 )
-            }
+            val acceptedAt = testScheduler.currentTime
+
+            assertNotNull(coordinator.accept(EmotionKind.Angry))
+            runCurrent()
+            assertEquals(1, requestCount)
+            advanceUntilIdle()
+
+            val confirmedLatency = requireNotNull(confirmedAt) - acceptedAt
+            assertEquals(RESPONSE_DELAY_MILLIS, confirmedLatency)
+            println(
+                "PRESS_SINGLE_STATE_PROBE requests=$requestCount accept_confirm_ms=$confirmedLatency",
+            )
         }
 
     @Test
-    fun `repeated rate limits measure terminal latency and retain later accepted taps`() =
+    fun `rapid accepted taps remain FIFO and use one current-contract request each`() =
+        runTest {
+            val detail = fixtureDetail(todayTotal = 0L, presentation = GroupDetailPresentationKind.FirstStart)
+            val acceptedAt = mutableListOf<Long>()
+            val confirmedAt = mutableListOf<Long>()
+            val confirmedCounts = EmotionKind.entries.associateWith { 0L }.toMutableMap()
+            var requestCount = 0
+            var maxOutstanding = 0
+            var pending = emptyMap<EmotionKind, Long>()
+            val dependencies =
+                probeDependencies(detail) { _, emotion ->
+                    requestCount++
+                    delay(RESPONSE_DELAY_MILLIS)
+                    confirmedCounts[emotion] = confirmedCounts.getValue(emotion) + 1
+                    PressGroupEmotionResult.Pressed(snapshot(confirmedCounts.values.sum(), confirmedCounts))
+                }
+            val coordinator =
+                probeCoordinator(
+                    scope = this,
+                    detail = detail,
+                    dependencies = dependencies,
+                    onState = { _, counts, _ ->
+                        pending = counts
+                        maxOutstanding = maxOf(maxOutstanding, counts.values.sum().toInt())
+                    },
+                    onSnapshot = { _, _ -> confirmedAt += testScheduler.currentTime },
+                )
+
+            repeat(PRESS_COUNT) { index ->
+                acceptedAt += testScheduler.currentTime
+                assertNotNull(coordinator.accept(EmotionKind.entries[index % EmotionKind.entries.size]))
+                advanceTimeBy(INPUT_INTERVAL_MILLIS)
+            }
+            advanceUntilIdle()
+
+            val latencies = confirmedAt.zip(acceptedAt).map { (confirmed, accepted) -> confirmed - accepted }.sorted()
+            assertEquals(PRESS_COUNT, confirmedAt.size)
+            assertEquals(PRESS_COUNT, requestCount)
+            assertTrue(maxOutstanding <= MAX_OUTSTANDING_PRESSES)
+            assertEquals(emptyMap(), pending)
+            println(
+                "PRESS_SINGLE_STATE_BURST presses=$PRESS_COUNT requests=$requestCount " +
+                    "max_outstanding=$maxOutstanding " +
+                    "p50_accept_confirm_ms=${latencies[latencies.lastIndex / 2]} " +
+                    "p95_accept_confirm_ms=${latencies[(latencies.size * 95 / 100) - 1]}",
+            )
+        }
+
+    @Test
+    fun `429 drops only the rejected single press and later accepted presses continue after retry after`() =
         runTest {
             val detail = fixtureDetail(todayTotal = 0L, presentation = GroupDetailPresentationKind.FirstStart)
             val acceptedAt = ArrayDeque<Long>()
@@ -148,28 +115,22 @@ class GroupEmotionPressLoadProbeTest {
             var confirmedCount = 0
             var rejectedCount = 0
             var maxOutstanding = 0
-            var confirmedTotal = 0L
             var pending = emptyMap<EmotionKind, Long>()
             val dependencies =
-                probeDependencies(
-                    detail = detail,
-                    press = { _, increments ->
-                        requestCount++
-                        val batchCount = increments.sumOf { it.count }
-                        val batchAcceptedAt = List(batchCount) { acceptedAt.removeFirst() }
-                        delay(RESPONSE_DELAY_MILLIS)
-                        if (requestCount <= RATE_LIMITED_REQUESTS) {
-                            rejectedCount += batchCount
-                            rejectedLatencies += batchAcceptedAt.map { testScheduler.currentTime - it }
-                            PressGroupEmotionResult.RateLimited(RETRY_AFTER_MILLIS)
-                        } else {
-                            confirmedCount += batchCount
-                            confirmedTotal += batchCount
-                            confirmedLatencies += batchAcceptedAt.map { testScheduler.currentTime - it }
-                            PressGroupEmotionResult.Pressed(snapshot(confirmedTotal))
-                        }
-                    },
-                )
+                probeDependencies(detail) { _, _ ->
+                    requestCount++
+                    val pressedAt = acceptedAt.removeFirst()
+                    delay(RESPONSE_DELAY_MILLIS)
+                    if (requestCount <= RATE_LIMITED_REQUESTS) {
+                        rejectedCount++
+                        rejectedLatencies += testScheduler.currentTime - pressedAt
+                        PressGroupEmotionResult.RateLimited(RETRY_AFTER_MILLIS)
+                    } else {
+                        confirmedCount++
+                        confirmedLatencies += testScheduler.currentTime - pressedAt
+                        PressGroupEmotionResult.Pressed(snapshot(confirmedCount.toLong()))
+                    }
+                }
             val coordinator =
                 probeCoordinator(
                     scope = this,
@@ -181,206 +142,84 @@ class GroupEmotionPressLoadProbeTest {
                     },
                 )
 
-            repeat(REPEATED_RATE_LIMIT_PRESS_COUNT) { index ->
-                val timestamp = testScheduler.currentTime
+            repeat(RATE_LIMIT_PRESS_COUNT) { index ->
+                acceptedAt.addLast(testScheduler.currentTime)
                 assertNotNull(coordinator.accept(EmotionKind.entries[index % EmotionKind.entries.size]))
-                acceptedAt.addLast(timestamp)
                 advanceTimeBy(INPUT_INTERVAL_MILLIS)
             }
             advanceUntilIdle()
 
-            assertEquals(REPEATED_RATE_LIMIT_PRESS_COUNT, confirmedCount + rejectedCount)
-            assertEquals(3, requestCount)
+            assertEquals(RATE_LIMIT_PRESS_COUNT, confirmedCount + rejectedCount)
+            assertEquals(RATE_LIMIT_PRESS_COUNT, requestCount)
             assertTrue(rejectedCount > 0)
             assertTrue(maxOutstanding <= MAX_OUTSTANDING_PRESSES)
             assertEquals(emptyMap(), pending)
-            val p50 = confirmedLatencies.sorted()[confirmedLatencies.size / 2]
-            val p95 = confirmedLatencies.sorted()[(confirmedLatencies.size * 95 / 100) - 1]
             println(
-                "PRESS_429_PROBE accepted=$REPEATED_RATE_LIMIT_PRESS_COUNT confirmed=$confirmedCount " +
-                    "rejected=$rejectedCount requests=$requestCount max_outstanding=$maxOutstanding " +
-                    "p50_accept_confirm_ms=$p50 p95_accept_confirm_ms=$p95 " +
-                    "p50_accept_reject_ms=${rejectedLatencies.sorted()[rejectedLatencies.size / 2]}",
+                "PRESS_SINGLE_STATE_429 accepted=$RATE_LIMIT_PRESS_COUNT confirmed=$confirmedCount " +
+                    "rate_limited=$rejectedCount requests=$requestCount max_outstanding=$maxOutstanding " +
+                    "p50_confirm_ms=${confirmedLatencies.sorted()[confirmedLatencies.size / 2]} " +
+                    "p50_rate_limited_ms=${rejectedLatencies.sorted()[rejectedLatencies.size / 2]}",
             )
         }
 
     @Test
-    fun `queue saturation measures throughput and explicit rejection at the configured cap`() =
-        runTest {
-            listOf(50L, 100L).forEach { window ->
-                val detail = fixtureDetail(todayTotal = 0L, presentation = GroupDetailPresentationKind.FirstStart)
-                val acceptedAt = ArrayDeque<Long>()
-                val confirmationLatencies = mutableListOf<Long>()
-                var accepted = 0
-                var rejected = 0
-                var confirmed = 0
-                var requestCount = 0
-                var maxOutstanding = 0
-                val dependencies =
-                    probeDependencies(
-                        detail = detail,
-                        policy =
-                            GroupDetailRequestPolicy(
-                                maxOutstandingPresses = MAX_OUTSTANDING_PRESSES,
-                                maxPressesPerRequest = MAX_PRESSES_PER_REQUEST,
-                                pressBatchWindowMillis = window,
-                            ),
-                        press = { _, increments ->
-                            requestCount++
-                            val batchCount = increments.sumOf { it.count }
-                            val batchAcceptedAt = List(batchCount) { acceptedAt.removeFirst() }
-                            delay(RESPONSE_DELAY_MILLIS)
-                            confirmed += batchCount
-                            confirmationLatencies += batchAcceptedAt.map { testScheduler.currentTime - it }
-                            PressGroupEmotionResult.Pressed(snapshot(confirmed.toLong()))
-                        },
-                    )
-                val coordinator =
-                    probeCoordinator(
-                        scope = this,
-                        detail = detail,
-                        dependencies = dependencies,
-                        onState = { _, pending, _ ->
-                            maxOutstanding = maxOf(maxOutstanding, pending.values.sum().toInt())
-                        },
-                    )
-
-                repeat(HIGH_LOAD_PRESS_COUNT) { index ->
-                    val timestamp = testScheduler.currentTime
-                    if (coordinator.accept(EmotionKind.entries[index % EmotionKind.entries.size]) == null) {
-                        rejected++
-                    } else {
-                        accepted++
-                        acceptedAt.addLast(timestamp)
-                    }
-                    advanceTimeBy(HIGH_LOAD_INPUT_INTERVAL_MILLIS)
-                }
-                advanceUntilIdle()
-
-                assertEquals(accepted, confirmed)
-                assertEquals(HIGH_LOAD_PRESS_COUNT, accepted + rejected)
-                assertTrue(rejected > 0, "The high-rate input stream should reach the configured cap")
-                assertTrue(maxOutstanding <= MAX_OUTSTANDING_PRESSES)
-                val sorted = confirmationLatencies.sorted()
-                println(
-                    "PRESS_SATURATION_PROBE window_ms=$window offered=$HIGH_LOAD_PRESS_COUNT " +
-                        "accepted=$accepted confirmed=$confirmed rejected=$rejected requests=$requestCount " +
-                        "max_outstanding=$maxOutstanding p50_accept_confirm_ms=${sorted[sorted.size / 2]} " +
-                        "p95_accept_confirm_ms=${sorted[(sorted.size * 95 / 100) - 1]}",
-                )
-            }
-        }
-
-    @Test
-    fun `batched requests preserve accepted taps under the same fixed latency`() =
+    fun `queue cap rejects excess high-rate taps without losing accepted taps`() =
         runTest {
             val detail = fixtureDetail(todayTotal = 0L, presentation = GroupDetailPresentationKind.FirstStart)
-            val acceptedAt = mutableListOf<Long>()
-            val confirmedAt = mutableListOf<Long>()
+            var accepted = 0
+            var rejected = 0
+            var confirmed = 0
             var requestCount = 0
             var maxOutstanding = 0
-            var activeBatchPressCount = 0
-            val confirmedCounts = EmotionKind.entries.associateWith { 0L }.toMutableMap()
-            val action =
-                PressGroupEmotionAction { _, increments ->
-                    requestCount++
-                    activeBatchPressCount = increments.sumOf { it.count }
-                    delay(RESPONSE_DELAY_MILLIS)
-                    increments.forEach { increment ->
-                        confirmedCounts[increment.emotion] =
-                            confirmedCounts.getValue(increment.emotion) + increment.count
-                    }
-                    PressGroupEmotionResult.Pressed(
-                        GroupPressSnapshotUiModel(
-                            emotionCounts =
-                                EmotionKind.entries.map { kind ->
-                                    EmotionCountUiModel(kind, confirmedCounts.getValue(kind))
-                                },
-                            total = confirmedCounts.values.sum(),
-                        ),
-                    )
-                }
             val dependencies =
-                GroupDetailDependencies(
-                    source = { GroupDetailLoadResult.Loaded(detail) },
-                    pressGroupEmotionAction = action,
-                    leaveGroupAction = { LeaveGroupResult.Unavailable },
-                    errorReporter = { throw it },
-                    operationKeyAllocator = GroupOperationKeyAllocator("load-probe"),
-                    requestPolicy =
-                        GroupDetailRequestPolicy(
-                            maxOutstandingPresses = MAX_OUTSTANDING_PRESSES,
-                            maxPressesPerRequest = MAX_PRESSES_PER_REQUEST,
-                            pressBatchWindowMillis = BATCH_WINDOW_MILLIS,
-                        ),
-                )
+                probeDependencies(
+                    detail,
+                    policy = GroupDetailRequestPolicy(maxOutstandingPresses = MAX_OUTSTANDING_PRESSES),
+                ) { _, _ ->
+                    requestCount++
+                    delay(RESPONSE_DELAY_MILLIS)
+                    confirmed++
+                    PressGroupEmotionResult.Pressed(snapshot(confirmed.toLong()))
+                }
             val coordinator =
-                GroupEmotionPressCoordinator(
-                    groupId = detail.group.id,
-                    dependencies = dependencies,
+                probeCoordinator(
                     scope = this,
-                    telemetry = ProductMonitoring(NoOpMonitoring, "group_detail", labels()),
-                    onStateChanged = { _, pending, _ ->
-                        maxOutstanding = maxOf(maxOutstanding, pending.values.sum().toInt())
-                    },
-                    onBeforeSend = {},
-                    onSnapshot = { _, _ ->
-                        repeat(activeBatchPressCount) { confirmedAt += testScheduler.currentTime }
-                    },
-                    onReconciliationRequested = {},
-                    onAccessLost = { _, _ -> },
-                    onNotice = { _, _ -> },
-                    canContinue = { true },
+                    detail = detail,
+                    dependencies = dependencies,
+                    onState = { _, counts, _ -> maxOutstanding = maxOf(maxOutstanding, counts.values.sum().toInt()) },
                 )
 
-            repeat(PRESS_COUNT) { index ->
-                assertNotNull(coordinator.accept(EmotionKind.entries[index % EmotionKind.entries.size]))
-                acceptedAt += testScheduler.currentTime
-                advanceTimeBy(INPUT_INTERVAL_MILLIS)
+            repeat(HIGH_LOAD_PRESS_COUNT) { index ->
+                if (coordinator.accept(EmotionKind.entries[index % EmotionKind.entries.size]) == null) {
+                    rejected++
+                } else {
+                    accepted++
+                }
+                advanceTimeBy(HIGH_LOAD_INPUT_INTERVAL_MILLIS)
             }
             advanceUntilIdle()
 
-            val latencies = confirmedAt.zip(acceptedAt).map { (confirmed, accepted) -> confirmed - accepted }.sorted()
-            assertEquals(PRESS_COUNT, confirmedAt.size)
-            assertTrue(requestCount < PRESS_COUNT)
+            assertEquals(accepted, confirmed)
+            assertEquals(HIGH_LOAD_PRESS_COUNT, accepted + rejected)
+            assertEquals(accepted, requestCount)
+            assertTrue(rejected > 0, "The high-rate input stream should reach the configured cap")
             assertTrue(maxOutstanding <= MAX_OUTSTANDING_PRESSES)
             println(
-                "PRESS_LOAD_PROBE mode=batch presses=$PRESS_COUNT requests=$requestCount " +
-                    "max_outstanding=$maxOutstanding " +
-                    "p50_accept_confirm_ms=${latencies[latencies.lastIndex / 2]} " +
-                    "p95_accept_confirm_ms=${latencies[(latencies.size * 95 / 100) - 1]}",
+                "PRESS_SINGLE_STATE_SATURATION offered=$HIGH_LOAD_PRESS_COUNT accepted=$accepted " +
+                    "confirmed=$confirmed rejected=$rejected requests=$requestCount max_outstanding=$maxOutstanding",
             )
         }
 
-    private companion object {
-        const val PRESS_COUNT = 100
-        const val INPUT_INTERVAL_MILLIS = 5L
-        const val RESPONSE_DELAY_MILLIS = 250L
-        const val BATCH_WINDOW_MILLIS = 100L
-        const val MAX_OUTSTANDING_PRESSES = 300
-        const val MAX_PRESSES_PER_REQUEST = 100
-        const val REPEATED_RATE_LIMIT_PRESS_COUNT = 200
-        const val RATE_LIMITED_REQUESTS = 2
-        const val RETRY_AFTER_MILLIS = 500L
-        const val HIGH_LOAD_PRESS_COUNT = 1_000
-        const val HIGH_LOAD_INPUT_INTERVAL_MILLIS = 1L
-    }
-
     private fun probeDependencies(
         detail: GroupDetailUiModel,
+        policy: GroupDetailRequestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = MAX_OUTSTANDING_PRESSES),
         press: PressGroupEmotionAction,
-        policy: GroupDetailRequestPolicy =
-            GroupDetailRequestPolicy(
-                maxOutstandingPresses = MAX_OUTSTANDING_PRESSES,
-                maxPressesPerRequest = MAX_PRESSES_PER_REQUEST,
-                pressBatchWindowMillis = BATCH_WINDOW_MILLIS,
-            ),
     ) = GroupDetailDependencies(
         source = { GroupDetailLoadResult.Loaded(detail) },
         pressGroupEmotionAction = press,
         leaveGroupAction = { LeaveGroupResult.Unavailable },
         errorReporter = { throw it },
-        operationKeyAllocator = GroupOperationKeyAllocator("load-probe"),
+        operationKeyAllocator = GroupOperationKeyAllocator("single-state-probe"),
         requestPolicy = policy,
     )
 
@@ -404,12 +243,24 @@ class GroupEmotionPressLoadProbeTest {
         canContinue = { true },
     )
 
-    private fun snapshot(total: Long) =
+    private fun snapshot(
+        total: Long,
+        counts: Map<EmotionKind, Long> = EmotionKind.entries.associateWith { 0L },
+    ): GroupPressSnapshotUiModel =
         GroupPressSnapshotUiModel(
-            emotionCounts =
-                EmotionKind.entries.mapIndexed { index, kind ->
-                    EmotionCountUiModel(kind, if (index == 0) total else 0L)
-                },
+            emotionCounts = EmotionKind.entries.map { kind -> EmotionCountUiModel(kind, counts.getValue(kind)) },
             total = total,
         )
+
+    private companion object {
+        const val PRESS_COUNT = 100
+        const val INPUT_INTERVAL_MILLIS = 5L
+        const val RESPONSE_DELAY_MILLIS = 250L
+        const val MAX_OUTSTANDING_PRESSES = 300
+        const val RATE_LIMIT_PRESS_COUNT = 200
+        const val RATE_LIMITED_REQUESTS = 2
+        const val RETRY_AFTER_MILLIS = 500L
+        const val HIGH_LOAD_PRESS_COUNT = 1_000
+        const val HIGH_LOAD_INPUT_INTERVAL_MILLIS = 1L
+    }
 }

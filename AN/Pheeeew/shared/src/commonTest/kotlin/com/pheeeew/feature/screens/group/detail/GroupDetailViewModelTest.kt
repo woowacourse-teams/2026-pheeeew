@@ -32,8 +32,8 @@ class GroupDetailViewModelTest {
                 val viewModel =
                     createViewModel(
                         source = { GroupDetailLoadResult.Loaded(detail) },
-                        press = { _, increments ->
-                            sent += increments.single().emotion
+                        press = { _, emotion ->
+                            sent += emotion
                             responses[sent.lastIndex].await()
                         },
                     )
@@ -125,11 +125,7 @@ class GroupDetailViewModelTest {
                                 },
                                 errorReporter = { throw it },
                                 operationKeyAllocator = GroupOperationKeyAllocator("leave-guard-test"),
-                                requestPolicy =
-                                    GroupDetailRequestPolicy(
-                                        maxPressesPerRequest = 1,
-                                        pressBatchWindowMillis = 0,
-                                    ),
+                                requestPolicy = GroupDetailRequestPolicy(),
                             ),
                     )
                 runCurrent()
@@ -365,12 +361,7 @@ class GroupDetailViewModelTest {
                                 leaveGroupAction = { LeaveGroupResult.Unavailable },
                                 errorReporter = { throw it },
                                 operationKeyAllocator = GroupOperationKeyAllocator("timeout-test"),
-                                requestPolicy =
-                                    GroupDetailRequestPolicy(
-                                        timeoutMillis = 100L,
-                                        maxPressesPerRequest = 1,
-                                        pressBatchWindowMillis = 0,
-                                    ),
+                                requestPolicy = GroupDetailRequestPolicy(timeoutMillis = 100L),
                             ),
                     )
                 runCurrent()
@@ -519,12 +510,7 @@ class GroupDetailViewModelTest {
                     leaveGroupAction = { LeaveGroupResult.Unavailable },
                     errorReporter = { throw it },
                     operationKeyAllocator = GroupOperationKeyAllocator("detail-test"),
-                    requestPolicy =
-                        GroupDetailRequestPolicy(
-                            maxOutstandingPresses = 300,
-                            maxPressesPerRequest = 1,
-                            pressBatchWindowMillis = 0,
-                        ),
+                    requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 300),
                 ),
         )
 }

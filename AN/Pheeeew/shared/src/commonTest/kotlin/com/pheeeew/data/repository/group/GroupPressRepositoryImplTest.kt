@@ -6,8 +6,6 @@ import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createApiClient
 import com.pheeeew.data.remote.group.api.GroupPressApi
 import com.pheeeew.domain.model.group.GroupId
-import com.pheeeew.domain.model.group.GroupPressBatch
-import com.pheeeew.domain.model.group.GroupPressIncrement
 import com.pheeeew.domain.model.group.GroupPressState
 import com.pheeeew.domain.repository.group.GroupPressResult
 import io.ktor.client.engine.mock.MockEngine
@@ -42,7 +40,7 @@ class GroupPressRepositoryImplTest {
                 val result =
                     GroupPressRepositoryImpl(GroupPressApi(client.requests)).press(
                         GroupId.parse(GROUP_ID)!!,
-                        GroupPressBatch(listOf(GroupPressIncrement(GroupPressState.ANGRY, 1))),
+                        GroupPressState.ANGRY,
                     )
 
                 assertEquals(GroupPressResult.RateLimited(2_000), result)
@@ -66,7 +64,7 @@ class GroupPressRepositoryImplTest {
                 val result =
                     GroupPressRepositoryImpl(GroupPressApi(client.requests)).press(
                         GroupId.parse(GROUP_ID)!!,
-                        GroupPressBatch(listOf(GroupPressIncrement(GroupPressState.ANGRY, 1))),
+                        GroupPressState.ANGRY,
                     )
 
                 val rateLimited = assertIs<GroupPressResult.RateLimited>(result)

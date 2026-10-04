@@ -49,6 +49,10 @@ import com.pheeeew.feature.screens.ranking.components.rememberRankingTopBarScrol
 import com.pheeeew.feature.screens.ranking.press.components.MyPressRankList
 import com.pheeeew.feature.screens.ranking.press.components.PressEmotionFilter
 import com.pheeeew.feature.screens.ranking.press.components.PressGroupRankList
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ranking_empty_week
+import pheeeew.shared.generated.resources.ranking_press_title
 
 @Composable
 fun PressRankingRoute(
@@ -175,7 +179,7 @@ internal fun PressRankingScreen(
                             }
                             if (uiState.groups.isEmpty()) {
                                 Text(
-                                    text = "해당 주에 랭킹이 없어요.",
+                                    text = stringResource(Res.string.ranking_empty_week),
                                     color = AppColors.RankingSecondaryContent,
                                     fontSize = 15.sp,
                                     fontWeight = FontWeight.SemiBold,
@@ -194,7 +198,7 @@ internal fun PressRankingScreen(
                     Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
                 }
                 RankingTopBarOverlay(
-                    title = "프레스 주간 랭킹",
+                    title = stringResource(Res.string.ranking_press_title),
                     behavior = topBarBehavior,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )

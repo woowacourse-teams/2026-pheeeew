@@ -60,6 +60,19 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.app_cancel
+import pheeeew.shared.generated.resources.app_microphone_permission_message
+import pheeeew.shared.generated.resources.app_microphone_permission_title
+import pheeeew.shared.generated.resources.app_open_settings
+import pheeeew.shared.generated.resources.draft_exit_body
+import pheeeew.shared.generated.resources.draft_exit_confirm
+import pheeeew.shared.generated.resources.draft_exit_title
+import pheeeew.shared.generated.resources.permission_location_message
+import pheeeew.shared.generated.resources.permission_location_services_message
+import pheeeew.shared.generated.resources.permission_location_services_title
+import pheeeew.shared.generated.resources.permission_location_title
 
 private enum class PermissionDialogUiModel {
     Location,
@@ -509,10 +522,10 @@ fun MapScreen(
     }
     if (showDiscardDialog) {
         ConfirmDialog(
-            title = "작성 중인 내용이 있어요.",
-            content = "지금까지 작성하던 내용이 저장되지 않아요.\n나갈까요?",
-            confirmText = "나가기",
-            cancelText = "취소",
+            title = stringResource(Res.string.draft_exit_title),
+            content = stringResource(Res.string.draft_exit_body),
+            confirmText = stringResource(Res.string.draft_exit_confirm),
+            cancelText = stringResource(Res.string.app_cancel),
             onConfirm = {
                 showDiscardDialog = false
                 leaveInput()
@@ -524,18 +537,38 @@ fun MapScreen(
         ConfirmDialog(
             title =
                 when (dialog) {
-                    PermissionDialogUiModel.Location -> "위치 권한이 필요해요"
-                    PermissionDialogUiModel.LocationServices -> "위치 서비스를 켜주세요"
-                    PermissionDialogUiModel.Microphone -> "마이크 권한이 필요해요"
+                    PermissionDialogUiModel.Location -> {
+                        stringResource(Res.string.permission_location_title)
+                    }
+
+                    PermissionDialogUiModel.LocationServices -> {
+                        stringResource(
+                            Res.string.permission_location_services_title,
+                        )
+                    }
+
+                    PermissionDialogUiModel.Microphone -> {
+                        stringResource(Res.string.app_microphone_permission_title)
+                    }
                 },
             content =
                 when (dialog) {
-                    PermissionDialogUiModel.Location -> "현재 위치를 확인하고 감정을 남기려면 위치 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요."
-                    PermissionDialogUiModel.LocationServices -> "감정을 남기려면 위치 서비스를 켜주세요."
-                    PermissionDialogUiModel.Microphone -> "음성을 녹음하려면 마이크 권한을 허용해 주세요.\n설정에서 권한을 켤 수 있어요."
+                    PermissionDialogUiModel.Location -> {
+                        stringResource(Res.string.permission_location_message)
+                    }
+
+                    PermissionDialogUiModel.LocationServices -> {
+                        stringResource(
+                            Res.string.permission_location_services_message,
+                        )
+                    }
+
+                    PermissionDialogUiModel.Microphone -> {
+                        stringResource(Res.string.app_microphone_permission_message)
+                    }
                 },
-            confirmText = "설정으로 이동",
-            cancelText = "취소",
+            confirmText = stringResource(Res.string.app_open_settings),
+            cancelText = stringResource(Res.string.app_cancel),
             onConfirm = {
                 permissionDialog = null
                 if (dialog == PermissionDialogUiModel.Location) viewModel.dismissLocationPermissionDialog()

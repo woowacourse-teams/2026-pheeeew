@@ -41,10 +41,15 @@ import com.pheeeew.feature.screens.map.record.EmotionPromptLabel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_menu
 import pheeeew.shared.generated.resources.ic_my_location
 import pheeeew.shared.generated.resources.ic_refresh
+import pheeeew.shared.generated.resources.map_current_location
+import pheeeew.shared.generated.resources.map_nearby_emotions
+import pheeeew.shared.generated.resources.map_open_list
+import pheeeew.shared.generated.resources.map_refresh
 
 private const val EMOTION_PROMPT_DAMPING_RATIO = 0.8205f
 private const val EMOTION_PROMPT_STIFFNESS = 380f
@@ -120,12 +125,12 @@ fun MapOverlay(
                     ) {
                         Icon(
                             painter = painterResource(Res.drawable.ic_menu),
-                            contentDescription = "목록 열기",
+                            contentDescription = stringResource(Res.string.map_open_list),
                             modifier = Modifier.size(24.dp),
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "주변 감정",
+                            text = stringResource(Res.string.map_nearby_emotions),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -150,12 +155,12 @@ fun MapOverlay(
                 ) {
                     MapControlButton(
                         icon = Res.drawable.ic_refresh,
-                        contentDescription = "지도 새로고침",
+                        contentDescription = stringResource(Res.string.map_refresh),
                         onClick = onRefreshClick,
                     )
                     MapControlButton(
                         icon = Res.drawable.ic_my_location,
-                        contentDescription = "내 위치로 이동",
+                        contentDescription = stringResource(Res.string.map_current_location),
                         enabled = !isRequestingLocation,
                         onClick = onMyLocationClick,
                     )

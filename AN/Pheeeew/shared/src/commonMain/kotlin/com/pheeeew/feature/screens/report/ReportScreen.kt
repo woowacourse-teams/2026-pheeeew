@@ -31,8 +31,10 @@ import com.pheeeew.feature.screens.report.component.ReportReasonOption
 import com.pheeeew.feature.screens.report.component.ReportStampPrompt
 import com.pheeeew.feature.screens.report.component.ReportSubmitButton
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_emotion_angry
+import pheeeew.shared.generated.resources.report_description_label
 
 internal val reportReasons =
     listOf(
@@ -96,7 +98,7 @@ fun ReportScreen(
                 }
 
                 Text(
-                    text = "상세 설명 (선택)",
+                    text = stringResource(Res.string.report_description_label),
                     modifier = Modifier.padding(top = 20.dp),
                     color = AppColors.GroupInk,
                     fontSize = 14.sp,

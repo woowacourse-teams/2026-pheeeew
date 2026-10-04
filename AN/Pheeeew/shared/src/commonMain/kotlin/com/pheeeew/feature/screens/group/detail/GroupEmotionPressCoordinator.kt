@@ -28,6 +28,7 @@ internal class GroupEmotionPressCoordinator(
     private val onAccessLost: (GroupOperationKey, GroupDetailAccessLoss) -> Unit,
     private val onNotice: (GroupDetailNoticeKind, Long?) -> Unit,
     private val canContinue: () -> Boolean,
+    private val onWorkFinished: () -> Unit = {},
 ) {
     private data class AcceptedPress(
         val emotion: EmotionKind,
@@ -65,7 +66,7 @@ internal class GroupEmotionPressCoordinator(
             onNotice(GroupDetailNoticeKind.PressQueueFull, null)
         }
         if (status == GroupPressStatus.Idle && job?.isActive != true) {
-            startProcessing(waitForBatchWindow = true)
+            startProcessing()
         }
         return press.key
     }
@@ -102,6 +103,9 @@ internal class GroupEmotionPressCoordinator(
 
     fun clearForAccessLoss() {
         generation++
+        val activeJob = job
+        job = null
+        activeJob?.cancel()
         queue.clear()
         pending.clear()
         unknownBatch = emptyList()
@@ -109,7 +113,7 @@ internal class GroupEmotionPressCoordinator(
         publish()
     }
 
-    private fun startProcessing(waitForBatchWindow: Boolean) {
+    private fun startProcessing() {
         if (job?.isActive == true || status != GroupPressStatus.Idle) return
         if (!canContinue()) {
             clearForAccessLoss()
@@ -124,7 +128,6 @@ internal class GroupEmotionPressCoordinator(
             scope.launch(start = CoroutineStart.LAZY) {
                 var activeBatch: List<AcceptedPress> = emptyList()
                 try {
-                    if (waitForBatchWindow) delay(dependencies.requestPolicy.pressBatchWindowMillis)
                     while (processingGeneration == generation && canContinue()) {
                         val batch = takeBatch()
                         if (batch.isEmpty()) {
@@ -167,6 +170,7 @@ internal class GroupEmotionPressCoordinator(
                         job = null
                         drain()
                     }
+                    onWorkFinished()
                 }
             }
         job = processingJob
@@ -175,12 +179,6 @@ internal class GroupEmotionPressCoordinator(
 
     private suspend fun request(batch: List<AcceptedPress>): PressGroupEmotionResult {
         val first = batch.first()
-        val increments =
-            batch
-                .groupingBy { it.emotion }
-                .eachCount()
-                .map { (emotion, count) -> EmotionPressIncrement(emotion, count) }
-                .sortedBy { it.emotion.name }
         return try {
             withTimeoutOrNull(dependencies.requestPolicy.timeoutMillis) {
                 telemetry
@@ -188,12 +186,12 @@ internal class GroupEmotionPressCoordinator(
                         "group_emotion_press_finished",
                         labels(
                             "group_operation_key" to "${first.key.ownerInstanceId}:${first.key.sequence}",
-                            "press_count" to batch.size.toString(),
-                            "emotion_count" to increments.size.toString(),
+                            "press_count" to "1",
+                            "emotion_count" to "1",
                         ),
                         started = "group_emotion_press_started",
                     ).observe(::resultLabel) {
-                        dependencies.pressGroupEmotionAction.press(groupId, increments)
+                        dependencies.pressGroupEmotionAction.press(groupId, first.emotion)
                     }
             } ?: PressGroupEmotionResult.OutcomeUnknown
         } catch (cancelled: CancellationException) {
@@ -268,13 +266,7 @@ internal class GroupEmotionPressCoordinator(
         pending.removeAll { it.key in keys }
     }
 
-    private fun takeBatch(): List<AcceptedPress> {
-        val batch = mutableListOf<AcceptedPress>()
-        while (batch.size < dependencies.requestPolicy.maxPressesPerRequest) {
-            batch += queue.removeFirstOrNull() ?: break
-        }
-        return batch
-    }
+    private fun takeBatch(): List<AcceptedPress> = queue.removeFirstOrNull()?.let(::listOf).orEmpty()
 
     private fun drain() {
         if (job?.isActive == true || status != GroupPressStatus.Idle) return
@@ -282,7 +274,7 @@ internal class GroupEmotionPressCoordinator(
             clearForAccessLoss()
             return
         }
-        if (queue.isNotEmpty()) startProcessing(waitForBatchWindow = false)
+        if (queue.isNotEmpty()) startProcessing()
     }
 
     private fun isSending(key: GroupOperationKey): Boolean = (status as? GroupPressStatus.Sending)?.operationKey == key

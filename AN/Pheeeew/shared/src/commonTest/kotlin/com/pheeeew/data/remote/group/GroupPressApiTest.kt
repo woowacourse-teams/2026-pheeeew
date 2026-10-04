@@ -7,8 +7,6 @@ import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.createApiClient
 import com.pheeeew.data.remote.group.api.GroupPressApi
 import com.pheeeew.data.remote.group.dto.GroupPressCountResponseDto
-import com.pheeeew.domain.model.group.GroupPressBatch
-import com.pheeeew.domain.model.group.GroupPressIncrement
 import com.pheeeew.domain.model.group.GroupPressState
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -21,11 +19,10 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertTrue
 
 class GroupPressApiTest {
     @Test
-    fun `감정별 횟수를 정렬해 presses 목록으로 전송하고 기존 집계 응답을 읽는다`() =
+    fun `현재 백엔드 단건 계약의 state 본문으로 전송하고 집계 응답을 읽는다`() =
         runTest {
             var requestedPath = ""
             var requestBody = ""
@@ -49,19 +46,14 @@ class GroupPressApiTest {
                     assertIs<ApiResult.Success<GroupPressCountResponseDto>>(
                         GroupPressApi(client.requests).press(
                             GROUP_ID,
-                            GroupPressBatch(
-                                listOf(
-                                    GroupPressIncrement(GroupPressState.IRRITATED, 3),
-                                    GroupPressIncrement(GroupPressState.ANGRY, 2),
-                                ),
-                            ),
+                            GroupPressState.ANGRY,
                         ),
                     )
 
                 assertEquals("/api/v2/groups/$GROUP_ID/presses", requestedPath)
                 assertEquals("Bearer app-access-token", authorization)
                 assertEquals(
-                    """{"presses":[{"state":"ANGRY","count":2},{"state":"IRRITATED","count":3}]}""",
+                    """{"state":"ANGRY"}""",
                     requestBody,
                 )
                 assertEquals(12L, result.value.total)
@@ -70,26 +62,6 @@ class GroupPressApiTest {
                 client.close()
             }
         }
-
-    @Test
-    fun `요청 배치는 빈 목록 중복 감정 및 총량 초과를 거부한다`() {
-        assertTrue(runCatching { GroupPressBatch(emptyList()) }.isFailure)
-        assertTrue(
-            runCatching {
-                GroupPressBatch(
-                    listOf(
-                        GroupPressIncrement(GroupPressState.ANGRY, 1),
-                        GroupPressIncrement(GroupPressState.ANGRY, 2),
-                    ),
-                )
-            }.isFailure,
-        )
-        assertTrue(
-            runCatching {
-                GroupPressBatch(listOf(GroupPressIncrement(GroupPressState.ANGRY, 101)))
-            }.isFailure,
-        )
-    }
 
     private fun jsonHeaders() = headersOf(HttpHeaders.ContentType, ContentType.Application.Json.toString())
 
