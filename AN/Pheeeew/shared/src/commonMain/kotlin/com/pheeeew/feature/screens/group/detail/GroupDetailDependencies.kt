@@ -10,4 +10,5 @@ data class GroupDetailDependencies(
     val operationKeyAllocator: GroupOperationKeyAllocator,
     val requestPolicy: GroupDetailRequestPolicy = GroupDetailRequestPolicy(),
     val monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
+    val emotionRankingSource: GroupDetailEmotionRankingSource = GroupDetailEmotionRankingSource.Unavailable,
 )
