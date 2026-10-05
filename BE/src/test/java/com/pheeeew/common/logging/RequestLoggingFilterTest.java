@@ -250,6 +250,25 @@ class RequestLoggingFilterTest {
     }
 
     @Test
+    void 허용한_이름이어도_요청_본문으로_온_값은_실리지_않는다() throws Exception {
+        // given
+        String groupId = "0b0e6f0a-1c2d-4e3f-8a9b-7c6d5e4f3a2b";
+
+        // when
+        client.perform(post("/test/values/" + groupId + "/HEART/CODE")
+                        .queryParam("weeksAgo", "1")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .content("state=BODY-STATE&platform=BODY-PLATFORM&blockId=7"))
+                .andExpect(status().isInternalServerError());
+
+        // then
+        assertThat(output).hasSize(1);
+        assertThat(JsonParserFactory.getJsonParser().parseMap(output.getFirst())).containsEntry("params",
+                Map.of("groupId", groupId, "emojiType", "HEART", "weeksAgo", "1"));
+        assertThat(output.getFirst()).doesNotContain("BODY-STATE", "BODY-PLATFORM");
+    }
+
+    @Test
     void DB_원인이면_감싼_예외의_메시지까지_모두_버리고_SQL_상태만_남긴다() throws Exception {
         // given
         controller.failure = new PheeeewException(INTERNAL_SERVER_ERROR, new IllegalStateException(
