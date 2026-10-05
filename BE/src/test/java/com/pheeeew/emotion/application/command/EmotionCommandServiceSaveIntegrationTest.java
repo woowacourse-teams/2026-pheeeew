@@ -6,9 +6,12 @@ import static com.pheeeew.emotion.fixture.AudioUploadFixture.기본_업로드_�
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_UPLOAD_ALREADY_USED;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_LOCATION_OUT_OF_SERVICE_AREA;
+import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
 import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -20,6 +23,7 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.AudioUploadRepository;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.exception.EmotionException;
+import com.pheeeew.groups.exception.GroupException;
 import com.pheeeew.support.PostgisDataJpaTest;
 import java.time.Instant;
 import java.util.UUID;
@@ -27,6 +31,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -150,24 +155,105 @@ class EmotionCommandServiceSaveIntegrationTest {
         assertThat(emotionRepository.count()).isOne();
     }
 
+    @ParameterizedTest
+    @CsvSource({"0,0,NONE", "0,0,MEMO", "0,0,AUDIO", "128.02,38,NONE", "128.02,38,MEMO", "128.02,38,AUDIO"})
+    void 지원_범위_밖의_신규_등록은_모든_콘텐츠를_거부하고_녹음_연결을_시작하지_않는다(
+            double longitude, double latitude, String contentType
+    ) {
+        // given
+        UUID requestId = UUID.randomUUID();
+        String memo = contentType.equals("MEMO") ? "메모" : null;
+        String uploadId = contentType.equals("AUDIO") ? upload.getUploadId() : null;
+
+        // when / then
+        assertThatThrownBy(() -> commandService.save(requestId, EmotionState.FRUSTRATED,
+                longitude, latitude, 35.5, memo, uploadId, null, device.getPublicId()))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_LOCATION_OUT_OF_SERVICE_AREA));
+        assertThat(emotionRepository.count()).isZero();
+        assertThat(linkCount()).isZero();
+        verifyNoInteractions(objectVerifier);
+
+        // 같은 요청 식별자와 업로드로 허용 위치를 선택하면 등록할 수 있다.
+        Emotion saved = save(requestId, memo, uploadId);
+        assertThat(saved.getRegionCode()).isEqualTo("11010530");
+        assertThat(emotionRepository.count()).isOne();
+        assertThat(linkCount()).isEqualTo(contentType.equals("AUDIO") ? 1 : 0);
+    }
+
     @Test
-    void 검증된_경계_밖의_생성은_미매칭_코드와_분류_완료_시각을_저장한다() {
+    void 경계_밖_1km_이내의_신규_녹음은_원래_좌표로_지역에_연결한다() {
         // given / when
         Emotion saved = commandService.save(UUID.randomUUID(), EmotionState.FRUSTRATED,
-                0, 0, 35.5, null, null, null, device.getPublicId());
+                128.005, 38, 35.5, null, upload.getUploadId(), null, device.getPublicId());
         Emotion loaded = emotionRepository.findById(saved.getId()).orElseThrow();
 
         // then
-        assertThat(loaded.getRegionCode()).isNull();
+        assertThat(loaded.getRegionCode()).isEqualTo("11010530");
         assertThat(loaded.getRegionClassifiedAt()).isNotNull();
-        assertThat(loaded.getLongitude()).isZero();
-        assertThat(loaded.getLatitude()).isZero();
+        assertThat(loaded.getLongitude()).isEqualTo(128.005);
+        assertThat(loaded.getLatitude()).isEqualTo(38);
+        assertThat(loaded.getContent().getAudio().getObjectKey()).isEqualTo(upload.getObjectKey());
+        assertThat(linkCount()).isOne();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 기존_지원_범위_밖_기록은_재시도와_수정과_삭제가_가능하고_지역을_바꾸지_않는다(boolean classified) {
+        // given: 기존 버전이 남긴 범위 밖 기록을 재현한다.
+        UUID requestId = UUID.randomUUID();
+        Emotion original = save(requestId, "기존 메모", null);
+        jdbc.sql("""
+                UPDATE emotions SET location = ST_GeomFromText('POINT(0 0)', 4326), region_code = NULL,
+                    region_classified_at = CASE WHEN :classified THEN CURRENT_TIMESTAMP ELSE NULL END
+                WHERE id = :id
+                """).param("classified", classified).param("id", original.getId()).update();
+        Instant classifiedAt = emotionRepository.findById(original.getId()).orElseThrow().getRegionClassifiedAt();
+        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
+
+        // when: 재시도는 새 내용·업로드·지원 범위 밖 좌표를 검사하지 않는다.
+        Emotion retried = commandService.save(requestId, EmotionState.ANGRY,
+                0, 0, 90, null, upload.getUploadId(), null, device.getPublicId());
+
+        // then
+        assertThat(retried.getId()).isEqualTo(original.getId());
+        assertThat(retried.getMemo()).isEqualTo("기존 메모");
+        assertThat(retried.getState()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(retried.getRegionCode()).isNull();
+        assertThat(retried.getRegionClassifiedAt()).isEqualTo(classifiedAt);
+        assertThat(linkCount()).isZero();
+        verifyNoInteractions(objectVerifier);
+
+        commandService.update(original.getId(), device.getPublicId(), EmotionState.EXHAUSTED,
+                "수정 메모", null, false, null);
+        commandService.delete(original.getId(), device.getPublicId());
+        Emotion updated = emotionRepository.findById(original.getId()).orElseThrow();
+        assertThat(updated.getMemo()).isEqualTo("수정 메모");
+        assertThat(updated.getState()).isEqualTo(EmotionState.EXHAUSTED);
+        assertThat(updated.getDeletedAt()).isNotNull();
+        assertThat(updated.getLongitude()).isZero();
+        assertThat(updated.getLatitude()).isZero();
+        assertThat(updated.getRegionCode()).isNull();
+        assertThat(updated.getRegionClassifiedAt()).isEqualTo(classifiedAt);
+        assertThat(emotionRepository.count()).isOne();
+    }
+
+    @Test
+    void 지원_범위_밖이어도_기존_그룹_권한_확인을_먼저_유지한다() {
+        // given / when / then
+        assertThatThrownBy(() -> commandService.save(UUID.randomUUID(), EmotionState.FRUSTRATED,
+                0, 0, 35.5, null, upload.getUploadId(), UUID.randomUUID(), device.getPublicId()))
+                .isInstanceOfSatisfying(GroupException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(GROUP_NOT_FOUND));
+        assertThat(emotionRepository.count()).isZero();
+        assertThat(linkCount()).isZero();
+        verifyNoInteractions(objectVerifier);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"unverified", "sqlFailure"})
-    void 지역_분류가_실패하면_녹음_연결도_롤백하고_복구_후_재사용한다(String failure) {
-        // given: 녹음 claim 다음에 실제 분류 경로에서 오류를 발생시킨다.
+    void 지역_분류가_실패하면_녹음_연결을_시작하지_않고_복구_후_재사용한다(String failure) {
+        // given: 실제 분류 경로에서 오류를 발생시킨다.
         UUID requestId = UUID.randomUUID();
         boolean unavailableTable = failure.equals("sqlFailure");
         if (unavailableTable) {
@@ -187,6 +273,7 @@ class EmotionCommandServiceSaveIntegrationTest {
             }
             assertThat(emotionRepository.count()).isZero();
             assertThat(linkCount()).isZero();
+            verifyNoInteractions(objectVerifier);
         } finally {
             if (unavailableTable) {
                 jdbc.sql("ALTER TABLE unavailable_regions RENAME TO regions").update();

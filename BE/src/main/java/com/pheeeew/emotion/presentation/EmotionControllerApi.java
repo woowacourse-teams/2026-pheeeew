@@ -113,19 +113,27 @@ public interface EmotionControllerApi {
 
     @Operation(summary = "감정 등록", description = """
             선택 위치에 감정을 등록합니다. contentType은 NONE, MEMO, AUDIO 중 하나입니다.
-            최초 등록과 같은 기기의 requestId 재시도 모두 최초 감정 ID를 200으로 반환합니다.
+            최종 저장 좌표가 SGIS 2025년 2분기 읍면동 경계에 포함되거나 경계에서 1km 이내일 때 신규 등록할 수 있습니다.
+            경계 밖은 폴리곤까지 가장 가까운 지역에 연결하며 좌표는 이동시키지 않습니다.
+            배정할 지역이 없으면 EMOTION-014와 400을 반환합니다. 녹음 확인·연결과 감정 저장은 시작하지 않습니다.
+            이는 선택 좌표의 지원 범위이며 사용자의 실제 위치를 검증하는 정책은 아닙니다.
+            최초 등록과 같은 기기의 requestId 재시도는 생성 제한을 통과하면 최초 감정 ID를 200으로 반환합니다.
             다른 기기가 사용한 requestId는 409입니다. 녹음은 업로드 완료된 audioUploadId로 연결합니다.
             groupId를 전달하면 현재 소속된 그룹의 스탬프를 연결합니다. 생략하거나 null이면 그룹 스탬프가 없습니다.
             연결된 스탬프가 변경되면 기존 감정에도 최신 모양을 표시합니다.
             서버의 지역 분류 준비가 완료되지 않은 경우 신규 등록이 일시적으로 제한되며, EMOTION-013과 503을 반환합니다.
-            같은 기기의 기존 requestId 재시도는 지역 자료 상태와 관계없이 최초 감정을 반환합니다.
+            기존 성공 requestId는 지역 자료 상태나 지원 범위 밖 좌표와 관계없이 최초 감정을 반환하며 재분류하지 않습니다.
+            기존 범위 밖 기록도 수정·삭제할 수 있습니다.
 
             한 기기는 1초에 한 번만 등록할 수 있습니다. 초과하면 429와 Retry-After 헤더를 반환합니다.
+            이 제한은 requestId 조회와 지역 검사 전에 적용되므로 같은 requestId의 빠른 재시도도 429가 될 수 있습니다.
+            지역 거부 후 다시 요청할 때도 이 제한을 적용합니다.
             재시도할 때 같은 requestId를 보내면 감정이 중복 생성되지 않습니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "저장된 감정 ID"),
-            @ApiResponse(responseCode = "400", description = "등록 필드 또는 내용 조합이 올바르지 않음"),
+            @ApiResponse(responseCode = "400", description = "등록 필드·내용 조합이 올바르지 않거나 지원 범위 밖 위치(EMOTION-014)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
             @ApiResponse(responseCode = "404", description = "녹음 업로드가 없거나 해당 기기의 업로드가 아님, 또는 사용할 수 없는 그룹"),
             @ApiResponse(responseCode = "409", description = "요청 식별자 충돌 또는 녹음 미완료·이미 사용됨"),
@@ -133,7 +141,8 @@ public interface EmotionControllerApi {
                     headers = @Header(name = "Retry-After", description = "다시 시도하기까지 기다려야 하는 초입니다.",
                             schema = @Schema(type = "string", example = "1")),
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "503", description = "녹음 확인 기능을 사용할 수 없거나 서버의 지역 분류 준비가 완료되지 않음")
+            @ApiResponse(responseCode = "503", description = "녹음 확인 기능을 사용할 수 없거나 서버의 지역 분류 준비가 완료되지 않음(EMOTION-013)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     ResponseEntity<EmotionCreateResponse> save(@Valid EmotionCreateRequest request,
             @Parameter(hidden = true) UUID devicePublicId);

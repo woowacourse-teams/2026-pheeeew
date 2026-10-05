@@ -32,11 +32,7 @@ WITH candidates AS MATERIALIZED (
     FOR NO KEY UPDATE SKIP LOCKED
 ), updated AS (
     UPDATE public.emotions e
-    SET region_code = (
-        SELECT r.code FROM public.regions r
-        WHERE r.level = 'EMD' AND ST_Covers(r.boundary, c.location)
-        ORDER BY r.code LIMIT 1
-    ), region_classified_at = CURRENT_TIMESTAMP
+    SET region_code = public.find_emd_region_code(c.location), region_classified_at = CURRENT_TIMESTAMP
     FROM candidates c
     WHERE e.id = c.id AND e.region_classified_at IS NULL
     RETURNING e.id
