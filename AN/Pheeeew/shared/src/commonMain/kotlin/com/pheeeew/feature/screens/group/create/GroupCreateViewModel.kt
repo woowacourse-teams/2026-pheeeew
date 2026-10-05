@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Clock
 
 /** 생성 초안, 검증, 확인, 제출 및 결과 전달 수명을 소유합니다. */
 class GroupCreateViewModel(
@@ -33,12 +34,14 @@ class GroupCreateViewModel(
         FindGroupCreateCandidatesAction { GroupCreateCandidatesResult.Unavailable },
     private val sessionStore: GroupCreateSessionStore = EmptyGroupCreateSessionStore,
     monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
+    private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) : ViewModel() {
     val telemetry = ProductMonitoring(monitoring, "group_create")
     private val _uiState = MutableStateFlow(GroupCreateUiState(restoration = GroupCreateRestorationState.Restoring))
     val uiState = _uiState.asStateFlow()
     private val sessionWriteMutex = Mutex()
     private var pendingOperation: PersistedGroupCreateOperation? = null
+    private var draftUpdatedAtEpochMillis: Long? = null
     private var lastAppliedHue: Float? = null
 
     init {
@@ -414,6 +417,19 @@ class GroupCreateViewModel(
     fun onBackRequested(): Boolean {
         val state = _uiState.value
         return when {
+            state.isDiscardInProgress -> {
+                false
+            }
+
+            state.isDiscardConfirmationVisible -> {
+                onCancelDraftDiscard()
+                false
+            }
+
+            state.restoration == GroupCreateRestorationState.Restoring -> {
+                false
+            }
+
             state.colorSheet is StampColorSheetState.Editing -> {
                 closeColorSheet()
                 false
@@ -440,13 +456,76 @@ class GroupCreateViewModel(
             }
 
             state.submission == GroupCreateSubmissionState.Editing -> {
-                telemetry.emit("group_flow_closed", labels("operation_kind" to "create"))
-                true
+                if (state.hasEditedDraft) {
+                    _uiState.update { current -> current.copy(isDiscardConfirmationVisible = true) }
+                    false
+                } else {
+                    telemetry.emit("group_flow_closed", labels("operation_kind" to "create"))
+                    true
+                }
             }
 
             else -> {
                 false
             }
+        }
+    }
+
+    fun onCancelDraftDiscard() {
+        _uiState.update { state ->
+            if (state.isDiscardInProgress) {
+                state
+            } else {
+                state.copy(isDiscardConfirmationVisible = false, discardFailed = false)
+            }
+        }
+    }
+
+    /** Clears the editable draft durably before the route leaves; an unresolved operation is never discarded here. */
+    suspend fun confirmDraftDiscardAndExit(): Boolean {
+        val previous = _uiState.value
+        if (!previous.isDiscardConfirmationVisible || previous.isDiscardInProgress || pendingOperation != null) {
+            return false
+        }
+        val previousDraftUpdatedAt = draftUpdatedAtEpochMillis
+        draftUpdatedAtEpochMillis = null
+        _uiState.update { state ->
+            state.copy(
+                draft = DEFAULT_GROUP_CREATE_DRAFT,
+                fieldErrors = GroupCreateFieldErrors(),
+                submission = GroupCreateSubmissionState.Editing,
+                recovery = GroupCreateRecoveryState.Idle,
+                isDiscardInProgress = true,
+                isDraftExpiredNoticeVisible = false,
+                discardFailed = false,
+            )
+        }
+        return try {
+            sessionWriteMutex.withLock { sessionStore.write(null) }
+            _uiState.update { state ->
+                state.copy(isDiscardConfirmationVisible = false, isDiscardInProgress = false)
+            }
+            telemetry.emit("group_flow_closed", labels("operation_kind" to "create", "action" to "discard"))
+            true
+        } catch (cancelled: CancellationException) {
+            draftUpdatedAtEpochMillis = previousDraftUpdatedAt
+            _uiState.value = previous
+            throw cancelled
+        } catch (exception: Exception) {
+            errorReporter.reportUnexpected(exception)
+            draftUpdatedAtEpochMillis = previousDraftUpdatedAt
+            _uiState.update { state ->
+                state.copy(
+                    draft = previous.draft,
+                    fieldErrors = previous.fieldErrors,
+                    submission = previous.submission,
+                    recovery = previous.recovery,
+                    isDiscardInProgress = false,
+                    isDiscardConfirmationVisible = true,
+                    discardFailed = true,
+                )
+            }
+            false
         }
     }
 
@@ -491,6 +570,7 @@ class GroupCreateViewModel(
         }
         lastAppliedHue = selection.hueDegrees
         val fillArgb = ColorConversion.toArgb(selection)
+        var draftChanged = false
         _uiState.update { state ->
             val activeSelection = (state.colorSheet as? StampColorSheetState.Editing)?.selection
             if (state.submission != GroupCreateSubmissionState.Editing ||
@@ -498,11 +578,14 @@ class GroupCreateViewModel(
             ) {
                 return@update state
             }
+            val updatedDraft = state.draft.copy(stamp = state.draft.stamp.copy(fillArgb = fillArgb))
+            draftChanged = updatedDraft != state.draft
             state.copy(
-                draft = state.draft.copy(stamp = state.draft.stamp.copy(fillArgb = fillArgb)),
+                draft = updatedDraft,
                 colorSheet = StampColorSheetState.Closed,
             )
         }
+        if (draftChanged) markDraftEditedAndPersist()
     }
 
     fun closeColorSheet() {
@@ -513,7 +596,6 @@ class GroupCreateViewModel(
                 state
             }
         }
-        persistCurrentSession()
     }
 
     /** Route가 성공 결과를 처리한 뒤 같은 operation key일 때만 종결 상태로 바꿉니다. */
@@ -536,6 +618,7 @@ class GroupCreateViewModel(
         transform: (GroupCreateDraft) -> GroupCreateDraft,
         clearError: (GroupCreateFieldErrors) -> GroupCreateFieldErrors,
     ) {
+        var draftChanged = false
         _uiState.update { state ->
             if (state.restoration != GroupCreateRestorationState.Ready || pendingOperation != null ||
                 (
@@ -546,17 +629,20 @@ class GroupCreateViewModel(
             ) {
                 return@update state
             }
+            val updatedDraft = transform(state.draft)
+            draftChanged = updatedDraft != state.draft
             state.copy(
-                draft = transform(state.draft),
+                draft = updatedDraft,
                 fieldErrors = clearError(state.fieldErrors),
                 submission = GroupCreateSubmissionState.Editing,
                 recovery = GroupCreateRecoveryState.Idle,
             )
         }
-        persistCurrentSession()
+        if (draftChanged) markDraftEditedAndPersist()
     }
 
     private fun updateDraft(transform: (GroupCreateDraft) -> GroupCreateDraft) {
+        var draftChanged = false
         _uiState.update { state ->
             if (state.restoration != GroupCreateRestorationState.Ready || pendingOperation != null ||
                 state.submission != GroupCreateSubmissionState.Editing ||
@@ -564,9 +650,16 @@ class GroupCreateViewModel(
             ) {
                 state
             } else {
-                state.copy(draft = transform(state.draft))
+                val updatedDraft = transform(state.draft)
+                draftChanged = updatedDraft != state.draft
+                state.copy(draft = updatedDraft)
             }
         }
+        if (draftChanged) markDraftEditedAndPersist()
+    }
+
+    private fun markDraftEditedAndPersist() {
+        draftUpdatedAtEpochMillis = nowMillis()
         persistCurrentSession()
     }
 
@@ -575,11 +668,46 @@ class GroupCreateViewModel(
             try {
                 val snapshot = sessionWriteMutex.withLock { sessionStore.read() }
                 val restoredOperation = snapshot?.pendingOperation
+                val restoredDraft = restoredOperation?.draft?.toDraft() ?: snapshot?.draft?.toDraft()
+                val now = nowMillis()
+                val restoredTimestamp =
+                    snapshot?.draftUpdatedAtEpochMillis?.coerceAtMost(now)
+                        ?: now.takeIf { restoredDraft != null && restoredDraft != DEFAULT_GROUP_CREATE_DRAFT }
+                val hasDraft = restoredDraft != null && restoredDraft != DEFAULT_GROUP_CREATE_DRAFT
+
+                if (restoredOperation == null && hasDraft && restoredTimestamp != null &&
+                    now >= restoredTimestamp && now - restoredTimestamp >= GroupCreateSessionSnapshot.DRAFT_TTL_MILLIS
+                ) {
+                    sessionWriteMutex.withLock { sessionStore.write(null) }
+                    draftUpdatedAtEpochMillis = null
+                    _uiState.update { state ->
+                        state.copy(
+                            draft = DEFAULT_GROUP_CREATE_DRAFT,
+                            restoration = GroupCreateRestorationState.Ready,
+                            isDraftExpiredNoticeVisible = true,
+                        )
+                    }
+                    return@launch
+                }
+
+                val migratedSnapshot =
+                    snapshot?.copy(
+                        schemaVersion = GroupCreateSessionSnapshot.CURRENT_SCHEMA_VERSION,
+                        draft = restoredDraft?.toPersistedDraft() ?: DEFAULT_GROUP_CREATE_DRAFT.toPersistedDraft(),
+                        draftUpdatedAtEpochMillis = restoredTimestamp,
+                    )
+                if (snapshot != null && restoredOperation == null && !hasDraft) {
+                    sessionWriteMutex.withLock { sessionStore.write(null) }
+                } else if (migratedSnapshot != null && migratedSnapshot != snapshot) {
+                    sessionWriteMutex.withLock { sessionStore.write(migratedSnapshot) }
+                }
+
                 pendingOperation = restoredOperation
+                draftUpdatedAtEpochMillis = restoredTimestamp
                 val restoredKey = restoredOperation?.toOperationKey()
                 _uiState.update { state ->
                     state.copy(
-                        draft = snapshot?.draft?.toDraft() ?: state.draft,
+                        draft = restoredDraft ?: state.draft,
                         submission =
                             restoredKey?.let {
                                 GroupCreateSubmissionState.Failed(GroupCreateFailure.OutcomeUnknown, it)
@@ -604,12 +732,20 @@ class GroupCreateViewModel(
             try {
                 sessionWriteMutex.withLock {
                     val state = _uiState.value
-                    sessionStore.write(
-                        GroupCreateSessionSnapshot(
-                            draft = state.draft.toPersistedDraft(),
-                            pendingOperation = pendingOperation,
-                        ),
-                    )
+                    val shouldPersistDraft = state.hasEditedDraft
+                    if (!shouldPersistDraft && pendingOperation == null) {
+                        sessionStore.write(null)
+                    } else {
+                        sessionStore.write(
+                            GroupCreateSessionSnapshot(
+                                draft = state.draft.toPersistedDraft(),
+                                draftUpdatedAtEpochMillis =
+                                    draftUpdatedAtEpochMillis
+                                        ?: nowMillis().takeIf { shouldPersistDraft || pendingOperation != null },
+                                pendingOperation = pendingOperation,
+                            ),
+                        )
+                    }
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled

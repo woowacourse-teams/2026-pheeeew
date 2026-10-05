@@ -109,6 +109,8 @@ private fun GroupCreatePreviewFrame(
         onStampTextColorChanged = {},
         onCreateClick = {},
         onCancelConfirmation = {},
+        onCancelDraftDiscard = {},
+        onConfirmDraftDiscard = {},
         onConfirmCreate = {},
         onDismissFailure = {},
         onShowRecoveryDialog = {},

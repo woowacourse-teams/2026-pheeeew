@@ -180,6 +180,13 @@
     <!-- 그룹 생성 -->
     <string name="group_create_title">그룹 만들기</string>
     <string name="group_create_back">뒤로</string>
+    <string name="group_create_draft_expired">7일 동안 수정하지 않은 그룹 작성 내용은 삭제했어요.</string>
+    <string name="group_create_discard_title">작성 중인 그룹이 있어요.</string>
+    <string name="group_create_discard_body">입력한 내용을 버리고 그룹 만들기를 나갈까요? 이 작업은 되돌릴 수 없어요.</string>
+    <string name="group_create_discard_confirm">버리고 나가기</string>
+    <string name="group_create_discard_retry">다시 시도</string>
+    <string name="group_create_discard_failed">작성 내용을 삭제하지 못했어요. 다시 시도해 주세요.</string>
+    <string name="group_create_keep_editing">계속 작성</string>
     <string name="group_create_name_label">그룹명</string>
     <string name="group_create_name_placeholder">그룹명을 입력해 주세요</string>
     <string name="group_create_name_error_required">그룹명을 입력해 주세요.</string>

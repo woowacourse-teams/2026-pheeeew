@@ -7,37 +7,41 @@ import com.pheeeew.feature.screens.group.create.model.StampTextColorOption
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 
+internal val DEFAULT_GROUP_CREATE_DRAFT =
+    GroupCreateDraft(
+        name = "",
+        description = "",
+        stamp =
+            StampAppearanceUiModel(
+                label = "",
+                shape = StampShapeId.CIRCLE,
+                fillArgb = 0xFFA7DCCFL,
+                textArgb = StampTextColorOption.BLACK.argb,
+            ),
+    )
+
 /** 그룹 생성 화면의 단일 상태 스냅샷입니다. */
 data class GroupCreateUiState(
-    val draft: GroupCreateDraft =
-        GroupCreateDraft(
-            name = "",
-            description = "",
-            stamp =
-                StampAppearanceUiModel(
-                    label = "",
-                    shape = StampShapeId.CIRCLE,
-                    fillArgb = DEFAULT_STAMP_FILL,
-                    textArgb = DEFAULT_STAMP_TEXT,
-                ),
-        ),
+    val draft: GroupCreateDraft = DEFAULT_GROUP_CREATE_DRAFT,
     val fieldErrors: GroupCreateFieldErrors = GroupCreateFieldErrors(),
     val submission: GroupCreateSubmissionState = GroupCreateSubmissionState.Editing,
     val colorSheet: StampColorSheetState = StampColorSheetState.Closed,
     val recovery: GroupCreateRecoveryState = GroupCreateRecoveryState.Idle,
     val restoration: GroupCreateRestorationState = GroupCreateRestorationState.Ready,
     val isRecoveryDialogVisible: Boolean = false,
+    val isDiscardConfirmationVisible: Boolean = false,
+    val isDiscardInProgress: Boolean = false,
+    val isDraftExpiredNoticeVisible: Boolean = false,
+    val discardFailed: Boolean = false,
 ) {
+    val hasEditedDraft: Boolean
+        get() = draft != DEFAULT_GROUP_CREATE_DRAFT
+
     val canOpenColorSheet: Boolean
         get() =
             restoration == GroupCreateRestorationState.Ready &&
                 submission == GroupCreateSubmissionState.Editing &&
                 colorSheet is StampColorSheetState.Closed
-
-    private companion object {
-        const val DEFAULT_STAMP_FILL = 0xFFA7DCCFL
-        val DEFAULT_STAMP_TEXT = StampTextColorOption.BLACK.argb
-    }
 }
 
 enum class GroupCreateRestorationState {

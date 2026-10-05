@@ -14,6 +14,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
@@ -197,6 +198,119 @@ class GroupCreateViewModelTest {
         }
 
     @Test
+    fun `초안은 마지막 수정 후 7일 동안 복원되고 만료되면 한 번 안내한 뒤 삭제된다`() =
+        runViewModelTest {
+            val store = InMemoryGroupCreateSessionStore()
+            var now = 1_000_000L
+            val edited = createViewModel(sessionStore = store, nowMillis = { now })
+            edited.onNameChanged("작성 중인 모임")
+            runCurrent()
+            assertEquals(now, store.snapshot?.draftUpdatedAtEpochMillis)
+
+            now += GroupCreateSessionSnapshot.DRAFT_TTL_MILLIS - 1
+            val restored = createViewModel(sessionStore = store, nowMillis = { now })
+            assertEquals("작성 중인 모임", restored.uiState.value.draft.name)
+            assertFalse(restored.uiState.value.isDraftExpiredNoticeVisible)
+
+            now += 1
+            val expired = createViewModel(sessionStore = store, nowMillis = { now })
+            assertEquals(DEFAULT_GROUP_CREATE_DRAFT, expired.uiState.value.draft)
+            assertEquals(true, expired.uiState.value.isDraftExpiredNoticeVisible)
+            assertEquals(null, store.snapshot)
+
+            val reopened = createViewModel(sessionStore = store, nowMillis = { now })
+            assertFalse(reopened.uiState.value.isDraftExpiredNoticeVisible)
+            assertEquals(DEFAULT_GROUP_CREATE_DRAFT, reopened.uiState.value.draft)
+        }
+
+    @Test
+    fun `빈 폼은 바로 나가고 수정된 초안은 확인 후에만 저장 내용을 버린다`() =
+        runViewModelTest {
+            val store = InMemoryGroupCreateSessionStore()
+            val empty = createViewModel(sessionStore = store)
+            assertTrue(empty.onBackRequested())
+            assertFalse(empty.uiState.value.isDiscardConfirmationVisible)
+
+            val edited = createViewModel(sessionStore = store)
+            edited.onNameChanged("버릴 모임")
+            runCurrent()
+            assertEquals("버릴 모임", store.snapshot?.draft?.name)
+
+            assertFalse(edited.onBackRequested())
+            assertTrue(edited.uiState.value.isDiscardConfirmationVisible)
+            edited.onCancelDraftDiscard()
+            assertFalse(edited.uiState.value.isDiscardConfirmationVisible)
+            assertEquals("버릴 모임", store.snapshot?.draft?.name)
+
+            assertFalse(edited.onBackRequested())
+            assertTrue(edited.confirmDraftDiscardAndExit())
+            assertEquals(null, store.snapshot)
+            assertEquals(DEFAULT_GROUP_CREATE_DRAFT, edited.uiState.value.draft)
+            assertFalse(edited.uiState.value.isDiscardConfirmationVisible)
+        }
+
+    @Test
+    fun `초안 저장소 삭제에 실패하면 화면을 나가지 않고 폐기 확인을 유지한다`() =
+        runViewModelTest {
+            val store = InMemoryGroupCreateSessionStore()
+            val viewModel = createViewModel(sessionStore = store)
+            viewModel.onNameChanged("다시 시도할 모임")
+            runCurrent()
+            assertFalse(viewModel.onBackRequested())
+
+            store.writeFailure = IllegalStateException("storage unavailable")
+            assertFalse(viewModel.confirmDraftDiscardAndExit())
+            assertTrue(viewModel.uiState.value.isDiscardConfirmationVisible)
+            assertTrue(viewModel.uiState.value.discardFailed)
+            assertEquals("다시 시도할 모임", viewModel.uiState.value.draft.name)
+            assertEquals("다시 시도할 모임", store.snapshot?.draft?.name)
+
+            store.writeFailure = null
+            assertTrue(viewModel.confirmDraftDiscardAndExit())
+            assertEquals(null, store.snapshot)
+        }
+
+    @Test
+    fun `7일이 지난 초안이어도 미확정 생성 operation은 보존하고 POST를 재전송하지 않는다`() =
+        runViewModelTest {
+            val createdAt = 2_000_000L
+            val pendingDraft = PersistedGroupCreateDraft(name = "결과 미확정 모임")
+            val pending = PersistedGroupCreateOperation("previous-session", 5L, pendingDraft)
+            val store =
+                InMemoryGroupCreateSessionStore(
+                    GroupCreateSessionSnapshot(
+                        schemaVersion = 1,
+                        draft = pendingDraft,
+                        draftUpdatedAtEpochMillis = createdAt,
+                        pendingOperation = pending,
+                    ),
+                )
+            var createCalls = 0
+            val now = createdAt + GroupCreateSessionSnapshot.DRAFT_TTL_MILLIS + 1
+            val restored =
+                createViewModel(
+                    createAction =
+                        CreateGroupAction {
+                            createCalls += 1
+                            CreateGroupResult.Created(GroupId("unexpected"))
+                        },
+                    findCandidatesAction =
+                        FindGroupCreateCandidatesAction {
+                            GroupCreateCandidatesResult.Loaded(emptyList())
+                        },
+                    sessionStore = store,
+                    nowMillis = { now },
+                )
+            runCurrent()
+
+            assertEquals(0, createCalls)
+            assertEquals("결과 미확정 모임", restored.uiState.value.draft.name)
+            assertFalse(restored.uiState.value.isDraftExpiredNoticeVisible)
+            assertEquals(pending, store.snapshot?.pendingOperation)
+            assertEquals(GroupCreateSessionSnapshot.CURRENT_SCHEMA_VERSION, store.snapshot?.schemaVersion)
+        }
+
+    @Test
     fun `미확정 생성의 draft와 operation은 재진입 뒤 복원되고 POST를 자동 재전송하지 않는다`() =
         runViewModelTest {
             val store = InMemoryGroupCreateSessionStore()
@@ -277,6 +391,7 @@ class GroupCreateViewModelTest {
         findCandidatesAction: FindGroupCreateCandidatesAction =
             FindGroupCreateCandidatesAction { GroupCreateCandidatesResult.Unavailable },
         sessionStore: GroupCreateSessionStore = InMemoryGroupCreateSessionStore(),
+        nowMillis: () -> Long = { 1_000L },
     ): GroupCreateViewModel =
         GroupCreateViewModel(
             createGroupAction = createAction,
@@ -284,6 +399,7 @@ class GroupCreateViewModelTest {
             operationKeyAllocator = GroupOperationKeyAllocator("test"),
             findCandidatesAction = findCandidatesAction,
             sessionStore = sessionStore,
+            nowMillis = nowMillis,
         ).also { runCurrent() }
 
     private fun runViewModelTest(block: suspend TestScope.() -> Unit) =
@@ -299,9 +415,12 @@ class GroupCreateViewModelTest {
     private class InMemoryGroupCreateSessionStore(
         var snapshot: GroupCreateSessionSnapshot? = null,
     ) : GroupCreateSessionStore {
+        var writeFailure: Exception? = null
+
         override suspend fun read(): GroupCreateSessionSnapshot? = snapshot
 
         override suspend fun write(snapshot: GroupCreateSessionSnapshot?) {
+            writeFailure?.let { throw it }
             this.snapshot = snapshot
         }
     }

@@ -7,14 +7,19 @@ import kotlinx.serialization.Serializable
 data class GroupCreateSessionSnapshot(
     val schemaVersion: Int = CURRENT_SCHEMA_VERSION,
     val draft: PersistedGroupCreateDraft = PersistedGroupCreateDraft(),
+    val draftUpdatedAtEpochMillis: Long? = null,
     val pendingOperation: PersistedGroupCreateOperation? = null,
 ) {
     init {
-        require(schemaVersion == CURRENT_SCHEMA_VERSION) { "지원하지 않는 그룹 생성 세션 버전입니다." }
+        require(schemaVersion in MIN_SUPPORTED_SCHEMA_VERSION..CURRENT_SCHEMA_VERSION) {
+            "지원하지 않는 그룹 생성 세션 버전입니다."
+        }
     }
 
     companion object {
-        const val CURRENT_SCHEMA_VERSION = 1
+        const val CURRENT_SCHEMA_VERSION = 2
+        const val DRAFT_TTL_MILLIS = 7L * 24 * 60 * 60 * 1000
+        private const val MIN_SUPPORTED_SCHEMA_VERSION = 1
     }
 }
 
