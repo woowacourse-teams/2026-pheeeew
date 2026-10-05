@@ -17,8 +17,8 @@ internal object MapZoomPolicy {
 
     fun focusZoomForRegion(level: EmotionRegionLevel): Double =
         when (level) {
-            EmotionRegionLevel.SIDO -> SIGUNGU_MIN_ZOOM + 1.0
-            EmotionRegionLevel.SIGUNGU -> EMD_MIN_ZOOM + 1.0
-            EmotionRegionLevel.EMD -> DETAIL_PIN_MIN_ZOOM + 1.5
+            EmotionRegionLevel.SIDO -> SIGUNGU_MIN_ZOOM
+            EmotionRegionLevel.SIGUNGU -> EMD_MIN_ZOOM
+            EmotionRegionLevel.EMD -> DETAIL_PIN_MIN_ZOOM
         }
 }

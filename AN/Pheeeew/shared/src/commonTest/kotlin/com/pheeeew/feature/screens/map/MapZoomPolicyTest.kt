@@ -16,7 +16,10 @@ class MapZoomPolicyTest {
     }
 
     @Test
-    fun `각 클러스터 클릭은 다음 조회 계층으로 이동한다`() {
+    fun `각 클러스터 클릭은 다음 조회 계층의 경계 줌으로 이동한다`() {
+        assertEquals(9.0, MapZoomPolicy.focusZoomForRegion(EmotionRegionLevel.SIDO))
+        assertEquals(12.0, MapZoomPolicy.focusZoomForRegion(EmotionRegionLevel.SIGUNGU))
+        assertEquals(14.0, MapZoomPolicy.focusZoomForRegion(EmotionRegionLevel.EMD))
         assertEquals(
             EmotionRegionLevel.SIGUNGU,
             MapZoomPolicy.regionLevelForZoom(MapZoomPolicy.focusZoomForRegion(EmotionRegionLevel.SIDO)),

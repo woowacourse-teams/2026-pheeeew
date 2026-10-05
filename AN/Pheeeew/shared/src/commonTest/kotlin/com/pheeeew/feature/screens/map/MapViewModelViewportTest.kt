@@ -714,7 +714,7 @@ class MapViewModelViewportTest {
                 )
                 viewModel.focusOnRegionCluster("new")
                 assertEquals(
-                    13.0,
+                    12.0,
                     viewModel.uiModel.value.cameraCommand
                         ?.value,
                 )
@@ -912,7 +912,7 @@ class MapViewModelViewportTest {
                 runCurrent()
                 viewModel.focusOnRegionCluster("city")
                 assertEquals(
-                    10.0,
+                    9.0,
                     viewModel.uiModel.value.cameraCommand
                         ?.value,
                 )
@@ -920,7 +920,7 @@ class MapViewModelViewportTest {
                 runCurrent()
                 viewModel.focusOnRegionCluster("city")
                 assertEquals(
-                    10.0,
+                    9.0,
                     viewModel.uiModel.value.cameraCommand
                         ?.value,
                 )
@@ -933,7 +933,7 @@ class MapViewModelViewportTest {
                 runCurrent()
                 viewModel.focusOnRegionCluster("dong")
                 assertEquals(
-                    15.5,
+                    14.0,
                     viewModel.uiModel.value.cameraCommand
                         ?.value,
                 )
