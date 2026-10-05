@@ -41,6 +41,14 @@ class GroupDetailViewModel(
 
     private var loadJob: Job? = null
     private var leaveJob: Job? = null
+    private val emotionRankingStateHolder =
+        GroupDetailEmotionRankingStateHolder(
+            groupId = groupId,
+            source = dependencies.emotionRankingSource,
+            scope = viewModelScope,
+        ) { ranking ->
+            _uiState.update { it.copy(emotionRanking = ranking) }
+        }
     var lastAcceptedPressKey: GroupOperationKey? = null
         private set
     private var loadGeneration = 0L
@@ -125,6 +133,7 @@ class GroupDetailViewModel(
     override fun onCleared() {
         hasAttachedPressObserver = false
         pressSession.detach(pressObserver)
+        emotionRankingStateHolder.clear()
         if (ownsPressWorkOwner) pressSession.close()
         super.onCleared()
     }
@@ -157,6 +166,11 @@ class GroupDetailViewModel(
             return
         }
         onRefresh()
+    }
+
+    fun onRetryEmotionRanking() {
+        if (_uiState.value.detail == null) return
+        emotionRankingStateHolder.load()
     }
 
     fun onRefresh(showRefreshIndicator: Boolean = true) {
@@ -552,6 +566,7 @@ class GroupDetailViewModel(
                             }
                         }
                     }
+                    if (loadedDetail != null) emotionRankingStateHolder.load(force = true)
                     if (result == GroupDetailLoadResult.MembershipChanged || result == GroupDetailLoadResult.NotFound) {
                         pressSession.clearForAccessLoss()
                     }

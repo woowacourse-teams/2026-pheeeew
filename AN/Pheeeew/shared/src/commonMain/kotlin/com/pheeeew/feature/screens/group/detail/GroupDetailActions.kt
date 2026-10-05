@@ -19,4 +19,5 @@ data class GroupDetailActions(
     val onEmotionTap: (EmotionKind) -> Boolean,
     val onResolvePressOutcome: () -> Unit,
     val onNoticeDismissed: (GroupOperationKey) -> Unit,
+    val onRetryEmotionRanking: () -> Unit = {},
 )

@@ -14,6 +14,7 @@ data class GroupDetailUiState(
     val pressStatus: GroupPressStatus = GroupPressStatus.Idle,
     val pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
     val unconfirmedEmotionPresses: List<GroupUnconfirmedPress> = emptyList(),
+    val emotionRanking: GroupDetailEmotionRankingUiState = GroupDetailEmotionRankingUiState(),
     val canAcceptEmotionPress: Boolean = true,
     val membershipEvent: GroupDetailMembershipEvent? = null,
 ) {
@@ -44,6 +45,33 @@ data class GroupDetailUiState(
             "초대코드 복사 요청은 초대코드 팝업이 열린 동안만 유지합니다."
         }
     }
+}
+
+data class GroupDetailEmotionRankingUiState(
+    val content: GroupDetailEmotionRankingContent = GroupDetailEmotionRankingContent.Loading,
+    val isRefreshing: Boolean = false,
+    val hasRefreshError: Boolean = false,
+)
+
+sealed interface GroupDetailEmotionRankingContent {
+    data object Loading : GroupDetailEmotionRankingContent
+
+    data class Ranked(
+        val rank: Int,
+        val score: Int,
+    ) : GroupDetailEmotionRankingContent {
+        init {
+            require(rank > 0) { "순위는 양수여야 합니다." }
+            require(score >= 0) { "감정 입력 횟수는 음수일 수 없습니다." }
+        }
+    }
+
+    data object NoPresses : GroupDetailEmotionRankingContent
+
+    /** The server did not include this group; the client cannot tell whether it is unranked or outside the list. */
+    data object NotListed : GroupDetailEmotionRankingContent
+
+    data object Unavailable : GroupDetailEmotionRankingContent
 }
 
 /** An accepted local input whose server result cannot be attributed from aggregate counts alone. */
