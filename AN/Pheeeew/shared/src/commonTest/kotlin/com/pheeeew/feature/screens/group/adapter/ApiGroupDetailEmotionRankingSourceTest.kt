@@ -107,6 +107,26 @@ class ApiGroupDetailEmotionRankingSourceTest {
         }
 
     @Test
+    fun `maps a non-positive server rank to unavailable`() =
+        runTest {
+            val repository = repositoryWith(groupRank = 0, groupScore = 12)
+
+            val result = ApiGroupDetailEmotionRankingSource(repository).load(GroupId(GROUP_ID))
+
+            assertEquals(GroupDetailEmotionRankingResult.Unavailable, result)
+        }
+
+    @Test
+    fun `maps a negative server score to unavailable`() =
+        runTest {
+            val repository = repositoryWith(groupRank = 1, groupScore = -1)
+
+            val result = ApiGroupDetailEmotionRankingSource(repository).load(GroupId(GROUP_ID))
+
+            assertEquals(GroupDetailEmotionRankingResult.Unavailable, result)
+        }
+
+    @Test
     fun `maps unavailable ranking response`() =
         runTest {
             val repository =
@@ -120,6 +140,28 @@ class ApiGroupDetailEmotionRankingSourceTest {
             val result = ApiGroupDetailEmotionRankingSource(repository).load(GroupId(GROUP_ID))
 
             assertEquals(GroupDetailEmotionRankingResult.Unavailable, result)
+        }
+
+    private fun repositoryWith(
+        groupRank: Int,
+        groupScore: Int,
+    ): PressRankingRepository =
+        object : PressRankingRepository {
+            override suspend fun find(
+                weeksAgo: Int,
+                state: String?,
+            ): PressRankingLoadResult =
+                PressRankingLoadResult.Loaded(
+                    ranking(
+                        PressRankingItem(
+                            rank = groupRank,
+                            groupId = GROUP_ID,
+                            name = "테스트 그룹",
+                            score = groupScore,
+                            mine = true,
+                        ),
+                    ),
+                )
         }
 
     private fun ranking(vararg items: PressRankingItem) =

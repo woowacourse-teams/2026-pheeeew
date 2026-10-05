@@ -22,6 +22,10 @@ class ApiGroupDetailEmotionRankingSource(
                         GroupDetailEmotionRankingResult.NotListed
                     }
 
+                    groupRanking.rank <= 0 || groupRanking.score < 0 -> {
+                        GroupDetailEmotionRankingResult.Unavailable
+                    }
+
                     groupRanking.score == 0 -> {
                         GroupDetailEmotionRankingResult.NoPresses
                     }
