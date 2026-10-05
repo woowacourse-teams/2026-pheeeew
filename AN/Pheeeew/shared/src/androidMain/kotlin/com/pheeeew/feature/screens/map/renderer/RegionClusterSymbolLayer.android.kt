@@ -32,7 +32,7 @@ internal class RegionClusterSymbolLayer {
             style.addLayer(
                 SymbolLayer(LAYER_ID, SOURCE_ID).withProperties(
                     iconImage(Expression.get("image-key")),
-                    iconSize(0.5f),
+                    iconSize(1f),
                     iconAnchor(Property.ICON_ANCHOR_CENTER),
                     iconAllowOverlap(true),
                     iconIgnorePlacement(true),

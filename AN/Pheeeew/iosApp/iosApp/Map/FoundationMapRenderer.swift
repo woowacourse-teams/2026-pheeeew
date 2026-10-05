@@ -413,7 +413,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         style.addSource(source)
         let layer = MLNSymbolStyleLayer(identifier: "foundation-region-cluster-layer", source: source)
         layer.iconImageName = NSExpression(mglJSONObject: ["get", "imageKey"])
-        layer.iconScale = NSExpression(forConstantValue: 0.5)
+        layer.iconScale = NSExpression(forConstantValue: 1)
         layer.iconAllowsOverlap = NSExpression(forConstantValue: true)
         layer.iconIgnoresPlacement = NSExpression(forConstantValue: true)
         style.addLayer(layer)
