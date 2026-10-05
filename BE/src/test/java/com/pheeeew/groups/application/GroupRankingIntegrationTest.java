@@ -359,7 +359,7 @@ class GroupRankingIntegrationTest {
         Long groupId = groupRepository.findByPublicIdAndDeletedAtIsNull(그룹.publicId()).orElseThrow().getId();
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             for (int i = 0; i < 횟수; i++) {
-                groupDailyPressRepository.increase(groupId, 날짜, 감정.name(), Instant.now());
+                groupDailyPressRepository.increase(groupId, 날짜, 감정.name(), 1, Instant.now());
             }
         });
     }

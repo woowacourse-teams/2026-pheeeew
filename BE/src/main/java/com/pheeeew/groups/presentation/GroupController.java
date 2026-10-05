@@ -2,6 +2,7 @@ package com.pheeeew.groups.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.groups.application.GroupService;
+import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.presentation.dto.GroupDetailResponse;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
@@ -108,7 +109,11 @@ public class GroupController implements GroupControllerApi {
             @CurrentDevice UUID devicePublicId
     ) {
         return GroupPressCountResponse.from(
-                groupService.press(groupId, devicePublicId, request.state())
+                groupService.press(
+                        groupId,
+                        devicePublicId,
+                        GroupPressCommand.of(request.toCounts(), request.bundled())
+                )
         );
     }
 

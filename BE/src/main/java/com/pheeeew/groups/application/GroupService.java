@@ -15,6 +15,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
+import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupPreviewResult;
 import com.pheeeew.groups.application.dto.GroupPressRankingItem;
@@ -28,6 +29,7 @@ import com.pheeeew.groups.domain.GroupMember;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.GroupDailyPress;
 import com.pheeeew.groups.domain.GroupStamp;
+import com.pheeeew.groups.domain.PressCounts;
 import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
@@ -35,6 +37,7 @@ import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.domain.repository.projection.GroupListProjection;
 import com.pheeeew.groups.domain.repository.projection.GroupPressSumProjection;
 import com.pheeeew.groups.exception.GroupException;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -43,6 +46,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +57,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class GroupService {
 
     private static final int MAX_INVITE_CODE_ATTEMPTS = 10;
+    private static final String DEADLOCK_DETECTED_SQL_STATE = "40P01";
 
     private final GroupRepository groupRepository;
     private final GroupStampRepository groupStampRepository;
@@ -61,6 +66,7 @@ public class GroupService {
     private final GroupRankingService groupRankingService;
     private final DeviceRepository deviceRepository;
     private final InviteCodeGenerator inviteCodeGenerator;
+    private final GroupPressMetrics groupPressMetrics;
     private final Clock clock;
 
     @Transactional
@@ -131,11 +137,14 @@ public class GroupService {
     }
 
     @Transactional
-    public GroupPressCountResult press(UUID groupPublicId, UUID devicePublicId, EmotionState state) {
+    public GroupPressCountResult press(UUID groupPublicId, UUID devicePublicId, GroupPressCommand command) {
+        groupPressMetrics.recordFormat(command.bundled());
         Group group = findGroup(groupPublicId);
         requireMember(group, devicePublicId);
         LocalDate today = LocalDate.now(clock);
-        groupDailyPressRepository.increase(group.getId(), today, state.name(), clock.instant());
+        PressCounts pressCounts = PressCounts.from(command.counts());
+        increaseInLockOrder(group.getId(), today, pressCounts);
+        groupPressMetrics.recordApplied(pressCounts);
 
         return pressesOf(group, today);
     }
@@ -255,6 +264,28 @@ public class GroupService {
         }
 
         return counts;
+    }
+
+    private void increaseInLockOrder(Long groupId, LocalDate pressDate, PressCounts pressCounts) {
+        try {
+            for (Map.Entry<EmotionState, Integer> press : pressCounts.presses().entrySet()) {
+                groupDailyPressRepository.increase(
+                        groupId, pressDate, press.getKey().name(), press.getValue(), clock.instant());
+            }
+        } catch (DataAccessException exception) {
+            if (isDeadlock(exception)) {
+                groupPressMetrics.recordDeadlock();
+            }
+
+            throw exception;
+        }
+    }
+
+    private boolean isDeadlock(DataAccessException exception) {
+        Throwable cause = exception.getMostSpecificCause();
+
+        return cause instanceof SQLException sqlException
+                && DEADLOCK_DETECTED_SQL_STATE.equals(sqlException.getSQLState());
     }
 
     private Device findDevice(UUID devicePublicId) {
