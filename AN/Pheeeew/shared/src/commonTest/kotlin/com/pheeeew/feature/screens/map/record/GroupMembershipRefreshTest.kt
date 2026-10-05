@@ -36,9 +36,54 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupMembershipRefreshTest {
+    @Test
+    fun `automatic membership refresh keeps the closed selector closed and explicit opening still works`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val groups = MutableGroupStampListRepository()
+                val record =
+                    MapRecordViewModel(
+                        IsWithinEmotionRecordRadiusUseCase(),
+                        registrationRepository =
+                            object : EmotionRegistrationRepository {
+                                override suspend fun register(registration: EmotionRegistration) =
+                                    EmotionRegistrationResult.Unavailable
+                            },
+                        groupStampListRepository = groups,
+                        lastRecordedGroupRepository = InMemoryLastRecordedGroupRepository(),
+                    )
+                record.open(EmotionTypeUiModel.FRUSTRATED)
+                advanceUntilIdle()
+                assertFalse(record.uiModel.value.isGroupSelectorVisible)
+
+                groups.currentGroups = listOf(group())
+                groups.invalidate()
+                advanceUntilIdle()
+
+                assertEquals(listOf("none", GROUP_ID), record.groupOptions.value.map { it.id })
+                assertFalse(record.uiModel.value.isGroupSelectorVisible)
+
+                record.onGroupSelectorOpen()
+                assertFalse(record.uiModel.value.isGroupSelectorVisible)
+                advanceUntilIdle()
+                assertTrue(record.uiModel.value.isGroupSelectorVisible)
+
+                groups.currentGroups = emptyList()
+                groups.invalidate()
+                advanceUntilIdle()
+                assertTrue(record.uiModel.value.isGroupSelectorVisible)
+                assertEquals(listOf("none"), record.groupOptions.value.map { it.id })
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     @Test
     fun `nearby and record selectors share membership updates and clear removed selections`() =
         runTest {

@@ -345,7 +345,7 @@ class MapRecordViewModel(
                         .coerceAtLeast(0)
                         .toFloat(),
             )
-        loadMyGroups(restoreLastGroup = false)
+        loadMyGroups(restoreLastGroup = false, showGroupSelectorAfterLoad = true)
     }
 
     fun onGroupSelectorDismiss() {
@@ -423,7 +423,10 @@ class MapRecordViewModel(
             )
     }
 
-    private fun loadMyGroups(restoreLastGroup: Boolean) {
+    private fun loadMyGroups(
+        restoreLastGroup: Boolean,
+        showGroupSelectorAfterLoad: Boolean = false,
+    ) {
         groupLoadJob?.cancel()
         val requestId = ++groupLoadGeneration
         val observation = funnel.observe("emotion_record_group_options_finished")
@@ -476,7 +479,8 @@ class MapRecordViewModel(
                                 pendingGroupId = dialId,
                                 isGroupSelectionLoading = false,
                                 isGroupSelectorVisible =
-                                    !restoreLastGroup && current.step == RecordFlowStepUiModel.Input,
+                                    current.step == RecordFlowStepUiModel.Input &&
+                                        (showGroupSelectorAfterLoad || current.isGroupSelectorVisible),
                                 groupDialProgress = options.indexOfFirst { it.id == dialId }.toFloat(),
                             )
                     }
