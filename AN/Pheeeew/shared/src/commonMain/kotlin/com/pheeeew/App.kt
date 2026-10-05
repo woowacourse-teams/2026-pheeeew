@@ -98,6 +98,7 @@ import com.pheeeew.feature.screens.map.record.RegisteredEmotionUiModel
 import com.pheeeew.feature.screens.map.record.location.RecordMapViewport
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.rememberEmotionPinSymbolImages
+import com.pheeeew.feature.screens.map.renderer.MapCameraSnapshotUiModel
 import com.pheeeew.feature.screens.map.renderer.NativeMap
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
@@ -108,6 +109,7 @@ import com.pheeeew.feature.screens.splash.SplashScreen
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
@@ -177,6 +179,10 @@ private fun AppContent(
     var versionDecision by remember { mutableStateOf<AppVersionDecision?>(null) }
     var suggestionDismissed by remember { mutableStateOf(false) }
     var storeOpenError by remember { mutableStateOf(false) }
+    var onboardingCompleted by remember { mutableStateOf(hasCompletedOnboarding) }
+    var mapVisible by remember { mutableStateOf(false) }
+    var mapMounted by remember { mutableStateOf(false) }
+    var savedMapCamera by remember { mutableStateOf<MapCameraSnapshotUiModel?>(null) }
 
     LaunchedEffect(apiDependencies) {
         apiDependencies.prepareSession()
@@ -229,6 +235,21 @@ private fun AppContent(
     val detailViewModel: EmotionDetailViewModel =
         viewModel { EmotionDetailViewModel(detailRepository, apiDependencies.client.monitoring) }
     val detailState by detailViewModel.uiModel.collectAsState()
+
+    val requiredUpdate = versionDecision as? AppVersionDecision.UpdateRequired
+    val mapReady =
+        splashAnimationCompleted && initialVersionCheckComplete && requiredUpdate == null && onboardingCompleted
+    LaunchedEffect(mapReady, mapVisible) {
+        if (!mapReady) {
+            mapMounted = false
+            return@LaunchedEffect
+        }
+        mapMounted = true
+        if (!mapVisible) {
+            delay(MAP_INACTIVE_RELEASE_DELAY_MILLIS)
+            if (!mapVisible) mapMounted = false
+        }
+    }
 
     var highlightedEmotion by remember { mutableStateOf<RegisteredEmotionUiModel?>(null) }
     var highlightedPinPosition by remember { mutableStateOf<HighlightedPinPosition?>(null) }
@@ -294,10 +315,14 @@ private fun AppContent(
     }
 
     Box(Modifier.fillMaxSize()) {
-        // Keep the platform MapView attached while splash/onboarding and tab destinations are shown above it.
         key(mapUiModel.mapRevision) {
             NativeMap(
                 state = nativeMapState,
+                isVisible = mapVisible,
+                isMounted = mapMounted,
+                savedCamera = savedMapCamera,
+                onCameraSaved = { savedMapCamera = it },
+                onMemoryPressure = { if (!mapVisible) mapMounted = false },
                 onMapError = mapViewModel::onMapError,
                 onMapRecovered = mapViewModel::onMapRecovered,
                 onRecordViewportChanged = { centerX, centerY, radius ->
@@ -346,7 +371,6 @@ private fun AppContent(
             return@Box
         }
 
-        val requiredUpdate = versionDecision as? AppVersionDecision.UpdateRequired
         if (requiredUpdate != null) {
             RequiredUpdateDialog(
                 storeOpenError = storeOpenError,
@@ -358,7 +382,6 @@ private fun AppContent(
             return@Box
         }
 
-        var onboardingCompleted by remember { mutableStateOf(hasCompletedOnboarding) }
         val suggestedUpdate = versionDecision as? AppVersionDecision.UpdateSuggested
         if (suggestedUpdate != null && !suggestionDismissed) {
             AppAlertDialog(
@@ -499,6 +522,7 @@ private fun AppContent(
                             recordViewport = recordViewport,
                             onRecordViewportChanged = { recordViewport = it },
                             onRecordPreviewScaleChanged = { previewScale = it },
+                            onMapVisibilityChanged = { mapVisible = it },
                             onMapContentActiveChanged = { mapContentActive = it },
                             monitoringVisible =
                                 !nearbyState.visible && detailState == EmotionDetailLoadUiModel.Closed &&
@@ -754,3 +778,4 @@ private fun RequiredUpdateDialog(
 }
 
 private const val VERSION_CHECK_TIMEOUT_MILLIS = 10_000L
+private const val MAP_INACTIVE_RELEASE_DELAY_MILLIS = 30_000L

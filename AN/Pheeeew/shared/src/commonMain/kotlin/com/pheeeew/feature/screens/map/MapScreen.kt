@@ -92,6 +92,7 @@ fun MapScreen(
     recordViewport: RecordMapViewport?,
     onRecordViewportChanged: (RecordMapViewport?) -> Unit,
     onRecordPreviewScaleChanged: (Float) -> Unit,
+    onMapVisibilityChanged: (Boolean) -> Unit,
     onMapContentActiveChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     message: String? = null,
@@ -167,8 +168,12 @@ fun MapScreen(
             !uiModel.isEmotionSelectorExpanded && recordUiModel.step == RecordFlowStepUiModel.Closed &&
             activePermissionDialog == null
     SideEffect { onMapContentActiveChanged(contentVisible) }
+    SideEffect { onMapVisibilityChanged(monitoringResumed) }
     DisposableEffect(viewModel) {
-        onDispose { onMapContentActiveChanged(false) }
+        onDispose {
+            onMapVisibilityChanged(false)
+            onMapContentActiveChanged(false)
+        }
     }
     DisposableEffect(viewModel, contentVisible) {
         viewModel.contentVisibility(contentVisible)
