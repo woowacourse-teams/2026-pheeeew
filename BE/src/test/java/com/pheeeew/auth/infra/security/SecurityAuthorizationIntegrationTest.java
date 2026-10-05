@@ -997,12 +997,15 @@ class SecurityAuthorizationIntegrationTest {
 
     private Long 작성자를_모르는_한숨을_넣는다() {
         return jdbcClient.sql("""
-                        INSERT INTO emotions (request_id, location, nickname, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, created_at, updated_at,
+                                              region_code, region_classified_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(126.9780, 37.5664), 4326),
                             '외로운 회사원',
                             NOW(),
+                            NOW(),
+                            '11010530',
                             NOW()
                         )
                         RETURNING id

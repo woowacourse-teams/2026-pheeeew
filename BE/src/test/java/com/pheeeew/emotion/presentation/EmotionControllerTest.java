@@ -1,6 +1,6 @@
 package com.pheeeew.emotion.presentation;
 
-import static com.pheeeew.emotion.fixture.EmotionFixture.서울시청_좌표;
+import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.any;
@@ -157,7 +157,7 @@ class EmotionControllerTest {
     @ValueSource(booleans = {false, true})
     void 녹음_목록과_상세는_내용_유형과_메모와_재생_정보를_순서대로_반환한다(boolean list) {
         // given
-        Emotion emotion = Emotion.builder().requestId(UUID.randomUUID()).location(서울시청_좌표())
+        Emotion emotion = 기본_한숨_빌더()
                 .state(EmotionState.FRUSTRATED).rotationDegrees(0).nickname("먼지구름").deviceId(1L)
                 .audio(Audio.builder().objectKey("private/voice.m4a").build()).build();
         var playback = PlaybackUrl.of(
@@ -644,9 +644,7 @@ class EmotionControllerTest {
     }
 
     private EmotionDetailView detailView(Long emotionId, boolean isMine) {
-        Emotion emotion = Emotion.builder()
-                .requestId(UUID.randomUUID())
-                .location(서울시청_좌표())
+        Emotion emotion = 기본_한숨_빌더()
                 .state(EmotionState.FRUSTRATED)
                 .rotationDegrees(35.5)
                 .memo("답답한 하루")

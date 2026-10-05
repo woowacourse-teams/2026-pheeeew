@@ -131,7 +131,6 @@ class EmotionRegionCountIntegrationTest {
         }
         save(classified().state(EmotionState.FRUSTRATED)).delete();
         Emotion hidden = save(classified().state(EmotionState.FRUSTRATED));
-        save(classified().regionCode(null).state(EmotionState.FRUSTRATED)); // 정상 미매칭 기록
         Emotion future = save(classified().state(EmotionState.FRUSTRATED));
         entityManager.flush();
         jdbc.sql("UPDATE emotions SET created_at = '2000-01-01T00:00:00Z'").update();

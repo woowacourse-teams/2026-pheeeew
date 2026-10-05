@@ -22,6 +22,8 @@ public final class EmotionFixture {
         return Emotion.builder()
                 .requestId(UUID.randomUUID())
                 .location(서울시청_좌표())
+                .regionCode("11010530")
+                .regionClassifiedAt(Instant.now())
                 .nickname("외로운 회사원");
     }
 

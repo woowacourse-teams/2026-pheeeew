@@ -8,6 +8,7 @@ import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static com.pheeeew.groups.fixture.GroupFixture.기본_그룹_빌더;
 import static com.pheeeew.groups.fixture.GroupFixture.기본_스탬프_빌더;
 import static com.pheeeew.groups.fixture.GroupFixture.일반_멤버_빌더;
+import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -75,6 +76,7 @@ class EmotionEditIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        검증용_지역_계층을_저장한다(jdbc);
         owner = devices.save(기본_기기_빌더().build());
         other = devices.save(기본_기기_빌더().build());
     }
@@ -88,6 +90,7 @@ class EmotionEditIntegrationTest {
         jdbc.sql("UPDATE emotions SET created_at = :at WHERE id = :id")
                 .param("at", java.sql.Timestamp.from(createdAt)).param("id", original.getId()).update();
         em.clear();
+        Instant regionClassifiedAt = emotions.findById(original.getId()).orElseThrow().getRegionClassifiedAt();
         AudioUpload upload = uploads.save(기본_업로드_빌더().deviceId(owner.getId())
                 .objectKey("recordings/new.m4a").expiresAt(Instant.now().plusSeconds(3600)).build());
 
@@ -108,6 +111,8 @@ class EmotionEditIntegrationTest {
         assertThat(loaded.getRotationDegrees()).isEqualTo(35.5);
         assertThat(loaded.getNickname()).isEqualTo(original.getNickname());
         assertThat(loaded.getRequestId()).isEqualTo(original.getRequestId());
+        assertThat(loaded.getRegionCode()).isEqualTo(original.getRegionCode()).isNotNull();
+        assertThat(loaded.getRegionClassifiedAt()).isEqualTo(regionClassifiedAt).isNotNull();
         assertThat(loaded.getCreatedAt()).isEqualTo(createdAt);
         assertThat(uploads.findByUploadId(upload.getUploadId()).orElseThrow().getClaimedRequestId())
                 .isEqualTo(after.equals("AUDIO") ? original.getRequestId() : null);
