@@ -297,6 +297,8 @@ private fun AppContent(
                 emotionMapDependencies.findPage,
                 emotionMapDependencies.findSnapshot,
                 apiDependencies.client.monitoring,
+                emotionMapDependencies.findRegions,
+                findRegionSnapshot = emotionMapDependencies.findRegionSnapshot,
             )
         }
     val connectivityLifecycleOwner = LocalLifecycleOwner.current

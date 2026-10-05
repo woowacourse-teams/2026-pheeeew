@@ -10,6 +10,7 @@ import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
+import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
@@ -25,8 +26,9 @@ internal actual fun NativeMap(
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
-    onViewportChanged: (EmotionMapBounds) -> Unit,
+    onViewportChanged: (EmotionMapViewport) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
+    onRegionClusterClick: (String) -> Unit,
     onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
@@ -35,6 +37,7 @@ internal actual fun NativeMap(
     val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
     val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
+    val currentOnRegionClusterClick by rememberUpdatedState(onRegionClusterClick)
     val currentOnMapBackgroundClick by rememberUpdatedState(onMapBackgroundClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
@@ -54,6 +57,8 @@ internal actual fun NativeMap(
 
                 override fun onEmotionPinClick(id: Long) = currentOnEmotionPinClick(id)
 
+                override fun onRegionClusterClick(id: String) = currentOnRegionClusterClick(id)
+
                 override fun onMapBackgroundClick() = currentOnMapBackgroundClick()
 
                 override fun onRendererUnavailable() = currentOnMapError(MapErrorUiModel.RendererUnavailable)
@@ -70,8 +75,8 @@ internal actual fun NativeMap(
                     currentOnRecordViewportChanged(centerX, centerY, radius)
                 }
 
-                override fun onViewportChanged(bounds: EmotionMapBounds) {
-                    currentOnViewportChanged(bounds)
+                override fun onViewportChanged(viewport: EmotionMapViewport) {
+                    currentOnViewportChanged(viewport)
                 }
             }
         }
@@ -137,8 +142,11 @@ private fun MapUiModel.toFoundationIosRenderUiModel(): FoundationIosMapRenderUiM
                     rotationDegrees = it.rotationDegrees,
                 )
             },
+        regionClusterCoordinates = regionClusters.map {
+            FoundationIosRegionClusterCoordinateUiModel(it.id, it.latitude, it.longitude, it.symbolImageKey())
+        },
         emotionPinSymbolImages =
-            emotionPinSymbolImages.map {
+            (emotionPinSymbolImages + regionClusterSymbolImages).distinctBy { it.key }.map {
                 FoundationIosMapSymbolImageUiModel(it.key, it.width, it.height, it.rgba)
             },
     )

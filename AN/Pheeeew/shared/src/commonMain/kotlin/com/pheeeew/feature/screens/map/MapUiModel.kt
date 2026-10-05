@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.map
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
+import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.feature.screens.map.monitoring.ContentLoad
 
 data class MapUiModel(
@@ -26,6 +27,11 @@ data class MapUiModel(
     val recordOrigin: GeoCoordinate? = null,
     val emotionPins: List<EmotionPinUiModel> = emptyList(),
     val emotionPinSymbolImages: List<EmotionPinSymbolImage> = emptyList(),
+    val regionClusters: List<RegionClusterUiModel> = emptyList(),
+    val displayedRegionLevel: EmotionRegionLevel? = null,
+    val regionClusterSymbolImages: List<EmotionPinSymbolImage> = emptyList(),
+    val isLoadingRegionClusters: Boolean = false,
+    val regionClustersError: String? = null,
     val isLoadingEmotionPins: Boolean = false,
     val isLoadingMoreEmotionPins: Boolean = false,
     val hasPartialEmotionPins: Boolean = false,

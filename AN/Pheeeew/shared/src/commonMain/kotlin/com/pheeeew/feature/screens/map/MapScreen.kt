@@ -375,6 +375,7 @@ fun MapScreen(
                                         renderUiModel.emotionPins.filterNot {
                                             it.id in renderUiModel.hiddenEmotionIds
                                         },
+                                    regionClusters = renderUiModel.regionClusters.takeUnless { renderUiModel.isRecordLocationPicking }.orEmpty(),
                                 ),
                             onMapError = viewModel::onMapError,
                             onMapRecovered = viewModel::onMapRecovered,
@@ -382,8 +383,9 @@ fun MapScreen(
                                 val viewport = RecordMapViewport(centerX, centerY, radius)
                                 if (recordViewport != viewport) recordViewport = viewport
                             },
-                            onViewportChanged = { bounds ->
-                                viewModel.onViewportChanged(bounds)
+                            onViewportChanged = { viewport ->
+                                viewModel.onViewportChanged(viewport)
+                                val bounds = viewport.bounds
                                 onViewportChanged(
                                     EmotionBounds(
                                         bounds.minLongitude,
@@ -407,6 +409,7 @@ fun MapScreen(
                                         onEmotionPinClick(id)
                                     }
                             },
+                            onRegionClusterClick = viewModel::focusOnRegionCluster,
                             onMapBackgroundClick = onMapBackgroundClick,
                             onContentPresented = viewModel::contentPresented,
                             onHighlightedPinPositionChanged = { position ->
@@ -644,8 +647,14 @@ internal fun MapScreenContent(
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         val symbolImages = rememberEmotionPinSymbolImages(uiModel.emotionPins)
+        val regionImages = rememberRegionClusterSymbolImages(uiModel.regionClusters)
+        val regionRenderState = rememberRegionClusterRenderState(uiModel.regionClusters, regionImages)
         mapContent(
-            uiModel.copy(emotionPinSymbolImages = symbolImages),
+            uiModel.copy(
+                emotionPinSymbolImages = symbolImages,
+                regionClusters = regionRenderState.regions,
+                regionClusterSymbolImages = regionRenderState.images,
+            ),
             Modifier.fillMaxSize(),
         )
 
