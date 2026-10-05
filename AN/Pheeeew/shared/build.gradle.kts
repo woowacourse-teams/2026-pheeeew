@@ -53,7 +53,7 @@ kotlin {
             implementation(libs.androidx.security.crypto)
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.compose.uiTooling)
-            implementation(libs.ktor.client.android)
+            implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.maplibre.android)
             implementation(libs.play.services.location)
