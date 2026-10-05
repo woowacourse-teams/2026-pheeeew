@@ -140,6 +140,7 @@ internal fun GroupDetailReadyContent(
             WeeklySummary(
                 detail = detail,
                 emotionRanking = emotionRanking,
+                pendingPressCount = pendingEmotionPresses.values.sum(),
                 onRetryEmotionRanking = onRetryEmotionRanking,
             )
             Spacer(Modifier.height(16.dp))
@@ -299,6 +300,7 @@ private fun TodayTotal(detail: GroupDetailUiModel) {
 private fun WeeklySummary(
     detail: GroupDetailUiModel,
     emotionRanking: GroupDetailEmotionRankingUiState,
+    pendingPressCount: Long,
     onRetryEmotionRanking: () -> Unit,
 ) {
     val weeklyScore = requireNotNull(detail.group.weeklyStampCount)
@@ -325,6 +327,7 @@ private fun WeeklySummary(
         Spacer(Modifier.width(1.dp).height(72.dp).background(Color(0xFFDFE2D9)))
         GroupDetailEmotionRankingSummary(
             state = emotionRanking,
+            todayPressCount = detail.todayTotal + pendingPressCount,
             onRetry = onRetryEmotionRanking,
         )
     }

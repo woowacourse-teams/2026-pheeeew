@@ -27,6 +27,7 @@ import pheeeew.shared.generated.resources.group_detail_emotion_rank_loading
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_no_presses
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_not_listed
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_retry
+import pheeeew.shared.generated.resources.group_detail_emotion_rank_today_count
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_unavailable
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_weekly_score
 import pheeeew.shared.generated.resources.group_detail_rank_number
@@ -36,11 +37,12 @@ import pheeeew.shared.generated.resources.group_detail_rank_refreshing
 @Composable
 internal fun RowScope.GroupDetailEmotionRankingSummary(
     state: GroupDetailEmotionRankingUiState,
+    todayPressCount: Long,
     onRetry: () -> Unit,
 ) {
     val label = stringResource(Res.string.group_detail_emotion_rank_label)
     val value = state.content.displayValue()
-    val supportingValues = state.supportingValues()
+    val supportingValues = state.supportingValues(todayPressCount)
     val accessibilityDescription = (listOf(label, value) + supportingValues).joinToString(", ")
 
     GroupDetailSummaryValue(
@@ -87,7 +89,12 @@ private fun GroupDetailEmotionRankingContent.displayValue(): String =
     }
 
 @Composable
-private fun GroupDetailEmotionRankingUiState.supportingValues(): List<String> {
+private fun GroupDetailEmotionRankingUiState.supportingValues(todayPressCount: Long): List<String> {
+    val todayCount =
+        stringResource(
+            Res.string.group_detail_emotion_rank_today_count,
+            formatCount(todayPressCount),
+        )
     val secondaryValue =
         when {
             isRefreshing -> {
@@ -114,7 +121,7 @@ private fun GroupDetailEmotionRankingUiState.supportingValues(): List<String> {
             }
         }
 
-    return listOfNotNull(secondaryValue)
+    return listOfNotNull(todayCount, secondaryValue)
 }
 
 private fun GroupDetailEmotionRankingUiState.canRetry(): Boolean = content.canRetry() || hasRefreshError

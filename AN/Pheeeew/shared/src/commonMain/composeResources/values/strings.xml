@@ -406,6 +406,7 @@
     <string name="group_detail_rank_number">%1$d위</string>
     <string name="group_detail_rank_empty">—</string>
     <string name="group_detail_emotion_rank_label">감정 버튼 순위</string>
+    <string name="group_detail_emotion_rank_today_count">오늘 %1$s회</string>
     <string name="group_detail_emotion_rank_weekly_score">이번 주 %1$s회</string>
     <string name="group_detail_emotion_rank_loading">조회 중</string>
     <string name="group_detail_emotion_rank_no_presses">입력 없음</string>
