@@ -9,8 +9,8 @@ import com.pheeeew.core.di.AndroidApiDependencies
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.network.AndroidConnectivityObserver
 import com.pheeeew.core.permission.AndroidAppSettingsLauncher
-import com.pheeeew.data.local.group.AndroidLastRecordedGroupRepository
 import com.pheeeew.data.local.group.AndroidGroupCreateSessionStore
+import com.pheeeew.data.local.group.AndroidLastRecordedGroupRepository
 import com.pheeeew.data.location.platform.android.LocationDependenciesHolder
 import com.pheeeew.data.location.platform.android.createAndroidLocationDependencies
 import com.pheeeew.data.remote.version.AppVersionApi
