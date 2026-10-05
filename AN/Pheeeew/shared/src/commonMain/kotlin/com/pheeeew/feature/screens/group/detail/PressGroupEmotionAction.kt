@@ -8,6 +8,7 @@ import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.detail.model.dominantEmotionSummary
 import com.pheeeew.feature.screens.group.model.GroupId
 
+/** AN boundary for the existing single-state POST; implementations must preserve result certainty. */
 fun interface PressGroupEmotionAction {
     suspend fun press(
         groupId: GroupId,
@@ -35,6 +36,13 @@ sealed interface PressGroupEmotionResult {
     data object OutcomeUnknown : PressGroupEmotionResult
 }
 
+/**
+ * Server-confirmed aggregate only. The current API provides no per-input receipt, aggregation period, or version, so
+ * consumers must never use this snapshot to infer whether a particular unknown operation was accepted.
+ *
+ * If BE later adds those guarantees, map them here through [ApiGroupPressAction] and carry per-input receipts in
+ * [PressGroupEmotionResult.Pressed] or a dedicated reconciliation result.
+ */
 data class GroupPressSnapshotUiModel(
     val emotionCounts: List<EmotionCountUiModel>,
     val total: Long,

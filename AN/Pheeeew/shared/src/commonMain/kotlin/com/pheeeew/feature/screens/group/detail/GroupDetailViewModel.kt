@@ -52,12 +52,14 @@ class GroupDetailViewModel(
             override fun onStateChanged(
                 status: GroupPressStatus,
                 pending: Map<EmotionKind, Long>,
+                unconfirmed: List<GroupUnconfirmedPress>,
                 canAcceptAnotherPress: Boolean,
             ) {
                 _uiState.update {
                     it.copy(
                         pressStatus = status,
                         pendingEmotionPresses = pending,
+                        unconfirmedEmotionPresses = unconfirmed,
                         canAcceptEmotionPress = canAcceptAnotherPress,
                     )
                 }
@@ -130,7 +132,7 @@ class GroupDetailViewModel(
     private fun requestDeferredInitialLoad() {
         if (!needsInitialLoad || !hasAttachedPressObserver) return
         viewModelScope.launch {
-            if (needsInitialLoad && !pressSession.accessLost && !pressSession.hasPendingWork &&
+            if (needsInitialLoad && !pressSession.accessLost && !pressSession.hasActiveWork &&
                 pressSession.status == GroupPressStatus.Idle
             ) {
                 loadDetail()
@@ -220,7 +222,7 @@ class GroupDetailViewModel(
     }
 
     fun onLeaveMenuClick() {
-        if (pressSession.hasPendingWork) {
+        if (pressSession.hasActiveWork) {
             _uiState.update { state ->
                 if (state.overlay == GroupDetailOverlay.Menu) state.copy(overlay = GroupDetailOverlay.None) else state
             }
@@ -398,7 +400,7 @@ class GroupDetailViewModel(
             pressSession.resolveUnknown()
             return
         }
-        if (pressSession.hasPendingWork || currentPressStatus is GroupPressStatus.Sending ||
+        if (pressSession.hasActiveWork || currentPressStatus is GroupPressStatus.Sending ||
             currentPressStatus is GroupPressStatus.Reconciling
         ) {
             return
@@ -575,7 +577,7 @@ class GroupDetailViewModel(
 
     private fun submitLeave(expectedOverlay: GroupDetailOverlay) {
         val current = _uiState.value
-        if (pressSession.hasPendingWork) {
+        if (pressSession.hasActiveWork) {
             showNotice(GroupDetailNoticeKind.PressBlockedWhilePending)
             return
         }

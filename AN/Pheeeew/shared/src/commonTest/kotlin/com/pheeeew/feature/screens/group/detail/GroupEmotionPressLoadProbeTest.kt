@@ -20,6 +20,13 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
+private typealias ProbeStateChanged = (
+    GroupPressStatus,
+    Map<EmotionKind, Long>,
+    List<GroupUnconfirmedPress>,
+    Boolean,
+) -> Unit
+
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupEmotionPressLoadProbeTest {
     @Test
@@ -77,7 +84,7 @@ class GroupEmotionPressLoadProbeTest {
                     scope = this,
                     detail = detail,
                     dependencies = dependencies,
-                    onState = { _, counts, _ ->
+                    onState = { _, counts, _, _ ->
                         pending = counts
                         maxOutstanding = maxOf(maxOutstanding, counts.values.sum().toInt())
                     },
@@ -136,7 +143,7 @@ class GroupEmotionPressLoadProbeTest {
                     scope = this,
                     detail = detail,
                     dependencies = dependencies,
-                    onState = { _, counts, _ ->
+                    onState = { _, counts, _, _ ->
                         pending = counts
                         maxOutstanding = maxOf(maxOutstanding, counts.values.sum().toInt())
                     },
@@ -186,7 +193,9 @@ class GroupEmotionPressLoadProbeTest {
                     scope = this,
                     detail = detail,
                     dependencies = dependencies,
-                    onState = { _, counts, _ -> maxOutstanding = maxOf(maxOutstanding, counts.values.sum().toInt()) },
+                    onState = { _, counts, _, _ ->
+                        maxOutstanding = maxOf(maxOutstanding, counts.values.sum().toInt())
+                    },
                 )
 
             repeat(HIGH_LOAD_PRESS_COUNT) { index ->
@@ -227,7 +236,7 @@ class GroupEmotionPressLoadProbeTest {
         scope: CoroutineScope,
         detail: GroupDetailUiModel,
         dependencies: GroupDetailDependencies,
-        onState: (GroupPressStatus, Map<EmotionKind, Long>, Boolean) -> Unit = { _, _, _ -> },
+        onState: ProbeStateChanged = { _, _, _, _ -> },
         onSnapshot: (GroupPressSnapshotUiModel, Map<EmotionKind, Long>) -> Unit = { _, _ -> },
     ) = GroupEmotionPressCoordinator(
         groupId = detail.group.id,

@@ -441,33 +441,49 @@ class GroupDetailLifecycleTest {
         }
 
     @Test
-    fun `unknown POST successfully reconciles and drains remaining queue without a screen`() =
+    fun `unknown POST updates aggregate and remains tracked across screen reentry`() =
         scenario {
             var reads = 0
             var posts = 0
             val reconciliation = CompletableDeferred<GroupDetailLoadResult>()
             val owner = owner()
-            val (viewModel, store) =
-                screen(
-                    dependencies(
-                        source = {
-                            if (++reads == 1) GroupDetailLoadResult.Loaded(detail) else reconciliation.await()
-                        },
-                        press = { _, _ ->
-                            if (++posts == 1) PressGroupEmotionResult.OutcomeUnknown else pressed(2)
-                        },
-                    ),
-                    owner,
+            val dependencies =
+                dependencies(
+                    source = {
+                        if (++reads == 1) GroupDetailLoadResult.Loaded(detail) else reconciliation.await()
+                    },
+                    press = { _, _ ->
+                        if (++posts == 1) PressGroupEmotionResult.OutcomeUnknown else pressed(2)
+                    },
                 )
+            val (viewModel, store) =
+                screen(dependencies, owner)
             runCurrent()
-            repeat(2) { assertTrue(viewModel.onEmotionTap(emotion)) }
+            assertTrue(viewModel.onEmotionTap(emotion))
+            val unknownKey = viewModel.lastAcceptedPressKey
+            assertTrue(viewModel.onEmotionTap(emotion))
             runCurrent()
             store.clear()
             reconciliation.complete(GroupDetailLoadResult.Loaded(detail.copy(todayTotal = 1L)))
             runCurrent()
             assertEquals(2, posts)
             assertEquals(2, reads)
-            assertEquals(0, owner.retainedSessionCount)
+            assertEquals(1, owner.retainedSessionCount)
+
+            val (reentered, reenteredStore) = screen(dependencies, owner)
+            runCurrent()
+            assertEquals(3, reads)
+            assertEquals(2, posts)
+            assertEquals(
+                unknownKey,
+                reentered.uiState.value.unconfirmedEmotionPresses
+                    .single()
+                    .operationKey,
+            )
+            assertEquals(1, owner.retainedSessionCount)
+            reenteredStore.clear()
+            runCurrent()
+            assertEquals(1, owner.retainedSessionCount)
         }
 
     @Test
