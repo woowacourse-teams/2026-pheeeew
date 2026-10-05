@@ -12,11 +12,14 @@ class DeviceSessionDiagnostic(
     serverCode: String? = null,
     val sdkCode: Int? = null,
     val failureKind: DeviceSessionFailureKind? = null,
+    exceptionType: String? = null,
 ) {
     val serverCode = serverCode?.takeIf { it.matches(Regex("(?:DEVICE|AUTH|COMMON)-[0-9]{3}")) }
+    val exceptionType = exceptionType?.takeIf { it.matches(Regex("[A-Za-z0-9_]{1,64}")) }
 
     override fun toString(): String =
-        "stage=$stage outcome=$outcome status=$statusCode serverCode=$serverCode sdkCode=$sdkCode failure=$failureKind"
+        "stage=$stage outcome=$outcome status=$statusCode serverCode=$serverCode " +
+            "sdkCode=$sdkCode failure=$failureKind exceptionType=$exceptionType"
 }
 
 fun interface DeviceSessionDiagnostics {
