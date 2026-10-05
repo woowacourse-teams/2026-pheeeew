@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -75,6 +77,7 @@ import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.component.RankingBottomNavigationDestination
+import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
 import com.pheeeew.feature.screens.group.navigation.GroupFeatureHost
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapViewModel
@@ -485,8 +488,8 @@ private fun AppContent(
                     }
                 },
             ) {
-                androidx.compose.runtime.CompositionLocalProvider(
-                    com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible provides
+                CompositionLocalProvider(
+                    LocalProductMonitoringVisible provides
                         (!isSettingsVisible && reportTarget == null),
                 ) {
                     GroupFeatureHost(
@@ -523,8 +526,8 @@ private fun AppContent(
                     }
                 },
             ) {
-                androidx.compose.runtime.CompositionLocalProvider(
-                    com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible provides
+                CompositionLocalProvider(
+                    LocalProductMonitoringVisible provides
                         (!isSettingsVisible && reportTarget == null),
                 ) {
                     if (rankingDestination == RankingBottomNavigationDestination.Stamp) {
@@ -631,8 +634,7 @@ private fun RequiredUpdateDialog(
         Surface(
             color = Color.White,
             shape =
-                androidx.compose.foundation.shape
-                    .RoundedCornerShape(20.dp),
+                RoundedCornerShape(20.dp),
         ) {
             Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
