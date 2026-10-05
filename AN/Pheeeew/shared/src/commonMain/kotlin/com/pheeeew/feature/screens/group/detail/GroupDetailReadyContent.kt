@@ -3,12 +3,14 @@ package com.pheeeew.feature.screens.group.detail
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -27,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -56,7 +60,7 @@ import pheeeew.shared.generated.resources.group_detail_press_cooldown
 import pheeeew.shared.generated.resources.group_detail_press_unconfirmed
 import pheeeew.shared.generated.resources.group_detail_press_unknown
 import pheeeew.shared.generated.resources.group_detail_rank_empty
-import pheeeew.shared.generated.resources.group_detail_rank_label
+import pheeeew.shared.generated.resources.group_detail_rank_label_weekly
 import pheeeew.shared.generated.resources.group_detail_rank_number
 import pheeeew.shared.generated.resources.group_detail_refresh_error_pull
 import pheeeew.shared.generated.resources.group_detail_summary_angry
@@ -80,10 +84,12 @@ internal fun GroupDetailReadyContent(
     pressStatus: GroupPressStatus,
     pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
     unconfirmedEmotionPresses: List<GroupUnconfirmedPress> = emptyList(),
+    emotionRanking: GroupDetailEmotionRankingUiState = GroupDetailEmotionRankingUiState(),
     onInviteClick: () -> Unit,
     onRetry: () -> Unit,
     onEmotionTap: (EmotionKind) -> Boolean,
     onResolvePressOutcome: () -> Unit,
+    onRetryEmotionRanking: () -> Unit = {},
     fixtureFeedbackOnAcceptedPress: Boolean = false,
     feedbackOperationKey: () -> com.pheeeew.feature.screens.group.model.GroupOperationKey? = { null },
     onFeedbackShown: (com.pheeeew.feature.screens.group.model.GroupOperationKey) -> Unit = {},
@@ -131,7 +137,11 @@ internal fun GroupDetailReadyContent(
             Spacer(Modifier.height(20.dp))
             TodayTotal(detail)
             Spacer(Modifier.height(24.dp))
-            WeeklySummary(detail)
+            WeeklySummary(
+                detail = detail,
+                emotionRanking = emotionRanking,
+                onRetryEmotionRanking = onRetryEmotionRanking,
+            )
             Spacer(Modifier.height(16.dp))
         }
     }
@@ -167,6 +177,25 @@ private fun GroupDetailReadyContentPreview() {
         hasRefreshError = false,
         canTapEmotion = true,
         pressStatus = GroupPressStatus.Idle,
+        onInviteClick = {},
+        onRetry = {},
+        onEmotionTap = { true },
+        onResolvePressOutcome = {},
+    )
+}
+
+@Preview(widthDp = 320, heightDp = 780, name = "좁은 화면 그룹 상세 본문")
+@Composable
+private fun GroupDetailReadyContentCompactPreview() {
+    GroupDetailReadyContent(
+        detail = fixtureDetail(12_345L, GroupDetailPresentationKind.Active),
+        hasRefreshError = false,
+        canTapEmotion = true,
+        pressStatus = GroupPressStatus.Idle,
+        emotionRanking =
+            GroupDetailEmotionRankingUiState(
+                content = GroupDetailEmotionRankingContent.Ranked(rank = 123, score = 12_345),
+            ),
         onInviteClick = {},
         onRetry = {},
         onEmotionTap = { true },
@@ -267,18 +296,25 @@ private fun TodayTotal(detail: GroupDetailUiModel) {
 }
 
 @Composable
-private fun WeeklySummary(detail: GroupDetailUiModel) {
+private fun WeeklySummary(
+    detail: GroupDetailUiModel,
+    emotionRanking: GroupDetailEmotionRankingUiState,
+    onRetryEmotionRanking: () -> Unit,
+) {
     val weeklyScore = requireNotNull(detail.group.weeklyStampCount)
     HorizontalDivider(color = Color(0xFFDFE2D9), thickness = 1.dp)
-    Row(Modifier.fillMaxWidth().height(69.dp), verticalAlignment = Alignment.CenterVertically) {
-        SummaryValue(
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 82.dp).padding(vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        GroupDetailSummaryValue(
             label = stringResource(Res.string.group_detail_weekly_label),
             value = stringResource(Res.string.group_detail_weekly_value, formatCount(weeklyScore)),
             modifier = Modifier.weight(1f),
         )
-        Spacer(Modifier.width(1.dp).height(69.dp).background(Color(0xFFDFE2D9)))
-        SummaryValue(
-            label = stringResource(Res.string.group_detail_rank_label),
+        Spacer(Modifier.width(1.dp).height(72.dp).background(Color(0xFFDFE2D9)))
+        GroupDetailSummaryValue(
+            label = stringResource(Res.string.group_detail_rank_label_weekly),
             value =
                 when (val rank = detail.rank) {
                     is GroupRankUiModel.Ranked -> stringResource(Res.string.group_detail_rank_number, rank.value)
@@ -286,23 +322,10 @@ private fun WeeklySummary(detail: GroupDetailUiModel) {
                 },
             modifier = Modifier.weight(1f),
         )
-    }
-}
-
-@Composable
-private fun SummaryValue(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(text = label, color = Color(0xFF7B817B), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-        Text(
-            text = value,
-            color = AppColors.GroupInk,
-            fontSize = 24.sp,
-            lineHeight = 29.sp,
-            fontWeight = FontWeight.Bold,
+        Spacer(Modifier.width(1.dp).height(72.dp).background(Color(0xFFDFE2D9)))
+        GroupDetailEmotionRankingSummary(
+            state = emotionRanking,
+            onRetry = onRetryEmotionRanking,
         )
     }
 }
