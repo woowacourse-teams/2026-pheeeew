@@ -2,6 +2,7 @@ package com.pheeeew.common.logging;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.spi.LoggingEventBuilder;
 import org.springframework.http.HttpMethod;
@@ -15,6 +16,7 @@ public class RequestLogWriter {
     private static final long SLOW_REQUEST_MILLIS = 1000;
     private static final String EVENT_REQUEST_FAILED = "http_request_failed";
     private static final String EVENT_REQUEST_SLOW = "http_request_slow";
+    private static final String EVENT_REQUEST_LOG_SKIPPED = "http_request_log_skipped";
     private static final String UNMAPPED_ROUTE = "UNMAPPED";
     private static final String OTHER_METHOD = "OTHER";
 
@@ -26,25 +28,36 @@ public class RequestLogWriter {
             long durationMillis,
             Exception unhandledException
     ) {
-        int status = unhandledException == null ? response.getStatus() : 500;
+        try {
+            int status = unhandledException == null ? response.getStatus() : 500;
 
-        if (status >= 500) {
-            Throwable failure = unhandledException != null ? unhandledException
-                    : (Throwable) request.getAttribute(FAILURE_ATTRIBUTE);
-            logServerError(request, status, durationMillis, failure);
-        } else if (durationMillis >= SLOW_REQUEST_MILLIS) {
-            createRequestEvent(log.atWarn(), request, status, durationMillis)
-                    .addKeyValue("event", EVENT_REQUEST_SLOW)
-                    .log("HTTP request exceeded {}ms", SLOW_REQUEST_MILLIS);
+            if (status >= 500) {
+                Throwable failure = unhandledException != null ? unhandledException
+                        : (Throwable) request.getAttribute(FAILURE_ATTRIBUTE);
+                logServerError(request, status, durationMillis, failure);
+            } else if (durationMillis >= SLOW_REQUEST_MILLIS) {
+                createRequestEvent(log.atWarn(), request, status, durationMillis)
+                        .addKeyValue("event", EVENT_REQUEST_SLOW)
+                        .log("HTTP request exceeded {}ms", SLOW_REQUEST_MILLIS);
+            }
+        } catch (RuntimeException exception) {
+            log.atWarn()
+                    .addKeyValue("event", EVENT_REQUEST_LOG_SKIPPED)
+                    .addKeyValue("skippedBy", exception.getClass().getName())
+                    .log("요청 로그를 남기지 못했습니다");
         }
     }
 
     private void logServerError(HttpServletRequest request, int status, long durationMillis, Throwable failure) {
+        Map<String, String> params = RequestLogValues.from(request);
         LoggingEventBuilder event = createRequestEvent(log.atError(), request, status, durationMillis)
                 .addKeyValue("event", EVENT_REQUEST_FAILED)
                 .addKeyValue("errorCode", request.getAttribute(ERROR_CODE_ATTRIBUTE));
+        if (!params.isEmpty()) {
+            event.addKeyValue("params", params);
+        }
         if (failure != null) {
-            event.addKeyValue("errorStack", exceptionLogFormatter.format(failure));
+            exceptionLogFormatter.addFailureFields(event, failure);
         }
         event.log("HTTP 요청 처리에 실패했습니다");
     }

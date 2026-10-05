@@ -2094,7 +2094,7 @@
     },
     {
       "type": "row",
-      "title": "03  앱 자원  /  메모리와 DB 연결에 여유가 있나요?",
+      "title": "03  앱 자원  /  메모리, DB 연결, 스레드에 여유가 있나요?",
       "collapsed": false,
       "panels": [],
       "gridPos": {
@@ -2519,6 +2519,188 @@
       ]
     },
     {
+      "id": 128,
+      "type": "timeseries",
+      "title": "톰캣 스레드 사용 중 / 생성됨 / 최대",
+      "description": "요청을 처리하는 톰캣 스레드 수예요. 사용 중이 최대에 가까워지면 새 요청이 대기해요. 생성됨은 지금 만들어져 있는 스레드 수예요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 80,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 9,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "tomcat_threads_busy_threads{job=\"pheeeew-api\",environment=\"prod\"}",
+          "legendFormat": "{{name}} 사용 중",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        },
+        {
+          "refId": "B",
+          "expr": "tomcat_threads_current_threads{job=\"pheeeew-api\",environment=\"prod\"}",
+          "legendFormat": "{{name}} 생성됨",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        },
+        {
+          "refId": "C",
+          "expr": "tomcat_threads_config_max_threads{job=\"pheeeew-api\",environment=\"prod\"}",
+          "legendFormat": "{{name}} 최대",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 129,
+      "type": "timeseries",
+      "title": "톰캣 여유 스레드 추이",
+      "description": "최대에서 사용 중을 뺀 값이에요. 0에 가까워지면 요청이 스레드를 기다려요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 80,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 2,
+            "fillOpacity": 9,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "gradientMode": "opacity",
+            "pointSize": 3,
+            "axisBorderShow": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto"
+          },
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "tomcat_threads_config_max_threads{job=\"pheeeew-api\",environment=\"prod\"} - tomcat_threads_busy_threads{job=\"pheeeew-api\",environment=\"prod\"}",
+          "legendFormat": "{{name}} 여유",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
       "type": "row",
       "title": "04  문제 로그  /  오류와 1초 이상 느린 요청을 찾아요",
       "collapsed": false,
@@ -2527,7 +2709,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 80
+        "y": 88
       },
       "id": 122
     },
@@ -2538,7 +2720,7 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 81,
+        "y": 89,
         "w": 24,
         "h": 3
       },
@@ -2558,7 +2740,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 84,
+        "y": 92,
         "w": 24,
         "h": 11
       },
@@ -2593,7 +2775,7 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 95,
+        "y": 103,
         "w": 24,
         "h": 4
       },
@@ -2611,7 +2793,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 99
+        "y": 107
       },
       "id": 123
     },
@@ -2626,7 +2808,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 100,
+        "y": 108,
         "w": 12,
         "h": 8
       },
@@ -2718,7 +2900,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 100,
+        "y": 108,
         "w": 12,
         "h": 8
       },
@@ -2794,7 +2976,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 108
+        "y": 116
       },
       "id": 125
     },
@@ -2810,7 +2992,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 109
+        "y": 117
       },
       "fieldConfig": {
         "defaults": {
@@ -2911,7 +3093,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 109
+        "y": 117
       },
       "fieldConfig": {
         "defaults": {
