@@ -99,7 +99,7 @@ fun GroupFeatureHost(
             GroupCreateRoute(
                 viewModel = createViewModel,
                 isCurrentDestination = currentBackStackEntry == entry,
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStackIfCurrent(entry) },
                 onCreated = { groupId, _ ->
                     onMembershipChanged()
                     homeViewModel.invalidateMembership()
