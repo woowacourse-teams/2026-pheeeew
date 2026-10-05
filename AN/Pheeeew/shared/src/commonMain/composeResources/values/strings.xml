@@ -358,8 +358,9 @@
     <string name="group_detail_emotion_failed">감정을 보내지 못했어요. 다시 눌러 주세요.</string>
     <string name="group_detail_press_sending">감정을 보내고 있어요.</string>
     <string name="group_detail_press_checking">서버에 기록됐는지 확인하고 있어요.</string>
-    <string name="group_detail_press_unknown">전송 결과를 확인하지 못했어요. 중복 전송을 막기 위해 기록을 먼저 확인해 주세요.</string>
-    <string name="group_detail_press_check">기록 확인</string>
+    <string name="group_detail_press_unknown">전송 결과를 확인하지 못했어요. 합계는 갱신할 수 있지만, 이 입력의 반영 여부는 구분할 수 없어요.</string>
+    <string name="group_detail_press_check_snapshot">합계 다시 확인</string>
+    <string name="group_detail_press_unconfirmed">입력 %1$d건은 수락 여부가 미확정이에요. 아래 합계는 서버가 확인한 값이에요.</string>
     <string name="group_detail_press_failed">감정을 기록하지 못했어요.</string>
     <string name="group_detail_press_rate_limited">요청이 많아요. 잠시 후 다시 눌러 주세요.</string>
     <string name="group_detail_press_rate_limited_retry">요청이 많아 방금 보낸 입력은 다시 전송하지 않았어요. %1$d초 후 다시 눌러 주세요.</string>
