@@ -39,6 +39,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
 class RequestLoggingFilterTest {
@@ -269,6 +270,19 @@ class RequestLoggingFilterTest {
     }
 
     @Test
+    void 지원하지_않는_요청_형식은_헤더_값이_든_오류_로그를_남기지_않는다() throws Exception {
+        // given
+        String contentType = "text/plain;note=\"HEADER-SECRET\"";
+
+        // when
+        client.perform(post("/test/body").header("Content-Type", contentType).content("{}"))
+                .andExpect(status().isUnsupportedMediaType());
+
+        // then
+        assertThat(output).isEmpty();
+    }
+
+    @Test
     void DB_원인이면_감싼_예외의_메시지까지_모두_버리고_SQL_상태만_남긴다() throws Exception {
         // given
         controller.failure = new PheeeewException(INTERNAL_SERVER_ERROR, new IllegalStateException(
@@ -348,6 +362,12 @@ class RequestLoggingFilterTest {
         @PostMapping("/test/values/{groupId}/{emojiType}/{inviteCode}")
         void values() {
             throw new IllegalStateException("values-failure");
+        }
+
+        @PostMapping("/test/body")
+        void body(
+                @RequestBody Map<String, Object> body
+        ) {
         }
     }
 

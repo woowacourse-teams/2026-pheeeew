@@ -5,6 +5,7 @@ import static com.pheeeew.common.exception.CommonErrorCode.INVALID_REQUEST;
 import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.common.exception.PheeeewException;
+import org.apache.tomcat.util.http.InvalidParameterException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -12,6 +13,8 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.client.RestTestClient;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Import({GlobalExceptionHandler.class, CommonWebContractTest.TestController.class})
@@ -59,6 +63,28 @@ class CommonWebContractTest {
     }
 
     @Test
+    void 필수_쿼리_값이_없으면_COMMON_001을_반환한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri("/test/required-param")
+                .exchange();
+
+        // then
+        오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
+    }
+
+    @Test
+    void 톰캣이_쿼리_문자열을_해석하지_못해_던진_예외는_COMMON_001을_반환한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri("/test/invalid-parameter")
+                .exchange();
+
+        // then
+        오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
+    }
+
+    @Test
     void 서비스_예외는_정의된_상태와_코드로_반환한다() {
         // given / when
         RestTestClient.ResponseSpec result = client.get()
@@ -78,6 +104,44 @@ class CommonWebContractTest {
 
         // then
         오류를_검증한다(result, 404, "API-001", "요청한 API를 찾을 수 없습니다.");
+    }
+
+    @Test
+    void 지원하지_않는_메서드는_허용하는_메서드와_함께_API_002를_반환한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.delete()
+                .uri("/test/required-body")
+                .exchange();
+
+        // then
+        result.expectHeader().valueEquals(HttpHeaders.ALLOW, "POST");
+        오류를_검증한다(result, 405, "API-002", "지원하지 않는 요청 메서드입니다.");
+    }
+
+    @Test
+    void 지원하지_않는_요청_형식은_API_003을_반환한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.post()
+                .uri("/test/required-body")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body("value=form-value")
+                .exchange();
+
+        // then
+        오류를_검증한다(result, 415, "API-003", "지원하지 않는 요청 형식입니다.");
+    }
+
+    @Test
+    void 해석할_수_없는_Accept_헤더는_본문_없이_406을_반환한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri("/test/body")
+                .header(HttpHeaders.ACCEPT, "not-a-media-type")
+                .exchange();
+
+        // then
+        result.expectStatus().isEqualTo(406)
+                .expectBody().isEmpty();
     }
 
     @Test
@@ -118,6 +182,22 @@ class CommonWebContractTest {
         void pathVariable(
                 @PathVariable Long id
         ) {
+        }
+
+        @GetMapping("/required-param")
+        void requiredParam(
+                @RequestParam String value
+        ) {
+        }
+
+        @GetMapping("/invalid-parameter")
+        void invalidParameter() {
+            throw new InvalidParameterException("Parameter [name] with value [raw-query-value] has been ignored");
+        }
+
+        @GetMapping("/body")
+        TestRequest body() {
+            return TestRequest.from("value");
         }
 
         @GetMapping("/pheeeew-exception")

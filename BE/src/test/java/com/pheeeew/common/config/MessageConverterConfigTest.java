@@ -83,7 +83,7 @@ class MessageConverterConfigTest {
                 .exchange();
 
         // then
-        result.expectStatus().is5xxServerError();
+        result.expectStatus().isEqualTo(415);
         verifyNoInteractions(deviceService);
     }
 
@@ -97,7 +97,7 @@ class MessageConverterConfigTest {
                 .exchange();
 
         // then
-        result.expectStatus().is5xxServerError();
+        result.expectStatus().isEqualTo(415);
         verifyNoInteractions(deviceTokenService);
     }
 
