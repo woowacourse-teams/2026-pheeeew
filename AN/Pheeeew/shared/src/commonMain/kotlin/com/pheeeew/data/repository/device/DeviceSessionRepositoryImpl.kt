@@ -47,8 +47,8 @@ class DeviceSessionRepositoryImpl(
             prepareStored()
         } catch (cancelled: CancellationException) {
             throw cancelled
-        } catch (_: Exception) {
-            failed(DeviceSessionFailureKind.UNEXPECTED)
+        } catch (error: Exception) {
+            failed(DeviceSessionFailureKind.UNEXPECTED, exceptionType = error::class.simpleName)
         }
     }
 
@@ -305,6 +305,7 @@ class DeviceSessionRepositoryImpl(
     private fun failed(
         kind: DeviceSessionFailureKind,
         sdkCode: Int? = null,
+        exceptionType: String? = null,
     ): DeviceSessionResult.Failed {
         val failedStage =
             if (kind == DeviceSessionFailureKind.STORAGE ||
@@ -315,7 +316,13 @@ class DeviceSessionRepositoryImpl(
                 stage
             }
         diagnostics.recordSafely(
-            DeviceSessionDiagnostic(failedStage, DeviceDiagnosticOutcome.FAILED, sdkCode = sdkCode, failureKind = kind),
+            DeviceSessionDiagnostic(
+                failedStage,
+                DeviceDiagnosticOutcome.FAILED,
+                sdkCode = sdkCode,
+                failureKind = kind,
+                exceptionType = exceptionType,
+            ),
         )
         return DeviceSessionResult.Failed(DeviceSessionFailure(kind, stage = failedStage, sdkCode = sdkCode))
     }

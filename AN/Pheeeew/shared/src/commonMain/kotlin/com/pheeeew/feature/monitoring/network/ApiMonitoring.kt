@@ -87,6 +87,7 @@ object ApiMonitoringEvents {
                     "status_code" to PropertyRule(ValueType.INTEGER, minimum = 100.0),
                     "server_code" to PropertyRule(ValueType.TEXT, maxLength = 32),
                     "sdk_code" to PropertyRule(ValueType.INTEGER),
+                    "exception_type" to PropertyRule(ValueType.TEXT, maxLength = 64),
                 ),
         )
     val definitions = listOf(finished, deviceSessionDiagnostic)

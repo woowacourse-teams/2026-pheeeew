@@ -189,6 +189,7 @@ class DeviceSessionRepositoryTest {
             assertEquals(DeviceSessionStage.REFRESH, events.single().stage)
             assertEquals(DeviceDiagnosticOutcome.FAILED, events.single().outcome)
             assertEquals(DeviceSessionFailureKind.UNEXPECTED, events.single().failureKind)
+            assertEquals("IllegalStateException", events.single().exceptionType)
             assertFalse(events.single().toString().contains("refresh secret"))
         }
 

@@ -78,6 +78,7 @@ class ApiDependencies private constructor(
                                     event.statusCode?.let { put("status_code", EventValue.Integer(it.toLong())) }
                                     event.serverCode?.let { put("server_code", EventValue.Text(it)) }
                                     event.sdkCode?.let { put("sdk_code", EventValue.Integer(it.toLong())) }
+                                    event.exceptionType?.let { put("exception_type", EventValue.Text(it)) }
                                 },
                             ),
                             diagnosticContext,
