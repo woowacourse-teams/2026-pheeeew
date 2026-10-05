@@ -15,13 +15,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** Owns accepted presses and their outcomes. A read is requested for an unknown POST, never a replay. */
+/** Owns accepted presses. A successful aggregate read refreshes counts but cannot resolve a particular input. */
 internal class GroupEmotionPressCoordinator(
     private val groupId: GroupId,
     private val dependencies: GroupDetailDependencies,
     private val scope: CoroutineScope,
     private val telemetry: ProductMonitoring,
-    private val onStateChanged: (GroupPressStatus, Map<EmotionKind, Long>, Boolean) -> Unit,
+    private val onStateChanged: (
+        GroupPressStatus,
+        Map<EmotionKind, Long>,
+        List<GroupUnconfirmedPress>,
+        Boolean,
+    ) -> Unit,
     private val onBeforeSend: () -> Unit,
     private val onSnapshot: (GroupPressSnapshotUiModel, Map<EmotionKind, Long>) -> Unit,
     private val onReconciliationRequested: (GroupOperationKey) -> Unit,
@@ -37,6 +42,7 @@ internal class GroupEmotionPressCoordinator(
 
     private val pending = mutableListOf<AcceptedPress>()
     private val queue = ArrayDeque<AcceptedPress>()
+    private val unconfirmed = mutableListOf<AcceptedPress>()
     private var job: Job? = null
     private var generation = 0L
     private var unknownBatch: List<AcceptedPress> = emptyList()
@@ -49,13 +55,19 @@ internal class GroupEmotionPressCoordinator(
     val hasPendingWork: Boolean
         get() = status != GroupPressStatus.Idle || job?.isActive == true || pending.isNotEmpty()
 
+    val hasUnconfirmedPresses: Boolean
+        get() = unconfirmed.isNotEmpty() || unknownBatch.isNotEmpty()
+
+    val hasActiveWork: Boolean
+        get() = status != GroupPressStatus.Idle || job?.isActive == true || queue.isNotEmpty()
+
     fun accept(emotion: EmotionKind): GroupOperationKey? {
         if (status !is GroupPressStatus.Idle && status !is GroupPressStatus.Sending &&
             status !is GroupPressStatus.CoolingDown
         ) {
             return null
         }
-        if (pending.size >= dependencies.requestPolicy.maxOutstandingPresses) return null
+        if (pending.size + unconfirmed.size >= dependencies.requestPolicy.maxOutstandingPresses) return null
 
         val press = AcceptedPress(emotion, dependencies.operationKeyAllocator.next())
         pending += press
@@ -85,8 +97,10 @@ internal class GroupEmotionPressCoordinator(
         val reconciling = status as? GroupPressStatus.Reconciling ?: return
         if (reconciling.operationKey != key) return
         if (succeeded) {
-            val reconciledKeys = unknownBatch.mapTo(mutableSetOf()) { it.key }.ifEmpty { setOf(key) }
+            val reconciledBatch = unknownBatch
+            val reconciledKeys = reconciledBatch.mapTo(mutableSetOf()) { it.key }.ifEmpty { setOf(key) }
             pending.removeAll { it.key in reconciledKeys }
+            unconfirmed += reconciledBatch
             unknownBatch = emptyList()
             status = GroupPressStatus.Idle
         } else {
@@ -108,6 +122,7 @@ internal class GroupEmotionPressCoordinator(
         activeJob?.cancel()
         queue.clear()
         pending.clear()
+        unconfirmed.clear()
         unknownBatch = emptyList()
         status = GroupPressStatus.Idle
         publish()
@@ -283,10 +298,18 @@ internal class GroupEmotionPressCoordinator(
         onStateChanged(
             status,
             pendingCounts(),
-            pending.size < dependencies.requestPolicy.maxOutstandingPresses,
+            unconfirmedInputs(),
+            pending.size + unconfirmed.size < dependencies.requestPolicy.maxOutstandingPresses,
         )
     }
 
     private fun pendingCounts(): Map<EmotionKind, Long> =
-        pending.groupingBy { it.emotion }.eachCount().mapValues { it.value.toLong() }
+        pending
+            .filterNot { press -> unknownBatch.any { it.key == press.key } }
+            .groupingBy { it.emotion }
+            .eachCount()
+            .mapValues { it.value.toLong() }
+
+    private fun unconfirmedInputs(): List<GroupUnconfirmedPress> =
+        (unconfirmed + unknownBatch).map { press -> GroupUnconfirmedPress(press.key, press.emotion) }
 }

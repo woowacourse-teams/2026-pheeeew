@@ -13,6 +13,7 @@ data class GroupDetailUiState(
     val groupName: String? = null,
     val pressStatus: GroupPressStatus = GroupPressStatus.Idle,
     val pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
+    val unconfirmedEmotionPresses: List<GroupUnconfirmedPress> = emptyList(),
     val canAcceptEmotionPress: Boolean = true,
     val membershipEvent: GroupDetailMembershipEvent? = null,
 ) {
@@ -44,6 +45,12 @@ data class GroupDetailUiState(
         }
     }
 }
+
+/** An accepted local input whose server result cannot be attributed from aggregate counts alone. */
+data class GroupUnconfirmedPress(
+    val operationKey: GroupOperationKey,
+    val emotion: EmotionKind,
+)
 
 sealed interface GroupDetailContent {
     data object Loading : GroupDetailContent

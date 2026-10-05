@@ -35,7 +35,7 @@ class GroupEmotionPressWorkOwner : ViewModel() {
             // Run after the coordinator finishes draining, including any newly started POST.
             viewModelScope.launch {
                 yield()
-                if (!finished.hasObservers && !finished.hasPendingWork) {
+                if (!finished.hasObservers && !finished.hasTrackedPresses) {
                     if (sessions[groupId] === finished) sessions.remove(groupId)
                     finished.close()
                 }
@@ -64,6 +64,7 @@ internal class GroupEmotionPressSession(
         fun onStateChanged(
             status: GroupPressStatus,
             pending: Map<EmotionKind, Long>,
+            unconfirmed: List<GroupUnconfirmedPress>,
             canAcceptAnotherPress: Boolean,
         )
 
@@ -96,6 +97,7 @@ internal class GroupEmotionPressSession(
         )
     private var reconciliationJob: Job? = null
     private var pendingCounts = emptyMap<EmotionKind, Long>()
+    private var unconfirmedPresses = emptyList<GroupUnconfirmedPress>()
     private var canAcceptAnotherPress = true
     var latestDetail: GroupDetailUiModel? = null
         private set
@@ -107,10 +109,11 @@ internal class GroupEmotionPressSession(
             dependencies = dependencies,
             scope = scope,
             telemetry = telemetry,
-            onStateChanged = { status, pending, canAccept ->
+            onStateChanged = { status, pending, unconfirmed, canAccept ->
                 pendingCounts = pending
+                unconfirmedPresses = unconfirmed
                 canAcceptAnotherPress = canAccept
-                observers.toList().forEach { it.onStateChanged(status, pending, canAccept) }
+                observers.toList().forEach { it.onStateChanged(status, pending, unconfirmed, canAccept) }
                 onPossiblyFinished(this)
             },
             onBeforeSend = { observers.toList().forEach { it.onBeforeSend() } },
@@ -136,12 +139,16 @@ internal class GroupEmotionPressSession(
         get() = coordinator.status
     val hasPendingWork: Boolean
         get() = coordinator.hasPendingWork || reconciliationJob?.isActive == true
+    val hasTrackedPresses: Boolean
+        get() = hasPendingWork || coordinator.hasUnconfirmedPresses
+    val hasActiveWork: Boolean
+        get() = coordinator.hasActiveWork || reconciliationJob?.isActive == true
     val hasObservers: Boolean
         get() = observers.isNotEmpty()
 
     fun attach(observer: Observer) {
         observers += observer
-        observer.onStateChanged(status, pendingCounts, canAcceptAnotherPress)
+        observer.onStateChanged(status, pendingCounts, unconfirmedPresses, canAcceptAnotherPress)
     }
 
     fun detach(observer: Observer) {
@@ -184,7 +191,9 @@ internal class GroupEmotionPressSession(
     }
 
     private fun publishSettledState() {
-        observers.toList().forEach { it.onStateChanged(status, pendingCounts, canAcceptAnotherPress) }
+        observers.toList().forEach {
+            it.onStateChanged(status, pendingCounts, unconfirmedPresses, canAcceptAnotherPress)
+        }
         onPossiblyFinished(this)
     }
 

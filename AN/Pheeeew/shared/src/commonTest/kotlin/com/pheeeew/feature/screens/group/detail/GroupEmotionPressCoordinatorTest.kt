@@ -35,7 +35,7 @@ class GroupEmotionPressCoordinatorTest {
             val coordinator =
                 coordinator(
                     press = { _, _ -> responses[calls++].await() },
-                    onState = { _, counts, _ -> pending = counts },
+                    onState = { _, counts, _, _ -> pending = counts },
                     onNotice = { kind, _ -> notices += kind },
                 )
             val keys = List(3) { assertNotNull(coordinator.accept(emotion)) }
@@ -97,11 +97,12 @@ class GroupEmotionPressCoordinatorTest {
         }
 
     @Test
-    fun `unknown batch remains pending through read reconciliation and is not replayed`() =
+    fun `unknown input remains separately tracked through reconciliation and is not replayed`() =
         runTest {
             var calls = 0
             var readKey: GroupOperationKey? = null
             var pending = emptyMap<EmotionKind, Long>()
+            var unconfirmed = emptyList<GroupUnconfirmedPress>()
             val sent = mutableListOf<EmotionKind>()
             val coordinator =
                 coordinator(
@@ -115,7 +116,10 @@ class GroupEmotionPressCoordinatorTest {
                         }
                     },
                     requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 10),
-                    onState = { _, counts, _ -> pending = counts },
+                    onState = { _, counts, inputs, _ ->
+                        pending = counts
+                        unconfirmed = inputs
+                    },
                     onReconcile = { readKey = it },
                 )
             val firstKey = assertNotNull(coordinator.accept(emotion))
@@ -125,7 +129,8 @@ class GroupEmotionPressCoordinatorTest {
 
             assertEquals(1, calls)
             assertEquals(firstKey, readKey)
-            assertEquals(3L, pending.values.sum())
+            assertEquals(2L, pending.values.sum())
+            assertEquals(listOf(firstKey), unconfirmed.map { it.operationKey })
             assertIs<GroupPressStatus.Reconciling>(coordinator.status)
 
             coordinator.onReconciliationResult(firstKey, succeeded = true)
@@ -135,6 +140,31 @@ class GroupEmotionPressCoordinatorTest {
             assertEquals(listOf(emotion, EmotionKind.entries[1], emotion), sent)
             assertEquals(3, calls)
             assertEquals(emptyMap(), pending)
+            assertEquals(listOf(firstKey), unconfirmed.map { it.operationKey })
+        }
+
+    @Test
+    fun `unconfirmed inputs continue to count toward the outstanding capacity`() =
+        runTest {
+            var unconfirmed = emptyList<GroupUnconfirmedPress>()
+            var canAccept = true
+            val coordinator =
+                coordinator(
+                    press = { _, _ -> PressGroupEmotionResult.OutcomeUnknown },
+                    requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 1),
+                    onState = { _, _, inputs, capacity ->
+                        unconfirmed = inputs
+                        canAccept = capacity
+                    },
+                )
+
+            val key = assertNotNull(coordinator.accept(emotion))
+            runCurrent()
+            coordinator.onReconciliationResult(key, succeeded = true)
+
+            assertEquals(listOf(key), unconfirmed.map { it.operationKey })
+            assertEquals(false, canAccept)
+            assertNull(coordinator.accept(EmotionKind.entries[1]))
         }
 
     @Test
@@ -186,7 +216,7 @@ class GroupEmotionPressCoordinatorTest {
                 coordinator(
                     press = { _, _ -> firstResponse.await() },
                     requestPolicy = GroupDetailRequestPolicy(maxOutstandingPresses = 3),
-                    onState = { _, _, capacity -> canAccept = capacity },
+                    onState = { _, _, _, capacity -> canAccept = capacity },
                     onNotice = { kind, _ -> notices += kind },
                 )
             repeat(3) { assertNotNull(coordinator.accept(emotion)) }
@@ -221,7 +251,7 @@ class GroupEmotionPressCoordinatorTest {
                             maxOutstandingPresses = 10,
                             defaultRateLimitDelayMillis = 200,
                         ),
-                    onState = { _, counts, _ -> pending = counts },
+                    onState = { _, counts, _, _ -> pending = counts },
                 )
             assertNotNull(coordinator.accept(emotion))
             runCurrent()
@@ -258,7 +288,8 @@ class GroupEmotionPressCoordinatorTest {
             GroupDetailRequestPolicy(
                 maxOutstandingPresses = 300,
             ),
-        onState: (GroupPressStatus, Map<EmotionKind, Long>, Boolean) -> Unit = { _, _, _ -> },
+        onState: (GroupPressStatus, Map<EmotionKind, Long>, List<GroupUnconfirmedPress>, Boolean) -> Unit =
+            { _, _, _, _ -> },
         onNotice: (GroupDetailNoticeKind, Long?) -> Unit = { _, _ -> },
         onReconcile: (GroupOperationKey) -> Unit = {},
     ): GroupEmotionPressCoordinator {

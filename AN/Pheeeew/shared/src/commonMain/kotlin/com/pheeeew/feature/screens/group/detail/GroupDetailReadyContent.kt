@@ -50,9 +50,10 @@ import pheeeew.shared.generated.resources.group_detail_hero_first
 import pheeeew.shared.generated.resources.group_detail_hero_first_subtitle
 import pheeeew.shared.generated.resources.group_detail_hero_neutral
 import pheeeew.shared.generated.resources.group_detail_hero_neutral_subtitle
-import pheeeew.shared.generated.resources.group_detail_press_check
+import pheeeew.shared.generated.resources.group_detail_press_check_snapshot
 import pheeeew.shared.generated.resources.group_detail_press_checking
 import pheeeew.shared.generated.resources.group_detail_press_cooldown
+import pheeeew.shared.generated.resources.group_detail_press_unconfirmed
 import pheeeew.shared.generated.resources.group_detail_press_unknown
 import pheeeew.shared.generated.resources.group_detail_rank_empty
 import pheeeew.shared.generated.resources.group_detail_rank_label
@@ -74,9 +75,11 @@ import pheeeew.shared.generated.resources.group_detail_weekly_value
 internal fun GroupDetailReadyContent(
     detail: GroupDetailUiModel,
     hasRefreshError: Boolean,
+    isRefreshing: Boolean = false,
     canTapEmotion: Boolean,
     pressStatus: GroupPressStatus,
     pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
+    unconfirmedEmotionPresses: List<GroupUnconfirmedPress> = emptyList(),
     onInviteClick: () -> Unit,
     onRetry: () -> Unit,
     onEmotionTap: (EmotionKind) -> Boolean,
@@ -108,6 +111,13 @@ internal fun GroupDetailReadyContent(
             )
             Spacer(Modifier.height(36.dp))
             PressStatusNotice(status = pressStatus, onResolveOutcome = onResolvePressOutcome)
+            if (unconfirmedEmotionPresses.isNotEmpty()) {
+                UnconfirmedPressNotice(
+                    count = unconfirmedEmotionPresses.size,
+                    canRefresh = pressStatus == GroupPressStatus.Idle && !isRefreshing,
+                    onRefresh = onRetry,
+                )
+            }
             EmotionPad(
                 counts = detail.emotionCounts,
                 optimisticPressCounts = pendingEmotionPresses,
@@ -119,10 +129,32 @@ internal fun GroupDetailReadyContent(
                 preserveFeedbackWhileDisabled = pressStatus != GroupPressStatus.Idle,
             )
             Spacer(Modifier.height(20.dp))
-            TodayTotal(detail.copy(todayTotal = detail.todayTotal + pendingEmotionPresses.values.sum()))
+            TodayTotal(detail)
             Spacer(Modifier.height(24.dp))
             WeeklySummary(detail)
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun UnconfirmedPressNotice(
+    count: Int,
+    canRefresh: Boolean,
+    onRefresh: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(Res.string.group_detail_press_unconfirmed, count),
+            modifier = Modifier.weight(1f),
+            color = Color(0xFF7B817B),
+            fontSize = 13.sp,
+        )
+        TextButton(enabled = canRefresh, onClick = onRefresh) {
+            Text(text = stringResource(Res.string.group_detail_press_check_snapshot), color = AppColors.GroupInk)
         }
     }
 }
@@ -185,7 +217,10 @@ private fun PressStatusNotice(
                     fontSize = 13.sp,
                 )
                 TextButton(onClick = onResolveOutcome) {
-                    Text(text = stringResource(Res.string.group_detail_press_check), color = AppColors.GroupInk)
+                    Text(
+                        text = stringResource(Res.string.group_detail_press_check_snapshot),
+                        color = AppColors.GroupInk,
+                    )
                 }
             }
         }
