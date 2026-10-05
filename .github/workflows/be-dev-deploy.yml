@@ -42,6 +42,8 @@ jobs:
           tags: |
             ${{ secrets.DOCKERHUB_IMAGE }}:dev
             ${{ secrets.DOCKERHUB_IMAGE }}:dev-${{ github.sha }}
+          build-args: |
+            APP_RELEASE=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -241,7 +243,7 @@ jobs:
             started=0
             echo "===== 컨테이너 기동 실패 — 상태와 로그 ====="
             docker compose -f compose.yml ps
-            docker compose -f compose.yml logs --tail=100
+            docker compose -f compose.yml logs --tail=100 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
           fi
 
           if [ "$started" -eq 1 ]; then
@@ -259,7 +261,7 @@ jobs:
             fi
 
             echo "===== 헬스체크 실패 — 앱 로그 ====="
-            docker compose -f compose.yml logs --tail=100 app
+            docker compose -f compose.yml logs --tail=100 app 2>&1 | grep -a -v -F -e 'http_request_failed' -e 'scheduled_task_failed' || true
           fi
 
           if [ -z "$PREVIOUS" ]; then

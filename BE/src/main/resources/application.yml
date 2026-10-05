@@ -14,6 +14,15 @@ spring:
   sql:
     init:
       mode: never
+  servlet:
+    multipart:
+      # multipart 를 받는 API 가 없다. 켜 두면 경계가 없거나 크기를 넘는 multipart 요청이 500 과 오류 로그가 된다.
+      enabled: false
+  mvc:
+    formcontent:
+      filter:
+        # 폼 본문을 받는 API 가 없다. 켜 두면 PUT, PATCH, DELETE 의 깨진 폼 본문이 필터에서 예외가 된다.
+        enabled: false
 
 pheeeew:
   rate-limit:
