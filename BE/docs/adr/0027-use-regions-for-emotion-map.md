@@ -3,6 +3,7 @@
 ## Status
 
 Accepted (2026-10-04). 승인된 BE 설계와 구현을 기록해요. 클라이언트 적용이나 운영 전환 완료를 뜻하지 않아요.
+분류·신규 등록의 정상 미매칭 정책은 [ADR-0028](0028-assign-nearby-regions-and-restrict-emotion-creation.md)에서 부분 변경했어요. 집계·표시 계약은 유지해요.
 
 ## Context
 

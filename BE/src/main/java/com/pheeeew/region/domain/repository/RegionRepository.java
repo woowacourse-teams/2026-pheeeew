@@ -26,11 +26,10 @@ public class RegionRepository {
 
     public Optional<String> findEmdCode(double longitude, double latitude) {
         return jdbc.sql("""
-                SELECT code FROM regions
-                WHERE level = 'EMD'
-                  AND ST_Covers(boundary, ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326))
-                ORDER BY code
-                LIMIT 1
+                SELECT code FROM public.find_emd_region_code(
+                    ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)
+                ) AS classification(code)
+                WHERE code IS NOT NULL
                 """).param("longitude", longitude).param("latitude", latitude).query(String.class).optional();
     }
 
