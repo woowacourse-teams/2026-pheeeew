@@ -29,6 +29,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -44,6 +45,14 @@ class NearbyEmotionViewModel(
     val events = eventChannel.receiveAsFlow()
     val telemetry = ProductMonitoring(monitoring, "map")
     val exploration = ContentMonitoring(monitoring, viewModelScope, "list")
+
+    init {
+        viewModelScope.launch {
+            groups.membershipChanges.drop(1).collect {
+                if (state.value.visible || state.value.groupSelectorVisible) onMembershipChanged()
+            }
+        }
+    }
 
     fun contentVisibility(visible: Boolean) {
         if (exploration.visibility(visible) && state.value.contentLoad != null && !state.value.loading) {

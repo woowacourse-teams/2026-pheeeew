@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -87,10 +88,8 @@ fun MapScreen(
     appSettingsLauncher: AppSettingsLauncher,
     highlightedEmotion: RegisteredEmotionUiModel?,
     onHighlightedEmotionChanged: (RegisteredEmotionUiModel?) -> Unit,
-    highlightedPinPosition: HighlightedPinPosition?,
-    onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
-    recordViewport: RecordMapViewport?,
-    onRecordViewportChanged: (RecordMapViewport?) -> Unit,
+    highlightedPinPosition: MutableState<HighlightedPinPosition?>,
+    recordViewport: MutableState<RecordMapViewport?>,
     onRecordPreviewScaleChanged: (Float) -> Unit,
     onMapVisibilityChanged: (Boolean) -> Unit,
     onMapContentActiveChanged: (Boolean) -> Unit,
@@ -195,14 +194,14 @@ fun MapScreen(
     val highlightedId = uiModel.focusedEmotionId ?: highlightedEmotion?.id
     val clearHighlight = {
         onHighlightedEmotionChanged(null)
-        onHighlightedPinPositionChanged(null)
+        highlightedPinPosition.value = null
         viewModel.clearFocusedEmotion()
     }
     LaunchedEffect(uiModel.focusedEmotionId) {
         if (uiModel.focusedEmotionId != null) onHighlightedEmotionChanged(null)
     }
     // Restart the 10-second timeout when the pin appears; discard it if its refresh never arrives.
-    LaunchedEffect(highlightedEmotion?.id, highlightedPinPosition?.id) {
+    LaunchedEffect(highlightedEmotion?.id, highlightedPinPosition.value?.id) {
         if (highlightedEmotion != null) {
             delay(10_000)
             clearHighlight()
@@ -288,7 +287,7 @@ fun MapScreen(
             voiceRecorder.clear()
             viewModel.onRecordLocationPickingChanged(false)
             recordViewModel.consumeRegisteredEmotion()?.let { emotion ->
-                onHighlightedPinPositionChanged(null)
+                highlightedPinPosition.value = null
                 onHighlightedEmotionChanged(emotion)
                 viewModel.focusOnCoordinate(emotion.coordinate)
             }
@@ -297,7 +296,7 @@ fun MapScreen(
     val currentLocation = (uiModel.locationState as? LocationState.Available)?.location
 
     LaunchedEffect(recordUiModel.step) {
-        if (recordUiModel.step != RecordFlowStepUiModel.LocationSelection) onRecordViewportChanged(null)
+        if (recordUiModel.step != RecordFlowStepUiModel.LocationSelection) recordViewport.value = null
         if (recordUiModel.step != RecordFlowStepUiModel.Closed) clearHighlight()
     }
 
@@ -310,13 +309,13 @@ fun MapScreen(
             uiModel = uiModel,
             recordUiModel = recordUiModel,
             voiceRecorder = voiceRecorder,
-            recordViewport = recordViewport,
+            recordViewport = recordViewport.value,
             onRecordCoordinateSelected = recordViewModel::onLocationSelected,
             onRecordPreviewScaleChanged = onRecordPreviewScaleChanged,
             groupOptions = groupOptions,
             mapContent = { _, mapModifier ->
                 Box(mapModifier) {
-                    val highlightPosition = highlightedPinPosition
+                    val highlightPosition = highlightedPinPosition.value
                     if (highlightPosition != null && highlightPosition.id == highlightedId &&
                         uiModel.mapError == null
                     ) {

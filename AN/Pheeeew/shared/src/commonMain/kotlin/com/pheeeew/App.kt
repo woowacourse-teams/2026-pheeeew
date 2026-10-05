@@ -81,6 +81,7 @@ import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.component.RankingBottomNavigationDestination
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
+import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
 import com.pheeeew.feature.screens.group.navigation.GroupFeatureHost
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
@@ -134,6 +135,7 @@ fun App(
     locationDependencies: LocationDependencies,
     apiDependencies: ApiDependencies,
     lastRecordedGroupRepository: LastRecordedGroupRepository,
+    groupCreateSessionStore: GroupCreateSessionStore,
     appVersion: String,
     appVersionApi: AppVersionApi,
     permissionSettingsLauncher: AppSettingsLauncher,
@@ -147,6 +149,7 @@ fun App(
             locationDependencies = locationDependencies,
             apiDependencies = apiDependencies,
             lastRecordedGroupRepository = lastRecordedGroupRepository,
+            groupCreateSessionStore = groupCreateSessionStore,
             appVersion = appVersion,
             appVersionApi = appVersionApi,
             connectivityObserver = connectivityObserver,
@@ -163,6 +166,7 @@ private fun AppContent(
     locationDependencies: LocationDependencies,
     apiDependencies: ApiDependencies,
     lastRecordedGroupRepository: LastRecordedGroupRepository,
+    groupCreateSessionStore: GroupCreateSessionStore,
     appVersion: String,
     appVersionApi: AppVersionApi,
     connectivityObserver: ConnectivityObserver,
@@ -252,8 +256,8 @@ private fun AppContent(
     }
 
     var highlightedEmotion by remember { mutableStateOf<RegisteredEmotionUiModel?>(null) }
-    var highlightedPinPosition by remember { mutableStateOf<HighlightedPinPosition?>(null) }
-    var recordViewport by remember { mutableStateOf<RecordMapViewport?>(null) }
+    val highlightedPinPosition = remember { mutableStateOf<HighlightedPinPosition?>(null) }
+    val recordViewport = remember { mutableStateOf<RecordMapViewport?>(null) }
     var previewScale by remember { mutableStateOf(1f) }
     var mapContentActive by remember { mutableStateOf(false) }
     var pressedPinId by remember { mutableStateOf<Long?>(null) }
@@ -327,7 +331,7 @@ private fun AppContent(
                 onMapRecovered = mapViewModel::onMapRecovered,
                 onRecordViewportChanged = { centerX, centerY, radius ->
                     val viewport = RecordMapViewport(centerX, centerY, radius)
-                    if (recordViewport != viewport) recordViewport = viewport
+                    if (recordViewport.value != viewport) recordViewport.value = viewport
                 },
                 onViewportChanged = { bounds ->
                     mapViewModel.onViewportChanged(bounds)
@@ -342,7 +346,7 @@ private fun AppContent(
                 },
                 onEmotionPinClick = { id ->
                     highlightedEmotion = null
-                    highlightedPinPosition = null
+                    highlightedPinPosition.value = null
                     mapViewModel.clearFocusedEmotion()
                     pinPressJob?.cancel()
                     pinPressJob =
@@ -357,7 +361,7 @@ private fun AppContent(
                         }
                 },
                 onMapBackgroundClick = { if (nearbyState.visible) nearbyViewModel.dismiss() },
-                onHighlightedPinPositionChanged = { highlightedPinPosition = it },
+                onHighlightedPinPositionChanged = { highlightedPinPosition.value = it },
                 onContentPresented = mapViewModel::contentPresented,
                 modifier = Modifier.fillMaxSize(),
             )
@@ -460,8 +464,13 @@ private fun AppContent(
                 createEmotionModerationDependencies(apiDependencies.client)
             }
         val groupDependencies =
-            remember(apiDependencies.client) {
-                createGroupDependencies(apiDependencies.client)
+            remember(apiDependencies.client, groupStampListRepository, groupCreateSessionStore) {
+                createGroupDependencies(
+                    apiClient = apiDependencies.client,
+                    membershipChanges = groupStampListRepository.membershipChanges,
+                    invalidateSharedMembership = groupStampListRepository::invalidate,
+                    createSessionStore = groupCreateSessionStore,
+                )
             }
 
         val navController = rememberNavController()
@@ -518,9 +527,7 @@ private fun AppContent(
                             highlightedEmotion = highlightedEmotion,
                             onHighlightedEmotionChanged = { highlightedEmotion = it },
                             highlightedPinPosition = highlightedPinPosition,
-                            onHighlightedPinPositionChanged = { highlightedPinPosition = it },
                             recordViewport = recordViewport,
-                            onRecordViewportChanged = { recordViewport = it },
                             onRecordPreviewScaleChanged = { previewScale = it },
                             onMapVisibilityChanged = { mapVisible = it },
                             onMapContentActiveChanged = { mapContentActive = it },

@@ -564,6 +564,101 @@ class MapViewModelViewportTest {
             }
         }
 
+    @Test
+    fun `새 영역의 여러 페이지를 불러오는 동안 기존 핀을 유지하고 완료 후 현재 영역 핀만 표시한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val initialResponse = CompletableDeferred<EmotionMapPageResult>()
+                val firstViewportPage = CompletableDeferred<EmotionMapPageResult>()
+                val secondViewportPage = CompletableDeferred<EmotionMapPageResult>()
+                val repository =
+                    QueuedEmotionMapRepository(
+                        initialResponse,
+                        firstViewportPage,
+                        secondViewportPage,
+                    )
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                val initialBounds = bounds(127.0, 37.5)
+                val nextBounds = bounds(128.0, 37.5)
+
+                viewModel.onViewportChanged(initialBounds)
+                advanceTimeBy(700)
+                runCurrent()
+                initialResponse.complete(page(listOf(pin(1, 127.02, 37.52))))
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
+
+                viewModel.onViewportChanged(nextBounds)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
+
+                firstViewportPage.complete(page(listOf(pin(2, 128.02, 37.52)), hasNext = true))
+                runCurrent()
+                assertEquals(listOf(1L, 2L), viewModel.pinIds())
+                assertTrue(viewModel.uiModel.value.isLoadingMoreEmotionPins)
+
+                secondViewportPage.complete(page(listOf(pin(3, 128.03, 37.53))))
+                runCurrent()
+                assertEquals(listOf(2L, 3L), viewModel.pinIds())
+                assertFalse(viewModel.uiModel.value.isLoadingMoreEmotionPins)
+                assertEquals(false, viewModel.uiModel.value.hasPartialEmotionPins)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `다중 페이지 조회 실패 시 기존 핀과 먼저 받은 페이지를 유지한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val initialResponse = CompletableDeferred<EmotionMapPageResult>()
+                val firstViewportPage = CompletableDeferred<EmotionMapPageResult>()
+                val failedViewportPage = CompletableDeferred<EmotionMapPageResult>()
+                val repository =
+                    QueuedEmotionMapRepository(
+                        initialResponse,
+                        firstViewportPage,
+                        failedViewportPage,
+                    )
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+
+                viewModel.onViewportChanged(bounds(127.0, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+                initialResponse.complete(page(listOf(pin(1, 127.02, 37.52))))
+                runCurrent()
+
+                viewModel.onViewportChanged(bounds(128.0, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+                firstViewportPage.complete(page(listOf(pin(2, 128.02, 37.52)), hasNext = true))
+                runCurrent()
+                assertEquals(listOf(1L, 2L), viewModel.pinIds())
+                assertTrue(viewModel.uiModel.value.isLoadingMoreEmotionPins)
+
+                failedViewportPage.complete(EmotionMapPageResult.Failure(EmotionMapFailure.Unavailable))
+                runCurrent()
+                assertEquals(listOf(1L, 2L), viewModel.pinIds())
+                assertFalse(viewModel.uiModel.value.isLoadingMoreEmotionPins)
+                assertTrue(viewModel.uiModel.value.hasPartialEmotionPins)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun bounds(
         minLongitude: Double,
         minLatitude: Double,
