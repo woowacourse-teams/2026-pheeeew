@@ -170,6 +170,7 @@ PostgreSQL 17.5 / PostGIS 3.5.2 Testcontainers에서 받은 전국 원본을 검
 자동 배포·애플리케이션 시작·Flyway에서 실행하지 않아요. 개발과 운영은 각각 별도 승인을 받아요.
 승인한 커밋의 `backfill-batch.sql`을 EC2 작업 폴더에 복사하고, 아래 명령은 그 폴더에서 실행해요.
 행정동 참조 컬럼과 검증된 `SGIS_2025_2Q` 경계가 준비돼 있어야 해요.
+현재 백필·완료 검증은 `V20261005_1__add_emd_region_distance_classification.sql`의 공통 분류 함수도 필요해요.
 접속 계정의 읽기·감정 분류 컬럼 갱신·임시 테이블 생성 권한을 확인해요.
 백필에는 `psql`만 필요하고 `shp2pgsql`·`pyproj`는 필요하지 않아요.
 
@@ -270,8 +271,9 @@ psql -X --single-transaction -v ON_ERROR_STOP=1 -qAt -f backfill-verify.sql
 
 같은 advisory lock 획득 후 `emotions`의 쓰기를 막는 테이블 잠금을 대기 없이 시도해요.
 진행 중 쓰기나 다른 백필과 충돌하면 실패하며, 잠금 획득 뒤 전체 미분류를 검사해요.
-ID 상한·삭제·공개 여부로 범위를 줄이지 않아요. 코드가 NULL인 정상 미매칭도 분류 시각이 있으면 처리 완료예요.
-경계 검증과 전체 미분류 0건을 확인한 동일 트랜잭션에서 완료 시각을 기록해요. 종료 코드 0을 확인해요.
+ID 상한·삭제·공개 여부로 범위를 줄이지 않아요. 분류 시각이 없는 기록과 새 규칙으로 배정 가능한 NULL 코드가 없어야 해요.
+코드가 NULL이어도 분류 시각이 있고 새 규칙의 서비스 범위 밖이면 처리 완료예요.
+경계 검증과 위 두 잔량 0건을 확인한 동일 트랜잭션에서 완료 시각을 기록해요. 종료 코드 0을 확인해요.
 재실행도 전체를 다시 검사하고 최초 완료 시각을 보존해요. 오류는 트랜잭션을 롤백해요.
 검사 중 등록·수정·삭제는 잠시 대기할 수 있어요. 각 SQL 명령은 5초 제한이며 전체 트랜잭션 시간 제한은 아니에요.
 실제 데이터에서 5초 내 검사가 끝난다는 보장은 없어요. 시간 초과를 성공으로 판단하거나 무조건 제한을 늘리지 않아요.
@@ -281,3 +283,106 @@ ID 상한·삭제·공개 여부로 범위를 줄이지 않아요. 코드가 NUL
 그 경우 지역 요약 제공을 보류하고 신규 등록 경로를 복구한 뒤 잔량 백필·전체 검증을 다시 수행해요.
 
 명령은 저장소의 개발 Compose·운영 RDS 구조를 기준으로 한 절차예요. 실제 서버 접속·권한·부하는 아직 검증하지 않았어요.
+
+## 1km 인접 지역 정책으로 전환
+
+이 절차는 기존 SGIS 경계를 다시 적재하지 않아요. 포함 판정이 우선이며 미매칭만 폴리곤까지 타원체 최단 거리
+1,000m 이하의 행정동에 배정해요. 동률은 코드 오름차순이고 감정의 저장 좌표는 바꾸지 않아요.
+신규 등록의 범위 밖 좌표는 `EMOTION-014`·400, 경계 미검증은 `EMOTION-013`·503이에요.
+기존 기록·수정·삭제는 유지하고 성공한 requestId 재시도는 기존 결과를 반환해요. 기존 기기별 1초 제한은 먼저 적용돼요.
+
+개발·운영 각각 승인한 대상에서 다음 순서로 진행해요. 시작 SQL 실행, 서버 배포, 재분류는 별도 승인 대상이에요.
+
+1. 앞의 대상 DB 확인과 경계 검증 상태를 확인해요. 같은 커밋의 `reclassification-start.sql`,
+   `reclassification-batch.sql`, `backfill-verify.sql`을 EC2 작업 폴더에 전달하고 체크섬을 대조해요.
+2. 서버 배포 전에 시작 SQL로 `backfill_verified_at`만 해제해요. 시작 SQL은 기존 테이블만 사용해요.
+   커밋 뒤 새 준비 검사부터 지역 집계는 503이에요. 이미 검사를 통과한 요청은 완료될 수 있어요.
+3. 새 서버와 공통 함수 마이그레이션을 배포하고 구버전의 감정 등록·진행 중 쓰기를 종료해요.
+   앱스토어·플레이스토어 배포 완료는 필요하지 않아요. 경계 검증이 유지되므로 새 등록은 분류할 수 있어요.
+4. 아래 잔량과 ID 상한을 확인하고 재분류 배치를 반복해요. 분류 시각이 없는 잔량은 일반 백필도 필요해요.
+5. 두 잔량이 없어지면 앞의 `backfill-verify.sql`로 전체 완료를 검증해요. 종료 코드 0인 경우에만 집계를 다시 열어요.
+
+### 전환 시작
+
+개발 EC2의 DB 컨테이너에서는:
+
+```bash
+docker exec -i pheeeew-dev-postgres sh -c \
+  'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X --single-transaction \
+    -v ON_ERROR_STOP=1 -qAt -f -' < reclassification-start.sql
+```
+
+운영 EC2에서는 앞의 승인된 RDS 접속 설정을 사용해요.
+
+```bash
+psql -X --single-transaction -v ON_ERROR_STOP=1 -qAt -f reclassification-start.sql
+```
+
+시작 SQL의 출력 `t`와 종료 코드 0을 확인해요. 경계 검증 시각과 감정은 변경하지 않아요.
+전환 중 시작 SQL 재실행은 무해하지만, 완료 후에는 실행하지 않아요. 완료 표시를 다시 해제하기 때문이에요.
+시작만 해제하고 배포·재분류가 중단되면 집계는 계속 503이에요. 완료 시각을 임의로 복구하지 말고 잔량·배포 상태를 점검해요.
+
+### 재분류 잔량과 배치
+
+공통 함수 배포 뒤 승인한 DB 연결에서 조회해요. ID 상한은 앞의 백필 절차처럼 작업 기록에 남겨요.
+
+```sql
+SELECT to_regprocedure('public.find_emd_region_code(geometry)') AS classifier,
+       to_regclass('public.idx_regions_emd_geography_gist') AS geography_index;
+SELECT COALESCE(max(id), 0) AS upper_id,
+       count(*) FILTER (WHERE region_classified_at IS NULL) AS unclassified_count,
+       count(*) FILTER (WHERE region_code IS NULL AND public.find_emd_region_code(location) IS NOT NULL) AS assignable_null_count
+FROM public.emotions;
+```
+
+대상은 지역 코드가 NULL이고 새 함수로 배정 가능한 기록이에요. 범위 밖 NULL을 LIMIT 전에 제외해 선두의 먼 좌표가
+뒤의 대상을 막지 않게 해요. 기존 배정·범위 밖 기록과 좌표·내용·감사 시각·version은 보존해요.
+배정되는 기록만 지역 코드와 분류 시각을 갱신해요. 행 잠금과 조건부 갱신으로 동시 수정·배정을 보존해요.
+시작을 누락하고 집계가 열린 상태에서 실제 대상이 있으면 실패해요. 이 오류를 0건으로 처리하지 않아요.
+
+개발 EC2에서는:
+
+```bash
+: "${REGION_BACKFILL_UPPER_ID:?조회한 ID 상한을 먼저 지정하세요}"
+REGION_BACKFILL_BATCH_SIZE=100
+docker exec -i pheeeew-dev-postgres sh -c \
+  'exec psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -X --single-transaction \
+    -v ON_ERROR_STOP=1 -qAt -v batch_size="$1" -v upper_id="$2" -f -' \
+  sh "$REGION_BACKFILL_BATCH_SIZE" "$REGION_BACKFILL_UPPER_ID" < reclassification-batch.sql
+```
+
+운영 EC2에서는 같은 상한과 배치 크기를 지정하고:
+
+```bash
+: "${REGION_BACKFILL_UPPER_ID:?조회한 ID 상한을 먼저 지정하세요}"
+REGION_BACKFILL_BATCH_SIZE=100
+psql -X --single-transaction -v ON_ERROR_STOP=1 -qAt \
+  -v batch_size="$REGION_BACKFILL_BATCH_SIZE" -v upper_id="$REGION_BACKFILL_UPPER_ID" -f reclassification-batch.sql
+```
+
+시작·일반 백필·재분류·완료 검증은 같은 `(596, 1)` 잠금을 사용해요. 잠긴 행은 건너뛰므로 0건만으로 완료를 선언하지 않아요.
+배치가 실패하면 전체 배치를 롤백해요. 완료 후 대상 없는 배치 재시도는 0건이고 완료 시각을 보존해요.
+완료 검증 이후의 구버전·직접 SQL 쓰기까지 영구 차단하지 않아요. 그런 쓰기가 재유입되면 시작부터 다시 전환해요.
+
+### 2026-10-05 로컬 정책 검증
+
+위 ZIP 3종과 전달용 SQL의 SHA-256을 다시 대조한 뒤 기존 SQL을 사용했어요. 원본이나 경계를 보정하지 않았어요.
+Testcontainers `postgis/postgis:17-3.5`의 PostgreSQL 17.5 / PostGIS 3.5.2에서 Flyway 27개와 전국 적재·품질 검증을 통과했어요.
+기존 마이그레이션 26개로 전국 경계를 적재·검증한 뒤 정책 마이그레이션 1개를 적용하는 업그레이드 경로도 같은 검증을 통과했어요.
+완료한 실행의 컨테이너 제한은 CPU 2개·메모리 2GiB예요. 개발·운영 DB나 실제 감정 원본을 사용하지 않았어요.
+
+합성 좌표 3,690개는 행정동 표시점 3,559개, 코드순 매 225번째 행정동의 첫 폴리곤 첫 꼭짓점에서
+45도 간격으로 500m 이동한 128개, 미국·원점·도쿄의 먼 좌표 3개예요.
+포함 규칙에서는 NULL 5개, 새 규칙에서는 NULL 3개였어요. 인접 미매칭 2개는 전체 행정동의 타원체 최단 거리
+정렬 결과와 일치했고 재분류됐어요. 표시점·500m 이동점은 모두 배정됐고 먼 좌표 3개는 제외됐어요.
+거리 후보 조회는 geography GiST, 완료 잔량 조회는 기존 지역 코드 인덱스를 사용했어요.
+시작·배치·완료·완료 후 0건 재시도와 비분류 필드 보존을 확인했어요. 완료 SQL 2회는 기존 명령별 5초 제한 안에서 성공했어요.
+
+최초 512MiB 제한의 적재 `psql`은 종료 코드 137로 끝났고 통과하지 못했어요. OOM 원인은 확정하지 않았어요.
+이어진 2GiB 실행은 JSON 필드 보존 비교에서 실패했어요. psql의 `Etc/UTC`와 JDBC 초기 `Asia/Seoul`을 확인하고,
+양 세션을 UTC로 통일한 재실행에서 날짜 필드를 제외하지 않은 동일 비교와 전체 검증을 통과했어요.
+실패한 비교의 원인은 시간대 표현 차이로 추정하며, 해당 실행은 통과로 집계하지 않아요.
+
+이 결과는 개발 서버 512건의 재배정 수·메모리 한도나 운영의 5초 완료를 보장하지 않아요.
+HTTP 요청 수·응답 바이트·반환 객체 수와 실제 기기의 CPU·메모리·프레임은 이번에 측정하지 않았어요.
+실제 DB의 잔량·쿼리 계획·트래픽 영향은 각 대상의 실행 승인 후 확인해요. 시간 초과는 실패로 처리해요.
