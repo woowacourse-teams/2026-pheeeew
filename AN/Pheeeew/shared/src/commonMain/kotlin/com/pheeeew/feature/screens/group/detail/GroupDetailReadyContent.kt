@@ -75,6 +75,7 @@ import pheeeew.shared.generated.resources.group_detail_weekly_value
 internal fun GroupDetailReadyContent(
     detail: GroupDetailUiModel,
     hasRefreshError: Boolean,
+    isRefreshing: Boolean = false,
     canTapEmotion: Boolean,
     pressStatus: GroupPressStatus,
     pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
@@ -110,9 +111,10 @@ internal fun GroupDetailReadyContent(
             )
             Spacer(Modifier.height(36.dp))
             PressStatusNotice(status = pressStatus, onResolveOutcome = onResolvePressOutcome)
-            if (pressStatus == GroupPressStatus.Idle && unconfirmedEmotionPresses.isNotEmpty()) {
+            if (unconfirmedEmotionPresses.isNotEmpty()) {
                 UnconfirmedPressNotice(
                     count = unconfirmedEmotionPresses.size,
+                    canRefresh = pressStatus == GroupPressStatus.Idle && !isRefreshing,
                     onRefresh = onRetry,
                 )
             }
@@ -138,6 +140,7 @@ internal fun GroupDetailReadyContent(
 @Composable
 private fun UnconfirmedPressNotice(
     count: Int,
+    canRefresh: Boolean,
     onRefresh: () -> Unit,
 ) {
     Row(
@@ -150,7 +153,7 @@ private fun UnconfirmedPressNotice(
             color = Color(0xFF7B817B),
             fontSize = 13.sp,
         )
-        TextButton(onClick = onRefresh) {
+        TextButton(enabled = canRefresh, onClick = onRefresh) {
             Text(text = stringResource(Res.string.group_detail_press_check_snapshot), color = AppColors.GroupInk)
         }
     }
