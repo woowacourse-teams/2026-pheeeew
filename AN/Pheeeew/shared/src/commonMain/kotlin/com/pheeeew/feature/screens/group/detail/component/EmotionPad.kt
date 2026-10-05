@@ -126,6 +126,7 @@ internal fun EmotionPad(
     val operationKeyForFeedback by rememberUpdatedState(feedbackOperationKey)
     val feedbackShown by rememberUpdatedState(onFeedbackShown)
     val callback by rememberUpdatedState(onEmotionTap)
+    val hapticFeedback = rememberGroupEmotionHapticFeedback()
     val inputEnabled by rememberUpdatedState(enabled)
     val byKind = remember(counts) { counts.associateBy { it.kind } }
 
@@ -372,12 +373,17 @@ internal fun EmotionPad(
                             enabled = enabled,
                             role = Role.Button,
                         ) {
+                            val accepted = callback(kind)
                             if (pointer == null && !keyboardActivation && !motion.pressed) {
                                 motion.tap(now(), reduce)
                             } else {
                                 motion.release(now(), reduce)
                             }
-                            if (callback(kind) || fixtureFeedbackOnAcceptedPress) {
+                            dispatchGroupEmotionTapFeedback(
+                                accepted = accepted,
+                                fixtureFeedbackOnAcceptedPress = fixtureFeedbackOnAcceptedPress,
+                                hapticFeedback = hapticFeedback,
+                            ) {
                                 // Start visual feedback now; the ViewModel persists accepted taps asynchronously.
                                 addReaction(kind, x, y, pointer)
                                 val operationKey = operationKeyForFeedback()
