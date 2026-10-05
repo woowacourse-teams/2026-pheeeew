@@ -5,6 +5,7 @@ import static com.pheeeew.groups.fixture.GroupFixture.일반_멤버_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.Mockito.when;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -26,10 +27,12 @@ import com.pheeeew.groups.exception.GroupErrorCode;
 import com.pheeeew.groups.exception.GroupException;
 import com.pheeeew.support.PostgisDataJpaTest;
 import jakarta.persistence.EntityManagerFactory;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
@@ -40,11 +43,14 @@ import java.util.concurrent.TimeUnit;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Propagation;
@@ -56,6 +62,9 @@ class GroupServiceIntegrationTest {
 
     private static final String 혼동되는_글자 = "ILOU";
     private static final int 동시_요청_수 = 6;
+
+    @MockitoBean
+    private Clock clock;
 
     @Autowired
     private GroupService groupService;
@@ -83,6 +92,12 @@ class GroupServiceIntegrationTest {
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
+
+    @BeforeEach
+    void setUp() {
+        when(clock.getZone()).thenReturn(ZoneId.of("Asia/Seoul"));
+        when(clock.instant()).thenReturn(Instant.parse("2026-10-07T03:00:00Z"));
+    }
 
     @AfterEach
     void tearDown() {
@@ -572,9 +587,14 @@ class GroupServiceIntegrationTest {
         assertThat(상세.todayPresses().total()).isZero();
     }
 
-    @Test
-    void 상세_조회는_오늘과_이번_주_프레스를_함께_준다() {
+    @ParameterizedTest
+    @CsvSource({
+            "2026-10-05T03:00:00Z, 5, 4",
+            "2026-10-07T03:00:00Z, 1, 0"
+    })
+    void 상세_조회는_오늘과_이번_주_프레스를_함께_준다(Instant 현재, long 오늘_합계, long 오늘_화남) {
         // given
+        when(clock.instant()).thenReturn(현재);
         Device 그룹장 = 기기를_저장한다();
         GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
         눌린_것으로_둔다(그룹.publicId(), 이번_주_월요일(), EmotionState.ANGRY, 4);
@@ -584,7 +604,9 @@ class GroupServiceIntegrationTest {
         GroupDetailResult 상세 = groupService.findOne(그룹.publicId(), 그룹장.getPublicId());
 
         // then
-        assertThat(상세.todayPresses().total()).isOne();
+        assertThat(상세.todayPresses().total()).isEqualTo(오늘_합계);
+        assertThat(상세.todayPresses().counts().get(EmotionState.ANGRY)).isEqualTo(오늘_화남);
+        assertThat(상세.todayPresses().counts().get(EmotionState.EXHAUSTED)).isOne();
         assertThat(상세.weeklyPresses().counts().get(EmotionState.ANGRY)).isEqualTo(4);
         assertThat(상세.weeklyPresses().counts().get(EmotionState.EXHAUSTED)).isOne();
         assertThat(상세.weeklyPresses().total()).isEqualTo(5);
@@ -815,14 +837,14 @@ class GroupServiceIntegrationTest {
     }
 
     private LocalDate 이번_주_월요일() {
-        return RankingWeek.of(Instant.now(), 0).startDate();
+        return RankingWeek.of(clock.instant(), 0).startDate();
     }
 
     private void 눌린_것으로_둔다(UUID groupPublicId, LocalDate 날짜, EmotionState 감정, int 횟수) {
         Long groupId = groupRepository.findByPublicIdAndDeletedAtIsNull(groupPublicId).orElseThrow().getId();
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
             for (int i = 0; i < 횟수; i++) {
-                groupDailyPressRepository.increase(groupId, 날짜, 감정.name(), Instant.now());
+                groupDailyPressRepository.increase(groupId, 날짜, 감정.name(), clock.instant());
             }
         });
     }
