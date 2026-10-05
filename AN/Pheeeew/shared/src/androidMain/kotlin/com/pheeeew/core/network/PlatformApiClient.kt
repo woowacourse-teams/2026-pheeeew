@@ -13,4 +13,5 @@ actual fun createPlatformApiClient(
     observer: ApiResponseObserver?,
     attemptObserver: ApiAttemptObserver?,
     monitoring: Monitoring,
-): ApiClient = createApiClient(createAndroidApiEngine(), config, accessTokenProvider, observer, attemptObserver, monitoring)
+): ApiClient =
+    createApiClient(createAndroidApiEngine(), config, accessTokenProvider, observer, attemptObserver, monitoring)

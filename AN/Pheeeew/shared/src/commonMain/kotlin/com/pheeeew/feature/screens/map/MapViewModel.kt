@@ -9,16 +9,16 @@ import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
-import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.domain.model.emotion.EmotionMapPageResult
 import com.pheeeew.domain.model.emotion.EmotionMapPin
-import com.pheeeew.domain.model.emotion.EmotionRegionLevel
+import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.domain.model.emotion.EmotionRegion
+import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.domain.model.emotion.EmotionRegionResult
-import com.pheeeew.domain.usecase.FindEmotionRegionsUseCase
-import com.pheeeew.domain.usecase.FindEmotionRegionSnapshotUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapPageUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase
+import com.pheeeew.domain.usecase.FindEmotionRegionSnapshotUseCase
+import com.pheeeew.domain.usecase.FindEmotionRegionsUseCase
 import com.pheeeew.domain.usecase.RefreshLocationUseCase
 import com.pheeeew.feature.monitoring.product.MonitoredLocationPermission
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
@@ -232,7 +232,10 @@ class MapViewModel(
         updateViewport(viewport, forceRegionRefresh = false)
     }
 
-    private fun updateViewport(viewport: EmotionMapViewport, forceRegionRefresh: Boolean) {
+    private fun updateViewport(
+        viewport: EmotionMapViewport,
+        forceRegionRefresh: Boolean,
+    ) {
         if (!viewport.isValid() || _uiModel.value.isRecordLocationPicking) return
         latestViewport = viewport
         val level = MapZoomPolicy.regionLevelForZoom(viewport.zoom)
@@ -243,12 +246,22 @@ class MapViewModel(
                 displayedBounds = null
             }
             activeRegionQuery = null
-            _uiModel.value = _uiModel.value.copy(regionClusters = emptyList(), displayedRegionLevel = null, regionClustersError = null, isLoadingRegionClusters = false)
+            _uiModel.value =
+                _uiModel.value.copy(
+                    regionClusters = emptyList(),
+                    displayedRegionLevel = null,
+                    regionClustersError = null,
+                    isLoadingRegionClusters = false,
+                )
             onViewportChanged(viewport.bounds)
             return
         }
         val query = viewport.bounds to level
-        if (!forceRegionRefresh && query == activeRegionQuery && (regionJob?.isActive == true || _uiModel.value.regionClustersError == null)) return
+        if (!forceRegionRefresh && query == activeRegionQuery &&
+            (regionJob?.isActive == true || _uiModel.value.regionClustersError == null)
+        ) {
+            return
+        }
         activeRegionQuery = query
         val generation = ++queryGeneration
         viewportJob?.cancel()
@@ -257,36 +270,44 @@ class MapViewModel(
         pendingEmotionMapRequest = null
         requestedBounds = null
         val cached = if (forceRegionRefresh) null else findRegionSnapshot?.invoke(viewport.bounds, level)
-        _uiModel.value = _uiModel.value.copy(
-            emotionPins = emptyList(),
-            regionClusters = cached?.toClusterUiModels() ?: _uiModel.value.regionClusters,
-            displayedRegionLevel = if (cached != null) level else _uiModel.value.displayedRegionLevel,
-            isLoadingEmotionPins = false,
-            isLoadingMoreEmotionPins = false,
-            isLoadingRegionClusters = false,
-            emotionPinsError = null,
-            regionClustersError = null,
-        )
+        _uiModel.value =
+            _uiModel.value.copy(
+                emotionPins = emptyList(),
+                regionClusters = cached?.toClusterUiModels() ?: _uiModel.value.regionClusters,
+                displayedRegionLevel = if (cached != null) level else _uiModel.value.displayedRegionLevel,
+                isLoadingEmotionPins = false,
+                isLoadingMoreEmotionPins = false,
+                isLoadingRegionClusters = false,
+                emotionPinsError = null,
+                regionClustersError = null,
+            )
         if (cached != null) return
-        regionJob = viewModelScope.launch {
-            delay(VIEWPORT_DEBOUNCE_MILLIS)
-            if (generation != queryGeneration) return@launch
-            _uiModel.value = _uiModel.value.copy(isLoadingRegionClusters = true)
-            val result = findRegions(viewport.bounds, level, forceRefresh = forceRegionRefresh)
-            if (generation != queryGeneration || activeRegionQuery != query) return@launch
-            _uiModel.value = when (result) {
-                is EmotionRegionResult.Success -> _uiModel.value.copy(
-                    regionClusters = result.regions.toClusterUiModels(),
-                    displayedRegionLevel = level,
-                    isLoadingRegionClusters = false,
-                    regionClustersError = null,
-                )
-                EmotionRegionResult.Failure -> _uiModel.value.copy(
-                    isLoadingRegionClusters = false,
-                    regionClustersError = "지역별 감정을 불러오지 못했어요",
-                )
+        regionJob =
+            viewModelScope.launch {
+                delay(VIEWPORT_DEBOUNCE_MILLIS)
+                if (generation != queryGeneration) return@launch
+                _uiModel.value = _uiModel.value.copy(isLoadingRegionClusters = true)
+                val result = findRegions(viewport.bounds, level, forceRefresh = forceRegionRefresh)
+                if (generation != queryGeneration || activeRegionQuery != query) return@launch
+                _uiModel.value =
+                    when (result) {
+                        is EmotionRegionResult.Success -> {
+                            _uiModel.value.copy(
+                                regionClusters = result.regions.toClusterUiModels(),
+                                displayedRegionLevel = level,
+                                isLoadingRegionClusters = false,
+                                regionClustersError = null,
+                            )
+                        }
+
+                        EmotionRegionResult.Failure -> {
+                            _uiModel.value.copy(
+                                isLoadingRegionClusters = false,
+                                regionClustersError = "지역별 감정을 불러오지 못했어요",
+                            )
+                        }
+                    }
             }
-        }
     }
 
     fun retryRegionClusters() {
@@ -294,9 +315,17 @@ class MapViewModel(
         updateViewport(viewport, forceRegionRefresh = true)
     }
 
-    private fun List<EmotionRegion>.toClusterUiModels() = map {
-        RegionClusterUiModel(it.id, it.name, it.longitude, it.latitude, it.count, it.representativeState?.toRegionUiEmotion())
-    }
+    private fun List<EmotionRegion>.toClusterUiModels() =
+        map {
+            RegionClusterUiModel(
+                it.id,
+                it.name,
+                it.longitude,
+                it.latitude,
+                it.count,
+                it.representativeState?.toRegionUiEmotion(),
+            )
+        }
 
     fun refreshEmotionPins() {
         if (latestViewport?.zoom?.let(MapZoomPolicy::regionLevelForZoom) != null && findRegions != null) {

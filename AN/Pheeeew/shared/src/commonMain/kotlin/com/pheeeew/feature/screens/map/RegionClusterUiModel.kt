@@ -11,7 +11,7 @@ data class RegionClusterUiModel(
     val count: Long,
     val representativeEmotion: EmotionTypeUiModel?,
 ) {
-    fun symbolImageKey(): String = "region-${name}-${count}-${representativeEmotion?.name ?: "none"}"
+    fun symbolImageKey(): String = "region-$name-$count-${representativeEmotion?.name ?: "none"}"
 }
 
 internal fun EmotionState.toRegionUiEmotion(): EmotionTypeUiModel =

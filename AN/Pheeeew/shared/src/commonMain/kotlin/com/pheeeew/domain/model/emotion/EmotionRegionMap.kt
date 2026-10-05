@@ -19,6 +19,9 @@ data class EmotionRegion(
 )
 
 sealed interface EmotionRegionResult {
-    data class Success(val regions: List<EmotionRegion>) : EmotionRegionResult
+    data class Success(
+        val regions: List<EmotionRegion>,
+    ) : EmotionRegionResult
+
     data object Failure : EmotionRegionResult
 }

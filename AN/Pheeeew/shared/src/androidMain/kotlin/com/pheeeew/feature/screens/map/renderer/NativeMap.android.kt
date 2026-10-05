@@ -258,9 +258,12 @@ private class AndroidFoundationMapHost(
                         .firstOrNull()
                         ?.id()
                         ?.toLongOrNull()
-                val regionId = if (id == null) {
-                    readyMap.queryRenderedFeatures(point, RegionClusterSymbolLayer.LAYER_ID).firstOrNull()?.id()
-                } else null
+                val regionId =
+                    if (id == null) {
+                        readyMap.queryRenderedFeatures(point, RegionClusterSymbolLayer.LAYER_ID).firstOrNull()?.id()
+                    } else {
+                        null
+                    }
                 when {
                     id != null -> onEmotionPinClick(id)
                     regionId != null -> onRegionClusterClick(regionId)

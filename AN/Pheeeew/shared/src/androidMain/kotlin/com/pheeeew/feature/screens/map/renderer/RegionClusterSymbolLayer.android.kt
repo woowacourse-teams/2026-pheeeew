@@ -41,7 +41,11 @@ internal class RegionClusterSymbolLayer {
         }
     }
 
-    fun update(style: Style, regions: List<RegionClusterUiModel>, images: List<EmotionPinSymbolImage>) {
+    fun update(
+        style: Style,
+        regions: List<RegionClusterUiModel>,
+        images: List<EmotionPinSymbolImage>,
+    ) {
         val source = style.getSourceAs<GeoJsonSource>(SOURCE_ID) ?: return
         images.forEach { image ->
             if (image.key !in registeredKeys) {
@@ -54,13 +58,17 @@ internal class RegionClusterSymbolLayer {
         if (regions.any { it.symbolImageKey() !in registeredKeys }) return
         val drawable = regions
         if (drawable != lastRegions) {
-            source.setGeoJson(FeatureCollection.fromFeatures(drawable.map { region ->
-                Feature.fromGeometry(
-                    Point.fromLngLat(region.longitude, region.latitude),
-                    JsonObject().apply { addProperty("image-key", region.symbolImageKey()) },
-                    region.id,
-                )
-            }))
+            source.setGeoJson(
+                FeatureCollection.fromFeatures(
+                    drawable.map { region ->
+                        Feature.fromGeometry(
+                            Point.fromLngLat(region.longitude, region.latitude),
+                            JsonObject().apply { addProperty("image-key", region.symbolImageKey()) },
+                            region.id,
+                        )
+                    },
+                ),
+            )
             lastRegions = drawable
         }
         val desired = drawable.mapTo(mutableSetOf(), RegionClusterUiModel::symbolImageKey) + images.map { it.key }

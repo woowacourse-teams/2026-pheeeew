@@ -375,7 +375,10 @@ fun MapScreen(
                                         renderUiModel.emotionPins.filterNot {
                                             it.id in renderUiModel.hiddenEmotionIds
                                         },
-                                    regionClusters = renderUiModel.regionClusters.takeUnless { renderUiModel.isRecordLocationPicking }.orEmpty(),
+                                    regionClusters =
+                                        renderUiModel.regionClusters
+                                            .takeUnless { renderUiModel.isRecordLocationPicking }
+                                            .orEmpty(),
                                 ),
                             onMapError = viewModel::onMapError,
                             onMapRecovered = viewModel::onMapRecovered,

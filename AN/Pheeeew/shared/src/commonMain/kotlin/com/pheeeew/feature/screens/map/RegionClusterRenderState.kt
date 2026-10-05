@@ -19,7 +19,12 @@ internal fun resolveRegionClusterRenderState(
     val drawable = resolveDrawableRegionClusters(regions, previous.regions, preparedImages.keys)
     return RegionClusterRenderState(
         regions = drawable,
-        images = drawable.map { it.symbolImageKey() }.distinct().mapNotNull { preparedImages[it] ?: retainedImages[it] },
+        images =
+            drawable
+                .map {
+                    it.symbolImageKey()
+                }.distinct()
+                .mapNotNull { preparedImages[it] ?: retainedImages[it] },
     )
 }
 
@@ -29,9 +34,10 @@ internal fun resolveDrawableRegionClusters(
     registeredImageKeys: Set<String>,
 ): List<RegionClusterUiModel> {
     val previousById = previous.associateBy { it.id }
-    return regions.mapNotNull { region ->
-        if (region.symbolImageKey() in registeredImageKeys) region else previousById[region.id]
-    }.sortedBy { it.id }
+    return regions
+        .mapNotNull { region ->
+            if (region.symbolImageKey() in registeredImageKeys) region else previousById[region.id]
+        }.sortedBy { it.id }
 }
 
 private class RegionClusterRenderCache {

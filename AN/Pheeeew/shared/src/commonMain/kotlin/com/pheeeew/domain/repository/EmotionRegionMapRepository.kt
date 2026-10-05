@@ -13,5 +13,9 @@ interface EmotionRegionMapRepository {
         forceRefresh: Boolean = false,
     ): EmotionRegionResult
 
-    fun findSnapshot(bounds: EmotionMapBounds, level: EmotionRegionLevel, groupId: String? = null): List<EmotionRegion>?
+    fun findSnapshot(
+        bounds: EmotionMapBounds,
+        level: EmotionRegionLevel,
+        groupId: String? = null,
+    ): List<EmotionRegion>?
 }

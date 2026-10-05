@@ -1,7 +1,6 @@
 package com.pheeeew.feature.screens.map
 
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
-
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -18,8 +17,14 @@ class MapZoomPolicyTest {
 
     @Test
     fun `각 클러스터 클릭은 다음 조회 계층으로 이동한다`() {
-        assertEquals(EmotionRegionLevel.SIGUNGU, MapZoomPolicy.regionLevelForZoom(MapZoomPolicy.focusZoomForRegion(EmotionRegionLevel.SIDO)))
-        assertEquals(EmotionRegionLevel.EMD, MapZoomPolicy.regionLevelForZoom(MapZoomPolicy.focusZoomForRegion(EmotionRegionLevel.SIGUNGU)))
+        assertEquals(
+            EmotionRegionLevel.SIGUNGU,
+            MapZoomPolicy.regionLevelForZoom(MapZoomPolicy.focusZoomForRegion(EmotionRegionLevel.SIDO)),
+        )
+        assertEquals(
+            EmotionRegionLevel.EMD,
+            MapZoomPolicy.regionLevelForZoom(MapZoomPolicy.focusZoomForRegion(EmotionRegionLevel.SIGUNGU)),
+        )
         assertNull(MapZoomPolicy.regionLevelForZoom(MapZoomPolicy.focusZoomForRegion(EmotionRegionLevel.EMD)))
     }
 }

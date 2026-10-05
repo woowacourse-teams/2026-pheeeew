@@ -11,8 +11,17 @@ internal class EmotionRegionMapCache(
     private val ttlMillis: Long = 180_000L,
     private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
-    private data class Key(val bounds: EmotionMapBounds, val level: EmotionRegionLevel, val groupId: String?)
-    private data class Entry(val regions: List<EmotionRegion>, val fetchedAt: Long)
+    private data class Key(
+        val bounds: EmotionMapBounds,
+        val level: EmotionRegionLevel,
+        val groupId: String?,
+    )
+
+    private data class Entry(
+        val regions: List<EmotionRegion>,
+        val fetchedAt: Long,
+    )
+
     private val entries = linkedMapOf<Key, Entry>()
 
     init {
@@ -20,7 +29,11 @@ internal class EmotionRegionMapCache(
         require(ttlMillis > 0)
     }
 
-    fun snapshot(bounds: EmotionMapBounds, level: EmotionRegionLevel, groupId: String?): List<EmotionRegion>? {
+    fun snapshot(
+        bounds: EmotionMapBounds,
+        level: EmotionRegionLevel,
+        groupId: String?,
+    ): List<EmotionRegion>? {
         evictExpired()
         val key = Key(bounds, level, groupId)
         val entry = entries.remove(key) ?: return null
@@ -28,7 +41,12 @@ internal class EmotionRegionMapCache(
         return entry.regions
     }
 
-    fun put(bounds: EmotionMapBounds, level: EmotionRegionLevel, groupId: String?, regions: List<EmotionRegion>) {
+    fun put(
+        bounds: EmotionMapBounds,
+        level: EmotionRegionLevel,
+        groupId: String?,
+        regions: List<EmotionRegion>,
+    ) {
         evictExpired()
         val key = Key(bounds, level, groupId)
         entries.remove(key)
@@ -36,7 +54,10 @@ internal class EmotionRegionMapCache(
         while (entries.size > maxRegions) entries.remove(entries.keys.first())
     }
 
-    fun invalidate(level: EmotionRegionLevel, groupId: String?) {
+    fun invalidate(
+        level: EmotionRegionLevel,
+        groupId: String?,
+    ) {
         // Refresh may change totals shared by several cached viewports.
         entries.keys.removeAll { it.level == level && it.groupId == groupId }
     }

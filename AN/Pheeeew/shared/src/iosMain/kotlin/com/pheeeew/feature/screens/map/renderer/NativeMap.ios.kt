@@ -142,9 +142,10 @@ private fun MapUiModel.toFoundationIosRenderUiModel(): FoundationIosMapRenderUiM
                     rotationDegrees = it.rotationDegrees,
                 )
             },
-        regionClusterCoordinates = regionClusters.map {
-            FoundationIosRegionClusterCoordinateUiModel(it.id, it.latitude, it.longitude, it.symbolImageKey())
-        },
+        regionClusterCoordinates =
+            regionClusters.map {
+                FoundationIosRegionClusterCoordinateUiModel(it.id, it.latitude, it.longitude, it.symbolImageKey())
+            },
         emotionPinSymbolImages =
             (emotionPinSymbolImages + regionClusterSymbolImages).distinctBy { it.key }.map {
                 FoundationIosMapSymbolImageUiModel(it.key, it.width, it.height, it.rgba)

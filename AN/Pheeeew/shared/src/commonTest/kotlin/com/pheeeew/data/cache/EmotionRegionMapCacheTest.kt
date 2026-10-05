@@ -9,6 +9,7 @@ import kotlin.test.assertNull
 
 class EmotionRegionMapCacheTest {
     private val bounds = EmotionMapBounds(126.9, 37.5, 127.1, 37.6)
+
     // The server may return display points outside the viewport.
     private val regions = listOf(EmotionRegion("a", "서울", 127.5, 37.8, 3, null))
 
