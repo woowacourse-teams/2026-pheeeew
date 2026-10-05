@@ -198,7 +198,7 @@ class GroupCreateViewModelTest {
         }
 
     @Test
-    fun `초안은 마지막 수정 후 7일 동안 복원되고 만료되면 한 번 안내한 뒤 삭제된다`() =
+    fun `초안은 마지막 수정 후 1시간 동안 복원되고 만료되면 한 번 안내한 뒤 삭제된다`() =
         runViewModelTest {
             val store = InMemoryGroupCreateSessionStore()
             var now = 1_000_000L
@@ -271,7 +271,7 @@ class GroupCreateViewModelTest {
         }
 
     @Test
-    fun `7일이 지난 초안이어도 미확정 생성 operation은 보존하고 POST를 재전송하지 않는다`() =
+    fun `1시간이 지난 초안이어도 미확정 생성 operation은 보존하고 POST를 재전송하지 않는다`() =
         runViewModelTest {
             val createdAt = 2_000_000L
             val pendingDraft = PersistedGroupCreateDraft(name = "결과 미확정 모임")
