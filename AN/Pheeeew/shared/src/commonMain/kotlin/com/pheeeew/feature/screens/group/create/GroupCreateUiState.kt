@@ -32,6 +32,7 @@ data class GroupCreateUiState(
     val isDiscardConfirmationVisible: Boolean = false,
     val isDiscardInProgress: Boolean = false,
     val isDraftExpiredNoticeVisible: Boolean = false,
+    val isDraftResetNoticeVisible: Boolean = false,
     val discardFailed: Boolean = false,
 ) {
     val hasEditedDraft: Boolean

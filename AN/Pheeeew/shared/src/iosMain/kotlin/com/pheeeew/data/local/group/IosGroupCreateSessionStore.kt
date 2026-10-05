@@ -2,6 +2,7 @@ package com.pheeeew.data.local.group
 
 import com.pheeeew.feature.screens.group.create.GroupCreateSessionSnapshot
 import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
+import com.pheeeew.feature.screens.group.create.canDiscardCorruptedGroupCreateDraft
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -20,6 +21,13 @@ class IosGroupCreateSessionStore(
         } else {
             defaults.setObject(json.encodeToString(snapshot), forKey = KEY)
         }
+    }
+
+    override suspend fun clearCorruptedDraftIfSafe(): Boolean {
+        val rawSnapshot = defaults.stringForKey(KEY) ?: return true
+        if (!canDiscardCorruptedGroupCreateDraft(rawSnapshot, json)) return false
+        defaults.removeObjectForKey(KEY)
+        return true
     }
 
     private companion object {

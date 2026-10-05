@@ -48,6 +48,7 @@ import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_create_back
 import pheeeew.shared.generated.resources.group_create_draft_expired
+import pheeeew.shared.generated.resources.group_create_draft_reset
 import pheeeew.shared.generated.resources.group_create_recovery_resume
 import pheeeew.shared.generated.resources.group_create_restore_unavailable
 import pheeeew.shared.generated.resources.group_create_restoring
@@ -142,6 +143,15 @@ fun GroupCreateScreen(
         if (uiState.isDraftExpiredNoticeVisible) {
             Text(
                 text = stringResource(Res.string.group_create_draft_expired),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
+                color = AppColors.RankingSecondaryContent,
+                fontSize = 14.sp,
+            )
+        }
+
+        if (uiState.isDraftResetNoticeVisible) {
+            Text(
+                text = stringResource(Res.string.group_create_draft_reset),
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 8.dp),
                 color = AppColors.RankingSecondaryContent,
                 fontSize = 14.sp,

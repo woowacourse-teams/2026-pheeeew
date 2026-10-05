@@ -722,7 +722,32 @@ class GroupCreateViewModel(
                 throw cancelled
             } catch (exception: Exception) {
                 errorReporter.reportUnexpected(exception)
-                _uiState.update { state -> state.copy(restoration = GroupCreateRestorationState.Unavailable) }
+                val recovered =
+                    try {
+                        sessionWriteMutex.withLock { sessionStore.clearCorruptedDraftIfSafe() }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (cleanupException: Exception) {
+                        errorReporter.reportUnexpected(cleanupException)
+                        false
+                    }
+                if (recovered) {
+                    pendingOperation = null
+                    draftUpdatedAtEpochMillis = null
+                    _uiState.update { state ->
+                        state.copy(
+                            draft = DEFAULT_GROUP_CREATE_DRAFT,
+                            fieldErrors = GroupCreateFieldErrors(),
+                            submission = GroupCreateSubmissionState.Editing,
+                            recovery = GroupCreateRecoveryState.Idle,
+                            restoration = GroupCreateRestorationState.Ready,
+                            isRecoveryDialogVisible = false,
+                            isDraftResetNoticeVisible = true,
+                        )
+                    }
+                } else {
+                    _uiState.update { state -> state.copy(restoration = GroupCreateRestorationState.Unavailable) }
+                }
             }
         }
     }

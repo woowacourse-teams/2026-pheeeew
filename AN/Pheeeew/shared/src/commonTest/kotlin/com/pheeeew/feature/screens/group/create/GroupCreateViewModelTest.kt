@@ -224,6 +224,46 @@ class GroupCreateViewModelTest {
         }
 
     @Test
+    fun `미확정 생성 요청이 없는 손상 초안은 안전하게 지우고 새 작성이 가능하다`() =
+        runViewModelTest {
+            val store =
+                InMemoryGroupCreateSessionStore().apply {
+                    readFailure = IllegalStateException("corrupted draft")
+                    safeCorruptedDraftRemovalAllowed = true
+                }
+            val viewModel = createViewModel(sessionStore = store)
+
+            assertEquals(GroupCreateRestorationState.Ready, viewModel.uiState.value.restoration)
+            assertTrue(viewModel.uiState.value.isDraftResetNoticeVisible)
+            assertEquals(null, store.readFailure)
+            assertEquals(null, store.snapshot)
+
+            viewModel.onNameChanged("새로 작성")
+            runCurrent()
+            assertEquals("새로 작성", viewModel.uiState.value.draft.name)
+            assertEquals("새로 작성", store.snapshot?.draft?.name)
+        }
+
+    @Test
+    fun `보류 작업 존재 여부를 확인할 수 없는 손상 세션은 보존하고 새 생성을 막는다`() =
+        runViewModelTest {
+            val store =
+                InMemoryGroupCreateSessionStore().apply {
+                    readFailure = IllegalStateException("unknown pending operation")
+                }
+            val viewModel = createViewModel(sessionStore = store)
+
+            assertEquals(GroupCreateRestorationState.Unavailable, viewModel.uiState.value.restoration)
+            assertEquals(1, store.safeCorruptedDraftRemovalCalls)
+            assertEquals(IllegalStateException::class, store.readFailure!!::class)
+
+            viewModel.onNameChanged("새 생성 시도")
+            viewModel.onCreateClick()
+            assertEquals(DEFAULT_GROUP_CREATE_DRAFT, viewModel.uiState.value.draft)
+            assertIs<GroupCreateSubmissionState.Editing>(viewModel.uiState.value.submission)
+        }
+
+    @Test
     fun `빈 폼은 바로 나가고 수정된 초안은 확인 후에만 저장 내용을 버린다`() =
         runViewModelTest {
             val store = InMemoryGroupCreateSessionStore()
@@ -416,12 +456,26 @@ class GroupCreateViewModelTest {
         var snapshot: GroupCreateSessionSnapshot? = null,
     ) : GroupCreateSessionStore {
         var writeFailure: Exception? = null
+        var readFailure: Exception? = null
+        var safeCorruptedDraftRemovalAllowed = false
+        var safeCorruptedDraftRemovalCalls = 0
 
-        override suspend fun read(): GroupCreateSessionSnapshot? = snapshot
+        override suspend fun read(): GroupCreateSessionSnapshot? {
+            readFailure?.let { throw it }
+            return snapshot
+        }
 
         override suspend fun write(snapshot: GroupCreateSessionSnapshot?) {
             writeFailure?.let { throw it }
             this.snapshot = snapshot
+        }
+
+        override suspend fun clearCorruptedDraftIfSafe(): Boolean {
+            safeCorruptedDraftRemovalCalls += 1
+            if (!safeCorruptedDraftRemovalAllowed) return false
+            readFailure = null
+            snapshot = null
+            return true
         }
     }
 }

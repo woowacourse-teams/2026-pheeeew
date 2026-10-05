@@ -3,6 +3,7 @@ package com.pheeeew.data.local.group
 import android.content.Context
 import com.pheeeew.feature.screens.group.create.GroupCreateSessionSnapshot
 import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
+import com.pheeeew.feature.screens.group.create.canDiscardCorruptedGroupCreateDraft
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
@@ -31,6 +32,14 @@ class AndroidGroupCreateSessionStore(
             check(editor.commit()) { "Failed to save the group creation session" }
         }
     }
+
+    override suspend fun clearCorruptedDraftIfSafe(): Boolean =
+        withContext(Dispatchers.IO) {
+            val rawSnapshot = preferences.getString(KEY, null) ?: return@withContext true
+            if (!canDiscardCorruptedGroupCreateDraft(rawSnapshot, json)) return@withContext false
+            check(preferences.edit().remove(KEY).commit()) { "Failed to clear the corrupted group creation draft" }
+            true
+        }
 
     private companion object {
         const val PREFERENCES_NAME = "group_create_session"
