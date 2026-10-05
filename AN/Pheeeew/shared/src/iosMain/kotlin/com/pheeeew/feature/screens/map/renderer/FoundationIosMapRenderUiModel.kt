@@ -1,6 +1,8 @@
 package com.pheeeew.feature.screens.map.renderer
 
 data class FoundationIosMapRenderUiModel(
+    val isVisible: Boolean,
+    val restoredCamera: MapCameraSnapshotUiModel?,
     val monitoringLoadId: String?,
     val currentLocation: FoundationIosCurrentLocationUiModel?,
     val fallbackCenter: FoundationIosMapCoordinateUiModel,
