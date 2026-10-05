@@ -180,6 +180,14 @@
     <!-- 그룹 생성 -->
     <string name="group_create_title">그룹 만들기</string>
     <string name="group_create_back">뒤로</string>
+    <string name="group_create_draft_expired">1시간 동안 수정하지 않은 그룹 작성 내용은 삭제했어요.</string>
+    <string name="group_create_draft_reset">저장한 그룹 작성 내용을 복원하지 못해 삭제했어요. 다시 작성해 주세요.</string>
+    <string name="group_create_discard_title">작성 중인 그룹이 있어요.</string>
+    <string name="group_create_discard_body">입력한 내용을 버리고 그룹 만들기를 나갈까요? 이 작업은 되돌릴 수 없어요.</string>
+    <string name="group_create_discard_confirm">버리고 나가기</string>
+    <string name="group_create_discard_retry">다시 시도</string>
+    <string name="group_create_discard_failed">작성 내용을 삭제하지 못했어요. 다시 시도해 주세요.</string>
+    <string name="group_create_keep_editing">계속 작성</string>
     <string name="group_create_name_label">그룹명</string>
     <string name="group_create_name_placeholder">그룹명을 입력해 주세요</string>
     <string name="group_create_name_error_required">그룹명을 입력해 주세요.</string>
@@ -245,6 +253,9 @@
     <string name="group_create_recovery_none">같은 이름의 그룹을 찾지 못했어요.</string>
     <string name="group_create_recovery_candidate">이 그룹으로 이동</string>
     <string name="group_create_recovery_retry">후보가 아니라면 다시 생성</string>
+    <string name="group_create_recovery_resume">미확정 생성 확인 이어가기</string>
+    <string name="group_create_restoring">저장된 그룹 생성 내용을 확인하고 있어요.</string>
+    <string name="group_create_restore_unavailable">저장된 내용을 읽지 못했어요. 데이터 확인 후 다시 열어 주세요.</string>
     <string name="group_create_failure_invalid_input">입력 내용이 서버 기준과 달라요. 내용을 확인해 주세요.</string>
     <string name="group_create_failure_rate_limited">요청이 많아요. 잠시 기다린 뒤 다시 시도해 주세요.</string>
     <string name="group_create_failure_retry">다시 만들기</string>
