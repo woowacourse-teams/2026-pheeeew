@@ -1,6 +1,8 @@
 package com.pheeeew.core.di
 
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.monitoring.DefinedEvent
+import com.pheeeew.core.monitoring.EventValue
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.network.ApiClient
@@ -18,6 +20,7 @@ import com.pheeeew.domain.model.device.DeviceSessionDiagnostic
 import com.pheeeew.domain.model.device.DeviceSessionDiagnostics
 import com.pheeeew.domain.model.device.DeviceSessionStage
 import com.pheeeew.domain.model.device.recordSafely
+import com.pheeeew.feature.monitoring.network.ApiMonitoringEvents
 import com.pheeeew.feature.monitoring.network.MonitoringApiObserver
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -56,18 +59,43 @@ class ApiDependencies private constructor(
             val config = ApiConfig(build.baseUrl)
             val attemptObserver = MonitoringApiObserver(monitoring)
             val bootstrap = createPlatformApiClient(config, attemptObserver = attemptObserver, monitoring = monitoring)
+            val diagnosticContext = monitoring.context("network")
+            val sessionDiagnostics =
+                DeviceSessionDiagnostics { event ->
+                    diagnostics.recordSafely(event)
+                    if (event.outcome == DeviceDiagnosticOutcome.FAILED &&
+                        (event.failureKind != null || event.serverCode != null)
+                    ) {
+                        monitoring.track(
+                            DefinedEvent(
+                                ApiMonitoringEvents.deviceSessionDiagnostic,
+                                buildMap {
+                                    put("stage", EventValue.Text(event.stage.name.lowercase()))
+                                    put("outcome", EventValue.Text(event.outcome.name.lowercase()))
+                                    event.failureKind?.let {
+                                        put("failure_kind", EventValue.Text(it.name.lowercase()))
+                                    }
+                                    event.statusCode?.let { put("status_code", EventValue.Integer(it.toLong())) }
+                                    event.serverCode?.let { put("server_code", EventValue.Text(it)) }
+                                    event.sdkCode?.let { put("sdk_code", EventValue.Integer(it.toLong())) }
+                                },
+                            ),
+                            diagnosticContext,
+                        )
+                    }
+                }
             val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
             val now = { Clock.System.now().toEpochMilliseconds() }
             val session =
                 DeviceSessionManager(
                     com.pheeeew.feature.monitoring.product.MonitoredDeviceSession(
                         DeviceSessionRepositoryImpl(
-                            KtorDeviceSessionApi(bootstrap.requests, diagnostics),
+                            KtorDeviceSessionApi(bootstrap.requests, sessionDiagnostics),
                             storage,
                             platform,
                             attestationPolicy,
                             now,
-                            diagnostics,
+                            sessionDiagnostics,
                         ),
                         monitoring,
                     ),

@@ -168,6 +168,31 @@ class DeviceSessionRepositoryTest {
         }
 
     @Test
+    fun `unexpected refresh exception becomes a safe diagnosed failure`() =
+        runTest {
+            val events = mutableListOf<DeviceSessionDiagnostic>()
+            val api = Api().apply { refreshBlock = { throw IllegalStateException("refresh secret") } }
+            val repository =
+                DeviceSessionRepositoryImpl(
+                    api,
+                    Storage(DeviceCredentials(refreshToken = "existing")),
+                    DevicePlatform.IOS,
+                    DeviceAttestationPolicy.PlatformOnly,
+                    { 1000 },
+                    DeviceSessionDiagnostics { events += it },
+                )
+
+            val failure = assertIs<DeviceSessionResult.Failed>(repository.prepare()).reason
+            assertEquals(DeviceSessionFailureKind.UNEXPECTED, failure.kind)
+            assertEquals(DeviceSessionStage.REFRESH, failure.stage)
+            assertEquals(1, events.size)
+            assertEquals(DeviceSessionStage.REFRESH, events.single().stage)
+            assertEquals(DeviceDiagnosticOutcome.FAILED, events.single().outcome)
+            assertEquals(DeviceSessionFailureKind.UNEXPECTED, events.single().failureKind)
+            assertFalse(events.single().toString().contains("refresh secret"))
+        }
+
+    @Test
     fun `registration persists refresh before exposing access and removes pending`() =
         runTest {
             val storage = Storage()
@@ -462,6 +487,7 @@ class DeviceSessionRepositoryTest {
             ApiResult.Success(
                 DeviceRefreshResponseDto("access", 1800),
             )
+        var refreshBlock: suspend (DeviceRefreshRequestDto) -> ApiResult<DeviceRefreshResponseDto> = { refreshResult }
         var refreshUsed: String? = null
         var challenges = 0
         val ids = mutableListOf<String>()
@@ -473,7 +499,7 @@ class DeviceSessionRepositoryTest {
 
         override suspend fun refresh(request: DeviceRefreshRequestDto): ApiResult<DeviceRefreshResponseDto> {
             refreshUsed = request.refreshToken
-            return refreshResult
+            return refreshBlock(request)
         }
 
         override suspend fun challenge(): ApiResult<DeviceChallengeDto> {
