@@ -58,9 +58,7 @@ internal class RankingTopBarScrollBehavior(
 }
 
 @Composable
-internal fun rememberRankingTopBarScrollBehavior(
-    canScrollDown: () -> Boolean,
-): RankingTopBarScrollBehavior =
+internal fun rememberRankingTopBarScrollBehavior(canScrollDown: () -> Boolean): RankingTopBarScrollBehavior =
     remember {
         RankingTopBarScrollBehavior(canScrollDown)
     }
