@@ -15,6 +15,7 @@ data class GroupDetailUiState(
     val pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
     val unconfirmedEmotionPresses: List<GroupUnconfirmedPress> = emptyList(),
     val emotionRanking: GroupDetailEmotionRankingUiState = GroupDetailEmotionRankingUiState(),
+    val weeklyPressCount: GroupDetailWeeklyPressCountUiState = GroupDetailWeeklyPressCountUiState(),
     val canAcceptEmotionPress: Boolean = true,
     val membershipEvent: GroupDetailMembershipEvent? = null,
 ) {
@@ -52,6 +53,21 @@ data class GroupDetailEmotionRankingUiState(
     val isRefreshing: Boolean = false,
     val hasRefreshError: Boolean = false,
 )
+
+data class GroupDetailWeeklyPressCountUiState(
+    val serverTotal: Long? = null,
+    val locallyConfirmedPresses: Long = 0L,
+    val isRefreshing: Boolean = false,
+    val hasRefreshError: Boolean = false,
+) {
+    val displayedTotal: Long
+        get() = (serverTotal ?: 0L) + locallyConfirmedPresses
+
+    init {
+        require(serverTotal == null || serverTotal >= 0L) { "이번 주 집계는 음수일 수 없습니다." }
+        require(locallyConfirmedPresses >= 0L) { "이번 주 입력 횟수는 음수일 수 없습니다." }
+    }
+}
 
 sealed interface GroupDetailEmotionRankingContent {
     data object Loading : GroupDetailEmotionRankingContent
