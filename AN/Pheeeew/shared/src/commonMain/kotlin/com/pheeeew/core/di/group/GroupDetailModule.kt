@@ -1,10 +1,13 @@
 package com.pheeeew.core.di.group
 
 import com.pheeeew.core.network.ApiClient
+import com.pheeeew.data.remote.group.PressRankingApi
 import com.pheeeew.data.remote.group.api.GroupDetailApi
 import com.pheeeew.data.remote.group.api.GroupPressApi
+import com.pheeeew.data.repository.PressRankingRepositoryImpl
 import com.pheeeew.data.repository.group.GroupDetailRepositoryImpl
 import com.pheeeew.data.repository.group.GroupPressRepositoryImpl
+import com.pheeeew.feature.screens.group.adapter.ApiGroupDetailEmotionRankingSource
 import com.pheeeew.feature.screens.group.adapter.ApiGroupDetailSource
 import com.pheeeew.feature.screens.group.adapter.ApiGroupPressAction
 import com.pheeeew.feature.screens.group.adapter.ApiLeaveGroupAction
@@ -27,5 +30,9 @@ fun createGroupDetailDependencies(
         monitoring = apiClient.monitoring,
         errorReporter = errorReporter,
         operationKeyAllocator = operationKeyAllocator,
+        emotionRankingSource =
+            ApiGroupDetailEmotionRankingSource(
+                PressRankingRepositoryImpl(PressRankingApi(apiClient.requests)),
+            ),
     )
 }

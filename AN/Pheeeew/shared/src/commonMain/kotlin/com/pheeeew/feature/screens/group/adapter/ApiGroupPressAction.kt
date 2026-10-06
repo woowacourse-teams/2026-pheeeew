@@ -11,6 +11,7 @@ import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.domain.model.group.GroupId as DomainGroupId
 
+/** Maps the existing aggregate-only repository contract into the group-detail input result boundary. */
 class ApiGroupPressAction(
     private val repository: GroupPressRepository,
 ) : PressGroupEmotionAction {

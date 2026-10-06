@@ -8,6 +8,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     let mapView: MLNMapView
     private let eventSink: FoundationIosMapEventSink
     private var pendingState: FoundationIosMapRenderUiModel?
+    private var memoryWarningObserver: NSObjectProtocol?
+    private var preferredFramesPerSecondBeforePause: MLNMapViewPreferredFramesPerSecond?
     private var styleIsReady = false
     private var didSetInitialCamera = false
     private var initialCameraUsedFallback = false
@@ -58,6 +60,14 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         mapView.maximumZoomLevel = FoundationMapStyle.maximumZoom
         mapView.allowsScrolling = true
         mapView.allowsZooming = true
+        memoryWarningObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self, self.pendingState?.isVisible == false else { return }
+            self.eventSink.onMemoryPressure()
+        }
     }
 
     @objc private func handleMapTap(_ recognizer: UITapGestureRecognizer) {
@@ -82,7 +92,18 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
 
     func update(state: FoundationIosMapRenderUiModel) {
         pendingState = state
-        guard styleIsReady else { return }
+        mapView.isHidden = !state.isVisible
+        mapView.isUserInteractionEnabled = state.isVisible
+        if state.isVisible {
+            if let previousRate = preferredFramesPerSecondBeforePause {
+                mapView.preferredFramesPerSecond = previousRate
+                preferredFramesPerSecondBeforePause = nil
+            }
+        } else if preferredFramesPerSecondBeforePause == nil {
+            preferredFramesPerSecondBeforePause = mapView.preferredFramesPerSecond
+            mapView.preferredFramesPerSecond = MLNMapViewPreferredFramesPerSecond(rawValue: 1)
+        }
+        guard state.isVisible, styleIsReady else { return }
         FoundationCurrentLocationLayer.update(currentLocation: state.currentLocation, source: currentLocationSource)
         recordRangeLayer.update(state: state)
         let pinSourceUpdated = updateEmotionPins(state)
@@ -100,6 +121,11 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     func releaseResources() {
+        saveCamera()
+        if let memoryWarningObserver {
+            NotificationCenter.default.removeObserver(memoryWarningObserver)
+            self.memoryWarningObserver = nil
+        }
         mapView.delegate = nil
         pendingState = nil
         styleIsReady = false
@@ -258,6 +284,9 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     func mapViewDidLayoutSubviews() {
         mapView.compassViewMargins = CGPoint(x: 16, y: 16)
         mapView.attributionButtonMargins = CGPoint(x: 16, y: 16)
+        if styleIsReady, let state = pendingState, state.isVisible {
+            applyInitialCameraIfNeeded(state)
+        }
         publishViewportIfReady()
     }
 
@@ -282,7 +311,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     private func publishContentIfReady() {
-        guard styleIsReady, let state = pendingState, !mapView.bounds.isEmpty else { return }
+        guard styleIsReady, let state = pendingState, state.isVisible, !mapView.bounds.isEmpty else { return }
         let features = mapView.visibleFeatures(in: mapView.bounds, styleLayerIdentifiers: Set(["foundation-emotion-pin-layer"]))
         guard features.allSatisfy({
             ($0.attribute(forKey: "renderRevision") as? NSNumber)?.int64Value == emotionPinRenderRevision
@@ -299,7 +328,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     func mapViewDidFinishRenderingFrame(_ mapView: MLNMapView, fullyRendered: Bool) {
-        if let state = pendingState, state.isRecordLocationPicking {
+        if let state = pendingState, state.isVisible, state.isRecordLocationPicking {
             _ = applyRecordCamera(state)
         }
     }
@@ -364,7 +393,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     private func publishRecordViewport() {
-        guard let state = pendingState, state.isRecordLocationPicking, let origin = state.recordOrigin else { return }
+        guard let state = pendingState, state.isVisible, state.isRecordLocationPicking,
+              let origin = state.recordOrigin else { return }
         let centerCoordinate = CLLocationCoordinate2D(latitude: origin.latitude, longitude: origin.longitude)
         let northCoordinate = CLLocationCoordinate2D(latitude: origin.latitude + 500.0 / 6_371_000.0 * 180.0 / .pi, longitude: origin.longitude)
         let originPoint = mapView.convert(centerCoordinate, toPointTo: mapView)
@@ -375,7 +405,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     private func publishHighlightedPinPosition() {
-        guard styleIsReady, let state = pendingState, !state.isRecordLocationPicking,
+        guard styleIsReady, let state = pendingState, state.isVisible, !state.isRecordLocationPicking,
               let id = state.highlightedEmotionId?.int64Value,
               let pin = state.emotionPinCoordinates.first(where: { $0.id == id }),
               lastEmotionPinImageKeys.contains(pin.imageKey),
@@ -395,7 +425,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
 
     private func publishViewportIfReady() {
         publishHighlightedPinPosition()
-        guard styleIsReady, mapView.bounds.width > 0, mapView.bounds.height > 0 else { return }
+        guard pendingState?.isVisible == true, styleIsReady,
+              mapView.bounds.width > 0, mapView.bounds.height > 0 else { return }
         let bounds = mapView.visibleCoordinateBounds
         let queryBounds = EmotionMapBounds(
             minLongitude: bounds.sw.longitude,
@@ -523,6 +554,24 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
 
     private func applyInitialCameraIfNeeded(_ state: FoundationIosMapRenderUiModel) {
         guard !didSetInitialCamera || (initialCameraUsedFallback && state.currentLocation != nil) else { return }
+        if !didSetInitialCamera, let saved = state.restoredCamera {
+            guard !mapView.bounds.isEmpty else { return }
+            let camera = mapView.camera
+            camera.centerCoordinate = CLLocationCoordinate2D(latitude: saved.latitude, longitude: saved.longitude)
+            camera.heading = saved.bearing
+            camera.pitch = saved.pitch
+            camera.altitude = MLNAltitudeForZoomLevel(
+                saved.zoom,
+                camera.pitch,
+                saved.latitude,
+                mapView.frame.size
+            )
+            mapView.setCamera(camera, animated: false)
+            didSetInitialCamera = true
+            initialCameraUsedFallback = saved.initialCameraUsedFallback
+            lastAppliedCameraCommandId = saved.lastAppliedCameraCommandId
+            if !(initialCameraUsedFallback && state.currentLocation != nil) { return }
+        }
         let center = state.currentLocation.map {
             CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
         } ?? CLLocationCoordinate2D(
@@ -532,6 +581,23 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         mapView.setCenter(center, zoomLevel: FoundationMapStyle.initialZoom, animated: false)
         didSetInitialCamera = true
         initialCameraUsedFallback = state.currentLocation == nil
+    }
+
+    private func saveCamera() {
+        guard didSetInitialCamera else { return }
+        let camera = mapView.camera
+        let center = camera.centerCoordinate
+        eventSink.onCameraSaved(
+            camera: MapCameraSnapshotUiModel(
+                latitude: center.latitude,
+                longitude: center.longitude,
+                zoom: mapView.zoomLevel,
+                bearing: camera.heading,
+                pitch: camera.pitch,
+                initialCameraUsedFallback: initialCameraUsedFallback,
+                lastAppliedCameraCommandId: lastAppliedCameraCommandId
+            )
+        )
     }
 
     private func applyCameraCommandIfNeeded(_ state: FoundationIosMapRenderUiModel) {

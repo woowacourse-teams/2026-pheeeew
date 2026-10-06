@@ -13,8 +13,10 @@ import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -22,6 +24,8 @@ import kotlinx.coroutines.launch
 class GroupHomeViewModel(
     private val groupListSource: GroupListSource,
     groupJoinDependencies: GroupJoinDependencies,
+    membershipChanges: Flow<Long> = kotlinx.coroutines.flow.emptyFlow(),
+    private val invalidateSharedMembership: () -> Unit = {},
 ) : ViewModel() {
     val telemetry = ProductMonitoring(groupJoinDependencies.monitoring, "group_home")
     private val _uiState = MutableStateFlow(GroupHomeUiState())
@@ -37,6 +41,12 @@ class GroupHomeViewModel(
     private var isMembershipDirty = false
 
     init {
+        viewModelScope.launch {
+            membershipChanges.drop(1).collect {
+                invalidateMembership()
+                refresh()
+            }
+        }
         loadGroups()
     }
 
@@ -78,8 +88,7 @@ class GroupHomeViewModel(
 
         _isJoinSheetVisible.value = false
         if (needsMembershipVerification) {
-            invalidateMembership()
-            refresh()
+            invalidateSharedMembership()
         }
         return true
     }

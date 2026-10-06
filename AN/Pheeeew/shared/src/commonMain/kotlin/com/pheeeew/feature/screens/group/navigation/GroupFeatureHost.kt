@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -93,15 +94,15 @@ fun GroupFeatureHost(
                         errorReporter = dependencies.createErrorReporter,
                         operationKeyAllocator = dependencies.operationKeyAllocator,
                         findCandidatesAction = dependencies.createActions.findCandidates,
+                        sessionStore = dependencies.createSessionStore,
                     )
                 }
             GroupCreateRoute(
                 viewModel = createViewModel,
                 isCurrentDestination = currentBackStackEntry == entry,
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStackIfCurrent(entry) },
                 onCreated = { groupId, _ ->
                     onMembershipChanged()
-                    homeViewModel.invalidateMembership()
                     navController.navigate(GroupDetailDestination(groupId.value)) {
                         popUpTo<GroupHomeDestination> { inclusive = false }
                         launchSingleTop = true
@@ -132,7 +133,6 @@ fun GroupFeatureHost(
 
             fun returnHomeAndRefresh(removedGroupId: GroupId) {
                 onMembershipChanged()
-                homeViewModel.invalidateMembership()
                 homeViewModel.removeGroup(removedGroupId)
                 navController.popBackStack<GroupHomeDestination>(inclusive = false)
             }
@@ -140,7 +140,7 @@ fun GroupFeatureHost(
             GroupDetailRoute(
                 viewModel = detailViewModel,
                 isCurrentDestination = currentBackStackEntry == entry,
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStackIfCurrent(entry) },
                 onReturnHome = { returnHomeAndRefresh(groupId) },
                 onLeft = { leftGroupId, _ -> returnHomeAndRefresh(leftGroupId) },
                 onMembershipUnavailable = { unavailableGroupId, _, _ ->
@@ -167,7 +167,13 @@ private fun rememberGroupHomeViewModel(
         GroupHomeViewModel(
             groupListSource = dependencies.groupListSource,
             groupJoinDependencies = dependencies.join,
+            membershipChanges = dependencies.membershipChanges,
+            invalidateSharedMembership = dependencies.invalidateSharedMembership,
         )
     }
+
+private fun NavController.popBackStackIfCurrent(entry: NavBackStackEntry) {
+    if (currentBackStackEntry == entry) popBackStack()
+}
 
 private const val GROUP_HOME_VIEW_MODEL_KEY = "group-home"

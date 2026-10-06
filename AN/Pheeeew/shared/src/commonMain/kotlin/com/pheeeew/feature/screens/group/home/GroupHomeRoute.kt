@@ -39,7 +39,6 @@ fun GroupHomeRoute(
             viewModel.refreshIfDirty()
             viewModel.joinUiState.collect { state ->
                 val result = state.submission as? GroupJoinSubmissionState.Succeeded ?: return@collect
-                viewModel.invalidateMembership()
                 currentOnJoinSucceeded(result.groupId, result.operationKey)
                 viewModel.consumeJoinAndClose(result.operationKey, membershipAlreadyInvalidated = true)
             }

@@ -47,8 +47,8 @@ class DeviceSessionRepositoryImpl(
             prepareStored()
         } catch (cancelled: CancellationException) {
             throw cancelled
-        } catch (_: Exception) {
-            failed(DeviceSessionFailureKind.CONTRACT)
+        } catch (error: Exception) {
+            failed(DeviceSessionFailureKind.UNEXPECTED, exceptionType = error::class.simpleName)
         }
     }
 
@@ -232,8 +232,20 @@ class DeviceSessionRepositoryImpl(
                     DeviceSessionFailureKind.CONTRACT
                 }
 
+                is NetworkFailure.Unexpected -> {
+                    DeviceSessionFailureKind.UNEXPECTED
+                }
+
+                is NetworkFailure.SessionUnavailable, is NetworkFailure.SessionProviderFailed -> {
+                    DeviceSessionFailureKind.AUTHENTICATION
+                }
+
                 is NetworkFailure.HttpStatus -> {
                     when {
+                        reason.statusCode == 401 -> {
+                            DeviceSessionFailureKind.AUTHENTICATION
+                        }
+
                         reason.statusCode == 429 || reason.error?.code == "DEVICE-007" -> {
                             DeviceSessionFailureKind.RATE_LIMITED
                         }
@@ -262,6 +274,15 @@ class DeviceSessionRepositoryImpl(
         val retryAt =
             retrySeconds?.let { time + minOf(it, (Long.MAX_VALUE - time) / 1000) * 1000 }
                 ?: http?.retryAfter?.let { runCatching { it.fromHttpToGmtDate().timestamp }.getOrNull() }
+        diagnostics.recordSafely(
+            DeviceSessionDiagnostic(
+                stage,
+                DeviceDiagnosticOutcome.FAILED,
+                http?.statusCode,
+                http?.error?.code,
+                failureKind = kind,
+            ),
+        )
         val result =
             DeviceSessionResult.Failed(
                 DeviceSessionFailure(
@@ -284,6 +305,7 @@ class DeviceSessionRepositoryImpl(
     private fun failed(
         kind: DeviceSessionFailureKind,
         sdkCode: Int? = null,
+        exceptionType: String? = null,
     ): DeviceSessionResult.Failed {
         val failedStage =
             if (kind == DeviceSessionFailureKind.STORAGE ||
@@ -294,7 +316,13 @@ class DeviceSessionRepositoryImpl(
                 stage
             }
         diagnostics.recordSafely(
-            DeviceSessionDiagnostic(failedStage, DeviceDiagnosticOutcome.FAILED, sdkCode = sdkCode, failureKind = kind),
+            DeviceSessionDiagnostic(
+                failedStage,
+                DeviceDiagnosticOutcome.FAILED,
+                sdkCode = sdkCode,
+                failureKind = kind,
+                exceptionType = exceptionType,
+            ),
         )
         return DeviceSessionResult.Failed(DeviceSessionFailure(kind, stage = failedStage, sdkCode = sdkCode))
     }

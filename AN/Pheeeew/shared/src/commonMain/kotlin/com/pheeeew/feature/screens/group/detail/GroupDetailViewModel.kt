@@ -41,6 +41,14 @@ class GroupDetailViewModel(
 
     private var loadJob: Job? = null
     private var leaveJob: Job? = null
+    private val emotionRankingStateHolder =
+        GroupDetailEmotionRankingStateHolder(
+            groupId = groupId,
+            source = dependencies.emotionRankingSource,
+            scope = viewModelScope,
+        ) { ranking ->
+            _uiState.update { it.copy(emotionRanking = ranking) }
+        }
     var lastAcceptedPressKey: GroupOperationKey? = null
         private set
     private var loadGeneration = 0L
@@ -52,12 +60,14 @@ class GroupDetailViewModel(
             override fun onStateChanged(
                 status: GroupPressStatus,
                 pending: Map<EmotionKind, Long>,
+                unconfirmed: List<GroupUnconfirmedPress>,
                 canAcceptAnotherPress: Boolean,
             ) {
                 _uiState.update {
                     it.copy(
                         pressStatus = status,
                         pendingEmotionPresses = pending,
+                        unconfirmedEmotionPresses = unconfirmed,
                         canAcceptEmotionPress = canAcceptAnotherPress,
                     )
                 }
@@ -123,6 +133,7 @@ class GroupDetailViewModel(
     override fun onCleared() {
         hasAttachedPressObserver = false
         pressSession.detach(pressObserver)
+        emotionRankingStateHolder.clear()
         if (ownsPressWorkOwner) pressSession.close()
         super.onCleared()
     }
@@ -130,7 +141,7 @@ class GroupDetailViewModel(
     private fun requestDeferredInitialLoad() {
         if (!needsInitialLoad || !hasAttachedPressObserver) return
         viewModelScope.launch {
-            if (needsInitialLoad && !pressSession.accessLost && !pressSession.hasPendingWork &&
+            if (needsInitialLoad && !pressSession.accessLost && !pressSession.hasActiveWork &&
                 pressSession.status == GroupPressStatus.Idle
             ) {
                 loadDetail()
@@ -155,6 +166,11 @@ class GroupDetailViewModel(
             return
         }
         onRefresh()
+    }
+
+    fun onRetryEmotionRanking() {
+        if (_uiState.value.detail == null) return
+        emotionRankingStateHolder.load()
     }
 
     fun onRefresh(showRefreshIndicator: Boolean = true) {
@@ -220,7 +236,7 @@ class GroupDetailViewModel(
     }
 
     fun onLeaveMenuClick() {
-        if (pressSession.hasPendingWork) {
+        if (pressSession.hasActiveWork) {
             _uiState.update { state ->
                 if (state.overlay == GroupDetailOverlay.Menu) state.copy(overlay = GroupDetailOverlay.None) else state
             }
@@ -398,7 +414,7 @@ class GroupDetailViewModel(
             pressSession.resolveUnknown()
             return
         }
-        if (pressSession.hasPendingWork || currentPressStatus is GroupPressStatus.Sending ||
+        if (pressSession.hasActiveWork || currentPressStatus is GroupPressStatus.Sending ||
             currentPressStatus is GroupPressStatus.Reconciling
         ) {
             return
@@ -550,6 +566,7 @@ class GroupDetailViewModel(
                             }
                         }
                     }
+                    if (loadedDetail != null) emotionRankingStateHolder.load(force = true)
                     if (result == GroupDetailLoadResult.MembershipChanged || result == GroupDetailLoadResult.NotFound) {
                         pressSession.clearForAccessLoss()
                     }
@@ -575,7 +592,7 @@ class GroupDetailViewModel(
 
     private fun submitLeave(expectedOverlay: GroupDetailOverlay) {
         val current = _uiState.value
-        if (pressSession.hasPendingWork) {
+        if (pressSession.hasActiveWork) {
             showNotice(GroupDetailNoticeKind.PressBlockedWhilePending)
             return
         }

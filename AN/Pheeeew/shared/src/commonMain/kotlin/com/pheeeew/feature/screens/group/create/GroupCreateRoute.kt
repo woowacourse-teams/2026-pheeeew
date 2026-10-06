@@ -3,15 +3,18 @@ package com.pheeeew.feature.screens.group.create
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 /** ViewModel 수집과 생성 성공 콜백을 연결합니다. 앱 navigation 그래프는 소유하지 않습니다. */
 @Composable
@@ -25,6 +28,12 @@ fun GroupCreateRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnCreated by rememberUpdatedState(onCreated)
+    val coroutineScope = rememberCoroutineScope()
+    val requestBack: () -> Unit = {
+        if (viewModel.onBackRequested()) onBack()
+    }
+
+    FlowBackHandler(enabled = isCurrentDestination, onBack = requestBack)
 
     LaunchedEffect(viewModel, lifecycleOwner, isCurrentDestination) {
         if (!isCurrentDestination) return@LaunchedEffect
@@ -40,7 +49,13 @@ fun GroupCreateRoute(
     GroupCreateScreen(
         uiState = uiState,
         formRules = viewModel.formRules,
-        onBack = { if (viewModel.onBackRequested()) onBack() },
+        onBack = requestBack,
+        onCancelDraftDiscard = viewModel::onCancelDraftDiscard,
+        onConfirmDraftDiscard = {
+            coroutineScope.launch {
+                if (viewModel.confirmDraftDiscardAndExit()) onBack()
+            }
+        },
         onNameChanged = viewModel::onNameChanged,
         onDescriptionChanged = viewModel::onDescriptionChanged,
         onStampLabelChanged = viewModel::onStampLabelChanged,
@@ -50,6 +65,7 @@ fun GroupCreateRoute(
         onCancelConfirmation = viewModel::onCancelConfirmation,
         onConfirmCreate = viewModel::onConfirmCreate,
         onDismissFailure = viewModel::onDismissFailure,
+        onShowRecoveryDialog = viewModel::onShowRecoveryDialog,
         onRetryFailure = viewModel::onRetryFailure,
         onCheckGroupsAfterUnknownOutcome = viewModel::onCheckGroupsAfterUnknownOutcome,
         onSelectRecoveryCandidate = viewModel::onSelectRecoveryCandidate,

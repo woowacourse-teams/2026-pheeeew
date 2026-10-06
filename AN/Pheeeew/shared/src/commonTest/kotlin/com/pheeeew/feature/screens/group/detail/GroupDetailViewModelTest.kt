@@ -168,11 +168,19 @@ class GroupDetailViewModelTest {
                 runCurrent()
                 val emotion = EmotionKind.entries.first()
                 assertTrue(viewModel.onEmotionTap(emotion))
+                val unknownKey = viewModel.lastAcceptedPressKey
                 assertTrue(viewModel.onEmotionTap(emotion))
                 runCurrent()
                 assertEquals(1, posts)
                 assertEquals(2, reads)
                 assertIs<GroupPressStatus.Reconciling>(viewModel.uiState.value.pressStatus)
+                assertEquals(mapOf(emotion to 1L), viewModel.uiState.value.pendingEmotionPresses)
+                assertEquals(
+                    unknownKey,
+                    viewModel.uiState.value.unconfirmedEmotionPresses
+                        .single()
+                        .operationKey,
+                )
                 assertFalse(viewModel.onEmotionTap(emotion))
                 reconcile.complete(GroupDetailLoadResult.Loaded(detail.copy(todayTotal = 1L)))
                 runCurrent()
@@ -186,6 +194,12 @@ class GroupDetailViewModelTest {
                 assertTrue(
                     viewModel.uiState.value.pendingEmotionPresses
                         .isEmpty(),
+                )
+                assertEquals(
+                    unknownKey,
+                    viewModel.uiState.value.unconfirmedEmotionPresses
+                        .single()
+                        .operationKey,
                 )
             } finally {
                 Dispatchers.resetMain()
@@ -213,14 +227,96 @@ class GroupDetailViewModelTest {
                 runCurrent()
                 val emotion = EmotionKind.entries.first()
                 assertTrue(viewModel.onEmotionTap(emotion))
+                val unknownKey = viewModel.lastAcceptedPressKey
                 runCurrent()
                 assertIs<GroupPressStatus.OutcomeUnknown>(viewModel.uiState.value.pressStatus)
-                assertEquals(1L, viewModel.uiState.value.pendingEmotionPresses[emotion])
+                assertTrue(
+                    viewModel.uiState.value.pendingEmotionPresses
+                        .isEmpty(),
+                )
+                assertEquals(
+                    unknownKey,
+                    viewModel.uiState.value.unconfirmedEmotionPresses
+                        .single()
+                        .operationKey,
+                )
                 viewModel.onResolvePressOutcome()
                 runCurrent()
                 assertEquals(3, reads)
                 assertEquals(1, posts)
                 assertIs<GroupPressStatus.OutcomeUnknown>(viewModel.uiState.value.pressStatus)
+                assertEquals(
+                    unknownKey,
+                    viewModel.uiState.value.unconfirmedEmotionPresses
+                        .single()
+                        .operationKey,
+                )
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `aggregate GET across a day boundary does not resolve or add an unknown input`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var reads = 0
+                var posts = 0
+                val viewModel =
+                    createViewModel(
+                        source = {
+                            when (++reads) {
+                                1 -> GroupDetailLoadResult.Loaded(detail.copy(todayTotal = 7L))
+                                2 -> GroupDetailLoadResult.Loaded(detail.copy(todayTotal = 0L))
+                                else -> GroupDetailLoadResult.Loaded(detail.copy(todayTotal = 2L))
+                            }
+                        },
+                        press = { _, _ ->
+                            posts++
+                            PressGroupEmotionResult.OutcomeUnknown
+                        },
+                    )
+                runCurrent()
+                val emotion = EmotionKind.entries.first()
+                assertTrue(viewModel.onEmotionTap(emotion))
+                val unknownKey = viewModel.lastAcceptedPressKey
+                runCurrent()
+
+                assertEquals(1, posts)
+                assertEquals(2, reads)
+                assertEquals(
+                    0L,
+                    viewModel.uiState.value.detail
+                        ?.todayTotal,
+                )
+                assertTrue(
+                    viewModel.uiState.value.pendingEmotionPresses
+                        .isEmpty(),
+                )
+                assertEquals(
+                    unknownKey,
+                    viewModel.uiState.value.unconfirmedEmotionPresses
+                        .single()
+                        .operationKey,
+                )
+                assertEquals(GroupPressStatus.Idle, viewModel.uiState.value.pressStatus)
+
+                viewModel.onRefresh()
+                runCurrent()
+                assertEquals(3, reads)
+                assertEquals(1, posts)
+                assertEquals(
+                    2L,
+                    viewModel.uiState.value.detail
+                        ?.todayTotal,
+                )
+                assertEquals(
+                    unknownKey,
+                    viewModel.uiState.value.unconfirmedEmotionPresses
+                        .single()
+                        .operationKey,
+                )
             } finally {
                 Dispatchers.resetMain()
             }
