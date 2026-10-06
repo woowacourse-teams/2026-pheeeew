@@ -19,6 +19,7 @@ import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupRole;
+import com.pheeeew.groups.domain.GroupViewerRole;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.exception.GroupErrorCode;
 import com.pheeeew.groups.exception.GroupException;
@@ -238,39 +239,43 @@ class GroupControllerTest {
     }
 
     @Test
-    void 상세_조회는_주간_프레스와_두_순위를_함께_내려준다() {
+    void 상세_조회는_스탬프_점수와_순위를_내려주고_프레스는_담지_않는다() {
         // given
-        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세());
+        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세(GroupViewerRole.OWNER));
 
         // when
-        RestTestClient.ResponseSpec result = client.get()
-                .uri(GROUPS_URI + "/" + 그룹_공개_식별자)
-                .exchange();
+        RestTestClient.ResponseSpec result = 상세를_조회한다();
 
         // then
         result.expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.todayPresses.total").isEqualTo(2)
-                .jsonPath("$.weeklyPresses.counts.ANGRY").isEqualTo(7)
-                .jsonPath("$.weeklyPresses.total").isEqualTo(7)
+                .jsonPath("$.name").isEqualTo("한숨모임")
+                .jsonPath("$.description").isEqualTo("설명")
+                .jsonPath("$.role").isEqualTo("OWNER")
+                .jsonPath("$.memberCount").isEqualTo(1)
+                .jsonPath("$.stamp.text").isEqualTo("기본")
                 .jsonPath("$.weeklyScore").isEqualTo(5)
                 .jsonPath("$.weeklyRank").isEqualTo(1)
-                .jsonPath("$.weeklyPressRank").isEqualTo(3);
+                .jsonPath("$.todayPresses").doesNotExist()
+                .jsonPath("$.weeklyPresses").doesNotExist()
+                .jsonPath("$.weeklyPressRank").doesNotExist();
     }
 
     @Test
-    void 속하지_않은_그룹을_조회하면_403을_반환한다() {
+    void 가입하지_않은_기기도_상세를_조회하면_200이고_역할은_NONE_이며_초대_코드를_받는다() {
         // given
-        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자))
-                .thenThrow(new GroupException(GroupErrorCode.GROUP_MEMBER_ONLY));
+        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세(GroupViewerRole.NONE));
 
         // when
-        RestTestClient.ResponseSpec result = client.get()
-                .uri(GROUPS_URI + "/" + 그룹_공개_식별자)
-                .exchange();
+        RestTestClient.ResponseSpec result = 상세를_조회한다();
 
         // then
-        result.expectStatus().isForbidden();
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.role").isEqualTo("NONE")
+                .jsonPath("$.inviteCode").isEqualTo("ABCD1234")
+                .jsonPath("$.groupId").isEqualTo(그룹_공개_식별자.toString());
+        verify(groupService).findOne(그룹_공개_식별자, 기기_공개_식별자);
     }
 
     @Test
@@ -405,9 +410,7 @@ class GroupControllerTest {
                 .thenThrow(new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
 
         // when
-        RestTestClient.ResponseSpec result = client.get()
-                .uri(GROUPS_URI + "/" + 그룹_공개_식별자)
-                .exchange();
+        RestTestClient.ResponseSpec result = 상세를_조회한다();
 
         // then
         result.expectStatus().isNotFound();
@@ -533,22 +536,23 @@ class GroupControllerTest {
                 .exchange();
     }
 
-    private GroupDetailResult 기본_상세() {
-        return GroupDetailResult.of(
-                new GroupResult(
-                        그룹_공개_식별자,
-                        "한숨모임",
-                        "설명",
-                        "ABCD1234",
-                        GroupRole.OWNER,
-                        1,
-                        new GroupStampResult("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
-                ),
-                GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 2L)),
-                GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 7L)),
-                5,
+    private RestTestClient.ResponseSpec 상세를_조회한다() {
+        return client.get()
+                .uri(GROUPS_URI + "/" + 그룹_공개_식별자)
+                .exchange();
+    }
+
+    private GroupDetailResult 기본_상세(GroupViewerRole 역할) {
+        return new GroupDetailResult(
+                그룹_공개_식별자,
+                "한숨모임",
+                "설명",
+                "ABCD1234",
+                역할,
                 1,
-                3
+                new GroupStampResult("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE),
+                5,
+                1
         );
     }
 

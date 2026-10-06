@@ -19,7 +19,6 @@ import com.pheeeew.groups.application.dto.GroupDetailResult;
 import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupPreviewResult;
-import com.pheeeew.groups.application.dto.GroupPressRankingItem;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
@@ -30,6 +29,7 @@ import com.pheeeew.groups.domain.GroupMember;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.GroupDailyPress;
 import com.pheeeew.groups.domain.GroupStamp;
+import com.pheeeew.groups.domain.GroupViewerRole;
 import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
@@ -115,24 +115,18 @@ public class GroupService {
 
     public GroupDetailResult findOne(UUID groupPublicId, UUID devicePublicId) {
         Group group = findGroup(groupPublicId);
-        GroupMember member = requireMember(group, devicePublicId);
         GroupRankingItem stampRanked = groupRankingService.findGroupRanking(0).items().stream()
                 .filter(item -> item.groupPublicId().equals(groupPublicId))
                 .findFirst()
                 .orElse(null);
-        GroupPressRankingItem pressRanked =
-                groupRankingService.findPressRanking(devicePublicId, 0).items().stream()
-                        .filter(item -> item.groupPublicId().equals(groupPublicId))
-                        .findFirst()
-                        .orElse(null);
 
         return GroupDetailResult.of(
-                toResult(group, member.getRole()),
-                pressesOf(group, LocalDate.now(clock)),
-                weeklyPressesOf(group, 0),
+                group,
+                viewerRoleOf(group, devicePublicId),
+                groupMemberRepository.countByGroupIdAndLeftAtIsNull(group.getId()),
+                GroupStampResult.from(findStamp(group)),
                 stampRanked == null ? 0 : stampRanked.score(),
-                stampRanked == null ? null : stampRanked.rank(),
-                pressRanked == null ? null : pressRanked.rank()
+                stampRanked == null ? null : stampRanked.rank()
         );
     }
 
@@ -351,6 +345,15 @@ public class GroupService {
     private Group findGroup(UUID groupPublicId) {
         return groupRepository.findByPublicIdAndDeletedAtIsNull(groupPublicId)
                 .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));
+    }
+
+    private GroupViewerRole viewerRoleOf(Group group, UUID devicePublicId) {
+        Device device = findDevice(devicePublicId);
+
+        return groupMemberRepository.findByGroupIdAndDeviceIdAndLeftAtIsNull(group.getId(), device.getId())
+                .map(GroupMember::getRole)
+                .map(GroupViewerRole::from)
+                .orElse(GroupViewerRole.NONE);
     }
 
     private GroupMember requireMember(Group group, UUID devicePublicId) {
