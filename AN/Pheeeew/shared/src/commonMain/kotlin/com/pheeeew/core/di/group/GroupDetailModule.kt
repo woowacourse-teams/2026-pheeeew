@@ -9,6 +9,7 @@ import com.pheeeew.data.repository.group.GroupDetailRepositoryImpl
 import com.pheeeew.data.repository.group.GroupPressRepositoryImpl
 import com.pheeeew.feature.screens.group.adapter.ApiGroupDetailEmotionRankingSource
 import com.pheeeew.feature.screens.group.adapter.ApiGroupDetailSource
+import com.pheeeew.feature.screens.group.adapter.ApiGroupDetailWeeklyPressCountSource
 import com.pheeeew.feature.screens.group.adapter.ApiGroupPressAction
 import com.pheeeew.feature.screens.group.adapter.ApiLeaveGroupAction
 import com.pheeeew.feature.screens.group.detail.GroupDetailDependencies
@@ -34,5 +35,6 @@ fun createGroupDetailDependencies(
             ApiGroupDetailEmotionRankingSource(
                 PressRankingRepositoryImpl(PressRankingApi(apiClient.requests)),
             ),
+        weeklyPressCountSource = ApiGroupDetailWeeklyPressCountSource(pressRepository),
     )
 }

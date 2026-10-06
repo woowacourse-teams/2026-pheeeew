@@ -13,6 +13,16 @@ import io.ktor.http.HttpMethod
 class GroupPressApi(
     private val requests: ApiRequestExecutor,
 ) {
+    suspend fun findWeekly(groupId: String): ApiResult<GroupPressCountResponseDto> =
+        requests.execute(
+            ApiRequest(
+                method = HttpMethod.Get,
+                path = "$GROUPS_PATH/$groupId/presses",
+                kind = RequestKind.READ,
+                monitoringEndpoint = "group_weekly_presses",
+            ),
+        ) { response -> response.body<GroupPressCountResponseDto>() }
+
     suspend fun press(
         groupId: String,
         state: GroupPressState,

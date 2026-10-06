@@ -5,10 +5,24 @@ import com.pheeeew.domain.model.group.GroupPressCounts
 import com.pheeeew.domain.model.group.GroupPressState
 
 interface GroupPressRepository {
+    suspend fun findWeekly(groupId: GroupId): GroupWeeklyPressCountResult
+
     suspend fun press(
         groupId: GroupId,
         state: GroupPressState,
     ): GroupPressResult
+}
+
+sealed interface GroupWeeklyPressCountResult {
+    data class Loaded(
+        val total: Long,
+    ) : GroupWeeklyPressCountResult {
+        init {
+            require(total >= 0L) { "이번 주 입력 횟수는 음수일 수 없습니다." }
+        }
+    }
+
+    data object Unavailable : GroupWeeklyPressCountResult
 }
 
 sealed interface GroupPressResult {

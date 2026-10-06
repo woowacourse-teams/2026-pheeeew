@@ -22,6 +22,39 @@ import kotlin.test.assertIs
 
 class GroupPressApiTest {
     @Test
+    fun `현재 그룹의 주간 감정 집계를 조회한다`() =
+        runTest {
+            var requestedPath = ""
+            var authorization: String? = null
+            val client =
+                createApiClient(
+                    engine =
+                        MockEngine { request ->
+                            requestedPath = request.url.encodedPath
+                            authorization = request.headers[HttpHeaders.Authorization]
+                            assertEquals(HttpMethod.Get, request.method)
+                            respond(PRESS_COUNTS, headers = jsonHeaders())
+                        },
+                    config = ApiConfig("https://api.test"),
+                    accessTokenProvider = AccessTokenProvider { AccessToken("app-access-token") },
+                )
+
+            try {
+                val result =
+                    assertIs<ApiResult.Success<GroupPressCountResponseDto>>(
+                        GroupPressApi(client.requests).findWeekly(GROUP_ID),
+                    )
+
+                assertEquals("/api/v2/groups/$GROUP_ID/presses", requestedPath)
+                assertEquals("Bearer app-access-token", authorization)
+                assertEquals(12L, result.value.total)
+                assertEquals(4L, result.value.counts.getValue("ANGRY"))
+            } finally {
+                client.close()
+            }
+        }
+
+    @Test
     fun `현재 백엔드 단건 계약의 state 본문으로 전송하고 집계 응답을 읽는다`() =
         runTest {
             var requestedPath = ""

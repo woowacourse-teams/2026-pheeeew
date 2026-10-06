@@ -10,6 +10,7 @@ import com.pheeeew.domain.model.group.GroupId
 import com.pheeeew.domain.model.group.GroupPressState
 import com.pheeeew.domain.repository.group.GroupPressRepository
 import com.pheeeew.domain.repository.group.GroupPressResult
+import com.pheeeew.domain.repository.group.GroupWeeklyPressCountResult
 import io.ktor.http.fromHttpToGmtDate
 import kotlinx.coroutines.CancellationException
 import kotlin.time.Clock
@@ -17,6 +18,24 @@ import kotlin.time.Clock
 class GroupPressRepositoryImpl(
     private val api: GroupPressApi,
 ) : GroupPressRepository {
+    override suspend fun findWeekly(groupId: GroupId): GroupWeeklyPressCountResult =
+        when (val result = api.findWeekly(groupId.value)) {
+            is ApiResult.Success -> {
+                try {
+                    val total = GroupPressCountResponseMapper.toDomain(result.value).total
+                    GroupWeeklyPressCountResult.Loaded(total)
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    GroupWeeklyPressCountResult.Unavailable
+                }
+            }
+
+            is ApiResult.Failure -> {
+                GroupWeeklyPressCountResult.Unavailable
+            }
+        }
+
     override suspend fun press(
         groupId: GroupId,
         state: GroupPressState,
