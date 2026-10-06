@@ -9,9 +9,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.pheeeew.core.share.rememberSystemTextShareLauncher
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.monitoring.product.labels
+import com.pheeeew.feature.screens.group.join.GroupInviteLinkCodec
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -40,6 +42,7 @@ fun GroupDetailRoute(
 ) {
     ProductScreen(viewModel.telemetry, isCurrentDestination)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val shareLauncher = rememberSystemTextShareLauncher()
     val lifecycleOwner = LocalLifecycleOwner.current
     val currentOnBack by rememberUpdatedState(onBack)
     val currentOnReturnHome by rememberUpdatedState(onReturnHome)
@@ -114,6 +117,14 @@ fun GroupDetailRoute(
                 onMoreClick = viewModel::onMoreClick,
                 onInviteClick = viewModel::onInviteClick,
                 onCopyCodeClick = viewModel::onCopyCodeClick,
+                onShareInviteClick = {
+                    val detail = uiState.detail
+                    val message = detail?.let { GroupInviteLinkCodec.createShareMessage(it.group.name, it.inviteCode) }
+                    if (message == null || !shareLauncher.shareText(message)) {
+                        viewModel.onDismissOverlay()
+                        viewModel.onInviteShareUnavailable()
+                    }
+                },
                 onDismissOverlay = viewModel::onDismissOverlay,
                 onLeaveMenuClick = viewModel::onLeaveMenuClick,
                 onConfirmLeave = viewModel::onConfirmLeave,

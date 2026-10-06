@@ -165,6 +165,7 @@ data class GroupDetailNotice(
 enum class GroupDetailNoticeKind {
     CopySucceeded,
     CopyFailed,
+    InviteShareUnavailable,
     PressRejected,
     PressUnavailable,
     PressRateLimited,
