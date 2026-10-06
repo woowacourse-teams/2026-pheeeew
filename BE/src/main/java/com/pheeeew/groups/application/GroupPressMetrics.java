@@ -1,6 +1,6 @@
 package com.pheeeew.groups.application;
 
-import com.pheeeew.groups.domain.PressCounts;
+import com.pheeeew.emotion.domain.PressCounts;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;

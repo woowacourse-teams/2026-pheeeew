@@ -1,6 +1,5 @@
-package com.pheeeew.groups.domain;
+package com.pheeeew.emotion.domain;
 
-import com.pheeeew.emotion.domain.EmotionState;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
