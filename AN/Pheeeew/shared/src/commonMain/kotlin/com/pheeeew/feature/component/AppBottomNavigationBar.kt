@@ -64,6 +64,7 @@ import pheeeew.shared.generated.resources.navigation_group
 import pheeeew.shared.generated.resources.navigation_map
 import pheeeew.shared.generated.resources.navigation_press
 import pheeeew.shared.generated.resources.navigation_ranking
+import pheeeew.shared.generated.resources.ranking_press_tab
 import pheeeew.shared.generated.resources.ranking_stamps
 
 private val NavigationInk = Color(0xFF202323)
@@ -75,6 +76,7 @@ internal val AppBottomNavigationBarOverlaySpace =
 
 internal enum class AppDestination {
     Map,
+    Press,
     Group,
     Ranking,
 }
@@ -88,6 +90,7 @@ private enum class DestinationIcon(
     val visualScale: Float,
 ) {
     Map(0.96f),
+    Press(1.02f),
     Group(1.02f),
     Ranking(1.2f),
 }
@@ -208,6 +211,7 @@ internal fun AppBottomNavigationBar(
                 DestinationIconView(
                     when (destination) {
                         AppDestination.Map -> DestinationIcon.Map
+                        AppDestination.Press -> DestinationIcon.Press
                         AppDestination.Group -> DestinationIcon.Group
                         AppDestination.Ranking -> DestinationIcon.Ranking
                     },
@@ -219,6 +223,7 @@ internal fun AppBottomNavigationBar(
                         stringResource(
                             when (destination) {
                                 AppDestination.Map -> Res.string.navigation_map
+                                AppDestination.Press -> Res.string.navigation_press
                                 AppDestination.Group -> Res.string.navigation_group
                                 AppDestination.Ranking -> Res.string.navigation_ranking
                             },
@@ -362,7 +367,7 @@ internal fun AppBottomNavigationBar(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = stringResource(Res.string.navigation_press),
+                text = stringResource(Res.string.ranking_press_tab),
                 color = NavigationInk,
                 fontSize = 14.sp,
                 fontFamily = navigationFont,
@@ -435,6 +440,20 @@ private fun DestinationIconView(
     icon: DestinationIcon,
     pressScale: Float,
 ) {
+    if (icon == DestinationIcon.Press) {
+        Image(
+            painter = painterResource(Res.drawable.hiyu_nav_face),
+            contentDescription = null,
+            modifier =
+                Modifier
+                    .size(20.dp)
+                    .graphicsLayer {
+                        scaleX = icon.visualScale * pressScale
+                        scaleY = icon.visualScale * pressScale
+                    },
+        )
+        return
+    }
     Canvas(
         Modifier
             .size(20.dp)
@@ -445,6 +464,8 @@ private fun DestinationIconView(
     ) {
         scale(size.width / 20f, size.height / 20f, pivot = Offset.Zero) {
             when (icon) {
+                DestinationIcon.Press -> {}
+
                 DestinationIcon.Map -> {
                     val outline =
                         Path().apply {
