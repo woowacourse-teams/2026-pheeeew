@@ -11,6 +11,7 @@ data class GroupDetailActions(
     val onMoreClick: () -> Unit,
     val onInviteClick: () -> Unit,
     val onCopyCodeClick: () -> Unit,
+    val onShareInviteClick: () -> Unit,
     val onDismissOverlay: () -> Unit,
     val onLeaveMenuClick: () -> Unit,
     val onConfirmLeave: () -> Unit,

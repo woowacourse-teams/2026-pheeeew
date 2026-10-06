@@ -137,6 +137,7 @@ internal fun previewActions(onEmotionTap: (EmotionKind) -> Boolean = { true }) =
         onMoreClick = {},
         onInviteClick = {},
         onCopyCodeClick = {},
+        onShareInviteClick = {},
         onDismissOverlay = {},
         onLeaveMenuClick = {},
         onConfirmLeave = {},

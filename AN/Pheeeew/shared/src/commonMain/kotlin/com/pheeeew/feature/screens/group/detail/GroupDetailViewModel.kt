@@ -321,6 +321,10 @@ class GroupDetailViewModel(
         }
     }
 
+    fun onInviteShareUnavailable() {
+        showNotice(GroupDetailNoticeKind.InviteShareUnavailable)
+    }
+
     fun onCopyResult(
         operationKey: GroupOperationKey,
         result: GroupCopyCodeResult,
