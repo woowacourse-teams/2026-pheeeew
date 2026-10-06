@@ -13,6 +13,7 @@ import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.GroupService;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
+import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
@@ -273,27 +274,124 @@ class GroupControllerTest {
     }
 
     @Test
-    void 감정_버튼을_누르면_오늘_집계를_돌려준다() {
+    void 구버전_단일_감정_형식은_그대로_한_번_누른_커맨드로_위임된다() {
         // given
-        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, EmotionState.ANGRY))
+        GroupPressCommand 기대_커맨드 = GroupPressCommand.of(Map.of(EmotionState.ANGRY, 1), false);
+        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드))
                 .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 2L)));
 
         // when
-        RestTestClient.ResponseSpec result = 누른다("\"ANGRY\"");
+        RestTestClient.ResponseSpec result = 누른다("{\"state\": \"ANGRY\"}");
 
         // then
         result.expectStatus().isOk()
                 .expectBody()
                 .jsonPath("$.counts.ANGRY").isEqualTo(2)
                 .jsonPath("$.total").isEqualTo(2);
-        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, EmotionState.ANGRY);
+        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드);
+    }
+
+    @Test
+    void 감정을_묶어_보내면_묶음_커맨드로_위임된다() {
+        // given
+        GroupPressCommand 기대_커맨드 = GroupPressCommand.of(
+                Map.of(EmotionState.ANGRY, 9, EmotionState.EXHAUSTED, 3), true
+        );
+        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드))
+                .thenReturn(GroupPressCountResult.from(
+                        Map.of(EmotionState.ANGRY, 9L, EmotionState.EXHAUSTED, 3L)
+                ));
+
+        // when
+        RestTestClient.ResponseSpec result = 누른다("{\"counts\": {\"ANGRY\": 9, \"EXHAUSTED\": 3}}");
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.counts.ANGRY").isEqualTo(9)
+                .jsonPath("$.counts.EXHAUSTED").isEqualTo(3)
+                .jsonPath("$.total").isEqualTo(12);
+        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드);
+    }
+
+    @Test
+    void 빈_묶음도_200이고_빈_커맨드가_그대로_서비스로_간다() {
+        // given
+        GroupPressCommand 기대_커맨드 = GroupPressCommand.of(Map.of(), true);
+        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드))
+                .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 7L)));
+
+        // when
+        RestTestClient.ResponseSpec result = 누른다("{\"counts\": {}}");
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.counts.ANGRY").isEqualTo(7)
+                .jsonPath("$.total").isEqualTo(7);
+        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드);
+    }
+
+    @Test
+    void 값이_영인_묶음도_200이고_영이_그대로_서비스로_간다() {
+        // given
+        GroupPressCommand 기대_커맨드 = GroupPressCommand.of(Map.of(EmotionState.ANGRY, 0), true);
+        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드))
+                .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 7L)));
+
+        // when
+        RestTestClient.ResponseSpec result = 누른다("{\"counts\": {\"ANGRY\": 0}}");
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.counts.ANGRY").isEqualTo(7)
+                .jsonPath("$.total").isEqualTo(7);
+        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"null", "\"\"", "\"HAPPY\"", "\"angry\""})
-    void 다루지_않는_감정을_보내면_400이고_서비스를_부르지_않는다(String 보낸_값) {
+    @ValueSource(strings = {
+            "{}",
+            "{\"state\": null}",
+            "{\"state\": null, \"counts\": null}",
+            "{\"state\": \"ANGRY\", \"counts\": {\"ANGRY\": 1}}"
+    })
+    void state_와_counts_를_둘_다_보내거나_둘_다_안_보내면_400이고_서비스를_부르지_않는다(String 바디) {
         // when
-        RestTestClient.ResponseSpec result = 누른다(보낸_값);
+        RestTestClient.ResponseSpec result = 누른다(바디);
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"counts\": {\"ANGRY\": -3}}",
+            "{\"counts\": {\"ANGRY\": null}}",
+            "{\"counts\": {\"ANGRY\": 1, \"EXHAUSTED\": -1}}"
+    })
+    void 음수나_빈_값이_섞인_묶음은_400이고_서비스를_부르지_않는다(String 바디) {
+        // when
+        RestTestClient.ResponseSpec result = 누른다(바디);
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"state\": \"\"}",
+            "{\"state\": \"HAPPY\"}",
+            "{\"state\": \"angry\"}",
+            "{\"counts\": {\"HAPPY\": 1}}",
+            "{\"counts\": {\"angry\": 1}}"
+    })
+    void 다루지_않는_감정을_보내면_400이고_서비스를_부르지_않는다(String 바디) {
+        // when
+        RestTestClient.ResponseSpec result = 누른다(바디);
 
         // then
         result.expectStatus().isBadRequest();
@@ -454,13 +552,11 @@ class GroupControllerTest {
         );
     }
 
-    private RestTestClient.ResponseSpec 누른다(String 보낸_값) {
+    private RestTestClient.ResponseSpec 누른다(String 바디) {
         return client.post()
                 .uri(GROUPS_URI + "/" + 그룹_공개_식별자 + "/presses")
                 .contentType(MediaType.APPLICATION_JSON)
-                .body("""
-                        {"state": %s}
-                        """.formatted(보낸_값))
+                .body(바디)
                 .exchange();
     }
 
