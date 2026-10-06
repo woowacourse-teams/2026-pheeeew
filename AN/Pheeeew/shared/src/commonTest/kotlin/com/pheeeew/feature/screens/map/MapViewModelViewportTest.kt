@@ -12,11 +12,18 @@ import com.pheeeew.domain.model.emotion.EmotionMapPage
 import com.pheeeew.domain.model.emotion.EmotionMapPageResult
 import com.pheeeew.domain.model.emotion.EmotionMapPin
 import com.pheeeew.domain.model.emotion.EmotionMapSnapshot
+import com.pheeeew.domain.model.emotion.EmotionMapViewport
+import com.pheeeew.domain.model.emotion.EmotionRegion
+import com.pheeeew.domain.model.emotion.EmotionRegionLevel
+import com.pheeeew.domain.model.emotion.EmotionRegionResult
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.repository.EmotionMapRepository
+import com.pheeeew.domain.repository.EmotionRegionMapRepository
 import com.pheeeew.domain.repository.LocationRepository
 import com.pheeeew.domain.usecase.FindEmotionMapPageUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase
+import com.pheeeew.domain.usecase.FindEmotionRegionSnapshotUseCase
+import com.pheeeew.domain.usecase.FindEmotionRegionsUseCase
 import com.pheeeew.domain.usecase.RefreshLocationUseCase
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -657,6 +664,301 @@ class MapViewModelViewportTest {
             } finally {
                 Dispatchers.resetMain()
             }
+        }
+
+    @Test
+    fun `늦은 지역 응답은 새 계층을 덮지 않고 가까운 줌에서 핀으로 전환한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val old = CompletableDeferred<EmotionRegionResult>()
+                val current = CompletableDeferred<EmotionRegionResult>()
+                val pinRepository = QueuedEmotionMapRepository(CompletableDeferred(page(listOf(pin(7, 127.02, 37.55)))))
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pinRepository),
+                        FindEmotionMapSnapshotUseCase(pinRepository),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, level, _ ->
+                                    when (level) {
+                                        EmotionRegionLevel.SIDO -> old.await()
+                                        EmotionRegionLevel.SIGUNGU -> current.await()
+                                    }
+                                },
+                            ),
+                    )
+                val area = bounds(127.0, 37.5)
+                viewModel.onViewportChanged(EmotionMapViewport(area, 8.0))
+                advanceTimeBy(700)
+                runCurrent()
+                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                old.complete(EmotionRegionResult.Success(listOf(EmotionRegion("old", "서울", 127.0, 37.5, 1, null))))
+                runCurrent()
+                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+                current.complete(
+                    EmotionRegionResult.Success(
+                        listOf(EmotionRegion("new", "강남구", 127.0, 37.5, 48, EmotionState.ANGRY)),
+                    ),
+                )
+                runCurrent()
+                assertEquals(
+                    "강남구",
+                    viewModel.uiModel.value.regionClusters
+                        .single()
+                        .name,
+                )
+                viewModel.focusOnRegionCluster("new")
+                assertEquals(
+                    12.0,
+                    viewModel.uiModel.value.cameraCommand
+                        ?.value,
+                )
+                viewModel.onViewportChanged(EmotionMapViewport(area, 12.0))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+                assertEquals(listOf(7L), viewModel.pinIds())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `지역 조회 중과 실패 시 기존 핀을 유지하고 성공한 전체 결과로 교체한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val old = EmotionRegion("a", "강남구", 127.0, 37.5, 1, null)
+                val removed = old.copy(id = "b", name = "서초구")
+                val updated = old.copy(count = 9)
+                val added = old.copy(id = "c", name = "송파구")
+                val first = CompletableDeferred<EmotionRegionResult>(EmotionRegionResult.Success(listOf(old, removed)))
+                val next = CompletableDeferred<EmotionRegionResult>()
+                val failed = CompletableDeferred<EmotionRegionResult>()
+                val empty = CompletableDeferred<EmotionRegionResult>()
+                val responses = ArrayDeque(listOf(first, next, failed, empty))
+                val repository = QueuedEmotionMapRepository()
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository {
+                                    _,
+                                    _,
+                                    _,
+                                    ->
+                                    responses.removeFirst().await()
+                                },
+                            ),
+                    )
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                val original = viewModel.uiModel.value.regionClusters
+                assertEquals(listOf("a", "b"), original.map { it.id })
+
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.01, 37.5), 11.0))
+                assertEquals(original, viewModel.uiModel.value.regionClusters)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(original, viewModel.uiModel.value.regionClusters)
+                assertTrue(viewModel.uiModel.value.isLoadingRegionClusters)
+                next.complete(EmotionRegionResult.Success(listOf(updated, added)))
+                runCurrent()
+                val replacement = viewModel.uiModel.value.regionClusters
+                assertEquals(listOf("a", "c"), replacement.map { it.id })
+                assertEquals(9L, replacement.first().count)
+
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.02, 37.5), 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                failed.complete(EmotionRegionResult.Failure)
+                runCurrent()
+                assertEquals(replacement, viewModel.uiModel.value.regionClusters)
+                assertFalse(viewModel.uiModel.value.isLoadingRegionClusters)
+
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.03, 37.5), 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(replacement, viewModel.uiModel.value.regionClusters)
+                empty.complete(EmotionRegionResult.Success(emptyList()))
+                runCurrent()
+                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `지역 재방문은 캐시를 즉시 표시하고 새로고침은 서버 응답을 기다린다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val area = bounds(127.0, 37.5)
+                val cached = EmotionRegion("a", "강남구", 127.0, 37.5, 3, null)
+                var networkCalls = 0
+                var refreshCalls = 0
+                val refresh = CompletableDeferred<EmotionRegionResult>()
+                val regionsRepository =
+                    regionRepository(
+                        snapshot = { requested, _ -> if (requested == area) listOf(cached) else null },
+                        find = { _, _, forceRefresh ->
+                            if (forceRefresh) {
+                                refreshCalls++
+                                refresh.await()
+                            } else {
+                                networkCalls++
+                                EmotionRegionResult.Success(emptyList())
+                            }
+                        },
+                    )
+                val repository = QueuedEmotionMapRepository()
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                        findRegions = FindEmotionRegionsUseCase(regionsRepository),
+                        findRegionSnapshot = FindEmotionRegionSnapshotUseCase(regionsRepository),
+                    )
+                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                assertEquals(
+                    3L,
+                    viewModel.uiModel.value.regionClusters
+                        .single()
+                        .count,
+                )
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(0, networkCalls)
+
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(128.0, 37.5), 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                assertEquals(
+                    3L,
+                    viewModel.uiModel.value.regionClusters
+                        .single()
+                        .count,
+                )
+                assertEquals(1, networkCalls)
+
+                viewModel.refreshEmotionPins()
+                assertEquals(
+                    3L,
+                    viewModel.uiModel.value.regionClusters
+                        .single()
+                        .count,
+                )
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(1, refreshCalls)
+                refresh.complete(EmotionRegionResult.Success(listOf(cached.copy(count = 7))))
+                runCurrent()
+                assertEquals(
+                    7L,
+                    viewModel.uiModel.value.regionClusters
+                        .single()
+                        .count,
+                )
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `다른 계층 조회 중과 실패 후에도 보이는 지역의 계층으로 확대한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val city = EmotionRegion("city", "서울", 127.0, 37.5, 3, null)
+                val first = CompletableDeferred<EmotionRegionResult>(EmotionRegionResult.Success(listOf(city)))
+                val failed = CompletableDeferred<EmotionRegionResult>()
+                val next = CompletableDeferred<EmotionRegionResult>()
+                val responses = ArrayDeque(listOf(first, failed, next))
+                val pins = QueuedEmotionMapRepository()
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository {
+                                    _,
+                                    _,
+                                    _,
+                                    ->
+                                    responses.removeFirst().await()
+                                },
+                            ),
+                    )
+                val area = bounds(127.0, 37.5)
+                viewModel.onViewportChanged(EmotionMapViewport(area, 8.0))
+                advanceTimeBy(700)
+                runCurrent()
+                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                viewModel.focusOnRegionCluster("city")
+                assertEquals(
+                    9.0,
+                    viewModel.uiModel.value.cameraCommand
+                        ?.value,
+                )
+                failed.complete(EmotionRegionResult.Failure)
+                runCurrent()
+                viewModel.focusOnRegionCluster("city")
+                assertEquals(
+                    9.0,
+                    viewModel.uiModel.value.cameraCommand
+                        ?.value,
+                )
+                assertEquals(EmotionRegionLevel.SIDO, viewModel.uiModel.value.displayedRegionLevel)
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                next.complete(EmotionRegionResult.Success(listOf(city.copy(id = "district", name = "강남구"))))
+                runCurrent()
+                viewModel.focusOnRegionCluster("district")
+                assertEquals(
+                    12.0,
+                    viewModel.uiModel.value.cameraCommand
+                        ?.value,
+                )
+                assertEquals(EmotionRegionLevel.SIGUNGU, viewModel.uiModel.value.displayedRegionLevel)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    private fun regionRepository(
+        snapshot: (EmotionMapBounds, EmotionRegionLevel) -> List<EmotionRegion>? = { _, _ -> null },
+        find: suspend (EmotionMapBounds, EmotionRegionLevel, Boolean) -> EmotionRegionResult,
+    ): EmotionRegionMapRepository =
+        object : EmotionRegionMapRepository {
+            override suspend fun findRegions(
+                bounds: EmotionMapBounds,
+                level: EmotionRegionLevel,
+                groupId: String?,
+                forceRefresh: Boolean,
+            ) = find(bounds, level, forceRefresh)
+
+            override fun findSnapshot(
+                bounds: EmotionMapBounds,
+                level: EmotionRegionLevel,
+                groupId: String?,
+            ) = snapshot(bounds, level)
         }
 
     private fun bounds(

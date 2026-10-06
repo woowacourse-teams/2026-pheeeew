@@ -99,6 +99,8 @@ import com.pheeeew.feature.screens.map.record.RegisteredEmotionUiModel
 import com.pheeeew.feature.screens.map.record.location.RecordMapViewport
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.rememberEmotionPinSymbolImages
+import com.pheeeew.feature.screens.map.rememberRegionClusterRenderState
+import com.pheeeew.feature.screens.map.rememberRegionClusterSymbolImages
 import com.pheeeew.feature.screens.map.renderer.MapCameraSnapshotUiModel
 import com.pheeeew.feature.screens.map.renderer.NativeMap
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
@@ -203,6 +205,8 @@ private fun AppContent(
                 emotionMapDependencies.findPage,
                 emotionMapDependencies.findSnapshot,
                 apiDependencies.client.monitoring,
+                findRegions = emotionMapDependencies.findRegions,
+                findRegionSnapshot = emotionMapDependencies.findRegionSnapshot,
             )
         }
     LaunchedEffect(mapViewModel) { mapViewModel.onMapRendererAttached() }
@@ -281,12 +285,16 @@ private fun AppContent(
                 )
             }
     val nativeMapSymbolImages = rememberEmotionPinSymbolImages(mapUiModel.emotionPins + listOfNotNull(previewPin))
+    val regionImages = rememberRegionClusterSymbolImages(mapUiModel.regionClusters)
+    val regionRenderState = rememberRegionClusterRenderState(mapUiModel.regionClusters, regionImages)
     val nativeMapState =
         mapUiModel.copy(
             recordOrigin = recordUiModel.origin,
             recordPreviewPin = previewPin,
             recordPreviewScale = previewScale,
             emotionPinSymbolImages = nativeMapSymbolImages,
+            regionClusters = regionRenderState.regions.takeUnless { mapUiModel.isRecordLocationPicking }.orEmpty(),
+            regionClusterSymbolImages = regionRenderState.images,
             highlightedEmotionId = mapUiModel.focusedEmotionId ?: highlightedEmotion?.id,
             pressedEmotionId = pressedPinId,
             pressedEmotionScale = pinPressScale.value,
@@ -333,8 +341,9 @@ private fun AppContent(
                     val viewport = RecordMapViewport(centerX, centerY, radius)
                     if (recordViewport.value != viewport) recordViewport.value = viewport
                 },
-                onViewportChanged = { bounds ->
-                    mapViewModel.onViewportChanged(bounds)
+                onViewportChanged = { viewport ->
+                    mapViewModel.onViewportChanged(viewport)
+                    val bounds = viewport.bounds
                     nearbyViewModel.onViewportChanged(
                         EmotionBounds(
                             bounds.minLongitude,
@@ -360,6 +369,7 @@ private fun AppContent(
                             detailViewModel.open(id, mapViewModel.exploration.viewId)
                         }
                 },
+                onRegionClusterClick = mapViewModel::focusOnRegionCluster,
                 onMapBackgroundClick = { if (nearbyState.visible) nearbyViewModel.dismiss() },
                 onHighlightedPinPositionChanged = { highlightedPinPosition.value = it },
                 onContentPresented = mapViewModel::contentPresented,

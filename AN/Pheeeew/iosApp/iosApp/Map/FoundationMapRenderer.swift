@@ -16,6 +16,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private var lastAppliedCameraCommandId: Int64 = 0
     private var currentLocationSource: MLNShapeSource?
     private var emotionPinSource: MLNShapeSource?
+    private var regionClusterSource: MLNShapeSource?
+    private var lastRegionClusterCoordinates: [FoundationIosRegionClusterCoordinateUiModel]?
     private let recordStampLayer = FoundationRecordStampLayer()
     private let recordRangeLayer = FoundationRecordRangeLayer()
     private var lastEmotionPinImageKeys = Set<String>()
@@ -75,7 +77,12 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         if let id = features.first?.identifier as? NSNumber {
             eventSink.onEmotionPinClick(id: id.int64Value)
         } else {
-            eventSink.onMapBackgroundClick()
+            let regions = mapView.visibleFeatures(at: point, styleLayerIdentifiers: Set(["foundation-region-cluster-layer"]))
+            if let id = regions.first?.identifier as? String {
+                eventSink.onRegionClusterClick(id: id)
+            } else {
+                eventSink.onMapBackgroundClick()
+            }
         }
     }
 
@@ -100,6 +107,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         FoundationCurrentLocationLayer.update(currentLocation: state.currentLocation, source: currentLocationSource)
         recordRangeLayer.update(state: state)
         let pinSourceUpdated = updateEmotionPins(state)
+        updateRegionClusters(state)
         updateEmotionPinPress(state)
         applyInitialCameraIfNeeded(state)
         if !applyRecordCamera(state) { applyCameraCommandIfNeeded(state) }
@@ -123,6 +131,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         styleIsReady = false
         currentLocationSource = nil
         emotionPinSource = nil
+        regionClusterSource = nil
+        lastRegionClusterCoordinates = nil
         lastEmotionPinImageKeys.removeAll()
         lastEmotionPinCoordinates = nil
         lastEmotionPinMonitoringLoadId = nil
@@ -236,11 +246,13 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         FoundationMapStyle.applyMutedPalette(to: style)
         styleIsReady = true
         emotionPinSource = installEmotionPinLayer(on: style)
+        regionClusterSource = installRegionClusterLayer(on: style)
         recordRangeLayer.install(on: style)
         recordStampLayer.install(on: style)
         currentLocationSource = FoundationCurrentLocationLayer.install(on: style)
         lastEmotionPinImageKeys.removeAll()
         lastEmotionPinCoordinates = nil
+        lastRegionClusterCoordinates = nil
         lastEmotionPinMonitoringLoadId = nil
         lastScheduledEmotionPinLoadId = nil
         emotionPinRenderRevision = 0
@@ -422,7 +434,38 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             maxLongitude: bounds.ne.longitude,
             maxLatitude: bounds.ne.latitude
         )
-        if queryBounds.isValid() { eventSink.onViewportChanged(bounds: queryBounds) }
+        if queryBounds.isValid() {
+            eventSink.onViewportChanged(viewport: EmotionMapViewport(bounds: queryBounds, zoom: mapView.zoomLevel))
+        }
+    }
+
+    private func installRegionClusterLayer(on style: MLNStyle) -> MLNShapeSource {
+        let source = MLNShapeSource(identifier: "foundation-region-cluster-source", features: [], options: nil)
+        style.addSource(source)
+        let layer = MLNSymbolStyleLayer(identifier: "foundation-region-cluster-layer", source: source)
+        layer.iconImageName = NSExpression(mglJSONObject: ["get", "imageKey"])
+        layer.iconScale = NSExpression(forConstantValue: 1)
+        layer.iconAllowsOverlap = NSExpression(forConstantValue: true)
+        layer.iconIgnoresPlacement = NSExpression(forConstantValue: true)
+        style.addLayer(layer)
+        return source
+    }
+
+    private func updateRegionClusters(_ state: FoundationIosMapRenderUiModel) {
+        guard let source = regionClusterSource else { return }
+        // Common presentation code owns replacement; this adapter only checks registration.
+        let coordinates = state.regionClusterCoordinates
+        guard coordinates.allSatisfy({ lastEmotionPinImageKeys.contains($0.imageKey) }) else { return }
+        guard coordinates != lastRegionClusterCoordinates else { return }
+        let features = coordinates.map { region -> MLNPointFeature in
+            let feature = MLNPointFeature()
+            feature.coordinate = CLLocationCoordinate2D(latitude: region.latitude, longitude: region.longitude)
+            feature.identifier = region.id
+            feature.attributes = ["imageKey": region.imageKey]
+            return feature
+        }
+        source.shape = MLNShapeCollectionFeature(shapes: features)
+        lastRegionClusterCoordinates = coordinates
     }
 
     private func installEmotionPinLayer(on style: MLNStyle) -> MLNShapeSource {
@@ -483,6 +526,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         guard let style = mapView.style else { return }
         let desiredKeys = Set(state.emotionPinSymbolImages.map(\.key))
             .union(lastEmotionPinCoordinates?.map(\.imageKey) ?? [])
+            .union(lastRegionClusterCoordinates?.map(\.imageKey) ?? [])
         let obsoleteKeys = lastEmotionPinImageKeys.subtracting(desiredKeys)
         obsoleteKeys.forEach { style.removeImage(forName: $0) }
         lastEmotionPinImageKeys.subtract(obsoleteKeys)
