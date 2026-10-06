@@ -1,8 +1,8 @@
-package com.pheeeew.feature.screens.group.detail.component
+package com.pheeeew.feature.emotion.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import com.pheeeew.feature.screens.group.detail.model.EmotionKind
+import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource

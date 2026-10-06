@@ -1,9 +1,11 @@
 package com.pheeeew.feature.screens.group.detail.component
 
 import androidx.compose.runtime.Composable
+import com.pheeeew.feature.emotion.component.dispatchEmotionTapFeedback
+import com.pheeeew.feature.emotion.component.rememberEmotionHapticFeedback
 
 @Composable
-internal expect fun rememberGroupEmotionHapticFeedback(): () -> Unit
+internal fun rememberGroupEmotionHapticFeedback(): () -> Unit = rememberEmotionHapticFeedback()
 
 internal inline fun dispatchGroupEmotionTapFeedback(
     accepted: Boolean,
@@ -11,6 +13,10 @@ internal inline fun dispatchGroupEmotionTapFeedback(
     hapticFeedback: () -> Unit,
     visualFeedback: () -> Unit,
 ) {
-    if (accepted && !fixtureFeedbackOnAcceptedPress) hapticFeedback()
-    if (accepted || fixtureFeedbackOnAcceptedPress) visualFeedback()
+    dispatchEmotionTapFeedback(
+        accepted = accepted,
+        allowVisualFeedbackWhenRejected = fixtureFeedbackOnAcceptedPress,
+        hapticFeedback = hapticFeedback,
+        visualFeedback = visualFeedback,
+    )
 }

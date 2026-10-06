@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.group.detail.component
+package com.pheeeew.feature.emotion.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -7,7 +7,7 @@ import platform.UIKit.UIImpactFeedbackGenerator
 import platform.UIKit.UIImpactFeedbackStyle.UIImpactFeedbackStyleMedium
 
 @Composable
-internal actual fun rememberGroupEmotionHapticFeedback(): () -> Unit {
+internal actual fun rememberEmotionHapticFeedback(): () -> Unit {
     val generator = remember { UIImpactFeedbackGenerator(style = UIImpactFeedbackStyleMedium) }
     SideEffect { generator.prepare() }
     return remember(generator) {

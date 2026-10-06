@@ -3,15 +3,6 @@ package com.pheeeew.feature.screens.group.detail.model
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
 
-data class EmotionCountUiModel(
-    val kind: EmotionKind,
-    val count: Long,
-) {
-    init {
-        require(count >= 0L) { "감정 횟수는 음수일 수 없습니다." }
-    }
-}
-
 sealed interface GroupRankUiModel {
     data object Unranked : GroupRankUiModel
 
