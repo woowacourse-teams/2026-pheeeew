@@ -126,7 +126,7 @@
     <string name="record_group_accessibility">%1$s, 그룹 변경</string>
 
     <!-- 랭킹 -->
-    <string name="ranking_stamps">감정 스탬프</string>
+    <string name="ranking_stamps">스탬프</string>
     <string name="ranking_empty_week">해당 주에 랭킹이 없어요.</string>
     <string name="ranking_stamp_title">스탬프 주간 랭킹</string>
     <string name="ranking_weekly_title">주간 랭킹</string>

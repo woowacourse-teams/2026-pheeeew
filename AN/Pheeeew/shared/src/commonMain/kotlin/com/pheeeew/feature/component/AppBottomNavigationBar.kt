@@ -310,7 +310,7 @@ internal fun AppBottomNavigationBar(
         Box(
             modifier =
                 Modifier
-                    .offset(x = if (isRankingMode) 4.dp + 16.dp * (1f - motionProgress) else -48.dp)
+                    .offset(x = if (isRankingMode) 7.5.dp + 12.5.dp * (1f - motionProgress) else -48.dp)
                     .size(40.dp)
                     .graphicsLayer {
                         alpha = backButtonAlpha
@@ -327,7 +327,7 @@ internal fun AppBottomNavigationBar(
                     ),
             contentAlignment = Alignment.Center,
         ) {
-            RankingNavigationIcon(isBack = true, modifier = Modifier.size(20.dp))
+            RankingNavigationIcon(isBack = true, modifier = Modifier.size(20.dp).offset(x = (-2.5).dp))
         }
 
         val isPressTabSelected = isRankingMode && rankingDestination == RankingBottomNavigationDestination.Press
@@ -385,7 +385,7 @@ private fun RankingNavigationIcon(
             if (isBack) {
                 drawLine(NavigationInk, Offset(12f, 3f), Offset(6f, 9f), strokeWidth, cap = StrokeCap.Round)
                 drawLine(NavigationInk, Offset(6f, 9f), Offset(12f, 15f), strokeWidth, cap = StrokeCap.Round)
-                drawLine(NavigationInk, Offset(6f, 9f), Offset(17f, 9f), strokeWidth, cap = StrokeCap.Round)
+                drawLine(NavigationInk, Offset(6f, 9f), Offset(19f, 9f), strokeWidth, cap = StrokeCap.Round)
             } else if (destination == RankingBottomNavigationDestination.Stamp) {
                 val ticket =
                     Path().apply {
