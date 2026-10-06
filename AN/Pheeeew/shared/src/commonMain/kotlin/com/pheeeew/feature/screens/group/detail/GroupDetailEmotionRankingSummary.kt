@@ -25,7 +25,6 @@ import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_label
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_loading
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_no_presses
-import pheeeew.shared.generated.resources.group_detail_emotion_rank_not_listed
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_retry
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_unavailable
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_weekly_count
@@ -81,7 +80,7 @@ private fun GroupDetailEmotionRankingContent.displayValue(): String =
         }
 
         GroupDetailEmotionRankingContent.NotListed -> {
-            stringResource(Res.string.group_detail_emotion_rank_not_listed)
+            stringResource(Res.string.group_detail_rank_empty)
         }
 
         GroupDetailEmotionRankingContent.Unavailable -> {

@@ -411,7 +411,6 @@
     <string name="group_detail_emotion_rank_weekly_count">이번 주 %1$s회</string>
     <string name="group_detail_emotion_rank_loading">조회 중</string>
     <string name="group_detail_emotion_rank_no_presses">입력 없음</string>
-    <string name="group_detail_emotion_rank_not_listed">순위 정보 없음</string>
     <string name="group_detail_emotion_rank_unavailable">조회 실패</string>
     <string name="group_detail_emotion_rank_retry">다시 확인</string>
     <string name="group_detail_rank_refreshing">갱신 중</string>
