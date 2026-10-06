@@ -49,6 +49,14 @@ class GroupDetailViewModel(
         ) { ranking ->
             _uiState.update { it.copy(emotionRanking = ranking) }
         }
+    private val weeklyPressCountStateHolder =
+        GroupDetailWeeklyPressCountStateHolder(
+            groupId = groupId,
+            source = dependencies.weeklyPressCountSource,
+            scope = viewModelScope,
+        ) { weeklyPressCount ->
+            _uiState.update { it.copy(weeklyPressCount = weeklyPressCount) }
+        }
     var lastAcceptedPressKey: GroupOperationKey? = null
         private set
     private var loadGeneration = 0L
@@ -71,6 +79,7 @@ class GroupDetailViewModel(
                         canAcceptEmotionPress = canAcceptAnotherPress,
                     )
                 }
+                if (pending.values.sum() > 0L) weeklyPressCountStateHolder.pauseForAcceptedPress()
                 requestDeferredInitialLoad()
             }
 
@@ -92,6 +101,7 @@ class GroupDetailViewModel(
                         state
                     }
                 }
+                weeklyPressCountStateHolder.recordAcceptedPress()
                 requestDeferredInitialLoad()
             }
 
@@ -107,6 +117,7 @@ class GroupDetailViewModel(
                         refreshStatus = GroupDetailRefreshStatus.Idle,
                     )
                 }
+                weeklyPressCountStateHolder.load(force = true)
             }
 
             override fun onAccessLost(
@@ -114,6 +125,7 @@ class GroupDetailViewModel(
                 reason: GroupDetailAccessLoss,
             ) {
                 markMembershipUnavailable(key, reason)
+                weeklyPressCountStateHolder.clear()
             }
 
             override fun onNotice(
@@ -134,6 +146,7 @@ class GroupDetailViewModel(
         hasAttachedPressObserver = false
         pressSession.detach(pressObserver)
         emotionRankingStateHolder.clear()
+        weeklyPressCountStateHolder.clear()
         if (ownsPressWorkOwner) pressSession.close()
         super.onCleared()
     }
@@ -171,6 +184,7 @@ class GroupDetailViewModel(
     fun onRetryEmotionRanking() {
         if (_uiState.value.detail == null) return
         emotionRankingStateHolder.load()
+        weeklyPressCountStateHolder.load()
     }
 
     fun onRefresh(showRefreshIndicator: Boolean = true) {
@@ -570,7 +584,10 @@ class GroupDetailViewModel(
                             }
                         }
                     }
-                    if (loadedDetail != null) emotionRankingStateHolder.load(force = true)
+                    if (loadedDetail != null) {
+                        emotionRankingStateHolder.load(force = true)
+                        weeklyPressCountStateHolder.load(force = true)
+                    }
                     if (result == GroupDetailLoadResult.MembershipChanged || result == GroupDetailLoadResult.NotFound) {
                         pressSession.clearForAccessLoss()
                     }

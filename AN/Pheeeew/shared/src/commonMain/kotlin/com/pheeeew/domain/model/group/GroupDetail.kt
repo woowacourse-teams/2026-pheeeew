@@ -1,6 +1,6 @@
 package com.pheeeew.domain.model.group
 
-/** 서버가 오늘 집계한 감정 버튼 상태입니다. */
+/** 그룹 감정 버튼의 상태별 집계입니다. 집계 기간은 이를 포함하는 응답이 정의합니다. */
 enum class GroupPressState {
     FRUSTRATED,
     IRRITATED,
@@ -15,10 +15,10 @@ data class GroupPressCounts(
 ) {
     init {
         require(counts.keys == GroupPressState.entries.toSet()) {
-            "오늘의 감정별 집계를 모두 포함해야 합니다."
+            "감정별 집계를 모두 포함해야 합니다."
         }
         require(counts.values.all { it >= 0L }) { "감정 횟수는 음수일 수 없습니다." }
-        require(total >= 0L) { "오늘 전체 횟수는 음수일 수 없습니다." }
+        require(total >= 0L) { "전체 횟수는 음수일 수 없습니다." }
     }
 }
 

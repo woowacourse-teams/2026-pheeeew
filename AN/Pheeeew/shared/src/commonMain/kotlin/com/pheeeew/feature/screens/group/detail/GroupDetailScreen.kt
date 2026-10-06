@@ -152,6 +152,7 @@ fun GroupDetailScreen(
                                 pendingEmotionPresses = uiState.pendingEmotionPresses,
                                 unconfirmedEmotionPresses = uiState.unconfirmedEmotionPresses,
                                 emotionRanking = uiState.emotionRanking,
+                                weeklyPressCount = uiState.weeklyPressCount,
                                 onInviteClick = actions.onInviteClick,
                                 onRetry = actions.onRetry,
                                 onEmotionTap = actions.onEmotionTap,

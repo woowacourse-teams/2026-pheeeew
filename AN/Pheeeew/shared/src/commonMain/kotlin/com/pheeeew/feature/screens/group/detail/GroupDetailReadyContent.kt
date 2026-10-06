@@ -85,6 +85,7 @@ internal fun GroupDetailReadyContent(
     pendingEmotionPresses: Map<EmotionKind, Long> = emptyMap(),
     unconfirmedEmotionPresses: List<GroupUnconfirmedPress> = emptyList(),
     emotionRanking: GroupDetailEmotionRankingUiState = GroupDetailEmotionRankingUiState(),
+    weeklyPressCount: GroupDetailWeeklyPressCountUiState = GroupDetailWeeklyPressCountUiState(),
     onInviteClick: () -> Unit,
     onRetry: () -> Unit,
     onEmotionTap: (EmotionKind) -> Boolean,
@@ -140,6 +141,7 @@ internal fun GroupDetailReadyContent(
             WeeklySummary(
                 detail = detail,
                 emotionRanking = emotionRanking,
+                weeklyPressCount = weeklyPressCount,
                 pendingPressCount = pendingEmotionPresses.values.sum(),
                 onRetryEmotionRanking = onRetryEmotionRanking,
             )
@@ -300,6 +302,7 @@ private fun TodayTotal(detail: GroupDetailUiModel) {
 private fun WeeklySummary(
     detail: GroupDetailUiModel,
     emotionRanking: GroupDetailEmotionRankingUiState,
+    weeklyPressCount: GroupDetailWeeklyPressCountUiState,
     pendingPressCount: Long,
     onRetryEmotionRanking: () -> Unit,
 ) {
@@ -327,7 +330,8 @@ private fun WeeklySummary(
         Spacer(Modifier.width(1.dp).height(72.dp).background(Color(0xFFDFE2D9)))
         GroupDetailEmotionRankingSummary(
             state = emotionRanking,
-            todayPressCount = detail.todayTotal + pendingPressCount,
+            weeklyPressCount = weeklyPressCount,
+            pendingPressCount = pendingPressCount,
             onRetry = onRetryEmotionRanking,
         )
     }

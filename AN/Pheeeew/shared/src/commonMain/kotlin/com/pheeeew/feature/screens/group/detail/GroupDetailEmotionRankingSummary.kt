@@ -25,11 +25,10 @@ import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_label
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_loading
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_no_presses
-import pheeeew.shared.generated.resources.group_detail_emotion_rank_not_listed
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_retry
-import pheeeew.shared.generated.resources.group_detail_emotion_rank_today_count
 import pheeeew.shared.generated.resources.group_detail_emotion_rank_unavailable
-import pheeeew.shared.generated.resources.group_detail_emotion_rank_weekly_score
+import pheeeew.shared.generated.resources.group_detail_emotion_rank_weekly_count
+import pheeeew.shared.generated.resources.group_detail_rank_empty
 import pheeeew.shared.generated.resources.group_detail_rank_number
 import pheeeew.shared.generated.resources.group_detail_rank_refresh_error
 import pheeeew.shared.generated.resources.group_detail_rank_refreshing
@@ -37,12 +36,13 @@ import pheeeew.shared.generated.resources.group_detail_rank_refreshing
 @Composable
 internal fun RowScope.GroupDetailEmotionRankingSummary(
     state: GroupDetailEmotionRankingUiState,
-    todayPressCount: Long,
+    weeklyPressCount: GroupDetailWeeklyPressCountUiState,
+    pendingPressCount: Long,
     onRetry: () -> Unit,
 ) {
     val label = stringResource(Res.string.group_detail_emotion_rank_label)
     val value = state.content.displayValue()
-    val supportingValues = state.supportingValues(todayPressCount)
+    val supportingValues = state.supportingValues(weeklyPressCount, pendingPressCount)
     val accessibilityDescription = (listOf(label, value) + supportingValues).joinToString(", ")
 
     GroupDetailSummaryValue(
@@ -53,7 +53,7 @@ internal fun RowScope.GroupDetailEmotionRankingSummary(
             Modifier
                 .weight(1f)
                 .then(
-                    if (state.canRetry()) {
+                    if (state.canRetry(weeklyPressCount)) {
                         Modifier
                             .clickable(role = Role.Button, onClick = onRetry)
                             .semantics { contentDescription = accessibilityDescription }
@@ -80,7 +80,7 @@ private fun GroupDetailEmotionRankingContent.displayValue(): String =
         }
 
         GroupDetailEmotionRankingContent.NotListed -> {
-            stringResource(Res.string.group_detail_emotion_rank_not_listed)
+            stringResource(Res.string.group_detail_rank_empty)
         }
 
         GroupDetailEmotionRankingContent.Unavailable -> {
@@ -89,27 +89,28 @@ private fun GroupDetailEmotionRankingContent.displayValue(): String =
     }
 
 @Composable
-private fun GroupDetailEmotionRankingUiState.supportingValues(todayPressCount: Long): List<String> {
-    val todayCount =
-        stringResource(
-            Res.string.group_detail_emotion_rank_today_count,
-            formatCount(todayPressCount),
-        )
-    val secondaryValue =
+private fun GroupDetailEmotionRankingUiState.supportingValues(
+    weeklyPressCount: GroupDetailWeeklyPressCountUiState,
+    pendingPressCount: Long,
+): List<String> {
+    val currentWeeklyTotal = weeklyPressCount.displayedTotal + pendingPressCount
+    val weeklyCount =
+        if (currentWeeklyTotal > 0L) {
+            stringResource(
+                Res.string.group_detail_emotion_rank_weekly_count,
+                formatCount(currentWeeklyTotal),
+            )
+        } else {
+            null
+        }
+    val statusMessage =
         when {
-            isRefreshing -> {
+            isRefreshing || weeklyPressCount.isRefreshing -> {
                 stringResource(Res.string.group_detail_rank_refreshing)
             }
 
-            hasRefreshError -> {
+            hasRefreshError || weeklyPressCount.hasRefreshError -> {
                 stringResource(Res.string.group_detail_rank_refresh_error)
-            }
-
-            content is GroupDetailEmotionRankingContent.Ranked -> {
-                stringResource(
-                    Res.string.group_detail_emotion_rank_weekly_score,
-                    formatCount(content.score.toLong()),
-                )
             }
 
             content.canRetry() -> {
@@ -121,14 +122,14 @@ private fun GroupDetailEmotionRankingUiState.supportingValues(todayPressCount: L
             }
         }
 
-    return listOfNotNull(todayCount, secondaryValue)
+    return listOfNotNull(weeklyCount, statusMessage)
 }
 
-private fun GroupDetailEmotionRankingUiState.canRetry(): Boolean = content.canRetry() || hasRefreshError
+private fun GroupDetailEmotionRankingUiState.canRetry(weeklyPressCount: GroupDetailWeeklyPressCountUiState): Boolean =
+    content.canRetry() || hasRefreshError || weeklyPressCount.hasRefreshError
 
 private fun GroupDetailEmotionRankingContent.canRetry(): Boolean =
     this == GroupDetailEmotionRankingContent.NoPresses ||
-        this == GroupDetailEmotionRankingContent.NotListed ||
         this == GroupDetailEmotionRankingContent.Unavailable
 
 @Composable
