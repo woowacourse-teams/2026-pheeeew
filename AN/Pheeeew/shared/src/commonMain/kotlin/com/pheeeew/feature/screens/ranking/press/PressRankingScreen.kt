@@ -91,10 +91,12 @@ internal fun PressRankingScreen(
 ) {
     val pullState = rememberPullToRefreshState()
     val scrollState = rememberScrollState()
-    val topBarBehavior = rememberRankingTopBarScrollBehavior()
-    LaunchedEffect(uiState.isRefreshing, uiState.status) {
+    val topBarBehavior = rememberRankingTopBarScrollBehavior { scrollState.canScrollForward }
+    LaunchedEffect(uiState.isRefreshing, uiState.status, scrollState.maxValue) {
         if (uiState.isRefreshing || uiState.status == PressRankingStatus.Loading) {
             scrollState.scrollTo(0)
+            topBarBehavior.show()
+        } else if (scrollState.maxValue == 0) {
             topBarBehavior.show()
         }
     }
