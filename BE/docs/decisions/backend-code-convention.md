@@ -419,18 +419,23 @@ UUID requestId;
 
 ### 9.1 버전
 
-- 파일명은 `VyyyyMMdd[_순번]__설명.sql` 형식을 사용한다.
-- 해당 날짜의 첫 migration은 순번을 생략한다.
-- 같은 날짜에 migration을 추가하면 `_1`, `_2` 순서로 작성한다.
+- 파일명은 `VyyyyMMdd_순번__설명.sql` 형식을 사용한다.
+- **순번은 해당 날짜의 첫 migration부터 `_1`로 시작한다.** 같은 날짜에 추가하면 `_2`, `_3`으로 이어 붙인다.
 - 설명은 소문자 snake_case로 작성한다.
 
 예시:
 
 ```text
-V20260831__create_sighs_location_gist_index.sql
-V20260831_1__add_sigh_status.sql
-V20260831_2__create_sigh_status_index.sql
+V20260831_1__create_sighs_location_gist_index.sql
+V20260831_2__add_sigh_status.sql
+V20260831_3__create_sigh_status_index.sql
 ```
+
+**첫 migration의 순번을 생략하던 규칙을 2026-10-06에 바꿨다.** 그때 날짜가 유일한 파일 9개 중 3개가 이미
+`_1`을 달고 있어 문서와 관례가 갈라져 있었고, 생략 규칙은 같은 날 두 번째 migration이 생길 때
+9.2(머지된 migration 개명 금지)와 충돌한다. 첫 파일이 `_1`이면 그 충돌이 사라진다.
+
+순번을 생략한 기존 파일(`V20260909__create_devices.sql` 등)은 9.2에 따라 그대로 둔다.
 
 ### 9.2 변경과 충돌
 
