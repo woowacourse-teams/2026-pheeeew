@@ -22,8 +22,8 @@
       <h1>히유 그룹 초대</h1>
       <p id="message">기기의 앱 스토어로 이동합니다. 설치 후 공유 메시지의 초대 코드를 복사해 앱에서 입력해 주세요.</p>
       <nav aria-label="앱 다운로드">
-        <a id="ios-store" href="https://apps.apple.com/kr/app/%ED%9E%88%EC%9C%A0/id6807732687">App Store에서 다운로드</a>
-        <a id="android-store" class="secondary" href="https://play.google.com/store/apps/details?id=com.pheeeew">Google Play에서 다운로드</a>
+        <a id="ios-store" href="{{APP_STORE_URL}}">App Store에서 다운로드</a>
+        <a id="android-store" class="secondary" href="{{GOOGLE_PLAY_URL}}">Google Play에서 다운로드</a>
       </nav>
       <p id="redirect-status" aria-live="polite"></p>
     </main>
@@ -31,10 +31,14 @@
       const agent = navigator.userAgent || "";
       const isAndroid = /Android/i.test(agent);
       const isAppleMobile = /iPhone|iPad|iPod/i.test(agent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const storeLinks = Object.freeze({
+        ios: document.querySelector("#ios-store").href,
+        android: document.querySelector("#android-store").href,
+      });
       const storeUrl = isAppleMobile
-        ? "https://apps.apple.com/kr/app/%ED%9E%88%EC%9C%A0/id6807732687"
+        ? storeLinks.ios
         : isAndroid
-          ? "https://play.google.com/store/apps/details?id=com.pheeeew"
+          ? storeLinks.android
           : null;
 
       if (storeUrl) {
