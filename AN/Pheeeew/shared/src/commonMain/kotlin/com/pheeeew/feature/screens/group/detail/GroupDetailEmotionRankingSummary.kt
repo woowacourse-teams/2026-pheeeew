@@ -101,7 +101,7 @@ private fun GroupDetailEmotionRankingUiState.supportingValues(
                 formatCount(currentWeeklyTotal),
             )
         } else {
-            stringResource(Res.string.group_detail_rank_empty)
+            null
         }
     val statusMessage =
         when {
@@ -130,7 +130,6 @@ private fun GroupDetailEmotionRankingUiState.canRetry(weeklyPressCount: GroupDet
 
 private fun GroupDetailEmotionRankingContent.canRetry(): Boolean =
     this == GroupDetailEmotionRankingContent.NoPresses ||
-        this == GroupDetailEmotionRankingContent.NotListed ||
         this == GroupDetailEmotionRankingContent.Unavailable
 
 @Composable
