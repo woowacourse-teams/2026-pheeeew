@@ -1,6 +1,6 @@
 package com.pheeeew.domain.model.emotion
 
-enum class EmotionRegionLevel { SIDO, SIGUNGU, EMD }
+enum class EmotionRegionLevel { SIDO, SIGUNGU }
 
 data class EmotionMapViewport(
     val bounds: EmotionMapBounds,

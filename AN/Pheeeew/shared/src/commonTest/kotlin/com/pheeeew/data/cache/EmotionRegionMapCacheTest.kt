@@ -19,7 +19,7 @@ class EmotionRegionMapCacheTest {
         cache.put(bounds, EmotionRegionLevel.SIDO, null, regions)
         assertEquals(regions, cache.snapshot(bounds, EmotionRegionLevel.SIDO, null))
         assertNull(cache.snapshot(bounds.copy(maxLongitude = 127.0), EmotionRegionLevel.SIDO, null))
-        assertNull(cache.snapshot(bounds, EmotionRegionLevel.EMD, null))
+        assertNull(cache.snapshot(bounds, EmotionRegionLevel.SIGUNGU, null))
         assertNull(cache.snapshot(bounds, EmotionRegionLevel.SIDO, "group"))
     }
 
@@ -50,10 +50,10 @@ class EmotionRegionMapCacheTest {
         val cache = EmotionRegionMapCache()
         cache.put(bounds, EmotionRegionLevel.SIDO, null, regions)
         cache.put(bounds.copy(minLongitude = 126.8), EmotionRegionLevel.SIDO, null, regions)
-        cache.put(bounds, EmotionRegionLevel.EMD, null, regions)
+        cache.put(bounds, EmotionRegionLevel.SIGUNGU, null, regions)
         cache.invalidate(EmotionRegionLevel.SIDO, null)
         assertNull(cache.snapshot(bounds, EmotionRegionLevel.SIDO, null))
         assertNull(cache.snapshot(bounds.copy(minLongitude = 126.8), EmotionRegionLevel.SIDO, null))
-        assertEquals(regions, cache.snapshot(bounds, EmotionRegionLevel.EMD, null))
+        assertEquals(regions, cache.snapshot(bounds, EmotionRegionLevel.SIGUNGU, null))
     }
 }

@@ -685,7 +685,6 @@ class MapViewModelViewportTest {
                                     when (level) {
                                         EmotionRegionLevel.SIDO -> old.await()
                                         EmotionRegionLevel.SIGUNGU -> current.await()
-                                        EmotionRegionLevel.EMD -> error("Unexpected level")
                                     }
                                 },
                             ),
@@ -718,7 +717,7 @@ class MapViewModelViewportTest {
                     viewModel.uiModel.value.cameraCommand
                         ?.value,
                 )
-                viewModel.onViewportChanged(EmotionMapViewport(area, 15.0))
+                viewModel.onViewportChanged(EmotionMapViewport(area, 12.0))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
@@ -926,18 +925,18 @@ class MapViewModelViewportTest {
                 )
                 assertEquals(EmotionRegionLevel.SIDO, viewModel.uiModel.value.displayedRegionLevel)
 
-                viewModel.onViewportChanged(EmotionMapViewport(area, 12.0))
+                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
                 advanceTimeBy(700)
                 runCurrent()
-                next.complete(EmotionRegionResult.Success(listOf(city.copy(id = "dong", name = "역삼동"))))
+                next.complete(EmotionRegionResult.Success(listOf(city.copy(id = "district", name = "강남구"))))
                 runCurrent()
-                viewModel.focusOnRegionCluster("dong")
+                viewModel.focusOnRegionCluster("district")
                 assertEquals(
-                    14.0,
+                    12.0,
                     viewModel.uiModel.value.cameraCommand
                         ?.value,
                 )
-                assertEquals(EmotionRegionLevel.EMD, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(EmotionRegionLevel.SIGUNGU, viewModel.uiModel.value.displayedRegionLevel)
             } finally {
                 Dispatchers.resetMain()
             }
