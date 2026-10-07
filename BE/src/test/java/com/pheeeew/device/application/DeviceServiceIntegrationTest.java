@@ -32,6 +32,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -67,6 +69,52 @@ class DeviceServiceIntegrationTest {
     void tearDown() {
         deviceRefreshTokenRepository.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void 사용_가능한_닉네임을_조회해도_기기나_토큰을_저장하지_않는다() {
+        // given / when
+        boolean available = deviceService.findNicknameAvailability("  Star K  ");
+
+        // then
+        assertThat(available).isTrue();
+        assertThat(deviceRepository.count()).isZero();
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Star K", "star k", " STAR K "})
+    void 이미_사용_중인_닉네임은_대소문자와_앞뒤_공백에_관계없이_사용할_수_없다(String nickname) {
+        // given
+        deviceRepository.saveAndFlush(기본_기기_빌더().nickname("Star K").build());
+
+        // when
+        boolean available = deviceService.findNicknameAvailability(nickname);
+
+        // then
+        assertThat(available).isFalse();
+    }
+
+    @Test
+    void 중간_공백_개수가_다른_닉네임은_구분한다() {
+        // given
+        deviceRepository.saveAndFlush(기본_기기_빌더().nickname("Star K").build());
+
+        // when
+        boolean available = deviceService.findNicknameAvailability("Star  K");
+
+        // then
+        assertThat(available).isTrue();
+    }
+
+    @Test
+    void 사용_가능_여부_조회에도_공통_닉네임_검증을_적용한다() {
+        // given / when
+        Throwable throwable = catchThrowable(() -> deviceService.findNicknameAvailability(" 익명 "));
+
+        // then
+        assertThat(throwable).isInstanceOf(DeviceException.class);
+        assertThat(((DeviceException) throwable).getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NICKNAME_INVALID);
     }
 
     @Test

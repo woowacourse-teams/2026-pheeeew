@@ -11,14 +11,17 @@ import com.pheeeew.device.application.token.AccessTokenIssuer;
 import com.pheeeew.device.application.token.IssuedRefreshToken;
 import com.pheeeew.device.application.token.RefreshTokenIssuer;
 import com.pheeeew.device.domain.Device;
+import com.pheeeew.device.domain.DeviceNickname;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import java.time.Instant;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Service
@@ -38,6 +41,12 @@ public class DeviceService {
         }
 
         return saveNewDevice(requestId, attestation);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean findNicknameAvailability(String nickname) {
+        String normalized = DeviceNickname.from(nickname).value().toLowerCase(Locale.ROOT);
+        return !deviceRepository.existsByNickname(normalized);
     }
 
     private DeviceSaveResult reissueTokens(Device device) {
