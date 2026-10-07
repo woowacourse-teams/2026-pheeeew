@@ -167,6 +167,13 @@
     <string name="legal_external_page_unavailable">이 화면에서는 다른 페이지를 열 수 없어요.</string>
     <string name="legal_confirm">확인</string>
     <string name="settings_app_section">앱 설정</string>
+    <string name="settings_profile_section">내 정보</string>
+    <string name="settings_nickname_change">닉네임 변경</string>
+    <string name="settings_nickname_dialog_title">닉네임을 알려주세요</string>
+    <string name="settings_nickname_dialog_description">다른 사람들이 알아볼 수 있게 입력해주세요.</string>
+    <string name="settings_nickname_hint">닉네임 입력</string>
+    <string name="settings_nickname_cancel">취소</string>
+    <string name="settings_nickname_confirm">확인</string>
     <string name="settings_help_section">이용 안내</string>
     <string name="settings_app_version">앱 버전</string>
 

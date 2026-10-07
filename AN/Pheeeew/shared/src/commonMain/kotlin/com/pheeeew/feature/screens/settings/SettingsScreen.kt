@@ -55,7 +55,9 @@ import pheeeew.shared.generated.resources.settings_app_version
 import pheeeew.shared.generated.resources.settings_help_section
 import pheeeew.shared.generated.resources.settings_legal_open_source
 import pheeeew.shared.generated.resources.settings_legal_privacy
+import pheeeew.shared.generated.resources.settings_nickname_change
 import pheeeew.shared.generated.resources.settings_permissions
+import pheeeew.shared.generated.resources.settings_profile_section
 
 @Composable
 fun SettingsScreen(
@@ -67,6 +69,7 @@ fun SettingsScreen(
     onContactClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var isNicknameDialogVisible by remember { mutableStateOf(false) }
     Column(
         modifier =
             modifier
@@ -86,6 +89,16 @@ fun SettingsScreen(
                 icon = SettingsIcon.Tune,
                 highlighted = true,
                 onClick = onPermissionClick,
+            )
+        }
+
+        Spacer(Modifier.height(22.dp))
+        SettingsSectionTitle(stringResource(Res.string.settings_profile_section))
+        SettingsCard {
+            SettingsActionRow(
+                title = stringResource(Res.string.settings_nickname_change),
+                icon = SettingsIcon.Person,
+                onClick = { isNicknameDialogVisible = true },
             )
         }
 
@@ -113,6 +126,13 @@ fun SettingsScreen(
 
         Spacer(Modifier.height(32.dp))
         ContactCard(onClick = onContactClick)
+    }
+
+    if (isNicknameDialogVisible) {
+        NicknameDialog(
+            onDismiss = { isNicknameDialogVisible = false },
+            onConfirm = { isNicknameDialogVisible = false },
+        )
     }
 }
 
