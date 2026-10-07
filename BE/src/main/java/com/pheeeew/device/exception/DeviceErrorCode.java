@@ -16,7 +16,8 @@ public enum DeviceErrorCode implements ErrorCode {
     DEVICE_CHALLENGE_INVALID("DEVICE-005", "무결성 증명 요청 값을 사용할 수 없습니다.", HttpStatus.BAD_REQUEST),
     DEVICE_ATTESTATION_INVALID("DEVICE-006", "무결성 증명을 확인할 수 없습니다.", HttpStatus.FORBIDDEN),
     DEVICE_ATTESTATION_UNAVAILABLE("DEVICE-007", "무결성 증명을 지금 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.", HttpStatus.SERVICE_UNAVAILABLE),
-    DEVICE_NICKNAME_INVALID("DEVICE-008", "닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다.", HttpStatus.BAD_REQUEST);
+    DEVICE_NICKNAME_INVALID("DEVICE-008", "닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다.", HttpStatus.BAD_REQUEST),
+    DEVICE_NICKNAME_DUPLICATED("DEVICE-009", "이미 사용 중인 닉네임입니다.", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;

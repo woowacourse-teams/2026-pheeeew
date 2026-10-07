@@ -112,6 +112,7 @@ class DeviceAttestationRoutingIntegrationTest {
         // when
         DeviceSaveResult result = deviceService.save(
                 UUID.randomUUID(),
+                "스타크",
                 DeviceAttestation.of(DevicePlatform.ANDROID, JWE_무결성_토큰, 발급.challenge(), null)
         );
 
@@ -130,7 +131,7 @@ class DeviceAttestationRoutingIntegrationTest {
                 DeviceAttestation.of(DevicePlatform.IOS, 정품_증명(), 증명에_묶인_challenge, 키_식별자);
 
         // when
-        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), ios_증명);
+        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), "스타크", ios_증명);
 
         // then
         assertThat(result.created()).isTrue();
@@ -147,7 +148,7 @@ class DeviceAttestationRoutingIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(
-                () -> deviceService.save(UUID.randomUUID(), Play_Integrity_토큰을_실은_IOS_증명)
+                () -> deviceService.save(UUID.randomUUID(), "스타크", Play_Integrity_토큰을_실은_IOS_증명)
         );
 
         // then
@@ -166,7 +167,7 @@ class DeviceAttestationRoutingIntegrationTest {
                 DeviceAttestation.of(DevicePlatform.IOS, 정품_증명(), 증명에_묶인_challenge, 키_식별자);
 
         // when
-        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), ios_증명);
+        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), "스타크", ios_증명);
 
         // then
         assertThat(result.created()).isTrue();

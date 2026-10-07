@@ -79,6 +79,7 @@ class SecurityAuthorizationIntegrationTest {
     private static final String 규칙에_없는_경로 = "/api/v2/unknown";
     private static final String CHALLENGE_경로 = "/api/v2/devices/challenge";
     private static final String 닉네임_조회_경로 = "/api/v2/devices/nicknames/availability";
+    private static final String 닉네임_등록_경로 = "/api/v3/devices";
     private static final String 무결성_토큰 = "integrity-token-from-app";
 
     @LocalServerPort
@@ -128,6 +129,184 @@ class SecurityAuthorizationIntegrationTest {
         deviceChallengeRepository.deleteAll();
         jdbcClient.sql("DELETE FROM regions").update();
         jdbcClient.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
+    }
+
+    @Test
+    void v2는_닉네임_없이_등록하고_같은_요청으로_재시도할_수_있다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+        DeviceTokens first = 닉네임_없이_등록한다(requestId).expectStatus().isCreated()
+                .expectBody(DeviceTokens.class).returnResult().getResponseBody();
+        Device firstDevice = deviceRepository.findByRequestId(requestId).orElseThrow();
+
+        // when
+        DeviceTokens retried = 닉네임_없이_등록한다(requestId).expectStatus().isOk()
+                .expectBody(DeviceTokens.class).returnResult().getResponseBody();
+
+        // then
+        Device device = deviceRepository.findByRequestId(requestId).orElseThrow();
+        assertThat(device.getNickname()).isNull();
+        assertThat(device.getPublicId()).isEqualTo(firstDevice.getPublicId());
+        assertThat(first.accessToken()).isNotBlank();
+        assertThat(retried.accessToken()).isNotBlank();
+        assertThat(retried.refreshToken()).isNotBlank().isNotEqualTo(first.refreshToken());
+        assertThat(deviceRepository.count()).isOne();
+        assertThat(deviceRefreshTokenRepository.count()).isEqualTo(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void v2와_v3를_바꿔_재시도해도_최초_기기의_닉네임을_유지한다(boolean legacyFirst) {
+        // given
+        UUID requestId = UUID.randomUUID();
+        RestTestClient.ResponseSpec first = legacyFirst
+                ? 닉네임_없이_등록한다(requestId) : 닉네임으로_등록한다(requestId, "스타크");
+        first.expectStatus().isCreated();
+        Device firstDevice = deviceRepository.findByRequestId(requestId).orElseThrow();
+
+        // when
+        RestTestClient.ResponseSpec retried = legacyFirst
+                ? 닉네임으로_등록한다(requestId, "스타크") : 닉네임_없이_등록한다(requestId);
+
+        // then
+        retried.expectStatus().isOk().expectBody().jsonPath("$.accessToken").isNotEmpty();
+        Device device = deviceRepository.findByRequestId(requestId).orElseThrow();
+        assertThat(device.getNickname()).isEqualTo(legacyFirst ? null : "스타크");
+        assertThat(device.getPublicId()).isEqualTo(firstDevice.getPublicId());
+        assertThat(device.getPlatform()).isEqualTo(firstDevice.getPlatform());
+        assertThat(deviceRepository.count()).isOne();
+        assertThat(deviceRefreshTokenRepository.count()).isEqualTo(2);
+    }
+
+    @Test
+    void 닉네임과_함께_기기를_등록하면_정규화하여_저장하고_토큰을_발급한다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+
+        // when
+        DeviceTokens tokens = 닉네임으로_등록한다(requestId, "  Star K  ").expectStatus().isCreated()
+                .expectBody(DeviceTokens.class).returnResult().getResponseBody();
+
+        // then
+        assertThat(deviceRepository.findByRequestId(requestId).orElseThrow().getNickname()).isEqualTo("Star K");
+        assertThat(deviceRepository.count()).isOne();
+        assertThat(deviceRefreshTokenRepository.count()).isOne();
+        assertThat(tokens.accessToken()).isNotBlank();
+        assertThat(tokens.refreshToken()).isNotBlank();
+        assertThat(tokens.expiresIn()).isEqualTo(1800);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   ", " 익명 ", "Star1", "abcdefghijk", "Star\tK"})
+    void 닉네임_규칙을_어긴_등록은_400을_반환하고_기기와_토큰을_남기지_않는다(String nickname) {
+        // given / when
+        RestTestClient.ResponseSpec result = 닉네임으로_등록한다(UUID.randomUUID(), nickname);
+
+        // then
+        result.expectStatus().isBadRequest().expectBody().json("""
+                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                """, JsonCompareMode.STRICT);
+        assertThat(deviceRepository.count()).isZero();
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
+    }
+
+    @Test
+    void 닉네임이_중복된_등록은_409를_반환하고_기기와_토큰을_추가하지_않는다() {
+        // given
+        닉네임으로_등록한다(UUID.randomUUID(), "Star K").expectStatus().isCreated();
+        UUID failedRequestId = UUID.randomUUID();
+
+        // when
+        RestTestClient.ResponseSpec result = 닉네임으로_등록한다(failedRequestId, " star k ");
+
+        // then
+        result.expectStatus().isEqualTo(409).expectBody().json("""
+                {"code":"DEVICE-009","message":"이미 사용 중인 닉네임입니다."}
+                """, JsonCompareMode.STRICT);
+        assertThat(deviceRepository.findByRequestId(failedRequestId)).isEmpty();
+        assertThat(deviceRepository.count()).isOne();
+        assertThat(deviceRefreshTokenRepository.count()).isOne();
+    }
+
+    @Test
+    void 등록_재시도에서_다른_닉네임을_보내도_최초_닉네임과_플랫폼을_유지한다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+        닉네임으로_등록한다(requestId, "스타크").expectStatus().isCreated();
+
+        // when
+        RestTestClient.ResponseSpec result = client.post().uri(닉네임_등록_경로)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("requestId", requestId, "nickname", "다른 닉네임", "attestation", Map.of("platform", "IOS")))
+                .exchange();
+
+        // then
+        result.expectStatus().isOk();
+        Device device = deviceRepository.findByRequestId(requestId).orElseThrow();
+        assertThat(device.getNickname()).isEqualTo("스타크");
+        assertThat(device.getPlatform()).isEqualTo(com.pheeeew.device.domain.DevicePlatform.ANDROID);
+        assertThat(deviceRepository.count()).isOne();
+        assertThat(deviceRefreshTokenRepository.count()).isEqualTo(2);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", ", \"nickname\": null"})
+    void v3_등록은_닉네임_누락이나_null을_거절한다(String nicknameField) {
+        // given / when
+        RestTestClient.ResponseSpec result = client.post().uri(닉네임_등록_경로)
+                .contentType(MediaType.APPLICATION_JSON).body("""
+                        {"requestId":"%s", "attestation":{"platform":"ANDROID"}%s}
+                        """.formatted(UUID.randomUUID(), nicknameField)).exchange();
+
+        // then
+        result.expectStatus().isBadRequest().expectBody().json("""
+                {"code":"COMMON-001","message":"요청 값이 올바르지 않습니다."}
+                """, JsonCompareMode.STRICT);
+        assertThat(deviceRepository.count()).isZero();
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"GET", "PUT", "PATCH", "DELETE"})
+    void v3_등록_POST_외의_메서드는_유효한_토큰으로도_거절한다(String method) {
+        // given
+        String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.method(HttpMethod.valueOf(method)).uri(닉네임_등록_경로)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken).exchange();
+
+        // then
+        result.expectStatus().isForbidden().expectBody().json(권한_없음_응답, JsonCompareMode.STRICT);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/extra", "/tokens", "/challenge", "/nicknames/availability"})
+    void v3_등록_하위_경로는_유효한_토큰으로도_거절한다(String suffix) {
+        // given
+        String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.post().uri(닉네임_등록_경로 + suffix)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken).exchange();
+
+        // then
+        result.expectStatus().isForbidden().expectBody().json(권한_없음_응답, JsonCompareMode.STRICT);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("거부해야_하는_토큰들")
+    void 공개_v3_등록에도_유효하지_않은_토큰을_보내면_401을_반환한다(String description, String token) {
+        // given / when
+        RestTestClient.ResponseSpec result = client.post().uri(닉네임_등록_경로)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("requestId", UUID.randomUUID(), "nickname", "스타크",
+                        "attestation", Map.of("platform", "ANDROID"))).exchange();
+
+        // then
+        인증_필요를_검증한다(result);
+        assertThat(deviceRepository.count()).isZero();
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
     }
 
     @Test
@@ -713,6 +892,26 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @Test
+    void 같은_컨트롤러의_v2와_v3_등록_API_문서는_서로_다른_요청_계약을_유지한다() throws JsonProcessingException {
+        // given / when
+        String body = client.get().uri("/v3/api-docs").exchange().expectStatus().isOk()
+                .expectBody(String.class).returnResult().getResponseBody();
+        JsonNode docs = new ObjectMapper().readTree(body);
+
+        // then
+        JsonNode v2 = docs.path("paths").path("/api/v2/devices").path("post");
+        JsonNode v3 = docs.path("paths").path("/api/v3/devices").path("post");
+        assertThat(v2.path("requestBody").path("content").path("application/json").path("schema").path("$ref").asText())
+                .isEqualTo("#/components/schemas/DeviceCreateRequest");
+        assertThat(v3.path("requestBody").path("content").path("application/json").path("schema").path("$ref").asText())
+                .isEqualTo("#/components/schemas/DeviceV3CreateRequest");
+        assertThat(v2.path("operationId").asText()).isNotBlank().isNotEqualTo(v3.path("operationId").asText());
+        JsonNode schemas = docs.path("components").path("schemas");
+        assertThat(schemas.path("DeviceCreateRequest").path("properties").has("nickname")).isFalse();
+        assertThat(schemas.path("DeviceV3CreateRequest").path("required").toString()).contains("\"nickname\"");
+    }
+
+    @Test
     void API_문서는_감정_차단_경로와_감정_식별자_필드를_제공한다() throws JsonProcessingException {
         String body = client.get().uri("/v3/api-docs")
                 .exchange().expectStatus().isOk()
@@ -777,16 +976,18 @@ class SecurityAuthorizationIntegrationTest {
         assertThat(deviceChallengeRepository.count()).isZero();
     }
 
-    @Test
-    void 무결성_증명을_보낸_등록은_자격증명이_없으면_403으로_거절한다() {
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v2/devices", "/api/v3/devices"})
+    void 무결성_증명을_보낸_등록은_자격증명이_없으면_403으로_거절한다(String path) {
         // given / when
-        RestTestClient.ResponseSpec result = 증명을_담아_등록한다(UUID.randomUUID());
+        RestTestClient.ResponseSpec result = 증명을_담아_등록한다(UUID.randomUUID(), null, path);
 
         // then
         result.expectStatus().isForbidden()
                 .expectBody()
                 .json(증명_확인_불가_응답, JsonCompareMode.STRICT);
         assertThat(deviceRepository.count()).isZero();
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
     }
 
     @Test
@@ -1003,13 +1204,8 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     private String 기기를_등록하고_토큰을_받는다(UUID requestId) {
-        DeviceTokens tokens = client.post()
-                .uri("/api/v2/devices")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body("""
-                        {"requestId": "%s", "attestation": {"platform": "ANDROID"}}
-                        """.formatted(requestId))
-                .exchange()
+        String nickname = "기기 " + (char) ('A' + deviceRepository.count());
+        DeviceTokens tokens = 닉네임으로_등록한다(requestId, nickname)
                 .expectStatus().isCreated()
                 .expectBody(DeviceTokens.class)
                 .returnResult()
@@ -1018,16 +1214,30 @@ class SecurityAuthorizationIntegrationTest {
         return tokens.accessToken();
     }
 
-    private RestTestClient.ResponseSpec 증명을_담아_등록한다(UUID requestId) {
-        return 증명을_담아_등록한다(requestId, null);
+    private RestTestClient.ResponseSpec 닉네임_없이_등록한다(UUID requestId) {
+        return client.post().uri("/api/v2/devices")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("requestId", requestId, "attestation", Map.of("platform", "ANDROID")))
+                .exchange();
+    }
+
+    private RestTestClient.ResponseSpec 닉네임으로_등록한다(UUID requestId, String nickname) {
+        return client.post().uri(닉네임_등록_경로)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("requestId", requestId, "nickname", nickname, "attestation", Map.of("platform", "ANDROID")))
+                .exchange();
     }
 
     private RestTestClient.ResponseSpec 증명을_담아_등록한다(UUID requestId, String challenge) {
+        return 증명을_담아_등록한다(requestId, challenge, "/api/v2/devices");
+    }
+
+    private RestTestClient.ResponseSpec 증명을_담아_등록한다(UUID requestId, String challenge, String path) {
         return client.post()
-                .uri("/api/v2/devices")
+                .uri(path)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
-                        {"requestId": "%s", "attestation": {
+                        {"requestId": "%s", "nickname": "스타크", "attestation": {
                           "platform": "ANDROID", "token": "%s", "challenge": %s
                         }}
                         """.formatted(requestId, 무결성_토큰, challenge == null ? "null" : "\"" + challenge + "\""))
