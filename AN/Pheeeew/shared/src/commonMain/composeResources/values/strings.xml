@@ -41,7 +41,6 @@
     <string name="press_summary_my_label">내가 누른 횟수</string>
     <string name="press_summary_title">감정 집계</string>
     <string name="press_emotion_counts_today_title">오늘 감정별 함께 누른 횟수</string>
-    <string name="press_fixture_notice">화면 확인용 예시 데이터예요. 입력은 서버에 전송되거나 저장되지 않아요.</string>
 
     <!-- 지도 -->
     <string name="map_open_list">목록 열기</string>

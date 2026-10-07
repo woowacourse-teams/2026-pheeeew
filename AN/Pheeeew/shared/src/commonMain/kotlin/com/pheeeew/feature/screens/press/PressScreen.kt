@@ -29,7 +29,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,7 +46,6 @@ import com.pheeeew.feature.screens.press.model.PressPeriodSnapshot
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_emotion_counts_today_title
-import pheeeew.shared.generated.resources.press_fixture_notice
 import pheeeew.shared.generated.resources.press_period_this_week
 import pheeeew.shared.generated.resources.press_period_today
 import pheeeew.shared.generated.resources.press_screen_subtitle
@@ -115,16 +113,6 @@ internal fun PressScreen(
             onEmotionTap = onEmotionTap,
             arrangement = EmotionPadArrangement.TwoThree,
             modifier = Modifier.padding(horizontal = 16.dp),
-        )
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text = stringResource(Res.string.press_fixture_notice),
-            color = Color(0xFF727872),
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
-            fontFamily = font,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp),
         )
         Spacer(Modifier.height(24.dp))
         Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
