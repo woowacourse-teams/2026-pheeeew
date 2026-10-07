@@ -42,7 +42,7 @@ class EmotionAnonymousMigrationIntegrationTest {
 
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    void 익명_여부_추가는_기존_감정을_보존하고_구버전_등록을_허용한다() {
+    void 익명_여부와_닉네임_기본값은_기존_감정을_보존하고_명시와_생략_등록을_허용한다() {
         // given: 실제 이전 스키마에 작성 기기 유무가 다른 감정을 준비한다.
         String database = "emotion_anonymous_" + UUID.randomUUID().toString().replace("-", "");
         var container = postgis();
@@ -60,6 +60,13 @@ class EmotionAnonymousMigrationIntegrationTest {
                     """).update();
             구버전_감정을_저장한다(isolated);
             var before = isolated.sql("SELECT to_jsonb(e)::text FROM emotions e ORDER BY id").query(String.class).list();
+            assertThatThrownBy(() -> isolated.sql("""
+                    INSERT INTO emotions (request_id, location, device_id, created_at, updated_at,
+                                          region_code, region_classified_at)
+                    VALUES (gen_random_uuid(), ST_SetSRID(ST_MakePoint(126.9774, 37.5669), 4326), NULL,
+                            CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '11010530', CURRENT_TIMESTAMP)
+                    """).update()).isInstanceOf(DataIntegrityViolationException.class);
+
 
             // when
             Flyway latest = Flyway.configure().dataSource(dataSource).target("20261007.3").load();
@@ -77,8 +84,19 @@ class EmotionAnonymousMigrationIntegrationTest {
             assertThatThrownBy(() -> isolated.sql("UPDATE emotions SET anonymous = FALSE WHERE device_id IS NULL").update())
                     .isInstanceOf(DataIntegrityViolationException.class);
             isolated.sql("UPDATE emotions SET anonymous = FALSE WHERE device_id IS NOT NULL").update();
+            assertThat(isolated.sql("SELECT count(*) FROM emotions WHERE nickname = '기존 랜덤 닉네임'")
+                    .query(Long.class).single()).isEqualTo(4);
+            닉네임을_생략하고_감정을_저장한다(isolated);
+            assertThat(isolated.sql("SELECT anonymous FROM emotions WHERE nickname = '익명' ORDER BY id")
+                    .query(Boolean.class).list()).containsExactly(true, false);
+            assertThatThrownBy(() -> isolated.sql("UPDATE emotions SET nickname = NULL").update())
+                    .isInstanceOf(DataIntegrityViolationException.class);
+            var after = isolated.sql("SELECT to_jsonb(e)::text FROM emotions e ORDER BY id").query(String.class).list();
+
             latest.migrate();
-            assertThat(isolated.sql("SELECT count(*) FROM emotions WHERE NOT anonymous").query(Long.class).single()).isEqualTo(2);
+            assertThat(isolated.sql("SELECT to_jsonb(e)::text FROM emotions e ORDER BY id")
+                    .query(String.class).list()).isEqualTo(after);
+            assertThat(isolated.sql("SELECT count(*) FROM emotions WHERE NOT anonymous").query(Long.class).single()).isEqualTo(3);
             assertThat(isolated.sql("SELECT count(*) FROM flyway_schema_history WHERE version = '20261007.3' AND success")
                     .query(Long.class).single()).isOne();
         } finally {
@@ -111,6 +129,16 @@ class EmotionAnonymousMigrationIntegrationTest {
                        '기존 랜덤 닉네임', owner, CURRENT_TIMESTAMP - INTERVAL '1 day',
                        CURRENT_TIMESTAMP - INTERVAL '1 hour', '11010530', CURRENT_TIMESTAMP
                 FROM (VALUES (NULL::BIGINT), ((SELECT id FROM devices LIMIT 1))) AS authors(owner)
+                """).update();
+    }
+
+    private void 닉네임을_생략하고_감정을_저장한다(JdbcClient client) {
+        client.sql("""
+                INSERT INTO emotions (request_id, location, anonymous, device_id, created_at, updated_at,
+                                      region_code, region_classified_at)
+                SELECT gen_random_uuid(), ST_SetSRID(ST_MakePoint(126.9774, 37.5669), 4326),
+                       anonymous, owner, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, '11010530', CURRENT_TIMESTAMP
+                FROM (VALUES (TRUE, NULL::BIGINT), (FALSE, (SELECT id FROM devices LIMIT 1))) AS authors(anonymous, owner)
                 """).update();
     }
 }
