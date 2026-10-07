@@ -11,32 +11,24 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
-import com.pheeeew.groups.application.dto.GroupPressCommand;
-import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.GroupViewerRole;
 import com.pheeeew.groups.domain.StampFrame;
-import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.exception.GroupErrorCode;
 import com.pheeeew.groups.exception.GroupException;
 import com.pheeeew.support.PostgisDataJpaTest;
-import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityManagerFactory;
 import java.time.Clock;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -55,8 +47,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,9 +56,6 @@ class GroupServiceIntegrationTest {
 
     private static final String 혼동되는_글자 = "ILOU";
     private static final int 동시_요청_수 = 6;
-    private static final int 데드락_회전_수 = 30;
-    private static final int 정합성_회전_수 = 10;
-    private static final String 자른_양_지표 = "pheeeew.group.press.clamped";
 
     @MockitoBean
     private Clock clock;
@@ -86,12 +73,6 @@ class GroupServiceIntegrationTest {
     private GroupMemberRepository groupMemberRepository;
 
     @Autowired
-    private GroupDailyPressRepository groupDailyPressRepository;
-
-    @Autowired
-    private PlatformTransactionManager transactionManager;
-
-    @Autowired
     private DeviceRepository deviceRepository;
 
     @Autowired
@@ -99,9 +80,6 @@ class GroupServiceIntegrationTest {
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
-
-    @Autowired
-    private MeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
@@ -111,7 +89,6 @@ class GroupServiceIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        groupDailyPressRepository.deleteAllInBatch();
         groupMemberRepository.deleteAllInBatch();
         groupStampRepository.deleteAllInBatch();
         groupRepository.deleteAllInBatch();
@@ -365,429 +342,6 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
-    void 버튼을_누르면_오늘_집계가_올라간다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-
-        // when
-        groupService.press(그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.ANGRY));
-        GroupPressCountResult 결과 = groupService.press(그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.ANGRY));
-
-        // then
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(2);
-        assertThat(결과.total()).isEqualTo(2);
-    }
-
-    @Test
-    void 아무리_연타해도_감정마다_행이_하나다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-
-        // when
-        for (int 회차 = 0; 회차 < 50; 회차++) {
-            groupService.press(그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.ANGRY));
-        }
-        GroupPressCountResult 결과 =
-                groupService.press(그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.IRRITATED));
-
-        // then
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(50);
-        assertThat(groupDailyPressRepository.count()).isEqualTo(2);
-    }
-
-    @Test
-    void 여러_멤버가_눌러도_한_그룹의_같은_감정은_한_행에_쌓인다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        Device 멤버 = 기기를_저장한다();
-        groupService.join(멤버.getPublicId(), 그룹.inviteCode());
-
-        // when
-        groupService.press(그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.ANGRY));
-        GroupPressCountResult 결과 =
-                groupService.press(그룹.publicId(), 멤버.getPublicId(), 한_번(EmotionState.ANGRY));
-
-        // then
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(2);
-        assertThat(groupDailyPressRepository.count()).isOne();
-    }
-
-    @Test
-    void 그룹이_다르면_집계가_섞이지_않는다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 내_그룹 = groupService.save(그룹장.getPublicId(), "내모임", null, 스탬프("기본"));
-        GroupResult 옆_그룹 = groupService.save(그룹장.getPublicId(), "옆모임", null, 스탬프("기본"));
-        groupService.press(옆_그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.ANGRY));
-
-        // when
-        GroupPressCountResult 결과 =
-                groupService.press(내_그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.ANGRY));
-
-        // then
-        assertThat(결과.total()).isOne();
-    }
-
-    @Test
-    void 주간_집계는_그_주의_모든_날을_합산한다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        LocalDate 월요일 = 이번_주_월요일();
-        눌린_것으로_둔다(그룹.publicId(), 월요일, EmotionState.ANGRY, 3);
-        눌린_것으로_둔다(그룹.publicId(), 월요일.plusDays(3), EmotionState.ANGRY, 2);
-        눌린_것으로_둔다(그룹.publicId(), 월요일.plusDays(6), EmotionState.EXHAUSTED, 4);
-
-        // when
-        GroupPressCountResult 결과 = groupService.findWeeklyPresses(그룹.publicId(), 그룹장.getPublicId(), 0);
-
-        // then
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(5);
-        assertThat(결과.counts().get(EmotionState.EXHAUSTED)).isEqualTo(4);
-        assertThat(결과.total()).isEqualTo(9);
-    }
-
-    @Test
-    void 주간_집계는_주_경계_밖의_기록을_세지_않는다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        LocalDate 월요일 = 이번_주_월요일();
-        눌린_것으로_둔다(그룹.publicId(), 월요일.minusDays(1), EmotionState.ANGRY, 7);
-        눌린_것으로_둔다(그룹.publicId(), 월요일.plusDays(7), EmotionState.ANGRY, 9);
-        눌린_것으로_둔다(그룹.publicId(), 월요일, EmotionState.ANGRY, 1);
-
-        // when
-        GroupPressCountResult 결과 = groupService.findWeeklyPresses(그룹.publicId(), 그룹장.getPublicId(), 0);
-
-        // then
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(1);
-        assertThat(결과.total()).isEqualTo(1);
-    }
-
-    @Test
-    void 주간_집계는_지난주도_조회할_수_있다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        LocalDate 지난주_월요일 = 이번_주_월요일().minusWeeks(1);
-        눌린_것으로_둔다(그룹.publicId(), 지난주_월요일.plusDays(2), EmotionState.IRRITATED, 6);
-
-        // when
-        GroupPressCountResult 이번주 = groupService.findWeeklyPresses(그룹.publicId(), 그룹장.getPublicId(), 0);
-        GroupPressCountResult 지난주 = groupService.findWeeklyPresses(그룹.publicId(), 그룹장.getPublicId(), 1);
-
-        // then
-        assertThat(이번주.total()).isZero();
-        assertThat(지난주.counts().get(EmotionState.IRRITATED)).isEqualTo(6);
-        assertThat(지난주.total()).isEqualTo(6);
-    }
-
-    @Test
-    void 주간_집계도_누르지_않은_감정을_영으로_내려준다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-
-        // when
-        GroupPressCountResult 결과 = groupService.findWeeklyPresses(그룹.publicId(), 그룹장.getPublicId(), 0);
-
-        // then
-        assertThat(결과.counts()).hasSize(EmotionState.values().length);
-        assertThat(결과.counts().values()).allMatch(count -> count == 0L);
-        assertThat(결과.total()).isZero();
-    }
-
-    @Test
-    void 주간_집계는_멤버가_아니면_볼_수_없다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        Device 남 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-
-        // when
-        Throwable 예외 = catchThrowable(() -> groupService.findWeeklyPresses(그룹.publicId(), 남.getPublicId(), 0));
-
-        // then
-        assertThat(예외).isInstanceOf(GroupException.class);
-    }
-
-    @Test
-    void 누르지_않은_감정도_영으로_내려준다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-
-        // when
-        GroupPressCountResult 결과 =
-                groupService.press(그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.ANGRY));
-
-        // then
-        assertThat(결과.counts()).hasSize(EmotionState.values().length);
-        assertThat(결과.counts().get(EmotionState.EXHAUSTED)).isZero();
-    }
-
-    @Test
-    void 날이_바뀌면_어제_집계는_안_보이고_영부터_시작한다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        groupService.press(그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.ANGRY));
-        어제로_넘긴다(그룹.publicId());
-
-        // when
-        GroupPressCountResult 집계 = 오늘_집계(그룹, 그룹장);
-
-        // then
-        assertThat(집계.total()).isZero();
-        assertThat(집계.counts()).hasSize(EmotionState.values().length);
-        assertThat(groupDailyPressRepository.count()).isOne();
-    }
-
-    @Test
-    void 멤버가_아니면_버튼을_누를_수_없다() {
-        // given
-        GroupResult 그룹 = groupService.save(
-                기기를_저장한다().getPublicId(), "한숨모임", null, 스탬프("기본")
-        );
-        Device 남 = 기기를_저장한다();
-
-        // when
-        Throwable throwable = catchThrowable(
-                () -> groupService.press(그룹.publicId(), 남.getPublicId(), 한_번(EmotionState.ANGRY))
-        );
-
-        // then
-        그룹_오류다(throwable, GroupErrorCode.GROUP_MEMBER_ONLY);
-        assertThat(groupDailyPressRepository.count()).isZero();
-    }
-
-    @Test
-    void 멤버가_아닌_요청도_형식_지표에는_먼저_집계된다() {
-        // given
-        GroupResult 그룹 = groupService.save(
-                기기를_저장한다().getPublicId(), "한숨모임", null, 스탬프("기본")
-        );
-        Device 남 = 기기를_저장한다();
-        double 기존_묶음_요청_수 = 형식_요청_수("counts");
-
-        // when
-        catchThrowable(() -> groupService.press(
-                그룹.publicId(), 남.getPublicId(), 묶음(Map.of(EmotionState.ANGRY, 1))
-        ));
-
-        // then
-        assertThat(형식_요청_수("counts") - 기존_묶음_요청_수).isEqualTo(1);
-    }
-
-    @Test
-    void 묶음으로_보내면_감정마다_행이_하나씩_생기고_각각_그만큼_오른다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-
-        // when
-        GroupPressCountResult 결과 = groupService.press(
-                그룹.publicId(),
-                그룹장.getPublicId(),
-                묶음(순서대로(Map.entry(EmotionState.ANGRY, 9), Map.entry(EmotionState.EXHAUSTED, 3)))
-        );
-
-        // then
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(9);
-        assertThat(결과.counts().get(EmotionState.EXHAUSTED)).isEqualTo(3);
-        assertThat(결과.total()).isEqualTo(12);
-        assertThat(groupDailyPressRepository.count()).isEqualTo(2);
-    }
-
-    @Test
-    void 구버전_단일_감정_형식과_묶음_형식은_같은_행에_함께_쌓인다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-
-        // when
-        GroupPressCountResult 구버전_뒤 =
-                groupService.press(그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.ANGRY));
-        GroupPressCountResult 묶음_뒤 = groupService.press(
-                그룹.publicId(), 그룹장.getPublicId(), 묶음(Map.of(EmotionState.ANGRY, 4))
-        );
-
-        // then
-        assertThat(구버전_뒤.counts().get(EmotionState.ANGRY)).isOne();
-        assertThat(묶음_뒤.counts().get(EmotionState.ANGRY)).isEqualTo(5);
-        assertThat(groupDailyPressRepository.count()).isOne();
-    }
-
-    @Test
-    void 감정별_상한을_넘기면_서른만_반영되고_자른_양이_지표에_오른다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        double 기존_자른_양 = 자른_양("per_state");
-        double 기존_적용_합 = 적용된_합();
-
-        // when
-        GroupPressCountResult 결과 = groupService.press(
-                그룹.publicId(), 그룹장.getPublicId(), 묶음(Map.of(EmotionState.ANGRY, 45))
-        );
-
-        // then
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(30);
-        assertThat(결과.total()).isEqualTo(30);
-        assertThat(자른_양("per_state") - 기존_자른_양).isEqualTo(15);
-        assertThat(적용된_합() - 기존_적용_합).isEqualTo(30);
-    }
-
-    @Test
-    void 전체_합_상한을_넘기면_백만_반영되고_이름이_뒤인_감정은_행이_생기지_않는다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        double 기존_자른_양 = 자른_양("total");
-
-        // when
-        GroupPressCountResult 결과 = groupService.press(
-                그룹.publicId(),
-                그룹장.getPublicId(),
-                묶음(순서대로(
-                        Map.entry(EmotionState.IRRITATED, 30),
-                        Map.entry(EmotionState.FRUSTRATED, 30),
-                        Map.entry(EmotionState.EXHAUSTED, 30),
-                        Map.entry(EmotionState.DISCOURAGED, 30),
-                        Map.entry(EmotionState.ANGRY, 30)
-                ))
-        );
-
-        // then
-        assertThat(결과.total()).isEqualTo(100);
-        assertThat(결과.counts().get(EmotionState.FRUSTRATED)).isEqualTo(10);
-        assertThat(결과.counts().get(EmotionState.IRRITATED)).isZero();
-        assertThat(groupDailyPressRepository.count()).isEqualTo(4);
-        assertThat(자른_양("total") - 기존_자른_양).isEqualTo(50);
-    }
-
-    @Test
-    void 값이_영인_감정만_보내면_집계가_그대로다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        groupService.press(그룹.publicId(), 그룹장.getPublicId(), 묶음(Map.of(EmotionState.ANGRY, 2)));
-
-        // when
-        GroupPressCountResult 결과 = groupService.press(
-                그룹.publicId(), 그룹장.getPublicId(), 묶음(Map.of(EmotionState.ANGRY, 0))
-        );
-
-        // then
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(2);
-        assertThat(결과.total()).isEqualTo(2);
-        assertThat(groupDailyPressRepository.count()).isOne();
-    }
-
-    @Test
-    void 빈_묶음을_보내면_행을_만들지_않고_집계를_그대로_돌려준다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-
-        // when
-        GroupPressCountResult 결과 =
-                groupService.press(그룹.publicId(), 그룹장.getPublicId(), 묶음(Map.of()));
-
-        // then
-        assertThat(결과.total()).isZero();
-        assertThat(결과.counts()).hasSize(EmotionState.values().length);
-        assertThat(groupDailyPressRepository.count()).isZero();
-    }
-
-    @Test
-    void 서로_반대_순서의_묶음을_동시에_보내도_데드락_없이_정확히_합산된다() throws Exception {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        List<Callable<Boolean>> 작업들 = new ArrayList<>();
-        for (int 번호 = 0; 번호 < 동시_요청_수; 번호++) {
-            Map<EmotionState, Integer> 반대_순서 = 번호 % 2 == 0
-                    ? 순서대로(Map.entry(EmotionState.ANGRY, 1), Map.entry(EmotionState.EXHAUSTED, 1))
-                    : 순서대로(Map.entry(EmotionState.EXHAUSTED, 1), Map.entry(EmotionState.ANGRY, 1));
-            작업들.add(() -> {
-                for (int 회전 = 0; 회전 < 데드락_회전_수; 회전++) {
-                    groupService.press(그룹.publicId(), 그룹장.getPublicId(), 묶음(반대_순서));
-                }
-
-                return true;
-            });
-        }
-
-        // when
-        List<Boolean> 성공_여부들 = 실행한다(작업들);
-
-        // then
-        assertThat(성공_여부들).containsOnly(true);
-        GroupPressCountResult 집계 = 오늘_집계(그룹, 그룹장);
-        assertThat(집계.counts().get(EmotionState.ANGRY)).isEqualTo((long) 동시_요청_수 * 데드락_회전_수);
-        assertThat(집계.counts().get(EmotionState.EXHAUSTED)).isEqualTo((long) 동시_요청_수 * 데드락_회전_수);
-        assertThat(집계.total()).isEqualTo(2L * 동시_요청_수 * 데드락_회전_수);
-    }
-
-    @Test
-    void 동시에_눌러도_성공한_요청의_합만_정확히_집계된다() throws Exception {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        List<Device> 기기들 = new ArrayList<>();
-        for (int 번호 = 0; 번호 < 동시_요청_수; 번호++) {
-            Device 기기 = 기기를_저장한다();
-            if (번호 % 2 == 0) {
-                groupService.join(기기.getPublicId(), 그룹.inviteCode());
-            }
-            기기들.add(기기);
-        }
-        List<Callable<Boolean>> 작업들 = 기기들.stream()
-                .map(기기 -> (Callable<Boolean>) () -> {
-                    for (int 회전 = 0; 회전 < 정합성_회전_수; 회전++) {
-                        groupService.press(
-                                그룹.publicId(), 기기.getPublicId(), 묶음(Map.of(EmotionState.ANGRY, 3))
-                        );
-                    }
-
-                    return true;
-                })
-                .toList();
-
-        // when
-        List<Boolean> 성공_여부들 = 실행한다(작업들);
-
-        // then
-        long 성공한_기기_수 = 성공_여부들.stream().filter(Boolean::booleanValue).count();
-        assertThat(성공한_기기_수).isEqualTo(동시_요청_수 / 2);
-        assertThat(오늘_집계(그룹, 그룹장).total()).isEqualTo(성공한_기기_수 * 정합성_회전_수 * 3);
-        assertThat(groupDailyPressRepository.count()).isOne();
-    }
-
-    @Test
-    void 누른_횟수는_이번_주_점수와_순위에_영향을_주지_않는다() {
-        // given
-        Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
-        groupService.press(그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.ANGRY));
-        GroupPressCountResult 누른_결과 =
-                groupService.press(그룹.publicId(), 그룹장.getPublicId(), 한_번(EmotionState.IRRITATED));
-
-        // when
-        GroupDetailResult 상세 = groupService.findOne(그룹.publicId(), 그룹장.getPublicId());
-
-        // then
-        assertThat(누른_결과.total()).isEqualTo(2);
-        assertThat(상세.weeklyScore()).isZero();
-        assertThat(상세.weeklyRank()).isNull();
-    }
-
-    @Test
     void 상세_조회는_그룹_정보와_인원수를_함께_준다() {
         // given
         Device 그룹장 = 기기를_저장한다();
@@ -998,42 +552,8 @@ class GroupServiceIntegrationTest {
         assertThat(groupRepository.findAll()).hasSize(1);
     }
 
-    private GroupPressCommand 한_번(EmotionState 감정) {
-        return GroupPressCommand.of(Map.of(감정, 1), false);
-    }
-
-    private GroupPressCommand 묶음(Map<EmotionState, Integer> counts) {
-        return GroupPressCommand.of(counts, true);
-    }
-
-    @SafeVarargs
-    private Map<EmotionState, Integer> 순서대로(Map.Entry<EmotionState, Integer>... 항목들) {
-        Map<EmotionState, Integer> counts = new LinkedHashMap<>();
-        for (Map.Entry<EmotionState, Integer> 항목 : 항목들) {
-            counts.put(항목.getKey(), 항목.getValue());
-        }
-
-        return counts;
-    }
-
-    private GroupPressCountResult 오늘_집계(GroupResult 그룹, Device 멤버) {
-        return groupService.press(그룹.publicId(), 멤버.getPublicId(), 묶음(Map.of()));
-    }
-
     private GroupViewerRole 역할(GroupResult 그룹, Device 기기) {
         return groupService.findOne(그룹.publicId(), 기기.getPublicId()).role();
-    }
-
-    private double 자른_양(String 상한) {
-        return meterRegistry.get(자른_양_지표).tag("limit", 상한).summary().totalAmount();
-    }
-
-    private double 적용된_합() {
-        return meterRegistry.get("pheeeew.group.press.applied").summary().totalAmount();
-    }
-
-    private double 형식_요청_수(String 형식) {
-        return meterRegistry.get("pheeeew.group.press.requests").tag("format", 형식).counter().count();
     }
 
     @SafeVarargs
@@ -1086,19 +606,6 @@ class GroupServiceIntegrationTest {
         }
     }
 
-    private LocalDate 이번_주_월요일() {
-        return RankingWeek.of(clock.instant(), 0).startDate();
-    }
-
-    private void 눌린_것으로_둔다(UUID groupPublicId, LocalDate 날짜, EmotionState 감정, int 횟수) {
-        Long groupId = groupRepository.findByPublicIdAndDeletedAtIsNull(groupPublicId).orElseThrow().getId();
-        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            for (int i = 0; i < 횟수; i++) {
-                groupDailyPressRepository.increase(groupId, 날짜, 감정.name(), 1, clock.instant());
-            }
-        });
-    }
-
     private Device 기기를_저장한다() {
         return deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
     }
@@ -1110,15 +617,6 @@ class GroupServiceIntegrationTest {
     private void 멤버로_넣는다(UUID groupPublicId, Device device) {
         Group group = groupRepository.findByPublicIdAndDeletedAtIsNull(groupPublicId).orElseThrow();
         groupMemberRepository.saveAndFlush(일반_멤버_빌더(group, device).build());
-    }
-
-    private void 어제로_넘긴다(UUID 그룹_공개_식별자) {
-        jdbcClient.sql("""
-                        UPDATE group_daily_presses SET press_date = press_date - 1
-                         WHERE group_id = (SELECT id FROM groups WHERE public_id = ?)
-                        """)
-                .param(그룹_공개_식별자)
-                .update();
     }
 
     private void 나간다(UUID groupPublicId, Long deviceId) {

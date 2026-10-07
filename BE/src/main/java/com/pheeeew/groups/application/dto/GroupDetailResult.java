@@ -12,16 +12,17 @@ public record GroupDetailResult(
         GroupViewerRole role,
         long memberCount,
         GroupStampResult stamp,
-        long weeklyScore,
-        Integer weeklyRank
+        long weeklyStampCount,
+        Integer weeklyStampRank,
+        long weeklyPressCount,
+        Integer weeklyPressRank
 ) {
     public static GroupDetailResult of(
             Group group,
             GroupViewerRole role,
             long memberCount,
             GroupStampResult stamp,
-            long weeklyScore,
-            Integer weeklyRank
+            GroupWeeklyRankResult weeklyRanks
     ) {
         return new GroupDetailResult(
                 group.getPublicId(),
@@ -31,8 +32,10 @@ public record GroupDetailResult(
                 role,
                 memberCount,
                 stamp,
-                weeklyScore,
-                weeklyRank
+                weeklyRanks.stampCount(),
+                weeklyRanks.stampRank(),
+                weeklyRanks.pressCount(),
+                weeklyRanks.pressRank()
         );
     }
 }

@@ -6,8 +6,9 @@ import com.pheeeew.groups.application.dto.GroupPressRankingResult;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupRankingResult;
 import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
-import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
+import com.pheeeew.groups.application.dto.GroupWeeklyRankResult;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
+import com.pheeeew.groups.domain.repository.GroupPressRankingRepository;
 import com.pheeeew.groups.domain.repository.GroupRankingRepository;
 import com.pheeeew.groups.domain.repository.projection.GroupScoreProjection;
 import java.time.Clock;
@@ -26,7 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class GroupRankingService {
 
     private final GroupRankingRepository groupRankingRepository;
-    private final GroupDailyPressRepository groupDailyPressRepository;
+    private final GroupPressRankingRepository groupPressRankingRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final Clock clock;
 
@@ -48,13 +49,13 @@ public class GroupRankingService {
     public GroupPressRankingResult findPressRanking(UUID devicePublicId, int weeksAgo) {
         RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
         List<GroupScoreProjection> scores =
-                groupDailyPressRepository.findPressScores(week.startDate(), week.endDate());
+                groupPressRankingRepository.findPressScores(week.startDate(), week.endDate());
 
         return GroupPressRankingResult.of(
                 weeksAgo,
                 week.startAt(),
                 week.endAt(),
-                groupDailyPressRepository.existsPressBefore(week.startDate()),
+                groupPressRankingRepository.existsPressBefore(week.startDate()),
                 rankPresses(scores, devicePublicId)
         );
     }
@@ -66,15 +67,28 @@ public class GroupRankingService {
     ) {
         RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
         List<GroupScoreProjection> scores =
-                groupDailyPressRepository.findPressScoresByState(state, week.startDate(), week.endDate());
+                groupPressRankingRepository.findPressScoresByState(state, week.startDate(), week.endDate());
 
         return GroupStatePressRankingResult.of(
                 state,
                 weeksAgo,
                 week.startAt(),
                 week.endAt(),
-                groupDailyPressRepository.existsPressBefore(week.startDate()),
+                groupPressRankingRepository.existsPressBefore(week.startDate()),
                 rankPresses(scores, devicePublicId)
+        );
+    }
+
+    public GroupWeeklyRankResult findWeeklyRanks(UUID groupPublicId) {
+        RankingWeek week = RankingWeek.of(clock.instant(), 0);
+        List<GroupScoreProjection> stampScores =
+                groupRankingRepository.findGroupScores(week.startAt(), week.endAt());
+        List<GroupScoreProjection> pressScores =
+                groupPressRankingRepository.findPressScores(week.startDate(), week.endDate());
+
+        return GroupWeeklyRankResult.of(
+                findRankedGroup(stampScores, groupPublicId),
+                findRankedGroup(pressScores, groupPublicId)
         );
     }
 
@@ -83,6 +97,13 @@ public class GroupRankingService {
 
         return rank(scores, (rank, score) ->
                 GroupPressRankingItem.of(rank, score, myGroupPublicIds.contains(score.getGroupPublicId())));
+    }
+
+    private GroupRankingItem findRankedGroup(List<GroupScoreProjection> scores, UUID groupPublicId) {
+        return rank(scores, GroupRankingItem::of).stream()
+                .filter(item -> item.groupPublicId().equals(groupPublicId))
+                .findFirst()
+                .orElse(null);
     }
 
     private <T> List<T> rank(

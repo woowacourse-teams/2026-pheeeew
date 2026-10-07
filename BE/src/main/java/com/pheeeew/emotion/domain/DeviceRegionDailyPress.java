@@ -1,7 +1,6 @@
-package com.pheeeew.groups.domain;
+package com.pheeeew.emotion.domain;
 
 import com.pheeeew.common.domain.BaseEntity;
-import com.pheeeew.emotion.domain.EmotionState;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -17,9 +16,9 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "group_daily_presses")
+@Table(name = "device_region_daily_presses")
 @Entity
-public class GroupDailyPress extends BaseEntity {
+public class DeviceRegionDailyPress extends BaseEntity {
 
     private static final int MAX_STATE_LENGTH = 20;
 
@@ -27,11 +26,11 @@ public class GroupDailyPress extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "group_id", nullable = false, updatable = false)
-    private Long groupId;
-
     @Column(name = "press_date", nullable = false, updatable = false)
     private LocalDate pressDate;
+
+    @Column(name = "device_id", nullable = false, updatable = false)
+    private Long deviceId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, updatable = false, length = MAX_STATE_LENGTH)

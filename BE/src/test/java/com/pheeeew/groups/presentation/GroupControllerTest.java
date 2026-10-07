@@ -10,11 +10,8 @@ import static org.mockito.Mockito.when;
 import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
-import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.GroupService;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
-import com.pheeeew.groups.application.dto.GroupPressCommand;
-import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
@@ -23,7 +20,6 @@ import com.pheeeew.groups.domain.GroupViewerRole;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.exception.GroupErrorCode;
 import com.pheeeew.groups.exception.GroupException;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -239,7 +235,7 @@ class GroupControllerTest {
     }
 
     @Test
-    void 상세_조회는_스탬프_점수와_순위를_내려주고_프레스는_담지_않는다() {
+    void 상세_조회는_스탬프와_프레스의_개수와_순위를_네_필드로_나눠_내려준다() {
         // given
         when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세(GroupViewerRole.OWNER));
 
@@ -254,11 +250,31 @@ class GroupControllerTest {
                 .jsonPath("$.role").isEqualTo("OWNER")
                 .jsonPath("$.memberCount").isEqualTo(1)
                 .jsonPath("$.stamp.text").isEqualTo("기본")
-                .jsonPath("$.weeklyScore").isEqualTo(5)
-                .jsonPath("$.weeklyRank").isEqualTo(1)
+                .jsonPath("$.weeklyStampCount").isEqualTo(5)
+                .jsonPath("$.weeklyStampRank").isEqualTo(1)
+                .jsonPath("$.weeklyPressCount").isEqualTo(42)
+                .jsonPath("$.weeklyPressRank").isEqualTo(3)
+                .jsonPath("$.weeklyScore").doesNotExist()
+                .jsonPath("$.weeklyRank").doesNotExist()
                 .jsonPath("$.todayPresses").doesNotExist()
-                .jsonPath("$.weeklyPresses").doesNotExist()
-                .jsonPath("$.weeklyPressRank").doesNotExist();
+                .jsonPath("$.weeklyPresses").doesNotExist();
+    }
+
+    @Test
+    void 프레스_개수와_순위가_없으면_개수는_영이고_순위는_null_로_직렬화된다() {
+        // given
+        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기록_없는_상세());
+
+        // when
+        RestTestClient.ResponseSpec result = 상세를_조회한다();
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.weeklyStampCount").isEqualTo(0)
+                .jsonPath("$.weeklyStampRank").isEqualTo(null)
+                .jsonPath("$.weeklyPressCount").isEqualTo(0)
+                .jsonPath("$.weeklyPressRank").isEqualTo(null);
     }
 
     @Test
@@ -276,131 +292,6 @@ class GroupControllerTest {
                 .jsonPath("$.inviteCode").isEqualTo("ABCD1234")
                 .jsonPath("$.groupId").isEqualTo(그룹_공개_식별자.toString());
         verify(groupService).findOne(그룹_공개_식별자, 기기_공개_식별자);
-    }
-
-    @Test
-    void 구버전_단일_감정_형식은_그대로_한_번_누른_커맨드로_위임된다() {
-        // given
-        GroupPressCommand 기대_커맨드 = GroupPressCommand.of(Map.of(EmotionState.ANGRY, 1), false);
-        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드))
-                .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 2L)));
-
-        // when
-        RestTestClient.ResponseSpec result = 누른다("{\"state\": \"ANGRY\"}");
-
-        // then
-        result.expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.counts.ANGRY").isEqualTo(2)
-                .jsonPath("$.total").isEqualTo(2);
-        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드);
-    }
-
-    @Test
-    void 감정을_묶어_보내면_묶음_커맨드로_위임된다() {
-        // given
-        GroupPressCommand 기대_커맨드 = GroupPressCommand.of(
-                Map.of(EmotionState.ANGRY, 9, EmotionState.EXHAUSTED, 3), true
-        );
-        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드))
-                .thenReturn(GroupPressCountResult.from(
-                        Map.of(EmotionState.ANGRY, 9L, EmotionState.EXHAUSTED, 3L)
-                ));
-
-        // when
-        RestTestClient.ResponseSpec result = 누른다("{\"counts\": {\"ANGRY\": 9, \"EXHAUSTED\": 3}}");
-
-        // then
-        result.expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.counts.ANGRY").isEqualTo(9)
-                .jsonPath("$.counts.EXHAUSTED").isEqualTo(3)
-                .jsonPath("$.total").isEqualTo(12);
-        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드);
-    }
-
-    @Test
-    void 빈_묶음도_200이고_빈_커맨드가_그대로_서비스로_간다() {
-        // given
-        GroupPressCommand 기대_커맨드 = GroupPressCommand.of(Map.of(), true);
-        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드))
-                .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 7L)));
-
-        // when
-        RestTestClient.ResponseSpec result = 누른다("{\"counts\": {}}");
-
-        // then
-        result.expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.counts.ANGRY").isEqualTo(7)
-                .jsonPath("$.total").isEqualTo(7);
-        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드);
-    }
-
-    @Test
-    void 값이_영인_묶음도_200이고_영이_그대로_서비스로_간다() {
-        // given
-        GroupPressCommand 기대_커맨드 = GroupPressCommand.of(Map.of(EmotionState.ANGRY, 0), true);
-        when(groupService.press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드))
-                .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 7L)));
-
-        // when
-        RestTestClient.ResponseSpec result = 누른다("{\"counts\": {\"ANGRY\": 0}}");
-
-        // then
-        result.expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.counts.ANGRY").isEqualTo(7)
-                .jsonPath("$.total").isEqualTo(7);
-        verify(groupService).press(그룹_공개_식별자, 기기_공개_식별자, 기대_커맨드);
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "{}",
-            "{\"state\": null}",
-            "{\"state\": null, \"counts\": null}",
-            "{\"state\": \"ANGRY\", \"counts\": {\"ANGRY\": 1}}"
-    })
-    void state_와_counts_를_둘_다_보내거나_둘_다_안_보내면_400이고_서비스를_부르지_않는다(String 바디) {
-        // when
-        RestTestClient.ResponseSpec result = 누른다(바디);
-
-        // then
-        result.expectStatus().isBadRequest();
-        verifyNoInteractions(groupService);
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "{\"counts\": {\"ANGRY\": -3}}",
-            "{\"counts\": {\"ANGRY\": null}}",
-            "{\"counts\": {\"ANGRY\": 1, \"EXHAUSTED\": -1}}"
-    })
-    void 음수나_빈_값이_섞인_묶음은_400이고_서비스를_부르지_않는다(String 바디) {
-        // when
-        RestTestClient.ResponseSpec result = 누른다(바디);
-
-        // then
-        result.expectStatus().isBadRequest();
-        verifyNoInteractions(groupService);
-    }
-
-    @ParameterizedTest
-    @ValueSource(strings = {
-            "{\"state\": \"\"}",
-            "{\"state\": \"HAPPY\"}",
-            "{\"state\": \"angry\"}",
-            "{\"counts\": {\"HAPPY\": 1}}",
-            "{\"counts\": {\"angry\": 1}}"
-    })
-    void 다루지_않는_감정을_보내면_400이고_서비스를_부르지_않는다(String 바디) {
-        // when
-        RestTestClient.ResponseSpec result = 누른다(바디);
-
-        // then
-        result.expectStatus().isBadRequest();
-        verifyNoInteractions(groupService);
     }
 
     @Test
@@ -487,55 +378,6 @@ class GroupControllerTest {
                 .exchange();
     }
 
-    @Test
-    void 주간_집계를_조회하면_기본으로_이번_주를_돌려준다() {
-        // given
-        when(groupService.findWeeklyPresses(그룹_공개_식별자, 기기_공개_식별자, 0))
-                .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 9L)));
-
-        // when
-        RestTestClient.ResponseSpec result = 주간_집계를_조회한다("");
-
-        // then
-        result.expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.counts.ANGRY").isEqualTo(9)
-                .jsonPath("$.total").isEqualTo(9);
-        verify(groupService).findWeeklyPresses(그룹_공개_식별자, 기기_공개_식별자, 0);
-    }
-
-    @Test
-    void 주간_집계는_몇_주_전인지_골라_조회한다() {
-        // given
-        when(groupService.findWeeklyPresses(그룹_공개_식별자, 기기_공개_식별자, 2))
-                .thenReturn(GroupPressCountResult.from(Map.of(EmotionState.EXHAUSTED, 4L)));
-
-        // when
-        RestTestClient.ResponseSpec result = 주간_집계를_조회한다("?weeksAgo=2");
-
-        // then
-        result.expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.counts.EXHAUSTED").isEqualTo(4);
-        verify(groupService).findWeeklyPresses(그룹_공개_식별자, 기기_공개_식별자, 2);
-    }
-
-    @Test
-    void 주간_집계는_몇_주_전인지가_음수면_조회하지_않는다() {
-        // when
-        RestTestClient.ResponseSpec result = 주간_집계를_조회한다("?weeksAgo=-1");
-
-        // then
-        result.expectStatus().isBadRequest();
-        verifyNoInteractions(groupService);
-    }
-
-    private RestTestClient.ResponseSpec 주간_집계를_조회한다(String 쿼리) {
-        return client.get()
-                .uri(GROUPS_URI + "/" + 그룹_공개_식별자 + "/presses" + 쿼리)
-                .exchange();
-    }
-
     private RestTestClient.ResponseSpec 상세를_조회한다() {
         return client.get()
                 .uri(GROUPS_URI + "/" + 그룹_공개_식별자)
@@ -543,6 +385,20 @@ class GroupControllerTest {
     }
 
     private GroupDetailResult 기본_상세(GroupViewerRole 역할) {
+        return 상세(역할, 5, 1, 42, 3);
+    }
+
+    private GroupDetailResult 기록_없는_상세() {
+        return 상세(GroupViewerRole.NONE, 0, null, 0, null);
+    }
+
+    private GroupDetailResult 상세(
+            GroupViewerRole 역할,
+            long 스탬프_개수,
+            Integer 스탬프_순위,
+            long 프레스_개수,
+            Integer 프레스_순위
+    ) {
         return new GroupDetailResult(
                 그룹_공개_식별자,
                 "한숨모임",
@@ -551,17 +407,11 @@ class GroupControllerTest {
                 역할,
                 1,
                 new GroupStampResult("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE),
-                5,
-                1
+                스탬프_개수,
+                스탬프_순위,
+                프레스_개수,
+                프레스_순위
         );
-    }
-
-    private RestTestClient.ResponseSpec 누른다(String 바디) {
-        return client.post()
-                .uri(GROUPS_URI + "/" + 그룹_공개_식별자 + "/presses")
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(바디)
-                .exchange();
     }
 
     private GroupResult 기본_결과() {
