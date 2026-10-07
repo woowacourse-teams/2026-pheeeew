@@ -1,8 +1,12 @@
 package com.pheeeew.feature.screens.group.adapter
 
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.repository.group.GroupInviteLookupResult
 import com.pheeeew.domain.repository.group.GroupJoinRepository
 import com.pheeeew.domain.repository.group.GroupJoinRepositoryResult
+import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.screens.group.home.GroupListResult
 import com.pheeeew.feature.screens.group.home.GroupListSource
 import com.pheeeew.feature.screens.group.join.GroupJoinResult
@@ -28,11 +32,9 @@ class ApiLookupGroupAction(
 class ApiJoinGroupAction(
     private val repository: GroupJoinRepository,
     private val groupListSource: GroupListSource,
-    monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
+    monitoring: Monitoring = NoOpMonitoring,
 ) : JoinGroupAction {
-    private val telemetry =
-        com.pheeeew.feature.monitoring.product
-            .ProductMonitoring(monitoring, "group_home")
+    private val telemetry = ProductMonitoring(monitoring, "group_home")
 
     override suspend fun join(
         groupId: GroupId,
@@ -74,7 +76,7 @@ class ApiJoinGroupAction(
                 telemetry
                     .operation(
                         "operation_reconciled",
-                        com.pheeeew.feature.monitoring.product.labels(
+                        labels(
                             "operation_kind" to "group_join",
                             "group_key" to groupId.value,
                         ),

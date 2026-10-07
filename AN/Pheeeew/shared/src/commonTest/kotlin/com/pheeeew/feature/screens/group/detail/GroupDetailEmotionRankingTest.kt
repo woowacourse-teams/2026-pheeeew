@@ -2,6 +2,8 @@ package com.pheeeew.feature.screens.group.detail
 
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationKind
+import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
+import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -221,8 +223,8 @@ class GroupDetailEmotionRankingTest {
         }
 
     private fun createViewModel(
-        detail: com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel,
-        ranking: suspend (com.pheeeew.feature.screens.group.model.GroupId) -> GroupDetailEmotionRankingResult,
+        detail: GroupDetailUiModel,
+        ranking: suspend (GroupId) -> GroupDetailEmotionRankingResult,
         detailSource: GroupDetailSource = { GroupDetailLoadResult.Loaded(detail) },
     ): GroupDetailViewModel {
         val dependencies =

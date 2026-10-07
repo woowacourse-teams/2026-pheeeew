@@ -2,6 +2,8 @@ package com.pheeeew.feature.screens.group.create
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
@@ -33,7 +35,7 @@ class GroupCreateViewModel(
     private val findCandidatesAction: FindGroupCreateCandidatesAction =
         FindGroupCreateCandidatesAction { GroupCreateCandidatesResult.Unavailable },
     private val sessionStore: GroupCreateSessionStore = EmptyGroupCreateSessionStore,
-    monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
+    monitoring: Monitoring = NoOpMonitoring,
     private val nowMillis: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) : ViewModel() {
     val telemetry = ProductMonitoring(monitoring, "group_create")

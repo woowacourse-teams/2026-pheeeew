@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.group.detail.component
+package com.pheeeew.feature.emotion.component
 
 import android.os.Build
 import android.view.HapticFeedbackConstants
@@ -7,7 +7,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalView
 
 @Composable
-internal actual fun rememberGroupEmotionHapticFeedback(): () -> Unit {
+internal actual fun rememberEmotionHapticFeedback(): () -> Unit {
     val view = LocalView.current
     return remember(view) {
         {

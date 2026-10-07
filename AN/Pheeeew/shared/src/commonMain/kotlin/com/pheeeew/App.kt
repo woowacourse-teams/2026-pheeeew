@@ -66,6 +66,7 @@ import com.pheeeew.core.di.group.createGroupStampListRepository
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.GroupRootDestination
 import com.pheeeew.core.navigation.MapRootDestination
+import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.permission.AppSettingsLauncher
@@ -104,6 +105,8 @@ import com.pheeeew.feature.screens.map.rememberRegionClusterSymbolImages
 import com.pheeeew.feature.screens.map.renderer.MapCameraSnapshotUiModel
 import com.pheeeew.feature.screens.map.renderer.NativeMap
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
+import com.pheeeew.feature.screens.press.PressFixtureSessionViewModel
+import com.pheeeew.feature.screens.press.PressRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
@@ -179,6 +182,7 @@ private fun AppContent(
 ) {
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val pressFixtureSession: PressFixtureSessionViewModel = viewModel { PressFixtureSessionViewModel() }
     var versionCheckAttempt by remember { mutableStateOf(0) }
     var initialVersionCheckComplete by remember { mutableStateOf(false) }
     var splashAnimationCompleted by rememberSaveable { mutableStateOf(false) }
@@ -488,6 +492,7 @@ private fun AppContent(
 
         val selectedDestination =
             when {
+                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> AppDestination.Press
                 currentBackStackEntry?.destination?.hasRoute<GroupRootDestination>() == true -> AppDestination.Group
                 currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> AppDestination.Ranking
                 else -> AppDestination.Map
@@ -637,6 +642,13 @@ private fun AppContent(
                     }
                 }
 
+                composable<PressRootDestination> {
+                    PressRoute(
+                        dataSource = pressFixtureSession.dataSource,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+
                 composable<RankingRootDestination>(
                     enterTransition = {
                         if (initialState.destination.hasRoute<GroupRootDestination>() ||
@@ -729,6 +741,7 @@ private fun AppContent(
                         val route =
                             when (destination) {
                                 AppDestination.Map -> MapRootDestination
+                                AppDestination.Press -> PressRootDestination
                                 AppDestination.Group -> GroupRootDestination
                                 AppDestination.Ranking -> RankingRootDestination
                             }
@@ -736,6 +749,7 @@ private fun AppContent(
                         if (navController.currentDestination?.hasRoute(route::class) == true) {
                             when (destination) {
                                 AppDestination.Map -> mapViewModel.refreshEmotionPins()
+                                AppDestination.Press -> Unit
                                 AppDestination.Group -> refreshGroup?.invoke()
                                 AppDestination.Ranking -> refreshRanking?.invoke()
                             }

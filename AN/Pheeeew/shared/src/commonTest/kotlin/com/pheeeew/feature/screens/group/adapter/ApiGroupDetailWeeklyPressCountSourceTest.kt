@@ -9,6 +9,7 @@ import com.pheeeew.feature.screens.group.model.GroupId
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import com.pheeeew.domain.model.group.GroupId as DomainGroupId
 
 class ApiGroupDetailWeeklyPressCountSourceTest {
     @Test
@@ -17,15 +18,13 @@ class ApiGroupDetailWeeklyPressCountSourceTest {
             var requestedGroupId: String? = null
             val repository =
                 object : GroupPressRepository {
-                    override suspend fun findWeekly(
-                        groupId: com.pheeeew.domain.model.group.GroupId,
-                    ): GroupWeeklyPressCountResult {
+                    override suspend fun findWeekly(groupId: DomainGroupId): GroupWeeklyPressCountResult {
                         requestedGroupId = groupId.value
                         return GroupWeeklyPressCountResult.Loaded(12L)
                     }
 
                     override suspend fun press(
-                        groupId: com.pheeeew.domain.model.group.GroupId,
+                        groupId: DomainGroupId,
                         state: GroupPressState,
                     ): GroupPressResult = GroupPressResult.Unavailable
                 }
@@ -42,15 +41,13 @@ class ApiGroupDetailWeeklyPressCountSourceTest {
             var requestCount = 0
             val repository =
                 object : GroupPressRepository {
-                    override suspend fun findWeekly(
-                        groupId: com.pheeeew.domain.model.group.GroupId,
-                    ): GroupWeeklyPressCountResult {
+                    override suspend fun findWeekly(groupId: DomainGroupId): GroupWeeklyPressCountResult {
                         requestCount++
                         return GroupWeeklyPressCountResult.Loaded(12L)
                     }
 
                     override suspend fun press(
-                        groupId: com.pheeeew.domain.model.group.GroupId,
+                        groupId: DomainGroupId,
                         state: GroupPressState,
                     ): GroupPressResult = GroupPressResult.Unavailable
                 }

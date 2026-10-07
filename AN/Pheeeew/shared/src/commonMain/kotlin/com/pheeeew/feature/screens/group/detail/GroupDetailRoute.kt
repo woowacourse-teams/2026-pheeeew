@@ -16,6 +16,7 @@ import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.screens.group.join.GroupInviteLinkCodec
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
+import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collect
@@ -92,10 +93,7 @@ fun GroupDetailRoute(
         }
     }
 
-    val foreground =
-        com.pheeeew.feature.screens.map.monitoring
-            .rememberMonitoringForeground() &&
-            LocalProductMonitoringVisible.current
+    val foreground = rememberMonitoringForeground() && LocalProductMonitoringVisible.current
     GroupDetailScreen(
         feedbackOperationKey = { viewModel.lastAcceptedPressKey },
         onFeedbackShown = { key ->

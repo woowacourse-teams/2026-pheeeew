@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.group.detail.component
+package com.pheeeew.feature.emotion.component
 
 import kotlin.math.PI
 import kotlin.math.abs

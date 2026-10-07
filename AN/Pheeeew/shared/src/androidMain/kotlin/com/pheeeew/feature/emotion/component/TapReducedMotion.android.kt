@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.group.detail.component
+package com.pheeeew.feature.emotion.component
 
 import android.database.ContentObserver
 import android.os.Handler

@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -64,6 +65,7 @@ import pheeeew.shared.generated.resources.navigation_group
 import pheeeew.shared.generated.resources.navigation_map
 import pheeeew.shared.generated.resources.navigation_press
 import pheeeew.shared.generated.resources.navigation_ranking
+import pheeeew.shared.generated.resources.ranking_press_tab
 import pheeeew.shared.generated.resources.ranking_stamps
 
 private val NavigationInk = Color(0xFF202323)
@@ -75,6 +77,7 @@ internal val AppBottomNavigationBarOverlaySpace =
 
 internal enum class AppDestination {
     Map,
+    Press,
     Group,
     Ranking,
 }
@@ -88,6 +91,7 @@ private enum class DestinationIcon(
     val visualScale: Float,
 ) {
     Map(0.96f),
+    Press(1.02f),
     Group(1.02f),
     Ranking(1.2f),
 }
@@ -208,6 +212,7 @@ internal fun AppBottomNavigationBar(
                 DestinationIconView(
                     when (destination) {
                         AppDestination.Map -> DestinationIcon.Map
+                        AppDestination.Press -> DestinationIcon.Press
                         AppDestination.Group -> DestinationIcon.Group
                         AppDestination.Ranking -> DestinationIcon.Ranking
                     },
@@ -219,6 +224,7 @@ internal fun AppBottomNavigationBar(
                         stringResource(
                             when (destination) {
                                 AppDestination.Map -> Res.string.navigation_map
+                                AppDestination.Press -> Res.string.navigation_press
                                 AppDestination.Group -> Res.string.navigation_group
                                 AppDestination.Ranking -> Res.string.navigation_ranking
                             },
@@ -362,7 +368,7 @@ internal fun AppBottomNavigationBar(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = stringResource(Res.string.navigation_press),
+                text = stringResource(Res.string.ranking_press_tab),
                 color = NavigationInk,
                 fontSize = 14.sp,
                 fontFamily = navigationFont,
@@ -435,6 +441,10 @@ private fun DestinationIconView(
     icon: DestinationIcon,
     pressScale: Float,
 ) {
+    if (icon == DestinationIcon.Press) {
+        PressHandNavigationIcon(pressScale = icon.visualScale * pressScale)
+        return
+    }
     Canvas(
         Modifier
             .size(20.dp)
@@ -445,6 +455,8 @@ private fun DestinationIconView(
     ) {
         scale(size.width / 20f, size.height / 20f, pivot = Offset.Zero) {
             when (icon) {
+                DestinationIcon.Press -> {}
+
                 DestinationIcon.Map -> {
                     val outline =
                         Path().apply {
@@ -517,6 +529,48 @@ private fun DestinationIconView(
                     drawLine(NavigationInk, Offset(8.23f, 8.6f), Offset(8.23f, 15.7f), 1.4f, cap = StrokeCap.Round)
                     drawLine(NavigationInk, Offset(11.77f, 11.1f), Offset(11.77f, 15.7f), 1.4f, cap = StrokeCap.Round)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PressHandNavigationIcon(pressScale: Float) {
+    val paths =
+        remember {
+            listOf(
+                PathParser()
+                    .parsePathString(
+                        "M6 14V6a2 2 0 0 1 4 0V4a2 2 0 0 1 4 0v2a2 2 0 0 1 4 0v2a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15Z",
+                    ).toPath(),
+                PathParser()
+                    .parsePathString("M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2")
+                    .toPath(),
+                PathParser()
+                    .parsePathString("M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2")
+                    .toPath(),
+                PathParser()
+                    .parsePathString("M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8")
+                    .toPath(),
+                PathParser()
+                    .parsePathString(
+                        "M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15",
+                    ).toPath(),
+            )
+        }
+    Canvas(
+        Modifier
+            .size(20.dp)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            },
+    ) {
+        scale(size.width / 24f, size.height / 24f, pivot = Offset.Zero) {
+            drawPath(paths[0], Color.White)
+            val stroke = Stroke(width = 2f, cap = StrokeCap.Round, join = StrokeJoin.Round)
+            for (index in 1..4) {
+                drawPath(paths[index], NavigationInk, style = stroke)
             }
         }
     }

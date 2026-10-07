@@ -1,5 +1,7 @@
 package com.pheeeew.feature.screens.group.detail
 
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 
 data class GroupDetailDependencies(
@@ -9,7 +11,7 @@ data class GroupDetailDependencies(
     val errorReporter: GroupDetailErrorReporter,
     val operationKeyAllocator: GroupOperationKeyAllocator,
     val requestPolicy: GroupDetailRequestPolicy = GroupDetailRequestPolicy(),
-    val monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
+    val monitoring: Monitoring = NoOpMonitoring,
     val emotionRankingSource: GroupDetailEmotionRankingSource = GroupDetailEmotionRankingSource.Unavailable,
     val weeklyPressCountSource: GroupDetailWeeklyPressCountSource = GroupDetailWeeklyPressCountSource.Unavailable,
 )
