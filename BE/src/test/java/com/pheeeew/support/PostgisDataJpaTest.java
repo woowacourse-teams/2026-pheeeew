@@ -17,7 +17,8 @@ import com.pheeeew.device.infra.attestation.PlayIntegrityConfig;
 import com.pheeeew.device.infra.attestation.PlayIntegrityDeviceAttestationVerifier;
 import com.pheeeew.device.infra.attestation.PlayIntegrityMetrics;
 import com.pheeeew.report.application.DeviceBlockService;
-import com.pheeeew.report.application.EmotionBlockService;
+import com.pheeeew.report.application.command.EmotionBlockCommandService;
+import com.pheeeew.report.application.query.EmotionBlockQueryService;
 import com.pheeeew.report.application.EmotionReportMetrics;
 import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.emotion.application.EmotionPressMetrics;
@@ -72,7 +73,8 @@ import org.springframework.test.context.ActiveProfiles;
         GroupRankingService.class,
         InviteCodeGenerator.class,
         EmotionReportService.class,
-        EmotionBlockService.class,
+        EmotionBlockCommandService.class,
+        EmotionBlockQueryService.class,
         DeviceBlockService.class,
         KoreanEmotionNicknameGenerator.class,
         EmotionPressMetrics.class,

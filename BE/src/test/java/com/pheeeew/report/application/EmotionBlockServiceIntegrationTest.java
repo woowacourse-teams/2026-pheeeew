@@ -6,6 +6,8 @@ import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층�
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import com.pheeeew.report.application.command.EmotionBlockCommandService;
+import com.pheeeew.report.application.query.EmotionBlockQueryService;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -53,7 +55,10 @@ class EmotionBlockServiceIntegrationTest {
     private int 등록_순번;
 
     @Autowired
-    private EmotionBlockService emotionBlockService;
+    private EmotionBlockCommandService emotionBlockCommandService;
+
+    @Autowired
+    private EmotionBlockQueryService emotionBlockQueryService;
 
     @Autowired
     private EmotionBlockRepository emotionBlockRepository;
@@ -92,7 +97,7 @@ class EmotionBlockServiceIntegrationTest {
         Long 차단할_한숨 = 한숨을_저장한다(작성자.getId(), "오늘은 조금 지쳤다");
 
         // when
-        BlockSaveResult result = emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
+        BlockSaveResult result = emotionBlockCommandService.save(차단할_한숨, 차단자.getPublicId());
 
         // then
         assertThat(result.created()).isTrue();
@@ -109,10 +114,10 @@ class EmotionBlockServiceIntegrationTest {
         // given
         Device 차단자 = 기기를_저장한다();
         Long 차단할_한숨 = 한숨을_저장한다(null, null);
-        BlockSaveResult 최초 = emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
+        BlockSaveResult 최초 = emotionBlockCommandService.save(차단할_한숨, 차단자.getPublicId());
 
         // when
-        BlockSaveResult 다시 = emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
+        BlockSaveResult 다시 = emotionBlockCommandService.save(차단할_한숨, 차단자.getPublicId());
 
         // then
         assertThat(최초.created()).isTrue();
@@ -160,7 +165,7 @@ class EmotionBlockServiceIntegrationTest {
         Device writer = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("이전 이름").build());
         Emotion target = emotionRepository.saveAndFlush(기본_한숨_빌더()
                 .deviceId(writer.getId()).anonymous(anonymous).memo("최초 근거").build());
-        BlockSaveResult first = emotionBlockService.save(target.getId(), blocker.getPublicId());
+        BlockSaveResult first = emotionBlockCommandService.save(target.getId(), blocker.getPublicId());
         String firstNickname = "익명";
         if (!anonymous) {
             firstNickname = "이전 이름";
@@ -169,7 +174,7 @@ class EmotionBlockServiceIntegrationTest {
 
         // when
         deviceService.updateNickname(writer.getPublicId(), "새 이름");
-        BlockSaveResult retried = emotionBlockService.save(target.getId(), blocker.getPublicId());
+        BlockSaveResult retried = emotionBlockCommandService.save(target.getId(), blocker.getPublicId());
 
         // then
         String currentNickname = "익명";
@@ -193,7 +198,7 @@ class EmotionBlockServiceIntegrationTest {
         Emotion target = emotionRepository.saveAndFlush(기본_한숨_빌더().deviceId(writer.getId()).anonymous(false).build());
 
         // when
-        BlockSaveResult result = emotionBlockService.save(target.getId(), blocker.getPublicId());
+        BlockSaveResult result = emotionBlockCommandService.save(target.getId(), blocker.getPublicId());
 
         // then
         assertThat(result.block().nickname()).isEqualTo("익명");
@@ -207,7 +212,7 @@ class EmotionBlockServiceIntegrationTest {
         Long 내가_쓴_한숨 = 한숨을_저장한다(차단자.getId(), null);
 
         // when
-        BlockSaveResult result = emotionBlockService.save(내가_쓴_한숨, 차단자.getPublicId());
+        BlockSaveResult result = emotionBlockCommandService.save(내가_쓴_한숨, 차단자.getPublicId());
 
         // then
         assertThat(result.created()).isTrue();
@@ -221,7 +226,7 @@ class EmotionBlockServiceIntegrationTest {
 
         // when
         Throwable throwable =
-                catchThrowable(() -> emotionBlockService.save(없는_한숨_식별자, 차단자.getPublicId()));
+                catchThrowable(() -> emotionBlockCommandService.save(없는_한숨_식별자, 차단자.getPublicId()));
 
         // then
         assertThat(throwable)
@@ -238,7 +243,7 @@ class EmotionBlockServiceIntegrationTest {
 
         // when
         Throwable throwable =
-                catchThrowable(() -> emotionBlockService.save(차단할_한숨, 없는_기기_공개_식별자));
+                catchThrowable(() -> emotionBlockCommandService.save(차단할_한숨, 없는_기기_공개_식별자));
 
         // then
         assertThat(throwable).isInstanceOf(DeviceException.class);
@@ -255,7 +260,7 @@ class EmotionBlockServiceIntegrationTest {
 
         // when
         Throwable throwable =
-                catchThrowable(() -> emotionBlockService.delete(차단하지_않은_한숨, 차단자.getPublicId()));
+                catchThrowable(() -> emotionBlockCommandService.delete(차단하지_않은_한숨, 차단자.getPublicId()));
 
         // then
         assertThat(throwable).isNull();
@@ -268,10 +273,10 @@ class EmotionBlockServiceIntegrationTest {
         Device 차단자 = 기기를_저장한다();
         Device 남 = 기기를_저장한다();
         Long 차단할_한숨 = 한숨을_저장한다(null, null);
-        emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
+        emotionBlockCommandService.save(차단할_한숨, 차단자.getPublicId());
 
         // when
-        emotionBlockService.delete(차단할_한숨, 남.getPublicId());
+        emotionBlockCommandService.delete(차단할_한숨, 남.getPublicId());
 
         // then
         assertThat(emotionBlockRepository.findByBlockerDeviceIdAndEmotionId(차단자.getId(), 차단할_한숨))
@@ -287,12 +292,12 @@ class EmotionBlockServiceIntegrationTest {
         Long 먼저_차단한_한숨 = 한숨을_저장한다(null, "먼저 차단");
         Long 나중에_차단한_한숨 = 한숨을_저장한다(null, "나중에 차단");
         Long 남이_차단한_한숨 = 한숨을_저장한다(null, null);
-        emotionBlockService.save(먼저_차단한_한숨, 차단자.getPublicId());
-        emotionBlockService.save(나중에_차단한_한숨, 차단자.getPublicId());
-        emotionBlockService.save(남이_차단한_한숨, 남.getPublicId());
+        emotionBlockCommandService.save(먼저_차단한_한숨, 차단자.getPublicId());
+        emotionBlockCommandService.save(나중에_차단한_한숨, 차단자.getPublicId());
+        emotionBlockCommandService.save(남이_차단한_한숨, 남.getPublicId());
 
         // when
-        BlockListResult result = emotionBlockService.findAll(차단자.getPublicId(), null);
+        BlockListResult result = emotionBlockQueryService.findAll(차단자.getPublicId(), null);
 
         // then
         assertThat(result.items())
@@ -317,9 +322,9 @@ class EmotionBlockServiceIntegrationTest {
         Emotion unnamedEmotion = emotionRepository.saveAndFlush(기본_한숨_빌더()
                 .deviceId(unnamed.getId()).anonymous(false).build());
         for (Emotion emotion : List.of(namedEmotion, anonymousEmotion, ownerlessEmotion, unnamedEmotion)) {
-            emotionBlockService.save(emotion.getId(), blocker.getPublicId());
+            emotionBlockCommandService.save(emotion.getId(), blocker.getPublicId());
         }
-        BlockListResult before = emotionBlockService.findAll(blocker.getPublicId(), null);
+        BlockListResult before = emotionBlockQueryService.findAll(blocker.getPublicId(), null);
         assertThat(before.items()).extracting(BlockResult::nickname)
                 .containsExactly("익명", "익명", "익명", "이전 이름");
 
@@ -327,7 +332,7 @@ class EmotionBlockServiceIntegrationTest {
         deviceService.updateNickname(writer.getPublicId(), "새 이름");
         jdbcClient.sql("UPDATE emotions SET deleted_at = NOW() WHERE id = :id")
                 .param("id", namedEmotion.getId()).update();
-        BlockListResult after = emotionBlockService.findAll(blocker.getPublicId(), null);
+        BlockListResult after = emotionBlockQueryService.findAll(blocker.getPublicId(), null);
 
         // then
         assertThat(after.items()).extracting(BlockResult::nickname)
@@ -346,13 +351,13 @@ class EmotionBlockServiceIntegrationTest {
         // given
         Device 차단자 = 기기를_저장한다();
         Long 차단할_한숨 = 한숨을_저장한다(null, null);
-        emotionBlockService.save(차단할_한숨, 차단자.getPublicId());
+        emotionBlockCommandService.save(차단할_한숨, 차단자.getPublicId());
         jdbcClient.sql("UPDATE emotions SET deleted_at = NOW() WHERE id = :id")
                 .param("id", 차단할_한숨)
                 .update();
 
         // when
-        BlockListResult result = emotionBlockService.findAll(차단자.getPublicId(), null);
+        BlockListResult result = emotionBlockQueryService.findAll(차단자.getPublicId(), null);
 
         // then
         assertThat(result.items())
@@ -370,15 +375,15 @@ class EmotionBlockServiceIntegrationTest {
                 .update();
 
         // when
-        BlockSaveResult 최초 = emotionBlockService.save(emotionId, 차단자.getPublicId());
-        BlockSaveResult 재요청 = emotionBlockService.save(emotionId, 차단자.getPublicId());
+        BlockSaveResult 최초 = emotionBlockCommandService.save(emotionId, 차단자.getPublicId());
+        BlockSaveResult 재요청 = emotionBlockCommandService.save(emotionId, 차단자.getPublicId());
 
         // then
         assertThat(최초.created()).isTrue();
         assertThat(재요청.created()).isFalse();
         assertThat(재요청.block().blockId()).isEqualTo(최초.block().blockId());
         assertThat(emotionBlockRepository.count()).isOne();
-        assertThat(emotionBlockService.findAll(차단자.getPublicId(), null).items())
+        assertThat(emotionBlockQueryService.findAll(차단자.getPublicId(), null).items())
                 .extracting(BlockResult::emotionId)
                 .containsExactly(emotionId);
     }
@@ -398,14 +403,14 @@ class EmotionBlockServiceIntegrationTest {
                 emotionId = 한숨을_저장한다(null, null);
             }
             차단한_한숨들.add(emotionId);
-            emotionBlockService.save(emotionId, 차단자.getPublicId());
+            emotionBlockCommandService.save(emotionId, 차단자.getPublicId());
         }
 
         // when
-        BlockListResult 첫_페이지 = emotionBlockService.findAll(차단자.getPublicId(), null);
+        BlockListResult 첫_페이지 = emotionBlockQueryService.findAll(차단자.getPublicId(), null);
         deviceService.updateNickname(작성자.getPublicId(), "새 이름");
         BlockListResult 다음_페이지 =
-                emotionBlockService.findAll(차단자.getPublicId(), 첫_페이지.nextCursor());
+                emotionBlockQueryService.findAll(차단자.getPublicId(), 첫_페이지.nextCursor());
 
         // then
         assertThat(첫_페이지.items()).hasSize(50);
@@ -429,7 +434,7 @@ class EmotionBlockServiceIntegrationTest {
 
         // when
         Throwable throwable =
-                catchThrowable(() -> emotionBlockService.findAll(차단자.getPublicId(), "not-a-cursor"));
+                catchThrowable(() -> emotionBlockQueryService.findAll(차단자.getPublicId(), "not-a-cursor"));
 
         // then
         assertThat(throwable).isInstanceOf(BlockException.class);
@@ -482,7 +487,7 @@ class EmotionBlockServiceIntegrationTest {
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
                     start.await();
-                    return emotionBlockService.save(emotionId, devicePublicId);
+                    return emotionBlockCommandService.save(emotionId, devicePublicId);
                 }));
             }
 

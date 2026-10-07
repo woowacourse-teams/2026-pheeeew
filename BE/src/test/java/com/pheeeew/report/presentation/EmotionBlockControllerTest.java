@@ -9,7 +9,8 @@ import static org.mockito.Mockito.when;
 import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
-import com.pheeeew.report.application.EmotionBlockService;
+import com.pheeeew.report.application.command.EmotionBlockCommandService;
+import com.pheeeew.report.application.query.EmotionBlockQueryService;
 import com.pheeeew.report.application.dto.BlockListResult;
 import com.pheeeew.report.application.dto.BlockResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
@@ -57,7 +58,10 @@ class EmotionBlockControllerTest {
     private final RestTestClient client;
 
     @MockitoBean
-    private EmotionBlockService emotionBlockService;
+    private EmotionBlockCommandService emotionBlockCommandService;
+
+    @MockitoBean
+    private EmotionBlockQueryService emotionBlockQueryService;
 
     @Autowired
     EmotionBlockControllerTest(RestTestClient client) {
@@ -78,7 +82,7 @@ class EmotionBlockControllerTest {
     @Test
     void 처음_차단하면_201과_작성자_정보가_없는_차단_응답을_반환한다() {
         // given
-        when(emotionBlockService.save(EMOTION_ID, 기기_공개_식별자))
+        when(emotionBlockCommandService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenReturn(BlockSaveResult.of(기본_차단_결과(), true));
 
         // when
@@ -89,13 +93,13 @@ class EmotionBlockControllerTest {
                 .expectHeader().contentType(MediaType.APPLICATION_JSON)
                 .expectBody()
                 .json(기본_차단_응답(), JsonCompareMode.STRICT);
-        verify(emotionBlockService).save(EMOTION_ID, 기기_공개_식별자);
+        verify(emotionBlockCommandService).save(EMOTION_ID, 기기_공개_식별자);
     }
 
     @Test
     void 이미_차단한_감정을_다시_차단하면_200과_최초_차단을_반환한다() {
         // given
-        when(emotionBlockService.save(EMOTION_ID, 기기_공개_식별자))
+        when(emotionBlockCommandService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenReturn(BlockSaveResult.of(기본_차단_결과(), false));
 
         // when
@@ -105,7 +109,7 @@ class EmotionBlockControllerTest {
         result.expectStatus().isOk()
                 .expectBody()
                 .json(기본_차단_응답(), JsonCompareMode.STRICT);
-        verify(emotionBlockService).save(EMOTION_ID, 기기_공개_식별자);
+        verify(emotionBlockCommandService).save(EMOTION_ID, 기기_공개_식별자);
     }
 
     @ParameterizedTest
@@ -116,13 +120,13 @@ class EmotionBlockControllerTest {
 
         // then
         오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
-        verifyNoInteractions(emotionBlockService);
+        verifyNoInteractions(emotionBlockCommandService, emotionBlockQueryService);
     }
 
     @Test
     void 차단할_감정이_없으면_404를_반환한다() {
         // given
-        when(emotionBlockService.save(EMOTION_ID, 기기_공개_식별자))
+        when(emotionBlockCommandService.save(EMOTION_ID, 기기_공개_식별자))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_NOT_FOUND));
 
         // when
@@ -142,13 +146,13 @@ class EmotionBlockControllerTest {
 
         // then
         오류를_검증한다(result, 500, "COMMON-002", "서버 내부 오류가 발생했습니다.");
-        verifyNoInteractions(emotionBlockService);
+        verifyNoInteractions(emotionBlockCommandService, emotionBlockQueryService);
     }
 
     @Test
     void 차단_목록을_커서와_함께_반환한다() {
         // given
-        when(emotionBlockService.findAll(기기_공개_식별자, "opaque-cursor"))
+        when(emotionBlockQueryService.findAll(기기_공개_식별자, "opaque-cursor"))
                 .thenReturn(BlockListResult.of(List.of(기본_차단_결과()), true, "next-cursor"));
 
         // when
@@ -167,13 +171,13 @@ class EmotionBlockControllerTest {
                           "nextCursor": "next-cursor"
                         }
                         """.formatted(기본_차단_응답()), JsonCompareMode.STRICT);
-        verify(emotionBlockService).findAll(기기_공개_식별자, "opaque-cursor");
+        verify(emotionBlockQueryService).findAll(기기_공개_식별자, "opaque-cursor");
     }
 
     @Test
     void 커서를_생략하면_첫_페이지를_조회한다() {
         // given
-        when(emotionBlockService.findAll(기기_공개_식별자, null))
+        when(emotionBlockQueryService.findAll(기기_공개_식별자, null))
                 .thenReturn(BlockListResult.of(List.of(), false, null));
 
         // when
@@ -187,13 +191,13 @@ class EmotionBlockControllerTest {
                 .json("""
                         {"items": [], "hasNext": false, "nextCursor": null}
                         """, JsonCompareMode.STRICT);
-        verify(emotionBlockService).findAll(기기_공개_식별자, null);
+        verify(emotionBlockQueryService).findAll(기기_공개_식별자, null);
     }
 
     @Test
     void 사용할_수_없는_커서는_400을_반환한다() {
         // given
-        when(emotionBlockService.findAll(기기_공개_식별자, "invalid-cursor"))
+        when(emotionBlockQueryService.findAll(기기_공개_식별자, "invalid-cursor"))
                 .thenThrow(new BlockException(BlockErrorCode.BLOCK_INVALID_CURSOR));
 
         // when
@@ -215,7 +219,7 @@ class EmotionBlockControllerTest {
         // then
         result.expectStatus().isNoContent()
                 .expectBody().isEmpty();
-        verify(emotionBlockService).delete(EMOTION_ID, 기기_공개_식별자);
+        verify(emotionBlockCommandService).delete(EMOTION_ID, 기기_공개_식별자);
     }
 
     @ParameterizedTest
@@ -228,7 +232,7 @@ class EmotionBlockControllerTest {
 
         // then
         오류를_검증한다(result, 400, "COMMON-001", "요청 값이 올바르지 않습니다.");
-        verifyNoInteractions(emotionBlockService);
+        verifyNoInteractions(emotionBlockCommandService, emotionBlockQueryService);
     }
 
     private RestTestClient.ResponseSpec 차단한다(String body) {
