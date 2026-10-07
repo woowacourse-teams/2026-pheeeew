@@ -115,6 +115,7 @@ Accepted (YYYY-MM-DD)
 | [0028](0028-assign-nearby-regions-and-restrict-emotion-creation.md) | 경계 밖 감정의 인접 지역 배정과 신규 등록 범위 제한 | 포함 판정을 우선하고 1km 이내만 배정해요. 신규 범위 밖 등록은 거부하고 기존 미매칭은 수동 전환해요 |
 | [0029](0029-log-exception-messages-and-allowed-request-values.md) | 오류 로그의 예외 메시지와 허용한 요청 값 | Proposed: DB가 원인이 아닌 예외의 메시지와 허용한 경로, 쿼리 값을 남겨요. 요청 본문, 위치, 요청자는 남기지 않아요 |
 | [0030](0030-open-group-detail-to-non-members.md) | 그룹 상세의 전체 공개와 초대 코드 노출 | 가입 여부와 무관하게 상세를 조회해요. 초대 코드가 모두에게 노출되는 것을 감수하고 #647에서 다시 결정해요 |
+| [0031](0031-sum-group-presses-from-personal-presses.md) | 그룹 프레스의 원천 | 그룹 프레스를 현재 멤버의 주간 개인 프레스 합으로 구해요. 멤버십은 조회 시점에 평가해요 |
 
 ## AI 사용
 
