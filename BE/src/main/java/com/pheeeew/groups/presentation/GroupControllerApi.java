@@ -12,12 +12,16 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "그룹", description = "그룹을 만들고 관리합니다.")
@@ -147,19 +151,51 @@ public interface GroupControllerApi {
             description = """
                     그룹 화면의 감정 버튼을 누릅니다. **그룹 멤버만** 누를 수 있습니다.
 
+                    - 요청 형식이 두 가지입니다. `state` 와 `counts` 중 **정확히 하나만** 보냅니다.
+                      둘 다 보내거나 둘 다 비우면 400 입니다.
+                    - `counts` 는 감정별 누른 횟수를 한 번에 묶어 보냅니다. 예: `{"ANGRY": 9, "EXHAUSTED": 3}`.
+                      **일정 주기로 모아 보내는 쪽을 권장합니다.** 버튼마다 요청을 보내지 않습니다.
+                    - `state` 는 **구버전 호환용**입니다. `counts` 에 `1` 을 보낸 것과 같게 처리합니다.
+                    - `counts` 의 값이 `0` 인 감정은 **누르지 않은 것으로 보고 넘깁니다.**
+                      모든 값이 `0` 이거나 빈 객체여도 400 이 아니라 **오늘 집계만 돌려줍니다.**
+                      음수는 400 입니다.
+                    - 상한을 넘겨도 **거절하지 않고 넘친 만큼만 버립니다.** 감정 하나당 `30`,
+                      요청 전체 합 `100` 까지 반영합니다. 전체 합이 넘치면 감정 이름 오름차순으로 채웁니다.
                     - 누른 뒤의 **오늘 집계를 바로 돌려줍니다.** 다시 조회할 필요가 없습니다.
-                    - **횟수 제한이 없습니다.** 연타하면 그만큼 올라갑니다. 취소는 없습니다.
+                      누르지 않은 감정도 `0` 으로 내려와 다섯 감정이 항상 모두 있습니다.
+                    - 취소는 없습니다.
                     - **지도에 감정이 찍히지 않고 그룹 점수와 순위에도 영향이 없습니다.**
                       점수는 지도에 남긴 감정만 셉니다.
                     """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "누르기 성공"),
+            @ApiResponse(responseCode = "400", description = "state 와 counts 를 둘 다 또는 둘 다 보내지 않음, 다루지 않는 감정, counts 값이 음수이거나 null"),
             @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
             @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
     })
     GroupPressCountResponse press(
             UUID groupId,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = GroupPressRequest.class),
+                            examples = {
+                                    @ExampleObject(
+                                            name = "묶음(권장)",
+                                            value = """
+                                                    {"counts":{"ANGRY":9,"EXHAUSTED":3}}
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "구버전 단일 감정",
+                                            value = """
+                                                    {"state":"ANGRY"}
+                                                    """
+                                    )
+                            }
+                    )
+            )
             @Valid GroupPressRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );

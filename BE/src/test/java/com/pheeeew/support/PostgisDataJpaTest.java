@@ -21,11 +21,14 @@ import com.pheeeew.report.application.EmotionBlockService;
 import com.pheeeew.report.application.EmotionReportMetrics;
 import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.emotion.infra.KoreanEmotionNicknameGenerator;
+import com.pheeeew.region.application.RegionClassifier;
+import com.pheeeew.region.domain.repository.RegionRepository;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import com.pheeeew.groups.application.GroupPressMetrics;
 import com.pheeeew.groups.application.GroupRankingService;
 import com.pheeeew.groups.application.GroupService;
 import com.pheeeew.groups.application.InviteCodeGenerator;
@@ -61,13 +64,16 @@ import org.springframework.test.context.ActiveProfiles;
         PlayIntegrityDeviceAttestationVerifier.class,
         PlayIntegrityMetrics.class,
         EmotionReportMetrics.class,
+        GroupPressMetrics.class,
         GroupService.class,
         GroupRankingService.class,
         InviteCodeGenerator.class,
         EmotionReportService.class,
         EmotionBlockService.class,
         DeviceBlockService.class,
-        KoreanEmotionNicknameGenerator.class
+        KoreanEmotionNicknameGenerator.class,
+        RegionClassifier.class,
+        RegionRepository.class
 })
 public @interface PostgisDataJpaTest {
 }

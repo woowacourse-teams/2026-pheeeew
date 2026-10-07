@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashSet;
 import java.util.Set;
 import static com.pheeeew.appversion.fixture.AppVersionFixture.기본_앱_버전_정책_빌더;
+import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import ch.qos.logback.classic.Level;
@@ -106,6 +107,8 @@ class SecurityAuthorizationIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        검증용_지역_계층을_저장한다(jdbcClient);
+        jdbcClient.sql("UPDATE region_datasets SET boundaries_verified_at = CURRENT_TIMESTAMP").update();
         client = RestTestClient.bindToServer()
                 .baseUrl("http://localhost:" + port)
                 .build();
@@ -121,6 +124,8 @@ class SecurityAuthorizationIntegrationTest {
         deviceRefreshTokenRepository.deleteAll();
         deviceRepository.deleteAll();
         deviceChallengeRepository.deleteAll();
+        jdbcClient.sql("DELETE FROM regions").update();
+        jdbcClient.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
     }
 
     @Test
@@ -281,6 +286,50 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isUnauthorized();
+        assertThat(emotionRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 지역_검사보다_인증을_먼저_적용한다(boolean boundariesReady) {
+        // given
+        if (!boundariesReady) {
+            jdbcClient.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
+        }
+
+        // when
+        RestTestClient.ResponseSpec result = client.post().uri("/api/v1/emotions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("requestId", UUID.randomUUID(), "state", "FRUSTRATED", "contentType", "NONE",
+                        "longitude", 0, "latitude", 0, "rotationDegrees", 0)).exchange();
+
+        // then
+        인증_필요를_검증한다(result);
+        assertThat(emotionRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 지원_범위_밖_400과_자료_미준비_503을_다른_오류_본문으로_반환한다(boolean boundariesReady) {
+        // given
+        String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        if (!boundariesReady) {
+            jdbcClient.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
+        }
+
+        // when
+        RestTestClient.ResponseSpec result = client.post().uri("/api/v1/emotions")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("requestId", UUID.randomUUID(), "state", "FRUSTRATED", "contentType", "NONE",
+                        "longitude", 0, "latitude", 0, "rotationDegrees", 0)).exchange();
+
+        // then
+        result.expectStatus().isEqualTo(boundariesReady ? 400 : 503).expectBody().json(boundariesReady ? """
+                {"code":"EMOTION-014","message":"이 위치에서는 기록할 수 없습니다. 다른 위치를 선택해 주세요."}
+                """ : """
+                {"code":"EMOTION-013","message":"지역 분류 자료를 사용할 수 없습니다."}
+                """, JsonCompareMode.STRICT);
         assertThat(emotionRepository.count()).isZero();
     }
 

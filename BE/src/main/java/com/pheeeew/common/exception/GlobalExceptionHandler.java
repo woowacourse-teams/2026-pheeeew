@@ -3,17 +3,25 @@ package com.pheeeew.common.exception;
 import static com.pheeeew.common.exception.CommonErrorCode.ENDPOINT_NOT_FOUND;
 import static com.pheeeew.common.exception.CommonErrorCode.INTERNAL_SERVER_ERROR;
 import static com.pheeeew.common.exception.CommonErrorCode.INVALID_REQUEST;
+import static com.pheeeew.common.exception.CommonErrorCode.METHOD_NOT_ALLOWED;
+import static com.pheeeew.common.exception.CommonErrorCode.UNSUPPORTED_MEDIA_TYPE;
 import static com.pheeeew.common.logging.RequestLogWriter.ERROR_CODE_ATTRIBUTE;
 import static com.pheeeew.common.logging.RequestLogWriter.FAILURE_ATTRIBUTE;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.time.Duration;
+import org.apache.tomcat.util.http.InvalidParameterException;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
@@ -37,7 +45,9 @@ public class GlobalExceptionHandler {
             HandlerMethodValidationException.class,
             MethodArgumentTypeMismatchException.class,
             ConstraintViolationException.class,
-            HttpMessageNotReadableException.class
+            HttpMessageNotReadableException.class,
+            MissingServletRequestParameterException.class,
+            InvalidParameterException.class
     })
     public ResponseEntity<ErrorResponse> handleInvalidRequest(Exception exception) {
         return toResponseEntity(INVALID_REQUEST);
@@ -46,6 +56,23 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFound(NoResourceFoundException exception) {
         return toResponseEntity(ENDPOINT_NOT_FOUND);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotAllowed(HttpRequestMethodNotSupportedException exception) {
+        return ResponseEntity.status(METHOD_NOT_ALLOWED.getStatus())
+                .headers(exception.getHeaders())
+                .body(ErrorResponse.from(METHOD_NOT_ALLOWED));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException exception) {
+        return toResponseEntity(UNSUPPORTED_MEDIA_TYPE);
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<Void> handleNotAcceptable(HttpMediaTypeNotAcceptableException exception) {
+        return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).build();
     }
 
     @ExceptionHandler(Exception.class)

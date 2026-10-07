@@ -96,7 +96,7 @@ Accepted (YYYY-MM-DD)
 | [0009](0009-keep-previous-refresh-token-on-registration-retry.md) | 등록 재시도의 이전 토큰 처리 | 재시도에서 기존 토큰을 폐기하지 않아요. 경합에서 정상 응답을 받은 앱이 잠기기 때문이에요 |
 | [0010](0010-use-alloy-and-grafana-cloud-for-production-monitoring.md) | 운영 모니터링에 Alloy와 Grafana Cloud 사용 | Proposed: 운영 EC2에서 수집하고 지표·로그 저장과 조회는 Cloud에 맡겨요 |
 | [0011](0011-use-servlet-filter-for-http-request-logging.md) | HTTP 요청 로그와 추적 문맥을 필터에서 처리 | Proposed: 동기 MVC 처리 전후에 추적 문맥을 관리하고 오류·느린 요청을 기록해요 |
-| [0012](0012-limit-exported-http-logs-and-use-aggregate-metrics.md) | 요청 통계 집계와 외부 전송 로그 제한 | Proposed: 지표로 요청 통계를 관찰하고 검토된 서버 오류·느린 요청 로그만 전송해요 |
+| [0012](0012-limit-exported-http-logs-and-use-aggregate-metrics.md) | 요청 통계 집계와 외부 전송 로그 제한 | Proposed: 지표로 요청 통계를 관찰하고 검토된 서버 오류·느린 요청 로그만 전송해요. 오류 로그의 예외 메시지와 요청 값은 ADR-0029 에 있어요 |
 | [0013](0013-validate-token-purpose-in-decoder-not-authority.md) | 토큰 용도 검증 위치 | 용도를 권한으로 바꾸지 않고 디코딩 단계에서 검사해 다른 용도의 토큰이 401로 나가게 해요 |
 | [0014](0014-call-play-integrity-without-google-client-library.md) | Play Integrity 호출 방식 | 구글 클라이언트 라이브러리를 쓰지 않고 이미 있는 기구로 직접 호출해요 |
 | [0015](0015-verify-attestation-only-when-token-is-present.md) | 무결성 증명 검증 시점 | 토큰이 있을 때만 검증해요. 강제 잠금은 설정이 아니라 코드 상수로 둬요 |
@@ -111,6 +111,9 @@ Accepted (YYYY-MM-DD)
 | [0024](0024-filter-blocks-with-not-exists.md) | 차단 필터를 `NOT EXISTS` 로 | nullable 컬럼에서 `NOT IN` 은 행을 조용히 지워요 |
 | [0025](0025-check-sigh-expiration-on-detail-request.md) | 한숨의 조회 기간 만료를 상세 재요청 시 판정 | 목록은 이어서 조회하고, 만료된 상세 요청은 전용 코드로 소멸을 안내해요 |
 | [0026](0026-record-device-activity-asynchronously-with-local-cache.md) | 기기 활동 비동기 기록과 로컬 캐시 | 중복 저장 시도를 줄이고 재시작 시 미저장 활동의 유실 가능성을 받아들여요 |
+| [0027](0027-use-regions-for-emotion-map.md) | 넓은 지도의 서버 행정구역 집계 | 화면으로 지역을 선택하고 지역 전체 누적 개수·대표 감정을 반환해요. 운영 공개 전 경계·백필 검증이 필요해요 |
+| [0028](0028-assign-nearby-regions-and-restrict-emotion-creation.md) | 경계 밖 감정의 인접 지역 배정과 신규 등록 범위 제한 | 포함 판정을 우선하고 1km 이내만 배정해요. 신규 범위 밖 등록은 거부하고 기존 미매칭은 수동 전환해요 |
+| [0029](0029-log-exception-messages-and-allowed-request-values.md) | 오류 로그의 예외 메시지와 허용한 요청 값 | Proposed: DB가 원인이 아닌 예외의 메시지와 허용한 경로, 쿼리 값을 남겨요. 요청 본문, 위치, 요청자는 남기지 않아요 |
 
 ## AI 사용
 

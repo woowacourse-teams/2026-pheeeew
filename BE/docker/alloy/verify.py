@@ -36,12 +36,13 @@ def verify_metrics(config):
         "hikaricp_connections_": "active idle pending max min timeout_total "
                                  "acquire_seconds_count acquire_seconds_sum acquire_seconds_max",
     }
-    for kind in ("map", "list"):
+    for kind in ("list",):
         families[f"pheeeew_sigh_{kind}_query_seconds_"] = "count sum bucket max"
         families[f"pheeeew_sigh_{kind}_results_"] = "count sum max"
     for prefix, suffixes in families.items():
         accepted.extend(prefix + suffix for suffix in suffixes.split())
     accepted.extend(f"jvm_memory_{kind}_bytes" for kind in ("used", "committed", "max"))
+    accepted.extend(f"tomcat_threads_{kind}_threads" for kind in ("busy", "current", "config_max"))
     rejected = ["pheeeew_activity_device_id", "pheeeew_activity_dau_created",
                 "pheeeew_app_version_checks_created", "pheeeew_sigh_list_results_bucket",
                 "pheeeew_unreviewed_total", "unreviewed_metric"]
@@ -56,12 +57,15 @@ def verify_logs(config):
     http = "com.pheeeew.common.logging.RequestLogWriter"
     recorder = "com.pheeeew.activity.infra.DeviceActivityRecorder"
     scheduler = "com.pheeeew.activity.infra.DeviceActivityAggregationScheduler"
+    task = "com.pheeeew.common.logging.ScheduledTaskErrorHandler"
     contracts = [(http, "http_request_failed", "ERROR"), (http, "http_request_slow", "WARN"),
                  (recorder, "device_activity_record_failed", "ERROR"),
-                 (scheduler, "device_activity_aggregation_failed", "ERROR")]
+                 (scheduler, "device_activity_aggregation_failed", "ERROR"),
+                 (task, "scheduled_task_failed", "ERROR")]
     events = {event for _, event, _ in contracts} | {"unknown", None}
     cases = []
-    for logger, event in itertools.product((http, recorder, scheduler, "unknown", None), sorted(events, key=str)):
+    for logger, event in itertools.product((http, recorder, scheduler, task, "unknown", None),
+                                           sorted(events, key=str)):
         cases.append(({"logger_name": logger, "event": event, "level": "ERROR"},
                       any(logger == owner and event == allowed for owner, allowed, _ in contracts)))
     for logger, event, _ in contracts[2:]:

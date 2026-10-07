@@ -5,6 +5,7 @@ import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REQUEST_ID_CONFLICT;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_REQUIRED;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_LOCATION_OUT_OF_SERVICE_AREA;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
@@ -21,6 +22,7 @@ import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.exception.GroupException;
+import com.pheeeew.region.application.RegionClassifier;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
@@ -29,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.locationtech.jts.geom.Point;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -49,10 +52,11 @@ public class EmotionCommandService {
     private final EmotionContentResolver contentResolver;
     private final EmotionNicknameGenerator nicknameGenerator;
     private final PlatformTransactionManager transactionManager;
+    private final RegionClassifier regionClassifier;
 
     /**
      * ADR-0004에 따라 선조회와 실패 후 재조회를 저장 트랜잭션 밖에서 수행한다.
-     * 녹음 연결과 감정 삽입만 독립 트랜잭션으로 묶어 함께 커밋하거나 롤백한다.
+     * 녹음 연결, 지역 분류와 감정 삽입을 독립 트랜잭션으로 묶어 함께 커밋하거나 롤백한다.
      */
     public Emotion save(
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
@@ -132,12 +136,20 @@ public class EmotionCommandService {
             throw new IllegalArgumentException("선택 위치는 유효한 WGS84 좌표여야 합니다.");
         }
         GroupStamp stamp = resolveGroupStamp(groupPublicId, deviceId, null);
+        Point location = WGS84.createPoint(new Coordinate(longitude, latitude));
+        var classification = regionClassifier.classify(location);
+        if (classification.regionCode() == null) {
+            throw new EmotionException(EMOTION_LOCATION_OUT_OF_SERVICE_AREA);
+        }
+
         EmotionContent content = contentResolver.resolve(memo, audioUploadId, deviceId, requestId);
 
         return emotionRepository.saveAndFlush(Emotion.builder()
                 .requestId(requestId)
                 .state(state)
-                .location(WGS84.createPoint(new Coordinate(longitude, latitude)))
+                .location(location)
+                .regionCode(classification.regionCode())
+                .regionClassifiedAt(classification.classifiedAt())
                 .rotationDegrees(rotationDegrees)
                 .memo(content.getMemo())
                 .audio(content.getAudio())

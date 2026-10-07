@@ -10,8 +10,10 @@ import static com.pheeeew.groups.fixture.GroupFixture.기본_그룹_빌더;
 import static com.pheeeew.groups.fixture.GroupFixture.기본_스탬프_빌더;
 import static com.pheeeew.groups.fixture.GroupFixture.일반_멤버_빌더;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
+import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -40,6 +42,7 @@ import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.exception.GroupException;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CyclicBarrier;
@@ -91,6 +94,8 @@ class EmotionRegistrationIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        검증용_지역_계층을_저장한다(jdbc);
+        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = CURRENT_TIMESTAMP").update();
         device = devices.save(기본_기기_빌더().build());
         upload = saveUpload(device);
     }
@@ -103,6 +108,8 @@ class EmotionRegistrationIntegrationTest {
         groups.deleteAllInBatch();
         uploads.deleteAllInBatch();
         devices.deleteAllInBatch();
+        jdbc.sql("DELETE FROM regions").update();
+        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
     }
 
     @Test
@@ -165,6 +172,8 @@ class EmotionRegistrationIntegrationTest {
         Emotion original = service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
                 contentType.equals("MEMO") ? "최초 메모" : null,
                 contentType.equals("AUDIO") ? upload.getUploadId() : null, null, device.getPublicId());
+        Instant classifiedAt = emotions.findById(original.getId()).orElseThrow().getRegionClassifiedAt();
+        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
         clearInvocations(objectVerifier);
 
         // when
@@ -182,7 +191,31 @@ class EmotionRegistrationIntegrationTest {
         assertThat(retried.getMemo()).isEqualTo(original.getMemo());
         assertThat(retried.getContent().getAudio()).isEqualTo(original.getContent().getAudio());
         assertThat(retried.getNickname()).isEqualTo(original.getNickname());
+        assertThat(retried.getRegionCode()).isEqualTo("11010530");
+        assertThat(retried.getRegionClassifiedAt()).isEqualTo(classifiedAt).isNotNull();
         assertThat(emotions.count()).isOne();
+        verifyNoInteractions(objectVerifier);
+    }
+
+    @Test
+    void 미분류_기존_요청은_경계가_미검증이어도_재분류하거나_녹음을_연결하지_않는다() {
+        // given: 백필 전 기존 행의 NULL 분류 필드를 재현한다.
+        UUID requestId = UUID.randomUUID();
+        Emotion original = service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 0,
+                null, null, null, device.getPublicId());
+        jdbc.sql("UPDATE emotions SET region_code = NULL, region_classified_at = NULL WHERE id = :id")
+                .param("id", original.getId()).update();
+        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
+
+        // when
+        Emotion retried = saveAudio(requestId, device);
+
+        // then
+        assertThat(retried.getId()).isEqualTo(original.getId());
+        assertThat(retried.getRegionCode()).isNull();
+        assertThat(retried.getRegionClassifiedAt()).isNull();
+        assertThat(emotions.count()).isOne();
+        assertThat(uploads.findByUploadId(upload.getUploadId()).orElseThrow().getClaimedRequestId()).isNull();
         verifyNoInteractions(objectVerifier);
     }
 
@@ -234,6 +267,8 @@ class EmotionRegistrationIntegrationTest {
 
         assertThat(emotions.count()).isOne();
         Emotion stored = emotions.findAll().getFirst();
+        assertThat(stored.getRegionCode()).isEqualTo("11010530");
+        assertThat(stored.getRegionClassifiedAt()).isNotNull();
         assertThat(uploads.findAll()).filteredOn(value -> value.getClaimedRequestId() != null)
                 .singleElement().satisfies(value -> {
                     assertThat(value.getClaimedRequestId()).isEqualTo(requestId);
@@ -244,6 +279,9 @@ class EmotionRegistrationIntegrationTest {
                     Emotion saved = (Emotion) result;
                     assertThat(saved.getId()).isEqualTo(stored.getId());
                     assertThat(saved.getDeviceId()).isEqualTo(stored.getDeviceId());
+                    assertThat(saved.getRegionCode()).isEqualTo(stored.getRegionCode());
+                    assertThat(saved.getRegionClassifiedAt())
+                            .isCloseTo(stored.getRegionClassifiedAt(), within(1, ChronoUnit.MICROS));
                     assertThat(saved.getContent().getAudio()).isEqualTo(stored.getContent().getAudio());
                 });
         if (differentDevice) {
