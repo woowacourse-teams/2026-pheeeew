@@ -87,14 +87,14 @@ class DeviceServiceIntegrationTest {
     @Test
     void 닉네임을_JPA로_저장하고_다시_조회한다() {
         // given
-        Device device = 기본_기기_빌더().nickname("Star K").build();
+        Device device = 기본_기기_빌더().nickname("  Star  K  ").build();
         deviceRepository.saveAndFlush(device);
 
         // when
         Device saved = deviceRepository.findByPublicId(device.getPublicId()).orElseThrow();
 
         // then
-        assertThat(saved.getNickname()).isEqualTo("Star K");
+        assertThat(saved.getNickname()).isEqualTo("Star  K");
     }
 
     @Test

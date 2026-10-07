@@ -23,7 +23,6 @@ import lombok.NoArgsConstructor;
 public class Device extends BaseEntity {
 
     private static final int MAX_PLATFORM_LENGTH = 20;
-    private static final int MAX_NICKNAME_LENGTH = 10;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,7 +34,7 @@ public class Device extends BaseEntity {
     @Column(name = "request_id", nullable = false, updatable = false)
     private UUID requestId;
 
-    @Column(length = MAX_NICKNAME_LENGTH)
+    @Column(length = DeviceNickname.MAX_LENGTH)
     private String nickname;
 
     @Enumerated(EnumType.STRING)
@@ -47,6 +46,7 @@ public class Device extends BaseEntity {
         this.publicId = UUID.randomUUID();
         this.requestId = Objects.requireNonNull(requestId);
         this.platform = Objects.requireNonNull(platform);
-        this.nickname = nickname;
+        // 구버전 등록 경로는 전환 기간 동안 닉네임 없이도 기기를 생성한다.
+        this.nickname = nickname == null ? null : DeviceNickname.from(nickname).value();
     }
 }
