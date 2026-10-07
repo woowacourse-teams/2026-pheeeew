@@ -1,21 +1,41 @@
 package com.pheeeew.groups.application.dto;
 
+import com.pheeeew.groups.domain.Group;
+import com.pheeeew.groups.domain.GroupViewerRole;
+import java.util.UUID;
+
 public record GroupDetailResult(
-        GroupResult group,
-        GroupPressCountResult todayPresses,
-        GroupPressCountResult weeklyPresses,
-        long weeklyScore,
-        Integer weeklyRank,
+        UUID publicId,
+        String name,
+        String description,
+        String inviteCode,
+        GroupViewerRole role,
+        long memberCount,
+        GroupStampResult stamp,
+        long weeklyStampCount,
+        Integer weeklyStampRank,
+        long weeklyPressCount,
         Integer weeklyPressRank
 ) {
     public static GroupDetailResult of(
-            GroupResult group,
-            GroupPressCountResult todayPresses,
-            GroupPressCountResult weeklyPresses,
-            long weeklyScore,
-            Integer weeklyRank,
-            Integer weeklyPressRank
+            Group group,
+            GroupViewerRole role,
+            long memberCount,
+            GroupStampResult stamp,
+            GroupWeeklyRankResult weeklyRanks
     ) {
-        return new GroupDetailResult(group, todayPresses, weeklyPresses, weeklyScore, weeklyRank, weeklyPressRank);
+        return new GroupDetailResult(
+                group.getPublicId(),
+                group.getName(),
+                group.getDescription(),
+                group.getInviteCode(),
+                role,
+                memberCount,
+                stamp,
+                weeklyRanks.stampCount(),
+                weeklyRanks.stampRank(),
+                weeklyRanks.pressCount(),
+                weeklyRanks.pressRank()
+        );
     }
 }

@@ -58,7 +58,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 class EmotionPressControllerTest {
 
     private static final UUID DEVICE_PUBLIC_ID = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
-    private static final String PRESS_URI = "/api/v1/emotions/presses";
+    private static final String PRESS_URI = "/api/v2/emotions/presses";
     private static final String 정상_본문 = """
             {"longitude":126.9774,"latitude":37.5669,"counts":{"ANGRY":9,"EXHAUSTED":3}}
             """;
@@ -116,6 +116,25 @@ class EmotionPressControllerTest {
         // then
         응답.expectStatus().isOk().expectBody().jsonPath("$.total").isEqualTo(0);
         verify(emotionPressService).press(DEVICE_PUBLIC_ID, 126.9774, 37.5669, Map.of());
+    }
+
+    @Test
+    void 값이_영인_감정도_거절하지_않고_영이_그대로_서비스로_간다() {
+        // given
+        when(emotionPressService.press(DEVICE_PUBLIC_ID, 126.9774, 37.5669, Map.of(EmotionState.ANGRY, 0)))
+                .thenReturn(집계("11010530", 7, 0));
+
+        // when
+        RestTestClient.ResponseSpec 응답 = 누른다("""
+                {"longitude":126.9774,"latitude":37.5669,"counts":{"ANGRY":0}}
+                """, "access-token");
+
+        // then
+        응답.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.counts.ANGRY").isEqualTo(7)
+                .jsonPath("$.total").isEqualTo(7);
+        verify(emotionPressService).press(DEVICE_PUBLIC_ID, 126.9774, 37.5669, Map.of(EmotionState.ANGRY, 0));
     }
 
     @ParameterizedTest

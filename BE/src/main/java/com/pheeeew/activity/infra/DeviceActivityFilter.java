@@ -31,6 +31,7 @@ public class DeviceActivityFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI().substring(request.getContextPath().length());
         boolean activityPath = path.equals("/api/v1/emotions") || path.startsWith("/api/v1/emotions/")
+                || path.equals("/api/v2/emotions/presses")
                 || path.equals("/api/v2/reports") || path.startsWith("/api/v2/blocks/");
         return !ACTIVITY_METHODS.contains(request.getMethod()) || !activityPath;
     }

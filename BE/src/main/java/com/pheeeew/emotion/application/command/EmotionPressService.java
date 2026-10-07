@@ -93,7 +93,6 @@ public class EmotionPressService {
             if (isDeadlock(exception)) {
                 emotionPressMetrics.recordDeadlock();
             }
-
             throw exception;
         }
     }

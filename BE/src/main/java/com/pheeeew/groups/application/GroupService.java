@@ -13,14 +13,8 @@ import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_OWNER_ONLY;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.emotion.domain.PressCounts;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
-import com.pheeeew.groups.application.dto.GroupPressCommand;
-import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupPreviewResult;
-import com.pheeeew.groups.application.dto.GroupPressRankingItem;
-import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.application.dto.GroupStampItemResult;
@@ -28,25 +22,17 @@ import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupMember;
 import com.pheeeew.groups.domain.GroupRole;
-import com.pheeeew.groups.domain.GroupDailyPress;
 import com.pheeeew.groups.domain.GroupStamp;
-import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
+import com.pheeeew.groups.domain.GroupViewerRole;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.domain.repository.projection.GroupListProjection;
-import com.pheeeew.groups.domain.repository.projection.GroupPressSumProjection;
 import com.pheeeew.groups.exception.GroupException;
-import java.sql.SQLException;
-import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.util.EnumMap;
-import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,17 +43,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class GroupService {
 
     private static final int MAX_INVITE_CODE_ATTEMPTS = 10;
-    private static final String DEADLOCK_DETECTED_SQL_STATE = "40P01";
 
     private final GroupRepository groupRepository;
     private final GroupStampRepository groupStampRepository;
     private final GroupMemberRepository groupMemberRepository;
-    private final GroupDailyPressRepository groupDailyPressRepository;
     private final GroupRankingService groupRankingService;
     private final DeviceRepository deviceRepository;
     private final InviteCodeGenerator inviteCodeGenerator;
-    private final GroupPressMetrics groupPressMetrics;
-    private final Clock clock;
 
     @Transactional
     public GroupResult save(UUID devicePublicId, String name, String description, GroupStampCommand stampCommand) {
@@ -115,45 +97,14 @@ public class GroupService {
 
     public GroupDetailResult findOne(UUID groupPublicId, UUID devicePublicId) {
         Group group = findGroup(groupPublicId);
-        GroupMember member = requireMember(group, devicePublicId);
-        GroupRankingItem stampRanked = groupRankingService.findGroupRanking(0).items().stream()
-                .filter(item -> item.groupPublicId().equals(groupPublicId))
-                .findFirst()
-                .orElse(null);
-        GroupPressRankingItem pressRanked =
-                groupRankingService.findPressRanking(devicePublicId, 0).items().stream()
-                        .filter(item -> item.groupPublicId().equals(groupPublicId))
-                        .findFirst()
-                        .orElse(null);
 
         return GroupDetailResult.of(
-                toResult(group, member.getRole()),
-                pressesOf(group, LocalDate.now(clock)),
-                weeklyPressesOf(group, 0),
-                stampRanked == null ? 0 : stampRanked.score(),
-                stampRanked == null ? null : stampRanked.rank(),
-                pressRanked == null ? null : pressRanked.rank()
+                group,
+                viewerRoleOf(group, devicePublicId),
+                groupMemberRepository.countByGroupIdAndLeftAtIsNull(group.getId()),
+                GroupStampResult.from(findStamp(group)),
+                groupRankingService.findWeeklyRanks(groupPublicId)
         );
-    }
-
-    @Transactional
-    public GroupPressCountResult press(UUID groupPublicId, UUID devicePublicId, GroupPressCommand command) {
-        groupPressMetrics.recordFormat(command.bundled());
-        Group group = findGroup(groupPublicId);
-        requireMember(group, devicePublicId);
-        LocalDate today = LocalDate.now(clock);
-        PressCounts pressCounts = PressCounts.from(command.counts());
-        increaseInLockOrder(group.getId(), today, pressCounts);
-        groupPressMetrics.recordApplied(pressCounts);
-
-        return pressesOf(group, today);
-    }
-
-    @Transactional(readOnly = true)
-    public GroupPressCountResult findWeeklyPresses(UUID groupPublicId, UUID devicePublicId, int weeksAgo) {
-        Group group = findGroup(groupPublicId);
-        requireMember(group, devicePublicId);
-        return weeklyPressesOf(group, weeksAgo);
     }
 
     @Transactional
@@ -233,61 +184,6 @@ public class GroupService {
         group.delete(Instant.now());
     }
 
-    private GroupPressCountResult pressesOf(Group group, LocalDate date) {
-        Map<EmotionState, Long> counts = emptyCounts();
-        List<GroupDailyPress> pressed =
-                groupDailyPressRepository.findByGroupIdAndPressDate(group.getId(), date);
-        for (GroupDailyPress press : pressed) {
-            counts.put(press.getState(), press.getPressCount());
-        }
-
-        return GroupPressCountResult.from(counts);
-    }
-
-    private GroupPressCountResult weeklyPressesOf(Group group, int weeksAgo) {
-        RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
-        List<GroupPressSumProjection> summed = groupDailyPressRepository.sumByGroupIdAndPressDateBetween(
-                group.getId(), week.startDate(), week.endDate());
-
-        Map<EmotionState, Long> counts = emptyCounts();
-        for (GroupPressSumProjection press : summed) {
-            counts.put(press.getState(), press.getPressCount());
-        }
-
-        return GroupPressCountResult.from(counts);
-    }
-
-    private Map<EmotionState, Long> emptyCounts() {
-        Map<EmotionState, Long> counts = new EnumMap<>(EmotionState.class);
-        for (EmotionState state : EmotionState.values()) {
-            counts.put(state, 0L);
-        }
-
-        return counts;
-    }
-
-    private void increaseInLockOrder(Long groupId, LocalDate pressDate, PressCounts pressCounts) {
-        try {
-            for (Map.Entry<EmotionState, Integer> press : pressCounts.presses().entrySet()) {
-                groupDailyPressRepository.increase(
-                        groupId, pressDate, press.getKey().name(), press.getValue(), clock.instant());
-            }
-        } catch (DataAccessException exception) {
-            if (isDeadlock(exception)) {
-                groupPressMetrics.recordDeadlock();
-            }
-
-            throw exception;
-        }
-    }
-
-    private boolean isDeadlock(DataAccessException exception) {
-        Throwable cause = exception.getMostSpecificCause();
-
-        return cause instanceof SQLException sqlException
-                && DEADLOCK_DETECTED_SQL_STATE.equals(sqlException.getSQLState());
-    }
-
     private Device findDevice(UUID devicePublicId) {
         return deviceRepository.findByPublicId(devicePublicId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
@@ -351,6 +247,15 @@ public class GroupService {
     private Group findGroup(UUID groupPublicId) {
         return groupRepository.findByPublicIdAndDeletedAtIsNull(groupPublicId)
                 .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));
+    }
+
+    private GroupViewerRole viewerRoleOf(Group group, UUID devicePublicId) {
+        Device device = findDevice(devicePublicId);
+
+        return groupMemberRepository.findByGroupIdAndDeviceIdAndLeftAtIsNull(group.getId(), device.getId())
+                .map(GroupMember::getRole)
+                .map(GroupViewerRole::from)
+                .orElse(GroupViewerRole.NONE);
     }
 
     private GroupMember requireMember(Group group, UUID devicePublicId) {

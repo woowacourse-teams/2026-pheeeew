@@ -2,13 +2,10 @@ package com.pheeeew.groups.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.groups.application.GroupService;
-import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.presentation.dto.GroupDetailResponse;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.presentation.dto.GroupCreateRequest;
-import com.pheeeew.groups.presentation.dto.GroupPressCountResponse;
-import com.pheeeew.groups.presentation.dto.GroupPressRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampRequest;
 import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
@@ -25,7 +22,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
@@ -99,34 +95,6 @@ public class GroupController implements GroupControllerApi {
         );
 
         return GroupResponse.from(result);
-    }
-
-    @Override
-    @PostMapping("/{groupId}/presses")
-    public GroupPressCountResponse press(
-            @PathVariable UUID groupId,
-            @RequestBody GroupPressRequest request,
-            @CurrentDevice UUID devicePublicId
-    ) {
-        return GroupPressCountResponse.from(
-                groupService.press(
-                        groupId,
-                        devicePublicId,
-                        GroupPressCommand.of(request.toCounts(), request.bundled())
-                )
-        );
-    }
-
-    @Override
-    @GetMapping("/{groupId}/presses")
-    public GroupPressCountResponse findWeeklyPresses(
-            @PathVariable UUID groupId,
-            @RequestParam(defaultValue = "0") int weeksAgo,
-            @CurrentDevice UUID devicePublicId
-    ) {
-        return GroupPressCountResponse.from(
-                groupService.findWeeklyPresses(groupId, devicePublicId, weeksAgo)
-        );
     }
 
     @Override

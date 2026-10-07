@@ -2,26 +2,18 @@ package com.pheeeew.groups.presentation;
 
 import com.pheeeew.groups.presentation.dto.GroupCreateRequest;
 import com.pheeeew.groups.presentation.dto.GroupDetailResponse;
-import com.pheeeew.groups.presentation.dto.GroupPressCountResponse;
-import com.pheeeew.groups.presentation.dto.GroupPressRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import java.util.List;
 import java.util.UUID;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "그룹", description = "그룹을 만들고 관리합니다.")
@@ -83,36 +75,41 @@ public interface GroupControllerApi {
     @Operation(
             summary = "그룹 상세",
             description = """
-                    그룹 정보와 스탬프, 현재 인원수를 반환합니다.
+                    그룹 정보와 스탬프, 현재 인원수, 이번 주 스탬프와 프레스의 개수와 순위를 반환합니다.
 
-                    - **멤버만 조회할 수 있습니다.** 속하지 않은 그룹은 **403** 입니다.
-                      없는 그룹이나 삭제된 그룹만 404 이므로, 클라이언트가 "권한 없음" 과 "사라진 그룹" 을 구분할 수 있습니다.
-                    - `inviteCode` 는 **모든 멤버**에게 보입니다. 재발급만 그룹장 권한입니다.
-                    - `role` 로 요청한 기기가 그룹장인지 알 수 있습니다.
-
-                    화면에 필요한 숫자들을 함께 내려줍니다. **스탬프와 프레스는 서로 다른 지표입니다.**
-                    스탬프는 지도에 남긴 감정이고, 프레스는 감정 버튼을 누른 횟수입니다. 둘은 섞이지 않습니다.
-
-                    감정 버튼(프레스)
-
-                    - `weeklyPresses` — **이번 주** 그룹 전체가 감정 버튼을 누른 횟수입니다.
-                      다섯 감정을 0 인 것까지 **항상 전부** 담고, `total` 이 이번 주 프레스 총합입니다.
-                    - `todayPresses` — 같은 형태의 **오늘** 집계입니다. 하루는 한국시간 자정에 바뀝니다.
-                    - `weeklyPressRank` — 이번 주 프레스 수로 매긴 전체 그룹 중 순위입니다.
-                      한 번도 누르지 않았으면 순위표에 오르지 않으므로 **`null`** 입니다.
+                    - **그룹에 속하지 않아도 조회할 수 있습니다.** 가입 여부와 무관하게 200 입니다.
+                      인증은 그대로 필요합니다. 없는 그룹과 삭제된 그룹만 404 입니다.
+                    - `role` 은 요청한 기기와 그룹의 관계입니다. 그룹장은 `OWNER`, 멤버는 `MEMBER`,
+                      **속하지 않았거나 나갔으면 `NONE`** 입니다.
+                      관리 메뉴와 가입 버튼 노출은 이 값으로 판단합니다.
+                    - `inviteCode` 는 **역할과 무관하게 모두에게** 내려갑니다. 비가입자도 받습니다.
+                      재발급만 그룹장 권한입니다.
+                    - 네 수치는 **모두 이번 주**입니다. 주는 **월요일 00:00 KST** 에 바뀌고,
+                      동점은 공동 순위(1, 2, 2, 4)입니다. 지난주는 그룹 랭킹 API 로 봅니다.
+                    - **순위를 저장해 두지 않고 요청할 때마다 다시 셉니다.**
 
                     지도 감정(스탬프)
 
-                    - `weeklyScore` — 이번 주 그 그룹으로 **지도에 남긴 감정 수**입니다.
-                      **버튼을 누른 횟수는 여기 들어가지 않습니다.**
-                    - `weeklyRank` — 그 점수로 매긴 전체 그룹 중 순위입니다. `weeklyScore` 가 0 이면 **`null`** 입니다.
+                    - `weeklyStampCount` — 이번 주 그 그룹으로 **지도에 남긴 감정 수**입니다.
+                      **감정 버튼을 누른 횟수는 여기 들어가지 않습니다.**
+                    - `weeklyStampRank` — 그 개수로 매긴 전체 그룹 중 순위입니다.
+                      `weeklyStampCount` 가 0 이면 **`null`** 입니다.
 
-                    두 순위 모두 주는 **월요일 00:00 KST** 에 바뀌고, 동점은 공동 순위(1, 2, 2, 4)입니다.
+                    감정 버튼(프레스)
+
+                    - `weeklyPressCount` — 이번 주 **현재 멤버들이 각자 누른 감정 버튼 수의 합**입니다.
+                      `POST /api/v2/emotions/presses` 로 누른 것이 여기 더해집니다.
+                      **그룹 화면에서 따로 누르는 버튼은 없습니다.**
+                    - 멤버가 **여러 그룹에 속해 있으면 한 번 누른 것이 그 그룹들에 모두 더해집니다.**
+                    - **현재 멤버만 셉니다.** 주 중간에 가입하면 그 주 처음부터의 기록이 들어오고,
+                      나가면 그 주에 누른 것까지 함께 빠집니다.
+                    - **위치가 서비스 범위 밖이면 누른 것이 저장되지 않아 그룹에도 더해지지 않습니다.**
+                    - `weeklyPressRank` — 그 개수로 매긴 전체 그룹 중 순위입니다.
+                      `weeklyPressCount` 가 0 이면 **`null`** 입니다.
                     """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
             @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
     })
     GroupDetailResponse findOne(
@@ -143,88 +140,6 @@ public interface GroupControllerApi {
     GroupResponse update(
             UUID groupId,
             @Valid GroupUpdateRequest request,
-            @Parameter(hidden = true) UUID devicePublicId
-    );
-
-    @Operation(
-            summary = "감정 버튼 누르기",
-            description = """
-                    그룹 화면의 감정 버튼을 누릅니다. **그룹 멤버만** 누를 수 있습니다.
-
-                    - 요청 형식이 두 가지입니다. `state` 와 `counts` 중 **정확히 하나만** 보냅니다.
-                      둘 다 보내거나 둘 다 비우면 400 입니다.
-                    - `counts` 는 감정별 누른 횟수를 한 번에 묶어 보냅니다. 예: `{"ANGRY": 9, "EXHAUSTED": 3}`.
-                      **일정 주기로 모아 보내는 쪽을 권장합니다.** 버튼마다 요청을 보내지 않습니다.
-                    - `state` 는 **구버전 호환용**입니다. `counts` 에 `1` 을 보낸 것과 같게 처리합니다.
-                    - `counts` 의 값이 `0` 인 감정은 **누르지 않은 것으로 보고 넘깁니다.**
-                      모든 값이 `0` 이거나 빈 객체여도 400 이 아니라 **오늘 집계만 돌려줍니다.**
-                      음수는 400 입니다.
-                    - 상한을 넘겨도 **거절하지 않고 넘친 만큼만 버립니다.** 감정 하나당 `30`,
-                      요청 전체 합 `100` 까지 반영합니다. 전체 합이 넘치면 감정 이름 오름차순으로 채웁니다.
-                    - 누른 뒤의 **오늘 집계를 바로 돌려줍니다.** 다시 조회할 필요가 없습니다.
-                      누르지 않은 감정도 `0` 으로 내려와 다섯 감정이 항상 모두 있습니다.
-                    - 취소는 없습니다.
-                    - **지도에 감정이 찍히지 않고 그룹 점수와 순위에도 영향이 없습니다.**
-                      점수는 지도에 남긴 감정만 셉니다.
-                    """
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "누르기 성공"),
-            @ApiResponse(responseCode = "400", description = "state 와 counts 를 둘 다 또는 둘 다 보내지 않음, 다루지 않는 감정, counts 값이 음수이거나 null"),
-            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
-    })
-    GroupPressCountResponse press(
-            UUID groupId,
-            @io.swagger.v3.oas.annotations.parameters.RequestBody(
-                    content = @Content(
-                            mediaType = MediaType.APPLICATION_JSON_VALUE,
-                            schema = @Schema(implementation = GroupPressRequest.class),
-                            examples = {
-                                    @ExampleObject(
-                                            name = "묶음(권장)",
-                                            value = """
-                                                    {"counts":{"ANGRY":9,"EXHAUSTED":3}}
-                                                    """
-                                    ),
-                                    @ExampleObject(
-                                            name = "구버전 단일 감정",
-                                            value = """
-                                                    {"state":"ANGRY"}
-                                                    """
-                                    )
-                            }
-                    )
-            )
-            @Valid GroupPressRequest request,
-            @Parameter(hidden = true) UUID devicePublicId
-    );
-
-    @Operation(
-            summary = "감정 버튼 주간 집계",
-            description = """
-                    그 주에 그룹이 누른 감정 버튼을 감정별로 합쳐서 돌려줍니다. **그룹 멤버만** 볼 수 있습니다.
-
-                    - 주는 **월요일 00:00 KST** 에 바뀝니다. 그룹 간 주간 랭킹과 같은 경계입니다.
-                    - `weeksAgo` 로 몇 주 전인지 고릅니다. `0` 이 이번 주, `1` 이 지난주입니다.
-                    - 누르지 않은 감정도 `0` 으로 내려와 **다섯 감정이 항상 모두 있습니다.**
-                    - `POST /api/v2/groups/{groupId}/presses` 와 그룹 상세의 집계는 **오늘치**입니다.
-                      이 API 만 주간입니다.
-                    - **지도에 남긴 감정과는 다릅니다.** 그룹 점수와 순위는 지도 감정만 세고,
-                      버튼 누르기는 이 집계에만 들어갑니다.
-                    """
-    )
-    @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "weeksAgo 값이 올바르지 않음"),
-            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
-    })
-    GroupPressCountResponse findWeeklyPresses(
-            UUID groupId,
-            @Min(value = 0, message = "몇 주 전인지는 0 이상이어야 합니다.")
-            @Max(value = 520, message = "몇 주 전인지는 520 이하여야 합니다.")
-            int weeksAgo,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
