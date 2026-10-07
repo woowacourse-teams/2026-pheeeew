@@ -23,6 +23,7 @@ import lombok.NoArgsConstructor;
 public class Device extends BaseEntity {
 
     private static final int MAX_PLATFORM_LENGTH = 20;
+    private static final int MAX_NICKNAME_LENGTH = 10;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -34,14 +35,18 @@ public class Device extends BaseEntity {
     @Column(name = "request_id", nullable = false, updatable = false)
     private UUID requestId;
 
+    @Column(length = MAX_NICKNAME_LENGTH)
+    private String nickname;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, updatable = false, length = MAX_PLATFORM_LENGTH)
     private DevicePlatform platform;
 
     @Builder
-    private Device(UUID requestId, DevicePlatform platform) {
+    private Device(UUID requestId, DevicePlatform platform, String nickname) {
         this.publicId = UUID.randomUUID();
         this.requestId = Objects.requireNonNull(requestId);
         this.platform = Objects.requireNonNull(platform);
+        this.nickname = nickname;
     }
 }

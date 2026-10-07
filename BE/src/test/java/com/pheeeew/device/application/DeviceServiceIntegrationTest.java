@@ -1,5 +1,6 @@
 package com.pheeeew.device.application;
 
+import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.device.fixture.DeviceFixture.무결성_증명_없음;
 import static com.pheeeew.device.fixture.DeviceFixture.토큰_해시;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,6 +67,34 @@ class DeviceServiceIntegrationTest {
     void tearDown() {
         deviceRefreshTokenRepository.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void 백필한_닉네임을_JPA로_조회한다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+        deviceService.save(requestId, 무결성_증명_없음(DevicePlatform.ANDROID));
+        jdbcClient.sql("UPDATE devices SET nickname = '스타크' WHERE request_id = :requestId")
+                .param("requestId", requestId).update();
+
+        // when
+        Device device = deviceRepository.findByRequestId(requestId).orElseThrow();
+
+        // then
+        assertThat(device.getNickname()).isEqualTo("스타크");
+    }
+
+    @Test
+    void 닉네임을_JPA로_저장하고_다시_조회한다() {
+        // given
+        Device device = 기본_기기_빌더().nickname("Star K").build();
+        deviceRepository.saveAndFlush(device);
+
+        // when
+        Device saved = deviceRepository.findByPublicId(device.getPublicId()).orElseThrow();
+
+        // then
+        assertThat(saved.getNickname()).isEqualTo("Star K");
     }
 
     @Test
