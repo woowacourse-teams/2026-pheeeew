@@ -297,15 +297,8 @@ fun NearbyEmotionSheet(
                         NearbyLoadError(
                             message = error,
                             hasItems = state.items.isNotEmpty(),
-                            retryEnabled = !state.loading && !state.loadingMore,
                             modifier = if (state.items.isEmpty()) Modifier.fillParentMaxHeight() else Modifier,
-                            onRetry = {
-                                if (state.items.isEmpty()) {
-                                    viewModel.refresh()
-                                } else {
-                                    viewModel.loadMore()
-                                }
-                            },
+                            onRetry = viewModel::retryError,
                         )
                     }
                 }

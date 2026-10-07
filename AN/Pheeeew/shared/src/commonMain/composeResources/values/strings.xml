@@ -63,6 +63,7 @@
 지금의 감정을 가볍게 찍어보세요.</string>
     <string name="nearby_leave_emotion">내 감정 남기기</string>
     <string name="nearby_next_load_error">다음 감정을 불러오지 못했어요</string>
+    <string name="emotion_list_retry">다시 불러오기</string>
     <string name="nearby_load_error">감정을 불러오지 못했어요</string>
 
     <!-- 감정 기록 -->
