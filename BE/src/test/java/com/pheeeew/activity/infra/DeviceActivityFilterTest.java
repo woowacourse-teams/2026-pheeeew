@@ -73,6 +73,7 @@ class DeviceActivityFilterTest {
     @ParameterizedTest
     @CsvSource({"GET,/api/v1/emotions,200", "POST,/api/v1/emotions,200", "POST,/api/v3/emotions,200", "GET,/api/v1/emotions/1,200",
             "PUT,/api/v1/emotions/1/emojis/HEART,204", "DELETE,/api/v1/emotions/1/emojis/HEART,204",
+            "POST,/api/v2/emotions/presses,200",
             "POST,/api/v2/reports,201", "GET,/api/v2/blocks/emotions,200", "POST,/api/v2/blocks/devices,201",
             "DELETE,/api/v2/blocks/emotions/1,204", "DELETE,/api/v2/blocks/devices/1,204"})
     void 빈_조회와_쓰기_성공은_인증된_기기와_요청_시각으로_기록한다(String method, String path, int status) {
@@ -84,6 +85,53 @@ class DeviceActivityFilterTest {
 
         // then
         verify(recorder).record(DEVICE_ID, OCCURRED_AT);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"GET,/api/v3/emotions", "PUT,/api/v3/emotions/1", "GET,/api/v12/emotions/1/emojis",
+            "DELETE,/api/v12/emotions/1", "POST,/api/v12/emotions"})
+    void 감정_활동은_버전과_관계없이_인증된_성공_요청을_기록한다(String method, String path) throws Exception {
+        // given
+        SecurityContextHolder.getContext().setAuthentication(AccessTokenFixture.인증된_기기(DEVICE_ID));
+        MockHttpServletRequest request = new MockHttpServletRequest(method, path);
+
+        // when / then
+        try {
+            filter.doFilter(request, new MockHttpServletResponse(), (req, res) -> {});
+            verify(recorder).record(DEVICE_ID, OCCURRED_AT);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"GET,/api/v/emotions", "GET,/api/vX/emotions", "GET,/api/v-1/emotions",
+            "GET,/api/v1x/emotions", "GET,/api/1/emotions", "GET,/api/v1/emotions-extra",
+            "GET,/api/v1/emotionsfoo", "PATCH,/api/v3/emotions/1", "HEAD,/api/v3/emotions",
+            "OPTIONS,/api/v3/emotions"})
+    void 버전이나_감정_경로가_다르거나_활동_메서드가_아니면_성공해도_제외한다(String method, String path) throws Exception {
+        // given
+        SecurityContextHolder.getContext().setAuthentication(AccessTokenFixture.인증된_기기(DEVICE_ID));
+        MockHttpServletRequest request = new MockHttpServletRequest(method, path);
+
+        // when / then
+        try {
+            filter.doFilter(request, new MockHttpServletResponse(), (req, res) -> {});
+            verifyNoInteractions(recorder);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"GET,/api/v3/emotions", "PUT,/api/v3/emotions/1", "POST,/api/v12/emotions"})
+    void 활동_경로에_포함돼도_인증_설정이_허용하지_않은_API는_호출할_수_없다(String method, String path) {
+        // given / when
+        client.method(HttpMethod.valueOf(method)).uri(path)
+                .header("Authorization", "Bearer access-token").exchange().expectStatus().isForbidden();
+
+        // then
+        verifyNoInteractions(recorder);
     }
 
     @ParameterizedTest

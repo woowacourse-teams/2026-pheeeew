@@ -6,8 +6,10 @@ import com.pheeeew.groups.application.dto.GroupPressRankingResult;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupRankingResult;
 import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
+import com.pheeeew.groups.application.dto.GroupWeeklyRankResult;
 import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
+import com.pheeeew.groups.domain.repository.GroupPressRankingRepository;
 import com.pheeeew.groups.domain.repository.GroupRankingRepository;
 import com.pheeeew.groups.domain.repository.projection.GroupScoreProjection;
 import java.time.Clock;
@@ -27,6 +29,7 @@ public class GroupRankingService {
 
     private final GroupRankingRepository groupRankingRepository;
     private final GroupDailyPressRepository groupDailyPressRepository;
+    private final GroupPressRankingRepository groupPressRankingRepository;
     private final GroupMemberRepository groupMemberRepository;
     private final Clock clock;
 
@@ -78,11 +81,31 @@ public class GroupRankingService {
         );
     }
 
+    public GroupWeeklyRankResult findWeeklyRanks(UUID groupPublicId) {
+        RankingWeek week = RankingWeek.of(clock.instant(), 0);
+        List<GroupScoreProjection> stampScores =
+                groupRankingRepository.findGroupScores(week.startAt(), week.endAt());
+        List<GroupScoreProjection> emotionPressScores =
+                groupPressRankingRepository.findPressScores(week.startDate(), week.endDate());
+
+        return GroupWeeklyRankResult.of(
+                findRankedGroup(stampScores, groupPublicId),
+                findRankedGroup(emotionPressScores, groupPublicId)
+        );
+    }
+
     private List<GroupPressRankingItem> rankPresses(List<GroupScoreProjection> scores, UUID devicePublicId) {
         Set<UUID> myGroupPublicIds = Set.copyOf(groupMemberRepository.findMyGroupPublicIds(devicePublicId));
 
         return rank(scores, (rank, score) ->
                 GroupPressRankingItem.of(rank, score, myGroupPublicIds.contains(score.getGroupPublicId())));
+    }
+
+    private GroupRankingItem findRankedGroup(List<GroupScoreProjection> scores, UUID groupPublicId) {
+        return rank(scores, GroupRankingItem::of).stream()
+                .filter(item -> item.groupPublicId().equals(groupPublicId))
+                .findFirst()
+                .orElse(null);
     }
 
     private <T> List<T> rank(

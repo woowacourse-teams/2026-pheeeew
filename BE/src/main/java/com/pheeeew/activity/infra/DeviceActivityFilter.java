@@ -10,6 +10,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -23,6 +24,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 public class DeviceActivityFilter extends OncePerRequestFilter {
 
     private static final Set<String> ACTIVITY_METHODS = Set.of("GET", "POST", "PUT", "DELETE");
+    private static final Pattern EMOTION_PATH = Pattern.compile("/api/v[0-9]+/emotions(?:/.*)?");
 
     private final DeviceActivityRecorder recorder;
     private final Clock clock;
@@ -30,8 +32,7 @@ public class DeviceActivityFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI().substring(request.getContextPath().length());
-        boolean activityPath = path.equals("/api/v1/emotions") || path.startsWith("/api/v1/emotions/")
-                || (request.getMethod().equals("POST") && path.equals("/api/v3/emotions"))
+        boolean activityPath = EMOTION_PATH.matcher(path).matches()
                 || path.equals("/api/v2/reports") || path.startsWith("/api/v2/blocks/");
         return !ACTIVITY_METHODS.contains(request.getMethod()) || !activityPath;
     }

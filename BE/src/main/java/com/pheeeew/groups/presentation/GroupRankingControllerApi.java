@@ -48,6 +48,9 @@ public interface GroupRankingControllerApi {
                     다섯 감정을 모두 합친 수이며, 감정별로 나눠 보려면 `/press-rankings/states` 를 씁니다.
 
                     - **스탬프 랭킹(`/rankings`)과는 다른 순위입니다.** 두 점수는 섞이지 않습니다.
+                    - 이 순위는 `GET /api/v2/groups/{groupId}` 의 `weeklyPressRank` 와 **같은 값**입니다.
+                      멤버들의 개인 감정 버튼 합은 `GET /api/v3/groups/{groupId}` 의
+                      `weeklyEmotionPressCount` 에 있고 이 순위에 들어가지 않습니다.
                     - **로그인한 누구나 볼 수 있습니다.** 어느 그룹에도 속하지 않아도 됩니다.
                     - 주는 **월요일 00:00 KST** 에 바뀝니다. `/rankings` 와 같은 경계입니다.
                     - `weeksAgo` 로 몇 주 전인지 고릅니다. `0` 이 이번 주, `1` 이 지난주입니다.

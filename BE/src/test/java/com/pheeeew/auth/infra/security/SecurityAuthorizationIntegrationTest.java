@@ -133,6 +133,28 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @Test
+    void 개인_프레스_v2_경로는_인증된_기기만_호출할_수_있다() {
+        // given
+        String token = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        String body = """
+                {"longitude":126.9774,"latitude":37.5669,"counts":{}}
+                """;
+
+        // when
+        RestTestClient.ResponseSpec unauthenticated = client.post().uri("/api/v2/emotions/presses")
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange();
+        RestTestClient.ResponseSpec authenticated = client.post().uri("/api/v2/emotions/presses")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange();
+
+        // then
+        인증_필요를_검증한다(unauthenticated);
+        authenticated.expectStatus().isOk().expectBody()
+                .jsonPath("$.regionCode").isEqualTo("11010530")
+                .jsonPath("$.total").isEqualTo(0);
+    }
+
+    @Test
     void 내_닉네임_조회는_토큰의_기기만_조회하고_식별자나_토큰을_노출하지_않는다() {
         // given
         UUID requestId = UUID.randomUUID();
