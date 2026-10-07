@@ -1,6 +1,7 @@
 package com.pheeeew.report.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
@@ -10,6 +11,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.core.read.ListAppender;
+import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.application.dto.BlockListResult;
@@ -18,6 +20,7 @@ import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.exception.BlockErrorCode;
 import com.pheeeew.report.exception.BlockException;
+import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.exception.EmotionErrorCode;
 import com.pheeeew.emotion.exception.EmotionException;
@@ -33,6 +36,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -62,6 +67,9 @@ class DeviceBlockServiceIntegrationTest {
 
     @Autowired
     private DeviceRepository deviceRepository;
+
+    @Autowired
+    private DeviceService deviceService;
 
     @Autowired
     private JdbcClient jdbcClient;
@@ -94,29 +102,64 @@ class DeviceBlockServiceIntegrationTest {
         assertThat(result.created()).isTrue();
         assertThat(result.block().blockId()).isPositive();
         assertThat(result.block().emotionId()).isEqualTo(근거_한숨);
-        assertThat(result.block().nickname()).isEqualTo("외로운 회사원");
+        assertThat(result.block().nickname()).isEqualTo("익명");
         assertThat(result.block().memo()).isEqualTo("오늘은 조금 지쳤다");
         assertThat(deviceBlockRepository.count()).isOne();
     }
 
-    @Test
-    void 이미_차단한_사용자를_다른_한숨으로_다시_차단하면_최초_근거_한숨을_반환한다() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 사용자_차단_재시도는_최초_감정의_익명_선택과_현재_닉네임을_반영한다(boolean anonymous) {
         // given
         Device 차단자 = 기기를_저장한다();
-        Device 차단_대상 = 기기를_저장한다();
-        Long 최초_근거_한숨 = 한숨을_저장한다(차단_대상.getId(), "최초 근거");
-        Long 나중에_보낸_한숨 = 한숨을_저장한다(차단_대상.getId(), "나중에 보낸 한숨");
-        BlockSaveResult 최초 = deviceBlockService.save(최초_근거_한숨, 차단자.getPublicId());
+        Device 차단_대상 = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("이전 이름").build());
+        Emotion 최초_근거_한숨 = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(차단_대상.getId()).anonymous(anonymous).memo("최초 근거").build());
+        Emotion 나중에_보낸_한숨 = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(차단_대상.getId()).anonymous(!anonymous).memo("나중에 보낸 한숨").build());
+        BlockSaveResult 최초 = deviceBlockService.save(최초_근거_한숨.getId(), 차단자.getPublicId());
+        String 최초_닉네임 = "익명";
+        if (!anonymous) {
+            최초_닉네임 = "이전 이름";
+        }
+        assertThat(최초.created()).isTrue();
+        assertThat(최초.block().nickname()).isEqualTo(최초_닉네임);
 
         // when
-        BlockSaveResult 다시 = deviceBlockService.save(나중에_보낸_한숨, 차단자.getPublicId());
+        deviceService.updateNickname(차단_대상.getPublicId(), "새 이름");
+        BlockSaveResult 같은_감정_재시도 = deviceBlockService.save(최초_근거_한숨.getId(), 차단자.getPublicId());
+        BlockSaveResult 다시 = deviceBlockService.save(나중에_보낸_한숨.getId(), 차단자.getPublicId());
 
         // then
+        String 현재_닉네임 = "익명";
+        if (!anonymous) {
+            현재_닉네임 = "새 이름";
+        }
+        assertThat(같은_감정_재시도.created()).isFalse();
+        assertThat(같은_감정_재시도.block().nickname()).isEqualTo(현재_닉네임);
         assertThat(다시.created()).isFalse();
+        assertThat(다시.block().nickname()).isEqualTo(현재_닉네임);
         assertThat(다시.block().blockId()).isEqualTo(최초.block().blockId());
-        assertThat(다시.block().emotionId()).isEqualTo(최초_근거_한숨);
+        assertThat(다시.block().emotionId()).isEqualTo(최초_근거_한숨.getId());
         assertThat(다시.block().memo()).isEqualTo("최초 근거");
+        assertThat(다시.block().createdAt()).isEqualTo(최초.block().createdAt());
         assertThat(deviceBlockRepository.count()).isOne();
+    }
+
+    @Test
+    void 기명_감정의_작성자_닉네임이_없으면_과거_랜덤_이름을_반환하지_않는다() {
+        // given
+        Device 차단자 = 기기를_저장한다();
+        Device 작성자 = 기기를_저장한다();
+        Emotion 감정 = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(작성자.getId()).anonymous(false).build());
+
+        // when
+        BlockSaveResult result = deviceBlockService.save(감정.getId(), 차단자.getPublicId());
+
+        // then
+        assertThat(result.block().nickname()).isEqualTo("익명");
+        assertThat(result.block().emotionId()).isEqualTo(감정.getId());
     }
 
     @Test
@@ -142,17 +185,20 @@ class DeviceBlockServiceIntegrationTest {
     }
 
     @Test
-    void 같은_사용자를_동시에_차단해도_한_건만_저장한다() throws Exception {
+    void 익명과_기명_감정으로_동시에_사용자를_차단해도_최초_근거만_반환한다() throws Exception {
         // given
         int requestCount = 6;
         Device 차단자 = 기기를_저장한다();
-        Device 차단_대상 = 기기를_저장한다();
-        Long 근거_한숨 = 한숨을_저장한다(차단_대상.getId(), null);
+        Device 차단_대상 = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("작성자").build());
+        Emotion 익명_감정 = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(차단_대상.getId()).anonymous(true).memo("익명 근거").build());
+        Emotion 기명_감정 = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(차단_대상.getId()).anonymous(false).memo("기명 근거").build());
 
         // when
         List<BlockSaveResult> results = 동시에_차단한다(
                 requestCount,
-                근거_한숨,
+                List.of(익명_감정.getId(), 기명_감정.getId()),
                 차단자.getPublicId(),
                 new CountDownLatch(requestCount),
                 new CountDownLatch(1)
@@ -163,6 +209,15 @@ class DeviceBlockServiceIntegrationTest {
         assertThat(results)
                 .extracting(result -> result.block().blockId())
                 .containsOnly(results.getFirst().block().blockId());
+        BlockResult 최초 = results.stream().filter(BlockSaveResult::created).findFirst().orElseThrow().block();
+        Emotion 최초_근거 = emotionRepository.findById(최초.emotionId()).orElseThrow();
+        String 닉네임 = "익명";
+        if (!최초_근거.isAnonymous()) {
+            닉네임 = "작성자";
+        }
+        assertThat(results).extracting(result -> result.block().emotionId()).containsOnly(최초_근거.getId());
+        assertThat(results).extracting(result -> result.block().memo()).containsOnly(최초_근거.getMemo());
+        assertThat(results).extracting(result -> result.block().nickname()).containsOnly(닉네임);
         assertThat(deviceBlockRepository.count()).isOne();
     }
 
@@ -178,7 +233,7 @@ class DeviceBlockServiceIntegrationTest {
             // when
             동시에_차단한다(
                     6,
-                    근거_한숨,
+                    List.of(근거_한숨),
                     차단자.getPublicId(),
                     new CountDownLatch(6),
                     new CountDownLatch(1)
@@ -325,6 +380,81 @@ class DeviceBlockServiceIntegrationTest {
         assertThat(result.nextCursor()).isNull();
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 차단_목록은_삭제된_최초_감정의_익명_선택과_현재_닉네임을_반영한다(boolean anonymous) {
+        // given
+        Device blocker = 기기를_저장한다();
+        Device writer = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("이전 이름").build());
+        Device unnamed = 기기를_저장한다();
+        Emotion origin = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(writer.getId()).anonymous(anonymous).memo("최초 근거").build());
+        Emotion later = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(writer.getId()).anonymous(!anonymous).memo("다음 근거").build());
+        Emotion unnamedEmotion = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(unnamed.getId()).anonymous(false).build());
+        BlockResult first = deviceBlockService.save(origin.getId(), blocker.getPublicId()).block();
+        deviceBlockService.save(unnamedEmotion.getId(), blocker.getPublicId());
+        String firstNickname = "익명";
+        if (!anonymous) {
+            firstNickname = "이전 이름";
+        }
+        assertThat(deviceBlockService.findAll(blocker.getPublicId(), null).items())
+                .extracting(BlockResult::nickname).containsExactly("익명", firstNickname);
+
+        // when
+        deviceService.updateNickname(writer.getPublicId(), "새 이름");
+        deviceBlockService.save(later.getId(), blocker.getPublicId());
+        jdbcClient.sql("UPDATE emotions SET deleted_at = NOW() WHERE id = :id")
+                .param("id", origin.getId()).update();
+        BlockListResult result = deviceBlockService.findAll(blocker.getPublicId(), null);
+
+        // then
+        String currentNickname = "익명";
+        if (!anonymous) {
+            currentNickname = "새 이름";
+        }
+        assertThat(result.items()).extracting(BlockResult::nickname).containsExactly("익명", currentNickname);
+        assertThat(result.items()).extracting(BlockResult::emotionId).containsExactly(unnamedEmotion.getId(), origin.getId());
+        assertThat(result.items().getLast().blockId()).isEqualTo(first.blockId());
+        assertThat(result.items().getLast().memo()).isEqualTo("최초 근거");
+        assertThat(result.items().getLast().createdAt()).isEqualTo(first.createdAt());
+    }
+
+    @Test
+    void 사용자_차단_목록의_커서는_닉네임_변경_후에도_중복과_누락_없이_이어진다() {
+        // given
+        Device blocker = 기기를_저장한다();
+        Device writer = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("이전 이름").build());
+        Emotion oldest = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(writer.getId()).anonymous(false).build());
+        List<Long> emotionIds = new ArrayList<>();
+        emotionIds.add(oldest.getId());
+        deviceBlockService.save(oldest.getId(), blocker.getPublicId());
+        for (int index = 0; index < 50; index++) {
+            Device author = 기기를_저장한다();
+            Long emotionId = 한숨을_저장한다(author.getId(), null);
+            emotionIds.add(emotionId);
+            deviceBlockService.save(emotionId, blocker.getPublicId());
+        }
+
+        // when
+        BlockListResult firstPage = deviceBlockService.findAll(blocker.getPublicId(), null);
+        deviceService.updateNickname(writer.getPublicId(), "새 이름");
+        BlockListResult nextPage = deviceBlockService.findAll(blocker.getPublicId(), firstPage.nextCursor());
+
+        // then
+        assertThat(firstPage.items()).extracting(BlockResult::emotionId)
+                .containsExactlyElementsOf(emotionIds.reversed().subList(0, 50));
+        assertThat(firstPage.items()).extracting(BlockResult::nickname).containsOnly("익명");
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(firstPage.nextCursor()).isNotBlank();
+        assertThat(nextPage.items()).extracting(BlockResult::emotionId).containsExactly(oldest.getId());
+        assertThat(nextPage.items().getFirst().nickname()).isEqualTo("새 이름");
+        assertThat(nextPage.hasNext()).isFalse();
+        assertThat(nextPage.nextCursor()).isNull();
+    }
+
     @Test
     void 사용할_수_없는_커서로_차단_목록을_조회하면_예외가_발생한다() {
         // given
@@ -386,7 +516,7 @@ class DeviceBlockServiceIntegrationTest {
 
     private List<BlockSaveResult> 동시에_차단한다(
             int requestCount,
-            Long emotionId,
+            List<Long> emotionIds,
             UUID devicePublicId,
             CountDownLatch ready,
             CountDownLatch start
@@ -394,6 +524,7 @@ class DeviceBlockServiceIntegrationTest {
         try (ExecutorService executorService = Executors.newFixedThreadPool(requestCount)) {
             List<Future<BlockSaveResult>> futures = new ArrayList<>();
             for (int index = 0; index < requestCount; index++) {
+                Long emotionId = emotionIds.get(index % emotionIds.size());
                 futures.add(executorService.submit(() -> {
                     ready.countDown();
                     start.await();

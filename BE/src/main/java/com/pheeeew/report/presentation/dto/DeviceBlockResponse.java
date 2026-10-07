@@ -26,8 +26,8 @@ public record DeviceBlockResponse(
         Long emotionId,
 
         @Schema(
-                description = "근거가 된 감정의 익명 닉네임입니다. 차단한 사용자를 식별하는 값이 아닙니다.",
-                example = "날아가는 고라니"
+                description = "최초 차단 근거 감정이 익명이면 '익명', 기명이면 작성 기기의 현재 닉네임입니다. 다른 감정으로 재시도해도 최초 근거의 익명 선택을 유지합니다. 기기 닉네임이 없으면 '익명'으로 표시합니다.",
+                example = "익명"
         )
         String nickname,
 

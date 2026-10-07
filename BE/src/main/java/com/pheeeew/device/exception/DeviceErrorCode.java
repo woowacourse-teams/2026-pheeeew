@@ -10,20 +10,15 @@ import org.springframework.http.HttpStatus;
 public enum DeviceErrorCode implements ErrorCode {
 
     DEVICE_SAVE_FAILED("DEVICE-001", "기기를 등록하지 못했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
-    DEVICE_REGISTRATION_WINDOW_EXPIRED(
-            "DEVICE-002",
-            "기기 등록 재시도 시간이 지났습니다. 새 요청으로 등록해 주세요.",
-            HttpStatus.CONFLICT
-    ),
+    DEVICE_REGISTRATION_WINDOW_EXPIRED("DEVICE-002", "기기 등록 재시도 시간이 지났습니다. 새 요청으로 등록해 주세요.", HttpStatus.CONFLICT),
     DEVICE_REFRESH_TOKEN_INVALID("DEVICE-003", "인증 정보를 사용할 수 없습니다.", HttpStatus.UNAUTHORIZED),
     DEVICE_NOT_FOUND("DEVICE-004", "인증 정보를 사용할 수 없습니다.", HttpStatus.UNAUTHORIZED),
     DEVICE_CHALLENGE_INVALID("DEVICE-005", "무결성 증명 요청 값을 사용할 수 없습니다.", HttpStatus.BAD_REQUEST),
     DEVICE_ATTESTATION_INVALID("DEVICE-006", "무결성 증명을 확인할 수 없습니다.", HttpStatus.FORBIDDEN),
-    DEVICE_ATTESTATION_UNAVAILABLE(
-            "DEVICE-007",
-            "무결성 증명을 지금 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.",
-            HttpStatus.SERVICE_UNAVAILABLE
-    );
+    DEVICE_ATTESTATION_UNAVAILABLE("DEVICE-007", "무결성 증명을 지금 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.", HttpStatus.SERVICE_UNAVAILABLE),
+    DEVICE_NICKNAME_INVALID("DEVICE-008", "닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다.", HttpStatus.BAD_REQUEST),
+    DEVICE_NICKNAME_DUPLICATED("DEVICE-009", "이미 사용 중인 닉네임입니다.", HttpStatus.CONFLICT),
+    DEVICE_NICKNAME_REQUIRED("DEVICE-010", "기명으로 감정을 등록하려면 닉네임을 먼저 설정해 주세요.", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;

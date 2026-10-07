@@ -34,7 +34,8 @@ public record EmotionDetailResponse(
             @Schema(description = "감정 메모", nullable = true, example = "답답한 하루") String memo,
             @Schema(description = "녹음 목록·상세 조회에 포함되는 1시간 유효한 재생 URL입니다. 만료되면 다시 조회합니다.", nullable = true)
             PlaybackUrl audio,
-            @Schema(description = "익명 닉네임", example = "먼지구름") String nickname,
+            @Schema(description = "익명 감정은 '익명', 기명 감정은 작성 기기의 현재 닉네임입니다. 닉네임 수정은 기존 기명 감정에도 반영됩니다. 기기 닉네임이 없으면 '익명'으로 표시합니다.",
+                    example = "익명") String nickname,
             List<Emoji> emojis,
             @Schema(description = "연결된 그룹 스탬프의 현재 모양. 선택하지 않았으면 null입니다.", nullable = true)
             GroupStampResponse groupStamp,

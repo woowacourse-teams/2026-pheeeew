@@ -2,7 +2,8 @@ package com.pheeeew.report.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
-import com.pheeeew.report.application.EmotionBlockService;
+import com.pheeeew.report.application.command.EmotionBlockCommandService;
+import com.pheeeew.report.application.query.EmotionBlockQueryService;
 import com.pheeeew.report.application.dto.BlockListResult;
 import com.pheeeew.report.application.dto.BlockSaveResult;
 import com.pheeeew.report.presentation.dto.BlockCreateRequest;
@@ -27,7 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class EmotionBlockController implements EmotionBlockControllerApi {
 
-    private final EmotionBlockService emotionBlockService;
+    private final EmotionBlockCommandService emotionBlockCommandService;
+    private final EmotionBlockQueryService emotionBlockQueryService;
 
     @Override
     @PostMapping
@@ -35,7 +37,7 @@ public class EmotionBlockController implements EmotionBlockControllerApi {
             @CurrentDevice UUID devicePublicId,
             @Valid @RequestBody BlockCreateRequest request
     ) {
-        BlockSaveResult result = emotionBlockService.save(request.emotionId(), devicePublicId);
+        BlockSaveResult result = emotionBlockCommandService.save(request.emotionId(), devicePublicId);
 
         HttpStatus status = HttpStatus.OK;
         if (result.created()) {
@@ -52,7 +54,7 @@ public class EmotionBlockController implements EmotionBlockControllerApi {
             @CurrentDevice UUID devicePublicId,
             @RequestParam(required = false) String cursor
     ) {
-        BlockListResult result = emotionBlockService.findAll(devicePublicId, cursor);
+        BlockListResult result = emotionBlockQueryService.findAll(devicePublicId, cursor);
 
         List<EmotionBlockResponse> items = result.items().stream()
                 .map(EmotionBlockResponse::from)
@@ -67,7 +69,7 @@ public class EmotionBlockController implements EmotionBlockControllerApi {
             @CurrentDevice UUID devicePublicId,
             @PathVariable("emotionId") Long emotionId
     ) {
-        emotionBlockService.delete(emotionId, devicePublicId);
+        emotionBlockCommandService.delete(emotionId, devicePublicId);
 
         return ResponseEntity.noContent().build();
     }

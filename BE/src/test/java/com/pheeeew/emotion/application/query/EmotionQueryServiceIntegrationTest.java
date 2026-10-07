@@ -12,6 +12,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
 import com.pheeeew.device.domain.Device;
+import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
@@ -46,6 +47,7 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
+import org.hibernate.SessionFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -73,6 +75,9 @@ class EmotionQueryServiceIntegrationTest {
     private DeviceRepository deviceRepository;
 
     @Autowired
+    private DeviceService deviceService;
+
+    @Autowired
     private EmotionBlockRepository emotionBlockRepository;
 
     @Autowired
@@ -93,13 +98,120 @@ class EmotionQueryServiceIntegrationTest {
         검증용_지역_계층을_저장한다(jdbcClient);
         viewer = deviceRepository.save(기본_기기_빌더().build());
         author = deviceRepository.save(기본_기기_빌더().build());
-        emotion = emotionRepository.save(기본_한숨_빌더()
+        emotion = emotionRepository.saveAndFlush(기본_한숨_빌더()
                 .state(EmotionState.FRUSTRATED)
                 .rotationDegrees(35.5)
                 .memo("답답한 하루")
-                .nickname("먼지구름")
                 .deviceId(author.getId())
                 .build());
+        과거_닉네임을_저장한다(emotion);
+    }
+
+    @Test
+    void 목록과_상세는_기명에만_현재_작성자_닉네임을_표시한다() {
+        // given: 같은 작성자의 익명 감정이 일괄 조회한 실제 이름을 노출하면 안 된다.
+        deviceService.updateNickname(author.getPublicId(), "작성자");
+        Device other = deviceRepository.save(기본_기기_빌더().nickname("다른 이름").build());
+        Emotion named = emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).anonymous(false).memo("기명").build());
+        Emotion otherNamed = emotionRepository.save(기본_한숨_빌더().deviceId(other.getId()).anonymous(false).memo("다른 기명").build());
+        Emotion withoutAuthor = saveEmotion(null, 126.9774, 37.5669);
+        entityManager.flush();
+        과거_닉네임을_저장한다(named);
+        entityManager.clear();
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+
+        // when
+        List<EmotionDetailView> items = emotionQueryService.findFirstListPage(bounds, viewer.getPublicId()).items();
+        Instant snapshot = Instant.now().plusSeconds(1);
+        List<EmotionListItemView> legacyItems = emotionQueryService.findVisiblePageWithinBounds(
+                bounds, snapshot, snapshot, Long.MAX_VALUE, 10, viewer.getPublicId());
+
+        // then
+        assertThat(items).extracting(EmotionDetailView::id, EmotionDetailView::nickname).containsExactlyInAnyOrder(
+                tuple(emotion.getId(), "익명"), tuple(withoutAuthor.getId(), "익명"),
+                tuple(named.getId(), "작성자"), tuple(otherNamed.getId(), "다른 이름"));
+        assertThat(legacyItems).extracting(EmotionListItemView::id, EmotionListItemView::nickname).containsExactlyInAnyOrder(
+                tuple(emotion.getId(), "익명"), tuple(withoutAuthor.getId(), "익명"),
+                tuple(named.getId(), "작성자"), tuple(otherNamed.getId(), "다른 이름"));
+        assertThat(emotionQueryService.findById(named.getId(), viewer.getPublicId()).nickname()).isEqualTo("작성자");
+        assertThat(emotionQueryService.findById(otherNamed.getId(), viewer.getPublicId()).nickname()).isEqualTo("다른 이름");
+        assertThat(emotionQueryService.findById(emotion.getId(), viewer.getPublicId()).nickname()).isEqualTo("익명");
+        assertThat(emotionQueryService.findById(withoutAuthor.getId(), viewer.getPublicId()).nickname()).isEqualTo("익명");
+    }
+
+    @Test
+    void 닉네임_변경은_기명_상세와_첫_페이지와_기존_커서의_다음_페이지에도_반영한다() {
+        // given
+        deviceService.updateNickname(author.getPublicId(), "이전 이름");
+        for (int index = 0; index < 21; index++) {
+            emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).anonymous(false).memo("기명").build());
+        }
+        entityManager.flush();
+        entityManager.clear();
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+        EmotionPageView before = emotionQueryService.findFirstListPage(bounds, viewer.getPublicId());
+        assertThat(before.items()).hasSize(20).extracting(EmotionDetailView::nickname).containsOnly("이전 이름");
+
+        // when
+        deviceService.updateNickname(author.getPublicId(), "새 이름");
+        entityManager.clear();
+        EmotionPageView first = emotionQueryService.findFirstListPage(bounds, viewer.getPublicId());
+        EmotionPageView next = emotionQueryService.findNextListPage(before.nextCursor(), viewer.getPublicId());
+
+        // then
+        assertThat(first.items()).hasSize(20).extracting(EmotionDetailView::nickname).containsOnly("새 이름");
+        assertThat(next.items()).hasSize(2).extracting(EmotionDetailView::nickname).containsExactlyInAnyOrder("새 이름", "익명");
+        assertThat(emotionQueryService.findById(first.items().getFirst().id(), viewer.getPublicId()).nickname()).isEqualTo("새 이름");
+        assertThat(jdbcClient.sql("SELECT nickname FROM emotions WHERE id = :id")
+                .param("id", emotion.getId()).query(String.class).single()).isEqualTo("먼지구름");
+    }
+
+    @Test
+    void 기명_감정의_작성자_닉네임이_없어도_과거_랜덤_이름을_표시하지_않는다() {
+        // given: 전환 중 불완전한 기명 기록도 안전하게 익명으로 표시한다.
+        Emotion named = emotionRepository.saveAndFlush(기본_한숨_빌더().deviceId(author.getId()).anonymous(false).memo("기명").build());
+        과거_닉네임을_저장한다(named);
+        entityManager.clear();
+
+        // when / then
+        assertThat(emotionQueryService.findById(named.getId(), viewer.getPublicId()).nickname()).isEqualTo("익명");
+        assertThat(emotionQueryService.findFirstListPage(EmotionSearchBounds.of(126, 37, 128, 38), viewer.getPublicId()).items())
+                .extracting(EmotionDetailView::nickname).containsOnly("익명");
+    }
+
+    @Test
+    void 기명_목록의_닉네임_조회는_감정_수와_관계없이_SQL_한_번만_추가한다() {
+        // given
+        deviceService.updateNickname(author.getPublicId(), "작성자");
+        deviceService.updateNickname(viewer.getPublicId(), "조회자");
+        entityManager.flush();
+        entityManager.clear();
+        var statistics = entityManager.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
+        boolean previouslyEnabled = statistics.isStatisticsEnabled();
+        statistics.setStatisticsEnabled(true);
+        try {
+            EmotionSearchBounds bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+            statistics.clear();
+            emotionQueryService.findFirstListPage(bounds, viewer.getPublicId());
+            long anonymousStatements = statistics.getPrepareStatementCount();
+            for (int index = 0; index < 10; index++) {
+                emotionRepository.save(기본_한숨_빌더().deviceId(index % 2 == 0 ? author.getId() : viewer.getId())
+                        .anonymous(false).memo("기명").build());
+            }
+            entityManager.flush();
+            entityManager.clear();
+            statistics.clear();
+
+            // when
+            EmotionPageView page = emotionQueryService.findFirstListPage(bounds, viewer.getPublicId());
+
+            // then: 작성자 두 기기의 이름을 감정 열 건마다 조회하지 않는다.
+            assertThat(page.items()).hasSize(11).extracting(EmotionDetailView::nickname)
+                    .containsOnly("작성자", "조회자", "익명");
+            assertThat(statistics.getPrepareStatementCount()).isEqualTo(anonymousStatements + 1);
+        } finally {
+            statistics.setStatisticsEnabled(previouslyEnabled);
+        }
     }
 
     @Test
@@ -157,7 +269,7 @@ class EmotionQueryServiceIntegrationTest {
         assertThat(result.state()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(result.rotationDegrees()).isEqualTo(35.5);
         assertThat(result.memo()).isEqualTo("답답한 하루");
-        assertThat(result.nickname()).isEqualTo("먼지구름");
+        assertThat(result.nickname()).isEqualTo("익명");
         assertThat(result.emojis()).hasSize(6);
         assertThat(result.emojis().get(0).type()).isEqualTo(EmojiType.HEART);
         assertThat(result.emojis().get(0).count()).isEqualTo(2);
@@ -580,7 +692,6 @@ class EmotionQueryServiceIntegrationTest {
         return emotionRepository.save(기본_한숨_빌더()
                 .state(EmotionState.FRUSTRATED)
                 .memo("메모")
-                .nickname("먼지구름")
                 .deviceId(author.getId())
                 .groupStamp(stamp)
                 .build());
@@ -593,9 +704,13 @@ class EmotionQueryServiceIntegrationTest {
                 .location(location)
                 .state(EmotionState.FRUSTRATED)
                 .memo("메모")
-                .nickname("먼지구름")
                 .deviceId(authorId)
                 .build());
+    }
+
+    private void 과거_닉네임을_저장한다(Emotion target) {
+        jdbcClient.sql("UPDATE emotions SET nickname = :nickname WHERE id = :id")
+                .param("nickname", "먼지구름").param("id", target.getId()).update();
     }
 
     private void setCreatedAt(Emotion target, Instant createdAt) {

@@ -5,23 +5,119 @@ import com.pheeeew.device.presentation.dto.AccessTokenReissueRequest;
 import com.pheeeew.device.presentation.dto.AccessTokenResponse;
 import com.pheeeew.device.presentation.dto.DeviceChallengeResponse;
 import com.pheeeew.device.presentation.dto.DeviceCreateRequest;
+import com.pheeeew.device.presentation.dto.DeviceNicknameResponse;
+import com.pheeeew.device.presentation.dto.DeviceNicknameUpdateRequest;
 import com.pheeeew.device.presentation.dto.DeviceTokenResponse;
+import com.pheeeew.device.presentation.dto.DeviceV3CreateRequest;
+import com.pheeeew.device.presentation.dto.NicknameAvailabilityResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.UUID;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "기기", description = "기기 등록과 토큰 발급 API")
 public interface DeviceControllerApi {
 
+    @Operation(summary = "내 기기 닉네임 조회", security = @SecurityRequirement(name = "bearerAuth"),
+            description = """
+                    - 인증 토큰의 기기 공개 식별자로 본인 기기의 현재 닉네임을 조회합니다.
+                    - 요청에 기기 식별자를 보내지 않습니다. 응답에도 닉네임 외 식별자나 토큰을 포함하지 않습니다.
+                    - 미설정 기기는 200과 {"nickname": null}을 반환합니다. 필드 자체를 생략하지 않습니다.
+                      앱은 null이면 필수 입력 화면으로 보내고 닉네임 수정 API로 최초 설정합니다.
+                    - 현재 닉네임을 확인해야 하므로 응답에 Cache-Control: no-store를 설정합니다.
+                    """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "닉네임 조회 성공. 미설정 기기는 null",
+                    content = @Content(schema = @Schema(implementation = DeviceNicknameResponse.class))),
+            @ApiResponse(responseCode = "401", description = "AUTH-001: 인증 토큰 누락·무효. DEVICE-004: 기기가 존재하지 않음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<DeviceNicknameResponse> findNickname(@Parameter(hidden = true) UUID devicePublicId);
+
+    @Operation(summary = "내 기기 닉네임 설정·수정", security = @SecurityRequirement(name = "bearerAuth"),
+            description = """
+                    - 인증된 본인 기기의 닉네임을 설정하거나 변경합니다. 기기 식별자는 보내지 않습니다.
+                    - v2로 가입한 미설정 기기도 같은 API로 최초 설정합니다. 기존 기기와 토큰은 유지합니다.
+                    - nickname은 필수이며 null은 허용하지 않습니다. 앞뒤 공백 제거 후 한글, 영문, 공백으로 1~10자여야 합니다.
+                    - 익명은 사용할 수 없습니다. 중간 공백과 영문 대소문자는 저장할 때 그대로 유지합니다.
+                    - 중복 판단은 영문 대소문자를 구분하지 않습니다. 자기 닉네임 유지·대소문자 변경은 허용합니다.
+                    - 사용 가능 여부 조회는 예약이 아닙니다. 다른 기기가 먼저 사용하면 409를 반환하고 기존 값을 유지합니다.
+                    - 성공하면 본문 없는 204를 반환합니다. 현재 값은 GET /api/v3/devices/me/nickname으로 조회합니다.
+                    """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "닉네임 설정·수정 성공", content = @Content),
+            @ApiResponse(responseCode = "400", description = "COMMON-001: nickname 누락·null 또는 잘못된 본문. DEVICE-008: 닉네임 규칙 위반",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "AUTH-001: 인증 토큰 누락·무효. DEVICE-004: 기기가 존재하지 않음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "DEVICE-009: 다른 기기가 이미 사용 중인 닉네임",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<Void> updateNickname(@Parameter(hidden = true) UUID devicePublicId, DeviceNicknameUpdateRequest request);
+
     @Operation(
-            summary = "기기 등록",
+            summary = "닉네임 사용 가능 여부 조회",
+            description = """
+                    - 기기 등록 전에 호출할 수 있으며 인증이 필요하지 않습니다.
+                    - Authorization 헤더를 생략해 호출할 수 있습니다. 사용할 수 없는 토큰을 보내면 401을 반환합니다.
+                    - `nickname`은 필수 쿼리 파라미터입니다. 앞뒤 공백을 제거한 뒤 1~10자여야 합니다.
+                    - 한글, 영문, 공백만 허용하며 `익명`은 사용할 수 없습니다.
+                    - 영문 대소문자는 중복 판단에서 구분하지 않고, 중간 공백은 그대로 구분합니다.
+                    - 사용 중인 닉네임이면 `available: false`, 사용 가능하면 `available: true`를 반환합니다.
+                    - 응답은 조회 시점의 결과이며 닉네임을 예약하지 않습니다.
+                      조회 후 다른 기기가 사용할 수 있으므로 최종 등록·수정 시에도 중복을 확인해야 합니다.
+                    - 응답에는 기기 식별자나 토큰을 포함하지 않으며 캐시 저장을 허용하지 않습니다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "닉네임 사용 가능 여부 조회 성공",
+                    content = @Content(schema = @Schema(implementation = NicknameAvailabilityResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "nickname 쿼리 파라미터가 없거나 닉네임 규칙을 만족하지 않음",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "파라미터 누락", value = """
+                                            {"code":"COMMON-001","message":"요청 값이 올바르지 않습니다."}
+                                            """),
+                                    @ExampleObject(name = "닉네임 규칙 위반", value = """
+                                            {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                                            """)
+                            }
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더에 사용할 수 없는 토큰을 보냄",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                    """)
+                    )
+            )
+    })
+    ResponseEntity<NicknameAvailabilityResponse> findNicknameAvailability(
+            @Parameter(description = "사용 가능 여부를 확인할 닉네임", required = true, example = "Star K")
+            String nickname
+    );
+
+    @Operation(
+            summary = "기기 등록 (구버전 호환)",
+            deprecated = true,
             description = """
                     ### 무엇을 발급받나요
 
@@ -29,6 +125,13 @@ public interface DeviceControllerApi {
                     - `expiresIn`은 access token의 남은 유효 시간(초)입니다. 현재 값은 1800(30분)입니다.
                     - refresh token에는 만료가 없습니다. 앱이 보관하는 장기 비밀값은 이 하나뿐입니다.
                     - 응답에 기기 식별자는 포함되지 않습니다. 기기는 서버가 토큰으로부터 찾습니다.
+
+                    ### 구버전 앱 호환
+
+                    - v2 등록은 닉네임을 입력받지 않습니다. 신규 기기의 닉네임은 NULL로 저장합니다.
+                    - 닉네임을 필수로 입력받는 새 앱은 `POST /api/v3/devices`로 등록합니다.
+                    - 서버 배포 이후 v2로 가입한 기기는 새 앱에서 내 닉네임을 조회하고,
+                      NULL이면 입력 화면을 거쳐 인증된 닉네임 수정 API로 최초 설정합니다.
 
                     ### requestId
 
@@ -41,6 +144,7 @@ public interface DeviceControllerApi {
                     ### 등록 재시도
 
                     - 응답을 받지 못했다면 같은 `requestId`로 다시 요청합니다.
+                    - v2와 v3를 바꿔 재시도해도 최초 기기의 닉네임과 플랫폼을 유지합니다.
                     - 최초 등록은 201, 같은 `requestId`의 재요청은 200을 반환합니다. 둘 다 성공입니다.
                     - 재시도는 최초 등록 후 5분 이내에만 토큰을 다시 받을 수 있습니다.
                     - 5분이 지난 뒤 같은 `requestId`로 요청하면 409를 반환하고 토큰을 주지 않습니다.
@@ -149,6 +253,49 @@ public interface DeviceControllerApi {
     })
     ResponseEntity<DeviceTokenResponse> save(DeviceCreateRequest request);
 
+    @Operation(summary = "닉네임과 함께 기기 등록", description = """
+            - 인증 없이 호출하며 Authorization 헤더는 생략합니다. 잘못된 토큰을 보내면 401을 반환합니다.
+            - nickname은 재시도에도 필수입니다. 앞뒤 공백을 제거한 뒤 한글, 영문, 공백으로 1~10자여야 합니다.
+              익명은 사용할 수 없습니다. 표시할 대소문자와 중간 공백은 유지하고 영문 대소문자는 중복 판단에서 구분하지 않습니다.
+            - 중복 확인은 예약이 아닙니다. 등록 시 다른 기기와 중복되면 DEVICE-009(409)를 반환하며 기기와 토큰은 저장되지 않습니다.
+              증명 토큰을 보냈다면 challenge가 이미 소모됐을 수 있으므로 다른 닉네임과 새 challenge·증명으로 다시 등록합니다.
+            - 성공 시 access token(1800초)과 만료 없는 refresh token만 반환합니다. 기기 식별자는 노출하지 않습니다.
+            - 새 등록마다 새 requestId를 만들고 응답 유실 시 같은 값을 재사용합니다. 성공하면 즉시 폐기하고 로그에 남기지 않습니다.
+              등록 후 5분간은 이 값으로 토큰을 다시 받을 수 있으므로 자격증명처럼 보호합니다.
+            - 최초 등록은 201, 5분 이내 재시도는 200입니다. 최초 닉네임과 플랫폼을 유지하며 증명을 다시 검증하지 않습니다.
+              v2로 생성된 기기의 재시도에서도 NULL 닉네임을 유지합니다. 최초 닉네임 설정은 인증된 수정 API로 처리합니다.
+              5분이 지나면 DEVICE-002(409)를 반환합니다. 새 requestId로 등록해야 합니다.
+              재시도마다 새 refresh token을 반환하며 이전 refresh token도 계속 유효합니다.
+            - attestation.platform은 ANDROID 또는 IOS입니다. token을 생략하거나 null로 두면 증명 검증 없이 등록합니다.
+              token을 보내면 유효한 challenge가 필수이며 실제 검증합니다. IOS는 keyId도 필수입니다.
+              증명 검증·challenge 소모 규칙은 v2와 같습니다. 검증 실패는 403이며 기기는 저장되지 않습니다.
+            - challenge 발급: POST /api/v2/devices/challenge, 토큰 갱신: POST /api/v2/devices/tokens,
+              닉네임 중복 확인: GET /api/v3/devices/nicknames/availability?nickname=... 경로를 계속 사용합니다.
+            """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "닉네임과 기기 저장 후 토큰 발급",
+                    content = @Content(schema = @Schema(implementation = DeviceTokenResponse.class))),
+            @ApiResponse(responseCode = "200", description = "5분 이내 같은 requestId 재시도로 토큰 재발급",
+                    content = @Content(schema = @Schema(implementation = DeviceTokenResponse.class))),
+            @ApiResponse(responseCode = "400", description = "COMMON-001: 필수값 누락 또는 요청 형식 오류. "
+                    + "DEVICE-008: 신규 닉네임 규칙 위반. DEVICE-005: challenge 누락·재사용·만료",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "AUTH-001: 유효하지 않은 인증 토큰을 보냄",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "DEVICE-006: 무결성 증명 검증 실패",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "DEVICE-002: 재시도 창 만료. DEVICE-009: 닉네임 중복",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "500", description = "기기 저장 실패 또는 서버 오류",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "DEVICE-007: ANDROID 증명 검증 수단 일시 장애. "
+                    + "Retry-After 초만큼 기다린 뒤 같은 requestId로 재시도",
+                    headers = @Header(name = "Retry-After", description = "재시도 대기 시간(초)",
+                            schema = @Schema(type = "integer")),
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<DeviceTokenResponse> save(DeviceV3CreateRequest request);
+
     @Operation(
             summary = "무결성 증명 challenge 발급",
             description = """
@@ -160,7 +307,7 @@ public interface DeviceControllerApi {
 
                     ### 어떻게 쓰나요
 
-                    - 증명 토큰을 기기 등록(`POST /api/v2/devices`) 요청의 `attestation.token`으로 보냅니다.
+                    - 증명 토큰을 기기 등록(`POST /api/v2/devices` 또는 `POST /api/v3/devices`) 요청의 `attestation.token`으로 보냅니다.
                     - **받은 `challenge`도 같은 요청의 `attestation.challenge`로 함께 보냅니다.** 플랫폼과 무관하게 필수입니다.
                     - **`ANDROID`** — 받은 `challenge` 문자열을 Play Integrity 요청의 nonce로 그대로 씁니다.
                       서버는 복호화한 토큰 안의 challenge를 권위 있는 값으로 삼되, base64 로 디코딩한 32바이트를

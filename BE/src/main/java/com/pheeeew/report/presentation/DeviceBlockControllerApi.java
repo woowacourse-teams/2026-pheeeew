@@ -48,7 +48,9 @@ public interface DeviceBlockControllerApi {
                     ### 중복 차단
 
                     - 같은 사용자를 한 번만 차단합니다. 이미 차단한 사용자를 다시 차단하면 새로 저장하지 않고 최초 차단을 200으로 반환합니다.
-                    - 이때 응답의 `emotionId`, `nickname`, `memo`는 요청에 담은 감정이 아니라 최초 차단의 근거가 된 감정입니다.
+                    - 이때 응답의 `emotionId`와 `memo`는 요청에 담은 감정이 아니라 최초 차단의 근거가 된 감정의 값입니다.
+                    - `nickname`은 최초 근거 감정이 익명이면 '익명', 기명이면 작성 기기의 현재 닉네임입니다. 기기 닉네임이 없으면 '익명'으로 표시합니다.
+                    - 다른 감정으로 재시도해도 최초 근거 감정의 익명 선택을 유지합니다. 기기 닉네임 수정은 기명 차단 응답에 반영됩니다.
 
                     ### 감정 차단과의 관계
 
@@ -152,8 +154,10 @@ public interface DeviceBlockControllerApi {
 
                     ### 항목
 
-                    - 사용자는 익명이므로 차단 대상을 식별하는 값을 반환하지 않습니다. 대신 차단할 때 근거가 된 감정을 함께 반환해 어떤 사용자를 차단했는지 알아볼 수 있게 합니다.
-                    - `emotionId`, `nickname`, `memo`는 그 근거 감정의 값입니다. 그 사용자의 다른 감정이나 최근 활동이 아닙니다.
+                    - 차단한 작성 기기의 식별자는 응답에 담기지 않습니다. 대신 최초 차단 근거 감정을 반환합니다.
+                    - `emotionId`와 `memo`는 최초 근거 감정의 값입니다. 다른 감정으로 재시도해도 바뀌지 않습니다.
+                    - `nickname`은 최초 근거 감정이 익명이면 '익명', 기명이면 작성 기기의 현재 닉네임입니다. 기기 닉네임이 없으면 '익명'으로 표시합니다.
+                    - 최초 근거가 익명이면 닉네임 수정 후에도 '익명'입니다. 기명이면 수정된 닉네임을 표시합니다.
                     - `createdAt`은 차단한 시각입니다.
                     - 해제에는 `blockId`를 사용합니다. `emotionId`가 아닙니다.
 
@@ -176,13 +180,20 @@ public interface DeviceBlockControllerApi {
                                         {
                                           "blockId": 7,
                                           "emotionId": 42,
-                                          "nickname": "날아가는 고라니",
+                                          "nickname": "익명",
                                           "memo": "오늘은 조금 지쳤다",
                                           "createdAt": "2026-09-14T02:44:00Z"
+                                        },
+                                        {
+                                          "blockId": 6,
+                                          "emotionId": 41,
+                                          "nickname": "스타크",
+                                          "memo": "조금 나아졌다",
+                                          "createdAt": "2026-09-14T02:43:00Z"
                                         }
                                       ],
-                                      "hasNext": true,
-                                      "nextCursor": "opaque-cursor"
+                                      "hasNext": false,
+                                      "nextCursor": null
                                     }
                                     """)
                     )

@@ -11,7 +11,8 @@ public record EmotionBlockResponse(
         )
         Long emotionId,
 
-        @Schema(description = "차단한 감정의 익명 닉네임", example = "날아가는 고라니")
+        @Schema(description = "차단한 감정이 익명이면 '익명', 기명이면 작성 기기의 현재 닉네임입니다. 기기 닉네임이 없으면 '익명'으로 표시합니다.",
+                example = "익명")
         String nickname,
 
         @Schema(

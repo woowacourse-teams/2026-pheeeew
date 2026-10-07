@@ -87,7 +87,8 @@ class EmotionEditIntegrationTest {
         // given
         Emotion original = save(before);
         Instant createdAt = Instant.parse("2020-01-01T00:00:00Z");
-        jdbc.sql("UPDATE emotions SET created_at = :at WHERE id = :id")
+        jdbc.sql("UPDATE emotions SET created_at = :at, nickname = :nickname WHERE id = :id")
+                .param("nickname", "기존 랜덤 닉네임")
                 .param("at", java.sql.Timestamp.from(createdAt)).param("id", original.getId()).update();
         em.clear();
         Instant regionClassifiedAt = emotions.findById(original.getId()).orElseThrow().getRegionClassifiedAt();
@@ -109,7 +110,8 @@ class EmotionEditIntegrationTest {
         assertThat(loaded.getLongitude()).isEqualTo(original.getLongitude());
         assertThat(loaded.getLatitude()).isEqualTo(original.getLatitude());
         assertThat(loaded.getRotationDegrees()).isEqualTo(35.5);
-        assertThat(loaded.getNickname()).isEqualTo(original.getNickname());
+        assertThat(jdbc.sql("SELECT nickname FROM emotions WHERE id = :id")
+                .param("id", original.getId()).query(String.class).single()).isEqualTo("기존 랜덤 닉네임");
         assertThat(loaded.getRequestId()).isEqualTo(original.getRequestId());
         assertThat(loaded.getRegionCode()).isEqualTo(original.getRegionCode()).isNotNull();
         assertThat(loaded.getRegionClassifiedAt()).isEqualTo(regionClassifiedAt).isNotNull();

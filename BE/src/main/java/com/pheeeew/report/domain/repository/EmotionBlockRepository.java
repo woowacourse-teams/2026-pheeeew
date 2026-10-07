@@ -19,11 +19,13 @@ public interface EmotionBlockRepository extends JpaRepository<EmotionBlock, Long
                     SELECT
                         emotion_block.id AS "blockId",
                         emotion_block.emotion_id AS "emotionId",
-                        emotion.nickname AS nickname,
+                        CASE WHEN emotion.anonymous THEN '익명'
+                             ELSE COALESCE(author.nickname, '익명') END AS nickname,
                         emotion.memo AS memo,
                         emotion_block.created_at AS "createdAt"
                     FROM emotion_blocks emotion_block
                     JOIN emotions emotion ON emotion.id = emotion_block.emotion_id
+                    LEFT JOIN devices author ON author.id = emotion.device_id AND NOT emotion.anonymous
                     WHERE emotion_block.blocker_device_id = :blockerDeviceId
                       AND emotion_block.id < :lastId
                     ORDER BY emotion_block.id DESC
