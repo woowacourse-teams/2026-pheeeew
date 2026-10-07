@@ -31,6 +31,7 @@ import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import com.pheeeew.groups.application.GroupPressMetrics;
 import com.pheeeew.groups.application.GroupRankingService;
 import com.pheeeew.groups.application.GroupService;
 import com.pheeeew.groups.application.InviteCodeGenerator;
@@ -66,6 +67,7 @@ import org.springframework.test.context.ActiveProfiles;
         PlayIntegrityDeviceAttestationVerifier.class,
         PlayIntegrityMetrics.class,
         EmotionReportMetrics.class,
+        GroupPressMetrics.class,
         GroupService.class,
         GroupRankingService.class,
         InviteCodeGenerator.class,

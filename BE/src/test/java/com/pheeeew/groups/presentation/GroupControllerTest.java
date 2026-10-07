@@ -12,6 +12,8 @@ import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.groups.application.GroupService;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
+import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
@@ -20,6 +22,7 @@ import com.pheeeew.groups.domain.GroupViewerRole;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.exception.GroupErrorCode;
 import com.pheeeew.groups.exception.GroupException;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -235,9 +238,9 @@ class GroupControllerTest {
     }
 
     @Test
-    void 상세_조회는_스탬프와_프레스의_개수와_순위를_네_필드로_나눠_내려준다() {
+    void 상세_조회는_배포본과_같은_열두_필드를_내려준다() {
         // given
-        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세(GroupViewerRole.OWNER));
+        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세());
 
         // when
         RestTestClient.ResponseSpec result = 상세를_조회한다();
@@ -245,23 +248,41 @@ class GroupControllerTest {
         // then
         result.expectStatus().isOk()
                 .expectBody()
+                .jsonPath("$.groupId").isEqualTo(그룹_공개_식별자.toString())
                 .jsonPath("$.name").isEqualTo("한숨모임")
                 .jsonPath("$.description").isEqualTo("설명")
+                .jsonPath("$.inviteCode").isEqualTo("ABCD1234")
                 .jsonPath("$.role").isEqualTo("OWNER")
                 .jsonPath("$.memberCount").isEqualTo(1)
                 .jsonPath("$.stamp.text").isEqualTo("기본")
-                .jsonPath("$.weeklyStampCount").isEqualTo(5)
-                .jsonPath("$.weeklyStampRank").isEqualTo(1)
-                .jsonPath("$.weeklyPressCount").isEqualTo(42)
-                .jsonPath("$.weeklyPressRank").isEqualTo(3)
-                .jsonPath("$.weeklyScore").doesNotExist()
-                .jsonPath("$.weeklyRank").doesNotExist()
-                .jsonPath("$.todayPresses").doesNotExist()
-                .jsonPath("$.weeklyPresses").doesNotExist();
+                .jsonPath("$.todayPresses.counts.ANGRY").isEqualTo(2)
+                .jsonPath("$.todayPresses.total").isEqualTo(2)
+                .jsonPath("$.weeklyPresses.counts.ANGRY").isEqualTo(9)
+                .jsonPath("$.weeklyPresses.total").isEqualTo(9)
+                .jsonPath("$.weeklyScore").isEqualTo(5)
+                .jsonPath("$.weeklyRank").isEqualTo(1)
+                .jsonPath("$.weeklyPressRank").isEqualTo(3);
     }
 
     @Test
-    void 프레스_개수와_순위가_없으면_개수는_영이고_순위는_null_로_직렬화된다() {
+    void 상세_조회는_v3_의_감정_프레스_필드를_담지_않는다() {
+        // given
+        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세());
+
+        // when
+        RestTestClient.ResponseSpec result = 상세를_조회한다();
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.weeklyEmotionPressCount").doesNotExist()
+                .jsonPath("$.weeklyEmotionPressRank").doesNotExist()
+                .jsonPath("$.weeklyStampCount").doesNotExist()
+                .jsonPath("$.weeklyStampRank").doesNotExist();
+    }
+
+    @Test
+    void 순위가_없으면_점수는_영이고_순위는_null_로_직렬화된다() {
         // given
         when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기록_없는_상세());
 
@@ -271,27 +292,9 @@ class GroupControllerTest {
         // then
         result.expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.weeklyStampCount").isEqualTo(0)
-                .jsonPath("$.weeklyStampRank").isEqualTo(null)
-                .jsonPath("$.weeklyPressCount").isEqualTo(0)
+                .jsonPath("$.weeklyScore").isEqualTo(0)
+                .jsonPath("$.weeklyRank").isEqualTo(null)
                 .jsonPath("$.weeklyPressRank").isEqualTo(null);
-    }
-
-    @Test
-    void 가입하지_않은_기기도_상세를_조회하면_200이고_역할은_NONE_이며_초대_코드를_받는다() {
-        // given
-        when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세(GroupViewerRole.NONE));
-
-        // when
-        RestTestClient.ResponseSpec result = 상세를_조회한다();
-
-        // then
-        result.expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.role").isEqualTo("NONE")
-                .jsonPath("$.inviteCode").isEqualTo("ABCD1234")
-                .jsonPath("$.groupId").isEqualTo(그룹_공개_식별자.toString());
-        verify(groupService).findOne(그룹_공개_식별자, 기기_공개_식별자);
     }
 
     @Test
@@ -384,32 +387,29 @@ class GroupControllerTest {
                 .exchange();
     }
 
-    private GroupDetailResult 기본_상세(GroupViewerRole 역할) {
-        return 상세(역할, 5, 1, 42, 3);
+    private GroupDetailResult 기본_상세() {
+        return 상세(5, 1, 3);
     }
 
     private GroupDetailResult 기록_없는_상세() {
-        return 상세(GroupViewerRole.NONE, 0, null, 0, null);
+        return 상세(0, null, null);
     }
 
-    private GroupDetailResult 상세(
-            GroupViewerRole 역할,
-            long 스탬프_개수,
-            Integer 스탬프_순위,
-            long 프레스_개수,
-            Integer 프레스_순위
-    ) {
-        return new GroupDetailResult(
-                그룹_공개_식별자,
-                "한숨모임",
-                "설명",
-                "ABCD1234",
-                역할,
-                1,
-                new GroupStampResult("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE),
-                스탬프_개수,
+    private GroupDetailResult 상세(long 스탬프_점수, Integer 스탬프_순위, Integer 프레스_순위) {
+        return GroupDetailResult.of(
+                new GroupResult(
+                        그룹_공개_식별자,
+                        "한숨모임",
+                        "설명",
+                        "ABCD1234",
+                        GroupRole.OWNER,
+                        1,
+                        new GroupStampResult("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
+                ),
+                GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 2L)),
+                GroupPressCountResult.from(Map.of(EmotionState.ANGRY, 9L)),
+                스탬프_점수,
                 스탬프_순위,
-                프레스_개수,
                 프레스_순위
         );
     }

@@ -79,6 +79,7 @@ class GroupRankingIntegrationTest {
         emotionEmojiRepository.deleteAllInBatch();
         emotionRepository.deleteAllInBatch();
         jdbcClient.sql("DELETE FROM device_region_daily_presses").update();
+        jdbcClient.sql("DELETE FROM group_daily_presses").update();
         jdbcClient.sql("DELETE FROM regions").update();
         groupMemberRepository.deleteAllInBatch();
         groupStampRepository.deleteAllInBatch();
@@ -284,7 +285,7 @@ class GroupRankingIntegrationTest {
     }
 
     @Test
-    void 이전_주에_개인_프레스가_있으면_뒤로_더_갈_수_있다고_알린다() {
+    void 이전_주에_그룹_프레스가_있으면_뒤로_더_갈_수_있다고_알린다() {
         // given
         GroupResult 그룹 = 그룹을_만든다("한숨모임");
         눌린_것으로_둔다(그룹, 이번_주_월요일().minusWeeks(2), EmotionState.ANGRY, 3);
@@ -444,7 +445,19 @@ class GroupRankingIntegrationTest {
     }
 
     private void 눌린_것으로_둔다(GroupResult 그룹, LocalDate 날짜, EmotionState 감정, int 횟수) {
-        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹), 날짜, 감정, 횟수);
+        Long groupId = groupRepository.findByPublicIdAndDeletedAtIsNull(그룹.publicId()).orElseThrow().getId();
+        jdbcClient.sql("""
+                        INSERT INTO group_daily_presses
+                            (group_id, press_date, state, press_count, created_at, updated_at)
+                        VALUES (:groupId, :pressDate, :state, :pressCount, NOW(), NOW())
+                        ON CONFLICT (group_id, press_date, state) DO UPDATE
+                           SET press_count = group_daily_presses.press_count + :pressCount
+                        """)
+                .param("groupId", groupId)
+                .param("pressDate", 날짜)
+                .param("state", 감정.name())
+                .param("pressCount", (long) 횟수)
+                .update();
     }
 
     private Long 그룹장_기기_식별자(GroupResult 그룹) {

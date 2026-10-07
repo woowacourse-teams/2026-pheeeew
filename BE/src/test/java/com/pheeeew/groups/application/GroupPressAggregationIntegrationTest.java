@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.groups.application.dto.GroupDetailResult;
+import com.pheeeew.groups.application.dto.GroupDetailV3Result;
 import com.pheeeew.groups.application.dto.GroupPressRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
@@ -92,15 +92,13 @@ class GroupPressAggregationIntegrationTest {
         눌린_것으로_둔다(기기, 이번_주_월요일(), EmotionState.ANGRY, 5);
 
         // when
-        GroupDetailResult 내_상세 = 상세(내_그룹, 기기);
-        GroupDetailResult 옆_상세 = 상세(옆_그룹, 기기);
+        GroupDetailV3Result 내_상세 = 상세(내_그룹, 기기);
+        GroupDetailV3Result 옆_상세 = 상세(옆_그룹, 기기);
 
         // then
-        assertThat(내_상세.weeklyPressCount()).isEqualTo(5);
-        assertThat(옆_상세.weeklyPressCount()).isEqualTo(5);
-        assertThat(프레스_랭킹(기기))
-                .extracting(GroupPressRankingItem::name, GroupPressRankingItem::score)
-                .containsExactlyInAnyOrder(tuple("내모임", 5L), tuple("옆모임", 5L));
+        assertThat(내_상세.weeklyEmotionPressCount()).isEqualTo(5);
+        assertThat(옆_상세.weeklyEmotionPressCount()).isEqualTo(5);
+        assertThat(프레스_랭킹(기기)).isEmpty();
     }
 
     @Test
@@ -117,11 +115,11 @@ class GroupPressAggregationIntegrationTest {
         눌린_것으로_둔다(다른_멤버, 이번_주_월요일().plusDays(2), EmotionState.EXHAUSTED, 4);
 
         // when
-        GroupDetailResult 상세 = 상세(그룹, 그룹장);
+        GroupDetailV3Result 상세 = 상세(그룹, 그룹장);
 
         // then
-        assertThat(상세.weeklyPressCount()).isEqualTo(10);
-        assertThat(상세.weeklyPressRank()).isOne();
+        assertThat(상세.weeklyEmotionPressCount()).isEqualTo(10);
+        assertThat(상세.weeklyEmotionPressRank()).isOne();
     }
 
     @Test
@@ -133,14 +131,14 @@ class GroupPressAggregationIntegrationTest {
         groupService.join(떠날_기기.getPublicId(), 그룹.inviteCode());
         눌린_것으로_둔다(그룹장, 이번_주_월요일(), EmotionState.ANGRY, 2);
         눌린_것으로_둔다(떠날_기기, 이번_주_월요일(), EmotionState.ANGRY, 4);
-        long 탈퇴_전 = 상세(그룹, 그룹장).weeklyPressCount();
+        long 탈퇴_전 = 상세(그룹, 그룹장).weeklyEmotionPressCount();
 
         // when
         groupService.leave(그룹.publicId(), 떠날_기기.getPublicId());
 
         // then
         assertThat(탈퇴_전).isEqualTo(6);
-        assertThat(상세(그룹, 그룹장).weeklyPressCount()).isEqualTo(2);
+        assertThat(상세(그룹, 그룹장).weeklyEmotionPressCount()).isEqualTo(2);
     }
 
     @Test
@@ -155,11 +153,11 @@ class GroupPressAggregationIntegrationTest {
         눌린_것으로_둔다(재가입_기기, 이번_주_월요일(), EmotionState.ANGRY, 5);
 
         // when
-        GroupDetailResult 상세 = 상세(그룹, 그룹장);
+        GroupDetailV3Result 상세 = 상세(그룹, 그룹장);
 
         // then
         assertThat(멤버십_행_수(그룹, 재가입_기기)).isEqualTo(2);
-        assertThat(상세.weeklyPressCount()).isEqualTo(5);
+        assertThat(상세.weeklyEmotionPressCount()).isEqualTo(5);
     }
 
     @Test
@@ -169,14 +167,14 @@ class GroupPressAggregationIntegrationTest {
         Device 늦게_온_기기 = 기기를_저장한다();
         GroupResult 그룹 = 그룹을_만든다("한숨모임", 그룹장);
         눌린_것으로_둔다(늦게_온_기기, 이번_주_월요일(), EmotionState.ANGRY, 8);
-        long 가입_전 = 상세(그룹, 그룹장).weeklyPressCount();
+        long 가입_전 = 상세(그룹, 그룹장).weeklyEmotionPressCount();
 
         // when
         groupService.join(늦게_온_기기.getPublicId(), 그룹.inviteCode());
 
         // then
         assertThat(가입_전).isZero();
-        assertThat(상세(그룹, 그룹장).weeklyPressCount()).isEqualTo(8);
+        assertThat(상세(그룹, 그룹장).weeklyEmotionPressCount()).isEqualTo(8);
     }
 
     @Test
@@ -188,13 +186,11 @@ class GroupPressAggregationIntegrationTest {
         눌린_것으로_둔다(기기를_저장한다(), 이번_주_월요일(), EmotionState.ANGRY, 9);
 
         // when
-        GroupDetailResult 상세 = 상세(그룹, 그룹장);
+        GroupDetailV3Result 상세 = 상세(그룹, 그룹장);
 
         // then
-        assertThat(상세.weeklyPressCount()).isOne();
-        assertThat(프레스_랭킹(그룹장))
-                .extracting(GroupPressRankingItem::name, GroupPressRankingItem::score)
-                .containsExactly(tuple("한숨모임", 1L));
+        assertThat(상세.weeklyEmotionPressCount()).isOne();
+        assertThat(프레스_랭킹(그룹장)).isEmpty();
     }
 
     @Test
@@ -208,10 +204,10 @@ class GroupPressAggregationIntegrationTest {
         눌린_것으로_둔다(그룹장, 이번_주_월요일().plusDays(7), EmotionState.ANGRY, 9);
 
         // when
-        GroupDetailResult 상세 = 상세(그룹, 그룹장);
+        GroupDetailV3Result 상세 = 상세(그룹, 그룹장);
 
         // then
-        assertThat(상세.weeklyPressCount()).isEqualTo(3);
+        assertThat(상세.weeklyEmotionPressCount()).isEqualTo(3);
     }
 
     @Test
@@ -222,13 +218,13 @@ class GroupPressAggregationIntegrationTest {
         눌린_것으로_둔다(그룹장, 이번_주_월요일(), EmotionState.ANGRY, 4);
 
         // when
-        GroupDetailResult 상세 = 상세(그룹, 그룹장);
+        GroupDetailV3Result 상세 = 상세(그룹, 그룹장);
 
         // then
         assertThat(상세.weeklyStampCount()).isZero();
         assertThat(상세.weeklyStampRank()).isNull();
-        assertThat(상세.weeklyPressCount()).isEqualTo(4);
-        assertThat(상세.weeklyPressRank()).isOne();
+        assertThat(상세.weeklyEmotionPressCount()).isEqualTo(4);
+        assertThat(상세.weeklyEmotionPressRank()).isOne();
     }
 
     @Test
@@ -239,11 +235,11 @@ class GroupPressAggregationIntegrationTest {
         눌린_것으로_둔다(기기를_저장한다(), 이번_주_월요일(), EmotionState.ANGRY, 3);
 
         // when
-        GroupDetailResult 상세 = 상세(조용한_그룹, 그룹장);
+        GroupDetailV3Result 상세 = 상세(조용한_그룹, 그룹장);
 
         // then
-        assertThat(상세.weeklyPressCount()).isZero();
-        assertThat(상세.weeklyPressRank()).isNull();
+        assertThat(상세.weeklyEmotionPressCount()).isZero();
+        assertThat(상세.weeklyEmotionPressRank()).isNull();
     }
 
     @Test
@@ -255,15 +251,15 @@ class GroupPressAggregationIntegrationTest {
         눌린_것으로_둔다(그룹장, 이번_주_월요일(), EmotionState.ANGRY, 6);
 
         // when
-        GroupDetailResult 상세 = 상세(그룹, 남);
+        GroupDetailV3Result 상세 = 상세(그룹, 남);
 
         // then
-        assertThat(상세.weeklyPressCount()).isEqualTo(6);
-        assertThat(상세.weeklyPressRank()).isOne();
+        assertThat(상세.weeklyEmotionPressCount()).isEqualTo(6);
+        assertThat(상세.weeklyEmotionPressRank()).isOne();
     }
 
     @Test
-    void 상세의_프레스_순위는_랭킹_API_의_순위와_같다() {
+    void v3_감정_프레스_순위는_공동_순위_규칙을_따르고_그룹_프레스_랭킹과_원천이_다르다() {
         // given
         Device 일등_기기 = 기기를_저장한다();
         Device 동점_기기 = 기기를_저장한다();
@@ -276,14 +272,13 @@ class GroupPressAggregationIntegrationTest {
         눌린_것으로_둔다(꼴찌_기기, 이번_주_월요일(), EmotionState.ANGRY, 1);
 
         // when
-        List<GroupPressRankingItem> 순위표 = 프레스_랭킹(일등_기기);
+        List<GroupPressRankingItem> 그룹_프레스_순위표 = 프레스_랭킹(일등_기기);
 
         // then
-        assertThat(순위표).extracting(GroupPressRankingItem::name, GroupPressRankingItem::rank)
-                .containsExactly(tuple("동점모임", 1), tuple("일등모임", 1), tuple("꼴찌모임", 3));
-        assertThat(상세(일등, 일등_기기).weeklyPressRank()).isEqualTo(순위(순위표, "일등모임"));
-        assertThat(상세(동점, 일등_기기).weeklyPressRank()).isEqualTo(순위(순위표, "동점모임"));
-        assertThat(상세(꼴찌, 일등_기기).weeklyPressRank()).isEqualTo(순위(순위표, "꼴찌모임"));
+        assertThat(상세(일등, 일등_기기).weeklyEmotionPressRank()).isOne();
+        assertThat(상세(동점, 일등_기기).weeklyEmotionPressRank()).isOne();
+        assertThat(상세(꼴찌, 일등_기기).weeklyEmotionPressRank()).isEqualTo(3);
+        assertThat(그룹_프레스_순위표).isEmpty();
     }
 
     @Test
@@ -294,12 +289,13 @@ class GroupPressAggregationIntegrationTest {
         옛_그룹_프레스를_남긴다(그룹, 이번_주_월요일(), EmotionState.ANGRY, 77);
 
         // when
-        GroupDetailResult 상세 = 상세(그룹, 그룹장);
+        GroupDetailV3Result 상세 = 상세(그룹, 그룹장);
 
         // then
-        assertThat(상세.weeklyPressCount()).isZero();
-        assertThat(상세.weeklyPressRank()).isNull();
-        assertThat(프레스_랭킹(그룹장)).isEmpty();
+        assertThat(상세.weeklyEmotionPressCount()).isZero();
+        assertThat(상세.weeklyEmotionPressRank()).isNull();
+        assertThat(프레스_랭킹(그룹장)).extracting(GroupPressRankingItem::name, GroupPressRankingItem::score)
+                .containsExactly(tuple("한숨모임", 77L));
     }
 
     private Device 기기를_저장한다() {
@@ -335,8 +331,8 @@ class GroupPressAggregationIntegrationTest {
                 .single();
     }
 
-    private GroupDetailResult 상세(GroupResult 그룹, Device 보는_기기) {
-        return groupService.findOne(그룹.publicId(), 보는_기기.getPublicId());
+    private GroupDetailV3Result 상세(GroupResult 그룹, Device 보는_기기) {
+        return groupService.findDetailV3(그룹.publicId(), 보는_기기.getPublicId());
     }
 
     private List<GroupPressRankingItem> 프레스_랭킹(Device 기기) {
