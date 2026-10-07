@@ -45,6 +45,7 @@ import com.pheeeew.feature.screens.group.detail.model.GroupDetailCopyKey
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationKind
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupRankUiModel
+import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_detail_first_summary
@@ -92,8 +93,8 @@ internal fun GroupDetailReadyContent(
     onResolvePressOutcome: () -> Unit,
     onRetryEmotionRanking: () -> Unit = {},
     fixtureFeedbackOnAcceptedPress: Boolean = false,
-    feedbackOperationKey: () -> com.pheeeew.feature.screens.group.model.GroupOperationKey? = { null },
-    onFeedbackShown: (com.pheeeew.feature.screens.group.model.GroupOperationKey) -> Unit = {},
+    feedbackOperationKey: () -> GroupOperationKey? = { null },
+    onFeedbackShown: (GroupOperationKey) -> Unit = {},
 ) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 17.dp)) {
         Column(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {

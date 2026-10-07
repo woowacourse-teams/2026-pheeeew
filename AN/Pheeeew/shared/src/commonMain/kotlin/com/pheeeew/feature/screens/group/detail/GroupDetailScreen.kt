@@ -48,6 +48,7 @@ import com.pheeeew.feature.screens.group.detail.component.GroupDetailNoticeSnack
 import com.pheeeew.feature.screens.group.detail.component.InviteCodeDialog
 import com.pheeeew.feature.screens.group.detail.component.LeaveGroupDialog
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationKind
+import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -81,8 +82,8 @@ fun GroupDetailScreen(
     actions: GroupDetailActions,
     modifier: Modifier = Modifier,
     fixtureFeedbackOnAcceptedPress: Boolean = false,
-    feedbackOperationKey: () -> com.pheeeew.feature.screens.group.model.GroupOperationKey? = { null },
-    onFeedbackShown: (com.pheeeew.feature.screens.group.model.GroupOperationKey) -> Unit = {},
+    feedbackOperationKey: () -> GroupOperationKey? = { null },
+    onFeedbackShown: (GroupOperationKey) -> Unit = {},
 ) {
     val title = uiState.detail?.group?.name ?: uiState.groupName ?: stringResource(Res.string.group_home_title)
     val pullState = rememberPullToRefreshState()

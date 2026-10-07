@@ -6,6 +6,7 @@ import com.pheeeew.feature.screens.group.detail.model.EmotionCountUiModel
 import com.pheeeew.feature.screens.group.detail.model.EmotionKind
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import com.pheeeew.feature.emotion.component.EmotionPad as SharedEmotionPad
+import com.pheeeew.feature.emotion.component.formatCount as formatSharedCount
 
 @Composable
 internal fun EmotionPad(
@@ -35,6 +36,4 @@ internal fun EmotionPad(
     )
 }
 
-internal fun formatCount(value: Long): String =
-    com.pheeeew.feature.emotion.component
-        .formatCount(value)
+internal fun formatCount(value: Long): String = formatSharedCount(value)

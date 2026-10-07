@@ -7,6 +7,7 @@ import com.pheeeew.core.network.createApiClient
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionRegistration
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
+import com.pheeeew.domain.model.group.GroupId
 import com.pheeeew.domain.model.group.GroupStamp
 import com.pheeeew.domain.model.group.GroupStampFrame
 import com.pheeeew.domain.model.group.GroupStampItem
@@ -235,11 +236,7 @@ class GroupMembershipRefreshTest {
 
     private fun group() =
         GroupStampItem(
-            id =
-                requireNotNull(
-                    com.pheeeew.domain.model.group.GroupId
-                        .parse(GROUP_ID),
-                ),
+            id = requireNotNull(GroupId.parse(GROUP_ID)),
             name = "새 그룹",
             stamp =
                 GroupStamp(
