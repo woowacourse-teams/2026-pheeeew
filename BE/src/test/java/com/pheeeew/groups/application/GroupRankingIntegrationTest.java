@@ -1,6 +1,7 @@
 package com.pheeeew.groups.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.emotion.fixture.DeviceRegionDailyPressFixture.개인_프레스를_저장한다;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -25,10 +26,7 @@ import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
-import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
 import java.time.LocalDate;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.support.TransactionTemplate;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -69,12 +67,6 @@ class GroupRankingIntegrationTest {
     private DeviceRepository deviceRepository;
 
     @Autowired
-    private GroupDailyPressRepository groupDailyPressRepository;
-
-    @Autowired
-    private PlatformTransactionManager transactionManager;
-
-    @Autowired
     private JdbcClient jdbcClient;
 
     @BeforeEach
@@ -86,7 +78,9 @@ class GroupRankingIntegrationTest {
     void tearDown() {
         emotionEmojiRepository.deleteAllInBatch();
         emotionRepository.deleteAllInBatch();
-        groupDailyPressRepository.deleteAllInBatch();
+        jdbcClient.sql("DELETE FROM device_region_daily_presses").update();
+        jdbcClient.sql("DELETE FROM group_daily_presses").update();
+        jdbcClient.sql("DELETE FROM regions").update();
         groupMemberRepository.deleteAllInBatch();
         groupStampRepository.deleteAllInBatch();
         groupRepository.deleteAllInBatch();
@@ -270,6 +264,44 @@ class GroupRankingIntegrationTest {
     }
 
     @Test
+    void 프레스_랭킹의_중간_동점도_공동_순위를_받고_같은_점수는_이름_순으로_나온다() {
+        // given
+        눌린_것으로_둔다(그룹을_만든다("일등모임"), 이번_주_월요일(), EmotionState.ANGRY, 9);
+        눌린_것으로_둔다(그룹을_만든다("나동점모임"), 이번_주_월요일(), EmotionState.ANGRY, 4);
+        눌린_것으로_둔다(그룹을_만든다("가동점모임"), 이번_주_월요일(), EmotionState.ANGRY, 4);
+        눌린_것으로_둔다(그룹을_만든다("꼴찌모임"), 이번_주_월요일(), EmotionState.ANGRY, 1);
+
+        // when
+        List<GroupPressRankingItem> 순위표 = groupRankingService.findPressRanking(남의_기기(), 0).items();
+
+        // then
+        assertThat(순위표).extracting(GroupPressRankingItem::name, GroupPressRankingItem::rank)
+                .containsExactly(
+                        tuple("일등모임", 1),
+                        tuple("가동점모임", 2),
+                        tuple("나동점모임", 2),
+                        tuple("꼴찌모임", 4)
+                );
+    }
+
+    @Test
+    void 이전_주에_그룹_프레스가_있으면_뒤로_더_갈_수_있다고_알린다() {
+        // given
+        GroupResult 그룹 = 그룹을_만든다("한숨모임");
+        눌린_것으로_둔다(그룹, 이번_주_월요일().minusWeeks(2), EmotionState.ANGRY, 3);
+
+        // when
+        GroupPressRankingResult 이번주 = groupRankingService.findPressRanking(남의_기기(), 0);
+        GroupPressRankingResult 이주_전 = groupRankingService.findPressRanking(남의_기기(), 2);
+
+        // then
+        assertThat(이번주.hasPrevious()).isTrue();
+        assertThat(이번주.items()).isEmpty();
+        assertThat(이주_전.hasPrevious()).isFalse();
+        assertThat(이주_전.items()).hasSize(1);
+    }
+
+    @Test
     void 프레스_랭킹은_누르지_않은_그룹과_지난주_기록을_빼놓는다() {
         // given
         GroupResult 활동한_그룹 = 그룹을_만든다("활동모임");
@@ -359,19 +391,6 @@ class GroupRankingIntegrationTest {
                 .containsExactly(tuple("버튼모임", 6L));
     }
 
-    private LocalDate 이번_주_월요일() {
-        return RankingWeek.of(Instant.now(), 0).startDate();
-    }
-
-    private void 눌린_것으로_둔다(GroupResult 그룹, LocalDate 날짜, EmotionState 감정, int 횟수) {
-        Long groupId = groupRepository.findByPublicIdAndDeletedAtIsNull(그룹.publicId()).orElseThrow().getId();
-        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            for (int i = 0; i < 횟수; i++) {
-                groupDailyPressRepository.increase(groupId, 날짜, 감정.name(), 1, Instant.now());
-            }
-        });
-    }
-
     @Test
     void 프레스_랭킹은_내가_속한_그룹에_표시를_남긴다() {
         // given
@@ -419,6 +438,37 @@ class GroupRankingIntegrationTest {
 
         // then
         assertThat(결과.items()).extracting(GroupPressRankingItem::mine).containsExactly(false);
+    }
+
+    private LocalDate 이번_주_월요일() {
+        return RankingWeek.of(Instant.now(), 0).startDate();
+    }
+
+    private void 눌린_것으로_둔다(GroupResult 그룹, LocalDate 날짜, EmotionState 감정, int 횟수) {
+        Long groupId = groupRepository.findByPublicIdAndDeletedAtIsNull(그룹.publicId()).orElseThrow().getId();
+        jdbcClient.sql("""
+                        INSERT INTO group_daily_presses
+                            (group_id, press_date, state, press_count, created_at, updated_at)
+                        VALUES (:groupId, :pressDate, :state, :pressCount, NOW(), NOW())
+                        ON CONFLICT (group_id, press_date, state) DO UPDATE
+                           SET press_count = group_daily_presses.press_count + :pressCount
+                        """)
+                .param("groupId", groupId)
+                .param("pressDate", 날짜)
+                .param("state", 감정.name())
+                .param("pressCount", (long) 횟수)
+                .update();
+    }
+
+    private Long 그룹장_기기_식별자(GroupResult 그룹) {
+        return jdbcClient.sql("""
+                        SELECT m.device_id FROM group_members m
+                          JOIN groups g ON g.id = m.group_id
+                         WHERE g.public_id = ? AND m.role = 'OWNER' AND m.left_at IS NULL
+                        """)
+                .param(그룹.publicId())
+                .query(Long.class)
+                .single();
     }
 
     private UUID 남의_기기() {

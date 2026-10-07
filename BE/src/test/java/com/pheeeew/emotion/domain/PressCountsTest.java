@@ -1,9 +1,8 @@
-package com.pheeeew.groups.domain;
+package com.pheeeew.emotion.domain;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.pheeeew.emotion.domain.EmotionState;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
