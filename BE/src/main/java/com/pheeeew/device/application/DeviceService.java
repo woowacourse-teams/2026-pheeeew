@@ -2,6 +2,7 @@ package com.pheeeew.device.application;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_REGISTRATION_WINDOW_EXPIRED;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NICKNAME_DUPLICATED;
+import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_SAVE_FAILED;
 
 import com.pheeeew.auth.infra.jwt.TokenProperties;
@@ -58,9 +59,33 @@ public class DeviceService {
     }
 
     @Transactional(readOnly = true)
+    public String findNickname(UUID devicePublicId) {
+        Device device = deviceRepository.findByPublicId(devicePublicId)
+                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+
+        return device.getNickname();
+    }
+
+    @Transactional(readOnly = true)
     public boolean findNicknameAvailability(String nickname) {
         String normalized = DeviceNickname.from(nickname).value().toLowerCase(Locale.ROOT);
         return !deviceRepository.existsByNickname(normalized);
+    }
+
+    @Transactional
+    public void updateNickname(UUID devicePublicId, String nickname) {
+        Device device = deviceRepository.findByPublicId(devicePublicId)
+                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+        device.updateNickname(nickname);
+
+        try {
+            deviceRepository.flush();
+        } catch (DataIntegrityViolationException cause) {
+            if (isNicknameDuplicated(cause)) {
+                throw new DeviceException(DEVICE_NICKNAME_DUPLICATED, cause);
+            }
+            throw cause;
+        }
     }
 
     private DeviceSaveResult reissueTokens(Device device) {
@@ -113,12 +138,19 @@ public class DeviceService {
     }
 
     private DeviceException saveFailure(DataIntegrityViolationException cause) {
+        if (isNicknameDuplicated(cause)) {
+            return new DeviceException(DEVICE_NICKNAME_DUPLICATED, cause);
+        }
+        return new DeviceException(DEVICE_SAVE_FAILED, cause);
+    }
+
+    private boolean isNicknameDuplicated(DataIntegrityViolationException cause) {
         for (Throwable current = cause; current != null; current = current.getCause()) {
             if (current instanceof ConstraintViolationException violation
                     && "uk_devices_nickname".equals(violation.getConstraintName())) {
-                return new DeviceException(DEVICE_NICKNAME_DUPLICATED, cause);
+                return true;
             }
         }
-        return new DeviceException(DEVICE_SAVE_FAILED, cause);
+        return false;
     }
 }

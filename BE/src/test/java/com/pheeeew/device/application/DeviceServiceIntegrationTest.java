@@ -75,6 +75,185 @@ class DeviceServiceIntegrationTest {
     }
 
     @Test
+    void 기기_공개_식별자로_현재_닉네임을_조회한다() {
+        // given
+        deviceRepository.saveAndFlush(기본_기기_빌더().nickname("다른 기기").build());
+        Device device = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("Star  K").build());
+
+        // when
+        String nickname = deviceService.findNickname(device.getPublicId());
+
+        // then
+        assertThat(nickname).isEqualTo("Star  K");
+        assertThat(deviceRepository.count()).isEqualTo(2);
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
+    }
+
+    @Test
+    void 닉네임_미설정_기기는_null을_반환한다() {
+        // given
+        Device device = deviceRepository.saveAndFlush(기본_기기_빌더().build());
+
+        // when
+        String nickname = deviceService.findNickname(device.getPublicId());
+
+        // then
+        assertThat(nickname).isNull();
+        assertThat(deviceRepository.findByPublicId(device.getPublicId()).orElseThrow().getNickname()).isNull();
+        assertThat(deviceRepository.count()).isOne();
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
+    }
+
+    @Test
+    void 존재하지_않는_기기의_닉네임을_조회하면_인증_정보_오류를_반환한다() {
+        // given
+        UUID devicePublicId = UUID.randomUUID();
+
+        // when
+        Throwable throwable = catchThrowable(() -> deviceService.findNickname(devicePublicId));
+
+        // then
+        assertThat(throwable).isInstanceOf(DeviceException.class);
+        assertThat(((DeviceException) throwable).getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND);
+        assertThat(throwable.getMessage()).doesNotContain(devicePublicId.toString());
+        assertThat(deviceRepository.count()).isZero();
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
+    }
+
+    @Test
+    void 미설정_기기의_닉네임을_최초_설정한다() {
+        // given
+        Device device = deviceRepository.saveAndFlush(기본_기기_빌더().build());
+
+        // when
+        deviceService.updateNickname(device.getPublicId(), "  Star  K  ");
+
+        // then
+        assertThat(deviceService.findNickname(device.getPublicId())).isEqualTo("Star  K");
+        assertThat(deviceRepository.count()).isOne();
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
+    }
+
+    @Test
+    void 닉네임을_수정해도_기기_식별자와_기존_토큰은_유지한다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+        DeviceSaveResult tokens = deviceService.save(requestId, "스타크", 무결성_증명_없음(DevicePlatform.ANDROID));
+        Device before = deviceRepository.findByRequestId(requestId).orElseThrow();
+
+        // when
+        deviceService.updateNickname(before.getPublicId(), "새 닉네임");
+
+        // then
+        Device after = deviceRepository.findByPublicId(before.getPublicId()).orElseThrow();
+        assertThat(after.getNickname()).isEqualTo("새 닉네임");
+        assertThat(after.getId()).isEqualTo(before.getId());
+        assertThat(after.getPublicId()).isEqualTo(before.getPublicId());
+        assertThat(after.getRequestId()).isEqualTo(requestId);
+        assertThat(after.getPlatform()).isEqualTo(before.getPlatform());
+        assertThat(deviceService.findNicknameAvailability("스타크")).isTrue();
+        assertThat(기기_공개_식별자를_뽑는다(tokens.accessToken())).isEqualTo(before.getPublicId().toString());
+        assertThat(기기_공개_식별자를_뽑는다(deviceTokenService.reissueAccessToken(tokens.refreshToken()).accessToken()))
+                .isEqualTo(before.getPublicId().toString());
+        assertThat(deviceRepository.count()).isOne();
+        assertThat(deviceRefreshTokenRepository.count()).isOne();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Star K", " star k "})
+    void 자기_닉네임의_유지와_대소문자_변경을_허용한다(String nickname) {
+        // given
+        Device device = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("Star K").build());
+
+        // when
+        deviceService.updateNickname(device.getPublicId(), nickname);
+
+        // then
+        assertThat(deviceService.findNickname(device.getPublicId())).isEqualTo(nickname.strip());
+        assertThat(deviceRepository.count()).isOne();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Star K", " star k "})
+    void 다른_기기의_닉네임으로_수정하면_충돌을_반환하고_기존_값을_유지한다(String nickname) {
+        // given
+        Device other = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("Star K").build());
+        Device device = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("스타크").build());
+
+        // when
+        Throwable throwable = catchThrowable(() -> deviceService.updateNickname(device.getPublicId(), nickname));
+
+        // then
+        assertThat(throwable).isInstanceOf(DeviceException.class);
+        assertThat(((DeviceException) throwable).getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NICKNAME_DUPLICATED);
+        assertThat(deviceService.findNickname(device.getPublicId())).isEqualTo("스타크");
+        assertThat(deviceService.findNickname(other.getPublicId())).isEqualTo("Star K");
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" 익명 ", "Star1", "abcdefghijk"})
+    void 잘못된_닉네임_수정은_거부하고_저장된_값을_유지한다(String nickname) {
+        // given
+        Device device = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("스타크").build());
+
+        // when
+        Throwable throwable = catchThrowable(() -> deviceService.updateNickname(device.getPublicId(), nickname));
+
+        // then
+        assertThat(throwable).isInstanceOf(DeviceException.class);
+        assertThat(((DeviceException) throwable).getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NICKNAME_INVALID);
+        assertThat(deviceService.findNickname(device.getPublicId())).isEqualTo("스타크");
+    }
+
+    @Test
+    void 존재하지_않는_기기의_닉네임을_수정할_수_없다() {
+        // given
+        Device device = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("스타크").build());
+
+        // when
+        Throwable throwable = catchThrowable(() -> deviceService.updateNickname(UUID.randomUUID(), "새 닉네임"));
+
+        // then
+        assertThat(throwable).isInstanceOf(DeviceException.class);
+        assertThat(((DeviceException) throwable).getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND);
+        assertThat(deviceService.findNickname(device.getPublicId())).isEqualTo("스타크");
+        assertThat(deviceRepository.count()).isOne();
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
+    }
+
+    @Test
+    void 서로_다른_기기가_같은_닉네임으로_동시에_수정하면_한_기기만_성공한다() throws Exception {
+        // given
+        List<Device> devices = java.util.stream.IntStream.range(0, 동시_요청_수)
+                .mapToObj(index -> deviceRepository.saveAndFlush(기본_기기_빌더()
+                        .nickname(String.valueOf((char) ('가' + index))).build()))
+                .toList();
+
+        // when
+        List<Throwable> results = 동시에_실행한다(index -> catchThrowable(() -> deviceService.updateNickname(
+                devices.get(index).getPublicId(), index % 2 == 0 ? "Star K" : "star k")));
+
+        // then
+        assertThat(results).filteredOn(result -> result == null).hasSize(1);
+        assertThat(results).filteredOn(result -> result != null).hasSize(동시_요청_수 - 1)
+                .allSatisfy(result -> {
+                    assertThat(result).isInstanceOf(DeviceException.class);
+                    assertThat(((DeviceException) result).getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NICKNAME_DUPLICATED);
+                });
+        for (int index = 0; index < 동시_요청_수; index++) {
+            String nickname = deviceService.findNickname(devices.get(index).getPublicId());
+            assertThat(nickname).isEqualTo(results.get(index) == null
+                    ? (index % 2 == 0 ? "Star K" : "star k") : devices.get(index).getNickname());
+        }
+        assertThat(deviceRepository.findAll()).filteredOn(device -> device.getNickname().equalsIgnoreCase("Star K"))
+                .hasSize(1);
+        assertThat(deviceRepository.count()).isEqualTo(동시_요청_수);
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
+    }
+
+    @Test
     void 사용_가능한_닉네임을_조회해도_기기나_토큰을_저장하지_않는다() {
         // given / when
         boolean available = deviceService.findNicknameAvailability("  Star K  ");
