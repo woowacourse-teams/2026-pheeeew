@@ -51,7 +51,7 @@ public interface DeviceControllerApi {
                     - 익명은 사용할 수 없습니다. 중간 공백과 영문 대소문자는 저장할 때 그대로 유지합니다.
                     - 중복 판단은 영문 대소문자를 구분하지 않습니다. 자기 닉네임 유지·대소문자 변경은 허용합니다.
                     - 사용 가능 여부 조회는 예약이 아닙니다. 다른 기기가 먼저 사용하면 409를 반환하고 기존 값을 유지합니다.
-                    - 성공하면 본문 없는 204를 반환합니다. 현재 값은 GET /api/v2/devices/me/nickname으로 조회합니다.
+                    - 성공하면 본문 없는 204를 반환합니다. 현재 값은 GET /api/v3/devices/me/nickname으로 조회합니다.
                     """)
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "닉네임 설정·수정 성공", content = @Content),
@@ -269,7 +269,7 @@ public interface DeviceControllerApi {
               token을 보내면 유효한 challenge가 필수이며 실제 검증합니다. IOS는 keyId도 필수입니다.
               증명 검증·challenge 소모 규칙은 v2와 같습니다. 검증 실패는 403이며 기기는 저장되지 않습니다.
             - challenge 발급: POST /api/v2/devices/challenge, 토큰 갱신: POST /api/v2/devices/tokens,
-              닉네임 중복 확인: GET /api/v2/devices/nicknames/availability?nickname=... 경로를 계속 사용합니다.
+              닉네임 중복 확인: GET /api/v3/devices/nicknames/availability?nickname=... 경로를 계속 사용합니다.
             """)
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "닉네임과 기기 저장 후 토큰 발급",

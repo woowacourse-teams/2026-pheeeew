@@ -184,7 +184,7 @@ public interface EmotionControllerApi {
     @Operation(summary = "본인 감정 수정", description = """
             작성 기기의 감정만 기한 없이 수정합니다. state와 contentType은 필수입니다.
             상태·메모·녹음·그룹 스탬프를 수정하며 위치·각도·작성 시각·등록 당시의 익명 선택은 바뀌지 않습니다.
-            기기 닉네임은 PUT /api/v2/devices/me/nickname으로 별도 수정합니다. 수정한 이름은 기존 기명 감정에도 반영됩니다.
+            기기 닉네임은 PUT /api/v3/devices/me/nickname으로 별도 수정합니다. 수정한 이름은 기존 기명 감정에도 반영됩니다.
             contentType=NONE이면 내용을 제거합니다. MEMO이면 memo로 바꾸며 null·공백은 내용 없음입니다.
             AUDIO이면 audioUploadId로 새 녹음을 연결합니다. audioUploadId가 null이면 기존 녹음을 유지합니다.
             groupId가 null이면 그룹 스탬프를 제거합니다. 현재 groupId를 보내면 기존 선택을 유지합니다.

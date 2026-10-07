@@ -29,9 +29,9 @@ public class SecurityConfig {
                         .accessDeniedHandler(authenticationErrorHandler))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.GET, "/api/v2/app/version").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v2/devices/nicknames/availability").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v2/devices/me/nickname").authenticated()
-                        .requestMatchers(HttpMethod.PUT, "/api/v2/devices/me/nickname").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v3/devices/nicknames/availability").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v3/devices/me/nickname").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/v3/devices/me/nickname").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v2/devices").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v3/devices").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v2/devices/tokens").permitAll()

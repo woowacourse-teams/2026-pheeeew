@@ -78,9 +78,9 @@ class SecurityAuthorizationIntegrationTest {
             "?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6";
     private static final String 규칙에_없는_경로 = "/api/v2/unknown";
     private static final String CHALLENGE_경로 = "/api/v2/devices/challenge";
-    private static final String 닉네임_조회_경로 = "/api/v2/devices/nicknames/availability";
+    private static final String 닉네임_조회_경로 = "/api/v3/devices/nicknames/availability";
     private static final String 닉네임_등록_경로 = "/api/v3/devices";
-    private static final String 내_닉네임_경로 = "/api/v2/devices/me/nickname";
+    private static final String 내_닉네임_경로 = "/api/v3/devices/me/nickname";
     private static final String 무결성_토큰 = "integrity-token-from-app";
 
     @LocalServerPort
@@ -236,6 +236,25 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isForbidden().expectBody().json(권한_없음_응답, JsonCompareMode.STRICT);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "GET, /api/v2/devices/me/nickname",
+            "PUT, /api/v2/devices/me/nickname",
+            "GET, /api/v2/devices/nicknames/availability"
+    })
+    void v3로_이동한_닉네임_API는_v2_경로로_접근할_수_없다(String method, String path) {
+        // given
+        String token = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.method(HttpMethod.valueOf(method)).uri(path)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).exchange();
+
+        // then
+        result.expectStatus().isForbidden().expectBody().json(권한_없음_응답, JsonCompareMode.STRICT);
+        assertThat(deviceRepository.count()).isZero();
     }
 
     @Test
@@ -1133,6 +1152,23 @@ class SecurityAuthorizationIntegrationTest {
 
         // then
         result.expectStatus().isOk();
+    }
+
+    @Test
+    void 닉네임_API_문서는_v3_경로만_제공한다() throws JsonProcessingException {
+        // given / when
+        String body = client.get().uri("/v3/api-docs").exchange().expectStatus().isOk()
+                .expectBody(String.class).returnResult().getResponseBody();
+        JsonNode paths = new ObjectMapper().readTree(body).path("paths");
+
+        // then
+        assertThat(paths.path(내_닉네임_경로).has("get")).isTrue();
+        assertThat(paths.path(내_닉네임_경로).has("put")).isTrue();
+        assertThat(paths.path(닉네임_조회_경로).has("get")).isTrue();
+        assertThat(paths.has("/api/v2/devices/me/nickname")).isFalse();
+        assertThat(paths.has("/api/v2/devices/nicknames/availability")).isFalse();
+        assertThat(paths.path(내_닉네임_경로).path("put").path("description").asText())
+                .contains("GET /api/v3/devices/me/nickname");
     }
 
     @Test

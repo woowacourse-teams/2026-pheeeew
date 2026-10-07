@@ -41,7 +41,7 @@ public class DeviceController implements DeviceControllerApi {
     private final DeviceChallengeService deviceChallengeService;
 
     @Override
-    @GetMapping("/v2/devices/me/nickname")
+    @GetMapping("/v3/devices/me/nickname")
     public ResponseEntity<DeviceNicknameResponse> findNickname(
             @CurrentDevice UUID devicePublicId
     ) {
@@ -53,7 +53,7 @@ public class DeviceController implements DeviceControllerApi {
     }
 
     @Override
-    @PutMapping("/v2/devices/me/nickname")
+    @PutMapping("/v3/devices/me/nickname")
     public ResponseEntity<Void> updateNickname(
             @CurrentDevice UUID devicePublicId,
             @Valid @RequestBody DeviceNicknameUpdateRequest request
@@ -63,7 +63,7 @@ public class DeviceController implements DeviceControllerApi {
     }
 
     @Override
-    @GetMapping("/v2/devices/nicknames/availability")
+    @GetMapping("/v3/devices/nicknames/availability")
     public ResponseEntity<NicknameAvailabilityResponse> findNicknameAvailability(
             @RequestParam("nickname") String nickname
     ) {
