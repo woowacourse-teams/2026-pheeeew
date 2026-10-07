@@ -4,9 +4,9 @@ import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
-import static com.pheeeew.emotion.fixture.EmotionFixture.서울시청_좌표;
 import static com.pheeeew.groups.fixture.GroupFixture.기본_그룹_빌더;
 import static com.pheeeew.groups.fixture.GroupFixture.기본_스탬프_빌더;
+import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
@@ -90,11 +90,10 @@ class EmotionQueryServiceIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        검증용_지역_계층을_저장한다(jdbcClient);
         viewer = deviceRepository.save(기본_기기_빌더().build());
         author = deviceRepository.save(기본_기기_빌더().build());
-        emotion = emotionRepository.save(Emotion.builder()
-                .requestId(UUID.randomUUID())
-                .location(서울시청_좌표())
+        emotion = emotionRepository.save(기본_한숨_빌더()
                 .state(EmotionState.FRUSTRATED)
                 .rotationDegrees(35.5)
                 .memo("답답한 하루")
@@ -307,6 +306,8 @@ class EmotionQueryServiceIntegrationTest {
 
         // then
         assertThat(loaded.getContent()).isNotNull();
+        assertThat(loaded.getRegionCode()).isEqualTo(saved.getRegionCode()).isNotNull();
+        assertThat(loaded.getRegionClassifiedAt()).isNotNull();
         assertThat(loaded.getMemo()).isEqualTo(expectedMemo);
         assertThat(loaded.getContent().getAudio()).isEqualTo(audio);
 
@@ -576,9 +577,7 @@ class EmotionQueryServiceIntegrationTest {
     }
 
     private Emotion saveEmotionWithStamp(GroupStamp stamp) {
-        return emotionRepository.save(Emotion.builder()
-                .requestId(UUID.randomUUID())
-                .location(서울시청_좌표())
+        return emotionRepository.save(기본_한숨_빌더()
                 .state(EmotionState.FRUSTRATED)
                 .memo("메모")
                 .nickname("먼지구름")
@@ -590,8 +589,7 @@ class EmotionQueryServiceIntegrationTest {
     private Emotion saveEmotion(Long authorId, double longitude, double latitude) {
         GeometryFactory geometryFactory = new GeometryFactory(new PrecisionModel(), 4326);
         Point location = geometryFactory.createPoint(new Coordinate(longitude, latitude));
-        return emotionRepository.save(Emotion.builder()
-                .requestId(UUID.randomUUID())
+        return emotionRepository.save(기본_한숨_빌더()
                 .location(location)
                 .state(EmotionState.FRUSTRATED)
                 .memo("메모")
