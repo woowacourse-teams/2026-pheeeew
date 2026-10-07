@@ -20,6 +20,9 @@ import com.pheeeew.report.application.DeviceBlockService;
 import com.pheeeew.report.application.EmotionBlockService;
 import com.pheeeew.report.application.EmotionReportMetrics;
 import com.pheeeew.report.application.EmotionReportService;
+import com.pheeeew.emotion.application.EmotionPressMetrics;
+import com.pheeeew.emotion.application.command.EmotionPressService;
+import com.pheeeew.emotion.domain.repository.DeviceRegionDailyPressRepository;
 import com.pheeeew.emotion.infra.KoreanEmotionNicknameGenerator;
 import com.pheeeew.region.application.RegionClassifier;
 import com.pheeeew.region.domain.repository.RegionRepository;
@@ -72,6 +75,9 @@ import org.springframework.test.context.ActiveProfiles;
         EmotionBlockService.class,
         DeviceBlockService.class,
         KoreanEmotionNicknameGenerator.class,
+        EmotionPressMetrics.class,
+        EmotionPressService.class,
+        DeviceRegionDailyPressRepository.class,
         RegionClassifier.class,
         RegionRepository.class
 })
