@@ -2,6 +2,7 @@ package com.pheeeew.emotion.application.command;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
+import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
@@ -32,6 +33,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,11 +59,15 @@ class EmotionCommandServiceIntegrationTest {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @Autowired
+    private JdbcClient jdbc;
+
     private Device device;
     private Emotion emotion;
 
     @BeforeEach
     void setUp() {
+        검증용_지역_계층을_저장한다(jdbc);
         device = deviceRepository.save(기본_기기_빌더().build());
         emotion = emotionRepository.save(기본_한숨_빌더().build());
     }
@@ -71,6 +77,7 @@ class EmotionCommandServiceIntegrationTest {
         emotionEmojiRepository.deleteAllInBatch();
         emotionRepository.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
+        jdbc.sql("DELETE FROM regions").update();
     }
 
     @Test

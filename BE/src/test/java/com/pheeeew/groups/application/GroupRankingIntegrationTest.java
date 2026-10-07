@@ -2,6 +2,7 @@ package com.pheeeew.groups.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
+import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -32,6 +33,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -75,6 +77,11 @@ class GroupRankingIntegrationTest {
     @Autowired
     private JdbcClient jdbcClient;
 
+    @BeforeEach
+    void setUp() {
+        검증용_지역_계층을_저장한다(jdbcClient);
+    }
+
     @AfterEach
     void tearDown() {
         emotionEmojiRepository.deleteAllInBatch();
@@ -84,6 +91,7 @@ class GroupRankingIntegrationTest {
         groupStampRepository.deleteAllInBatch();
         groupRepository.deleteAllInBatch();
         deviceRepository.deleteAllInBatch();
+        jdbcClient.sql("DELETE FROM regions").update();
     }
 
     @Test

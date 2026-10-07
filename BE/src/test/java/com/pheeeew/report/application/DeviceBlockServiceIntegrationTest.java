@@ -1,6 +1,7 @@
 package com.pheeeew.report.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
@@ -30,6 +31,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,11 +66,17 @@ class DeviceBlockServiceIntegrationTest {
     @Autowired
     private JdbcClient jdbcClient;
 
+    @BeforeEach
+    void setUp() {
+        검증용_지역_계층을_저장한다(jdbcClient);
+    }
+
     @AfterEach
     void tearDown() {
         deviceBlockRepository.deleteAll();
         emotionRepository.deleteAll();
         deviceRepository.deleteAll();
+        jdbcClient.sql("DELETE FROM regions").update();
         등록_순번 = 0;
     }
 
@@ -339,7 +347,8 @@ class DeviceBlockServiceIntegrationTest {
     private Long 한숨을_저장한다(Long deviceId, String memo) {
         등록_순번++;
         return jdbcClient.sql("""
-                        INSERT INTO emotions (request_id, location, nickname, memo, device_id, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, memo, device_id, created_at, updated_at,
+                                              region_code, region_classified_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
@@ -347,7 +356,9 @@ class DeviceBlockServiceIntegrationTest {
                             :memo,
                             :deviceId,
                             TIMESTAMPTZ '2026-09-01T10:00:00Z' + :sequence * INTERVAL '1 minute',
-                            TIMESTAMPTZ '2026-09-01T10:00:00Z' + :sequence * INTERVAL '1 minute'
+                            TIMESTAMPTZ '2026-09-01T10:00:00Z' + :sequence * INTERVAL '1 minute',
+                            '11010530',
+                            TIMESTAMPTZ '2026-09-01T10:00:00Z'
                         )
                         RETURNING id
                         """)
