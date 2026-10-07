@@ -6,136 +6,43 @@ import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.monitoring.product.resultLabel
-import com.pheeeew.feature.screens.group.detail.model.EmotionKind
-import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** 한 그룹 ID의 상세 상태와 팝업·나가기·복사 결과를 소유합니다. */
 class GroupDetailViewModel(
     val groupId: GroupId,
     private val dependencies: GroupDetailDependencies,
     initialGroupName: String? = null,
-    pressWorkOwner: GroupEmotionPressWorkOwner? = null,
 ) : ViewModel() {
     val telemetry = ProductMonitoring(dependencies.monitoring, "group_detail", labels("group_key" to groupId.value))
-    private val ownsPressWorkOwner = pressWorkOwner == null
-    private val workOwner = pressWorkOwner ?: GroupEmotionPressWorkOwner()
-    private val pressSession = workOwner.session(groupId, dependencies)
     private val _uiState =
         MutableStateFlow(
             GroupDetailUiState(
                 groupName = initialGroupName,
-                content = pressSession.latestDetail?.let(GroupDetailContent::Ready) ?: GroupDetailContent.Loading,
             ),
         )
     val uiState = _uiState.asStateFlow()
 
     private var loadJob: Job? = null
+    private var loadingIndicatorDelayJob: Job? = null
+    private var loadingIndicatorMinimumJob: Job? = null
+    private var loadingIndicatorRequestId: Long? = null
     private var leaveJob: Job? = null
-    var lastAcceptedPressKey: GroupOperationKey? = null
-        private set
     private var loadGeneration = 0L
     private var hasResumed = false
-    private var needsInitialLoad = true
-    private var hasAttachedPressObserver = false
-    private val pressObserver =
-        object : GroupEmotionPressSession.Observer {
-            override fun onStateChanged(
-                status: GroupPressStatus,
-                pending: Map<EmotionKind, Long>,
-                canAcceptAnotherPress: Boolean,
-            ) {
-                _uiState.update {
-                    it.copy(
-                        pressStatus = status,
-                        pendingEmotionPresses = pending,
-                        canAcceptEmotionPress = canAcceptAnotherPress,
-                    )
-                }
-                requestDeferredInitialLoad()
-            }
-
-            override fun onBeforeSend() = invalidateLoad()
-
-            override fun onSnapshot(
-                snapshot: GroupPressSnapshotUiModel,
-                pending: Map<EmotionKind, Long>,
-            ) {
-                _uiState.update { state ->
-                    val detail = state.detail
-                    if (detail?.group?.id == groupId) {
-                        state.copy(
-                            content = GroupDetailContent.Ready(detail.withPressSnapshot(snapshot)),
-                            pressStatus = GroupPressStatus.Idle,
-                            pendingEmotionPresses = pending,
-                        )
-                    } else {
-                        state
-                    }
-                }
-                requestDeferredInitialLoad()
-            }
-
-            override fun onReconciledDetail(detail: GroupDetailUiModel) {
-                needsInitialLoad = false
-                _uiState.update { state ->
-                    state.copy(
-                        content =
-                            GroupDetailContent.Ready(
-                                detail.ownedSnapshot(),
-                            ),
-                        groupName = detail.group.name,
-                        refreshStatus = GroupDetailRefreshStatus.Idle,
-                    )
-                }
-            }
-
-            override fun onAccessLost(
-                key: GroupOperationKey,
-                reason: GroupDetailAccessLoss,
-            ) {
-                markMembershipUnavailable(key, reason)
-            }
-
-            override fun onNotice(
-                kind: GroupDetailNoticeKind,
-                retryAfterMillis: Long?,
-            ) {
-                showNotice(kind, retryAfterMillis)
-            }
-        }
 
     init {
-        pressSession.attach(pressObserver)
-        hasAttachedPressObserver = true
         loadDetail()
-    }
-
-    override fun onCleared() {
-        hasAttachedPressObserver = false
-        pressSession.detach(pressObserver)
-        if (ownsPressWorkOwner) pressSession.close()
-        super.onCleared()
-    }
-
-    private fun requestDeferredInitialLoad() {
-        if (!needsInitialLoad || !hasAttachedPressObserver) return
-        viewModelScope.launch {
-            if (needsInitialLoad && !pressSession.accessLost && !pressSession.hasPendingWork &&
-                pressSession.status == GroupPressStatus.Idle
-            ) {
-                loadDetail()
-            }
-        }
     }
 
     fun onResumed() {
@@ -144,7 +51,13 @@ class GroupDetailViewModel(
             hasResumed = true
             return
         }
-        onRefresh(showRefreshIndicator = false)
+        if (_uiState.value.overlay == GroupDetailOverlay.Menu ||
+            _uiState.value.overlay == GroupDetailOverlay.InviteCode
+        ) {
+            loadDetail(showRefreshIndicator = false)
+        } else {
+            onRefresh(showRefreshIndicator = false)
+        }
     }
 
     fun onRetry() {
@@ -164,44 +77,23 @@ class GroupDetailViewModel(
         ) {
             return
         }
-        when (state.pressStatus) {
-            is GroupPressStatus.Sending,
-            is GroupPressStatus.CoolingDown,
-            is GroupPressStatus.Reconciling,
-            -> {
-                return
-            }
-
-            is GroupPressStatus.OutcomeUnknown -> {
-                onResolvePressOutcome()
-                return
-            }
-
-            GroupPressStatus.Idle -> {
-                Unit
-            }
-        }
         if (loadJob?.isActive == true) {
             if (showRefreshIndicator && state.detail != null) {
-                _uiState.update { current -> current.copy(refreshStatus = GroupDetailRefreshStatus.Refreshing) }
+                _uiState.update { current ->
+                    current.copy(refreshStatus = GroupDetailRefreshStatus.Refreshing, isLoading = true)
+                }
+                scheduleLoadingIndicator(loadGeneration)
             }
             return
         }
         loadDetail(showRefreshIndicator = showRefreshIndicator)
     }
 
-    /** Accepts taps while a press request is in flight and submits them in order. */
-    fun onEmotionTap(emotion: EmotionKind): Boolean {
-        lastAcceptedPressKey = null
-        val current = _uiState.value
-        if (current.detail?.group?.id != groupId || current.overlay != GroupDetailOverlay.None) return false
-        lastAcceptedPressKey = pressSession.accept(emotion)
-        return lastAcceptedPressKey != null
-    }
-
     fun onMoreClick() {
         _uiState.update { state ->
-            if (state.detail == null || state.overlay != GroupDetailOverlay.None) {
+            if (state.detail == null || state.detail?.role == GroupRole.NONE ||
+                state.overlay != GroupDetailOverlay.None
+            ) {
                 state
             } else {
                 state.copy(overlay = GroupDetailOverlay.Menu)
@@ -211,7 +103,9 @@ class GroupDetailViewModel(
 
     fun onInviteClick() {
         _uiState.update { state ->
-            if (state.detail == null || state.overlay != GroupDetailOverlay.None) {
+            if (state.detail == null || state.detail?.role == GroupRole.NONE ||
+                state.overlay != GroupDetailOverlay.None
+            ) {
                 state
             } else {
                 state.copy(overlay = GroupDetailOverlay.InviteCode, copyRequest = null)
@@ -220,16 +114,11 @@ class GroupDetailViewModel(
     }
 
     fun onLeaveMenuClick() {
-        if (pressSession.hasPendingWork) {
-            _uiState.update { state ->
-                if (state.overlay == GroupDetailOverlay.Menu) state.copy(overlay = GroupDetailOverlay.None) else state
-            }
-            showNotice(GroupDetailNoticeKind.PressBlockedWhilePending)
-            return
-        }
+        val initial = _uiState.value
+        if (initial.detail?.role == GroupRole.NONE || initial.overlay != GroupDetailOverlay.Menu) return
         _uiState.update { state ->
             val detail = state.detail
-            if (detail == null || state.overlay != GroupDetailOverlay.Menu) {
+            if (detail == null || detail.role == GroupRole.NONE || state.overlay != GroupDetailOverlay.Menu) {
                 state
             } else if (detail.role == GroupRole.OWNER) {
                 state.copy(overlay = GroupDetailOverlay.OwnerCannotLeave)
@@ -292,10 +181,15 @@ class GroupDetailViewModel(
     fun onCopyCodeClick() {
         val current = _uiState.value
         val code = current.detail?.inviteCode
-        if (current.overlay != GroupDetailOverlay.InviteCode || code == null || current.copyRequest != null) return
+        if (current.detail?.role == GroupRole.NONE || current.overlay != GroupDetailOverlay.InviteCode ||
+            code == null || current.copyRequest != null
+        ) {
+            return
+        }
         val request = GroupCopyCodeRequest(dependencies.operationKeyAllocator.next(), code)
         _uiState.update { state ->
-            if (state.overlay != GroupDetailOverlay.InviteCode || state.detail?.inviteCode != code ||
+            if (state.detail?.role == GroupRole.NONE || state.overlay != GroupDetailOverlay.InviteCode ||
+                state.detail?.inviteCode != code ||
                 state.copyRequest != null
             ) {
                 state
@@ -366,12 +260,6 @@ class GroupDetailViewModel(
         loadDetail(reconcileLeaveOutcome = true)
     }
 
-    /** Resolves an uncertain press with a read; the POST is never submitted again. */
-    fun onResolvePressOutcome() {
-        if (loadJob?.isActive == true) return
-        pressSession.resolveUnknown()
-    }
-
     fun acknowledgeLeft(operationKey: GroupOperationKey) {
         _uiState.update { state ->
             if ((state.overlay as? GroupDetailOverlay.Left)?.operationKey == operationKey) {
@@ -393,23 +281,18 @@ class GroupDetailViewModel(
         showRefreshIndicator: Boolean = true,
     ) {
         if (loadJob?.isActive == true) return
-        val currentPressStatus = _uiState.value.pressStatus
-        if (currentPressStatus is GroupPressStatus.OutcomeUnknown) {
-            pressSession.resolveUnknown()
-            return
-        }
-        if (pressSession.hasPendingWork || currentPressStatus is GroupPressStatus.Sending ||
-            currentPressStatus is GroupPressStatus.Reconciling
-        ) {
-            return
-        }
-
-        needsInitialLoad = false
         val requestId = ++loadGeneration
         val hasSnapshot = _uiState.value.detail != null
         _uiState.update { state ->
             state.copy(
-                content = if (hasSnapshot) state.content else GroupDetailContent.Loading,
+                content =
+                    when {
+                        hasSnapshot -> state.content
+                        state.content == GroupDetailContent.LoadFailed -> state.content
+                        else -> GroupDetailContent.Loading
+                    },
+                isLoading = true,
+                isLoadingIndicatorVisible = false,
                 refreshStatus =
                     if (hasSnapshot && showRefreshIndicator) {
                         GroupDetailRefreshStatus.Refreshing
@@ -418,6 +301,7 @@ class GroupDetailViewModel(
                     },
             )
         }
+        if (showRefreshIndicator) scheduleLoadingIndicator(requestId)
 
         loadJob =
             viewModelScope.launch {
@@ -427,6 +311,7 @@ class GroupDetailViewModel(
                             .operation(
                                 "group_detail_load_finished",
                             ).observe(::resultLabel) { requestDetail() }
+                    awaitLoadingIndicatorMinimum(requestId)
                     if (reconcileLeaveOutcome) {
                         telemetry.emit(
                             "operation_reconciled",
@@ -447,7 +332,15 @@ class GroupDetailViewModel(
                         (result as? GroupDetailLoadResult.Loaded)
                             ?.detail
                             ?.takeIf { it.group.id == groupId }
-                            ?.let(pressSession::onDetailLoaded)
+
+                    val leaveOutcomeLeftKey =
+                        if (reconcileLeaveOutcome && loadedDetail?.role == GroupRole.NONE &&
+                            _uiState.value.overlay == GroupDetailOverlay.LeaveOutcomeUnknown
+                        ) {
+                            dependencies.operationKeyAllocator.next()
+                        } else {
+                            null
+                        }
 
                     val membershipEvent =
                         when (result) {
@@ -475,7 +368,7 @@ class GroupDetailViewModel(
                     _uiState.update { state ->
                         when (result) {
                             is GroupDetailLoadResult.Loaded -> {
-                                val detail = loadedDetail?.ownedSnapshot()
+                                val detail = loadedDetail
                                 if (detail == null) {
                                     state.copy(
                                         content =
@@ -492,20 +385,38 @@ class GroupDetailViewModel(
                                             } else {
                                                 GroupDetailRefreshStatus.Failed
                                             },
+                                        isLoading = false,
+                                        isLoadingIndicatorVisible = false,
                                     )
                                 } else {
                                     state.copy(
                                         content = GroupDetailContent.Ready(detail),
                                         groupName = detail.group.name,
                                         refreshStatus = GroupDetailRefreshStatus.Idle,
+                                        isLoading = false,
+                                        isLoadingIndicatorVisible = false,
                                         overlay =
-                                            if (reconcileLeaveOutcome &&
-                                                state.overlay == GroupDetailOverlay.LeaveOutcomeUnknown
-                                            ) {
-                                                GroupDetailOverlay.LeaveStillMember
-                                            } else {
-                                                state.overlay
+                                            when {
+                                                reconcileLeaveOutcome &&
+                                                    state.overlay == GroupDetailOverlay.LeaveOutcomeUnknown -> {
+                                                    if (detail.role == GroupRole.NONE) {
+                                                        GroupDetailOverlay.Left(requireNotNull(leaveOutcomeLeftKey))
+                                                    } else {
+                                                        GroupDetailOverlay.LeaveStillMember
+                                                    }
+                                                }
+
+                                                detail.role == GroupRole.NONE &&
+                                                    state.overlay in
+                                                    setOf(GroupDetailOverlay.Menu, GroupDetailOverlay.InviteCode) -> {
+                                                    GroupDetailOverlay.None
+                                                }
+
+                                                else -> {
+                                                    state.overlay
+                                                }
                                             },
+                                        copyRequest = if (detail.role == GroupRole.NONE) null else state.copyRequest,
                                     )
                                 }
                             }
@@ -514,6 +425,8 @@ class GroupDetailViewModel(
                                 state.copy(
                                     content = GroupDetailContent.MembershipChanged,
                                     refreshStatus = GroupDetailRefreshStatus.Idle,
+                                    isLoading = false,
+                                    isLoadingIndicatorVisible = false,
                                     overlay = GroupDetailOverlay.None,
                                     copyRequest = null,
                                     membershipEvent = membershipEvent,
@@ -524,6 +437,8 @@ class GroupDetailViewModel(
                                 state.copy(
                                     content = GroupDetailContent.NotFound,
                                     refreshStatus = GroupDetailRefreshStatus.Idle,
+                                    isLoading = false,
+                                    isLoadingIndicatorVisible = false,
                                     overlay = GroupDetailOverlay.None,
                                     copyRequest = null,
                                     membershipEvent = membershipEvent,
@@ -546,19 +461,67 @@ class GroupDetailViewModel(
                                         } else {
                                             GroupDetailRefreshStatus.Failed
                                         },
+                                    isLoading = false,
+                                    isLoadingIndicatorVisible = false,
                                 )
                             }
                         }
                     }
-                    if (result == GroupDetailLoadResult.MembershipChanged || result == GroupDetailLoadResult.NotFound) {
-                        pressSession.clearForAccessLoss()
-                    }
                 } finally {
                     if (requestId == loadGeneration) {
+                        clearLoadingIndicator(requestId)
+                        _uiState.update { state ->
+                            if (state.isLoading) {
+                                state.copy(
+                                    isLoading = false,
+                                    isLoadingIndicatorVisible = false,
+                                    refreshStatus =
+                                        if (state.refreshStatus == GroupDetailRefreshStatus.Refreshing) {
+                                            GroupDetailRefreshStatus.Idle
+                                        } else {
+                                            state.refreshStatus
+                                        },
+                                )
+                            } else {
+                                state
+                            }
+                        }
                         loadJob = null
                     }
                 }
             }
+    }
+
+    private fun scheduleLoadingIndicator(requestId: Long) {
+        if (loadingIndicatorRequestId == requestId) return
+        loadingIndicatorRequestId = requestId
+        loadingIndicatorDelayJob =
+            viewModelScope.launch {
+                delay(LOADING_INDICATOR_DELAY_MILLIS)
+                if (requestId != loadGeneration || !_uiState.value.isLoading) return@launch
+                _uiState.update { state ->
+                    if (state.isLoading) state.copy(isLoadingIndicatorVisible = true) else state
+                }
+                loadingIndicatorMinimumJob =
+                    viewModelScope.launch {
+                        delay(LOADING_INDICATOR_MINIMUM_MILLIS)
+                    }
+            }
+    }
+
+    private suspend fun awaitLoadingIndicatorMinimum(requestId: Long) {
+        if (loadingIndicatorRequestId != requestId) return
+        loadingIndicatorDelayJob?.cancelAndJoin()
+        if (_uiState.value.isLoadingIndicatorVisible) loadingIndicatorMinimumJob?.join()
+    }
+
+    private fun clearLoadingIndicator(requestId: Long? = null) {
+        if (requestId != null && loadingIndicatorRequestId != requestId) return
+        loadingIndicatorDelayJob?.cancel()
+        loadingIndicatorMinimumJob?.cancel()
+        loadingIndicatorDelayJob = null
+        loadingIndicatorMinimumJob = null
+        loadingIndicatorRequestId = null
     }
 
     private suspend fun requestDetail(): GroupDetailLoadResult =
@@ -575,8 +538,10 @@ class GroupDetailViewModel(
 
     private fun submitLeave(expectedOverlay: GroupDetailOverlay) {
         val current = _uiState.value
-        if (pressSession.hasPendingWork) {
-            showNotice(GroupDetailNoticeKind.PressBlockedWhilePending)
+        if (current.detail?.role == GroupRole.NONE) {
+            _uiState.update { state ->
+                if (state.overlay == expectedOverlay) state.copy(overlay = GroupDetailOverlay.None) else state
+            }
             return
         }
         if (current.detail?.role == GroupRole.OWNER) {
@@ -594,7 +559,7 @@ class GroupDetailViewModel(
         invalidateLoad()
         val operationKey = dependencies.operationKeyAllocator.next()
         _uiState.update { state ->
-            if (state.detail != null && state.overlay == expectedOverlay) {
+            if (state.detail?.role != GroupRole.NONE && state.detail != null && state.overlay == expectedOverlay) {
                 state.copy(overlay = GroupDetailOverlay.Leaving(operationKey), copyRequest = null)
             } else {
                 state
@@ -623,17 +588,6 @@ class GroupDetailViewModel(
                             dependencies.errorReporter.reportUnexpected(exception)
                             LeaveGroupResult.OutcomeUnknown
                         }
-
-                    if ((_uiState.value.overlay as? GroupDetailOverlay.Leaving)?.operationKey == operationKey) {
-                        when (result) {
-                            LeaveGroupResult.Left,
-                            LeaveGroupResult.MembershipChanged,
-                            LeaveGroupResult.NotFound,
-                            -> pressSession.clearForAccessLoss()
-
-                            else -> Unit
-                        }
-                    }
 
                     _uiState.update { state ->
                         val leaving = state.overlay as? GroupDetailOverlay.Leaving
@@ -705,9 +659,16 @@ class GroupDetailViewModel(
 
     private fun invalidateLoad() {
         loadGeneration += 1
+        clearLoadingIndicator()
         loadJob?.cancel()
         loadJob = null
-        _uiState.update { state -> state.copy(refreshStatus = GroupDetailRefreshStatus.Idle) }
+        _uiState.update { state ->
+            state.copy(
+                refreshStatus = GroupDetailRefreshStatus.Idle,
+                isLoading = false,
+                isLoadingIndicatorVisible = false,
+            )
+        }
     }
 
     private fun showNotice(kind: GroupDetailNoticeKind) {
@@ -716,41 +677,12 @@ class GroupDetailViewModel(
             state.copy(notice = notice)
         }
     }
-
-    private fun showNotice(
-        kind: GroupDetailNoticeKind,
-        retryAfterMillis: Long?,
-    ) {
-        val notice = GroupDetailNotice(dependencies.operationKeyAllocator.next(), kind, retryAfterMillis)
-        _uiState.update { state -> state.copy(notice = notice) }
-    }
-
-    private fun markMembershipUnavailable(
-        operationKey: GroupOperationKey,
-        reason: GroupDetailAccessLoss,
-    ) {
-        invalidateLoad()
-        val event = GroupDetailMembershipEvent(operationKey, reason)
-        _uiState.update { state ->
-            state.copy(
-                content =
-                    if (reason == GroupDetailAccessLoss.MembershipChanged) {
-                        GroupDetailContent.MembershipChanged
-                    } else {
-                        GroupDetailContent.NotFound
-                    },
-                refreshStatus = GroupDetailRefreshStatus.Idle,
-                overlay = GroupDetailOverlay.None,
-                copyRequest = null,
-                membershipEvent = event,
-            )
-        }
-    }
-
-    private fun GroupDetailUiModel.ownedSnapshot(): GroupDetailUiModel = copy(emotionCounts = emotionCounts.toList())
 }
 
 enum class GroupCopyCodeResult {
     Copied,
     Unavailable,
 }
+
+private const val LOADING_INDICATOR_DELAY_MILLIS = 150L
+private const val LOADING_INDICATOR_MINIMUM_MILLIS = 300L

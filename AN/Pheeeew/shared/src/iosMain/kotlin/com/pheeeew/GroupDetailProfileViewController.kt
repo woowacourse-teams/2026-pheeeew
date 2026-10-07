@@ -1,4 +1,4 @@
-@file:OptIn(kotlinx.cinterop.ExperimentalForeignApi::class)
+@file:OptIn(ExperimentalForeignApi::class)
 
 package com.pheeeew
 
@@ -9,50 +9,39 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.window.ComposeUIViewController
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.screens.group.detail.GroupDetailActions
 import com.pheeeew.feature.screens.group.detail.GroupDetailContent
 import com.pheeeew.feature.screens.group.detail.GroupDetailScreen
 import com.pheeeew.feature.screens.group.detail.GroupDetailUiState
-import com.pheeeew.feature.screens.group.detail.fixtureDetail
-import com.pheeeew.feature.screens.group.detail.model.EmotionKind
-import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationKind
+import com.pheeeew.feature.screens.group.detail.previewGroupDetailUiModel
+import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.delay
 import platform.Foundation.NSNotificationCenter
 import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
-/** Debug-only entry point selected by the iOS app's -group-detail-profile launch argument. */
 @Suppress("ktlint:standard:function-naming")
 fun GroupDetailProfileViewController() =
     ComposeUIViewController {
         val detailState =
             remember {
                 mutableStateOf(
-                    fixtureDetail(
-                        todayTotal = INITIAL_TODAY_TOTAL,
-                        presentation = GroupDetailPresentationKind.Active,
-                    ),
+                    previewGroupDetailUiModel(GroupRole.MEMBER).copy(weeklyEmotionPressCount = INITIAL_PRESS_COUNT),
                 )
             }
         val pendingTapMarks = remember { mutableListOf<TimeMark>() }
         val renderLatencyMicros = remember { mutableListOf<Long>() }
-        var acceptedPresses by remember { mutableIntStateOf(0) }
+        var updates by remember { mutableIntStateOf(0) }
 
-        val onEmotionTap: (EmotionKind) -> Boolean = { emotion ->
+        val updateStatistics: () -> Unit = {
             pendingTapMarks += TimeSource.Monotonic.markNow()
-            acceptedPresses++
+            updates++
             val current = detailState.value
-            detailState.value =
-                current.copy(
-                    todayTotal = current.todayTotal + 1L,
-                    emotionCounts =
-                        current.emotionCounts.map { count ->
-                            if (count.kind == emotion) count.copy(count = count.count + 1L) else count
-                        },
-                )
-            true
+            detailState.value = current.copy(weeklyEmotionPressCount = current.weeklyEmotionPressCount + 1L)
         }
 
         SideEffect {
@@ -68,12 +57,12 @@ fun GroupDetailProfileViewController() =
                 `object` = null,
             )
             repeat(PROFILE_TAP_COUNT) {
-                onEmotionTap(EmotionKind.Angry)
+                updateStatistics()
                 delay(PROFILE_TAP_INTERVAL_MILLIS)
             }
-            androidx.compose.runtime.withFrameNanos { }
+            withFrameNanos { }
             println(
-                "IOS_GROUP_DETAIL_PROFILE taps=$acceptedPresses " +
+                "IOS_GROUP_DETAIL_PROFILE updates=$updates " +
                     "state_to_compose_p50_ms=${renderLatencyMicros.percentileMillisFromMicros(50)} " +
                     "state_to_compose_p95_ms=${renderLatencyMicros.percentileMillisFromMicros(95)}",
             )
@@ -99,9 +88,13 @@ fun GroupDetailProfileViewController() =
                         onConfirmLeave = {},
                         onRetryLeave = {},
                         onResolveLeaveOutcome = {},
-                        onEmotionTap = onEmotionTap,
-                        onResolvePressOutcome = {},
                         onNoticeDismissed = {},
+                        onMoodReactionClick = null,
+                        onMoodAudioClick = null,
+                        onMoodBlockClick = null,
+                        onMoodReportClick = null,
+                        onMoodFeedRetry = null,
+                        onMoodFeedLoadMore = null,
                     ),
             )
         }
@@ -116,7 +109,7 @@ private fun List<Long>.percentileMillisFromMicros(percentile: Int): Double {
 
 private const val PROFILE_STARTED_NOTIFICATION = "com.pheeeew.group-detail-profile.started"
 private const val PROFILE_FINISHED_NOTIFICATION = "com.pheeeew.group-detail-profile.finished"
-private const val INITIAL_TODAY_TOTAL = 1_238L
+private const val INITIAL_PRESS_COUNT = 1_238L
 private const val PROFILE_WARMUP_MILLIS = 1_500L
 private const val PROFILE_TAP_COUNT = 200
 private const val PROFILE_TAP_INTERVAL_MILLIS = 8L

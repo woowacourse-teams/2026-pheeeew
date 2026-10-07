@@ -1,9 +1,8 @@
 package com.pheeeew.feature.screens.group.detail
 
-import com.pheeeew.feature.screens.group.detail.model.EmotionKind
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 
-/** 화면 입력을 기능 경계로 전달하는 콜백 모음입니다. */
 data class GroupDetailActions(
     val onBack: () -> Unit,
     val onReturnHome: () -> Unit,
@@ -16,7 +15,11 @@ data class GroupDetailActions(
     val onConfirmLeave: () -> Unit,
     val onRetryLeave: () -> Unit,
     val onResolveLeaveOutcome: () -> Unit,
-    val onEmotionTap: (EmotionKind) -> Boolean,
-    val onResolvePressOutcome: () -> Unit,
     val onNoticeDismissed: (GroupOperationKey) -> Unit,
+    val onMoodReactionClick: ((String, EmotionReactionType) -> Unit)?,
+    val onMoodAudioClick: ((String) -> Unit)?,
+    val onMoodBlockClick: ((String) -> Unit)?,
+    val onMoodReportClick: ((String) -> Unit)?,
+    val onMoodFeedRetry: (() -> Unit)?,
+    val onMoodFeedLoadMore: (() -> Unit)?,
 )

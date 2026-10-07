@@ -6,18 +6,13 @@ import kotlinx.serialization.Serializable
 data class GroupDetailResponseDto(
     val groupId: String,
     val name: String,
-    val description: String? = null,
+    val description: String?,
     val inviteCode: String,
     val role: String,
     val memberCount: Long,
     val stamp: GroupStampResponseDto,
-    val todayPresses: GroupPressCountResponseDto,
-    val weeklyScore: Long,
-    val weeklyRank: Int? = null,
-)
-
-@Serializable
-data class GroupPressCountResponseDto(
-    val counts: Map<String, Long>,
-    val total: Long,
+    val weeklyStampCount: Long,
+    val weeklyStampRank: Int?,
+    val weeklyEmotionPressCount: Long,
+    val weeklyEmotionPressRank: Int?,
 )

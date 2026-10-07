@@ -27,16 +27,16 @@ class GroupDetailMacrobenchmark {
     val benchmarkRule = MacrobenchmarkRule()
 
     @Test
-    fun aEmotionTapsAt250MillisMeasureProductionDetailFramesAndMemory() {
-        measureEmotionTapsAtCadence(INTER_TAP_INTERVAL_250_MILLIS)
+    fun aStatisticUpdatesAt250MillisMeasureProductionDetailFramesAndMemory() {
+        measureStatisticUpdatesAtCadence(INTER_TAP_INTERVAL_250_MILLIS)
     }
 
     @Test
-    fun bEmotionTapsAt150MillisMeasureProductionDetailFramesAndMemory() {
-        measureEmotionTapsAtCadence(INTER_TAP_INTERVAL_150_MILLIS)
+    fun bStatisticUpdatesAt150MillisMeasureProductionDetailFramesAndMemory() {
+        measureStatisticUpdatesAtCadence(INTER_TAP_INTERVAL_150_MILLIS)
     }
 
-    private fun measureEmotionTapsAtCadence(interTapIntervalMillis: Long) {
+    private fun measureStatisticUpdatesAtCadence(interTapIntervalMillis: Long) {
         benchmarkRule.measureRepeated(
             packageName = TARGET_PACKAGE,
             metrics =
@@ -61,12 +61,12 @@ class GroupDetailMacrobenchmark {
                 device.wakeUp()
                 pressHome()
                 launchBenchmarkActivity()
-                val warmupButton = device.wait(Until.findObject(ANGRY_BUTTON), WAIT_FOR_SCREEN_MILLIS)
-                check(warmupButton != null) { "Group detail emotion button did not appear for warmup" }
+                val warmupButton = device.wait(Until.findObject(RETRY_BUTTON), WAIT_FOR_SCREEN_MILLIS)
+                check(warmupButton != null) { "Group detail retry button did not appear for warmup" }
                 device.waitForIdle()
 
                 val warmupBounds = warmupButton.visibleBounds
-                check(!warmupBounds.isEmpty) { "Warmup emotion button has no visible bounds" }
+                check(!warmupBounds.isEmpty) { "Warmup retry button has no visible bounds" }
                 tapAtCadence(
                     device = device,
                     tapX = warmupBounds.centerX(),
@@ -74,23 +74,23 @@ class GroupDetailMacrobenchmark {
                     tapCount = WARMUP_TAPS,
                     intervalMillis = interTapIntervalMillis,
                 )
-                awaitEmotionCount(device, INITIAL_ANGRY_COUNT + WARMUP_TAPS, "warmup")
+                awaitPressCount(device, INITIAL_PRESS_COUNT + WARMUP_TAPS, "warmup")
 
                 // Warm Compose and the local update path before each measured iteration, then
                 // recreate the fixture Activity so every measurement begins at the same count.
                 launchBenchmarkActivity()
-                val resetButton = device.wait(Until.findObject(ANGRY_BUTTON), WAIT_FOR_SCREEN_MILLIS)
-                check(resetButton != null) { "Group detail emotion button did not reappear after warmup" }
-                awaitEmotionCount(device, INITIAL_ANGRY_COUNT, "reset")
+                val resetButton = device.wait(Until.findObject(RETRY_BUTTON), WAIT_FOR_SCREEN_MILLIS)
+                check(resetButton != null) { "Group detail retry button did not reappear after warmup" }
+                awaitPressCount(device, INITIAL_PRESS_COUNT, "reset")
                 device.waitForIdle()
             },
         ) {
             val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-            val button = device.findObject(ANGRY_BUTTON)
-            check(button != null) { "Group detail emotion button is missing during measurement" }
+            val button = device.findObject(RETRY_BUTTON)
+            check(button != null) { "Group detail retry button is missing during measurement" }
             // Avoid a repeated accessibility-tree lookup before every measured tap.
             val bounds = button.visibleBounds
-            check(!bounds.isEmpty) { "Group detail emotion button has no visible bounds" }
+            check(!bounds.isEmpty) { "Group detail retry button has no visible bounds" }
             tapAtCadence(
                 device = device,
                 tapX = bounds.centerX(),
@@ -99,7 +99,7 @@ class GroupDetailMacrobenchmark {
                 intervalMillis = interTapIntervalMillis,
             )
             device.waitForIdle()
-            awaitEmotionCount(device, INITIAL_ANGRY_COUNT + TAPS_PER_ITERATION, "measurement")
+            awaitPressCount(device, INITIAL_PRESS_COUNT + TAPS_PER_ITERATION, "measurement")
         }
     }
 
@@ -122,26 +122,26 @@ class GroupDetailMacrobenchmark {
     ) {
         val startTimeMillis = SystemClock.uptimeMillis()
         repeat(tapCount) { index ->
-            check(device.click(tapX, tapY)) { "Emotion button tap was not injected" }
+            check(device.click(tapX, tapY)) { "Retry button tap was not injected" }
             val nextTapTimeMillis = startTimeMillis + ((index + 1) * intervalMillis)
             val delayMillis = nextTapTimeMillis - SystemClock.uptimeMillis()
             if (delayMillis > 0) SystemClock.sleep(delayMillis)
         }
     }
 
-    private fun awaitEmotionCount(
+    private fun awaitPressCount(
         device: UiDevice,
         expectedCount: Int,
         phase: String,
     ) {
         val expectedButton =
             device.wait(
-                Until.findObject(By.descContains("${expectedCount}번")),
+                Until.findObject(By.text("(${expectedCount}번)")),
                 WAIT_FOR_SCREEN_MILLIS,
             )
         check(expectedButton != null) {
-            val currentCount = device.findObject(ANGRY_BUTTON)?.contentDescription
-            "Local fixture did not reflect expected emotion count during $phase; current button=$currentCount"
+            val currentCount = device.findObject(RETRY_BUTTON)?.contentDescription
+            "Local fixture did not reflect expected press count during $phase; current button=$currentCount"
         }
     }
 
@@ -152,8 +152,8 @@ class GroupDetailMacrobenchmark {
         const val WARMUP_TAPS = 10
         const val INTER_TAP_INTERVAL_150_MILLIS = 150L
         const val INTER_TAP_INTERVAL_250_MILLIS = 250L
-        const val INITIAL_ANGRY_COUNT = 98
+        const val INITIAL_PRESS_COUNT = 98
         const val WAIT_FOR_SCREEN_MILLIS = 10_000L
-        val ANGRY_BUTTON = By.descContains("분노 표현하기")
+        val RETRY_BUTTON = By.text("다시 불러오기")
     }
 }

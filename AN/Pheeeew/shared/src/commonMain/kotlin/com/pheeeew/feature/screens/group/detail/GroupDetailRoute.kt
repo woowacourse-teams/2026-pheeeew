@@ -9,9 +9,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.feature.monitoring.product.ProductScreen
-import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -25,7 +24,7 @@ import kotlinx.coroutines.flow.collect
 @Composable
 fun GroupDetailRoute(
     viewModel: GroupDetailViewModel,
-    isCurrentDestination: Boolean = true,
+    isCurrentDestination: Boolean,
     onBack: () -> Unit,
     onReturnHome: () -> Unit,
     onLeft: (groupId: GroupId, operationKey: GroupOperationKey) -> Unit,
@@ -37,6 +36,12 @@ fun GroupDetailRoute(
     ) -> Unit,
     onCopyCode: suspend (code: String, operationKey: GroupOperationKey) -> GroupCopyCodeResult,
     modifier: Modifier = Modifier,
+    onMoodReactionClick: ((String, EmotionReactionType) -> Unit)?,
+    onMoodAudioClick: ((String) -> Unit)?,
+    onMoodBlockClick: ((String) -> Unit)?,
+    onMoodReportClick: ((String) -> Unit)?,
+    onMoodFeedRetry: (() -> Unit)?,
+    onMoodFeedLoadMore: (() -> Unit)?,
 ) {
     ProductScreen(viewModel.telemetry, isCurrentDestination)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -89,20 +94,7 @@ fun GroupDetailRoute(
         }
     }
 
-    val foreground =
-        com.pheeeew.feature.screens.map.monitoring
-            .rememberMonitoringForeground() &&
-            LocalProductMonitoringVisible.current
     GroupDetailScreen(
-        feedbackOperationKey = { viewModel.lastAcceptedPressKey },
-        onFeedbackShown = { key ->
-            if (isCurrentDestination && foreground) {
-                viewModel.telemetry.emit(
-                    "group_emotion_feedback_viewed",
-                    labels("group_operation_key" to "${key.ownerInstanceId}:${key.sequence}"),
-                )
-            }
-        },
         uiState = uiState,
         actions =
             GroupDetailActions(
@@ -119,9 +111,13 @@ fun GroupDetailRoute(
                 onConfirmLeave = viewModel::onConfirmLeave,
                 onRetryLeave = viewModel::onRetryLeave,
                 onResolveLeaveOutcome = viewModel::onResolveLeaveOutcome,
-                onEmotionTap = viewModel::onEmotionTap,
-                onResolvePressOutcome = viewModel::onResolvePressOutcome,
                 onNoticeDismissed = viewModel::acknowledgeNotice,
+                onMoodReactionClick = onMoodReactionClick,
+                onMoodAudioClick = onMoodAudioClick,
+                onMoodBlockClick = onMoodBlockClick,
+                onMoodReportClick = onMoodReportClick,
+                onMoodFeedRetry = onMoodFeedRetry,
+                onMoodFeedLoadMore = onMoodFeedLoadMore,
             ),
         modifier = modifier,
     )

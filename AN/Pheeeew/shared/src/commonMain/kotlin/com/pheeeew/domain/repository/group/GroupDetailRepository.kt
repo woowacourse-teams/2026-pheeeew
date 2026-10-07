@@ -14,8 +14,6 @@ sealed interface GroupDetailLookupResult {
         val detail: GroupDetail,
     ) : GroupDetailLookupResult
 
-    data object MembershipChanged : GroupDetailLookupResult
-
     data object NotFound : GroupDetailLookupResult
 
     data object Unavailable : GroupDetailLookupResult
