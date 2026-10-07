@@ -43,28 +43,31 @@ public class V20261007_2__backfill_device_nicknames extends BaseJavaMigration {
                 .mapToObj(index -> modifiers.get(index / characters.size()) + " "
                         + characters.get(index % characters.size()))
                 .iterator();
-        try (var select = connection.createStatement();
-             var devices = select.executeQuery("SELECT id FROM devices WHERE nickname IS NULL ORDER BY id");
-             var update = connection.prepareStatement("""
-                     UPDATE devices SET nickname = ?
-                     WHERE id = ? AND nickname IS NULL
-                     """)) {
-            int pending = 0;
-            while (devices.next()) {
-                if (!nicknames.hasNext()) {
-                    // 앞서 제출한 배치까지 Flyway의 전체 트랜잭션에서 롤백한다.
-                    throw new SQLException("Device nickname backfill exhausted its available combinations");
+        try (var select = connection.createStatement()) {
+            // Flyway 트랜잭션의 커서로 대상 ID도 배치 단위로 가져온다.
+            select.setFetchSize(BATCH_SIZE);
+            try (var devices = select.executeQuery("SELECT id FROM devices WHERE nickname IS NULL ORDER BY id");
+                 var update = connection.prepareStatement("""
+                         UPDATE devices SET nickname = ?
+                         WHERE id = ? AND nickname IS NULL
+                         """)) {
+                int pending = 0;
+                while (devices.next()) {
+                    if (!nicknames.hasNext()) {
+                        // 앞서 제출한 배치까지 Flyway의 전체 트랜잭션에서 롤백한다.
+                        throw new SQLException("Device nickname backfill exhausted its available combinations");
+                    }
+                    update.setString(1, nicknames.next());
+                    update.setLong(2, devices.getLong("id"));
+                    update.addBatch();
+                    if (++pending == BATCH_SIZE) {
+                        executeBatch(update, pending);
+                        pending = 0;
+                    }
                 }
-                update.setString(1, nicknames.next());
-                update.setLong(2, devices.getLong("id"));
-                update.addBatch();
-                if (++pending == BATCH_SIZE) {
+                if (pending > 0) {
                     executeBatch(update, pending);
-                    pending = 0;
                 }
-            }
-            if (pending > 0) {
-                executeBatch(update, pending);
             }
         }
     }
