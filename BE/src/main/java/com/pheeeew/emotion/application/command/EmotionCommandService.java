@@ -164,7 +164,6 @@ public class EmotionCommandService {
                 .memo(content.getMemo())
                 .audio(content.getAudio())
                 .groupStamp(stamp)
-                .nickname("익명")
                 .anonymous(anonymous)
                 .deviceId(deviceId)
                 .build());

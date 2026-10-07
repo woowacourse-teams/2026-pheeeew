@@ -158,7 +158,7 @@ class EmotionControllerTest {
     void 녹음_목록과_상세는_내용_유형과_메모와_재생_정보를_순서대로_반환한다(boolean list) {
         // given
         Emotion emotion = 기본_한숨_빌더()
-                .state(EmotionState.FRUSTRATED).rotationDegrees(0).nickname("먼지구름").deviceId(1L)
+                .state(EmotionState.FRUSTRATED).rotationDegrees(0).deviceId(1L)
                 .audio(Audio.builder().objectKey("private/voice.m4a").build()).build();
         var playback = PlaybackUrl.of(
                 "https://audio.example.test/signed", Instant.parse("2026-09-25T12:05:00Z"));
@@ -723,7 +723,6 @@ class EmotionControllerTest {
                 .state(EmotionState.FRUSTRATED)
                 .rotationDegrees(35.5)
                 .memo("답답한 하루")
-                .nickname("먼지구름")
                 .deviceId(isMine ? 1L : 2L)
                 .build();
         ReflectionTestUtils.setField(emotion, "id", emotionId);

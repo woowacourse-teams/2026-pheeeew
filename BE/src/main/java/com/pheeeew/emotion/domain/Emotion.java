@@ -31,7 +31,6 @@ import org.locationtech.jts.geom.Point;
 public class Emotion extends BaseEntity {
 
     private static final int WGS84_SRID = 4326;
-    private static final int MAX_NICKNAME_LENGTH = 50;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -65,9 +64,6 @@ public class Emotion extends BaseEntity {
     @JoinColumn(name = "group_stamp_id")
     private GroupStamp groupStamp;
 
-    @Column(nullable = false, length = MAX_NICKNAME_LENGTH, updatable = false)
-    private String nickname;
-
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
@@ -84,7 +80,7 @@ public class Emotion extends BaseEntity {
     @Builder
     private Emotion(
             UUID requestId, Point location, String memo, Audio audio, EmotionState state,
-            double rotationDegrees, String nickname, Boolean anonymous, Long deviceId, GroupStamp groupStamp,
+            double rotationDegrees, Boolean anonymous, Long deviceId, GroupStamp groupStamp,
             String regionCode, Instant regionClassifiedAt
     ) {
         this.requestId = Objects.requireNonNull(requestId);
@@ -95,7 +91,6 @@ public class Emotion extends BaseEntity {
         this.state = state;
         this.rotationDegrees = requireValidRotationDegrees(rotationDegrees);
         this.groupStamp = groupStamp;
-        this.nickname = requireValidNickname(nickname);
         this.deviceId = deviceId;
         this.anonymous = !Boolean.FALSE.equals(anonymous);
         if (!this.anonymous && deviceId == null) {
@@ -148,16 +143,5 @@ public class Emotion extends BaseEntity {
             throw new IllegalArgumentException("스탬프 각도는 0도 이상 360도 미만이어야 합니다.");
         }
         return rotationDegrees;
-    }
-
-    private String requireValidNickname(String nickname) {
-        if (nickname == null || nickname.isBlank()) {
-            throw new IllegalArgumentException("닉네임은 비어 있을 수 없습니다.");
-        }
-        if (nickname.length() > MAX_NICKNAME_LENGTH) {
-            throw new IllegalArgumentException("닉네임은 50자를 초과할 수 없습니다.");
-        }
-
-        return nickname;
     }
 }

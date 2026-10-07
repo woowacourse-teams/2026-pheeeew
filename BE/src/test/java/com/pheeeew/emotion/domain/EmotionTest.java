@@ -8,7 +8,6 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class EmotionTest {
@@ -153,42 +152,6 @@ class EmotionTest {
         assertThat(throwable)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("스탬프 각도는 0도 이상 360도 미만이어야 합니다.");
-    }
-
-    @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"   "})
-    void 닉네임은_null이거나_비어_있으면_생성할_수_없다(String nickname) {
-        // given
-        String requestedNickname = nickname;
-
-        // when
-        Throwable throwable = catchThrowable(() -> 기본_한숨_빌더()
-                .nickname(requestedNickname)
-                .build()
-        );
-
-        // then
-        assertThat(throwable)
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("닉네임은 비어 있을 수 없습니다.");
-    }
-
-    @Test
-    void 닉네임은_50자를_초과하면_생성할_수_없다() {
-        // given
-        String nickname = "가".repeat(51);
-
-        // when
-        Throwable throwable = catchThrowable(() -> 기본_한숨_빌더()
-                .nickname(nickname)
-                .build()
-        );
-
-        // then
-        assertThat(throwable)
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("닉네임은 50자를 초과할 수 없습니다.");
     }
 
     @Test

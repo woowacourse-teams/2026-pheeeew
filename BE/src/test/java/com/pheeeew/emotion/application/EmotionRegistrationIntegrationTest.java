@@ -175,6 +175,8 @@ class EmotionRegistrationIntegrationTest {
         Emotion original = service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
                 contentType.equals("MEMO") ? "최초 메모" : null,
                 contentType.equals("AUDIO") ? upload.getUploadId() : null, null, device.getPublicId());
+        jdbc.sql("UPDATE emotions SET nickname = :nickname WHERE id = :id")
+                .param("nickname", "기존 랜덤 닉네임").param("id", original.getId()).update();
         Instant classifiedAt = emotions.findById(original.getId()).orElseThrow().getRegionClassifiedAt();
         jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
         clearInvocations(objectVerifier);
@@ -193,7 +195,8 @@ class EmotionRegistrationIntegrationTest {
         assertThat(retried.getRotationDegrees()).isEqualTo(35.5);
         assertThat(retried.getMemo()).isEqualTo(original.getMemo());
         assertThat(retried.getContent().getAudio()).isEqualTo(original.getContent().getAudio());
-        assertThat(retried.getNickname()).isEqualTo(original.getNickname());
+        assertThat(jdbc.sql("SELECT nickname FROM emotions WHERE id = :id")
+                .param("id", original.getId()).query(String.class).single()).isEqualTo("기존 랜덤 닉네임");
         assertThat(retried.getRegionCode()).isEqualTo("11010530");
         assertThat(retried.getRegionClassifiedAt()).isEqualTo(classifiedAt).isNotNull();
         assertThat(emotions.count()).isOne();

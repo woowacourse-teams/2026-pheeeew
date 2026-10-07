@@ -260,7 +260,6 @@ class DeviceBlockControllerTest {
 
     private BlockResult 기본_차단_결과() {
         Emotion emotion = 기본_한숨_빌더()
-                .nickname("날아가는 고라니")
                 .memo("오늘은 조금 지쳤다")
                 .build();
 

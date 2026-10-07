@@ -98,13 +98,13 @@ class EmotionQueryServiceIntegrationTest {
         검증용_지역_계층을_저장한다(jdbcClient);
         viewer = deviceRepository.save(기본_기기_빌더().build());
         author = deviceRepository.save(기본_기기_빌더().build());
-        emotion = emotionRepository.save(기본_한숨_빌더()
+        emotion = emotionRepository.saveAndFlush(기본_한숨_빌더()
                 .state(EmotionState.FRUSTRATED)
                 .rotationDegrees(35.5)
                 .memo("답답한 하루")
-                .nickname("먼지구름")
                 .deviceId(author.getId())
                 .build());
+        과거_닉네임을_저장한다(emotion);
     }
 
     @Test
@@ -116,6 +116,7 @@ class EmotionQueryServiceIntegrationTest {
         Emotion otherNamed = emotionRepository.save(기본_한숨_빌더().deviceId(other.getId()).anonymous(false).memo("다른 기명").build());
         Emotion withoutAuthor = saveEmotion(null, 126.9774, 37.5669);
         entityManager.flush();
+        과거_닉네임을_저장한다(named);
         entityManager.clear();
         EmotionSearchBounds bounds = EmotionSearchBounds.of(126, 37, 128, 38);
 
@@ -161,13 +162,15 @@ class EmotionQueryServiceIntegrationTest {
         assertThat(first.items()).hasSize(20).extracting(EmotionDetailView::nickname).containsOnly("새 이름");
         assertThat(next.items()).hasSize(2).extracting(EmotionDetailView::nickname).containsExactlyInAnyOrder("새 이름", "익명");
         assertThat(emotionQueryService.findById(first.items().getFirst().id(), viewer.getPublicId()).nickname()).isEqualTo("새 이름");
-        assertThat(emotionRepository.findById(emotion.getId()).orElseThrow().getNickname()).isEqualTo("먼지구름");
+        assertThat(jdbcClient.sql("SELECT nickname FROM emotions WHERE id = :id")
+                .param("id", emotion.getId()).query(String.class).single()).isEqualTo("먼지구름");
     }
 
     @Test
     void 기명_감정의_작성자_닉네임이_없어도_과거_랜덤_이름을_표시하지_않는다() {
         // given: 전환 중 불완전한 기명 기록도 안전하게 익명으로 표시한다.
         Emotion named = emotionRepository.saveAndFlush(기본_한숨_빌더().deviceId(author.getId()).anonymous(false).memo("기명").build());
+        과거_닉네임을_저장한다(named);
         entityManager.clear();
 
         // when / then
@@ -689,7 +692,6 @@ class EmotionQueryServiceIntegrationTest {
         return emotionRepository.save(기본_한숨_빌더()
                 .state(EmotionState.FRUSTRATED)
                 .memo("메모")
-                .nickname("먼지구름")
                 .deviceId(author.getId())
                 .groupStamp(stamp)
                 .build());
@@ -702,9 +704,13 @@ class EmotionQueryServiceIntegrationTest {
                 .location(location)
                 .state(EmotionState.FRUSTRATED)
                 .memo("메모")
-                .nickname("먼지구름")
                 .deviceId(authorId)
                 .build());
+    }
+
+    private void 과거_닉네임을_저장한다(Emotion target) {
+        jdbcClient.sql("UPDATE emotions SET nickname = :nickname WHERE id = :id")
+                .param("nickname", "먼지구름").param("id", target.getId()).update();
     }
 
     private void setCreatedAt(Emotion target, Instant createdAt) {

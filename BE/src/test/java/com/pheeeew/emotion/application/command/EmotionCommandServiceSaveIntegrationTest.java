@@ -115,7 +115,8 @@ class EmotionCommandServiceSaveIntegrationTest {
         assertThat(loaded.getRotationDegrees()).isEqualTo(35.5);
         assertThat(loaded.getState()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(loaded.getDeviceId()).isEqualTo(device.getId());
-        assertThat(loaded.getNickname()).isEqualTo("익명");
+        assertThat(jdbc.sql("SELECT nickname FROM emotions WHERE id = :id")
+                .param("id", loaded.getId()).query(String.class).single()).isEqualTo("익명");
         assertThat(loaded.isAnonymous()).isTrue();
         assertThat(loaded.getRegionCode()).isEqualTo("11010530");
         assertThat(loaded.getRegionClassifiedAt()).isNotNull();
@@ -125,7 +126,7 @@ class EmotionCommandServiceSaveIntegrationTest {
     @ParameterizedTest
     @NullSource
     @ValueSource(booleans = {true, false})
-    void 익명_선택은_저장하고_생략하면_익명으로_등록한다(Boolean anonymous) {
+    void 익명_선택을_저장하고_과거_닉네임_컬럼에는_DB_기본값을_적용한다(Boolean anonymous) {
         // given
         deviceService.updateNickname(device.getPublicId(), "스타크");
 
@@ -137,7 +138,8 @@ class EmotionCommandServiceSaveIntegrationTest {
         // then
         assertThat(loaded.isAnonymous()).isEqualTo(!Boolean.FALSE.equals(anonymous));
         assertThat(loaded.getDeviceId()).isEqualTo(device.getId());
-        assertThat(loaded.getNickname()).isEqualTo("익명");
+        assertThat(jdbc.sql("SELECT nickname FROM emotions WHERE id = :id")
+                .param("id", loaded.getId()).query(String.class).single()).isEqualTo("익명");
     }
 
     @Test
