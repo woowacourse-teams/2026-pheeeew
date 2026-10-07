@@ -31,6 +31,29 @@ public class DeviceRegionDailyPressRepository {
                 .update();
     }
 
+    public List<DeviceRegionPressSum> findByPressDateAndDeviceId(LocalDate pressDate, Long deviceId) {
+        return jdbc.sql("""
+                SELECT state, SUM(press_count) AS press_count
+                FROM device_region_daily_presses
+                WHERE press_date = :pressDate
+                  AND device_id = :deviceId
+                GROUP BY state
+                """).param("pressDate", pressDate).param("deviceId", deviceId)
+                .query((row, index) -> DeviceRegionPressSum.of(
+                        EmotionState.valueOf(row.getString("state")), row.getLong("press_count")))
+                .list();
+    }
+
+    public long sumByPressDate(LocalDate pressDate) {
+        return jdbc.sql("""
+                SELECT COALESCE(SUM(press_count), 0)
+                FROM device_region_daily_presses
+                WHERE press_date = :pressDate
+                """).param("pressDate", pressDate)
+                .query(Long.class)
+                .single();
+    }
+
     public List<DeviceRegionPressSum> findByPressDateAndRegionCodeAndDeviceId(
             LocalDate pressDate, String regionCode, Long deviceId
     ) {
