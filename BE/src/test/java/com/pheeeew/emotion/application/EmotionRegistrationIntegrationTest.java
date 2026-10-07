@@ -198,28 +198,6 @@ class EmotionRegistrationIntegrationTest {
     }
 
     @Test
-    void 미분류_기존_요청은_경계가_미검증이어도_재분류하거나_녹음을_연결하지_않는다() {
-        // given: 백필 전 기존 행의 NULL 분류 필드를 재현한다.
-        UUID requestId = UUID.randomUUID();
-        Emotion original = service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 0,
-                null, null, null, device.getPublicId());
-        jdbc.sql("UPDATE emotions SET region_code = NULL, region_classified_at = NULL WHERE id = :id")
-                .param("id", original.getId()).update();
-        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
-
-        // when
-        Emotion retried = saveAudio(requestId, device);
-
-        // then
-        assertThat(retried.getId()).isEqualTo(original.getId());
-        assertThat(retried.getRegionCode()).isNull();
-        assertThat(retried.getRegionClassifiedAt()).isNull();
-        assertThat(emotions.count()).isOne();
-        assertThat(uploads.findByUploadId(upload.getUploadId()).orElseThrow().getClaimedRequestId()).isNull();
-        verifyNoInteractions(objectVerifier);
-    }
-
-    @Test
     void 삭제된_감정도_재등록하지_않고_최초_식별자를_반환한다() {
         UUID requestId = UUID.randomUUID();
         Emotion original = service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 0,

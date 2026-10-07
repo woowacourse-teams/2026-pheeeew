@@ -197,47 +197,6 @@ class EmotionCommandServiceSaveIntegrationTest {
         assertThat(linkCount()).isOne();
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void 기존_지원_범위_밖_기록은_재시도와_수정과_삭제가_가능하고_지역을_바꾸지_않는다(boolean classified) {
-        // given: 기존 버전이 남긴 범위 밖 기록을 재현한다.
-        UUID requestId = UUID.randomUUID();
-        Emotion original = save(requestId, "기존 메모", null);
-        jdbc.sql("""
-                UPDATE emotions SET location = ST_GeomFromText('POINT(0 0)', 4326), region_code = NULL,
-                    region_classified_at = CASE WHEN :classified THEN CURRENT_TIMESTAMP ELSE NULL END
-                WHERE id = :id
-                """).param("classified", classified).param("id", original.getId()).update();
-        Instant classifiedAt = emotionRepository.findById(original.getId()).orElseThrow().getRegionClassifiedAt();
-        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
-
-        // when: 재시도는 새 내용·업로드·지원 범위 밖 좌표를 검사하지 않는다.
-        Emotion retried = commandService.save(requestId, EmotionState.ANGRY,
-                0, 0, 90, null, upload.getUploadId(), null, device.getPublicId());
-
-        // then
-        assertThat(retried.getId()).isEqualTo(original.getId());
-        assertThat(retried.getMemo()).isEqualTo("기존 메모");
-        assertThat(retried.getState()).isEqualTo(EmotionState.FRUSTRATED);
-        assertThat(retried.getRegionCode()).isNull();
-        assertThat(retried.getRegionClassifiedAt()).isEqualTo(classifiedAt);
-        assertThat(linkCount()).isZero();
-        verifyNoInteractions(objectVerifier);
-
-        commandService.update(original.getId(), device.getPublicId(), EmotionState.EXHAUSTED,
-                "수정 메모", null, false, null);
-        commandService.delete(original.getId(), device.getPublicId());
-        Emotion updated = emotionRepository.findById(original.getId()).orElseThrow();
-        assertThat(updated.getMemo()).isEqualTo("수정 메모");
-        assertThat(updated.getState()).isEqualTo(EmotionState.EXHAUSTED);
-        assertThat(updated.getDeletedAt()).isNotNull();
-        assertThat(updated.getLongitude()).isZero();
-        assertThat(updated.getLatitude()).isZero();
-        assertThat(updated.getRegionCode()).isNull();
-        assertThat(updated.getRegionClassifiedAt()).isEqualTo(classifiedAt);
-        assertThat(emotionRepository.count()).isOne();
-    }
-
     @Test
     void 지원_범위_밖이어도_기존_그룹_권한_확인을_먼저_유지한다() {
         // given / when / then

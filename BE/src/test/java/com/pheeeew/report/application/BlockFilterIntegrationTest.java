@@ -1,6 +1,7 @@
 package com.pheeeew.report.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 
@@ -69,6 +70,7 @@ class BlockFilterIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        검증용_지역_계층을_저장한다(jdbcClient);
         given(clock.instant()).willReturn(CURRENT_TIME);
         given(clock.getZone()).willReturn(ZoneId.of("Asia/Seoul"));
     }
@@ -79,6 +81,7 @@ class BlockFilterIntegrationTest {
         deviceBlockRepository.deleteAll();
         emotionRepository.deleteAll();
         deviceRepository.deleteAll();
+        jdbcClient.sql("DELETE FROM regions").update();
         등록_순번 = 0;
     }
 
@@ -243,7 +246,8 @@ class BlockFilterIntegrationTest {
     private Long 한숨을_저장한다(Long deviceId) {
         등록_순번++;
         return jdbcClient.sql("""
-                        INSERT INTO emotions (request_id, location, nickname, memo, device_id, created_at, updated_at)
+                        INSERT INTO emotions (request_id, location, nickname, memo, device_id, created_at, updated_at,
+                                              region_code, region_classified_at)
                         VALUES (
                             :requestId,
                             ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326),
@@ -251,7 +255,9 @@ class BlockFilterIntegrationTest {
                             '차단 조회 검증용 메모',
                             :deviceId,
                             TIMESTAMPTZ '2026-09-01T10:00:00Z' + :sequence * INTERVAL '1 minute',
-                            TIMESTAMPTZ '2026-09-01T10:00:00Z' + :sequence * INTERVAL '1 minute'
+                            TIMESTAMPTZ '2026-09-01T10:00:00Z' + :sequence * INTERVAL '1 minute',
+                            '11010530',
+                            TIMESTAMPTZ '2026-09-01T10:00:00Z'
                         )
                         RETURNING id
                         """)

@@ -44,10 +44,10 @@ public class Emotion extends BaseEntity {
     @Column(nullable = false, updatable = false, columnDefinition = "geometry(Point,4326)")
     private Point location;
 
-    @Column(name = "region_code", length = 8, updatable = false)
+    @Column(name = "region_code", nullable = false, length = 8, updatable = false)
     private String regionCode;
 
-    @Column(name = "region_classified_at", updatable = false)
+    @Column(name = "region_classified_at", nullable = false, updatable = false)
     private Instant regionClassifiedAt;
 
     @Getter(AccessLevel.NONE)
@@ -86,8 +86,8 @@ public class Emotion extends BaseEntity {
     ) {
         this.requestId = Objects.requireNonNull(requestId);
         this.location = requireWgs84Point(location);
-        this.regionCode = regionCode;
-        this.regionClassifiedAt = regionClassifiedAt;
+        this.regionCode = Objects.requireNonNull(regionCode);
+        this.regionClassifiedAt = Objects.requireNonNull(regionClassifiedAt);
         this.content = EmotionContent.builder().memo(memo).audio(audio).build();
         this.state = state;
         this.rotationDegrees = requireValidRotationDegrees(rotationDegrees);

@@ -175,4 +175,19 @@ class EmotionTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("위치는 비어 있지 않은 WGS84(SRID 4326) 점 좌표여야 합니다.");
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"regionCode", "regionClassifiedAt"})
+    void 지역_코드와_분류_시각은_null이면_생성할_수_없다(String field) {
+        // given
+        var builder = 기본_한숨_빌더();
+        if (field.equals("regionCode")) {
+            builder.regionCode(null);
+        } else {
+            builder.regionClassifiedAt(null);
+        }
+
+        // when / then
+        assertThat(catchThrowable(builder::build)).isInstanceOf(NullPointerException.class);
+    }
 }

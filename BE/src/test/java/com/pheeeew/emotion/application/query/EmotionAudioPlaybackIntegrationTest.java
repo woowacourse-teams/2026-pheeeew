@@ -4,6 +4,7 @@ import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
+import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
@@ -38,6 +39,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
@@ -59,6 +61,8 @@ class EmotionAudioPlaybackIntegrationTest {
     private DeviceBlockRepository deviceBlockRepository;
     @Autowired
     private EntityManager entityManager;
+    @Autowired
+    private JdbcClient jdbc;
     @MockitoBean
     private AudioUrlIssuer issuer;
 
@@ -71,6 +75,7 @@ class EmotionAudioPlaybackIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        검증용_지역_계층을_저장한다(jdbc);
         viewer = deviceRepository.save(기본_기기_빌더().build());
         author = deviceRepository.save(기본_기기_빌더().build());
         emotion = emotionRepository.save(기본_한숨_빌더().deviceId(author.getId()).memo(null)
