@@ -41,6 +41,29 @@ public class GroupRankingController implements GroupRankingControllerApi {
     }
 
     @Override
+    @GetMapping("/press-rankings/members")
+    public GroupPressRankingResponse findEmotionPressRanking(
+            @RequestParam(defaultValue = "0") int weeksAgo,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        return GroupPressRankingResponse.from(
+                groupRankingService.findEmotionPressRanking(devicePublicId, weeksAgo)
+        );
+    }
+
+    @Override
+    @GetMapping("/press-rankings/members/states/{state}")
+    public GroupStatePressRankingResponse findEmotionPressRankingByState(
+            @PathVariable EmotionState state,
+            @RequestParam(defaultValue = "0") int weeksAgo,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        return GroupStatePressRankingResponse.from(
+                groupRankingService.findEmotionPressRankingByState(devicePublicId, state, weeksAgo)
+        );
+    }
+
+    @Override
     @GetMapping("/press-rankings/states/{state}")
     public GroupStatePressRankingResponse findPressRankingByState(
             @PathVariable EmotionState state,
