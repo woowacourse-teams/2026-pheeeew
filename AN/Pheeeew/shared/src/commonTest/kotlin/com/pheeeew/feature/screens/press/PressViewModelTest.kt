@@ -50,4 +50,15 @@ class PressViewModelTest {
         assertEquals(before.thisWeek.emotionCounts[1].count + 1, after.thisWeek.emotionCounts[1].count)
         assertEquals(before.thisWeek.myEmotionCounts[1].count + 1, after.thisWeek.myEmotionCounts[1].count)
     }
+
+    @Test
+    fun `screen view model recreation reads the retained app session counts`() {
+        val session = PressFixtureSessionViewModel()
+        val firstScreenViewModel = PressViewModel(session.dataSource)
+
+        firstScreenViewModel.onEmotionTap(EmotionKind.Annoyed)
+        val secondScreenViewModel = PressViewModel(session.dataSource)
+
+        assertEquals(firstScreenViewModel.uiState.value.snapshots, secondScreenViewModel.uiState.value.snapshots)
+    }
 }

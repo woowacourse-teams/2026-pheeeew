@@ -105,8 +105,8 @@ import com.pheeeew.feature.screens.map.rememberRegionClusterSymbolImages
 import com.pheeeew.feature.screens.map.renderer.MapCameraSnapshotUiModel
 import com.pheeeew.feature.screens.map.renderer.NativeMap
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
+import com.pheeeew.feature.screens.press.PressFixtureSessionViewModel
 import com.pheeeew.feature.screens.press.PressRoute
-import com.pheeeew.feature.screens.press.data.InMemoryPressDataSource
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
@@ -182,6 +182,7 @@ private fun AppContent(
 ) {
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val pressFixtureSession: PressFixtureSessionViewModel = viewModel { PressFixtureSessionViewModel() }
     var versionCheckAttempt by remember { mutableStateOf(0) }
     var initialVersionCheckComplete by remember { mutableStateOf(false) }
     var splashAnimationCompleted by rememberSaveable { mutableStateOf(false) }
@@ -487,7 +488,6 @@ private fun AppContent(
             }
 
         val navController = rememberNavController()
-        val pressFixtureDataSource = remember { InMemoryPressDataSource() }
         val currentBackStackEntry by navController.currentBackStackEntryAsState()
 
         val selectedDestination =
@@ -644,7 +644,7 @@ private fun AppContent(
 
                 composable<PressRootDestination> {
                     PressRoute(
-                        dataSource = pressFixtureDataSource,
+                        dataSource = pressFixtureSession.dataSource,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
