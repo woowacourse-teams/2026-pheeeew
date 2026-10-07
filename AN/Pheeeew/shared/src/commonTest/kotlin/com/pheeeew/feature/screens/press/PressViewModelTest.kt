@@ -28,6 +28,7 @@ class PressViewModelTest {
 
         assertEquals(PressPeriod.ThisWeek, viewModel.uiState.value.period)
         assertEquals(initial.thisWeek, viewModel.uiState.value.selectedSnapshot)
+        assertEquals(initial.today.emotionCounts, viewModel.uiState.value.todayEmotionCounts)
         assertEquals(initial, viewModel.uiState.value.snapshots)
     }
 

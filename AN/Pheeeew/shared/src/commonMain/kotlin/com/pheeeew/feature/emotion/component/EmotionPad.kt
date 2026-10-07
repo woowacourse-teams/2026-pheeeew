@@ -50,6 +50,7 @@ internal fun EmotionPad(
     optimisticPressCounts: Map<EmotionKind, Long> = emptyMap(),
     enabled: Boolean,
     onEmotionTap: (EmotionKind) -> Boolean,
+    arrangement: EmotionPadArrangement = EmotionPadArrangement.ThreeTwo,
     allowVisualFeedbackWhenRejected: Boolean = false,
     feedbackAcknowledgementForAcceptedPress: () -> (() -> Unit)? = { null },
     preserveFeedbackWhileDisabled: Boolean = false,
@@ -147,7 +148,7 @@ internal fun EmotionPad(
         val particles = remember(tick) { feedback.particles.toList() }
         val localizedTapTexts = TapCatalog.localizedTexts()
         val plusOne = stringResource(Res.string.emotion_feedback_plus_one)
-        val origins = listOf(0f to 0f, 124.5f to 0f, 249f to 0f, 62.25f to 177f, 186.75f to 177f)
+        val origins = arrangement.buttonOrigins
 
         fun rootPoint(
             originX: Float,
@@ -218,7 +219,9 @@ internal fun EmotionPad(
             EmotionKind.entries.forEachIndexed { index, kind ->
                 val emotionLabel = stringResource(EmotionFeedbackCatalog.name(kind))
                 val motion = motions.getValue(kind)
-                val (originX, originY) = origins[index]
+                val origin = origins[index]
+                val originX = origin.x
+                val originY = origin.y
                 val x = inset + originX * unit
                 val y = originY * unit
                 val count = (byKind[kind]?.count ?: 0L) + (optimisticPressCounts[kind] ?: 0L)

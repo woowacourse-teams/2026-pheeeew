@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -35,8 +37,8 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
-import com.pheeeew.feature.emotion.component.EmotionFeedbackCatalog
 import com.pheeeew.feature.emotion.component.EmotionPad
+import com.pheeeew.feature.emotion.component.EmotionPadArrangement
 import com.pheeeew.feature.emotion.component.formatCount
 import com.pheeeew.feature.emotion.model.EmotionKind
 import com.pheeeew.feature.screens.press.data.PressFixtureData
@@ -44,15 +46,15 @@ import com.pheeeew.feature.screens.press.model.PressPeriod
 import com.pheeeew.feature.screens.press.model.PressPeriodSnapshot
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.press_emotion_counts_today_title
 import pheeeew.shared.generated.resources.press_fixture_notice
 import pheeeew.shared.generated.resources.press_period_this_week
 import pheeeew.shared.generated.resources.press_period_today
 import pheeeew.shared.generated.resources.press_screen_subtitle
 import pheeeew.shared.generated.resources.press_screen_title
 import pheeeew.shared.generated.resources.press_summary_all_label
-import pheeeew.shared.generated.resources.press_summary_dominant
-import pheeeew.shared.generated.resources.press_summary_empty
 import pheeeew.shared.generated.resources.press_summary_my_label
+import pheeeew.shared.generated.resources.press_summary_title
 
 @Composable
 internal fun PressScreen(
@@ -91,22 +93,27 @@ internal fun PressScreen(
             )
         }
         Spacer(Modifier.height(24.dp))
-        PressPeriodSelector(
-            selectedPeriod = uiState.period,
-            onSelected = onPeriodSelected,
-            modifier = Modifier.padding(horizontal = 24.dp),
-        )
-        Spacer(Modifier.height(18.dp))
         PressSummaryCard(
             period = uiState.period,
             snapshot = snapshot,
+            onPeriodSelected = onPeriodSelected,
             modifier = Modifier.padding(horizontal = 24.dp),
         )
         Spacer(Modifier.height(20.dp))
+        Text(
+            text = stringResource(Res.string.press_emotion_counts_today_title),
+            color = Color(0xFF505650),
+            fontSize = 14.sp,
+            fontFamily = font,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        )
+        Spacer(Modifier.height(10.dp))
         EmotionPad(
-            counts = snapshot.emotionCounts,
+            counts = uiState.todayEmotionCounts,
             enabled = true,
             onEmotionTap = onEmotionTap,
+            arrangement = EmotionPadArrangement.TwoThree,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
         Spacer(Modifier.height(20.dp))
@@ -134,11 +141,10 @@ private fun PressPeriodSelector(
     Row(
         modifier =
             modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(18.dp))
-                .background(Color(0xFFF1F2EF))
-                .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                .width(154.dp)
+                .heightIn(min = 44.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         PressPeriod.entries.forEach { period ->
             val isSelected = selectedPeriod == period
@@ -153,19 +159,20 @@ private fun PressPeriodSelector(
                 modifier =
                     Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(14.dp))
+                        .heightIn(min = 40.dp)
+                        .clip(RoundedCornerShape(12.dp))
                         .background(if (isSelected) AppColors.Primary else Color.Transparent)
                         .clickable(role = Role.Tab) { onSelected(period) }
                         .semantics { selected = isSelected }
-                        .padding(vertical = 11.dp),
+                        .padding(horizontal = 4.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = label,
                     color = Color(0xFF202323),
-                    fontSize = 15.sp,
+                    fontSize = 13.sp,
                     fontFamily = font,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
                 )
             }
         }
@@ -176,17 +183,10 @@ private fun PressPeriodSelector(
 private fun PressSummaryCard(
     period: PressPeriod,
     snapshot: PressPeriodSnapshot,
+    onPeriodSelected: (PressPeriod) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val font = notoSansKrFontFamily()
-    val periodLabel =
-        stringResource(
-            when (period) {
-                PressPeriod.Today -> Res.string.press_period_today
-                PressPeriod.ThisWeek -> Res.string.press_period_this_week
-            },
-        )
-    val dominantEmotion = snapshot.mostPressedEmotion
     Column(
         modifier =
             modifier
@@ -196,11 +196,44 @@ private fun PressSummaryCard(
                 .border(1.dp, Color(0xFFE7E9E4), RoundedCornerShape(20.dp))
                 .padding(horizontal = 18.dp, vertical = 16.dp),
     ) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(Res.string.press_summary_title),
+                color = Color(0xFF505650),
+                fontSize = 14.sp,
+                fontFamily = font,
+                fontWeight = FontWeight.Bold,
+            )
+            PressPeriodSelector(
+                selectedPeriod = period,
+                onSelected = onPeriodSelected,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(Color(0xFFE4E7E2)),
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             PressSummaryValue(
                 label = stringResource(Res.string.press_summary_all_label),
                 value = formatCount(snapshot.totalCount),
                 modifier = Modifier.weight(1f),
+            )
+            Box(
+                Modifier
+                    .width(1.dp)
+                    .height(42.dp)
+                    .background(Color(0xFFE4E7E2)),
             )
             PressSummaryValue(
                 label = stringResource(Res.string.press_summary_my_label),
@@ -208,25 +241,6 @@ private fun PressSummaryCard(
                 modifier = Modifier.weight(1f),
             )
         }
-        Spacer(Modifier.height(12.dp))
-        val summary =
-            if (dominantEmotion == null) {
-                stringResource(Res.string.press_summary_empty)
-            } else {
-                stringResource(
-                    Res.string.press_summary_dominant,
-                    periodLabel,
-                    stringResource(EmotionFeedbackCatalog.name(dominantEmotion)),
-                )
-            }
-        Text(
-            text = summary,
-            color = Color(0xFF505650),
-            fontSize = 13.sp,
-            lineHeight = 19.sp,
-            fontFamily = font,
-            fontWeight = FontWeight.SemiBold,
-        )
     }
 }
 
@@ -246,13 +260,23 @@ private fun PressSummaryValue(
             fontWeight = FontWeight.Medium,
         )
         Spacer(Modifier.height(4.dp))
-        Text(
-            text = "${value}회",
-            color = Color(0xFF202323),
-            fontSize = 22.sp,
-            fontFamily = font,
-            fontWeight = FontWeight.Black,
-        )
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = value,
+                color = Color(0xFF202323),
+                fontSize = 26.sp,
+                fontFamily = font,
+                fontWeight = FontWeight.Black,
+            )
+            Text(
+                text = "회",
+                color = Color(0xFF505650),
+                fontSize = 13.sp,
+                fontFamily = font,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(bottom = 3.dp),
+            )
+        }
     }
 }
 

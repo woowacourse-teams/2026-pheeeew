@@ -13,6 +13,9 @@ internal data class PressUiState(
     val period: PressPeriod = PressPeriod.Today,
     val snapshots: PressPeriodSnapshots,
 ) {
+    val todayEmotionCounts
+        get() = snapshots.today.emotionCounts
+
     val selectedSnapshot
         get() =
             when (period) {
