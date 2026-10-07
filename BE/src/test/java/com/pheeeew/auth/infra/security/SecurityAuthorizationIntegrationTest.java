@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashSet;
 import java.util.Set;
 import static com.pheeeew.appversion.fixture.AppVersionFixture.기본_앱_버전_정책_빌더;
+import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -77,6 +78,7 @@ class SecurityAuthorizationIntegrationTest {
             "?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6";
     private static final String 규칙에_없는_경로 = "/api/v2/unknown";
     private static final String CHALLENGE_경로 = "/api/v2/devices/challenge";
+    private static final String 닉네임_조회_경로 = "/api/v2/devices/nicknames/availability";
     private static final String 무결성_토큰 = "integrity-token-from-app";
 
     @LocalServerPort
@@ -126,6 +128,105 @@ class SecurityAuthorizationIntegrationTest {
         deviceChallengeRepository.deleteAll();
         jdbcClient.sql("DELETE FROM regions").update();
         jdbcClient.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
+    }
+
+    @Test
+    void 토큰_없이_닉네임_사용_가능_여부만_조회하고_캐시나_기기나_토큰을_남기지_않는다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(builder -> builder.path(닉네임_조회_경로).queryParam("nickname", "잠에서 깨는 너구리").build())
+                .exchange();
+
+        // then
+        result.expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("{\"available\":true}", JsonCompareMode.STRICT);
+        assertThat(deviceRepository.count()).isZero();
+        assertThat(deviceRefreshTokenRepository.count()).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Star K", "star k", " STAR K "})
+    void 토큰_없이_중복_닉네임을_조회하면_기기_정보_없이_false만_반환한다(String nickname) {
+        // given
+        deviceRepository.saveAndFlush(기본_기기_빌더().nickname("Star K").build());
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(builder -> builder.path(닉네임_조회_경로).queryParam("nickname", nickname).build())
+                .exchange();
+
+        // then
+        result.expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("{\"available\":false}", JsonCompareMode.STRICT);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   ", " 익명 ", "Star1", "abcdefghijk", "Star\tK"})
+    void 토큰_없이_잘못된_닉네임을_조회하면_400을_반환한다(String nickname) {
+        // given / when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(builder -> builder.path(닉네임_조회_경로).queryParam("nickname", nickname).build())
+                .exchange();
+
+        // then
+        result.expectStatus().isBadRequest().expectBody().json("""
+                {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                """, JsonCompareMode.STRICT);
+    }
+
+    @Test
+    void 닉네임_조회_파라미터가_없으면_400을_반환한다() {
+        // given / when
+        RestTestClient.ResponseSpec result = client.get().uri(닉네임_조회_경로).exchange();
+
+        // then
+        result.expectStatus().isBadRequest().expectBody().json("""
+                {"code":"COMMON-001","message":"요청 값이 올바르지 않습니다."}
+                """, JsonCompareMode.STRICT);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"POST", "PUT", "PATCH", "DELETE"})
+    void 닉네임_조회_GET_외의_메서드는_유효한_토큰으로도_접근할_수_없다(String method) {
+        // given
+        String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.method(HttpMethod.valueOf(method))
+                .uri(닉네임_조회_경로)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken).exchange();
+
+        // then
+        result.expectStatus().isForbidden().expectBody().json(권한_없음_응답, JsonCompareMode.STRICT);
+    }
+
+    @Test
+    void 닉네임_조회_경로의_하위_경로도_유효한_토큰으로_접근할_수_없다() {
+        // given
+        String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.get().uri(닉네임_조회_경로 + "/extra")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken).exchange();
+
+        // then
+        result.expectStatus().isForbidden().expectBody().json(권한_없음_응답, JsonCompareMode.STRICT);
+    }
+
+    @Test
+    void 공개_닉네임_조회에도_만료된_토큰을_보내면_401을_반환한다() {
+        // given
+        String expiredToken = AccessTokenFixture.만료된_토큰(기기_공개_식별자);
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(builder -> builder.path(닉네임_조회_경로).queryParam("nickname", "Star K").build())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + expiredToken).exchange();
+
+        // then
+        인증_필요를_검증한다(result);
     }
 
     @Test

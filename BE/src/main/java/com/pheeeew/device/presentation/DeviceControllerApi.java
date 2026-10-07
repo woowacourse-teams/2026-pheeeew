@@ -6,7 +6,9 @@ import com.pheeeew.device.presentation.dto.AccessTokenResponse;
 import com.pheeeew.device.presentation.dto.DeviceChallengeResponse;
 import com.pheeeew.device.presentation.dto.DeviceCreateRequest;
 import com.pheeeew.device.presentation.dto.DeviceTokenResponse;
+import com.pheeeew.device.presentation.dto.NicknameAvailabilityResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -19,6 +21,57 @@ import org.springframework.http.ResponseEntity;
 
 @Tag(name = "기기", description = "기기 등록과 토큰 발급 API")
 public interface DeviceControllerApi {
+
+    @Operation(
+            summary = "닉네임 사용 가능 여부 조회",
+            description = """
+                    - 기기 등록 전에 호출할 수 있으며 인증이 필요하지 않습니다.
+                    - Authorization 헤더를 생략해 호출할 수 있습니다. 사용할 수 없는 토큰을 보내면 401을 반환합니다.
+                    - `nickname`은 필수 쿼리 파라미터입니다. 앞뒤 공백을 제거한 뒤 1~10자여야 합니다.
+                    - 한글, 영문, 공백만 허용하며 `익명`은 사용할 수 없습니다.
+                    - 영문 대소문자는 중복 판단에서 구분하지 않고, 중간 공백은 그대로 구분합니다.
+                    - 사용 중인 닉네임이면 `available: false`, 사용 가능하면 `available: true`를 반환합니다.
+                    - 응답은 조회 시점의 결과이며 닉네임을 예약하지 않습니다.
+                      조회 후 다른 기기가 사용할 수 있으므로 최종 등록·수정 시에도 중복을 확인해야 합니다.
+                    - 응답에는 기기 식별자나 토큰을 포함하지 않으며 캐시 저장을 허용하지 않습니다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "닉네임 사용 가능 여부 조회 성공",
+                    content = @Content(schema = @Schema(implementation = NicknameAvailabilityResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "nickname 쿼리 파라미터가 없거나 닉네임 규칙을 만족하지 않음",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "파라미터 누락", value = """
+                                            {"code":"COMMON-001","message":"요청 값이 올바르지 않습니다."}
+                                            """),
+                                    @ExampleObject(name = "닉네임 규칙 위반", value = """
+                                            {"code":"DEVICE-008","message":"닉네임은 한글, 영문, 공백으로 1~10자여야 하며 익명은 사용할 수 없습니다."}
+                                            """)
+                            }
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더에 사용할 수 없는 토큰을 보냄",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code":"AUTH-001","message":"인증이 필요합니다."}
+                                    """)
+                    )
+            )
+    })
+    ResponseEntity<NicknameAvailabilityResponse> findNicknameAvailability(
+            @Parameter(description = "사용 가능 여부를 확인할 닉네임", required = true, example = "Star K")
+            String nickname
+    );
 
     @Operation(
             summary = "기기 등록",

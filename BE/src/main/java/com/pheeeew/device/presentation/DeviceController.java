@@ -12,13 +12,17 @@ import com.pheeeew.device.presentation.dto.AccessTokenResponse;
 import com.pheeeew.device.presentation.dto.DeviceChallengeResponse;
 import com.pheeeew.device.presentation.dto.DeviceCreateRequest;
 import com.pheeeew.device.presentation.dto.DeviceTokenResponse;
+import com.pheeeew.device.presentation.dto.NicknameAvailabilityResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
@@ -29,6 +33,18 @@ public class DeviceController implements DeviceControllerApi {
     private final DeviceService deviceService;
     private final DeviceTokenService deviceTokenService;
     private final DeviceChallengeService deviceChallengeService;
+
+    @Override
+    @GetMapping("/nicknames/availability")
+    public ResponseEntity<NicknameAvailabilityResponse> findNicknameAvailability(
+            @RequestParam("nickname") String nickname
+    ) {
+        boolean available = deviceService.findNicknameAvailability(nickname);
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(NicknameAvailabilityResponse.from(available));
+    }
 
     @Override
     @PostMapping
