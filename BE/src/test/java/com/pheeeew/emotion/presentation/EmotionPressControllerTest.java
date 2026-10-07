@@ -16,10 +16,14 @@ import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.command.EmotionPressService;
+import com.pheeeew.emotion.application.dto.EmotionPressDailyResult;
 import com.pheeeew.emotion.application.dto.EmotionPressResult;
+import com.pheeeew.emotion.application.dto.EmotionPressTotalResult;
+import com.pheeeew.emotion.application.query.EmotionPressQueryService;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.exception.EmotionErrorCode;
 import com.pheeeew.emotion.exception.EmotionException;
+import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.Map;
 import java.util.UUID;
@@ -68,6 +72,9 @@ class EmotionPressControllerTest {
 
     @MockitoBean
     private EmotionPressService emotionPressService;
+
+    @MockitoBean
+    private EmotionPressQueryService emotionPressQueryService;
 
     @MockitoBean
     private JwtDecoder jwtDecoder;
@@ -171,6 +178,117 @@ class EmotionPressControllerTest {
 
         // then
         응답.expectStatus().isEqualTo(상태).expectBody().jsonPath("$.code").isEqualTo(코드);
+    }
+
+    @Test
+    void 내_집계는_기본으로_오늘을_조회한다() {
+        // given
+        when(emotionPressQueryService.findMyDailyPresses(DEVICE_PUBLIC_ID, 0))
+                .thenReturn(일별_집계(LocalDate.of(2026, 10, 8), 9, 3));
+
+        // when
+        RestTestClient.ResponseSpec 응답 = 조회한다(PRESS_URI + "/me", "access-token");
+
+        // then
+        응답.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.pressDate").isEqualTo("2026-10-08")
+                .jsonPath("$.counts.ANGRY").isEqualTo(9)
+                .jsonPath("$.counts.EXHAUSTED").isEqualTo(3)
+                .jsonPath("$.counts.FRUSTRATED").isEqualTo(0)
+                .jsonPath("$.total").isEqualTo(12);
+        verify(emotionPressQueryService).findMyDailyPresses(DEVICE_PUBLIC_ID, 0);
+    }
+
+    @Test
+    void 내_집계는_며칠_전인지_골라_조회한다() {
+        // given
+        when(emotionPressQueryService.findMyDailyPresses(DEVICE_PUBLIC_ID, 3))
+                .thenReturn(일별_집계(LocalDate.of(2026, 10, 5), 1, 0));
+
+        // when
+        RestTestClient.ResponseSpec 응답 = 조회한다(PRESS_URI + "/me?daysAgo=3", "access-token");
+
+        // then
+        응답.expectStatus().isOk();
+        verify(emotionPressQueryService).findMyDailyPresses(DEVICE_PUBLIC_ID, 3);
+    }
+
+    @Test
+    void 내_집계_응답에는_지역_코드가_없다() {
+        // given
+        when(emotionPressQueryService.findMyDailyPresses(DEVICE_PUBLIC_ID, 0))
+                .thenReturn(일별_집계(LocalDate.of(2026, 10, 8), 1, 0));
+
+        // when
+        RestTestClient.ResponseSpec 응답 = 조회한다(PRESS_URI + "/me", "access-token");
+
+        // then
+        응답.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.regionCode").doesNotExist();
+    }
+
+    @Test
+    void 전체_총합은_총합만_돌려준다() {
+        // given
+        when(emotionPressQueryService.findDailyTotal(0))
+                .thenReturn(EmotionPressTotalResult.of(LocalDate.of(2026, 10, 8), 48213));
+
+        // when
+        RestTestClient.ResponseSpec 응답 = 조회한다(PRESS_URI + "/total", "access-token");
+
+        // then
+        응답.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.pressDate").isEqualTo("2026-10-08")
+                .jsonPath("$.total").isEqualTo(48213)
+                .jsonPath("$.counts").doesNotExist();
+        verify(emotionPressQueryService).findDailyTotal(0);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/me?daysAgo=-1", "/me?daysAgo=366", "/total?daysAgo=-1", "/total?daysAgo=366"})
+    void 며칠_전인지가_범위를_벗어나면_조회하지_않는다(String 경로) {
+        // when
+        RestTestClient.ResponseSpec 응답 = 조회한다(PRESS_URI + 경로, "access-token");
+
+        // then
+        응답.expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(emotionPressQueryService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/me", "/total"})
+    void 인증_없이_조회하면_거부한다(String 경로) {
+        // when
+        RestTestClient.ResponseSpec 응답 = 조회한다(PRESS_URI + 경로, null);
+
+        // then
+        응답.expectStatus().isUnauthorized();
+        verifyNoInteractions(emotionPressQueryService);
+    }
+
+    private RestTestClient.ResponseSpec 조회한다(String uri, String token) {
+        RestTestClient.RequestHeadersSpec<?> 요청 = client.get().uri(uri);
+        if (token != null) {
+            요청.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
+        }
+
+        return 요청.exchange();
+    }
+
+    private EmotionPressDailyResult 일별_집계(LocalDate pressDate, long angry, long exhausted) {
+        Map<EmotionState, Long> counts = new EnumMap<>(EmotionState.class);
+        for (EmotionState state : EmotionState.values()) {
+            counts.put(state, 0L);
+        }
+        counts.put(EmotionState.ANGRY, angry);
+        counts.put(EmotionState.EXHAUSTED, exhausted);
+
+        return EmotionPressDailyResult.of(pressDate, counts);
     }
 
     private RestTestClient.ResponseSpec 누른다(String 본문, String token) {
