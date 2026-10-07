@@ -30,6 +30,9 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -89,15 +92,16 @@ class EmotionCreateRateLimitInterceptorTest {
                 any(), any())).thenReturn(saved);
     }
 
-    @Test
-    void 같은_requestId도_1초_안에는_429이며_1초_후에는_다시_조회한다() {
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v3/emotions"})
+    void 같은_requestId도_1초_안에는_429이며_1초_후에는_다시_조회한다(String uri) {
         // given
         String token = newDeviceToken();
         UUID requestId = UUID.randomUUID();
-        create(token, requestId).expectStatus().isOk();
+        create(uri, token, requestId).expectStatus().isOk();
 
         // when
-        RestTestClient.ResponseSpec result = create(token, requestId);
+        RestTestClient.ResponseSpec result = create(uri, token, requestId);
 
         // then
         result.expectStatus().isEqualTo(429)
@@ -108,9 +112,24 @@ class EmotionCreateRateLimitInterceptorTest {
         verify(emotionCommandService).save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any(), any());
 
         when(clock.instant()).thenReturn(Instant.parse("2026-10-05T00:00:01Z"));
-        create(token, requestId).expectStatus().isOk();
+        create(uri, token, requestId).expectStatus().isOk();
         verify(emotionCommandService, times(2))
                 .save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any(), any());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"/api/v1/emotions,/api/v3/emotions", "/api/v3/emotions,/api/v1/emotions"})
+    void 버전을_바꿔도_같은_기기의_1초_제한을_공유한다(String first, String next) {
+        // given
+        String token = newDeviceToken();
+        create(first, token, UUID.randomUUID()).expectStatus().isOk();
+
+        // when / then
+        create(next, token, UUID.randomUUID()).expectStatus().isEqualTo(429)
+                .expectHeader().valueEquals(HttpHeaders.RETRY_AFTER, "1");
+        verify(emotionCommandService).save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any(), any());
+        when(clock.instant()).thenReturn(Instant.parse("2026-10-05T00:00:01Z"));
+        create(next, token, UUID.randomUUID()).expectStatus().isOk();
     }
 
     @Test
@@ -187,7 +206,11 @@ class EmotionCreateRateLimitInterceptorTest {
     }
 
     private RestTestClient.ResponseSpec create(String token, UUID requestId) {
-        return client.post().uri(EMOTIONS_URI)
+        return create(EMOTIONS_URI, token, requestId);
+    }
+
+    private RestTestClient.ResponseSpec create(String uri, String token, UUID requestId) {
+        return client.post().uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""

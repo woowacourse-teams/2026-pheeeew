@@ -716,7 +716,7 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/emotions", "/api/v1/audio-uploads"})
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v3/emotions", "/api/v1/audio-uploads"})
     void 토큰_없이_감정_등록이나_녹음_업로드를_요청하면_401을_반환한다(String uri) {
         // given / when
         RestTestClient.ResponseSpec result = client.post()
@@ -800,21 +800,68 @@ class SecurityAuthorizationIntegrationTest {
         result.expectStatus().isOk();
     }
 
+    @ParameterizedTest
+    @CsvSource({"/api/v1/emotions,/api/v3/emotions,true", "/api/v3/emotions,/api/v1/emotions,false"})
+    void 버전을_바꾼_재시도는_최초_익명_선택과_작성자를_유지한다(String first, String next, boolean anonymous) {
+        // given
+        UUID deviceRequestId = UUID.randomUUID();
+        String token = 기기를_등록하고_토큰을_받는다(deviceRequestId);
+        Device device = deviceRepository.findByRequestId(deviceRequestId).orElseThrow();
+        UUID requestId = UUID.randomUUID();
+        Map<String, Object> body = Map.of("requestId", requestId, "latitude", 37.5664, "longitude", 126.9780,
+                "state", "FRUSTRATED", "rotationDegrees", 0, "contentType", "NONE", "anonymous", false);
+        client.post().uri(first + "?devicePublicId=" + 사칭하려는_기기_식별자)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                .body(body).exchange().expectStatus().isOk();
+        Long id = emotionRepository.findByRequestId(requestId).orElseThrow().getId();
+
+        // when
+        RestTestClient.ResponseSpec result = client.post().uri(next)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("requestId", requestId, "latitude", 37.5664, "longitude", 126.9780,
+                        "state", "FRUSTRATED", "rotationDegrees", 0, "contentType", "NONE", "anonymous", true)).exchange();
+
+        // then
+        result.expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.LOCATION, "/api/v1/emotions/" + id)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().jsonPath("$.id").isEqualTo(id.intValue());
+        assertThat(emotionRepository.count()).isEqualTo(1);
+        var saved = emotionRepository.findById(id).orElseThrow();
+        assertThat(saved.isAnonymous()).isEqualTo(anonymous);
+        assertThat(saved.getDeviceId()).isEqualTo(device.getId());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"GET,/api/v3/emotions", "PUT,/api/v3/emotions", "DELETE,/api/v3/emotions/1",
+            "POST,/api/v3/emotions/1", "GET,/api/v3/emotions/map"})
+    void v3_감정_등록_외의_경로와_메서드는_열지_않는다(String method, String path) {
+        // given / when
+        client.method(HttpMethod.valueOf(method)).uri(path)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + AccessTokenFixture.유효한_토큰(기기_공개_식별자))
+                .exchange().expectStatus().isForbidden();
+
+        // then
+        assertThat(emotionRepository.count()).isZero();
+    }
+
     @ParameterizedTest(name = "{0}")
     @MethodSource("거부해야_하는_토큰들")
     void 쓸_수_없는_토큰은_403이_아니라_401로_거부한다(String 설명, String 토큰) {
         // given / when
-        RestTestClient.ResponseSpec result = client.post()
-                .uri("/api/v1/emotions")
+        for (String uri : List.of("/api/v1/emotions", "/api/v3/emotions")) {
+            RestTestClient.ResponseSpec result = client.post()
+                .uri(uri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + 토큰)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(한숨_등록_본문())
                 .exchange();
 
-        // then
-        인증_필요를_검증한다(result);
-        assertThat(emotionRepository.count()).isZero();
+            // then
+            인증_필요를_검증한다(result);
+            assertThat(emotionRepository.count()).isZero();
+        }
     }
+
 
     @ParameterizedTest
     @ValueSource(strings = {"Basic dXNlcjpwYXNz", "Bearer", "Bearer ", "eyJhbGciOiJSUzI1NiJ9"})
@@ -907,7 +954,7 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/emotions", "/api/v1/audio-uploads"})
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v3/emotions", "/api/v1/audio-uploads"})
     void 등록되지_않은_기기는_감정_등록이나_업로드를_요청할_수_없다(String uri) {
         // given
         String accessToken = AccessTokenFixture.유효한_토큰(기기_공개_식별자);
@@ -1189,6 +1236,28 @@ class SecurityAuthorizationIntegrationTest {
         JsonNode schemas = docs.path("components").path("schemas");
         assertThat(schemas.path("DeviceCreateRequest").path("properties").has("nickname")).isFalse();
         assertThat(schemas.path("DeviceV3CreateRequest").path("required").toString()).contains("\"nickname\"");
+    }
+
+    @Test
+    void 감정_등록_API_문서는_v1과_v3의_익명_선택_계약을_구분한다() throws JsonProcessingException {
+        // given / when
+        String body = client.get().uri("/v3/api-docs").exchange().expectStatus().isOk()
+                .expectBody(String.class).returnResult().getResponseBody();
+        JsonNode docs = new ObjectMapper().readTree(body);
+        JsonNode paths = docs.path("paths");
+        JsonNode schemas = docs.path("components").path("schemas");
+
+        // then
+        assertThat(paths.path("/api/v1/emotions").path("post").path("requestBody").path("content")
+                .path("application/json").path("schema").path("$ref").asText())
+                .isEqualTo("#/components/schemas/EmotionCreateRequest");
+        assertThat(paths.path("/api/v3/emotions").path("post").path("requestBody").path("content")
+                .path("application/json").path("schema").path("$ref").asText())
+                .isEqualTo("#/components/schemas/EmotionV3CreateRequest");
+        assertThat(schemas.path("EmotionCreateRequest").path("properties").has("anonymous")).isFalse();
+        assertThat(schemas.path("EmotionV3CreateRequest").path("properties").has("anonymous")).isTrue();
+        assertThat(paths.path("/api/v3/emotions").has("get")).isFalse();
+        assertThat(paths.has("/api/v3/emotions/{emotionId}")).isFalse();
     }
 
     @Test

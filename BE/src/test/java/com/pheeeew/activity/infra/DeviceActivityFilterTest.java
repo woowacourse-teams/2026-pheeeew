@@ -18,7 +18,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -72,7 +71,7 @@ class DeviceActivityFilterTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"GET,/api/v1/emotions,200", "POST,/api/v1/emotions,200", "GET,/api/v1/emotions/1,200",
+    @CsvSource({"GET,/api/v1/emotions,200", "POST,/api/v1/emotions,200", "POST,/api/v3/emotions,200", "GET,/api/v1/emotions/1,200",
             "PUT,/api/v1/emotions/1/emojis/HEART,204", "DELETE,/api/v1/emotions/1/emojis/HEART,204",
             "POST,/api/v2/reports,201", "GET,/api/v2/blocks/emotions,200", "POST,/api/v2/blocks/devices,201",
             "DELETE,/api/v2/blocks/emotions/1,204", "DELETE,/api/v2/blocks/devices/1,204"})
@@ -100,10 +99,12 @@ class DeviceActivityFilterTest {
     }
 
     @ParameterizedTest
-    @ValueSource(ints = {302, 400, 404, 500})
-    void 성공하지_않은_서비스_응답은_제외한다(int status) {
+    @CsvSource({"GET,/api/v1/emotions,302", "GET,/api/v1/emotions,400", "GET,/api/v1/emotions,404",
+            "GET,/api/v1/emotions,500", "POST,/api/v3/emotions,400", "POST,/api/v3/emotions,409",
+            "POST,/api/v3/emotions,429", "POST,/api/v3/emotions,500"})
+    void 성공하지_않은_서비스_응답은_제외한다(String method, String path, int status) {
         // given / when
-        client.get().uri("/api/v1/emotions?status={status}", status)
+        client.method(HttpMethod.valueOf(method)).uri(path + "?status={status}", status)
                 .header("Authorization", "Bearer access-token").exchange().expectStatus().isEqualTo(status);
 
         // then

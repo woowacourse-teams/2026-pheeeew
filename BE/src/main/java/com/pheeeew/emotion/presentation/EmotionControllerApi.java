@@ -10,6 +10,7 @@ import com.pheeeew.emotion.presentation.dto.EmotionUpdateRequest;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.presentation.dto.EmotionDetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV3CreateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateResponse;
 import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
@@ -113,10 +114,9 @@ public interface EmotionControllerApi {
 
     @Operation(summary = "감정 등록", description = """
             선택 위치에 감정을 등록합니다. contentType은 NONE, MEMO, AUDIO 중 하나입니다.
-            anonymous는 JSON boolean으로 전달합니다. true이면 익명이며 생략하거나 null이어도 익명으로 등록합니다.
-            false이면 기명이며 기기 닉네임을 먼저 설정해야 합니다. 미설정이면 DEVICE-010과 409를 반환합니다.
-            닉네임 설정 후 같은 requestId로 다시 등록할 수 있습니다. 기존 성공 requestId는 최초 익명 선택을 유지합니다.
-            익명 감정은 '익명'으로 표시하며, 기명 감정은 닉네임 수정 후에도 기기의 현재 닉네임으로 표시합니다.
+            v1은 기존 앱을 위한 익명 전용 등록 경로입니다. 신규 감정은 익명으로 등록하며 '익명'으로 표시합니다.
+            anonymous는 v1 요청 필드가 아니며, 전달해도 신규 등록의 익명 여부에 영향을 주지 않습니다.
+            기존 성공 requestId의 재시도는 최초 등록 결과를 유지합니다.
 
             최종 저장 좌표가 SGIS 2025년 2분기 읍면동 경계에 포함되거나 경계에서 1km 이내일 때 신규 등록할 수 있습니다.
             경계 밖은 폴리곤까지 가장 가까운 지역에 연결하며 좌표는 이동시키지 않습니다.
@@ -141,7 +141,7 @@ public interface EmotionControllerApi {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
             @ApiResponse(responseCode = "404", description = "녹음 업로드가 없거나 해당 기기의 업로드가 아님, 또는 사용할 수 없는 그룹"),
-            @ApiResponse(responseCode = "409", description = "기명 등록에 필요한 닉네임 미설정(DEVICE-010), 요청 식별자 충돌 또는 녹음 미완료·이미 사용됨"),
+            @ApiResponse(responseCode = "409", description = "요청 식별자 충돌 또는 녹음 미완료·이미 사용됨"),
             @ApiResponse(responseCode = "429", description = "같은 기기가 1초 안에 다시 생성을 요청함",
                     headers = @Header(name = "Retry-After", description = "다시 시도하기까지 기다려야 하는 초입니다.",
                             schema = @Schema(type = "string", example = "1")),
@@ -150,6 +150,48 @@ public interface EmotionControllerApi {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     ResponseEntity<EmotionCreateResponse> save(@Valid EmotionCreateRequest request,
+            @Parameter(hidden = true) UUID devicePublicId);
+
+
+    @Operation(summary = "감정 등록 v3", description = """
+            선택 위치에 감정을 등록합니다. contentType은 NONE, MEMO, AUDIO 중 하나입니다.
+            anonymous는 JSON boolean으로 전달합니다. true이면 익명이며 생략하거나 null이어도 익명으로 등록합니다.
+            false이면 기명이며 기기 닉네임을 먼저 설정해야 합니다. 미설정이면 DEVICE-010과 409를 반환합니다.
+            닉네임 설정 후 같은 requestId로 다시 등록할 수 있습니다. 기존 성공 requestId는 최초 익명 선택을 유지합니다.
+            익명 감정은 '익명'으로 표시하며, 기명 감정은 닉네임 수정 후에도 기기의 현재 닉네임으로 표시합니다.
+
+            최종 저장 좌표가 SGIS 2025년 2분기 읍면동 경계에 포함되거나 경계에서 1km 이내일 때 신규 등록할 수 있습니다.
+            경계 밖은 폴리곤까지 가장 가까운 지역에 연결하며 좌표는 이동시키지 않습니다.
+            배정할 지역이 없으면 EMOTION-014와 400을 반환합니다. 녹음 확인·연결과 감정 저장은 시작하지 않습니다.
+            이는 선택 좌표의 지원 범위이며 사용자의 실제 위치를 검증하는 정책은 아닙니다.
+            최초 등록과 같은 기기의 requestId 재시도는 생성 제한을 통과하면 최초 감정 ID를 200으로 반환합니다.
+            다른 기기가 사용한 requestId는 409입니다. 녹음은 업로드 완료된 audioUploadId로 연결합니다.
+            groupId를 전달하면 현재 소속된 그룹의 스탬프를 연결합니다. 생략하거나 null이면 그룹 스탬프가 없습니다.
+            연결된 스탬프가 변경되면 기존 감정에도 최신 모양을 표시합니다.
+            서버의 지역 분류 준비가 완료되지 않은 경우 신규 등록이 일시적으로 제한되며, EMOTION-013과 503을 반환합니다.
+            기존 성공 requestId는 지역 자료 상태나 지원 범위 밖 좌표와 관계없이 최초 감정을 반환하며 재분류하지 않습니다.
+            기존 범위 밖 기록도 수정·삭제할 수 있습니다.
+
+            한 기기는 v1과 v3를 합쳐 1초에 한 번만 등록할 수 있습니다. 초과하면 429와 Retry-After 헤더를 반환합니다.
+            이 제한은 requestId 조회와 지역 검사 전에 적용되므로 같은 requestId의 빠른 재시도도 429가 될 수 있습니다.
+            지역 거부 후 다시 요청할 때도 이 제한을 적용합니다.
+            재시도할 때 같은 requestId를 보내면 감정이 중복 생성되지 않습니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "저장된 감정 ID"),
+            @ApiResponse(responseCode = "400", description = "등록 필드·내용 조합이 올바르지 않거나 지원 범위 밖 위치(EMOTION-014)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
+            @ApiResponse(responseCode = "404", description = "녹음 업로드가 없거나 해당 기기의 업로드가 아님, 또는 사용할 수 없는 그룹"),
+            @ApiResponse(responseCode = "409", description = "기명 등록에 필요한 닉네임 미설정(DEVICE-010), 요청 식별자 충돌 또는 녹음 미완료·이미 사용됨"),
+            @ApiResponse(responseCode = "429", description = "같은 기기가 1초 안에 다시 생성을 요청함",
+                    headers = @Header(name = "Retry-After", description = "다시 시도하기까지 기다려야 하는 초입니다.",
+                            schema = @Schema(type = "string", example = "1")),
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "녹음 확인 기능을 사용할 수 없거나 서버의 지역 분류 준비가 완료되지 않음(EMOTION-013)",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<EmotionCreateResponse> saveV3(@Valid EmotionV3CreateRequest request,
             @Parameter(hidden = true) UUID devicePublicId);
 
 
