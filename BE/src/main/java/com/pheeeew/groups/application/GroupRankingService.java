@@ -62,6 +62,39 @@ public class GroupRankingService {
         );
     }
 
+    public GroupPressRankingResult findEmotionPressRanking(UUID devicePublicId, int weeksAgo) {
+        RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
+        List<GroupScoreProjection> scores =
+                groupPressRankingRepository.findPressScores(week.startDate(), week.endDate());
+
+        return GroupPressRankingResult.of(
+                weeksAgo,
+                week.startAt(),
+                week.endAt(),
+                groupPressRankingRepository.existsPressBefore(week.startDate()),
+                rankPresses(scores, devicePublicId)
+        );
+    }
+
+    public GroupStatePressRankingResult findEmotionPressRankingByState(
+            UUID devicePublicId,
+            EmotionState state,
+            int weeksAgo
+    ) {
+        RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
+        List<GroupScoreProjection> scores =
+                groupPressRankingRepository.findPressScoresByState(state, week.startDate(), week.endDate());
+
+        return GroupStatePressRankingResult.of(
+                state,
+                weeksAgo,
+                week.startAt(),
+                week.endAt(),
+                groupPressRankingRepository.existsPressBefore(week.startDate()),
+                rankPresses(scores, devicePublicId)
+        );
+    }
+
     public GroupStatePressRankingResult findPressRankingByState(
             UUID devicePublicId,
             EmotionState state,

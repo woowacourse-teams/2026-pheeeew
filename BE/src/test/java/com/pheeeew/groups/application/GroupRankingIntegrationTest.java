@@ -17,22 +17,27 @@ import com.pheeeew.groups.application.dto.GroupPressRankingItem;
 import com.pheeeew.groups.application.dto.GroupPressRankingResult;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupRankingResult;
-import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.application.dto.GroupResult;
+import com.pheeeew.groups.application.dto.GroupStampCommand;
+import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
 import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
-import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
-import java.time.LocalDate;
+import jakarta.persistence.EntityManager;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Propagation;
@@ -65,6 +70,9 @@ class GroupRankingIntegrationTest {
 
     @Autowired
     private DeviceRepository deviceRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Autowired
     private JdbcClient jdbcClient;
@@ -438,6 +446,320 @@ class GroupRankingIntegrationTest {
 
         // then
         assertThat(결과.items()).extracting(GroupPressRankingItem::mine).containsExactly(false);
+    }
+
+    @Test
+    void 멤버_합산_프레스_랭킹은_개인_프레스를_합쳐_순위를_매긴다() {
+        // given
+        GroupResult 많은_그룹 = 그룹을_만든다("많은모임");
+        GroupResult 적은_그룹 = 그룹을_만든다("적은모임");
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(많은_그룹), 이번_주_월요일(), EmotionState.ANGRY, 5);
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(많은_그룹), 이번_주_월요일(), EmotionState.EXHAUSTED, 2);
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(적은_그룹), 이번_주_월요일(), EmotionState.ANGRY, 1);
+
+        // when
+        GroupPressRankingResult 결과 = groupRankingService.findEmotionPressRanking(남의_기기(), 0);
+
+        // then
+        assertThat(결과.items())
+                .extracting(GroupPressRankingItem::rank, GroupPressRankingItem::name, GroupPressRankingItem::score)
+                .containsExactly(tuple(1, "많은모임", 7L), tuple(2, "적은모임", 1L));
+    }
+
+    @Test
+    void 멤버_합산_프레스_랭킹도_동점이면_공동_순위를_준다() {
+        // given
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹을_만든다("가모임")), 이번_주_월요일(), EmotionState.ANGRY, 2);
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹을_만든다("나모임")), 이번_주_월요일(), EmotionState.ANGRY, 2);
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹을_만든다("다모임")), 이번_주_월요일(), EmotionState.ANGRY, 1);
+
+        // when
+        List<GroupPressRankingItem> 순위표 = groupRankingService.findEmotionPressRanking(남의_기기(), 0).items();
+
+        // then
+        assertThat(순위표).extracting(GroupPressRankingItem::rank).containsExactly(1, 1, 3);
+    }
+
+    @Test
+    void 멤버_합산_프레스_랭킹은_누르지_않은_그룹을_목록에서_빼놓는다() {
+        // given
+        GroupResult 활동한_그룹 = 그룹을_만든다("활동모임");
+        그룹을_만든다("조용한모임");
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(활동한_그룹), 이번_주_월요일(), EmotionState.ANGRY, 1);
+
+        // when
+        GroupPressRankingResult 결과 = groupRankingService.findEmotionPressRanking(남의_기기(), 0);
+
+        // then
+        assertThat(결과.items()).extracting(GroupPressRankingItem::name).containsExactly("활동모임");
+    }
+
+    @Test
+    void 멤버_합산_프레스_랭킹은_지난주를_따로_조회한다() {
+        // given
+        GroupResult 그룹 = 그룹을_만든다("한숨모임");
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹), 이번_주_월요일().minusDays(3), EmotionState.ANGRY, 9);
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹), 이번_주_월요일(), EmotionState.ANGRY, 2);
+
+        // when
+        GroupPressRankingResult 이번주 = groupRankingService.findEmotionPressRanking(남의_기기(), 0);
+        GroupPressRankingResult 지난주 = groupRankingService.findEmotionPressRanking(남의_기기(), 1);
+
+        // then
+        assertThat(이번주.items()).extracting(GroupPressRankingItem::score).containsExactly(2L);
+        assertThat(지난주.items()).extracting(GroupPressRankingItem::score).containsExactly(9L);
+    }
+
+    @Test
+    void 멤버_합산_프레스_랭킹의_이전_주_기록_유무를_알려준다() {
+        // given
+        GroupResult 그룹 = 그룹을_만든다("한숨모임");
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹), 이번_주_월요일(), EmotionState.ANGRY, 1);
+
+        // when
+        GroupPressRankingResult 이전_기록_없음 = groupRankingService.findEmotionPressRanking(남의_기기(), 0);
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹), 이번_주_월요일().minusDays(1), EmotionState.ANGRY, 1);
+        GroupPressRankingResult 이전_기록_있음 = groupRankingService.findEmotionPressRanking(남의_기기(), 0);
+
+        // then
+        assertThat(이전_기록_없음.hasPrevious()).isFalse();
+        assertThat(이전_기록_있음.hasPrevious()).isTrue();
+    }
+
+    @Test
+    void 멤버_합산_프레스_랭킹은_내가_속한_그룹에_표시를_남긴다() {
+        // given
+        UUID 내_기기 = 기기_식별자를_만든다();
+        GroupResult 내_그룹 = 그룹을_만든다("내모임", 내_기기);
+        GroupResult 남의_그룹 = 그룹을_만든다("남의모임");
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(내_그룹), 이번_주_월요일(), EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(남의_그룹), 이번_주_월요일(), EmotionState.ANGRY, 9);
+
+        // when
+        GroupPressRankingResult 결과 = groupRankingService.findEmotionPressRanking(내_기기, 0);
+
+        // then
+        assertThat(결과.items())
+                .extracting(GroupPressRankingItem::name, GroupPressRankingItem::mine)
+                .containsExactly(tuple("남의모임", false), tuple("내모임", true));
+    }
+
+    @Test
+    void 멤버_합산_프레스_랭킹과_구_프레스_랭킹은_서로_섞이지_않는다() {
+        // given
+        GroupResult 개인_프레스_그룹 = 그룹을_만든다("개인모임");
+        GroupResult 구_프레스_그룹 = 그룹을_만든다("구모임");
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(개인_프레스_그룹), 이번_주_월요일(), EmotionState.ANGRY, 4);
+        눌린_것으로_둔다(구_프레스_그룹, 이번_주_월요일(), EmotionState.ANGRY, 6);
+
+        // when
+        GroupPressRankingResult 신_랭킹 = groupRankingService.findEmotionPressRanking(남의_기기(), 0);
+        GroupPressRankingResult 구_랭킹 = groupRankingService.findPressRanking(남의_기기(), 0);
+
+        // then
+        assertThat(신_랭킹.items())
+                .extracting(GroupPressRankingItem::name, GroupPressRankingItem::score)
+                .containsExactly(tuple("개인모임", 4L));
+        assertThat(구_랭킹.items())
+                .extracting(GroupPressRankingItem::name, GroupPressRankingItem::score)
+                .containsExactly(tuple("구모임", 6L));
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹은_그_감정만_합친다() {
+        // given
+        GroupResult 그룹 = 그룹을_만든다("한숨모임");
+        Long 기기 = 그룹장_기기_식별자(그룹);
+        개인_프레스를_저장한다(jdbcClient, 기기, 이번_주_월요일(), EmotionState.ANGRY, 4);
+        개인_프레스를_저장한다(jdbcClient, 기기, 이번_주_월요일(), EmotionState.EXHAUSTED, 9);
+
+        // when
+        GroupStatePressRankingResult 결과 =
+                groupRankingService.findEmotionPressRankingByState(남의_기기(), EmotionState.ANGRY, 0);
+
+        // then
+        assertThat(결과.state()).isEqualTo(EmotionState.ANGRY);
+        assertThat(결과.items())
+                .extracting(GroupPressRankingItem::name, GroupPressRankingItem::score)
+                .containsExactly(tuple("한숨모임", 4L));
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹은_감정마다_순위를_따로_매긴다() {
+        // given
+        GroupResult 가모임 = 그룹을_만든다("가모임");
+        GroupResult 나모임 = 그룹을_만든다("나모임");
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(가모임), 이번_주_월요일(), EmotionState.ANGRY, 5);
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(나모임), 이번_주_월요일(), EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(가모임), 이번_주_월요일(), EmotionState.EXHAUSTED, 1);
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(나모임), 이번_주_월요일(), EmotionState.EXHAUSTED, 7);
+
+        // when
+        List<GroupPressRankingItem> 분노 =
+                groupRankingService.findEmotionPressRankingByState(남의_기기(), EmotionState.ANGRY, 0).items();
+        List<GroupPressRankingItem> 지침 =
+                groupRankingService.findEmotionPressRankingByState(남의_기기(), EmotionState.EXHAUSTED, 0).items();
+
+        // then
+        assertThat(분노).extracting(GroupPressRankingItem::name, GroupPressRankingItem::score)
+                .containsExactly(tuple("가모임", 5L), tuple("나모임", 1L));
+        assertThat(지침).extracting(GroupPressRankingItem::name, GroupPressRankingItem::score)
+                .containsExactly(tuple("나모임", 7L), tuple("가모임", 1L));
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹은_아무도_누르지_않은_감정에_빈_순위표를_돌려준다() {
+        // given
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹을_만든다("한숨모임")),
+                이번_주_월요일(), EmotionState.ANGRY, 1);
+
+        // when
+        GroupStatePressRankingResult 결과 =
+                groupRankingService.findEmotionPressRankingByState(남의_기기(), EmotionState.DISCOURAGED, 0);
+
+        // then
+        assertThat(결과.state()).isEqualTo(EmotionState.DISCOURAGED);
+        assertThat(결과.items()).isEmpty();
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹과_구_감정별_랭킹은_서로_섞이지_않는다() {
+        // given
+        GroupResult 개인_프레스_그룹 = 그룹을_만든다("개인모임");
+        GroupResult 구_프레스_그룹 = 그룹을_만든다("구모임");
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(개인_프레스_그룹), 이번_주_월요일(), EmotionState.ANGRY, 4);
+        눌린_것으로_둔다(구_프레스_그룹, 이번_주_월요일(), EmotionState.ANGRY, 6);
+
+        // when
+        GroupStatePressRankingResult 신_랭킹 =
+                groupRankingService.findEmotionPressRankingByState(남의_기기(), EmotionState.ANGRY, 0);
+        GroupStatePressRankingResult 구_랭킹 =
+                groupRankingService.findPressRankingByState(남의_기기(), EmotionState.ANGRY, 0);
+
+        // then
+        assertThat(신_랭킹.items()).extracting(GroupPressRankingItem::name, GroupPressRankingItem::score)
+                .containsExactly(tuple("개인모임", 4L));
+        assertThat(구_랭킹.items()).extracting(GroupPressRankingItem::name, GroupPressRankingItem::score)
+                .containsExactly(tuple("구모임", 6L));
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹은_탈퇴한_멤버의_기록을_빼놓는다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        Device 떠날_기기 = 기기를_저장한다();
+        GroupResult 그룹 = 그룹을_만든다("한숨모임", 그룹장.getPublicId());
+        groupService.join(떠날_기기.getPublicId(), 그룹.inviteCode());
+        개인_프레스를_저장한다(jdbcClient, 그룹장.getId(), 이번_주_월요일(), EmotionState.ANGRY, 2);
+        개인_프레스를_저장한다(jdbcClient, 떠날_기기.getId(), 이번_주_월요일(), EmotionState.ANGRY, 4);
+
+        // when
+        long 탈퇴_전 = 감정별_점수(EmotionState.ANGRY);
+        groupService.leave(그룹.publicId(), 떠날_기기.getPublicId());
+        long 탈퇴_후 = 감정별_점수(EmotionState.ANGRY);
+
+        // then
+        assertThat(탈퇴_전).isEqualTo(6);
+        assertThat(탈퇴_후).isEqualTo(2);
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹은_삭제된_그룹을_빼놓는다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 지울_그룹 = 그룹을_만든다("지울모임", 그룹장.getPublicId());
+        개인_프레스를_저장한다(jdbcClient, 그룹장.getId(), 이번_주_월요일(), EmotionState.ANGRY, 3);
+
+        // when
+        List<GroupPressRankingItem> 삭제_전 =
+                groupRankingService.findEmotionPressRankingByState(남의_기기(), EmotionState.ANGRY, 0).items();
+        groupService.delete(지울_그룹.publicId(), 그룹장.getPublicId());
+        List<GroupPressRankingItem> 삭제_후 =
+                groupRankingService.findEmotionPressRankingByState(남의_기기(), EmotionState.ANGRY, 0).items();
+
+        // then
+        assertThat(삭제_전).extracting(GroupPressRankingItem::name).containsExactly("지울모임");
+        assertThat(삭제_후).isEmpty();
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹의_이전_주_기록_유무를_알려준다() {
+        // given
+        GroupResult 그룹 = 그룹을_만든다("한숨모임");
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹), 이번_주_월요일(), EmotionState.ANGRY, 1);
+
+        // when
+        boolean 이전_기록_없음 = groupRankingService
+                .findEmotionPressRankingByState(남의_기기(), EmotionState.ANGRY, 0).hasPrevious();
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹),
+                이번_주_월요일().minusDays(1), EmotionState.EXHAUSTED, 1);
+        boolean 이전_기록_있음 = groupRankingService
+                .findEmotionPressRankingByState(남의_기기(), EmotionState.ANGRY, 0).hasPrevious();
+
+        // then
+        assertThat(이전_기록_없음).isFalse();
+        assertThat(이전_기록_있음).isTrue();
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹은_내가_속한_그룹에_표시를_남긴다() {
+        // given
+        UUID 내_기기 = 기기_식별자를_만든다();
+        GroupResult 내_그룹 = 그룹을_만든다("내모임", 내_기기);
+        GroupResult 남의_그룹 = 그룹을_만든다("남의모임");
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(내_그룹), 이번_주_월요일(), EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(남의_그룹), 이번_주_월요일(), EmotionState.ANGRY, 9);
+
+        // when
+        GroupStatePressRankingResult 결과 =
+                groupRankingService.findEmotionPressRankingByState(내_기기, EmotionState.ANGRY, 0);
+
+        // then
+        assertThat(결과.items())
+                .extracting(GroupPressRankingItem::name, GroupPressRankingItem::mine)
+                .containsExactly(tuple("남의모임", false), tuple("내모임", true));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {2, 20})
+    void 그룹_수와_관계없이_세_번의_SQL로_멤버_합산_랭킹을_조회한다(int 그룹_수) {
+        // given
+        for (int index = 0; index < 그룹_수; index++) {
+            GroupResult 그룹 = 그룹을_만든다("모임" + index);
+            개인_프레스를_저장한다(jdbcClient, 그룹장_기기_식별자(그룹), 이번_주_월요일(), EmotionState.ANGRY, index + 1L);
+        }
+        Statistics 통계 = entityManager.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
+        boolean 기존_통계_설정 = 통계.isStatisticsEnabled();
+        통계.setStatisticsEnabled(true);
+
+        try {
+            entityManager.clear();
+            통계.clear();
+
+            // when
+            GroupPressRankingResult 합계 = groupRankingService.findEmotionPressRanking(남의_기기(), 0);
+            long 합계_SQL_횟수 = 통계.getPrepareStatementCount();
+            entityManager.clear();
+            통계.clear();
+            GroupStatePressRankingResult 감정별 =
+                    groupRankingService.findEmotionPressRankingByState(남의_기기(), EmotionState.ANGRY, 0);
+            long 감정별_SQL_횟수 = 통계.getPrepareStatementCount();
+
+            // then
+            assertThat(합계.items()).hasSize(그룹_수);
+            assertThat(감정별.items()).hasSize(그룹_수);
+            assertThat(합계_SQL_횟수).isEqualTo(3);
+            assertThat(감정별_SQL_횟수).isEqualTo(3);
+        } finally {
+            통계.clear();
+            통계.setStatisticsEnabled(기존_통계_설정);
+        }
+    }
+
+    private long 감정별_점수(EmotionState 감정) {
+        return groupRankingService.findEmotionPressRankingByState(남의_기기(), 감정, 0).items().stream()
+                .mapToLong(GroupPressRankingItem::score)
+                .sum();
     }
 
     private LocalDate 이번_주_월요일() {
