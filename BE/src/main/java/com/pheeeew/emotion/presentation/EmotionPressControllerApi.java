@@ -23,7 +23,8 @@ public interface EmotionPressControllerApi {
             summary = "위치 기반 감정 버튼 누르기",
             description = """
                     현재 위치의 읍면동에 감정 버튼을 누릅니다. 이 집계는 **기기별**이고,
-                    같은 기록이 **내가 속한 모든 그룹의 이번 주 프레스 개수와 순위에 더해집니다.**
+                    같은 기록이 **내가 속한 모든 그룹의 `GET /api/v3/groups/{groupId}` 응답에서
+                    `weeklyEmotionPressCount` 와 `weeklyEmotionPressRank` 에 더해집니다.**
 
                     - `longitude`, `latitude`, `counts` 를 모두 보냅니다. 요청 형식은 하나뿐이고
                       단일 감정(`state`)만 보내는 형식은 받지 않습니다.
@@ -44,7 +45,10 @@ public interface EmotionPressControllerApi {
                       다섯 감정이 항상 모두 있습니다.
                     - 하루 경계는 **KST 00:00** 입니다. 날이 바뀌면 집계가 다시 `0` 부터 쌓입니다.
                     - 취소는 없습니다. 지도에 핀이 찍히지 않으므로 그룹 **스탬프** 점수와 순위에는 영향이 없고,
-                      그룹 **프레스** 개수와 순위에는 더해집니다.
+                      `GET /api/v3/groups/{groupId}` 의 `weeklyEmotionPressCount`,
+                      `weeklyEmotionPressRank` 에만 더해집니다.
+                      그룹 화면 감정 버튼이 쌓는 `GET /api/v2/groups/{groupId}` 의 `weeklyPressRank` 와
+                      `GET /api/v2/groups/press-rankings` 에는 더해지지 않습니다.
                     """,
             security = @SecurityRequirement(name = "bearerAuth")
     )

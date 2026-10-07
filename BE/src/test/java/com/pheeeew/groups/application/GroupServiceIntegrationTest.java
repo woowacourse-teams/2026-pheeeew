@@ -12,6 +12,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
+import com.pheeeew.groups.application.dto.GroupDetailV3Result;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.domain.Group;
@@ -352,11 +353,11 @@ class GroupServiceIntegrationTest {
         GroupDetailResult 상세 = groupService.findOne(그룹.publicId(), 그룹장.getPublicId());
 
         // then
-        assertThat(상세.publicId()).isEqualTo(그룹.publicId());
-        assertThat(상세.name()).isEqualTo("한숨모임");
-        assertThat(상세.description()).isEqualTo("설명");
-        assertThat(상세.memberCount()).isEqualTo(2);
-        assertThat(상세.stamp().text()).isEqualTo("기본");
+        assertThat(상세.group().publicId()).isEqualTo(그룹.publicId());
+        assertThat(상세.group().name()).isEqualTo("한숨모임");
+        assertThat(상세.group().description()).isEqualTo("설명");
+        assertThat(상세.group().memberCount()).isEqualTo(2);
+        assertThat(상세.group().stamp().text()).isEqualTo("기본");
     }
 
     @Test
@@ -385,18 +386,31 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
-    void 비가입자도_상세를_조회할_수_있고_초대_코드를_받는다() {
+    void v3_상세는_비가입자도_조회할_수_있고_초대_코드를_받는다() {
         // given
         GroupResult 남의_그룹 = groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, 스탬프("기본"));
         Device 남 = 기기를_저장한다();
 
         // when
-        GroupDetailResult 상세 = groupService.findOne(남의_그룹.publicId(), 남.getPublicId());
+        GroupDetailV3Result 상세 = groupService.findDetailV3(남의_그룹.publicId(), 남.getPublicId());
 
         // then
         assertThat(상세.role()).isEqualTo(GroupViewerRole.NONE);
         assertThat(상세.inviteCode()).isEqualTo(남의_그룹.inviteCode());
         assertThat(상세.name()).isEqualTo("남의모임");
+    }
+
+    @Test
+    void v2_상세는_비가입자에게_내주지_않는다() {
+        // given
+        GroupResult 남의_그룹 = groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, 스탬프("기본"));
+        Device 남 = 기기를_저장한다();
+
+        // when
+        Throwable 조회_예외 = catchThrowable(() -> groupService.findOne(남의_그룹.publicId(), 남.getPublicId()));
+
+        // then
+        그룹_오류다(조회_예외, GroupErrorCode.GROUP_MEMBER_ONLY);
     }
 
     @Test
@@ -417,11 +431,11 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
-    void 상세를_조회할_수_있어도_비가입자는_그룹을_고치거나_지우거나_코드를_재발급하지_못한다() {
+    void v3_상세를_조회할_수_있어도_비가입자는_그룹을_고치거나_지우거나_코드를_재발급하지_못한다() {
         // given
         GroupResult 그룹 = groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, 스탬프("기본"));
         Device 남 = 기기를_저장한다();
-        groupService.findOne(그룹.publicId(), 남.getPublicId());
+        groupService.findDetailV3(그룹.publicId(), 남.getPublicId());
 
         // when
         Throwable 수정_예외 = catchThrowable(() -> groupService.update(
@@ -553,7 +567,7 @@ class GroupServiceIntegrationTest {
     }
 
     private GroupViewerRole 역할(GroupResult 그룹, Device 기기) {
-        return groupService.findOne(그룹.publicId(), 기기.getPublicId()).role();
+        return groupService.findDetailV3(그룹.publicId(), 기기.getPublicId()).role();
     }
 
     @SafeVarargs
