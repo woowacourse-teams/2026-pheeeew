@@ -41,7 +41,7 @@ public class EmotionBlockService {
 
         Optional<EmotionBlock> existingBlock = emotionBlockRepository.findByBlockerDeviceIdAndEmotionId(blockerDeviceId, emotionId);
         if (existingBlock.isPresent()) {
-            return BlockSaveResult.of(BlockResult.of(existingBlock.get(), emotion), false);
+            return BlockSaveResult.of(toResult(existingBlock.get(), emotion), false);
         }
 
         return saveNewBlock(blockerDeviceId, emotion);
@@ -88,22 +88,35 @@ public class EmotionBlockService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
     }
 
+    private BlockResult toResult(EmotionBlock block, Emotion emotion) {
+        String authorNickname = null;
+        if (!emotion.isAnonymous()) {
+            authorNickname = deviceRepository.findById(emotion.getDeviceId())
+                    .map(Device::getNickname).orElse(null);
+        }
+
+        return BlockResult.of(block, emotion, authorNickname);
+    }
+
     private BlockSaveResult saveNewBlock(Long blockerDeviceId, Emotion emotion) {
         EmotionBlock block = EmotionBlock.builder()
                 .blockerDeviceId(blockerDeviceId)
                 .emotionId(emotion.getId())
                 .build();
 
+        EmotionBlock saved;
         try {
-            return BlockSaveResult.of(BlockResult.of(emotionBlockRepository.saveAndFlush(block), emotion), true);
+            saved = emotionBlockRepository.saveAndFlush(block);
         } catch (DataIntegrityViolationException cause) {
             return findExistingBlock(blockerDeviceId, emotion, cause);
         }
+
+        return BlockSaveResult.of(toResult(saved, emotion), true);
     }
 
     private BlockSaveResult findExistingBlock(Long blockerDeviceId, Emotion emotion, DataIntegrityViolationException cause) {
         return emotionBlockRepository.findByBlockerDeviceIdAndEmotionId(blockerDeviceId, emotion.getId())
-                .map(block -> BlockSaveResult.of(BlockResult.of(block, emotion), false))
+                .map(block -> BlockSaveResult.of(toResult(block, emotion), false))
                 .orElseThrow(() -> new BlockException(BLOCK_SAVE_FAILED, cause));
     }
 

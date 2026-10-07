@@ -113,6 +113,11 @@ public interface EmotionControllerApi {
 
     @Operation(summary = "감정 등록", description = """
             선택 위치에 감정을 등록합니다. contentType은 NONE, MEMO, AUDIO 중 하나입니다.
+            anonymous는 JSON boolean으로 전달합니다. true이면 익명이며 생략하거나 null이어도 익명으로 등록합니다.
+            false이면 기명이며 기기 닉네임을 먼저 설정해야 합니다. 미설정이면 DEVICE-010과 409를 반환합니다.
+            닉네임 설정 후 같은 requestId로 다시 등록할 수 있습니다. 기존 성공 requestId는 최초 익명 선택을 유지합니다.
+            익명 감정은 '익명'으로 표시하며, 기명 감정은 닉네임 수정 후에도 기기의 현재 닉네임으로 표시합니다.
+
             최종 저장 좌표가 SGIS 2025년 2분기 읍면동 경계에 포함되거나 경계에서 1km 이내일 때 신규 등록할 수 있습니다.
             경계 밖은 폴리곤까지 가장 가까운 지역에 연결하며 좌표는 이동시키지 않습니다.
             배정할 지역이 없으면 EMOTION-014와 400을 반환합니다. 녹음 확인·연결과 감정 저장은 시작하지 않습니다.
@@ -136,7 +141,7 @@ public interface EmotionControllerApi {
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
             @ApiResponse(responseCode = "404", description = "녹음 업로드가 없거나 해당 기기의 업로드가 아님, 또는 사용할 수 없는 그룹"),
-            @ApiResponse(responseCode = "409", description = "요청 식별자 충돌 또는 녹음 미완료·이미 사용됨"),
+            @ApiResponse(responseCode = "409", description = "기명 등록에 필요한 닉네임 미설정(DEVICE-010), 요청 식별자 충돌 또는 녹음 미완료·이미 사용됨"),
             @ApiResponse(responseCode = "429", description = "같은 기기가 1초 안에 다시 생성을 요청함",
                     headers = @Header(name = "Retry-After", description = "다시 시도하기까지 기다려야 하는 초입니다.",
                             schema = @Schema(type = "string", example = "1")),
@@ -150,6 +155,8 @@ public interface EmotionControllerApi {
 
     @Operation(summary = "감정 상세 조회", description = """
             감정 정보와 여섯 이모지 코드별 전체 선택 수 및 인증된 기기의 선택 여부를 함께 반환합니다.
+            properties.nickname은 익명 감정이면 '익명', 기명 감정이면 작성 기기의 현재 닉네임입니다.
+            기기 닉네임 수정은 기존 기명 감정에도 반영되며, 기기 닉네임이 없으면 '익명'으로 표시합니다.
             properties.isMine은 인증된 기기가 작성했는지 나타내며, 수정·삭제의 서버 소유권 검사를 대체하지 않습니다.
             조회 기간 제한은 없으며 삭제되거나 인증된 기기가 차단한 감정·작성자의 감정은 반환하지 않습니다.
             녹음이 있으면 1시간 동안 유효한 audio.playbackUrl과 audio.expiresAt을 반환합니다. URL 만료 시 상세를 다시 조회합니다.
@@ -176,7 +183,8 @@ public interface EmotionControllerApi {
 
     @Operation(summary = "본인 감정 수정", description = """
             작성 기기의 감정만 기한 없이 수정합니다. state와 contentType은 필수입니다.
-            상태·메모·녹음·그룹 스탬프를 수정하며 위치·각도·작성 시각·닉네임은 바뀌지 않습니다.
+            상태·메모·녹음·그룹 스탬프를 수정하며 위치·각도·작성 시각·등록 당시의 익명 선택은 바뀌지 않습니다.
+            기기 닉네임은 PUT /api/v2/devices/me/nickname으로 별도 수정합니다. 수정한 이름은 기존 기명 감정에도 반영됩니다.
             contentType=NONE이면 내용을 제거합니다. MEMO이면 memo로 바꾸며 null·공백은 내용 없음입니다.
             AUDIO이면 audioUploadId로 새 녹음을 연결합니다. audioUploadId가 null이면 기존 녹음을 유지합니다.
             groupId가 null이면 그룹 스탬프를 제거합니다. 현재 groupId를 보내면 기존 선택을 유지합니다.

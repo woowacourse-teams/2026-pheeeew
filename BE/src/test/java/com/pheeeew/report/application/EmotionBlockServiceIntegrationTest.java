@@ -1,11 +1,13 @@
 package com.pheeeew.report.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
 import com.pheeeew.device.domain.Device;
+import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
@@ -16,6 +18,7 @@ import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.report.exception.BlockErrorCode;
 import com.pheeeew.report.exception.BlockException;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
+import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.exception.EmotionErrorCode;
 import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.support.PostgisDataJpaTest;
@@ -30,6 +33,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.transaction.annotation.Propagation;
@@ -58,6 +63,9 @@ class EmotionBlockServiceIntegrationTest {
 
     @Autowired
     private DeviceRepository deviceRepository;
+
+    @Autowired
+    private DeviceService deviceService;
 
     @Autowired
     private JdbcClient jdbcClient;
@@ -90,7 +98,7 @@ class EmotionBlockServiceIntegrationTest {
         assertThat(result.created()).isTrue();
         assertThat(result.block().blockId()).isPositive();
         assertThat(result.block().emotionId()).isEqualTo(차단할_한숨);
-        assertThat(result.block().nickname()).isEqualTo("외로운 회사원");
+        assertThat(result.block().nickname()).isEqualTo("익명");
         assertThat(result.block().memo()).isEqualTo("오늘은 조금 지쳤다");
         assertThat(result.block().createdAt()).isNotNull();
         assertThat(emotionBlockRepository.count()).isOne();
@@ -111,15 +119,19 @@ class EmotionBlockServiceIntegrationTest {
         assertThat(다시.created()).isFalse();
         assertThat(다시.block().blockId()).isEqualTo(최초.block().blockId());
         assertThat(다시.block().createdAt()).isEqualTo(최초.block().createdAt());
+        assertThat(다시.block().nickname()).isEqualTo("익명");
         assertThat(emotionBlockRepository.count()).isOne();
     }
 
-    @Test
-    void 같은_한숨을_동시에_차단해도_한_건만_저장한다() throws Exception {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 익명과_기명_한숨을_동시에_차단해도_한_건만_저장한다(boolean anonymous) throws Exception {
         // given
         int requestCount = 6;
         Device 차단자 = 기기를_저장한다();
-        Long 차단할_한숨 = 한숨을_저장한다(null, null);
+        Device 작성자 = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("작성자").build());
+        Long 차단할_한숨 = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(작성자.getId()).anonymous(anonymous).build()).getId();
         CountDownLatch ready = new CountDownLatch(requestCount);
         CountDownLatch start = new CountDownLatch(1);
 
@@ -132,7 +144,60 @@ class EmotionBlockServiceIntegrationTest {
         assertThat(results)
                 .extracting(result -> result.block().blockId())
                 .containsOnly(results.getFirst().block().blockId());
+        String nickname = "익명";
+        if (!anonymous) {
+            nickname = "작성자";
+        }
+        assertThat(results).extracting(result -> result.block().nickname()).containsOnly(nickname);
         assertThat(emotionBlockRepository.count()).isOne();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 감정_차단_재시도는_현재_닉네임을_반영하되_익명은_유지한다(boolean anonymous) {
+        // given
+        Device blocker = 기기를_저장한다();
+        Device writer = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("이전 이름").build());
+        Emotion target = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(writer.getId()).anonymous(anonymous).memo("최초 근거").build());
+        BlockSaveResult first = emotionBlockService.save(target.getId(), blocker.getPublicId());
+        String firstNickname = "익명";
+        if (!anonymous) {
+            firstNickname = "이전 이름";
+        }
+        assertThat(first.block().nickname()).isEqualTo(firstNickname);
+
+        // when
+        deviceService.updateNickname(writer.getPublicId(), "새 이름");
+        BlockSaveResult retried = emotionBlockService.save(target.getId(), blocker.getPublicId());
+
+        // then
+        String currentNickname = "익명";
+        if (!anonymous) {
+            currentNickname = "새 이름";
+        }
+        assertThat(retried.created()).isFalse();
+        assertThat(retried.block().nickname()).isEqualTo(currentNickname);
+        assertThat(retried.block().blockId()).isEqualTo(first.block().blockId());
+        assertThat(retried.block().emotionId()).isEqualTo(target.getId());
+        assertThat(retried.block().memo()).isEqualTo("최초 근거");
+        assertThat(retried.block().createdAt()).isEqualTo(first.block().createdAt());
+        assertThat(emotionBlockRepository.count()).isOne();
+    }
+
+    @Test
+    void 기명_감정의_작성자_닉네임이_없으면_과거_랜덤_이름을_반환하지_않는다() {
+        // given
+        Device blocker = 기기를_저장한다();
+        Device writer = 기기를_저장한다();
+        Emotion target = emotionRepository.saveAndFlush(기본_한숨_빌더().deviceId(writer.getId()).anonymous(false).build());
+
+        // when
+        BlockSaveResult result = emotionBlockService.save(target.getId(), blocker.getPublicId());
+
+        // then
+        assertThat(result.block().nickname()).isEqualTo("익명");
+        assertThat(result.block().emotionId()).isEqualTo(target.getId());
     }
 
     @Test
@@ -239,6 +304,44 @@ class EmotionBlockServiceIntegrationTest {
     }
 
     @Test
+    void 차단_목록은_현재_닉네임을_반영하고_익명과_작성자_없는_감정을_유지한다() {
+        // given
+        Device blocker = 기기를_저장한다();
+        Device writer = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("이전 이름").build());
+        Device unnamed = 기기를_저장한다();
+        Emotion namedEmotion = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(writer.getId()).anonymous(false).memo("기명 근거").build());
+        Emotion anonymousEmotion = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(writer.getId()).anonymous(true).build());
+        Emotion ownerlessEmotion = emotionRepository.saveAndFlush(기본_한숨_빌더().build());
+        Emotion unnamedEmotion = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                .deviceId(unnamed.getId()).anonymous(false).build());
+        for (Emotion emotion : List.of(namedEmotion, anonymousEmotion, ownerlessEmotion, unnamedEmotion)) {
+            emotionBlockService.save(emotion.getId(), blocker.getPublicId());
+        }
+        BlockListResult before = emotionBlockService.findAll(blocker.getPublicId(), null);
+        assertThat(before.items()).extracting(BlockResult::nickname)
+                .containsExactly("익명", "익명", "익명", "이전 이름");
+
+        // when
+        deviceService.updateNickname(writer.getPublicId(), "새 이름");
+        jdbcClient.sql("UPDATE emotions SET deleted_at = NOW() WHERE id = :id")
+                .param("id", namedEmotion.getId()).update();
+        BlockListResult after = emotionBlockService.findAll(blocker.getPublicId(), null);
+
+        // then
+        assertThat(after.items()).extracting(BlockResult::nickname)
+                .containsExactly("익명", "익명", "익명", "새 이름");
+        assertThat(after.items()).extracting(BlockResult::emotionId)
+                .containsExactly(unnamedEmotion.getId(), ownerlessEmotion.getId(), anonymousEmotion.getId(), namedEmotion.getId());
+        assertThat(after.items()).extracting(BlockResult::blockId)
+                .containsExactlyElementsOf(before.items().stream().map(BlockResult::blockId).toList());
+        assertThat(after.items()).extracting(BlockResult::createdAt)
+                .containsExactlyElementsOf(before.items().stream().map(BlockResult::createdAt).toList());
+        assertThat(after.items().getLast().memo()).isEqualTo("기명 근거");
+    }
+
+    @Test
     void 삭제된_한숨도_차단_목록에_남는다() {
         // given
         Device 차단자 = 기기를_저장한다();
@@ -284,26 +387,38 @@ class EmotionBlockServiceIntegrationTest {
     void 차단이_한_페이지를_넘으면_커서로_다음_페이지를_이어_준다() {
         // given
         Device 차단자 = 기기를_저장한다();
+        Device 작성자 = deviceRepository.saveAndFlush(기본_기기_빌더().nickname("이전 이름").build());
         List<Long> 차단한_한숨들 = new ArrayList<>();
         for (int index = 0; index < 51; index++) {
-            Long emotionId = 한숨을_저장한다(null, null);
+            Long emotionId;
+            if (index == 0) {
+                emotionId = emotionRepository.saveAndFlush(기본_한숨_빌더()
+                        .deviceId(작성자.getId()).anonymous(false).build()).getId();
+            } else {
+                emotionId = 한숨을_저장한다(null, null);
+            }
             차단한_한숨들.add(emotionId);
             emotionBlockService.save(emotionId, 차단자.getPublicId());
         }
 
         // when
         BlockListResult 첫_페이지 = emotionBlockService.findAll(차단자.getPublicId(), null);
+        deviceService.updateNickname(작성자.getPublicId(), "새 이름");
         BlockListResult 다음_페이지 =
                 emotionBlockService.findAll(차단자.getPublicId(), 첫_페이지.nextCursor());
 
         // then
         assertThat(첫_페이지.items()).hasSize(50);
+        assertThat(첫_페이지.items()).extracting(BlockResult::nickname).containsOnly("익명");
+        assertThat(첫_페이지.items()).extracting(BlockResult::emotionId)
+                .containsExactlyElementsOf(차단한_한숨들.reversed().subList(0, 50));
         assertThat(첫_페이지.hasNext()).isTrue();
         assertThat(첫_페이지.nextCursor()).isNotBlank();
         assertThat(다음_페이지.items())
                 .extracting(BlockResult::emotionId)
                 .containsExactly(차단한_한숨들.getFirst());
         assertThat(다음_페이지.hasNext()).isFalse();
+        assertThat(다음_페이지.items().getFirst().nickname()).isEqualTo("새 이름");
         assertThat(다음_페이지.nextCursor()).isNull();
     }
 

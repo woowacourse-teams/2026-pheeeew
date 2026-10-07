@@ -22,6 +22,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
@@ -75,6 +76,8 @@ class EmotionRegistrationIntegrationTest {
     private EmotionRepository emotions;
     @Autowired
     private DeviceRepository devices;
+    @Autowired
+    private DeviceService deviceService;
     @Autowired
     private AudioUploadRepository uploads;
     @Autowired
@@ -197,6 +200,28 @@ class EmotionRegistrationIntegrationTest {
         verifyNoInteractions(objectVerifier);
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 익명_선택이_다른_재시도도_최초_감정의_선택을_유지한다(boolean anonymous) {
+        // given
+        deviceService.updateNickname(device.getPublicId(), "스타크");
+        UUID requestId = UUID.randomUUID();
+        Emotion first = service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
+                "최초 메모", null, null, device.getPublicId(), anonymous);
+
+        // when
+        Emotion retried = service.save(requestId, EmotionState.ANGRY, 0, 0, 0,
+                null, "unused-upload", UUID.randomUUID(), device.getPublicId(), !anonymous);
+
+        // then
+        assertThat(retried.getId()).isEqualTo(first.getId());
+        assertThat(retried.isAnonymous()).isEqualTo(anonymous);
+        assertThat(emotions.findById(first.getId()).orElseThrow().isAnonymous()).isEqualTo(anonymous);
+        assertThat(retried.getMemo()).isEqualTo("최초 메모");
+        assertThat(emotions.count()).isOne();
+        verifyNoInteractions(objectVerifier);
+    }
+
     @Test
     void 삭제된_감정도_재등록하지_않고_최초_식별자를_반환한다() {
         UUID requestId = UUID.randomUUID();
@@ -218,7 +243,8 @@ class EmotionRegistrationIntegrationTest {
         service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 0, null, null, null, device.getPublicId());
         Device other = devices.save(기본_기기_빌더().build());
 
-        assertThatThrownBy(() -> saveAudio(requestId, other)).isInstanceOfSatisfying(EmotionException.class,
+        assertThatThrownBy(() -> service.save(requestId, EmotionState.ANGRY, 126.97, 37.56, 0,
+                null, upload.getUploadId(), null, other.getPublicId(), false)).isInstanceOfSatisfying(EmotionException.class,
                 error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_REQUEST_ID_CONFLICT));
         verifyNoInteractions(objectVerifier);
     }
@@ -229,6 +255,7 @@ class EmotionRegistrationIntegrationTest {
         // 두 요청 모두 선조회를 통과한 뒤 실제 DB 유니크 제약에서 경합하도록 한다.
         UUID requestId = UUID.randomUUID();
         Device second = differentDevice ? devices.save(기본_기기_빌더().build()) : device;
+        deviceService.updateNickname(device.getPublicId(), "스타크");
         AudioUpload secondUpload = saveUpload(second);
         CyclicBarrier ready = new CyclicBarrier(2);
         doAnswer(invocation -> {
@@ -238,8 +265,8 @@ class EmotionRegistrationIntegrationTest {
 
         List<Object> results;
         try (var executor = Executors.newFixedThreadPool(2)) {
-            Future<Object> first = executor.submit(() -> outcome(requestId, device, upload.getUploadId()));
-            Future<Object> other = executor.submit(() -> outcome(requestId, second, secondUpload.getUploadId()));
+            Future<Object> first = executor.submit(() -> outcome(requestId, device, upload.getUploadId(), false));
+            Future<Object> other = executor.submit(() -> outcome(requestId, second, secondUpload.getUploadId(), true));
             results = List.of(first.get(10, TimeUnit.SECONDS), other.get(10, TimeUnit.SECONDS));
         }
 
@@ -257,6 +284,7 @@ class EmotionRegistrationIntegrationTest {
                     Emotion saved = (Emotion) result;
                     assertThat(saved.getId()).isEqualTo(stored.getId());
                     assertThat(saved.getDeviceId()).isEqualTo(stored.getDeviceId());
+                    assertThat(saved.isAnonymous()).isEqualTo(stored.isAnonymous());
                     assertThat(saved.getRegionCode()).isEqualTo(stored.getRegionCode());
                     assertThat(saved.getRegionClassifiedAt())
                             .isCloseTo(stored.getRegionClassifiedAt(), within(1, ChronoUnit.MICROS));
@@ -359,8 +387,13 @@ class EmotionRegistrationIntegrationTest {
     }
 
     private Object outcome(UUID requestId, Device author, String uploadId) {
+        return outcome(requestId, author, uploadId, null);
+    }
+
+    private Object outcome(UUID requestId, Device author, String uploadId, Boolean anonymous) {
         try {
-            return saveAudio(requestId, author, uploadId);
+            return service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
+                    null, uploadId, null, author.getPublicId(), anonymous);
         } catch (EmotionException exception) {
             return exception;
         }

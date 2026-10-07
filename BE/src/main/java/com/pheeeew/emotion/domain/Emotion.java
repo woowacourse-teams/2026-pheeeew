@@ -74,6 +74,9 @@ public class Emotion extends BaseEntity {
     @Column(name = "device_id", updatable = false)
     private Long deviceId;
 
+    @Column(nullable = false, updatable = false)
+    private boolean anonymous;
+
     @Column(nullable = false)
     @Version
     private Long version;
@@ -81,7 +84,7 @@ public class Emotion extends BaseEntity {
     @Builder
     private Emotion(
             UUID requestId, Point location, String memo, Audio audio, EmotionState state,
-            double rotationDegrees, String nickname, Long deviceId, GroupStamp groupStamp,
+            double rotationDegrees, String nickname, Boolean anonymous, Long deviceId, GroupStamp groupStamp,
             String regionCode, Instant regionClassifiedAt
     ) {
         this.requestId = Objects.requireNonNull(requestId);
@@ -94,6 +97,10 @@ public class Emotion extends BaseEntity {
         this.groupStamp = groupStamp;
         this.nickname = requireValidNickname(nickname);
         this.deviceId = deviceId;
+        this.anonymous = !Boolean.FALSE.equals(anonymous);
+        if (!this.anonymous && deviceId == null) {
+            throw new IllegalArgumentException("기명 감정에는 작성 기기가 필요합니다.");
+        }
     }
 
     public void update(EmotionState state, EmotionContent content, GroupStamp groupStamp) {

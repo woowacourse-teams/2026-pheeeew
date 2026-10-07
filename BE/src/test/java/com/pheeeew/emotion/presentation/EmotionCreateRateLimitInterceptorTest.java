@@ -86,7 +86,7 @@ class EmotionCreateRateLimitInterceptorTest {
         Emotion saved = EmotionFixture.기본_한숨_빌더().build();
         ReflectionTestUtils.setField(saved, "id", 42L);
         when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(),
-                any())).thenReturn(saved);
+                any(), any())).thenReturn(saved);
     }
 
     @Test
@@ -105,12 +105,12 @@ class EmotionCreateRateLimitInterceptorTest {
                 .expectBody().json("""
                         {"code":"EMOTION-012","message":"감정은 1초에 한 번만 남길 수 있습니다."}
                         """);
-        verify(emotionCommandService).save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any());
+        verify(emotionCommandService).save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any(), any());
 
         when(clock.instant()).thenReturn(Instant.parse("2026-10-05T00:00:01Z"));
         create(token, requestId).expectStatus().isOk();
         verify(emotionCommandService, times(2))
-                .save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any());
+                .save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -118,7 +118,7 @@ class EmotionCreateRateLimitInterceptorTest {
         // given
         String token = newDeviceToken();
         UUID requestId = UUID.randomUUID();
-        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any()))
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any(), any()))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_LOCATION_OUT_OF_SERVICE_AREA));
         create(token, requestId).expectStatus().isBadRequest().expectBody().json("""
                 {"code":"EMOTION-014","message":"이 위치에서는 기록할 수 없습니다. 다른 위치를 선택해 주세요."}
@@ -128,7 +128,7 @@ class EmotionCreateRateLimitInterceptorTest {
         create(token, requestId).expectStatus().isEqualTo(429)
                 .expectHeader().valueEquals(HttpHeaders.RETRY_AFTER, "1")
                 .expectBody().jsonPath("$.code").isEqualTo("EMOTION-012");
-        verify(emotionCommandService).save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any());
+        verify(emotionCommandService).save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -143,7 +143,7 @@ class EmotionCreateRateLimitInterceptorTest {
         // then
         verify(emotionMetrics).recordCreateThrottled();
         verify(emotionCommandService).save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(),
-                any());
+                any(), any());
     }
 
     @Test

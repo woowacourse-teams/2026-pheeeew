@@ -259,7 +259,7 @@ class EmotionBlockControllerTest {
                 .memo("오늘은 조금 지쳤다")
                 .build();
 
-        return BlockResult.of(저장된_한숨_차단(BLOCK_ID, CREATED_AT), emotion);
+        return BlockResult.of(저장된_한숨_차단(BLOCK_ID, CREATED_AT), emotion, null);
     }
 
     private String 기본_차단_요청() {
@@ -272,7 +272,7 @@ class EmotionBlockControllerTest {
         return """
                 {
                   "emotionId": 42,
-                  "nickname": "날아가는 고라니",
+                  "nickname": "익명",
                   "memo": "오늘은 조금 지쳤다",
                   "createdAt": "2026-09-14T02:44:00Z"
                 }
