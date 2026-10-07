@@ -116,7 +116,8 @@ public interface DeviceControllerApi {
     );
 
     @Operation(
-            summary = "기기 등록",
+            summary = "기기 등록 (구버전 호환)",
+            deprecated = true,
             description = """
                     ### 무엇을 발급받나요
 

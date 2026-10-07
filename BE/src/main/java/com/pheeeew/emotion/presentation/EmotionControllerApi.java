@@ -112,9 +112,10 @@ public interface EmotionControllerApi {
             @Parameter(hidden = true) UUID devicePublicId
     );
 
-    @Operation(summary = "감정 등록", description = """
+    @Operation(summary = "감정 등록 (구버전 호환)", deprecated = true, description = """
             선택 위치에 감정을 등록합니다. contentType은 NONE, MEMO, AUDIO 중 하나입니다.
             v1은 기존 앱을 위한 익명 전용 등록 경로입니다. 신규 감정은 익명으로 등록하며 '익명'으로 표시합니다.
+            익명·기명 여부를 선택하는 새 앱은 POST /api/v3/emotions로 등록합니다.
             anonymous는 v1 요청 필드가 아니며, 전달해도 신규 등록의 익명 여부에 영향을 주지 않습니다.
             기존 성공 requestId의 재시도는 최초 등록 결과를 유지합니다.
 

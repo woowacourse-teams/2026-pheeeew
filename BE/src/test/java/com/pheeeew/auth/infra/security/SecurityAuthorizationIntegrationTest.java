@@ -1228,6 +1228,9 @@ class SecurityAuthorizationIntegrationTest {
         // then
         JsonNode v2 = docs.path("paths").path("/api/v2/devices").path("post");
         JsonNode v3 = docs.path("paths").path("/api/v3/devices").path("post");
+        assertThat(v2.path("deprecated").asBoolean()).isTrue();
+        assertThat(v2.path("summary").asText()).isEqualTo("기기 등록 (구버전 호환)");
+        assertThat(v3.path("deprecated").asBoolean()).isFalse();
         assertThat(v2.path("requestBody").path("content").path("application/json").path("schema").path("$ref").asText())
                 .isEqualTo("#/components/schemas/DeviceCreateRequest");
         assertThat(v3.path("requestBody").path("content").path("application/json").path("schema").path("$ref").asText())
@@ -1248,6 +1251,11 @@ class SecurityAuthorizationIntegrationTest {
         JsonNode schemas = docs.path("components").path("schemas");
 
         // then
+        assertThat(paths.path("/api/v1/emotions").path("post").path("deprecated").asBoolean()).isTrue();
+        assertThat(paths.path("/api/v1/emotions").path("post").path("summary").asText())
+                .isEqualTo("감정 등록 (구버전 호환)");
+        assertThat(paths.path("/api/v3/emotions").path("post").path("deprecated").asBoolean()).isFalse();
+        assertThat(paths.path("/api/v1/emotions").path("get").path("deprecated").asBoolean()).isFalse();
         assertThat(paths.path("/api/v1/emotions").path("post").path("requestBody").path("content")
                 .path("application/json").path("schema").path("$ref").asText())
                 .isEqualTo("#/components/schemas/EmotionCreateRequest");
