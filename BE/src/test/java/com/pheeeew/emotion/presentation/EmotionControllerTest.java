@@ -138,7 +138,7 @@ class EmotionControllerTest {
                             "groupStamp":null,
                             "groupId":null,
                             "isMine":true,
-                            "nickname":"먼지구름",
+                            "nickname":"익명",
                             "emojis":[
                               {"type":"HEART","count":2,"selected":true},
                               {"type":"LAUGH","count":0,"selected":false},
@@ -158,7 +158,7 @@ class EmotionControllerTest {
     void 녹음_목록과_상세는_내용_유형과_메모와_재생_정보를_순서대로_반환한다(boolean list) {
         // given
         Emotion emotion = 기본_한숨_빌더()
-                .state(EmotionState.FRUSTRATED).rotationDegrees(0).nickname("먼지구름").deviceId(1L)
+                .state(EmotionState.FRUSTRATED).rotationDegrees(0).deviceId(1L)
                 .audio(Audio.builder().objectKey("private/voice.m4a").build()).build();
         var playback = PlaybackUrl.of(
                 "https://audio.example.test/signed", Instant.parse("2026-09-25T12:05:00Z"));
@@ -356,7 +356,7 @@ class EmotionControllerTest {
     void 등록_내용을_인증된_기기로_저장하고_식별자를_반환한다(String content) {
         Emotion saved = com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더().build();
         ReflectionTestUtils.setField(saved, "id", 42L);
-        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), eq(DEVICE_PUBLIC_ID)))
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), eq(DEVICE_PUBLIC_ID), any()))
                 .thenReturn(saved);
         client.post().uri("/api/v1/emotions?devicePublicId=" + UUID.randomUUID())
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
@@ -366,7 +366,7 @@ class EmotionControllerTest {
                 .expectBody().json("{\"id\":42}", JsonCompareMode.STRICT);
         verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
                 EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
-                content.contains("MEMO") ? "메모" : null, content.contains("AUDIO") ? "upload" : null, null, DEVICE_PUBLIC_ID);
+                content.contains("MEMO") ? "메모" : null, content.contains("AUDIO") ? "upload" : null, null, DEVICE_PUBLIC_ID, null);
     }
 
     @Test
@@ -376,7 +376,7 @@ class EmotionControllerTest {
         Emotion saved = com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더().build();
         ReflectionTestUtils.setField(saved, "id", 42L);
         when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(),
-                eq(groupId), eq(DEVICE_PUBLIC_ID))).thenReturn(saved);
+                eq(groupId), eq(DEVICE_PUBLIC_ID), any())).thenReturn(saved);
 
         // when / then
         client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
@@ -384,7 +384,80 @@ class EmotionControllerTest {
                 .body(createBody("\"contentType\":\"NONE\",\"groupId\":\"" + groupId + "\""))
                 .exchange().expectStatus().isOk();
         verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
-                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, null, null, groupId, DEVICE_PUBLIC_ID);
+                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, null, null, groupId, DEVICE_PUBLIC_ID, null);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"null", "true", "false", "0", "1", "\"false\"", "\"true\"", "\"invalid\"", "[]", "{}"})
+    void v1은_익명_선택을_무시하고_인증된_기기로_익명_등록한다(String anonymous) {
+        // given
+        Emotion saved = 기본_한숨_빌더().build();
+        ReflectionTestUtils.setField(saved, "id", 42L);
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(),
+                eq(DEVICE_PUBLIC_ID), eq(null))).thenReturn(saved);
+
+        // when / then
+        client.post().uri("/api/v1/emotions?devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(createBody("\"contentType\":\"NONE\",\"anonymous\":" + anonymous))
+                .exchange().expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.LOCATION, EMOTION_URI)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("{\"id\":42}", JsonCompareMode.STRICT);
+        verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
+                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, null, null, null, DEVICE_PUBLIC_ID, null);
+    }
+
+    @ParameterizedTest
+    @MethodSource("v3AnonymousOptions")
+    void v3의_익명_선택과_등록_응답을_전달한다(String option, Boolean anonymous) {
+        // given
+        Emotion saved = 기본_한숨_빌더().build();
+        ReflectionTestUtils.setField(saved, "id", 42L);
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(),
+                eq(DEVICE_PUBLIC_ID), eq(anonymous))).thenReturn(saved);
+
+        // when / then
+        client.post().uri("/api/v3/emotions?devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body(createBody("\"contentType\":\"NONE\"" + option))
+                .exchange().expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.LOCATION, EMOTION_URI)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("{\"id\":42}", JsonCompareMode.STRICT);
+        verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
+                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, null, null, null, DEVICE_PUBLIC_ID, anonymous);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "1", "\"false\"", "\"true\"", "\"invalid\"", "[]", "{}"})
+    void v3의_익명_선택은_JSON_boolean만_허용한다(String anonymous) {
+        // when / then
+        client.post().uri("/api/v3/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(createBody("\"contentType\":\"NONE\",\"anonymous\":" + anonymous))
+                .exchange().expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"\"contentType\":\"NONE\",\"memo\":\"메모\"", "\"contentType\":\"AUDIO\"", "\"contentType\":null"})
+    void v3에서도_잘못된_내용_조합은_저장하지_않는다(String content) {
+        // when / then
+        client.post().uri("/api/v3/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(createBody(content)).exchange().expectStatus().isBadRequest();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @Test
+    void v3에서_닉네임_없는_기명_등록은_409를_반환한다() {
+        // given
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(),
+                eq(DEVICE_PUBLIC_ID), eq(false))).thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NICKNAME_REQUIRED));
+
+        // when / then
+        client.post().uri("/api/v3/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(createBody("\"contentType\":\"NONE\",\"anonymous\":false"))
+                .exchange().expectStatus().isEqualTo(409).expectBody().jsonPath("$.code").isEqualTo("DEVICE-010");
     }
 
     @ParameterizedTest
@@ -395,23 +468,25 @@ class EmotionControllerTest {
         verifyNoInteractions(emotionCommandService);
     }
 
-    @Test
-    void 등록_필수값과_좌표_각도_메모_길이를_검증한다() {
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v3/emotions"})
+    void 등록_필수값과_좌표_각도_메모_길이를_검증한다(String uri) {
         String valid = createBody("\"contentType\":\"NONE\"");
         for (String body : List.of(valid.replace("35.5", "360"), valid.replace("126.97", "181"),
                 valid.replace("37.56", "-91"), valid.replace("\"FRUSTRATED\"", "null"),
                 valid.replace("\"5d1ad34e-1e20-4f20-a20e-3825a095fe6b\"", "null"),
                 createBody("\"contentType\":\"MEMO\",\"memo\":\"" + "가".repeat(201) + "\""))) {
-            client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+            client.post().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                     .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isBadRequest();
         }
         verifyNoInteractions(emotionCommandService);
     }
 
-    @Test
-    void 등록은_기기_인증이_필수다() {
-        request(HttpMethod.POST, "/api/v1/emotions", null).expectStatus().isUnauthorized();
-        request(HttpMethod.POST, "/api/v1/emotions", "invalid-token").expectStatus().isUnauthorized();
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v3/emotions"})
+    void 등록은_기기_인증이_필수다(String uri) {
+        request(HttpMethod.POST, uri, null).expectStatus().isUnauthorized();
+        request(HttpMethod.POST, uri, "invalid-token").expectStatus().isUnauthorized();
         verifyNoInteractions(emotionCommandService);
     }
 
@@ -420,7 +495,7 @@ class EmotionControllerTest {
             "EMOTION_AUDIO_UPLOAD_ALREADY_USED", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE"})
     void 등록_실패_상태와_코드를_전달한다(String name) {
         EmotionErrorCode error = EmotionErrorCode.valueOf(name);
-        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any()))
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any(), any()))
                 .thenThrow(new EmotionException(error));
         client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON).body(createBody("\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\""))
@@ -648,7 +723,6 @@ class EmotionControllerTest {
                 .state(EmotionState.FRUSTRATED)
                 .rotationDegrees(35.5)
                 .memo("답답한 하루")
-                .nickname("먼지구름")
                 .deviceId(isMine ? 1L : 2L)
                 .build();
         ReflectionTestUtils.setField(emotion, "id", emotionId);
@@ -662,6 +736,11 @@ class EmotionControllerTest {
                 EmotionEmojiResult.of(EmojiType.RAGE, 0, false),
                 EmotionEmojiResult.of(EmojiType.SKULL, 0, false)
         ), null, null, 1L);
+    }
+
+    private static Stream<Arguments> v3AnonymousOptions() {
+        return Stream.of(Arguments.of("", null), Arguments.of(",\"anonymous\":null", null),
+                Arguments.of(",\"anonymous\":true", true), Arguments.of(",\"anonymous\":false", false));
     }
 
     private static Stream<Arguments> updateContents() {

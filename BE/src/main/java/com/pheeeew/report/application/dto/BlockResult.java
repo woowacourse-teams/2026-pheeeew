@@ -18,21 +18,31 @@ public record BlockResult(Long blockId, Long emotionId, String nickname, String 
         );
     }
 
-    public static BlockResult of(EmotionBlock block, Emotion emotion) {
+    public static BlockResult of(EmotionBlock block, Emotion emotion, String authorNickname) {
+        String nickname = "익명";
+        if (!emotion.isAnonymous() && authorNickname != null) {
+            nickname = authorNickname;
+        }
+
         return new BlockResult(
                 block.getId(),
                 block.getEmotionId(),
-                emotion.getNickname(),
+                nickname,
                 emotion.getMemo(),
                 block.getCreatedAt()
         );
     }
 
-    public static BlockResult of(DeviceBlock block, Emotion originEmotion) {
+    public static BlockResult of(DeviceBlock block, Emotion originEmotion, String authorNickname) {
+        String nickname = "익명";
+        if (!originEmotion.isAnonymous() && authorNickname != null) {
+            nickname = authorNickname;
+        }
+
         return new BlockResult(
                 block.getId(),
                 block.getOriginEmotionId(),
-                originEmotion.getNickname(),
+                nickname,
                 originEmotion.getMemo(),
                 block.getCreatedAt()
         );

@@ -8,10 +8,41 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class EmotionTest {
+
+    @Test
+    void 익명_여부를_생략하거나_null로_주면_익명으로_생성한다() {
+        // given / when
+        Emotion omitted = 기본_한숨_빌더().build();
+        Emotion explicitNull = 기본_한숨_빌더().anonymous(null).build();
+
+        // then
+        assertThat(omitted.isAnonymous()).isTrue();
+        assertThat(explicitNull.isAnonymous()).isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 작성_기기가_있으면_선택한_익명_여부를_보존한다(boolean anonymous) {
+        // given / when
+        Emotion emotion = 기본_한숨_빌더().deviceId(1L).anonymous(anonymous).build();
+
+        // then
+        assertThat(emotion.isAnonymous()).isEqualTo(anonymous);
+        assertThat(emotion.getDeviceId()).isEqualTo(1L);
+    }
+
+    @Test
+    void 작성_기기가_없는_기명_감정은_생성할_수_없다() {
+        // given / when
+        Throwable throwable = catchThrowable(() -> 기본_한숨_빌더().anonymous(false).build());
+
+        // then
+        assertThat(throwable).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("기명 감정에는 작성 기기가 필요합니다.");
+    }
 
     @Test
     void 삭제하면_삭제_시각이_기록된다() {
@@ -121,42 +152,6 @@ class EmotionTest {
         assertThat(throwable)
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("스탬프 각도는 0도 이상 360도 미만이어야 합니다.");
-    }
-
-    @ParameterizedTest
-    @NullAndEmptySource
-    @ValueSource(strings = {"   "})
-    void 닉네임은_null이거나_비어_있으면_생성할_수_없다(String nickname) {
-        // given
-        String requestedNickname = nickname;
-
-        // when
-        Throwable throwable = catchThrowable(() -> 기본_한숨_빌더()
-                .nickname(requestedNickname)
-                .build()
-        );
-
-        // then
-        assertThat(throwable)
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("닉네임은 비어 있을 수 없습니다.");
-    }
-
-    @Test
-    void 닉네임은_50자를_초과하면_생성할_수_없다() {
-        // given
-        String nickname = "가".repeat(51);
-
-        // when
-        Throwable throwable = catchThrowable(() -> 기본_한숨_빌더()
-                .nickname(nickname)
-                .build()
-        );
-
-        // then
-        assertThat(throwable)
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("닉네임은 50자를 초과할 수 없습니다.");
     }
 
     @Test

@@ -106,7 +106,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명 = 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자);
 
         // when
-        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), 증명);
+        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), "스타크", 증명);
 
         // then
         assertThat(result.created()).isTrue();
@@ -119,11 +119,11 @@ class AppAttestRegistrationIntegrationTest {
     @Test
     void 같은_challenge_로는_두_번_등록할_수_없다() {
         // given
-        deviceService.save(UUID.randomUUID(), 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자));
+        deviceService.save(UUID.randomUUID(), "스타크", 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자));
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자)
         ));
 
         // then
@@ -140,7 +140,7 @@ class AppAttestRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> 애플_루트를_쓰는_서비스.save(
-                UUID.randomUUID(), 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자)
         ));
 
         // then
@@ -156,12 +156,12 @@ class AppAttestRegistrationIntegrationTest {
         DeviceService 애플_루트를_쓰는_서비스 =
                 등록_서비스를_만든다(설정된_app_attest_설정(), new AppAttestCertificateChainValidator());
         Throwable 체인_검증_실패 = catchThrowable(() -> 애플_루트를_쓰는_서비스.save(
-                UUID.randomUUID(), 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자)
         ));
 
         // when
         Throwable 같은_challenge_로_다시 = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자)
         ));
 
         // then
@@ -177,7 +177,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명 = 증명을_담은_요청(정품_증명(), 증명에_묶이지_않은_challenge, 키_식별자);
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명));
+        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         증명을_확인할_수_없다(throwable);
@@ -192,7 +192,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명 = 증명을_담은_요청(다른_앱으로_만든_증명(), 증명에_묶인_challenge, 키_식별자);
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명));
+        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         증명을_확인할_수_없다(throwable);
@@ -206,7 +206,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명 = 증명을_담은_요청(카운터가_1인_증명(), 증명에_묶인_challenge, 키_식별자);
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명));
+        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         증명을_확인할_수_없다(throwable);
@@ -220,7 +220,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명 = 증명을_담은_요청(개발_빌드_증명, 증명에_묶인_challenge, 키_식별자);
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명));
+        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         증명을_확인할_수_없다(throwable);
@@ -236,7 +236,7 @@ class AppAttestRegistrationIntegrationTest {
 
         // when
         DeviceSaveResult result = 개발_환경_서비스.save(
-                UUID.randomUUID(), 증명을_담은_요청(개발_빌드_증명, 증명에_묶인_challenge, 키_식별자)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(개발_빌드_증명, 증명에_묶인_challenge, 키_식별자)
         );
 
         // then
@@ -251,7 +251,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명 = 증명을_담은_요청(키_식별자가_어긋난_증명(), 증명에_묶인_challenge, 키_식별자);
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명));
+        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         증명을_확인할_수_없다(throwable);
@@ -265,7 +265,7 @@ class AppAttestRegistrationIntegrationTest {
                 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, DER_공개키_정보를_해시한_키_식별자);
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명));
+        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         증명을_확인할_수_없다(throwable);
@@ -282,7 +282,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명 = 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, keyId);
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명));
+        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         증명을_확인할_수_없다(throwable);
@@ -299,8 +299,8 @@ class AppAttestRegistrationIntegrationTest {
                 증명을_담은_요청("A".repeat(토큰_상한_길이 + 1), 증명에_묶이지_않은_challenge, 키_식별자);
 
         // when
-        Throwable base64_실패 = catchThrowable(() -> deviceService.save(UUID.randomUUID(), base64_가_아닌_증명));
-        Throwable 상한_초과_실패 = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 상한을_넘는_증명));
+        Throwable base64_실패 = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", base64_가_아닌_증명));
+        Throwable 상한_초과_실패 = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 상한을_넘는_증명));
 
         // then
         증명을_확인할_수_없다(base64_실패);
@@ -316,7 +316,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명 = 증명을_담은_요청(형식이_다른_증명(), 증명에_묶인_challenge, 키_식별자);
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명));
+        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         증명을_확인할_수_없다(throwable);
@@ -330,7 +330,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명 = 증명을_담은_요청(authData가_86바이트인_증명(), 증명에_묶인_challenge, 키_식별자);
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명));
+        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         증명을_확인할_수_없다(throwable);
@@ -347,7 +347,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명 = 증명을_담은_요청(정품_증명(), challenge, 키_식별자);
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명));
+        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         challenge_를_쓸_수_없다(throwable);
@@ -363,10 +363,10 @@ class AppAttestRegistrationIntegrationTest {
 
         // when
         Throwable 발급되지_않은_경우 = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(정품_증명(), 발급되지_않은_challenge, 키_식별자)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(정품_증명(), 발급되지_않은_challenge, 키_식별자)
         ));
         Throwable 만료된_경우 = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(정품_증명(), 만료된_challenge, 키_식별자)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(정품_증명(), 만료된_challenge, 키_식별자)
         ));
 
         // then
@@ -383,7 +383,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명을_보내지_않는_요청 = DeviceAttestation.of(DevicePlatform.IOS, null, null, null);
 
         // when
-        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), 증명을_보내지_않는_요청);
+        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), "스타크", 증명을_보내지_않는_요청);
 
         // then
         assertThat(result.created()).isTrue();
@@ -401,10 +401,10 @@ class AppAttestRegistrationIntegrationTest {
 
         // when
         Throwable 증명을_보낸_등록 = catchThrowable(() -> 설정이_없는_서비스.save(
-                UUID.randomUUID(), 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자)
         ));
         DeviceSaveResult 증명_없는_등록 = 설정이_없는_서비스.save(
-                UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.IOS, null, null, null)
+                UUID.randomUUID(), "스타크", DeviceAttestation.of(DevicePlatform.IOS, null, null, null)
         );
 
         // then
@@ -422,7 +422,7 @@ class AppAttestRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> 강제하는_서비스.save(
-                UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.IOS, null, null, null)
+                UUID.randomUUID(), "스타크", DeviceAttestation.of(DevicePlatform.IOS, null, null, null)
         ));
 
         // then
@@ -436,11 +436,11 @@ class AppAttestRegistrationIntegrationTest {
         // given
         UUID requestId = UUID.randomUUID();
         DeviceAttestation 증명 = 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자);
-        deviceService.save(requestId, 증명);
+        deviceService.save(requestId, "스타크", 증명);
         Instant 최초_소모_시각 = 소모_시각(증명에_묶인_challenge);
 
         // when
-        DeviceSaveResult 재시도 = deviceService.save(requestId, 증명);
+        DeviceSaveResult 재시도 = deviceService.save(requestId, "스타크", 증명);
 
         // then
         assertThat(재시도.created()).isFalse();
@@ -456,7 +456,7 @@ class AppAttestRegistrationIntegrationTest {
         DeviceAttestation 증명 = 증명을_담은_요청(다른_앱으로_만든_증명(), 증명에_묶인_challenge, 키_식별자);
 
         // when
-        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명));
+        Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         assertThat(throwable).hasMessage("무결성 증명을 확인할 수 없습니다.");

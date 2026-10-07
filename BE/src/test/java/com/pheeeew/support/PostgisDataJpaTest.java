@@ -17,13 +17,13 @@ import com.pheeeew.device.infra.attestation.PlayIntegrityConfig;
 import com.pheeeew.device.infra.attestation.PlayIntegrityDeviceAttestationVerifier;
 import com.pheeeew.device.infra.attestation.PlayIntegrityMetrics;
 import com.pheeeew.report.application.DeviceBlockService;
-import com.pheeeew.report.application.EmotionBlockService;
+import com.pheeeew.report.application.command.EmotionBlockCommandService;
+import com.pheeeew.report.application.query.EmotionBlockQueryService;
 import com.pheeeew.report.application.EmotionReportMetrics;
 import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.emotion.application.EmotionPressMetrics;
 import com.pheeeew.emotion.application.command.EmotionPressService;
 import com.pheeeew.emotion.domain.repository.DeviceRegionDailyPressRepository;
-import com.pheeeew.emotion.infra.KoreanEmotionNicknameGenerator;
 import com.pheeeew.region.application.RegionClassifier;
 import com.pheeeew.region.domain.repository.RegionRepository;
 import java.lang.annotation.ElementType;
@@ -72,9 +72,9 @@ import org.springframework.test.context.ActiveProfiles;
         GroupRankingService.class,
         InviteCodeGenerator.class,
         EmotionReportService.class,
-        EmotionBlockService.class,
+        EmotionBlockCommandService.class,
+        EmotionBlockQueryService.class,
         DeviceBlockService.class,
-        KoreanEmotionNicknameGenerator.class,
         EmotionPressMetrics.class,
         EmotionPressService.class,
         DeviceRegionDailyPressRepository.class,

@@ -139,7 +139,7 @@ class PlayIntegrityRegistrationIntegrationTest {
         가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답(발급.challenge()));
 
         // when
-        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), 증명을_담은_요청(발급.challenge()));
+        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge()));
 
         // then
         assertThat(result.created()).isTrue();
@@ -165,7 +165,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.ANDROID, 형태가_아닌_토큰, 발급.challenge(), null)
+                UUID.randomUUID(), "스타크", DeviceAttestation.of(DevicePlatform.ANDROID, 형태가_아닌_토큰, 발급.challenge(), null)
         ));
 
         // then
@@ -186,7 +186,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         DeviceSaveResult result = deviceService.save(
-                UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.ANDROID, 무결성_토큰, 발급.challenge(), null)
+                UUID.randomUUID(), "스타크", DeviceAttestation.of(DevicePlatform.ANDROID, 무결성_토큰, 발급.challenge(), null)
         );
 
         // then
@@ -204,7 +204,7 @@ class PlayIntegrityRegistrationIntegrationTest {
     void 증명_토큰을_보냈는데_challenge_가_없으면_구글을_부르지_않고_거절한다(String challenge) {
         // given / when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(challenge)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(challenge)
         ));
 
         // then
@@ -218,7 +218,7 @@ class PlayIntegrityRegistrationIntegrationTest {
     void 발급하지_않은_challenge_를_보내면_복호화하지_않고_거절한다() {
         // given / when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급되지_않은_challenge)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급되지_않은_challenge)
         ));
 
         // then
@@ -235,7 +235,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(만료된_challenge)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(만료된_challenge)
         ));
 
         // then
@@ -250,12 +250,12 @@ class PlayIntegrityRegistrationIntegrationTest {
         // given
         DeviceChallengeResult 발급 = deviceChallengeService.save();
         가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답(발급.challenge()));
-        deviceService.save(UUID.randomUUID(), 증명을_담은_요청(발급.challenge()));
+        deviceService.save(UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge()));
         long 최초_등록까지의_구글_호출_수 = 구글_호출_수();
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())
         ));
 
         // then
@@ -271,12 +271,12 @@ class PlayIntegrityRegistrationIntegrationTest {
         // given
         DeviceChallengeResult 발급 = deviceChallengeService.save();
         Throwable 형태가_틀린_요청 = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.ANDROID, "junk", 발급.challenge(), null)
+                UUID.randomUUID(), "스타크", DeviceAttestation.of(DevicePlatform.ANDROID, "junk", 발급.challenge(), null)
         ));
 
         // when
         가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답(발급.challenge()));
-        DeviceSaveResult 다시_등록 = deviceService.save(UUID.randomUUID(), 증명을_담은_요청(발급.challenge()));
+        DeviceSaveResult 다시_등록 = deviceService.save(UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge()));
 
         // then
         증명을_확인할_수_없다(형태가_틀린_요청);
@@ -291,13 +291,13 @@ class PlayIntegrityRegistrationIntegrationTest {
         DeviceChallengeResult 발급 = deviceChallengeService.save();
         가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답(토큰이_담은_다른_nonce));
         for (int 시도 = 0; 시도 < DeviceChallenge.MAX_ATTEMPTS; 시도++) {
-            catchThrowable(() -> deviceService.save(UUID.randomUUID(), 증명을_담은_요청(발급.challenge())));
+            catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())));
         }
         long 상한까지의_구글_호출_수 = 구글_호출_수();
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())
         ));
 
         // then
@@ -319,7 +319,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())
         ));
 
         // then
@@ -346,7 +346,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())
         ));
 
         // then
@@ -364,7 +364,7 @@ class PlayIntegrityRegistrationIntegrationTest {
         가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답(토큰이_담은_nonce));
 
         // when
-        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), 증명을_담은_요청(우리가_발급한_표기));
+        DeviceSaveResult result = deviceService.save(UUID.randomUUID(), "스타크", 증명을_담은_요청(우리가_발급한_표기));
 
         // then
         assertThat(result.created()).isTrue();
@@ -382,7 +382,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(우리가_발급한_표기)
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(우리가_발급한_표기)
         ));
 
         // then
@@ -400,9 +400,9 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         DeviceSaveResult 토큰도_challenge_도_없는_등록 =
-                deviceService.save(UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.ANDROID, null, null, null));
+                deviceService.save(UUID.randomUUID(), "스타크", DeviceAttestation.of(DevicePlatform.ANDROID, null, null, null));
         DeviceSaveResult challenge_만_있는_등록 =
-                deviceService.save(UUID.randomUUID(), 토큰_없이_쓸_수_없는_challenge_만_담은_요청);
+                deviceService.save(UUID.randomUUID(), "토르", 토큰_없이_쓸_수_없는_challenge_만_담은_요청);
 
         // then
         assertThat(토큰도_challenge_도_없는_등록.created()).isTrue();
@@ -416,11 +416,11 @@ class PlayIntegrityRegistrationIntegrationTest {
         // given
         DeviceChallengeResult 발급 = deviceChallengeService.save();
         가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답(발급.challenge()));
-        deviceService.save(UUID.randomUUID(), 증명을_담은_요청(발급.challenge()));
+        deviceService.save(UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge()));
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())
         ));
 
         // then
@@ -438,7 +438,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())
         ));
 
         // then
@@ -459,7 +459,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())
         ));
 
         // then
@@ -480,7 +480,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())
         ));
 
         // then
@@ -498,7 +498,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())
         ));
 
         // then
@@ -517,7 +517,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())
         ));
 
         // then
@@ -538,10 +538,10 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable 증명을_보낸_등록 = catchThrowable(
-                () -> 자격증명_없는_서비스.save(UUID.randomUUID(), 증명을_담은_요청(발급되지_않은_challenge))
+                () -> 자격증명_없는_서비스.save(UUID.randomUUID(), "스타크", 증명을_담은_요청(발급되지_않은_challenge))
         );
         DeviceSaveResult 증명_없는_등록 = 자격증명_없는_서비스.save(
-                UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.ANDROID, null, null, null)
+                UUID.randomUUID(), "스타크", DeviceAttestation.of(DevicePlatform.ANDROID, null, null, null)
         );
 
         // then
@@ -559,7 +559,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> 강제하는_서비스.save(
-                UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.ANDROID, null, null, null)
+                UUID.randomUUID(), "스타크", DeviceAttestation.of(DevicePlatform.ANDROID, null, null, null)
         ));
 
         // then
@@ -575,7 +575,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         DeviceSaveResult 안드로이드_등록 = 건너뛰는_서비스.save(
-                UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.ANDROID, "junk", null, null)
+                UUID.randomUUID(), "스타크", DeviceAttestation.of(DevicePlatform.ANDROID, "junk", null, null)
         );
 
         // then
@@ -593,7 +593,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> 건너뛰는_서비스.save(
-                UUID.randomUUID(), DeviceAttestation.of(DevicePlatform.IOS, "junk", null, null)
+                UUID.randomUUID(), "스타크", DeviceAttestation.of(DevicePlatform.IOS, "junk", null, null)
         ));
 
         // then
@@ -609,11 +609,11 @@ class PlayIntegrityRegistrationIntegrationTest {
         UUID requestId = UUID.randomUUID();
         DeviceChallengeResult 발급 = deviceChallengeService.save();
         가짜_구글.복호화_응답을_넣는다(200, 정품_복호화_응답(발급.challenge()));
-        deviceService.save(requestId, 증명을_담은_요청(발급.challenge()));
+        deviceService.save(requestId, "스타크", 증명을_담은_요청(발급.challenge()));
         long 최초_등록의_복호화_호출_수 = 가짜_구글.복호화_요청_수();
 
         // when
-        DeviceSaveResult 재시도 = deviceService.save(requestId, 증명을_담은_요청(발급.challenge()));
+        DeviceSaveResult 재시도 = deviceService.save(requestId, "스타크", 증명을_담은_요청(발급.challenge()));
 
         // then
         assertThat(재시도.created()).isFalse();
@@ -653,7 +653,7 @@ class PlayIntegrityRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(
-                UUID.randomUUID(), 증명을_담은_요청(발급.challenge())
+                UUID.randomUUID(), "스타크", 증명을_담은_요청(발급.challenge())
         ));
 
         // then
@@ -727,7 +727,7 @@ class PlayIntegrityRegistrationIntegrationTest {
                     ready.countDown();
                     start.await();
                     try {
-                        return deviceService.save(requestId, attestation);
+                        return deviceService.save(requestId, "스타크", attestation);
                     } catch (RuntimeException exception) {
                         return exception;
                     }

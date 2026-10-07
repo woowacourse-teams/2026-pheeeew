@@ -17,6 +17,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.report.application.dto.EmotionReportResult;
+import com.pheeeew.report.application.command.EmotionBlockCommandService;
 import com.pheeeew.report.domain.EmotionReport;
 import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
@@ -61,7 +62,7 @@ class EmotionReportServiceIntegrationTest {
     private EmotionReportRepository emotionReportRepository;
 
     @Autowired
-    private EmotionBlockService emotionBlockService;
+    private EmotionBlockCommandService emotionBlockCommandService;
 
     @Autowired
     private EmotionBlockRepository emotionBlockRepository;
@@ -138,7 +139,7 @@ class EmotionReportServiceIntegrationTest {
         Device 기존_신고자 = insertDevice();
         Device 차단자 = insertDevice();
         EmotionReportResult 최초 = emotionReportService.save(emotionId, 기존_신고자.getPublicId(), 기본_신고_사유());
-        emotionBlockService.save(emotionId, 차단자.getPublicId());
+        emotionBlockCommandService.save(emotionId, 차단자.getPublicId());
 
         // when
         EmotionReportResult 새_신고 = emotionReportService.save(emotionId, 차단자.getPublicId(), "새 신고 사유");

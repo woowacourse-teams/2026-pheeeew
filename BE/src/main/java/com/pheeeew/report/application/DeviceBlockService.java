@@ -109,11 +109,17 @@ public class DeviceBlockService {
     }
 
     private BlockResult toResult(DeviceBlock block, Emotion requestedEmotion) {
-        if (block.getOriginEmotionId().equals(requestedEmotion.getId())) {
-            return BlockResult.of(block, requestedEmotion);
+        Emotion originEmotion = requestedEmotion;
+        if (!block.getOriginEmotionId().equals(requestedEmotion.getId())) {
+            originEmotion = findEmotion(block.getOriginEmotionId());
         }
 
-        return BlockResult.of(block, findEmotion(block.getOriginEmotionId()));
+        String authorNickname = null;
+        if (!originEmotion.isAnonymous()) {
+            authorNickname = deviceRepository.findById(originEmotion.getDeviceId())
+                    .map(Device::getNickname).orElse(null);
+        }
+        return BlockResult.of(block, originEmotion, authorNickname);
     }
 
     private BlockSaveResult saveNewBlock(Long blockerDeviceId, Long blockedDeviceId, Emotion emotion) {
@@ -123,11 +129,14 @@ public class DeviceBlockService {
                 .originEmotionId(emotion.getId())
                 .build();
 
+        DeviceBlock saved;
         try {
-            return BlockSaveResult.of(BlockResult.of(deviceBlockRepository.saveAndFlush(block), emotion), true);
+            saved = deviceBlockRepository.saveAndFlush(block);
         } catch (DataIntegrityViolationException cause) {
             return findExistingBlock(blockerDeviceId, blockedDeviceId, emotion, cause);
         }
+
+        return BlockSaveResult.of(toResult(saved, emotion), true);
     }
 
     private BlockSaveResult findExistingBlock(

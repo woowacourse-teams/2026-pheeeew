@@ -1,5 +1,6 @@
 package com.pheeeew.device.presentation;
 
+import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.device.application.DeviceChallengeService;
 import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.application.DeviceTokenService;
@@ -11,18 +12,27 @@ import com.pheeeew.device.presentation.dto.AccessTokenReissueRequest;
 import com.pheeeew.device.presentation.dto.AccessTokenResponse;
 import com.pheeeew.device.presentation.dto.DeviceChallengeResponse;
 import com.pheeeew.device.presentation.dto.DeviceCreateRequest;
+import com.pheeeew.device.presentation.dto.DeviceNicknameResponse;
+import com.pheeeew.device.presentation.dto.DeviceNicknameUpdateRequest;
 import com.pheeeew.device.presentation.dto.DeviceTokenResponse;
+import com.pheeeew.device.presentation.dto.DeviceV3CreateRequest;
+import com.pheeeew.device.presentation.dto.NicknameAvailabilityResponse;
 import jakarta.validation.Valid;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
-@RequestMapping("/api/v2/devices")
+@RequestMapping("/api")
 @RestController
 public class DeviceController implements DeviceControllerApi {
 
@@ -31,7 +41,41 @@ public class DeviceController implements DeviceControllerApi {
     private final DeviceChallengeService deviceChallengeService;
 
     @Override
-    @PostMapping
+    @GetMapping("/v3/devices/me/nickname")
+    public ResponseEntity<DeviceNicknameResponse> findNickname(
+            @CurrentDevice UUID devicePublicId
+    ) {
+        String nickname = deviceService.findNickname(devicePublicId);
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(DeviceNicknameResponse.from(nickname));
+    }
+
+    @Override
+    @PutMapping("/v3/devices/me/nickname")
+    public ResponseEntity<Void> updateNickname(
+            @CurrentDevice UUID devicePublicId,
+            @Valid @RequestBody DeviceNicknameUpdateRequest request
+    ) {
+        deviceService.updateNickname(devicePublicId, request.nickname());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @GetMapping("/v3/devices/nicknames/availability")
+    public ResponseEntity<NicknameAvailabilityResponse> findNicknameAvailability(
+            @RequestParam("nickname") String nickname
+    ) {
+        boolean available = deviceService.findNicknameAvailability(nickname);
+
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(NicknameAvailabilityResponse.from(available));
+    }
+
+    @Override
+    @PostMapping("/v2/devices")
     public ResponseEntity<DeviceTokenResponse> save(
             @Valid @RequestBody DeviceCreateRequest request
     ) {
@@ -55,7 +99,27 @@ public class DeviceController implements DeviceControllerApi {
     }
 
     @Override
-    @PostMapping("/challenge")
+    @PostMapping("/v3/devices")
+    public ResponseEntity<DeviceTokenResponse> save(
+            @Valid @RequestBody DeviceV3CreateRequest request
+    ) {
+        DeviceSaveResult result = deviceService.save(
+                request.requestId(),
+                request.nickname(),
+                DeviceAttestation.of(
+                        request.attestation().platform(),
+                        request.attestation().token(),
+                        request.attestation().challenge(),
+                        request.attestation().keyId()
+                )
+        );
+
+        HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
+        return ResponseEntity.status(status).body(DeviceTokenResponse.from(result));
+    }
+
+    @Override
+    @PostMapping("/v2/devices/challenge")
     public DeviceChallengeResponse issueChallenge() {
         DeviceChallengeResult result = deviceChallengeService.save();
 
@@ -63,7 +127,7 @@ public class DeviceController implements DeviceControllerApi {
     }
 
     @Override
-    @PostMapping("/tokens")
+    @PostMapping("/v2/devices/tokens")
     public AccessTokenResponse reissueAccessToken(
             @Valid @RequestBody AccessTokenReissueRequest request
     ) {

@@ -100,9 +100,14 @@ public class EmotionQueryService {
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
         Emotion emotion = emotionRepository.findVisibleById(emotionId, deviceId)
                 .orElseThrow(() -> new EmotionException(EMOTION_NOT_VISIBLE));
+        Map<Long, String> nicknames = findNicknames(List.of(emotion));
+        GroupStampResult stamp = null;
+        if (emotion.getGroupStamp() != null) {
+            stamp = GroupStampResult.from(emotion.getGroupStamp());
+        }
 
         return EmotionDetailView.of(emotion, findEmojis(emotionId, deviceId), issuePlaybackUrl(emotion),
-                emotion.getGroupStamp() == null ? null : GroupStampResult.from(emotion.getGroupStamp()), deviceId);
+                stamp, deviceId, findAuthorNickname(emotion, nicknames));
     }
 
     List<EmotionListItemView> findVisiblePageWithinBounds(
@@ -113,9 +118,12 @@ public class EmotionQueryService {
                 .map(Device::getId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
-        return emotionRepository.findVisiblePageWithinBounds(
+        List<Emotion> page = emotionRepository.findVisiblePageWithinBounds(
                 bounds, snapshotAt, lastCreatedAt, lastId, deviceId, null, false, limit
-        ).stream().map(EmotionListItemView::from).toList();
+        );
+        Map<Long, String> nicknames = findNicknames(page);
+        return page.stream().map(emotion -> EmotionListItemView.of(emotion,
+                findAuthorNickname(emotion, nicknames))).toList();
     }
 
     public EmotionPageView findFirstListPage(EmotionSearchBounds bounds, UUID devicePublicId) {
@@ -138,6 +146,24 @@ public class EmotionQueryService {
 
     public EmotionMapPageView findNextMapPage(String encodedCursor, UUID devicePublicId) {
         return findMap(decodeCursor(encodedCursor), devicePublicId);
+    }
+
+    private Map<Long, String> findNicknames(List<Emotion> page) {
+        List<Long> authorIds = page.stream().filter(emotion -> !emotion.isAnonymous())
+                .map(Emotion::getDeviceId).filter(Objects::nonNull).distinct().toList();
+        if (authorIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return deviceRepository.findAllById(authorIds).stream().filter(device -> device.getNickname() != null)
+                .collect(Collectors.toMap(Device::getId, Device::getNickname));
+    }
+
+    private String findAuthorNickname(Emotion emotion, Map<Long, String> nicknames) {
+        if (emotion.isAnonymous()) {
+            return null;
+        }
+        return nicknames.get(emotion.getDeviceId());
     }
 
     private PlaybackUrl issuePlaybackUrl(Emotion emotion) {
@@ -179,9 +205,15 @@ public class EmotionQueryService {
             }
         }
         Map<Long, GroupStampResult> stamps = findStamps(page);
-        List<EmotionDetailView> items = page.stream().map(emotion -> EmotionDetailView.of(
-                emotion, List.copyOf(counts.get(emotion.getId()).values()), issuePlaybackUrl(emotion),
-                emotion.getGroupStamp() == null ? null : stamps.get(emotion.getGroupStamp().getId()), deviceId)).toList();
+        Map<Long, String> nicknames = findNicknames(page);
+        List<EmotionDetailView> items = page.stream().map(emotion -> {
+            GroupStampResult stamp = null;
+            if (emotion.getGroupStamp() != null) {
+                stamp = stamps.get(emotion.getGroupStamp().getId());
+            }
+            return EmotionDetailView.of(emotion, List.copyOf(counts.get(emotion.getId()).values()),
+                    issuePlaybackUrl(emotion), stamp, deviceId, findAuthorNickname(emotion, nicknames));
+        }).toList();
         String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId())) : null;
         return EmotionPageView.of(items, hasNext, nextCursor);
