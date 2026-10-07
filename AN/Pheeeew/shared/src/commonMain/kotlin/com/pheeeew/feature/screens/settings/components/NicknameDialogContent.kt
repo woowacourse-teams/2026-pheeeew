@@ -42,8 +42,8 @@ internal fun NicknameDialogContent(
     Column(
         modifier =
             modifier
-                .fillMaxWidth()
                 .widthIn(max = 356.dp)
+                .fillMaxWidth()
                 .clip(shape)
                 .background(Color.White)
                 .border(AppBorders.Standard, SettingsColors.Ink, shape)
