@@ -31,6 +31,7 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
+import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.report.domain.DeviceBlock;
@@ -40,6 +41,7 @@ import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -48,11 +50,13 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.hibernate.SessionFactory;
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -209,6 +213,54 @@ class EmotionQueryServiceIntegrationTest {
             assertThat(page.items()).hasSize(11).extracting(EmotionDetailView::nickname)
                     .containsOnly("작성자", "조회자", "익명");
             assertThat(statistics.getPrepareStatementCount()).isEqualTo(anonymousStatements + 1);
+        } finally {
+            statistics.setStatisticsEnabled(previouslyEnabled);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {1, 10})
+    void 목록의_작성자와_스탬프가_늘어도_이모지까지_일괄_조회한다(int count) {
+        // given
+        List<Tuple> expected = new ArrayList<>();
+        for (int index = 0; index < count; index++) {
+            Device writer = deviceRepository.save(기본_기기_빌더().nickname("작성자" + (char) ('A' + index)).build());
+            Group group = 기본_그룹_빌더().name("그룹" + index).build();
+            entityManager.persist(group);
+            GroupStamp stamp = 기본_스탬프_빌더(group).build();
+            entityManager.persist(stamp);
+
+            Emotion target = emotionRepository.save(기본_한숨_빌더().deviceId(writer.getId())
+                    .anonymous(false).memo("메모").groupStamp(stamp).build());
+            emotionCommandService.updateEmoji(target.getId(), viewer.getPublicId(), EmojiType.HEART, true);
+            expected.add(tuple(target.getId(), writer.getNickname(), GroupStampResult.from(stamp)));
+        }
+
+        entityManager.flush();
+        entityManager.clear();
+
+        var statistics = entityManager.getEntityManagerFactory().unwrap(SessionFactory.class).getStatistics();
+        boolean previouslyEnabled = statistics.isStatisticsEnabled();
+        statistics.setStatisticsEnabled(true);
+        statistics.clear();
+
+        try {
+            // when
+            EmotionPageView page = emotionQueryService.findFirstListPage(
+                    EmotionSearchBounds.of(126, 37, 128, 38), viewer.getPublicId());
+
+            // then: 조회 기기, 감정, 이모지, 그룹 스탬프, 작성자마다 한 번씩 조회한다.
+            assertThat(statistics.getPrepareStatementCount()).isEqualTo(5);
+            assertThat(page.items()).hasSize(count + 1);
+
+            assertThat(page.items()).filteredOn(item -> !item.id().equals(emotion.getId()))
+                    .extracting(EmotionDetailView::id, EmotionDetailView::nickname, EmotionDetailView::groupStamp)
+                    .containsExactlyInAnyOrderElementsOf(expected);
+            assertThat(page.items()).filteredOn(item -> !item.id().equals(emotion.getId()))
+                    .allSatisfy(item -> {
+                        assertThat(item.emojis()).hasSize(6).contains(EmotionEmojiResult.of(EmojiType.HEART, 1, true));
+                        assertThat(item.isMine()).isFalse();
+                    });
         } finally {
             statistics.setStatisticsEnabled(previouslyEnabled);
         }

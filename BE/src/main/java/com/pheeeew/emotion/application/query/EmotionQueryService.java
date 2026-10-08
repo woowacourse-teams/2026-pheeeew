@@ -191,12 +191,23 @@ public class EmotionQueryService {
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
         List<Emotion> found = emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
                 cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), true, PAGE_SIZE + 1);
+
         boolean hasNext = found.size() > PAGE_SIZE;
         List<Emotion> page = hasNext ? found.subList(0, PAGE_SIZE) : found;
+
+        List<EmotionDetailView> items = toListItems(page, deviceId);
+        String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
+                page.getLast().getCreatedAt(), page.getLast().getId())) : null;
+
+        return EmotionPageView.of(items, hasNext, nextCursor);
+    }
+
+    private List<EmotionDetailView> toListItems(List<Emotion> page, Long deviceId) {
         Map<Long, EnumMap<EmojiType, EmotionEmojiResult>> counts = new HashMap<>();
         for (Emotion emotion : page) {
             counts.put(emotion.getId(), emptyEmojis());
         }
+
         if (!page.isEmpty()) {
             for (var count : emotionEmojiRepository.findCountsForPage(page.stream().map(Emotion::getId).toList(), deviceId)) {
                 EmojiType type = EmojiType.valueOf(count.getEmojiType());
@@ -204,19 +215,19 @@ public class EmotionQueryService {
                         EmotionEmojiResult.of(type, count.getSelectionCount(), count.getSelected()));
             }
         }
+
         Map<Long, GroupStampResult> stamps = findStamps(page);
         Map<Long, String> nicknames = findNicknames(page);
-        List<EmotionDetailView> items = page.stream().map(emotion -> {
+
+        return page.stream().map(emotion -> {
             GroupStampResult stamp = null;
             if (emotion.getGroupStamp() != null) {
                 stamp = stamps.get(emotion.getGroupStamp().getId());
             }
+
             return EmotionDetailView.of(emotion, List.copyOf(counts.get(emotion.getId()).values()),
                     issuePlaybackUrl(emotion), stamp, deviceId, findAuthorNickname(emotion, nicknames));
         }).toList();
-        String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
-                page.getLast().getCreatedAt(), page.getLast().getId())) : null;
-        return EmotionPageView.of(items, hasNext, nextCursor);
     }
 
     private EmotionMapPageView findMap(EmotionListCursor cursor, UUID devicePublicId) {
