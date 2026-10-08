@@ -151,19 +151,8 @@ class MapRecordViewModel(
                 RecordInputModeUiModel.Recording -> !recordingFilePath.isNullOrBlank()
             }
         if (!hasContent) return
-        funnel.inputFinished(
-            if (state.inputMode == RecordInputModeUiModel.Recording) "voice" else "text",
-            skipped = false,
-        )
+        funnel.inputFinished(if (state.inputMode == RecordInputModeUiModel.Recording) "voice" else "text")
         _uiModel.value = state.copy(recordingFilePath = recordingFilePath)
-        moveToLocationSelection(currentLocation)
-    }
-
-    fun onSkip(currentLocation: CurrentLocation?) {
-        if (_uiModel.value.isGroupSelectionLoading) return
-        if (_uiModel.value.step != RecordFlowStepUiModel.Input) return
-        funnel.inputFinished("none", skipped = true)
-        _uiModel.value = _uiModel.value.copy(memo = "", recordingFilePath = null)
         moveToLocationSelection(currentLocation)
     }
 
