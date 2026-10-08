@@ -164,7 +164,7 @@ class PressRepositoryLongQueueTest {
         }
 
     @Test
-    fun `unsupported duplicate prevention blocks replay but keeps accepting new input`() =
+    fun `unconfirmed batch retires without replay and drains later input`() =
         runTest {
             val server = Server()
             val sender = Sender(server, PressSendResult.OutcomeUnknown, applyBeforeUnknown = false)
@@ -177,18 +177,23 @@ class PressRepositoryLongQueueTest {
             repository.retryUnsent()
             advanceTimeBy(120_000)
             runCurrent()
-            assertEquals(1, sender.batches.size)
-            assertEquals(10_001L, repository.state.value.pendingPressCount)
+            assertEquals(1, sender.batches.count { it.requestId == sender.batches.first().requestId })
+            assertEquals(0L, repository.state.value.pendingPressCount)
             assertEquals(
-                0L,
+                10_000L,
                 repository.state.value.myToday
                     ?.total,
             )
-            assertTrue(repository.state.value.isOutcomeUnknown)
+            assertEquals(
+                10_000L,
+                repository.state.value.allToday
+                    ?.total,
+            )
+            assertFalse(repository.state.value.isOutcomeUnknown)
         }
 
     @Test
-    fun `unknown result without server apply still cannot be guessed from aggregate totals`() =
+    fun `unconfirmed batch retires after three successful reads without guessing or replay`() =
         runTest {
             val server = Server()
             val sender = Sender(server, PressSendResult.OutcomeUnknown, applyBeforeUnknown = false)
@@ -202,9 +207,118 @@ class PressRepositoryLongQueueTest {
             advanceTimeBy(10_000)
             runCurrent()
             assertEquals(0L, server.counts.values.sum())
+            assertEquals(0L, repository.state.value.pendingPressCount)
+            assertFalse(repository.state.value.isOutcomeUnknown)
+            assertEquals(0L, repository.state.value.optimisticAllPressCount)
+            assertEquals(1, sender.batches.size)
+        }
+
+    @Test
+    fun `later snapshot confirms an unknown batch and sends queued input`() =
+        runTest {
+            val server = Server()
+            val sender = Sender(server, PressSendResult.OutcomeUnknown, applyBeforeUnknown = false)
+            val repository = repository(server, sender)
+            repository.refreshToday()
+            runCurrent()
+            repository.accept(EmotionState.ANGRY)
+            runCurrent()
+            repository.accept(EmotionState.EXHAUSTED)
+            server.apply(sender.batches.first())
+            repository.refreshToday(force = true)
+            runCurrent()
+            advanceTimeBy(100)
+            runCurrent()
+            assertEquals(2, sender.batches.size)
+            assertNotEquals(sender.batches[0].requestId, sender.batches[1].requestId)
+            assertEquals(
+                2L,
+                repository.state.value.myToday
+                    ?.total,
+            )
+            assertEquals(
+                2L,
+                repository.state.value.allToday
+                    ?.total,
+            )
+            assertEquals(0L, repository.state.value.pendingPressCount)
+            assertFalse(repository.state.value.isOutcomeUnknown)
+            assertFalse(repository.state.value.hasAllError)
+        }
+
+    @Test
+    fun `failed reads do not exhaust unknown reconciliation and background reads recover`() =
+        runTest {
+            val server = Server()
+            val sender =
+                Sender(
+                    server,
+                    PressSendResult.OutcomeUnknown,
+                    applyBeforeUnknown = false,
+                    afterSend = { server.failReads = true },
+                )
+            val repository = repository(server, sender)
+            repository.refreshToday()
+            runCurrent()
+            repository.accept(EmotionState.ANGRY)
+            runCurrent()
+            advanceTimeBy(10_000)
+            runCurrent()
             assertEquals(1L, repository.state.value.pendingPressCount)
             assertTrue(repository.state.value.isOutcomeUnknown)
+            server.apply(sender.batches.first())
+            server.failReads = false
+            advanceTimeBy(60_000)
+            runCurrent()
             assertEquals(1, sender.batches.size)
+            assertEquals(0L, repository.state.value.pendingPressCount)
+            assertEquals(
+                1L,
+                repository.state.value.myToday
+                    ?.total,
+            )
+            assertEquals(
+                1L,
+                repository.state.value.allToday
+                    ?.total,
+            )
+            assertFalse(repository.state.value.isOutcomeUnknown)
+        }
+
+    @Test
+    fun `new server date retires only the unknown batch and resumes queued input`() =
+        runTest {
+            val server = Server()
+            val sender = Sender(server, PressSendResult.OutcomeUnknown, applyBeforeUnknown = false)
+            val repository = repository(server, sender)
+            repository.refreshToday()
+            runCurrent()
+            repository.accept(EmotionState.ANGRY)
+            runCurrent()
+            repository.accept(EmotionState.EXHAUSTED)
+            server.pressDate = "2026-10-09"
+            repository.refreshToday(force = true)
+            runCurrent()
+            advanceTimeBy(100)
+            runCurrent()
+            assertEquals(2, sender.batches.size)
+            assertEquals(
+                "2026-10-09",
+                repository.state.value.myToday
+                    ?.pressDate,
+            )
+            assertEquals(
+                1L,
+                repository.state.value.myToday
+                    ?.total,
+            )
+            assertEquals(
+                1L,
+                repository.state.value.allToday
+                    ?.total,
+            )
+            assertEquals(0L, repository.state.value.pendingPressCount)
+            assertFalse(repository.state.value.isOutcomeUnknown)
         }
 
     @Test
@@ -221,7 +335,8 @@ class PressRepositoryLongQueueTest {
             repository.retryUnsent()
             runCurrent()
             assertEquals(1, sender.batches.size)
-            assertEquals(1L, repository.state.value.pendingPressCount)
+            assertEquals(0L, repository.state.value.pendingPressCount)
+            assertFalse(repository.state.value.isOutcomeUnknown)
         }
 
     @Test
@@ -352,10 +467,11 @@ class PressRepositoryLongQueueTest {
     private class Server : PressStatisticsDataSource {
         val counts = EmotionState.entries.associateWith { 0L }.toMutableMap()
         var failReads = false
+        var pressDate = "2026-10-08"
 
         override suspend fun findMyToday(): PressReadResult<MyDailyPressSnapshot> {
             if (failReads) return PressReadResult.Unavailable
-            return PressReadResult.Loaded(MyDailyPressSnapshot("2026-10-08", counts.toMap(), counts.values.sum()))
+            return PressReadResult.Loaded(MyDailyPressSnapshot(pressDate, counts.toMap(), counts.values.sum()))
         }
 
         override suspend fun findAllToday(): PressReadResult<AllDailyPressSnapshot> =
@@ -363,7 +479,7 @@ class PressRepositoryLongQueueTest {
                 PressReadResult.Unavailable
             } else {
                 PressReadResult.Loaded(
-                    AllDailyPressSnapshot("2026-10-08", counts.values.sum()),
+                    AllDailyPressSnapshot(pressDate, counts.values.sum()),
                 )
             }
 

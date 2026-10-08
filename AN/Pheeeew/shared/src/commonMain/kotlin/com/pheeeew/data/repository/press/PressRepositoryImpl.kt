@@ -345,7 +345,7 @@ internal class PressRepositoryImpl(
         val my = (pair.my as? PressReadResult.Loaded)?.value?.takeIf { datesMatch }
         val all = (pair.all as? PressReadResult.Loaded)?.value?.takeIf { datesMatch }
         val write = pendingWrite
-        val confirmed = my != null && write?.phase == WritePhase.AwaitingSnapshot && write.isCoveredBy(my)
+        val confirmed = my != null && write?.uncertain == true && write.isCoveredBy(my)
         if (confirmed) {
             removeOptimistic(checkNotNull(write).batch)
             acceptedSinceAllSnapshot += checkNotNull(write).batch.totalCount
@@ -353,10 +353,23 @@ internal class PressRepositoryImpl(
             pendingWrite = null
             failures = 0
             retryJob?.cancel()
-        } else if (write?.phase == WritePhase.AwaitingSnapshot) {
-            // Keep the fixed batch and its baseline. A later replay is allowed only when the sender
-            // advertises a server-enforced idempotency window.
-            pendingWrite = write.copy(phase = WritePhase.RetryPending)
+            pausedNotice = null
+        } else if (write?.uncertain == true && my != null) {
+            val misses = write.reconciliationMisses + 1
+            if (my.pressDate != write.baseline.pressDate ||
+                (!canRetryUnknown() && misses >= MAX_UNKNOWN_RECONCILIATION_READS)
+            ) {
+                // An aggregate cannot prove non-application. Retire only this ambiguous batch,
+                // without replay, and adopt the server baseline so new input can proceed.
+                removeOptimistic(write.batch)
+                removeOptimisticAll(write.batch.totalCount.toLong())
+                pendingWrite = null
+                pausedNotice = null
+                failures = 0
+                retryJob?.cancel()
+            } else {
+                pendingWrite = write.copy(phase = WritePhase.RetryPending, reconciliationMisses = misses)
+            }
         }
         // Freeze the personal baseline until a pending write is covered; partial/stale reads must not double-count it.
         val readableMy =
@@ -379,6 +392,7 @@ internal class PressRepositoryImpl(
                 isLoadingAll = false,
                 hasMyError = my == null || (readableMy != null && safeMy == null),
                 hasAllError = safeAll == null || safeAll.total > Long.MAX_VALUE - optimisticAllPressCount,
+                notice = if (pendingWrite?.uncertain == true) PressSessionNotice.OutcomeUnknown else pausedNotice,
             ),
         )
         val readAt = nowMillis()
@@ -390,7 +404,7 @@ internal class PressRepositoryImpl(
             lastAllSuccessfulRead = readAt
             hasAllSuccessfulRead = true
         }
-        if (safeMy != null && all != null) {
+        if (safeMy != null && displayableAll != null) {
             statisticsFailures = 0
             statisticsRetryJob?.cancel()
             statisticsRetryJob = null
@@ -442,6 +456,7 @@ internal class PressRepositoryImpl(
         statisticsRetryJob =
             sessionScope.launch {
                 delay(wait)
+                statisticsRetryJob = null
                 if (connected != false) launchRead()
             }
     }
@@ -533,10 +548,12 @@ internal class PressRepositoryImpl(
         val createdAtMillis: Long,
         val phase: WritePhase = WritePhase.InFlight,
         val uncertain: Boolean = false,
+        val reconciliationMisses: Int = 0,
     )
 
     private companion object {
         const val STATISTICS_TTL_MILLIS = 5_000L
+        const val MAX_UNKNOWN_RECONCILIATION_READS = 3
 
         fun monotonicClock(): () -> Long {
             val origin = TimeSource.Monotonic.markNow()
