@@ -63,11 +63,28 @@ public interface EmotionPressControllerApi {
             @ApiResponse(responseCode = "200", description = "이 기기의 해당 읍면동 오늘 집계"),
             @ApiResponse(responseCode = "400",
                     description = "좌표·counts 가 올바르지 않거나 배정할 읍면동이 없음(EMOTION-014)",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "요청 값 오류", value = """
+                                            {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
+                                            """),
+                                    @ExampleObject(name = "서비스 범위 밖", value = """
+                                            {"code": "EMOTION-014", "message": "이 위치에서는 기록할 수 없습니다. 다른 위치를 선택해 주세요."}
+                                            """)
+                            })),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """))),
             @ApiResponse(responseCode = "503", description = "서버의 지역 분류 준비가 완료되지 않음(EMOTION-013)",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "EMOTION-013", "message": "지역 분류 자료를 사용할 수 없습니다."}
+                                    """)))
     })
     EmotionPressResponse press(
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -107,9 +124,17 @@ public interface EmotionPressControllerApi {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "daysAgo 값이 올바르지 않음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
+                                    """))),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """)))
     })
     EmotionPressDailyResponse findMyDailyPresses(
             @Min(value = 0, message = "며칠 전인지는 0 이상이어야 합니다.")
@@ -135,9 +160,17 @@ public interface EmotionPressControllerApi {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "daysAgo 값이 올바르지 않음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
+                                    """))),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음",
-                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """)))
     })
     EmotionPressTotalResponse findDailyTotal(
             @Min(value = 0, message = "며칠 전인지는 0 이상이어야 합니다.")

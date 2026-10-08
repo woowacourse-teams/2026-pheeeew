@@ -1,12 +1,17 @@
 package com.pheeeew.groups.presentation;
 
+import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.groups.presentation.dto.GroupDetailV3Response;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.UUID;
+import org.springframework.http.MediaType;
 
 @Tag(name = "그룹")
 public interface GroupDetailV3ControllerApi {
@@ -55,8 +60,18 @@ public interface GroupDetailV3ControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
+            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-001", "message": "그룹을 찾을 수 없습니다."}
+                                    """)))
     })
     GroupDetailV3Response findOne(
             UUID groupId,
