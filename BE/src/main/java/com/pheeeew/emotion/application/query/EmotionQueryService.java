@@ -68,32 +68,15 @@ public class EmotionQueryService {
     private final RegionClassifier regionClassifier;
 
     public List<EmotionRegionMapItemView> findRegionMap(EmotionSearchBounds bounds, RegionLevel level, UUID groupId) {
-        List<Region> regions = regionClassifier.findIntersectingRegions(bounds, level);
-        List<String> regionCodes = regions.stream()
-                .map(Region::code)
-                .toList();
+        return findRegionMap(bounds, level, groupId, false);
+    }
 
-        Map<String, RegionEmotionSummary> summaries = findSummariesByRegionCodes(regionCodes, groupId);
-
-        return regions.stream()
-                .filter(region -> summaries.containsKey(region.code()))
-                .map(region -> EmotionRegionMapItemView.of(region, summaries.get(region.code())))
-                .toList();
+    public List<EmotionRegionMapItemView> findContentRegionMap(EmotionSearchBounds bounds, RegionLevel level, UUID groupId) {
+        return findRegionMap(bounds, level, groupId, true);
     }
 
     public Map<String, RegionEmotionSummary> findSummariesByRegionCodes(List<String> regionCodes, UUID groupId) {
-        if (!regionRepository.isAggregationReady()) {
-            throw new EmotionException(EMOTION_REGION_DATA_UNAVAILABLE);
-        }
-
-        if (regionCodes.isEmpty()) {
-            return Map.of();
-        }
-
-        Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
-
-        return emotionRepository.findSummariesByRegionCodes(regionCodes, groupId, snapshotAt).stream()
-                .collect(Collectors.toMap(RegionEmotionSummaryProjection::getRegionCode, RegionEmotionSummary::from));
+        return findSummariesByRegionCodes(regionCodes, groupId, false);
     }
 
     public EmotionDetailView findById(Long emotionId, UUID devicePublicId) {
@@ -136,13 +119,50 @@ public class EmotionQueryService {
     }
 
     public EmotionMapPageView findMapWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor) {
+        return findMapWithinBounds(bounds, devicePublicId, groupId, encodedCursor, false);
+    }
+
+    public EmotionMapPageView findContentMapWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor) {
+        return findMapWithinBounds(bounds, devicePublicId, groupId, encodedCursor, true);
+    }
+
+    private List<EmotionRegionMapItemView> findRegionMap(EmotionSearchBounds bounds, RegionLevel level, UUID groupId, boolean contentOnly) {
+        List<Region> regions = regionClassifier.findIntersectingRegions(bounds, level);
+        List<String> regionCodes = regions.stream()
+                .map(Region::code)
+                .toList();
+
+        Map<String, RegionEmotionSummary> summaries = findSummariesByRegionCodes(regionCodes, groupId, contentOnly);
+
+        return regions.stream()
+                .filter(region -> summaries.containsKey(region.code()))
+                .map(region -> EmotionRegionMapItemView.of(region, summaries.get(region.code())))
+                .toList();
+    }
+
+    private Map<String, RegionEmotionSummary> findSummariesByRegionCodes(List<String> regionCodes, UUID groupId, boolean contentOnly) {
+        if (!regionRepository.isAggregationReady()) {
+            throw new EmotionException(EMOTION_REGION_DATA_UNAVAILABLE);
+        }
+
+        if (regionCodes.isEmpty()) {
+            return Map.of();
+        }
+
+        Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
+
+        return emotionRepository.findSummariesByRegionCodes(regionCodes, groupId, snapshotAt, contentOnly).stream()
+                .collect(Collectors.toMap(RegionEmotionSummaryProjection::getRegionCode, RegionEmotionSummary::from));
+    }
+
+    private EmotionMapPageView findMapWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor, boolean contentOnly) {
         EmotionCursor cursor = encodedCursor == null
                 ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
                 : EmotionCursorCodec.decodeWithinBounds(encodedCursor);
 
         cursor.validateSnapshotAt(Instant.now(clock));
 
-        return findMap(cursor, devicePublicId);
+        return findMap(cursor, devicePublicId, contentOnly);
     }
 
     private Instant currentSnapshotAt() {
@@ -253,12 +273,12 @@ public class EmotionQueryService {
         return counts;
     }
 
-    private EmotionMapPageView findMap(EmotionCursor cursor, UUID devicePublicId) {
+    private EmotionMapPageView findMap(EmotionCursor cursor, UUID devicePublicId, boolean contentOnly) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
         List<Emotion> found = emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), false, MAP_PAGE_SIZE + 1);
+                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), contentOnly, MAP_PAGE_SIZE + 1);
 
         boolean hasNext = found.size() > MAP_PAGE_SIZE;
         List<Emotion> page = hasNext ? found.subList(0, MAP_PAGE_SIZE) : found;

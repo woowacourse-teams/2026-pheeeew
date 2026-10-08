@@ -55,6 +55,7 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
                 FROM emotions emotion
                 JOIN region_members member ON member.member_code = emotion.region_code
                 WHERE emotion.deleted_at IS NULL
+                  AND (:contentOnly = FALSE OR emotion.memo IS NOT NULL OR emotion.audio_object_key IS NOT NULL)
                   AND emotion.created_at <= :snapshotAt
                   AND (CAST(:groupId AS UUID) IS NULL OR EXISTS (
                       SELECT 1 FROM group_stamps stamp JOIN groups stamp_group ON stamp_group.id = stamp.group_id
@@ -85,7 +86,8 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
     List<RegionEmotionSummaryProjection> findSummariesByRegionCodes(
             @Param("regionCodes") List<String> regionCodes,
             @Param("groupId") UUID groupId,
-            @Param("snapshotAt") Instant snapshotAt
+            @Param("snapshotAt") Instant snapshotAt,
+            @Param("contentOnly") boolean contentOnly
     );
 
     @Query(value = """
