@@ -11,8 +11,8 @@ import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
-import com.pheeeew.emotion.application.EmotionListCursorCodec;
-import com.pheeeew.emotion.application.dto.EmotionListCursor;
+import com.pheeeew.emotion.application.EmotionCursorCodec;
+import com.pheeeew.emotion.application.dto.EmotionCursor;
 import com.pheeeew.emotion.application.dto.EmotionPageView;
 import com.pheeeew.emotion.application.dto.EmotionMapItemView;
 import com.pheeeew.emotion.application.dto.EmotionMapPageView;
@@ -110,9 +110,9 @@ public class EmotionQueryService {
     }
 
     public EmotionPageView findListWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor) {
-        EmotionListCursor cursor = encodedCursor == null
-                ? EmotionListCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
-                : EmotionListCursorCodec.decodeWithinBounds(encodedCursor);
+        EmotionCursor cursor = encodedCursor == null
+                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
+                : EmotionCursorCodec.decodeWithinBounds(encodedCursor);
 
         cursor.validateSnapshotAt(Instant.now(clock));
 
@@ -120,9 +120,9 @@ public class EmotionQueryService {
     }
 
     public EmotionPageView findListWithoutBounds(UUID devicePublicId, UUID groupId, String encodedCursor) {
-        EmotionListCursor cursor = encodedCursor == null
-                ? EmotionListCursor.initialWithoutBounds(currentSnapshotAt(), groupId)
-                : EmotionListCursorCodec.decodeWithoutBounds(encodedCursor);
+        EmotionCursor cursor = encodedCursor == null
+                ? EmotionCursor.initialWithoutBounds(currentSnapshotAt(), groupId)
+                : EmotionCursorCodec.decodeWithoutBounds(encodedCursor);
 
         cursor.validateSnapshotAt(Instant.now(clock));
         cursor.validateRequestedGroup(groupId);
@@ -131,9 +131,9 @@ public class EmotionQueryService {
     }
 
     public EmotionMapPageView findMapWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor) {
-        EmotionListCursor cursor = encodedCursor == null
-                ? EmotionListCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
-                : EmotionListCursorCodec.decodeWithinBounds(encodedCursor);
+        EmotionCursor cursor = encodedCursor == null
+                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
+                : EmotionCursorCodec.decodeWithinBounds(encodedCursor);
 
         cursor.validateSnapshotAt(Instant.now(clock));
 
@@ -182,7 +182,7 @@ public class EmotionQueryService {
         }
     }
 
-    private EmotionPageView findList(EmotionListCursor cursor, UUID devicePublicId) {
+    private EmotionPageView findList(EmotionCursor cursor, UUID devicePublicId) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
@@ -193,13 +193,13 @@ public class EmotionQueryService {
         List<Emotion> page = hasNext ? found.subList(0, pageSize) : found;
 
         List<EmotionDetailView> items = toListItems(page, deviceId);
-        String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
+        String nextCursor = hasNext ? EmotionCursorCodec.encode(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId())) : null;
 
         return EmotionPageView.of(items, hasNext, nextCursor);
     }
 
-    private List<Emotion> findListEmotions(EmotionListCursor cursor, Long deviceId, int limit) {
+    private List<Emotion> findListEmotions(EmotionCursor cursor, Long deviceId, int limit) {
         if (cursor.bounds() == null) {
             return emotionRepository.findVisiblePageWithoutBounds(cursor.snapshotAt(),
                     cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), limit);
@@ -237,7 +237,7 @@ public class EmotionQueryService {
         }).toList();
     }
 
-    private EmotionMapPageView findMap(EmotionListCursor cursor, UUID devicePublicId) {
+    private EmotionMapPageView findMap(EmotionCursor cursor, UUID devicePublicId) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
         List<Emotion> found = emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
@@ -247,7 +247,7 @@ public class EmotionQueryService {
         Map<Long, GroupStampResult> stamps = findStamps(page);
         List<EmotionMapItemView> items = page.stream().map(emotion -> EmotionMapItemView.of(emotion,
                 emotion.getGroupStamp() == null ? null : stamps.get(emotion.getGroupStamp().getId()))).toList();
-        String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
+        String nextCursor = hasNext ? EmotionCursorCodec.encode(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId())) : null;
         return EmotionMapPageView.of(items, hasNext, nextCursor);
     }

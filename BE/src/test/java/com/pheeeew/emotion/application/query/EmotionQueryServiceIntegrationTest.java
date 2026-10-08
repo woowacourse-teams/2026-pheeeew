@@ -23,8 +23,8 @@ import com.pheeeew.emotion.application.command.EmotionContentResolver;
 import com.pheeeew.emotion.application.dto.EmotionDetailView;
 import com.pheeeew.emotion.application.dto.EmotionPageView;
 import com.pheeeew.emotion.application.dto.EmotionMapItemView;
-import com.pheeeew.emotion.application.EmotionListCursorCodec;
-import com.pheeeew.emotion.application.dto.EmotionListCursor;
+import com.pheeeew.emotion.application.EmotionCursorCodec;
+import com.pheeeew.emotion.application.dto.EmotionCursor;
 import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.Emotion;
@@ -733,7 +733,7 @@ class EmotionQueryServiceIntegrationTest {
     void 공개_목록은_변조된_커서와_미래_스냅샷을_거부한다() {
         assertThatThrownBy(() -> emotionQueryService.findListWithinBounds(null, viewer.getPublicId(), null, "invalid"))
                 .isInstanceOf(EmotionException.class);
-        String future = EmotionListCursorCodec.encode(EmotionListCursor.initialWithinBounds(
+        String future = EmotionCursorCodec.encode(EmotionCursor.initialWithinBounds(
                 EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0), Instant.now().plusSeconds(60)));
         assertThatThrownBy(() -> emotionQueryService.findListWithinBounds(null, viewer.getPublicId(), null, future))
                 .isInstanceOf(EmotionException.class);
@@ -767,7 +767,7 @@ class EmotionQueryServiceIntegrationTest {
                 .containsExactlyElementsOf(expected.stream().limit(50).toList());
         assertThat(page.hasNext()).isEqualTo(count > 50);
         if (page.hasNext()) {
-            EmotionListCursor cursor = EmotionListCursorCodec.decodeWithoutBounds(page.nextCursor());
+            EmotionCursor cursor = EmotionCursorCodec.decodeWithoutBounds(page.nextCursor());
             assertThat(cursor.bounds()).isNull();
             assertThat(cursor.groupId()).isNull();
             assertThat(cursor.lastId()).isEqualTo(page.items().getLast().id());
@@ -859,7 +859,7 @@ class EmotionQueryServiceIntegrationTest {
         assertThat(page.items()).allSatisfy(item -> assertThat(item.groupId()).isEqualTo(group.getPublicId()));
         assertThat(page.hasNext()).isEqualTo(count > 50);
         if (page.hasNext()) {
-            assertThat(EmotionListCursorCodec.decodeWithoutBounds(page.nextCursor()).groupId()).isEqualTo(group.getPublicId());
+            assertThat(EmotionCursorCodec.decodeWithoutBounds(page.nextCursor()).groupId()).isEqualTo(group.getPublicId());
             EmotionPageView next = emotionQueryService.findListWithoutBounds(viewer.getPublicId(), null, page.nextCursor());
             assertThat(next.items()).extracting(EmotionDetailView::id).containsExactly(expected.getFirst());
             assertThat(next.items()).allSatisfy(item -> assertThat(item.groupId()).isEqualTo(group.getPublicId()));
@@ -882,7 +882,7 @@ class EmotionQueryServiceIntegrationTest {
     void 좌표_없는_목록은_전체나_다른_그룹의_커서에_새_그룹_조건을_지정하면_거부한다(boolean cursorHasGroup) {
         // given
         UUID cursorGroupId = cursorHasGroup ? UUID.randomUUID() : null;
-        String cursor = EmotionListCursorCodec.encode(EmotionListCursor.initialWithoutBounds(Instant.now(), cursorGroupId));
+        String cursor = EmotionCursorCodec.encode(EmotionCursor.initialWithoutBounds(Instant.now(), cursorGroupId));
         UUID requestedGroupId = UUID.randomUUID();
 
         // when / then
@@ -937,7 +937,7 @@ class EmotionQueryServiceIntegrationTest {
         // given / when / then
         assertThatThrownBy(() -> emotionQueryService.findListWithoutBounds(UUID.randomUUID(), null, null))
                 .isInstanceOf(DeviceException.class);
-        String cursor = EmotionListCursorCodec.encode(EmotionListCursor.initialWithoutBounds(Instant.now(), null));
+        String cursor = EmotionCursorCodec.encode(EmotionCursor.initialWithoutBounds(Instant.now(), null));
         assertThatThrownBy(() -> emotionQueryService.findListWithoutBounds(UUID.randomUUID(), null, cursor))
                 .isInstanceOf(DeviceException.class);
     }
@@ -965,8 +965,8 @@ class EmotionQueryServiceIntegrationTest {
         assertThat(third.items()).hasSize(1);
         assertThat(Stream.of(first, second, third).flatMap(page -> page.items().stream()).map(EmotionDetailView::id).toList())
                 .containsExactlyElementsOf(expected.reversed());
-        assertThat(EmotionListCursorCodec.decodeWithoutBounds(second.nextCursor()).snapshotAt())
-                .isEqualTo(EmotionListCursorCodec.decodeWithoutBounds(first.nextCursor()).snapshotAt());
+        assertThat(EmotionCursorCodec.decodeWithoutBounds(second.nextCursor()).snapshotAt())
+                .isEqualTo(EmotionCursorCodec.decodeWithoutBounds(first.nextCursor()).snapshotAt());
         assertThat(third.hasNext()).isFalse();
         assertThat(third.nextCursor()).isNull();
         assertThat(third.items().getFirst().emojis()).hasSize(6).contains(EmotionEmojiResult.of(EmojiType.HEART, 1, true));
@@ -993,7 +993,7 @@ class EmotionQueryServiceIntegrationTest {
                 .blockedDeviceId(blockedAuthor.getId()).originEmotionId(byBlockedAuthor.getId()).build());
         Emotion added = saveEmotion(author.getId(), 129, 35);
         entityManager.flush();
-        Instant snapshotAt = EmotionListCursorCodec.decodeWithoutBounds(first.nextCursor()).snapshotAt();
+        Instant snapshotAt = EmotionCursorCodec.decodeWithoutBounds(first.nextCursor()).snapshotAt();
         setCreatedAt(added, snapshotAt.plusSeconds(1));
         entityManager.clear();
 
@@ -1015,9 +1015,9 @@ class EmotionQueryServiceIntegrationTest {
         Instant now = Instant.now();
         EmotionSearchBounds bounds = EmotionSearchBounds.of(126, 37, 128, 38);
         List<String> invalidCursors = List.of("invalid",
-                EmotionListCursorCodec.encode(EmotionListCursor.initialWithoutBounds(now.plusSeconds(60), null)),
-                EmotionListCursorCodec.encode(EmotionListCursor.initialWithinBounds(bounds, now, null)),
-                EmotionListCursorCodec.encode(EmotionListCursor.initialWithinBounds(bounds, now, UUID.randomUUID())));
+                EmotionCursorCodec.encode(EmotionCursor.initialWithoutBounds(now.plusSeconds(60), null)),
+                EmotionCursorCodec.encode(EmotionCursor.initialWithinBounds(bounds, now, null)),
+                EmotionCursorCodec.encode(EmotionCursor.initialWithinBounds(bounds, now, UUID.randomUUID())));
 
         // when / then
         for (String cursor : invalidCursors) {
@@ -1025,7 +1025,7 @@ class EmotionQueryServiceIntegrationTest {
                     .isInstanceOfSatisfying(EmotionException.class,
                             exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_INVALID_CURSOR));
         }
-        String withoutBounds = EmotionListCursorCodec.encode(EmotionListCursor.initialWithoutBounds(now, null));
+        String withoutBounds = EmotionCursorCodec.encode(EmotionCursor.initialWithoutBounds(now, null));
         assertThatThrownBy(() -> emotionQueryService.findListWithinBounds(null, viewer.getPublicId(), null, withoutBounds))
                 .isInstanceOfSatisfying(EmotionException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_INVALID_CURSOR));

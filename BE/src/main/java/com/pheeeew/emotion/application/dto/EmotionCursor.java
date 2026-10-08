@@ -8,9 +8,9 @@ import java.time.Instant;
 import java.util.Objects;
 import java.util.UUID;
 
-public record EmotionListCursor(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId, UUID groupId) {
+public record EmotionCursor(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId, UUID groupId) {
 
-    public EmotionListCursor {
+    public EmotionCursor {
         Objects.requireNonNull(snapshotAt);
         Objects.requireNonNull(lastItemCreatedAt);
         if (lastItemCreatedAt.isAfter(snapshotAt)) {
@@ -21,26 +21,26 @@ public record EmotionListCursor(EmotionSearchBounds bounds, Instant snapshotAt, 
         }
     }
 
-    public static EmotionListCursor initialWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt) {
+    public static EmotionCursor initialWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt) {
         return initialWithinBounds(bounds, snapshotAt, null);
     }
 
-    public static EmotionListCursor initialWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt, UUID groupId) {
+    public static EmotionCursor initialWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt, UUID groupId) {
         Objects.requireNonNull(bounds);
-        return new EmotionListCursor(bounds, snapshotAt, snapshotAt, Long.MAX_VALUE, groupId);
+        return new EmotionCursor(bounds, snapshotAt, snapshotAt, Long.MAX_VALUE, groupId);
     }
 
-    public static EmotionListCursor ofWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId) {
+    public static EmotionCursor ofWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId) {
         Objects.requireNonNull(bounds);
-        return new EmotionListCursor(bounds, snapshotAt, lastItemCreatedAt, lastId, null);
+        return new EmotionCursor(bounds, snapshotAt, lastItemCreatedAt, lastId, null);
     }
 
-    public static EmotionListCursor initialWithoutBounds(Instant snapshotAt, UUID groupId) {
+    public static EmotionCursor initialWithoutBounds(Instant snapshotAt, UUID groupId) {
         return ofWithoutBounds(snapshotAt, snapshotAt, Long.MAX_VALUE, groupId);
     }
 
-    public static EmotionListCursor ofWithoutBounds(Instant snapshotAt, Instant lastItemCreatedAt, long lastId, UUID groupId) {
-        return new EmotionListCursor(null, snapshotAt, lastItemCreatedAt, lastId, groupId);
+    public static EmotionCursor ofWithoutBounds(Instant snapshotAt, Instant lastItemCreatedAt, long lastId, UUID groupId) {
+        return new EmotionCursor(null, snapshotAt, lastItemCreatedAt, lastId, groupId);
     }
 
     public void validateSnapshotAt(Instant now) {
@@ -55,7 +55,7 @@ public record EmotionListCursor(EmotionSearchBounds bounds, Instant snapshotAt, 
         }
     }
 
-    public EmotionListCursor next(Instant lastItemCreatedAt, long lastId) {
-        return new EmotionListCursor(bounds, snapshotAt, lastItemCreatedAt, lastId, groupId);
+    public EmotionCursor next(Instant lastItemCreatedAt, long lastId) {
+        return new EmotionCursor(bounds, snapshotAt, lastItemCreatedAt, lastId, groupId);
     }
 }

@@ -2,7 +2,7 @@ package com.pheeeew.emotion.application;
 
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_INVALID_CURSOR;
 
-import com.pheeeew.emotion.application.dto.EmotionListCursor;
+import com.pheeeew.emotion.application.dto.EmotionCursor;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
 import java.nio.charset.StandardCharsets;
@@ -12,7 +12,7 @@ import java.util.Base64;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
-public final class EmotionListCursorCodec {
+public final class EmotionCursorCodec {
 
     private static final String WITHIN_BOUNDS_VERSION = "1";
     private static final String WITHOUT_BOUNDS_VERSION = "3";
@@ -21,10 +21,10 @@ public final class EmotionListCursorCodec {
     private static final int WITHOUT_BOUNDS_FIELD_COUNT = 5;
     private static final int MAX_CURSOR_LENGTH = 2_048;
 
-    private EmotionListCursorCodec() {
+    private EmotionCursorCodec() {
     }
 
-    public static EmotionListCursor decodeWithinBounds(String encoded) {
+    public static EmotionCursor decodeWithinBounds(String encoded) {
         try {
             String[] fields = decodeFields(encoded);
             boolean groupCursor = fields.length == WITHIN_BOUNDS_FIELD_COUNT + 1 && "2".equals(fields[0]);
@@ -32,7 +32,7 @@ public final class EmotionListCursorCodec {
                 throw invalidCursor();
             }
 
-            return new EmotionListCursor(
+            return new EmotionCursor(
                     EmotionSearchBounds.of(
                             Double.parseDouble(fields[1]), Double.parseDouble(fields[2]),
                             Double.parseDouble(fields[3]), Double.parseDouble(fields[4])
@@ -47,20 +47,20 @@ public final class EmotionListCursorCodec {
         }
     }
 
-    public static EmotionListCursor decodeWithoutBounds(String encoded) {
+    public static EmotionCursor decodeWithoutBounds(String encoded) {
         try {
             String[] fields = decodeFields(encoded);
             if (fields.length != WITHOUT_BOUNDS_FIELD_COUNT || !WITHOUT_BOUNDS_VERSION.equals(fields[0])) {
                 throw invalidCursor();
             }
-            return EmotionListCursor.ofWithoutBounds(Instant.parse(fields[1]), Instant.parse(fields[2]),
+            return EmotionCursor.ofWithoutBounds(Instant.parse(fields[1]), Instant.parse(fields[2]),
                     Long.parseLong(fields[3]), fields[4].isEmpty() ? null : UUID.fromString(fields[4]));
         } catch (IllegalArgumentException | DateTimeException exception) {
             throw invalidCursor();
         }
     }
 
-    public static String encode(EmotionListCursor cursor) {
+    public static String encode(EmotionCursor cursor) {
         EmotionSearchBounds bounds = cursor.bounds();
         if (bounds == null) {
             return encodePayload(String.join(FIELD_DELIMITER, WITHOUT_BOUNDS_VERSION, cursor.snapshotAt().toString(),

@@ -13,8 +13,8 @@ import static org.mockito.Mockito.when;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
-import com.pheeeew.emotion.application.EmotionListCursorCodec;
-import com.pheeeew.emotion.application.dto.EmotionListCursor;
+import com.pheeeew.emotion.application.EmotionCursorCodec;
+import com.pheeeew.emotion.application.dto.EmotionCursor;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
@@ -88,7 +88,7 @@ class EmotionMetricsAspectTest {
 
     @Test
     void 다음_페이지를_별도로_기록한다() {
-        String cursor = EmotionListCursorCodec.encode(EmotionListCursor.initialWithinBounds(BOUNDS, NOW));
+        String cursor = EmotionCursorCodec.encode(EmotionCursor.initialWithinBounds(BOUNDS, NOW));
         service.findListWithinBounds(null, device.getPublicId(), null, cursor);
         assertThat(registry.get("pheeeew.sigh.list.results").tags("page", "next", "has_next", "false").summary().count()).isOne();
     }
@@ -123,7 +123,7 @@ class EmotionMetricsAspectTest {
     @Test
     void 좌표_없는_다음_페이지도_첫_페이지와_구분하여_기록한다() {
         // given
-        String cursor = EmotionListCursorCodec.encode(EmotionListCursor.initialWithoutBounds(NOW, null));
+        String cursor = EmotionCursorCodec.encode(EmotionCursor.initialWithoutBounds(NOW, null));
 
         // when
         service.findListWithoutBounds(device.getPublicId(), null, cursor);
