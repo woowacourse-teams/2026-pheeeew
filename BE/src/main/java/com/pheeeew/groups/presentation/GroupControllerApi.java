@@ -1,5 +1,6 @@
 package com.pheeeew.groups.presentation;
 
+import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.groups.presentation.dto.GroupCreateRequest;
 import com.pheeeew.groups.presentation.dto.GroupDetailResponse;
 import com.pheeeew.groups.presentation.dto.GroupPressCountResponse;
@@ -7,9 +8,6 @@ import com.pheeeew.groups.presentation.dto.GroupPressRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,8 +15,11 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.MediaType;
@@ -44,7 +45,24 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "생성 성공"),
-            @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름")
+            @ApiResponse(responseCode = "400", description = "이름, 설명, 스탬프 값이 올바르지 않음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-002", "message": "이미 사용 중인 그룹 이름입니다."}
+                                    """)))
     })
     ResponseEntity<GroupResponse> save(
             @Valid GroupCreateRequest request,
@@ -76,7 +94,12 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "내 그룹 스탬프 목록 조회 성공"),
-            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기")
+            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """)))
     })
     List<GroupStampItemResponse> findMyStamps(@Parameter(hidden = true) UUID devicePublicId);
 
@@ -141,9 +164,29 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "변경 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹"),
-            @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름")
+            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "그룹장 아님", value = """
+                                            {"code": "GROUP-003", "message": "그룹장만 할 수 있습니다."}
+                                            """),
+                                    @ExampleObject(name = "멤버 아님", value = """
+                                            {"code": "GROUP-008", "message": "그룹 멤버만 할 수 있습니다."}
+                                            """)
+                            })),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-001", "message": "그룹을 찾을 수 없습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-002", "message": "이미 사용 중인 그룹 이름입니다."}
+                                    """)))
     })
     GroupResponse update(
             UUID groupId,
@@ -256,8 +299,23 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "재발급 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
+            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "그룹장 아님", value = """
+                                            {"code": "GROUP-003", "message": "그룹장만 할 수 있습니다."}
+                                            """),
+                                    @ExampleObject(name = "멤버 아님", value = """
+                                            {"code": "GROUP-008", "message": "그룹 멤버만 할 수 있습니다."}
+                                            """)
+                            })),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-001", "message": "그룹을 찾을 수 없습니다."}
+                                    """)))
     })
     GroupResponse reissueInviteCode(
             UUID groupId,
