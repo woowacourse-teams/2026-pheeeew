@@ -58,9 +58,9 @@ public record EmotionDetailView(
         return new EmotionDetailView(
                 emotion.getId(), emotion.getLongitude(), emotion.getLatitude(), emotion.getCreatedAt(),
                 emotion.getState(), emotion.getRotationDegrees(), emotion.getMemo(), nickname,
-                List.copyOf(emojis), emotion.getContent().getAudio() != null, audio, groupStamp,
+                List.copyOf(emojis), emotion.getContent().hasAudio(), audio, groupStamp,
                 groupId,
-                emotion.getDeviceId() != null && emotion.getDeviceId().equals(viewerDeviceId)
+                emotion.isWrittenBy(viewerDeviceId)
         );
     }
 }

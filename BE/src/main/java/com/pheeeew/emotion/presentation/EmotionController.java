@@ -2,7 +2,8 @@ package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.presentation.dto.CursorResponse;
-import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionsWithinBoundsRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionsWithoutBoundsRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
@@ -47,12 +48,25 @@ public class EmotionController implements EmotionControllerApi {
 
     @Override
     @GetMapping("/v1/emotions")
-    public ResponseEntity<CursorResponse<EmotionDetailResponse>> findAll(
-            @ModelAttribute EmotionListRequest request, @CurrentDevice UUID devicePublicId
+    public ResponseEntity<CursorResponse<EmotionDetailResponse>> findListWithinBounds(
+            @ModelAttribute EmotionsWithinBoundsRequest request,
+            @CurrentDevice UUID devicePublicId
     ) {
-        EmotionPageView page = request.isNextPageRequest()
-                ? emotionQueryService.findNextListPage(request.cursor(), devicePublicId)
-                : emotionQueryService.findFirstListPage(request.toBounds(), devicePublicId, request.groupId());
+        EmotionPageView page = emotionQueryService.findListWithinBounds(
+                request.toBounds(), devicePublicId, request.groupId(), request.cursor());
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
+                .body(CursorResponse.of(page.items().stream().map(EmotionDetailResponse::from).toList(),
+                        page.hasNext(), page.nextCursor()));
+    }
+
+    @Override
+    @GetMapping("/v3/emotions")
+    public ResponseEntity<CursorResponse<EmotionDetailResponse>> findListWithoutBounds(
+            @ModelAttribute EmotionsWithoutBoundsRequest request,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        EmotionPageView page = emotionQueryService.findListWithoutBounds(devicePublicId, request.groupId(), request.cursor());
+
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(CursorResponse.of(page.items().stream().map(EmotionDetailResponse::from).toList(),
                         page.hasNext(), page.nextCursor()));
@@ -61,11 +75,10 @@ public class EmotionController implements EmotionControllerApi {
     @Override
     @GetMapping("/v1/emotions/map")
     public ResponseEntity<CursorResponse<EmotionMapResponse>> findMap(
-            @ModelAttribute EmotionListRequest request, @CurrentDevice UUID devicePublicId
+            @ModelAttribute EmotionsWithinBoundsRequest request, @CurrentDevice UUID devicePublicId
     ) {
-        EmotionMapPageView page = request.isNextPageRequest()
-                ? emotionQueryService.findNextMapPage(request.cursor(), devicePublicId)
-                : emotionQueryService.findFirstMapPage(request.toBounds(), devicePublicId, request.groupId());
+        EmotionMapPageView page = emotionQueryService.findMapWithinBounds(
+                request.toBounds(), devicePublicId, request.groupId(), request.cursor());
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(CursorResponse.of(page.items().stream().map(EmotionMapResponse::from).toList(),
                         page.hasNext(), page.nextCursor()));

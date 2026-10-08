@@ -853,9 +853,9 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"GET,/api/v3/emotions", "PUT,/api/v3/emotions", "DELETE,/api/v3/emotions/1",
+    @CsvSource({"GET,/api/v3/emotions/42", "PUT,/api/v3/emotions", "DELETE,/api/v3/emotions/1",
             "POST,/api/v3/emotions/1", "GET,/api/v3/emotions/map"})
-    void v3_감정_등록_외의_경로와_메서드는_열지_않는다(String method, String path) {
+    void v3_감정_등록과_목록_외의_경로와_메서드는_열지_않는다(String method, String path) {
         // given / when
         client.method(HttpMethod.valueOf(method)).uri(path)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + AccessTokenFixture.유효한_토큰(기기_공개_식별자))
@@ -1035,8 +1035,8 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v1/emotions/42"})
-    void 토큰_없이_v2_목록이나_단건을_조회하면_401을_반환한다(String uri) {
+    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v3/emotions", "/api/v1/emotions/42"})
+    void 토큰_없이_감정_목록이나_단건을_조회하면_401을_반환한다(String uri) {
         // given / when
         RestTestClient.ResponseSpec result = client.get().uri(uri).exchange();
 
@@ -1045,8 +1045,8 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v1/emotions/42"})
-    void 만료된_토큰으로_v2_목록이나_단건을_조회하면_401을_반환한다(String uri) {
+    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v3/emotions", "/api/v1/emotions/42"})
+    void 만료된_토큰으로_감정_목록이나_단건을_조회하면_401을_반환한다(String uri) {
         // given
         String accessToken = AccessTokenFixture.만료된_토큰(기기_공개_식별자);
 
@@ -1060,15 +1060,16 @@ class SecurityAuthorizationIntegrationTest {
         인증_필요를_검증한다(result);
     }
 
-    @Test
-    void 유효한_토큰으로_v2_목록과_단건을_조회할_수_있다() {
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v3/emotions"})
+    void 유효한_토큰으로_감정_목록과_단건을_조회할_수_있다(String listUri) {
         // given
         String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
         Long emotionId = 한숨을_등록한다(accessToken);
 
         // when
         RestTestClient.ResponseSpec listResult = client.get()
-                .uri("/api/v1/emotions" + 지도_영역_질의)
+                .uri(listUri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .exchange();
         RestTestClient.ResponseSpec detailResult = client.get()
@@ -1276,7 +1277,6 @@ class SecurityAuthorizationIntegrationTest {
         assertThat(paths.path("/api/v1/emotions").path("post").path("summary").asText())
                 .isEqualTo("감정 등록 (구버전 호환)");
         assertThat(paths.path("/api/v3/emotions").path("post").path("deprecated").asBoolean()).isFalse();
-        assertThat(paths.path("/api/v1/emotions").path("get").path("deprecated").asBoolean()).isFalse();
         assertThat(paths.path("/api/v1/emotions").path("post").path("requestBody").path("content")
                 .path("application/json").path("schema").path("$ref").asText())
                 .isEqualTo("#/components/schemas/EmotionCreateRequest");
@@ -1285,8 +1285,50 @@ class SecurityAuthorizationIntegrationTest {
                 .isEqualTo("#/components/schemas/EmotionV3CreateRequest");
         assertThat(schemas.path("EmotionCreateRequest").path("properties").has("anonymous")).isFalse();
         assertThat(schemas.path("EmotionV3CreateRequest").path("properties").has("anonymous")).isTrue();
-        assertThat(paths.path("/api/v3/emotions").has("get")).isFalse();
+        assertThat(paths.path("/api/v3/emotions").has("get")).isTrue();
         assertThat(paths.has("/api/v3/emotions/{emotionId}")).isFalse();
+    }
+
+    @Test
+    void 감정_목록_API_문서는_v1_호환과_v3_조회_조건을_구분하고_지도는_유지한다() throws JsonProcessingException {
+        // given / when
+        String body = client.get().uri("/v3/api-docs").exchange().expectStatus().isOk()
+                .expectBody(String.class).returnResult().getResponseBody();
+        JsonNode paths = new ObjectMapper().readTree(body).path("paths");
+        JsonNode v1 = paths.path("/api/v1/emotions").path("get");
+        JsonNode v3 = paths.path("/api/v3/emotions").path("get");
+        JsonNode map = paths.path("/api/v1/emotions/map").path("get");
+
+        // then
+        assertThat(v1.path("deprecated").asBoolean()).isTrue();
+        assertThat(v1.path("summary").asText()).isEqualTo("바텀시트 감정 목록 조회 (구버전 호환)");
+        assertThat(v1.path("description").asText()).contains("GET /api/v3/emotions", "최대 20개");
+        assertThat(v3.path("deprecated").asBoolean()).isFalse();
+        assertThat(v3.path("summary").asText()).isEqualTo("전체·그룹 감정 목록 조회");
+        assertThat(v3.path("description").asText())
+                .contains("최대 50개", "동일한 그룹 ID", "전체 목록 커서에 groupId를 추가하면 400", "무시", "nextCursor");
+        assertThat(v3.path("security").get(0).has("bearerAuth")).isTrue();
+        assertThat(map.path("deprecated").asBoolean()).isFalse();
+        assertThat(map.path("summary").asText()).isEqualTo("지도 스탬프 조회");
+
+        Set<String> v3Parameters = new HashSet<>();
+        for (JsonNode parameter : v3.path("parameters")) {
+            v3Parameters.add(parameter.path("name").asText());
+            assertThat(parameter.path("in").asText()).isEqualTo("query");
+            assertThat(parameter.path("required").asBoolean()).as("v3 query parameter: %s", parameter).isFalse();
+        }
+        assertThat(v3Parameters).containsExactlyInAnyOrder("cursor", "groupId");
+
+        Set<String> v1Parameters = new HashSet<>();
+        for (JsonNode parameter : v1.path("parameters")) {
+            v1Parameters.add(parameter.path("name").asText());
+        }
+        assertThat(v1Parameters).containsExactlyInAnyOrder(
+                "minLongitude", "minLatitude", "maxLongitude", "maxLatitude", "cursor", "groupId");
+        JsonNode v1Content = v1.path("responses").path("200").path("content");
+        JsonNode v3Content = v3.path("responses").path("200").path("content");
+        assertThat(v3Content.findPath("$ref").asText()).isNotBlank()
+                .isEqualTo(v1Content.findPath("$ref").asText());
     }
 
     @Test
