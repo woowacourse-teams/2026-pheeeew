@@ -65,7 +65,7 @@ class EmotionActivityTest {
                         GeoCoordinate(37.0, 127.0),
                         0.0,
                         null,
-                        EmotionRegistrationContent.None,
+                        EmotionRegistrationContent.Memo("기록"),
                         occurredAt = 1234L,
                     )
                 assertIs<EmotionRegistrationResult.Unavailable>(repository.register(input))

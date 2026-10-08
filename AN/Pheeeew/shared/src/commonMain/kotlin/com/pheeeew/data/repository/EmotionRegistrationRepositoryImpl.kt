@@ -43,6 +43,19 @@ internal class EmotionRegistrationRepositoryImpl(
         registration: EmotionRegistration,
         onAudioUploadFinished: (AudioUploadObservation) -> Unit,
     ): EmotionRegistrationResult {
+        when (val content = registration.content) {
+            EmotionRegistrationContent.None -> {
+                return EmotionRegistrationResult.Rejected
+            }
+
+            is EmotionRegistrationContent.Memo -> {
+                if (content.text.isBlank()) return EmotionRegistrationResult.Rejected
+            }
+
+            is EmotionRegistrationContent.Audio -> {
+                if (content.filePath.isBlank()) return EmotionRegistrationResult.Rejected
+            }
+        }
         val audioUploadId =
             when (val content = registration.content) {
                 is EmotionRegistrationContent.Audio -> {

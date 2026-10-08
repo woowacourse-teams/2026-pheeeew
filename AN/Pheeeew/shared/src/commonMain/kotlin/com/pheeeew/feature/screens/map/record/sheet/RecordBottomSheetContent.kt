@@ -87,7 +87,6 @@ import pheeeew.shared.generated.resources.record_memo
 import pheeeew.shared.generated.resources.record_memo_prompt
 import pheeeew.shared.generated.resources.record_next
 import pheeeew.shared.generated.resources.record_single_attachment_hint
-import pheeeew.shared.generated.resources.record_skip
 import pheeeew.shared.generated.resources.record_submit_selected_input
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,7 +102,6 @@ fun RecordBottomSheet(
     onMemoChange: (String) -> Unit,
     onGroupClick: () -> Unit,
     onNext: () -> Unit,
-    onSkip: () -> Unit,
     modifier: Modifier = Modifier,
     voiceRecorder: VoiceRecorder? = null,
     feedbackContent: @Composable () -> Unit = {},
@@ -156,7 +154,6 @@ fun RecordBottomSheet(
                     }
                 if (hasOtherInput) showOtherInputDialog = true else onNext()
             },
-            onSkip = onSkip,
             modifier = Modifier,
             voiceRecorder = voiceRecorder,
         )
@@ -214,7 +211,6 @@ private fun RecordBottomSheetContent(
     onMemoChange: (String) -> Unit,
     onGroupClick: () -> Unit,
     onNext: () -> Unit,
-    onSkip: () -> Unit,
     modifier: Modifier,
     voiceRecorder: VoiceRecorder? = null,
 ) {
@@ -315,8 +311,6 @@ private fun RecordBottomSheetContent(
 
         RecordSheetActions(
             onNext = onNext,
-            onSkip = onSkip,
-            canSkip = !isGroupSelectionLoading,
             enabled =
                 !isGroupSelectionLoading &&
                     when (inputMode) {
@@ -373,15 +367,12 @@ private fun rememberRecordingReady(voiceRecorder: VoiceRecorder?): Boolean {
 @Composable
 private fun RecordSheetActions(
     onNext: () -> Unit,
-    onSkip: () -> Unit,
-    canSkip: Boolean,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -406,21 +397,6 @@ private fun RecordSheetActions(
                 text = stringResource(Res.string.record_next),
                 color = AppColors.TextPrimary,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        Box(
-            modifier =
-                Modifier
-                    .height(48.dp)
-                    .noRippleClickable(enabled = canSkip, onClick = onSkip)
-                    .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = stringResource(Res.string.record_skip),
-                color = AppColors.Border,
-                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -573,7 +549,6 @@ private fun RecordBottomSheetContentPreview() {
         onMemoChange = {},
         onGroupClick = {},
         onNext = {},
-        onSkip = {},
         modifier = Modifier,
     )
 }
@@ -591,7 +566,6 @@ private fun RecordBottomSheetRecordingPreview() {
         onMemoChange = {},
         onGroupClick = {},
         onNext = {},
-        onSkip = {},
         modifier = Modifier,
     )
 }

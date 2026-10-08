@@ -42,6 +42,6 @@ class EmotionMapApi(
     }
 
     private companion object {
-        const val PATH = "/api/v1/emotions/map"
+        const val PATH = "/api/v2/emotions/map"
     }
 }

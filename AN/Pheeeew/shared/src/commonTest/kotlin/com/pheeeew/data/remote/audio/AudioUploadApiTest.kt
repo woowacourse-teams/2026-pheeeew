@@ -83,7 +83,7 @@ class AudioUploadApiTest {
                                 }
 
                                 2 -> {
-                                    assertEquals("/api/v1/emotions", request.url.encodedPath)
+                                    assertEquals("/api/v2/emotions", request.url.encodedPath)
                                     assertEquals("Bearer token", request.headers[HttpHeaders.Authorization])
                                     val body =
                                         Json

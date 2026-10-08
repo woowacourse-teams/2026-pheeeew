@@ -9,6 +9,7 @@ import com.pheeeew.domain.repository.group.GroupStampListLoadResult
 import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
+import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -53,7 +54,8 @@ class RecordingFlowTest {
                 repeat(2) {
                     model.open(EmotionTypeUiModel.FRUSTRATED)
                     advanceUntilIdle()
-                    model.onSkip(CurrentLocation(37.5665, 126.978, 1f, 0L))
+                    model.onMemoChange("기록")
+                    model.onNext(CurrentLocation(37.5665, 126.978, 1f, 0L), null)
                     model.onLocationSelected(selected.latitude, selected.longitude)
                     model.onConfirmLocation()
                     assertNull(model.registeredEmotion.value)
@@ -84,7 +86,8 @@ class RecordingFlowTest {
                     )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()
-                model.onSkip(CurrentLocation(37.5665, 126.978, 1f, 0L))
+                model.onMemoChange("기록")
+                model.onNext(CurrentLocation(37.5665, 126.978, 1f, 0L), null)
                 model.onConfirmLocation()
                 advanceUntilIdle()
                 assertEquals(true, model.notice.value?.isError)
@@ -110,6 +113,7 @@ class RecordingFlowTest {
                     )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()
+                model.onInputModeChange(RecordInputModeUiModel.Recording)
                 model.onNext(null, "/tmp/voice.m4a")
                 assertEquals("/tmp/voice.m4a", model.uiModel.value.recordingFilePath)
                 model.onBackToInput()
@@ -120,7 +124,7 @@ class RecordingFlowTest {
         }
 
     @Test
-    fun skipAndDismissDiscardRecordingReference() =
+    fun emptyInputDoesNotAdvanceAndDismissDiscardsRecordingReference() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
@@ -133,13 +137,11 @@ class RecordingFlowTest {
                     )
                 model.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()
+                model.onInputModeChange(RecordInputModeUiModel.Recording)
+                model.onNext(null, null)
+                assertEquals(RecordFlowStepUiModel.Input, model.uiModel.value.step)
                 model.onNext(null, "/tmp/voice.m4a")
-                model.onBackToInput()
-                model.onSkip(null)
-                assertNull(model.uiModel.value.recordingFilePath)
-                model.open(EmotionTypeUiModel.FRUSTRATED)
-                advanceUntilIdle()
-                model.onNext(null, "/tmp/voice.m4a")
+                assertEquals("/tmp/voice.m4a", model.uiModel.value.recordingFilePath)
                 model.dismiss()
                 assertNull(model.uiModel.value.recordingFilePath)
             } finally {

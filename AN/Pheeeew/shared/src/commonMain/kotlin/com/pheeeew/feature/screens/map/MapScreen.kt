@@ -394,7 +394,6 @@ fun MapScreen(
             onRecordMemoChange = recordViewModel::onMemoChange,
             onRecordGroupClick = recordViewModel::onGroupSelectorOpen,
             onRecordNext = { recordFlowCoordinator.next(currentLocation) },
-            onRecordSkip = { recordFlowCoordinator.skip(currentLocation) },
             onRecordBackToInput = recordFlowCoordinator::backToInput,
             onRecordConfirmLocation = recordFlowCoordinator::confirmLocation,
             onRecordGroupSelectorDismiss = recordViewModel::onGroupSelectorDismiss,
@@ -533,7 +532,6 @@ internal fun MapScreenContent(
     onRecordMemoChange: (String) -> Unit,
     onRecordGroupClick: () -> Unit,
     onRecordNext: () -> Unit,
-    onRecordSkip: () -> Unit,
     onRecordBackToInput: () -> Unit,
     onRecordConfirmLocation: () -> Unit,
     onRecordGroupSelectorDismiss: () -> Unit,
@@ -587,7 +585,6 @@ internal fun MapScreenContent(
                     onMemoChange = onRecordMemoChange,
                     onGroupClick = onRecordGroupClick,
                     onNext = onRecordNext,
-                    onSkip = onRecordSkip,
                     feedbackContent = {
                         if (!recordUiModel.isGroupSelectorVisible) feedbackContent()
                     },
@@ -664,7 +661,6 @@ private fun MapScreenContentPreview() {
         onRecordMemoChange = {},
         onRecordGroupClick = {},
         onRecordNext = {},
-        onRecordSkip = {},
         onRecordBackToInput = {},
         onRecordConfirmLocation = {},
         onRecordGroupSelectorDismiss = {},

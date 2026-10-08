@@ -143,27 +143,16 @@ class MapRecordViewModel(
         currentLocation: CurrentLocation?,
         recordingFilePath: String?,
     ) {
-        if (_uiModel.value.isGroupSelectionLoading) return
-        if (_uiModel.value.step != RecordFlowStepUiModel.Input) return
-        funnel.inputFinished(
-            if (_uiModel.value.inputMode == RecordInputModeUiModel.Recording) {
-                if (recordingFilePath != null) "voice" else "none"
-            } else if (_uiModel.value.memo.isNotBlank()) {
-                "text"
-            } else {
-                "none"
-            },
-            skipped = false,
-        )
-        _uiModel.value = _uiModel.value.copy(recordingFilePath = recordingFilePath)
-        moveToLocationSelection(currentLocation)
-    }
-
-    fun onSkip(currentLocation: CurrentLocation?) {
-        if (_uiModel.value.isGroupSelectionLoading) return
-        if (_uiModel.value.step != RecordFlowStepUiModel.Input) return
-        funnel.inputFinished("none", skipped = true)
-        _uiModel.value = _uiModel.value.copy(memo = "", recordingFilePath = null)
+        val state = _uiModel.value
+        if (state.isGroupSelectionLoading || state.step != RecordFlowStepUiModel.Input) return
+        val hasContent =
+            when (state.inputMode) {
+                RecordInputModeUiModel.Memo -> state.memo.isNotBlank()
+                RecordInputModeUiModel.Recording -> !recordingFilePath.isNullOrBlank()
+            }
+        if (!hasContent) return
+        funnel.inputFinished(if (state.inputMode == RecordInputModeUiModel.Recording) "voice" else "text")
+        _uiModel.value = state.copy(recordingFilePath = recordingFilePath)
         moveToLocationSelection(currentLocation)
     }
 
@@ -241,6 +230,7 @@ class MapRecordViewModel(
                         ?.let { EmotionRegistrationContent.Audio(it) } ?: EmotionRegistrationContent.None
                 }
             }
+        if (content == EmotionRegistrationContent.None) return
         val registration =
             pendingRegistration ?: EmotionRegistration(
                 requestId = Uuid.random().toString(),

@@ -75,13 +75,12 @@
     <string name="record_recording">녹음 중</string>
     <string name="record_again">다시 녹음</string>
     <string name="record_discard_title">작성한 내용이 제외돼요.</string>
-    <string name="record_single_attachment_hint">메모와 녹음 중 선택한 한 가지만 등록돼요.</string>
+    <string name="record_single_attachment_hint">메모 또는 녹음 중 하나는 필수예요. 한 가지만 등록할 수 있어요.</string>
     <string name="record_excluded_input_dialog">이번 등록에는 %1$s만 포함되고 %2$s%3$s 저장되지 않아요.
 계속할까요?</string>
     <string name="record_submit_selected_input">%1$s만 등록</string>
     <string name="record_continue_editing">계속 작성</string>
     <string name="record_next">다음</string>
-    <string name="record_skip">건너뛰기</string>
     <string name="record_memo_prompt">지금 감정을 짧게 적어보세요</string>
     <string name="record_memo">메모</string>
     <string name="record_audio">녹음</string>
