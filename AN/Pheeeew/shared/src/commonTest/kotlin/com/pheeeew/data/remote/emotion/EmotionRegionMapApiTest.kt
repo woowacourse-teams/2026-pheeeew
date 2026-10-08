@@ -70,7 +70,7 @@ class EmotionRegionMapApiTest {
                 createApiClient(
                     engine =
                         MockEngine { request ->
-                            assertEquals("/api/v1/emotions/map/regions", request.url.encodedPath)
+                            assertEquals("/api/v2/emotions/map/regions", request.url.encodedPath)
                             assertEquals("126.9", request.url.parameters["minLongitude"])
                             assertEquals("37.5", request.url.parameters["minLatitude"])
                             assertEquals("127.1", request.url.parameters["maxLongitude"])

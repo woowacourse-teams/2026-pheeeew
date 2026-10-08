@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.group.detail.component
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,19 +36,17 @@ import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_detail_close
-import pheeeew.shared.generated.resources.group_detail_copy_code
+import pheeeew.shared.generated.resources.group_detail_copy_icon
 import pheeeew.shared.generated.resources.group_detail_invite_copy_hint
 import pheeeew.shared.generated.resources.group_detail_invite_title
-import pheeeew.shared.generated.resources.group_detail_share_invite
 
 @Composable
 internal fun InviteCodeDialog(
     code: String,
-    isCopying: Boolean,
-    onCopy: () -> Unit,
     onShare: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -86,52 +87,46 @@ internal fun InviteCodeDialog(
                     fontWeight = FontWeight.Normal,
                 )
                 Spacer(Modifier.height(18.dp))
-                Row(
+                Column(
                     modifier =
                         Modifier
                             .align(Alignment.CenterHorizontally)
-                            .padding(vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
+                            .clickable(role = Role.Button, onClick = onShare),
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(
-                        text = code,
-                        color = AppColors.GroupInk,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 3.sp,
-                        textAlign = TextAlign.Center,
+                    Row(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                    ) {
+                        Text(
+                            text = code,
+                            color = AppColors.GroupInk,
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 3.sp,
+                            textAlign = TextAlign.Center,
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Image(
+                            painter = painterResource(Res.drawable.group_detail_copy_icon),
+                            contentDescription = null,
+                            modifier =
+                                Modifier
+                                    .size(40.dp)
+                                    .padding(10.dp),
+                        )
+                    }
+                    Spacer(Modifier.height(3.dp))
+                    Box(
+                        modifier =
+                            Modifier
+                                .width(154.dp)
+                                .height(1.5.dp)
+                                .background(AppColors.GroupInk),
                     )
                 }
-                Spacer(Modifier.height(3.dp))
-                Box(
-                    modifier =
-                        Modifier
-                            .align(Alignment.CenterHorizontally)
-                            .width(154.dp)
-                            .height(1.5.dp)
-                            .background(AppColors.GroupInk),
-                )
-                Spacer(Modifier.height(22.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    DetailDialogButton(
-                        text = stringResource(Res.string.group_detail_copy_code),
-                        enabled = !isCopying,
-                        isPrimary = false,
-                        onClick = onCopy,
-                    )
-                    DetailDialogButton(
-                        text = stringResource(Res.string.group_detail_share_invite),
-                        enabled = true,
-                        isPrimary = true,
-                        onClick = onShare,
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(18.dp))
                 Text(
                     text = stringResource(Res.string.group_detail_close),
                     modifier =
@@ -153,9 +148,7 @@ internal fun InviteCodeDialog(
 private fun InviteCodeDialogPreview() {
     AppTheme {
         InviteCodeDialog(
-            code = "ABCD1234",
-            isCopying = false,
-            onCopy = {},
+            code = "H1Y226",
             onShare = {},
             onDismiss = {},
         )

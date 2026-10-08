@@ -1,5 +1,6 @@
 package com.pheeeew.data.remote.group
 
+import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -18,7 +19,14 @@ class PressRankingMapperTest {
                     hasPrevious = true,
                     items =
                         listOf(
-                            PressRankingItemResponseDto(2, GROUP_ID, "히유 클럽", 31, mine = true),
+                            PressRankingItemResponseDto(
+                                2,
+                                GROUP_ID,
+                                "히유 클럽",
+                                31,
+                                mine = true,
+                                stamp = GroupStampResponseDto("히유", "#17191A", "#9DEBD5", "CIRCLE"),
+                            ),
                             PressRankingItemResponseDto(2, OTHER_GROUP_ID, "별터 모임", 31),
                         ),
                 ),
@@ -31,6 +39,14 @@ class PressRankingMapperTest {
         assertEquals(2, ranking.items[0].rank)
         assertEquals(31, ranking.items[0].score)
         assertTrue(ranking.items[0].mine)
+        assertEquals("히유", ranking.items[0].stamp?.text)
+        assertEquals(
+            0xFF9DEBD5,
+            ranking.items[0]
+                .stamp
+                ?.backgroundColor
+                ?.argb,
+        )
         assertFalse(ranking.items[1].mine)
     }
 

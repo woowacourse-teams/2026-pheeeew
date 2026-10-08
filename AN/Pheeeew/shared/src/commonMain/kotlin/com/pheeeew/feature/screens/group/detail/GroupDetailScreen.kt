@@ -204,8 +204,6 @@ fun GroupDetailScreen(
             if (detail != null && detail.role != GroupRole.NONE) {
                 InviteCodeDialog(
                     code = detail.inviteCode,
-                    isCopying = uiState.copyRequest != null,
-                    onCopy = actions.onCopyCodeClick,
                     onShare = actions.onShareInviteClick,
                     onDismiss = actions.onDismissOverlay,
                 )
