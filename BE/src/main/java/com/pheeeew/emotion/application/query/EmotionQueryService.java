@@ -2,7 +2,6 @@ package com.pheeeew.emotion.application.query;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
-import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_INVALID_CURSOR;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_PLAYBACK_UNAVAILABLE;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE;
 
@@ -114,7 +113,8 @@ public class EmotionQueryService {
         EmotionListCursor cursor = encodedCursor == null
                 ? EmotionListCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
                 : EmotionListCursorCodec.decodeWithinBounds(encodedCursor);
-        validateSnapshotAt(cursor.snapshotAt());
+
+        cursor.validateSnapshotAt(Instant.now(clock));
 
         return findList(cursor, devicePublicId);
     }
@@ -124,10 +124,8 @@ public class EmotionQueryService {
                 ? EmotionListCursor.initialWithoutBounds(currentSnapshotAt(), groupId)
                 : EmotionListCursorCodec.decodeWithoutBounds(encodedCursor);
 
-        validateSnapshotAt(cursor.snapshotAt());
-        if (groupId != null && !groupId.equals(cursor.groupId())) {
-            throw new EmotionException(EMOTION_INVALID_CURSOR);
-        }
+        cursor.validateSnapshotAt(Instant.now(clock));
+        cursor.validateRequestedGroup(groupId);
 
         return findList(cursor, devicePublicId);
     }
@@ -136,7 +134,8 @@ public class EmotionQueryService {
         EmotionListCursor cursor = encodedCursor == null
                 ? EmotionListCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
                 : EmotionListCursorCodec.decodeWithinBounds(encodedCursor);
-        validateSnapshotAt(cursor.snapshotAt());
+
+        cursor.validateSnapshotAt(Instant.now(clock));
 
         return findMap(cursor, devicePublicId);
     }
@@ -251,12 +250,6 @@ public class EmotionQueryService {
         String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId())) : null;
         return EmotionMapPageView.of(items, hasNext, nextCursor);
-    }
-
-    private void validateSnapshotAt(Instant snapshotAt) {
-        if (snapshotAt.isAfter(Instant.now(clock))) {
-            throw new EmotionException(EMOTION_INVALID_CURSOR);
-        }
     }
 
     private Map<Long, GroupStampResult> findStamps(List<Emotion> page) {
