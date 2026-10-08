@@ -9,6 +9,25 @@ import kotlin.test.assertTrue
 
 class PressBatchAccumulatorTest {
     @Test
+    fun `midnight backlog is split by original input day`() {
+        val before =
+            kotlin.time.Instant
+                .parse("2026-10-08T14:59:00Z")
+                .toEpochMilliseconds()
+        val after = before + 120_000
+        val queue = PressBatchAccumulator()
+        queue.add(EmotionState.ANGRY, 2, before)
+        queue.add(EmotionState.ANGRY, 3, after)
+        val first = assertNotNull(queue.take(30, 100, 0, 1))
+        val second = assertNotNull(queue.take(30, 100, 0, 2))
+        assertEquals(2, first.totalCount)
+        assertEquals(3, second.totalCount)
+        assertEquals(before, first.occurredAt)
+        assertEquals(after, second.occurredAt)
+        assertEquals(0L, queue.size)
+    }
+
+    @Test
     fun `splits ten thousand taps into bounded batches without losing counts`() {
         val queue = PressBatchAccumulator()
         val expected =

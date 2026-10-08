@@ -10,4 +10,5 @@ fun createEmotionRegistrationRepository(client: ApiClient): EmotionRegistrationR
     EmotionRegistrationRepositoryImpl(
         EmotionRegistrationApi(client.requests),
         AudioUploadApi(client.requests),
+        monitoring = client.monitoring,
     )

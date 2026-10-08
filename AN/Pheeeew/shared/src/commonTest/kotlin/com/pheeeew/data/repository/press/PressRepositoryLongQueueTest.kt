@@ -1,5 +1,8 @@
 package com.pheeeew.data.repository.press
 
+import com.pheeeew.core.monitoring.ActivityType
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
@@ -27,6 +30,67 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class PressRepositoryLongQueueTest {
+    @Test
+    fun `only acknowledged batches report original input time`() =
+        runTest {
+            val server = Server()
+            val release = CompletableDeferred<Unit>()
+            val sender = Sender(server, beforeSend = { release.await() })
+            val recorded = mutableListOf<Pair<ActivityType, Long>>()
+            val monitoring =
+                object : Monitoring by NoOpMonitoring {
+                    override fun recordSuccessfulActivity(
+                        type: ActivityType,
+                        occurredAt: Long,
+                    ) {
+                        recorded += type to occurredAt
+                    }
+                }
+            var time = 1000L
+            val repository =
+                PressRepositoryImpl(
+                    server,
+                    sender,
+                    backgroundScope,
+                    flushDelayMillis = 0,
+                    monitoring = monitoring,
+                    wallClock = { time },
+                )
+            repository.refreshToday()
+            runCurrent()
+            repository.accept(EmotionState.ANGRY)
+            runCurrent()
+            assertTrue(recorded.isEmpty())
+            time = 90_000_000L
+            release.complete(Unit)
+            runCurrent()
+            assertEquals(listOf(ActivityType.PERSONAL_PRESS to 1000L), recorded)
+        }
+
+    @Test
+    fun `aggregate reconciliation of unknown writes does not claim activity success`() =
+        runTest {
+            val server = Server()
+            val sender = Sender(server, PressSendResult.OutcomeUnknown, applyBeforeUnknown = true)
+            var reports = 0
+            val monitoring =
+                object : Monitoring by NoOpMonitoring {
+                    override fun recordSuccessfulActivity(
+                        type: ActivityType,
+                        occurredAt: Long,
+                    ) {
+                        reports++
+                    }
+                }
+            val repository =
+                PressRepositoryImpl(server, sender, backgroundScope, flushDelayMillis = 0, monitoring = monitoring)
+            repository.refreshToday()
+            runCurrent()
+            repository.accept(EmotionState.ANGRY)
+            runCurrent()
+            assertEquals(0, reports)
+        }
+
     @Test
     fun `ten thousand offline taps drain exactly once after reconnect without concurrent writes`() =
         runTest {

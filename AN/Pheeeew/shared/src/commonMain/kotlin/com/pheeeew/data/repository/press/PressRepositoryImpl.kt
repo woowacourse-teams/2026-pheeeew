@@ -1,5 +1,8 @@
 package com.pheeeew.data.repository.press
 
+import com.pheeeew.core.monitoring.ActivityType
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
@@ -27,6 +30,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Clock
 import kotlin.time.TimeSource
 
 /** Session-owned counters and one fixed write; all mutations run on the owner dispatcher. */
@@ -40,6 +44,12 @@ internal class PressRepositoryImpl(
     private val retryPolicy: PressRetryPolicy = PressRetryPolicy(),
     connectivity: Flow<Boolean>? = null,
     private val nowMillis: () -> Long = monotonicClock(),
+    private val monitoring: Monitoring = NoOpMonitoring,
+    private val wallClock: () -> Long = {
+        Clock.System
+            .now()
+            .toEpochMilliseconds()
+    },
 ) : PressRepository {
     private val mutableState = MutableStateFlow(PressSessionState())
     override val state = mutableState.asStateFlow()
@@ -92,7 +102,7 @@ internal class PressRepositoryImpl(
         val allServerTotal = mutableState.value.allToday?.total ?: 0L
         if (outstanding >= Long.MAX_VALUE - serverTotal ||
             optimisticAllPressCount >= Long.MAX_VALUE - allServerTotal ||
-            !batch.add(emotion)
+            !batch.add(emotion, occurredAt = wallClock())
         ) {
             mutableState.update { it.copy(notice = PressSessionNotice.NumericLimit) }
             return PressAcceptance.NumericLimit
@@ -213,6 +223,12 @@ internal class PressRepositoryImpl(
                 }
             when (result) {
                 is PressSendResult.Accepted -> {
+                    runCatching {
+                        monitoring.recordSuccessfulActivity(
+                            ActivityType.PERSONAL_PRESS,
+                            write.batch.occurredAt,
+                        )
+                    }
                     val current = checkNotNull(mutableState.value.myToday)
                     val updated = current.copy(counts = result.today.counts, total = result.today.total)
                     readGeneration++

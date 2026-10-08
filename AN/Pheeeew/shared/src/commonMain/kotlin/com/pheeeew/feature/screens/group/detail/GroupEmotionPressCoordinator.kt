@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.group.detail
 
+import com.pheeeew.core.monitoring.ActivityType
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.monitoring.product.resultLabel
@@ -38,6 +39,7 @@ internal class GroupEmotionPressCoordinator(
     private data class AcceptedPress(
         val emotion: EmotionKind,
         val key: GroupOperationKey,
+        val occurredAt: Long,
     )
 
     private val pending = mutableListOf<AcceptedPress>()
@@ -69,7 +71,7 @@ internal class GroupEmotionPressCoordinator(
         }
         if (pending.size + unconfirmed.size >= dependencies.requestPolicy.maxOutstandingPresses) return null
 
-        val press = AcceptedPress(emotion, dependencies.operationKeyAllocator.next())
+        val press = AcceptedPress(emotion, dependencies.operationKeyAllocator.next(), dependencies.activityClock())
         pending += press
         queue.addLast(press)
         publish()
@@ -224,6 +226,12 @@ internal class GroupEmotionPressCoordinator(
         val first = batch.first()
         when (result) {
             is PressGroupEmotionResult.Pressed -> {
+                runCatching {
+                    dependencies.monitoring.recordSuccessfulActivity(
+                        ActivityType.GROUP_PRESS,
+                        first.occurredAt,
+                    )
+                }
                 confirmedSnapshot = result.snapshot
                 removePending(batch)
                 status = GroupPressStatus.Idle

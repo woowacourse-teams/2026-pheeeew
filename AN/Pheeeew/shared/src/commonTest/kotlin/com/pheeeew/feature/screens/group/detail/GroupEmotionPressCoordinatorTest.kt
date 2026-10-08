@@ -1,5 +1,7 @@
 package com.pheeeew.feature.screens.group.detail
 
+import com.pheeeew.core.monitoring.ActivityType
+import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
@@ -22,6 +24,42 @@ import kotlin.test.assertNull
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupEmotionPressCoordinatorTest {
+    @Test
+    fun `group success reports accepted input time while failures do not`() =
+        runTest {
+            val response = CompletableDeferred<PressGroupEmotionResult>()
+            val recorded = mutableListOf<Long>()
+            var time = 1000L
+            val monitoring =
+                object : Monitoring by NoOpMonitoring {
+                    override fun recordSuccessfulActivity(
+                        type: ActivityType,
+                        occurredAt: Long,
+                    ) {
+                        assertEquals(ActivityType.GROUP_PRESS, type)
+                        recorded += occurredAt
+                    }
+                }
+            val coordinator =
+                coordinator(press = {
+                    _,
+                    _,
+                    ->
+                    response.await()
+                }, monitoring = monitoring, activityClock = { time })
+            coordinator.accept(emotion)
+            runCurrent()
+            assertEquals(emptyList(), recorded)
+            time = 90_000_000L
+            response.complete(PressGroupEmotionResult.Pressed(snapshot(1L)))
+            runCurrent()
+            assertEquals(listOf(1000L), recorded)
+            val rejected = coordinator(press = { _, _ -> PressGroupEmotionResult.Rejected }, monitoring = monitoring)
+            rejected.accept(emotion)
+            runCurrent()
+            assertEquals(listOf(1000L), recorded)
+        }
+
     private val detail = fixtureDetail(0L, GroupDetailPresentationKind.FirstStart)
     private val emotion = EmotionKind.entries.first()
 
@@ -292,6 +330,8 @@ class GroupEmotionPressCoordinatorTest {
             { _, _, _, _ -> },
         onNotice: (GroupDetailNoticeKind, Long?) -> Unit = { _, _ -> },
         onReconcile: (GroupOperationKey) -> Unit = {},
+        monitoring: Monitoring = NoOpMonitoring,
+        activityClock: () -> Long = { 0L },
     ): GroupEmotionPressCoordinator {
         val dependencies =
             GroupDetailDependencies(
@@ -301,6 +341,8 @@ class GroupEmotionPressCoordinatorTest {
                 errorReporter = { throw it },
                 operationKeyAllocator = GroupOperationKeyAllocator("coordinator-test"),
                 requestPolicy = requestPolicy,
+                monitoring = monitoring,
+                activityClock = activityClock,
             )
         return GroupEmotionPressCoordinator(
             groupId = detail.group.id,
