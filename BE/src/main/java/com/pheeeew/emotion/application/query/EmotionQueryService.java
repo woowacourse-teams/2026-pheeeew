@@ -18,7 +18,6 @@ import com.pheeeew.emotion.application.dto.EmotionPageView;
 import com.pheeeew.emotion.application.dto.EmotionMapItemView;
 import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.application.dto.EmotionDetailView;
-import com.pheeeew.emotion.application.dto.EmotionListItemView;
 import com.pheeeew.emotion.application.dto.RegionEmotionSummary;
 import com.pheeeew.emotion.application.dto.EmotionRegionMapItemView;
 import com.pheeeew.emotion.domain.Emotion;
@@ -109,22 +108,6 @@ public class EmotionQueryService {
 
         return EmotionDetailView.of(emotion, findEmojis(emotionId, deviceId), issuePlaybackUrl(emotion),
                 stamp, deviceId, findAuthorNickname(emotion, nicknames));
-    }
-
-    List<EmotionListItemView> findVisiblePageWithinBounds(
-            EmotionSearchBounds bounds, Instant snapshotAt, Instant lastCreatedAt,
-            long lastId, int limit, UUID devicePublicId
-    ) {
-        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
-                .map(Device::getId)
-                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
-
-        List<Emotion> page = emotionRepository.findVisiblePageWithinBounds(
-                bounds, snapshotAt, lastCreatedAt, lastId, deviceId, null, false, limit
-        );
-        Map<Long, String> nicknames = findNicknames(page);
-        return page.stream().map(emotion -> EmotionListItemView.of(emotion,
-                findAuthorNickname(emotion, nicknames))).toList();
     }
 
     public EmotionPageView findListWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor) {

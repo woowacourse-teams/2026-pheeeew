@@ -25,7 +25,6 @@ import com.pheeeew.emotion.application.dto.EmotionPageView;
 import com.pheeeew.emotion.application.dto.EmotionMapItemView;
 import com.pheeeew.emotion.application.EmotionListCursorCodec;
 import com.pheeeew.emotion.application.dto.EmotionListCursor;
-import com.pheeeew.emotion.application.dto.EmotionListItemView;
 import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.Emotion;
@@ -133,15 +132,9 @@ class EmotionQueryServiceIntegrationTest {
         List<EmotionDetailView> items = (withoutBounds
                 ? emotionQueryService.findListWithoutBounds(viewer.getPublicId(), null, null)
                 : emotionQueryService.findListWithinBounds(bounds, viewer.getPublicId(), null, null)).items();
-        Instant snapshot = Instant.now().plusSeconds(1);
-        List<EmotionListItemView> legacyItems = emotionQueryService.findVisiblePageWithinBounds(
-                bounds, snapshot, snapshot, Long.MAX_VALUE, 10, viewer.getPublicId());
 
         // then
         assertThat(items).extracting(EmotionDetailView::id, EmotionDetailView::nickname).containsExactlyInAnyOrder(
-                tuple(emotion.getId(), "익명"), tuple(withoutAuthor.getId(), "익명"),
-                tuple(named.getId(), "작성자"), tuple(otherNamed.getId(), "다른 이름"));
-        assertThat(legacyItems).extracting(EmotionListItemView::id, EmotionListItemView::nickname).containsExactlyInAnyOrder(
                 tuple(emotion.getId(), "익명"), tuple(withoutAuthor.getId(), "익명"),
                 tuple(named.getId(), "작성자"), tuple(otherNamed.getId(), "다른 이름"));
         assertThat(emotionQueryService.findById(named.getId(), viewer.getPublicId()).nickname()).isEqualTo("작성자");
@@ -484,15 +477,14 @@ class EmotionQueryServiceIntegrationTest {
 
         // when
         entityManager.clear();
-        Instant snapshotAt = Instant.now().plusSeconds(1);
-        List<EmotionListItemView> items = emotionQueryService.findVisiblePageWithinBounds(
-                EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0),
-                snapshotAt, snapshotAt, Long.MAX_VALUE, 10, viewer.getPublicId());
+        List<EmotionMapItemView> items = emotionQueryService.findMapWithinBounds(
+                EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0), viewer.getPublicId(), null, null).items();
 
         // then
-        assertThat(items).filteredOn(item -> item.id().equals(saved.getId()))
-                .singleElement().satisfies(item -> assertThat(item.memo()).isEqualTo(expectedMemo));
-        assertThat(entityManager.find(Emotion.class, saved.getId()).getContent().getAudio()).isEqualTo(audio);
+        assertThat(items).extracting(EmotionMapItemView::id).contains(saved.getId());
+        Emotion mapped = entityManager.find(Emotion.class, saved.getId());
+        assertThat(mapped.getMemo()).isEqualTo(expectedMemo);
+        assertThat(mapped.getContent().getAudio()).isEqualTo(audio);
     }
 
     @Test
@@ -539,16 +531,13 @@ class EmotionQueryServiceIntegrationTest {
         entityManager.flush();
         setCreatedAt(emotion, Instant.parse("2025-01-01T00:00:00Z"));
         entityManager.clear();
-        Instant snapshotAt = Instant.now().plusSeconds(1);
 
         // when
-        List<EmotionListItemView> result = emotionQueryService.findVisiblePageWithinBounds(
-                EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0),
-                snapshotAt, snapshotAt, Long.MAX_VALUE, 10, viewer.getPublicId()
-        );
+        List<EmotionDetailView> result = emotionQueryService.findListWithinBounds(
+                EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0), viewer.getPublicId(), null, null).items();
 
         // then
-        assertThat(result).extracting(EmotionListItemView::id).containsExactly(emotion.getId());
+        assertThat(result).extracting(EmotionDetailView::id).containsExactly(emotion.getId());
         assertThat(result.getFirst().state()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(result.getFirst().rotationDegrees()).isEqualTo(35.5);
         assertThat(result.getFirst().longitude()).isEqualTo(126.9774);
@@ -559,31 +548,34 @@ class EmotionQueryServiceIntegrationTest {
     @Test
     void 목록은_스냅샷과_생성시각_ID_커서로_중복없이_이어진다() {
         // given
-        Emotion sameTime = saveEmotion(author.getId(), 126.9774, 37.5669);
+        List<Emotion> sameTime = new ArrayList<>();
+        for (int index = 0; index < 20; index++) {
+            sameTime.add(saveEmotion(author.getId(), 126.9774, 37.5669));
+        }
         Emotion older = saveEmotion(author.getId(), 126.9774, 37.5669);
         Emotion afterSnapshot = saveEmotion(author.getId(), 126.9774, 37.5669);
         entityManager.flush();
         Instant newestAt = Instant.parse("2025-01-03T00:00:00Z");
         setCreatedAt(emotion, newestAt);
-        setCreatedAt(sameTime, newestAt);
+        sameTime.forEach(item -> setCreatedAt(item, newestAt));
         setCreatedAt(older, Instant.parse("2025-01-02T00:00:00Z"));
-        setCreatedAt(afterSnapshot, Instant.parse("2025-01-05T00:00:00Z"));
+        setCreatedAt(afterSnapshot, Instant.now().plusSeconds(60));
         entityManager.clear();
-        Instant snapshotAt = Instant.parse("2025-01-04T00:00:00Z");
         EmotionSearchBounds bounds = EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0);
 
         // when
-        List<EmotionListItemView> firstPage = emotionQueryService.findVisiblePageWithinBounds(
-                bounds, snapshotAt, snapshotAt, Long.MAX_VALUE, 2, viewer.getPublicId()
-        );
-        EmotionListItemView lastItem = firstPage.getLast();
-        List<EmotionListItemView> nextPage = emotionQueryService.findVisiblePageWithinBounds(
-                bounds, snapshotAt, lastItem.createdAt(), lastItem.id(), 2, viewer.getPublicId()
-        );
+        EmotionPageView firstPage = emotionQueryService.findListWithinBounds(bounds, viewer.getPublicId(), null, null);
+        EmotionPageView nextPage = emotionQueryService.findListWithinBounds(
+                null, viewer.getPublicId(), null, firstPage.nextCursor());
 
         // then
-        assertThat(firstPage).extracting(EmotionListItemView::id).containsExactly(sameTime.getId(), emotion.getId());
-        assertThat(nextPage).extracting(EmotionListItemView::id).containsExactly(older.getId());
+        assertThat(firstPage.items()).extracting(EmotionDetailView::id)
+                .containsExactlyElementsOf(sameTime.reversed().stream().map(Emotion::getId).toList());
+        assertThat(firstPage.hasNext()).isTrue();
+        assertThat(firstPage.nextCursor()).isNotNull();
+        assertThat(nextPage.items()).extracting(EmotionDetailView::id).containsExactly(emotion.getId(), older.getId());
+        assertThat(nextPage.hasNext()).isFalse();
+        assertThat(nextPage.nextCursor()).isNull();
     }
 
     @Test
@@ -592,16 +584,13 @@ class EmotionQueryServiceIntegrationTest {
         Emotion east = saveEmotion(author.getId(), 179.0, 0.0);
         Emotion west = saveEmotion(author.getId(), -179.0, 0.0);
         saveEmotion(author.getId(), -160.0, 0.0);
-        Instant snapshotAt = Instant.now().plusSeconds(1);
 
         // when
-        List<EmotionListItemView> result = emotionQueryService.findVisiblePageWithinBounds(
-                EmotionSearchBounds.of(170.0, -10.0, -170.0, 10.0),
-                snapshotAt, snapshotAt, Long.MAX_VALUE, 10, viewer.getPublicId()
-        );
+        List<EmotionDetailView> result = emotionQueryService.findListWithinBounds(
+                EmotionSearchBounds.of(170.0, -10.0, -170.0, 10.0), viewer.getPublicId(), null, null).items();
 
         // then
-        assertThat(result).extracting(EmotionListItemView::id).containsExactly(west.getId(), east.getId());
+        assertThat(result).extracting(EmotionDetailView::id).containsExactly(west.getId(), east.getId());
         assertThat(emotionQueryService.findMapWithinBounds(EmotionSearchBounds.of(170, -10, -170, 10), viewer.getPublicId(), null, null).items()).extracting(EmotionMapItemView::id).containsExactly(west.getId(), east.getId());
     }
 
