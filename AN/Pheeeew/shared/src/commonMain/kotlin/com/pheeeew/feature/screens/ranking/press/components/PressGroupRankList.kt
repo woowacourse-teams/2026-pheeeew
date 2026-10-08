@@ -15,7 +15,7 @@ import com.pheeeew.feature.screens.ranking.press.samplePressGroupRanks
 internal fun PressGroupRankList(
     groups: List<PressGroupRank>,
     modifier: Modifier = Modifier,
-    onGroupClick: (PressGroupRank) -> Unit = {},
+    onGroupClick: (PressGroupRank) -> Unit,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -31,6 +31,6 @@ internal fun PressGroupRankList(
 @Composable
 private fun PressGroupRankListPreview() {
     AppTheme {
-        PressGroupRankList(samplePressGroupRanks)
+        PressGroupRankList(samplePressGroupRanks, onGroupClick = {})
     }
 }

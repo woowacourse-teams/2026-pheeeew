@@ -14,6 +14,7 @@ internal enum class PressEmotion(
 }
 
 internal data class PressGroupRank(
+    val groupId: String,
     val rank: Int,
     val groupName: String,
     val subtitle: String,
@@ -105,6 +106,7 @@ private fun aggregateSampleRanks(): List<PressGroupRank> =
         .map { (groupName, ranks) ->
             val isMyGroup = ranks.any(PressGroupRank::isMyGroup)
             PressGroupRank(
+                groupId = ranks.first().groupId,
                 rank = 0,
                 groupName = groupName,
                 subtitle = if (isMyGroup) "내 그룹" else "함께 누른 마음",
@@ -121,6 +123,7 @@ private fun sampleRanks(
     groups.mapIndexed { index, (groupName, count) ->
         val isMyGroup = groupName in myGroupNames
         PressGroupRank(
+            groupId = "00000000-0000-0000-0000-${(index + 1).toString().padStart(12, '0')}",
             rank = index + 1,
             groupName = groupName,
             subtitle = if (isMyGroup) "내 그룹" else "함께 누른 마음",

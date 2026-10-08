@@ -23,6 +23,7 @@ internal class ApiPressRankingSource(
                     groups =
                         result.ranking.items.map { item ->
                             PressGroupRank(
+                                groupId = item.groupId,
                                 rank = item.rank,
                                 groupName = item.name,
                                 subtitle = if (item.mine) "내 그룹" else "함께 누른 마음",

@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.ranking.stamp.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,6 +29,7 @@ import pheeeew.shared.generated.resources.ranking_stamp_label
 @Composable
 fun RankingRow(
     member: RankingMember,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -35,6 +38,7 @@ fun RankingRow(
                 .fillMaxWidth()
                 .padding(horizontal = 24.dp)
                 .rankingCardBorder()
+                .clickable(role = Role.Button, onClick = onClick)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(14.dp),
@@ -75,5 +79,5 @@ fun RankingRow(
 @Preview
 @Composable
 private fun RankingRowPreview() {
-    RankingRow(sampleRankings[0], Modifier.padding(vertical = 16.dp))
+    RankingRow(onClick = {}, member = sampleRankings[0], modifier = Modifier.padding(vertical = 16.dp))
 }
