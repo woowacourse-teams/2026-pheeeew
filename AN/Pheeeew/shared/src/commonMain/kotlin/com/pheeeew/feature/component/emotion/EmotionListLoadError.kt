@@ -38,9 +38,9 @@ private val ErrorSecondary = Color(0xFF70766F)
 @Composable
 internal fun EmotionListLoadError(
     title: String,
-    message: String,
+    message: String?,
     hasItems: Boolean,
-    onRetry: () -> Unit,
+    onRetry: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -61,8 +61,18 @@ internal fun EmotionListLoadError(
                 )
             }
             Text(title, color = ErrorInk, fontSize = 16.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
-            Text(message, color = ErrorSecondary, fontSize = 13.sp, lineHeight = 19.sp, textAlign = TextAlign.Center)
-            EmotionListRetryButton(onRetry)
+            if (message != null) {
+                Text(
+                    message,
+                    color = ErrorSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            if (onRetry != null) {
+                EmotionListRetryButton(onRetry)
+            }
         }
     }
 }
@@ -97,6 +107,20 @@ private fun EmotionListLoadErrorPreview() {
             message = "연결 상태를 확인해 주세요.",
             hasItems = false,
             onRetry = {},
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+@Preview(name = "감정 목록 · 비어 있음", widthDp = 360, showBackground = true)
+@Composable
+private fun EmotionListEmptyPreview() {
+    AppTheme {
+        EmotionListLoadError(
+            title = "아직 등록된 감정이 없어요",
+            message = null,
+            hasItems = false,
+            onRetry = null,
             modifier = Modifier.padding(16.dp),
         )
     }

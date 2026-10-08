@@ -148,7 +148,7 @@ internal fun GroupDetailReadyContent(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("우리 그룹의 마음", color = AppColors.GroupInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("감정 목록", color = AppColors.GroupInk, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Text("최신순", color = AppColors.TextSecondary, fontSize = 12.sp)
             }
             Spacer(Modifier.height(18.dp))
@@ -181,7 +181,12 @@ internal fun GroupDetailReadyContent(
             is GroupMoodFeedUiState.Available -> {
                 if (feed.posts.isEmpty()) {
                     item(key = "feed-empty") {
-                        FeedNotice(text = stringResource(Res.string.group_detail_feed_empty))
+                        EmotionListLoadError(
+                            title = stringResource(Res.string.group_detail_feed_empty),
+                            message = null,
+                            hasItems = false,
+                            onRetry = null,
+                        )
                     }
                 }
                 when (val state = feed.loadState) {
@@ -267,22 +272,6 @@ private fun GroupMoodFeedLoadError(
             GroupMoodFeedLoadingSpinner(Modifier.matchParentSize(), indicatorSize = 32.dp)
         }
     }
-}
-
-@Composable
-private fun FeedNotice(text: String) {
-    Text(
-        text = text,
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFFF7F8F5))
-                .padding(horizontal = 16.dp, vertical = 18.dp),
-        color = AppColors.TextSecondary,
-        fontSize = 13.sp,
-    )
 }
 
 @Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 본문", showBackground = true)
@@ -492,3 +481,28 @@ private fun GroupMoodPostUiModel.toEmotionChatItemUiModel() =
         reactions = reactions,
         stamp = stamp,
     )
+
+@Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 빈 목록", showBackground = true)
+@Composable
+private fun GroupMoodFeedEmptyPreview() {
+    GroupDetailReadyContent(
+        detail =
+            previewGroupDetailReadyUiModel().copy(
+                feed =
+                    GroupMoodFeedUiState.Available(
+                        posts = emptyList(),
+                        hasMore = false,
+                        loadState = GroupMoodFeedLoadState.Idle,
+                    ),
+            ),
+        hasRefreshError = false,
+        onRetry = {},
+        onInviteClick = {},
+        onReactionClick = null,
+        onAudioClick = null,
+        onBlockClick = null,
+        onReportClick = null,
+        onFeedRetry = {},
+        onFeedLoadMore = null,
+    )
+}

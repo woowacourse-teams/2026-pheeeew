@@ -304,7 +304,7 @@
     <string name="group_detail_emotion_angry">분노</string>
     <string name="group_detail_loading">그룹 정보를 불러오는 중이에요.</string>
     <string name="group_detail_refresh_error_pull">새로고침에 실패했어요. 탭해서 다시 시도해 주세요.</string>
-    <string name="group_detail_feed_empty">아직 등록된 감정이 없어요.</string>
+    <string name="group_detail_feed_empty">아직 등록된 감정이 없어요</string>
     <string name="group_detail_feed_initial_error_title">그룹 감정을 불러오지 못했어요.</string>
     <string name="group_detail_feed_refresh_error_title">감정 목록을 새로고침하지 못했어요.</string>
     <string name="group_detail_feed_next_error_title">다음 감정을 불러오지 못했어요.</string>
