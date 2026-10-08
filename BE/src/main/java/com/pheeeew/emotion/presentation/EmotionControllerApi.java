@@ -26,20 +26,27 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
 import java.util.List;
 import java.util.UUID;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "감정", description = "감정과 이모지 API")
 public interface EmotionControllerApi {
 
-    @Operation(summary = "바텀시트 감정 목록 조회", description = """
+    @Operation(summary = "바텀시트 감정 목록 조회 (구버전 호환)", deprecated = true, description = """
+            기존 클라이언트의 좌표 기반 조회를 위한 API입니다.
+            새 전체·그룹 목록 조회에는 GET /api/v3/emotions를 사용합니다. v3는 좌표 제한 없이 최대 50개씩 반환합니다.
+
             메모 또는 녹음이 있는 감정(contentType=MEMO, AUDIO)만 반환합니다. 감정 상태만 기록한 NONE은 제외합니다.
             내용 조건은 페이지 제한 전에 적용하며 별도의 유형 필터 파라미터는 받지 않습니다.
+
             첫 페이지에는 minLongitude, minLatitude, maxLongitude, maxLatitude를 전달합니다.
             groupId를 생략하면 그룹 없는 감정까지 전체 조회하며, 지정하면 해당 그룹의 스탬프만 조회합니다.
             그룹 필터는 공개 감정의 조회 조건이며 그룹 가입 여부로 제한하지 않습니다.
             다음 페이지에는 영역과 그룹 조건이 담긴 cursor만 전달합니다. 날짜변경선을 넘는 영역은 minLongitude > maxLongitude로 표현합니다.
+
             기간 제한 없이 (createdAt DESC, id DESC) 순으로 최대 20개씩 조회합니다.
             최초 조회 이후 작성된 감정은 제외하고, 삭제·차단은 매 페이지에 반영합니다.
+
             각 항목은 GeoJSON Feature이며 여섯 이모지 집계와 본인 선택 여부를 포함합니다.
             각 항목의 properties.isMine은 인증된 기기가 작성했는지 나타내며 작성 기기가 없으면 false입니다.
             contentType이 AUDIO이면 audio.playbackUrl과 audio.expiresAt을 함께 반환합니다.
@@ -52,12 +59,48 @@ public interface EmotionControllerApi {
             @ApiResponse(responseCode = "503", description = "녹음 재생 URL을 발급할 수 없음")
     })
     ResponseEntity<CursorResponse<EmotionDetailResponse>> findListWithinBounds(
-            @Valid EmotionsWithinBoundsRequest request,
+            @Valid @ParameterObject EmotionsWithinBoundsRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
+    @Operation(summary = "전체·그룹 감정 목록 조회", description = """
+            ### 조회 범위
 
-    @Operation(summary = "전체·그룹 감정 목록 조회", security = @SecurityRequirement(name = "bearerAuth"))
+            - 좌표와 기간 제한 없이 메모 또는 녹음이 있는 감정(contentType=MEMO, AUDIO)을 조회합니다. NONE은 제외합니다.
+            - 첫 페이지에서 groupId를 생략하면 그룹 없는 감정과 모든 그룹의 감정을 함께 조회합니다.
+            - groupId를 지정하면 감정에 연결된 그룹 스탬프를 기준으로 조회합니다. 작성자의 현재 그룹 소속은 조회 조건이 아닙니다.
+            - 조회 기기의 그룹 가입 여부로 제한하지 않습니다. 존재하지 않는 그룹은 빈 목록을 반환합니다.
+            - minLongitude, minLatitude, maxLongitude, maxLatitude를 보내더라도 무시하며 조회 범위를 제한하지 않습니다.
+
+            ### 페이지 이동
+
+            - 인증된 기기를 기준으로 삭제된 감정, 차단한 감정과 차단한 작성자의 감정을 제외합니다.
+            - 생성 시각 내림차순, 같은 시각이면 ID 내림차순으로 최대 50개씩 반환합니다.
+            - 다음 페이지에는 이전 응답의 nextCursor를 cursor로 전달합니다. 커서는 해석하거나 수정하지 않고 그대로 사용합니다.
+            - groupId는 생략하거나 커서에 저장된 동일한 그룹 ID를 함께 보낼 수 있습니다.
+            - 다른 그룹 ID를 보내거나 전체 목록 커서에 groupId를 추가하면 400 오류를 반환합니다.
+            - 그룹을 바꾸거나 전체 목록으로 돌아갈 때는 cursor를 빼고 첫 페이지부터 조회합니다.
+            - 최초 조회 이후 작성된 감정은 후속 페이지에서 제외하고, 삭제·차단은 매 페이지에 반영합니다.
+            - hasNext가 false이면 마지막 페이지이며 nextCursor는 null입니다. v1 목록·지도에서 받은 커서는 사용할 수 없습니다.
+
+            ### 요청 예시
+
+            모든 요청에 기기 인증 토큰을 전달합니다. {nextCursor}에는 이전 응답의 nextCursor를 넣습니다.
+            그룹 ID 예시는 실제 조회할 그룹의 공개 ID로 바꿉니다.
+
+            - 전체 첫 페이지: GET /api/v3/emotions
+            - 그룹 첫 페이지: GET /api/v3/emotions?groupId=11111111-1111-4111-8111-111111111111
+            - 전체·그룹 다음 페이지: GET /api/v3/emotions?cursor={nextCursor}
+            - 같은 그룹을 명시한 다음 페이지: GET /api/v3/emotions?groupId=11111111-1111-4111-8111-111111111111&cursor={nextCursor}
+
+            ### 응답
+
+            - items, hasNext, nextCursor를 반환합니다. 각 항목은 기존 목록·상세와 같은 GeoJSON Feature입니다.
+            - 여섯 이모지의 집계와 본인 선택 여부, 그룹 스탬프와 그룹 ID, 본인 작성 여부인 properties.isMine을 포함합니다.
+            - 익명 감정은 '익명', 기명 감정은 작성 기기의 현재 닉네임을 표시합니다. 닉네임이 없으면 '익명'입니다.
+            - AUDIO는 audio.playbackUrl과 audio.expiresAt을 반환하고, MEMO의 audio는 null입니다.
+            - 재생 URL은 1시간 동안 유효합니다. 만료되면 목록 또는 상세를 다시 조회합니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "감정 목록과 다음 커서"),
             @ApiResponse(responseCode = "400", description = "그룹 ID나 커서가 올바르지 않거나 커서의 그룹과 요청 그룹이 다름"),
@@ -65,7 +108,7 @@ public interface EmotionControllerApi {
             @ApiResponse(responseCode = "503", description = "녹음 재생 URL을 발급할 수 없음")
     })
     ResponseEntity<CursorResponse<EmotionDetailResponse>> findListWithoutBounds(
-            @Valid EmotionsWithoutBoundsRequest request,
+            @Valid @ParameterObject EmotionsWithoutBoundsRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
@@ -86,7 +129,7 @@ public interface EmotionControllerApi {
             @ApiResponse(responseCode = "401", description = "인증할 수 없음")
     })
     ResponseEntity<CursorResponse<EmotionMapResponse>> findMap(
-            @Valid EmotionsWithinBoundsRequest request,
+            @Valid @ParameterObject EmotionsWithinBoundsRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
