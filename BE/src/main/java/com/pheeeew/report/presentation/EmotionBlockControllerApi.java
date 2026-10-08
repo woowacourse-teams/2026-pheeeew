@@ -46,6 +46,8 @@ public interface EmotionBlockControllerApi {
 
                     - 같은 기기는 같은 감정을 한 번만 차단합니다.
                     - 이미 차단한 감정을 다시 차단하면 새로 저장하지 않고 최초 차단을 200으로 반환합니다.
+                    - `nickname`은 해당 감정이 익명이면 '익명', 기명이면 작성 기기의 현재 닉네임입니다. 기기 닉네임이 없으면 '익명'으로 표시합니다.
+                    - 기기 닉네임을 수정하면 기존 기명 감정의 차단 응답에도 새 이름을 표시합니다. 익명 감정은 계속 '익명'입니다.
 
                     ### 앱 재설치
 
@@ -133,7 +135,9 @@ public interface EmotionBlockControllerApi {
                     ### 항목
 
                     - `createdAt`은 차단한 시각입니다. 감정을 등록한 시각이 아닙니다.
-                    - `nickname`과 `memo`는 차단한 감정의 값입니다. 작성자를 식별하는 값이 아닙니다.
+                    - `memo`는 차단한 감정의 메모입니다.
+                    - `nickname`은 익명 감정이면 '익명', 기명 감정이면 작성 기기의 현재 닉네임입니다. 기기 닉네임이 없으면 '익명'으로 표시합니다.
+                    - 닉네임 수정은 기존 기명 감정의 차단 목록에도 반영됩니다. 작성 기기의 식별자는 반환하지 않습니다.
                     - 삭제된 감정도 목록에 남습니다.
                     - `emotionId`를 그대로 `DELETE /api/v2/blocks/emotions/{emotionId}` 에 사용합니다.
                     """,
@@ -150,13 +154,19 @@ public interface EmotionBlockControllerApi {
                                       "items": [
                                         {
                                           "emotionId": 42,
-                                          "nickname": "날아가는 고라니",
+                                          "nickname": "익명",
                                           "memo": "오늘은 조금 지쳤다",
                                           "createdAt": "2026-09-14T02:44:00Z"
+                                        },
+                                        {
+                                          "emotionId": 41,
+                                          "nickname": "스타크",
+                                          "memo": "조금 나아졌다",
+                                          "createdAt": "2026-09-14T02:43:00Z"
                                         }
                                       ],
-                                      "hasNext": true,
-                                      "nextCursor": "opaque-cursor"
+                                      "hasNext": false,
+                                      "nextCursor": null
                                     }
                                     """)
                     )

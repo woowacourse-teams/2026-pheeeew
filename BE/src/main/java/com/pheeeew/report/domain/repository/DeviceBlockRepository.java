@@ -19,11 +19,13 @@ public interface DeviceBlockRepository extends JpaRepository<DeviceBlock, Long> 
                     SELECT
                         device_block.id AS "blockId",
                         device_block.origin_emotion_id AS "emotionId",
-                        emotion.nickname AS nickname,
+                        CASE WHEN emotion.anonymous THEN '익명'
+                             ELSE COALESCE(author.nickname, '익명') END AS nickname,
                         emotion.memo AS memo,
                         device_block.created_at AS "createdAt"
                     FROM device_blocks device_block
                     JOIN emotions emotion ON emotion.id = device_block.origin_emotion_id
+                    LEFT JOIN devices author ON author.id = emotion.device_id AND NOT emotion.anonymous
                     WHERE device_block.blocker_device_id = :blockerDeviceId
                       AND device_block.id < :lastId
                     ORDER BY device_block.id DESC

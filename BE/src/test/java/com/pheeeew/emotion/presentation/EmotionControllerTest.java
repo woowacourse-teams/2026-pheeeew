@@ -6,6 +6,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -88,7 +89,7 @@ class EmotionControllerTest {
     private static final UUID DEVICE_PUBLIC_ID = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
     private static final String EMOJI_URI = "/api/v1/emotions/42/emojis/HEART";
     private static final String EMOTION_URI = "/api/v1/emotions/42";
-    private static final String REGION_MAP_URI = "/api/v1/emotions/map/regions";
+    private static final String REGION_MAP_URI = "/api/v2/emotions/map/regions";
     private static final String REGION_BOUNDS_QUERY = "?minLongitude=127.8&minLatitude=37.2&maxLongitude=128.2&maxLatitude=37.8";
     private static final MediaType GEO_JSON = MediaType.parseMediaType("application/geo+json");
 
@@ -138,7 +139,7 @@ class EmotionControllerTest {
                             "groupStamp":null,
                             "groupId":null,
                             "isMine":true,
-                            "nickname":"먼지구름",
+                            "nickname":"익명",
                             "emojis":[
                               {"type":"HEART","count":2,"selected":true},
                               {"type":"LAUGH","count":0,"selected":false},
@@ -154,21 +155,24 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void 녹음_목록과_상세는_내용_유형과_메모와_재생_정보를_순서대로_반환한다(boolean list) {
+    @CsvSource({
+            "/api/v1/emotions/42,$.properties",
+            "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38,$.items[0].properties",
+            "/api/v3/emotions,$.items[0].properties"
+    })
+    void 녹음_목록과_상세는_내용_유형과_메모와_재생_정보를_순서대로_반환한다(String uri, String path) {
         // given
         Emotion emotion = 기본_한숨_빌더()
-                .state(EmotionState.FRUSTRATED).rotationDegrees(0).nickname("먼지구름").deviceId(1L)
+                .state(EmotionState.FRUSTRATED).rotationDegrees(0).deviceId(1L)
                 .audio(Audio.builder().objectKey("private/voice.m4a").build()).build();
         var playback = PlaybackUrl.of(
                 "https://audio.example.test/signed", Instant.parse("2026-09-25T12:05:00Z"));
         var view = EmotionDetailView.of(emotion, List.of(), playback);
         when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(view);
-        when(emotionQueryService.findFirstListPage(any(), eq(DEVICE_PUBLIC_ID), any()))
+        when(emotionQueryService.findListWithinBounds(any(), eq(DEVICE_PUBLIC_ID), any(), isNull()))
                 .thenReturn(EmotionPageView.of(List.of(view), false, null));
-        String uri = list
-                ? "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38" : EMOTION_URI;
-        String path = list ? "$.items[0].properties" : "$.properties";
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, null, null))
+                .thenReturn(EmotionPageView.of(List.of(view), false, null));
 
         // when / then
         request(HttpMethod.GET, uri, "access-token").expectStatus().isOk().expectBody()
@@ -187,7 +191,9 @@ class EmotionControllerTest {
         var stamp = new GroupStampResult("모임", "#FFFFFF", "#000000", StampFrame.CIRCLE);
         EmotionDetailView view = EmotionDetailView.of(emotion, List.of(), null, stamp);
         when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(view);
-        when(emotionQueryService.findFirstListPage(any(), eq(DEVICE_PUBLIC_ID), any()))
+        when(emotionQueryService.findListWithinBounds(any(), eq(DEVICE_PUBLIC_ID), any(), isNull()))
+                .thenReturn(EmotionPageView.of(List.of(view), false, null));
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, null, null))
                 .thenReturn(EmotionPageView.of(List.of(view), false, null));
 
         // when / then
@@ -198,6 +204,8 @@ class EmotionControllerTest {
                 .jsonPath("$.properties.groupStamp.frame").isEqualTo("CIRCLE");
         request(HttpMethod.GET, "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38",
                 "access-token").expectStatus().isOk().expectBody()
+                .jsonPath("$.items[0].properties.groupStamp.text").isEqualTo("모임");
+        request(HttpMethod.GET, "/api/v3/emotions", "access-token").expectStatus().isOk().expectBody()
                 .jsonPath("$.items[0].properties.groupStamp.text").isEqualTo("모임");
     }
 
@@ -356,7 +364,7 @@ class EmotionControllerTest {
     void 등록_내용을_인증된_기기로_저장하고_식별자를_반환한다(String content) {
         Emotion saved = com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더().build();
         ReflectionTestUtils.setField(saved, "id", 42L);
-        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), eq(DEVICE_PUBLIC_ID)))
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), eq(DEVICE_PUBLIC_ID), any()))
                 .thenReturn(saved);
         client.post().uri("/api/v1/emotions?devicePublicId=" + UUID.randomUUID())
                 .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
@@ -366,7 +374,68 @@ class EmotionControllerTest {
                 .expectBody().json("{\"id\":42}", JsonCompareMode.STRICT);
         verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
                 EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
-                content.contains("MEMO") ? "메모" : null, content.contains("AUDIO") ? "upload" : null, null, DEVICE_PUBLIC_ID);
+                content.contains("MEMO") ? "메모" : null, content.contains("AUDIO") ? "upload" : null, null, DEVICE_PUBLIC_ID, null);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v2/emotions", "/api/v3/emotions"})
+    void 내용_필수_등록은_NONE과_빈_메모_및_불일치_조합을_거부한다(String uri) {
+        // given
+        List<String> contents = List.of(
+                "\"contentType\":\"NONE\"", "\"contentType\":null", "\"memo\":\"메모\"",
+                "\"contentType\":\"MEMO\"", "\"contentType\":\"MEMO\",\"memo\":null",
+                "\"contentType\":\"MEMO\",\"memo\":\"\"",
+                "\"contentType\":\"MEMO\",\"memo\":\"  \u2003  \"",
+                "\"contentType\":\"MEMO\",\"memo\":\"메모\",\"audioUploadId\":\"upload\"",
+                "\"contentType\":\"AUDIO\"", "\"contentType\":\"AUDIO\",\"audioUploadId\":\" \"",
+                "\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\",\"memo\":\"메모\"");
+
+        // when / then
+        for (String content : contents) {
+            client.post().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                    .contentType(MediaType.APPLICATION_JSON).body(createBody(content))
+                    .exchange().expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        }
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v2/emotions", "/api/v3/emotions"})
+    void 내용_필수_등록은_완료된_녹음_식별자와_그룹을_전달한다(String uri) {
+        // given
+        UUID groupId = UUID.randomUUID();
+        Emotion saved = 기본_한숨_빌더().build();
+        ReflectionTestUtils.setField(saved, "id", 42L);
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(),
+                eq(DEVICE_PUBLIC_ID), any())).thenReturn(saved);
+
+        // when / then
+        client.post().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(createBody("\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\",\"groupId\":\"" + groupId + "\""))
+                .exchange().expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.LOCATION, EMOTION_URI)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("{\"id\":42}", JsonCompareMode.STRICT);
+        verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
+                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, null, "upload", groupId, DEVICE_PUBLIC_ID, null);
+    }
+
+    @Test
+    void v2는_메모를_등록하고_익명_선택을_무시한다() {
+        // given
+        Emotion saved = 기본_한숨_빌더().build();
+        ReflectionTestUtils.setField(saved, "id", 42L);
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(),
+                eq(DEVICE_PUBLIC_ID), eq(null))).thenReturn(saved);
+
+        // when / then
+        client.post().uri("/api/v2/emotions?devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(createBody("\"contentType\":\"MEMO\",\"memo\":\"  메모  \" ,\"anonymous\":false"))
+                .exchange().expectStatus().isOk();
+        verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
+                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, "  메모  ", null, null, DEVICE_PUBLIC_ID, null);
     }
 
     @Test
@@ -376,7 +445,7 @@ class EmotionControllerTest {
         Emotion saved = com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더().build();
         ReflectionTestUtils.setField(saved, "id", 42L);
         when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(),
-                eq(groupId), eq(DEVICE_PUBLIC_ID))).thenReturn(saved);
+                eq(groupId), eq(DEVICE_PUBLIC_ID), any())).thenReturn(saved);
 
         // when / then
         client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
@@ -384,7 +453,80 @@ class EmotionControllerTest {
                 .body(createBody("\"contentType\":\"NONE\",\"groupId\":\"" + groupId + "\""))
                 .exchange().expectStatus().isOk();
         verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
-                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, null, null, groupId, DEVICE_PUBLIC_ID);
+                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, null, null, groupId, DEVICE_PUBLIC_ID, null);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"null", "true", "false", "0", "1", "\"false\"", "\"true\"", "\"invalid\"", "[]", "{}"})
+    void v1은_익명_선택을_무시하고_인증된_기기로_익명_등록한다(String anonymous) {
+        // given
+        Emotion saved = 기본_한숨_빌더().build();
+        ReflectionTestUtils.setField(saved, "id", 42L);
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(),
+                eq(DEVICE_PUBLIC_ID), eq(null))).thenReturn(saved);
+
+        // when / then
+        client.post().uri("/api/v1/emotions?devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(createBody("\"contentType\":\"NONE\",\"anonymous\":" + anonymous))
+                .exchange().expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.LOCATION, EMOTION_URI)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("{\"id\":42}", JsonCompareMode.STRICT);
+        verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
+                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, null, null, null, DEVICE_PUBLIC_ID, null);
+    }
+
+    @ParameterizedTest
+    @MethodSource("v3AnonymousOptions")
+    void v3의_익명_선택과_등록_응답을_전달한다(String option, Boolean anonymous) {
+        // given
+        Emotion saved = 기본_한숨_빌더().build();
+        ReflectionTestUtils.setField(saved, "id", 42L);
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(),
+                eq(DEVICE_PUBLIC_ID), eq(anonymous))).thenReturn(saved);
+
+        // when / then
+        client.post().uri("/api/v3/emotions?devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body(createBody("\"contentType\":\"MEMO\",\"memo\":\"메모\"" + option))
+                .exchange().expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.LOCATION, EMOTION_URI)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().json("{\"id\":42}", JsonCompareMode.STRICT);
+        verify(emotionCommandService).save(UUID.fromString("5d1ad34e-1e20-4f20-a20e-3825a095fe6b"),
+                EmotionState.FRUSTRATED, 126.97, 37.56, 35.5, "메모", null, null, DEVICE_PUBLIC_ID, anonymous);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "1", "\"false\"", "\"true\"", "\"invalid\"", "[]", "{}"})
+    void v3의_익명_선택은_JSON_boolean만_허용한다(String anonymous) {
+        // when / then
+        client.post().uri("/api/v3/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(createBody("\"contentType\":\"MEMO\",\"memo\":\"메모\",\"anonymous\":" + anonymous))
+                .exchange().expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"\"contentType\":\"NONE\",\"memo\":\"메모\"", "\"contentType\":\"AUDIO\"", "\"contentType\":null"})
+    void v3에서도_잘못된_내용_조합은_저장하지_않는다(String content) {
+        // when / then
+        client.post().uri("/api/v3/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(createBody(content)).exchange().expectStatus().isBadRequest();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @Test
+    void v3에서_닉네임_없는_기명_등록은_409를_반환한다() {
+        // given
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(),
+                eq(DEVICE_PUBLIC_ID), eq(false))).thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NICKNAME_REQUIRED));
+
+        // when / then
+        client.post().uri("/api/v3/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(createBody("\"contentType\":\"MEMO\",\"memo\":\"메모\",\"anonymous\":false"))
+                .exchange().expectStatus().isEqualTo(409).expectBody().jsonPath("$.code").isEqualTo("DEVICE-010");
     }
 
     @ParameterizedTest
@@ -395,23 +537,25 @@ class EmotionControllerTest {
         verifyNoInteractions(emotionCommandService);
     }
 
-    @Test
-    void 등록_필수값과_좌표_각도_메모_길이를_검증한다() {
-        String valid = createBody("\"contentType\":\"NONE\"");
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v2/emotions", "/api/v3/emotions"})
+    void 등록_필수값과_좌표_각도_메모_길이를_검증한다(String uri) {
+        String valid = createBody("\"contentType\":\"MEMO\",\"memo\":\"메모\"");
         for (String body : List.of(valid.replace("35.5", "360"), valid.replace("126.97", "181"),
                 valid.replace("37.56", "-91"), valid.replace("\"FRUSTRATED\"", "null"),
                 valid.replace("\"5d1ad34e-1e20-4f20-a20e-3825a095fe6b\"", "null"),
                 createBody("\"contentType\":\"MEMO\",\"memo\":\"" + "가".repeat(201) + "\""))) {
-            client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+            client.post().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                     .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isBadRequest();
         }
         verifyNoInteractions(emotionCommandService);
     }
 
-    @Test
-    void 등록은_기기_인증이_필수다() {
-        request(HttpMethod.POST, "/api/v1/emotions", null).expectStatus().isUnauthorized();
-        request(HttpMethod.POST, "/api/v1/emotions", "invalid-token").expectStatus().isUnauthorized();
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v2/emotions", "/api/v3/emotions"})
+    void 등록은_기기_인증이_필수다(String uri) {
+        request(HttpMethod.POST, uri, null).expectStatus().isUnauthorized();
+        request(HttpMethod.POST, uri, "invalid-token").expectStatus().isUnauthorized();
         verifyNoInteractions(emotionCommandService);
     }
 
@@ -420,19 +564,94 @@ class EmotionControllerTest {
             "EMOTION_AUDIO_UPLOAD_ALREADY_USED", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE"})
     void 등록_실패_상태와_코드를_전달한다(String name) {
         EmotionErrorCode error = EmotionErrorCode.valueOf(name);
-        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any()))
+        when(emotionCommandService.save(any(), any(), anyDouble(), anyDouble(), anyDouble(), any(), any(), any(), any(), any()))
                 .thenThrow(new EmotionException(error));
         client.post().uri("/api/v1/emotions").header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON).body(createBody("\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\""))
                 .exchange().expectStatus().isEqualTo(error.getStatus().value()).expectBody().jsonPath("$.code").isEqualTo(error.getCode());
     }
 
+    @ParameterizedTest
+    @MethodSource("listWithoutBoundsRequests")
+    void 좌표_없는_목록은_그룹과_커서를_인증된_기기로_조회하고_기존_응답을_유지한다(String query, UUID groupId, String cursor) {
+        // given
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groupId, cursor))
+                .thenReturn(EmotionPageView.of(List.of(detailView(42L, true), detailView(43L, false)), true, "next-page"));
+        String separator = query.isEmpty() ? "?" : "&";
+
+        // when / then: 조회 기기는 쿼리 값으로 바꿀 수 없다.
+        request(HttpMethod.GET, "/api/v3/emotions" + query + separator + "devicePublicId=" + UUID.randomUUID(), "access-token")
+                .expectStatus().isOk().expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-cache, private")
+                .expectBody().jsonPath("$.items.length()").isEqualTo(2)
+                .jsonPath("$.items[0].type").isEqualTo("Feature")
+                .jsonPath("$.items[0].geometry.coordinates[0]").isEqualTo(126.9774)
+                .jsonPath("$.items[0].geometry.coordinates[1]").isEqualTo(37.5669)
+                .jsonPath("$.items[0].properties.contentType").isEqualTo("MEMO")
+                .jsonPath("$.items[0].properties.nickname").isEqualTo("익명")
+                .jsonPath("$.items[0].properties.emojis.length()").isEqualTo(6)
+                .jsonPath("$.items[0].properties.emojis[0].selected").isEqualTo(true)
+                .jsonPath("$.items[0].properties.isMine").isEqualTo(true)
+                .jsonPath("$.items[1].properties.isMine").isEqualTo(false)
+                .jsonPath("$.hasNext").isEqualTo(true).jsonPath("$.nextCursor").isEqualTo("next-page");
+        verify(emotionQueryService).findListWithoutBounds(DEVICE_PUBLIC_ID, groupId, cursor);
+    }
+
+    @Test
+    void 좌표_없는_목록에_좌표를_전달해도_조회_조건에_포함하지_않고_빈_결과도_그대로_반환한다() {
+        // given
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, null, null))
+                .thenReturn(EmotionPageView.of(List.of(), false, null));
+
+        // when / then
+        request(HttpMethod.GET, "/api/v3/emotions?minLongitude=invalid&minLatitude=37&maxLongitude=128&maxLatitude=38", "access-token")
+                .expectStatus().isOk().expectBody()
+                .json("{\"items\":[],\"hasNext\":false,\"nextCursor\":null}", JsonCompareMode.STRICT);
+        verify(emotionQueryService).findListWithoutBounds(DEVICE_PUBLIC_ID, null, null);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "invalid-token")
+    void 좌표_없는_목록도_유효한_기기_인증이_필요하다(String token) {
+        request(HttpMethod.GET, "/api/v3/emotions", token).expectStatus().isUnauthorized();
+        verifyNoInteractions(emotionQueryService);
+    }
+
+    @Test
+    void 좌표_없는_목록의_허용_범위는_정확한_GET_경로로_제한한다() {
+        request(HttpMethod.PUT, "/api/v3/emotions", "access-token").expectStatus().isForbidden();
+        request(HttpMethod.DELETE, "/api/v3/emotions", "access-token").expectStatus().isForbidden();
+        request(HttpMethod.GET, "/api/v3/emotions/42", "access-token").expectStatus().isForbidden();
+        verifyNoInteractions(emotionQueryService);
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @Test
+    void 좌표_없는_목록의_잘못된_그룹_ID는_전체_조회로_처리하지_않는다() {
+        request(HttpMethod.GET, "/api/v3/emotions?groupId=invalid", "access-token").expectStatus().isBadRequest();
+        verifyNoInteractions(emotionQueryService);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"EMOTION_INVALID_CURSOR,400", "EMOTION_AUDIO_PLAYBACK_UNAVAILABLE,503"})
+    void 좌표_없는_목록의_커서와_재생_오류는_기존_오류_응답으로_반환한다(EmotionErrorCode error, int status) {
+        // given
+        UUID groupId = UUID.randomUUID();
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groupId, "cursor"))
+                .thenThrow(new EmotionException(error));
+
+        // when / then
+        request(HttpMethod.GET, "/api/v3/emotions?groupId=" + groupId + "&cursor=cursor", "access-token")
+                .expectStatus().isEqualTo(status).expectBody().jsonPath("$.code").isEqualTo(error.getCode());
+    }
+
     @Test
     void 목록의_첫_페이지와_다음_페이지를_인증된_기기로_조회한다() {
         EmotionSearchBounds bounds = EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6);
-        when(emotionQueryService.findFirstListPage(bounds, DEVICE_PUBLIC_ID, null))
+        when(emotionQueryService.findListWithinBounds(bounds, DEVICE_PUBLIC_ID, null, null))
                 .thenReturn(EmotionPageView.of(List.of(detailView(42L, true), detailView(43L, false)), true, "next"));
-        when(emotionQueryService.findNextListPage("next", DEVICE_PUBLIC_ID))
+        when(emotionQueryService.findListWithinBounds(null, DEVICE_PUBLIC_ID, null, "next"))
                 .thenReturn(EmotionPageView.of(List.of(), false, null));
 
         request(HttpMethod.GET, "/api/v1/emotions?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6", "access-token")
@@ -443,8 +662,8 @@ class EmotionControllerTest {
                 .jsonPath("$.hasNext").isEqualTo(true).jsonPath("$.nextCursor").isEqualTo("next");
         request(HttpMethod.GET, "/api/v1/emotions?cursor=next", "access-token")
                 .expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty().jsonPath("$.hasNext").isEqualTo(false);
-        verify(emotionQueryService).findFirstListPage(bounds, DEVICE_PUBLIC_ID, null);
-        verify(emotionQueryService).findNextListPage("next", DEVICE_PUBLIC_ID);
+        verify(emotionQueryService).findListWithinBounds(bounds, DEVICE_PUBLIC_ID, null, null);
+        verify(emotionQueryService).findListWithinBounds(null, DEVICE_PUBLIC_ID, null, "next");
     }
 
     @ParameterizedTest
@@ -468,13 +687,13 @@ class EmotionControllerTest {
         // given
         UUID groupId = UUID.randomUUID();
         var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
-        when(emotionQueryService.findFirstListPage(bounds, DEVICE_PUBLIC_ID, groupId))
+        when(emotionQueryService.findListWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null))
                 .thenReturn(EmotionPageView.of(List.of(), false, null));
 
         // when / then
         request(HttpMethod.GET, "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38&groupId=" + groupId,
                 "access-token").expectStatus().isOk();
-        verify(emotionQueryService).findFirstListPage(bounds, DEVICE_PUBLIC_ID, groupId);
+        verify(emotionQueryService).findListWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null);
     }
 
     @Test
@@ -485,12 +704,48 @@ class EmotionControllerTest {
     }
 
     @Test
+    void v2_지도는_내용_있는_지도_경로에_그룹과_커서를_전달한다() {
+        // given
+        UUID groupId = UUID.randomUUID();
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+        var item = new EmotionMapItemView(42L, 126.9774, 37.5669,
+                Instant.parse("2026-09-24T12:00:00Z"), EmotionState.FRUSTRATED, 35.5, null, groupId);
+        when(emotionQueryService.findContentMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null))
+                .thenReturn(EmotionMapPageView.of(List.of(item), true, "next-map"));
+        when(emotionQueryService.findContentMapWithinBounds(null, DEVICE_PUBLIC_ID, null, "next-map"))
+                .thenReturn(EmotionMapPageView.of(List.of(), false, null));
+
+        // when / then
+        request(HttpMethod.GET, "/api/v2/emotions/map?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38&groupId=" + groupId,
+                "access-token").expectStatus().isOk()
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-cache, private")
+                .expectBody().jsonPath("$.items[0].id").isEqualTo(42)
+                .jsonPath("$.nextCursor").isEqualTo("next-map");
+        request(HttpMethod.GET, "/api/v2/emotions/map?cursor=next-map", "access-token")
+                .expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty();
+        verify(emotionQueryService).findContentMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null);
+        verify(emotionQueryService).findContentMapWithinBounds(null, DEVICE_PUBLIC_ID, null, "next-map");
+        org.mockito.Mockito.verifyNoMoreInteractions(emotionQueryService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v2/emotions/map", "/api/v2/emotions/map/regions"})
+    void v2_지도도_인증과_유효한_검색_조건이_필요하다(String uri) {
+        // when / then
+        request(HttpMethod.GET, uri, null).expectStatus().isUnauthorized();
+        request(HttpMethod.GET, uri, "invalid-token").expectStatus().isUnauthorized();
+        request(HttpMethod.GET, uri, "access-token").expectStatus().isBadRequest();
+        request(HttpMethod.POST, uri, "access-token").expectStatus().isForbidden();
+        verifyNoInteractions(emotionQueryService);
+    }
+
+    @Test
     void 지도는_표시_정보만_반환하고_목록이나_단건_조회를_호출하지_않는다() {
         // given
         var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
         var item = new EmotionMapItemView(42L, 126.9774, 37.5669,
                 Instant.parse("2026-09-24T12:00:00Z"), EmotionState.FRUSTRATED, 35.5, null, null);
-        when(emotionQueryService.findFirstMapPage(bounds, DEVICE_PUBLIC_ID, null))
+        when(emotionQueryService.findMapWithinBounds(bounds, DEVICE_PUBLIC_ID, null, null))
                 .thenReturn(EmotionMapPageView.of(List.of(item), true, "next-map"));
 
         // when / then
@@ -504,28 +759,28 @@ class EmotionControllerTest {
                           "rotationDegrees":35.5,"groupStamp":null,"groupId":null}}],
                           "hasNext":true,"nextCursor":"next-map"}
                         """, JsonCompareMode.STRICT);
-        verify(emotionQueryService).findFirstMapPage(bounds, DEVICE_PUBLIC_ID, null);
+        verify(emotionQueryService).findMapWithinBounds(bounds, DEVICE_PUBLIC_ID, null, null);
         org.mockito.Mockito.verifyNoMoreInteractions(emotionQueryService);
     }
 
     @Test
     void 지도_다음_페이지는_지도_조회에_커서를_전달한다() {
-        when(emotionQueryService.findNextMapPage("next-map", DEVICE_PUBLIC_ID))
+        when(emotionQueryService.findMapWithinBounds(null, DEVICE_PUBLIC_ID, null, "next-map"))
                 .thenReturn(EmotionMapPageView.of(List.of(), false, null));
         request(HttpMethod.GET, "/api/v1/emotions/map?cursor=next-map", "access-token").expectStatus().isOk()
                 .expectBody().jsonPath("$.items").isEmpty();
-        verify(emotionQueryService).findNextMapPage("next-map", DEVICE_PUBLIC_ID);
+        verify(emotionQueryService).findMapWithinBounds(null, DEVICE_PUBLIC_ID, null, "next-map");
     }
 
     @Test
     void 지도도_그룹_필터를_전달한다() {
         UUID groupId = UUID.randomUUID();
         var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
-        when(emotionQueryService.findFirstMapPage(bounds, DEVICE_PUBLIC_ID, groupId))
+        when(emotionQueryService.findMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null))
                 .thenReturn(EmotionMapPageView.of(List.of(), false, null));
         request(HttpMethod.GET, "/api/v1/emotions/map?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38&groupId=" + groupId,
                 "access-token").expectStatus().isOk();
-        verify(emotionQueryService).findFirstMapPage(bounds, DEVICE_PUBLIC_ID, groupId);
+        verify(emotionQueryService).findMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null);
     }
 
     @Test
@@ -546,7 +801,7 @@ class EmotionControllerTest {
         var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
         var region = Region.of(code, level, "검증용 지역", parentCode, 127, 38);
         var item = EmotionRegionMapItemView.of(region, RegionEmotionSummary.of(3L, EmotionState.ANGRY));
-        when(emotionQueryService.findRegionMap(bounds, level, groupId)).thenReturn(List.of(item));
+        when(emotionQueryService.findContentRegionMap(bounds, level, groupId)).thenReturn(List.of(item));
 
         // when / then
         request(HttpMethod.GET, REGION_MAP_URI + REGION_BOUNDS_QUERY + "&level=" + level + "&groupId=" + groupId,
@@ -559,7 +814,7 @@ class EmotionControllerTest {
                          "properties":{"level":"%s","name":"검증용 지역","parentCode":%s,
                          "totalCount":3,"representativeState":"ANGRY"}}]
                         """.formatted(code, level, parentCode == null ? "null" : "\"" + parentCode + "\""), JsonCompareMode.STRICT);
-        verify(emotionQueryService).findRegionMap(bounds, level, groupId);
+        verify(emotionQueryService).findContentRegionMap(bounds, level, groupId);
         org.mockito.Mockito.verifyNoMoreInteractions(emotionQueryService);
     }
 
@@ -567,13 +822,13 @@ class EmotionControllerTest {
     void 지역_요약은_날짜변경선과_그룹_생략을_허용하고_빈_결과도_정상_응답한다() {
         // given
         var bounds = EmotionSearchBounds.of(170, 37, -170, 39);
-        when(emotionQueryService.findRegionMap(bounds, RegionLevel.EMD, null)).thenReturn(List.of());
+        when(emotionQueryService.findContentRegionMap(bounds, RegionLevel.EMD, null)).thenReturn(List.of());
 
         // when / then
         request(HttpMethod.GET, REGION_MAP_URI + "?minLongitude=170&minLatitude=37&maxLongitude=-170&maxLatitude=39&level=EMD",
                 "access-token").expectStatus().isOk()
                 .expectBody().json("[]", JsonCompareMode.STRICT);
-        verify(emotionQueryService).findRegionMap(bounds, RegionLevel.EMD, null);
+        verify(emotionQueryService).findContentRegionMap(bounds, RegionLevel.EMD, null);
     }
 
     @ParameterizedTest
@@ -612,6 +867,14 @@ class EmotionControllerTest {
     }
 
     @Test
+    void 이전_v1_지역_요약_경로는_허용하지_않는다() {
+        // when / then
+        request(HttpMethod.GET, "/api/v1/emotions/map/regions" + REGION_BOUNDS_QUERY + "&level=EMD", "access-token")
+                .expectStatus().isForbidden();
+        verifyNoInteractions(emotionQueryService);
+    }
+
+    @Test
     void 지역_요약의_GET_외_메서드와_추가_하위_경로는_허용하지_않는다() {
         // given / when / then
         request(HttpMethod.POST, REGION_MAP_URI, "access-token").expectStatus().isForbidden();
@@ -622,7 +885,7 @@ class EmotionControllerTest {
     @Test
     void 지역_요약_준비_오류는_빈_응답_대신_503으로_전달한다() {
         // given
-        when(emotionQueryService.findRegionMap(EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8), RegionLevel.EMD, null))
+        when(emotionQueryService.findContentRegionMap(EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8), RegionLevel.EMD, null))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE));
 
         // when / then
@@ -648,7 +911,6 @@ class EmotionControllerTest {
                 .state(EmotionState.FRUSTRATED)
                 .rotationDegrees(35.5)
                 .memo("답답한 하루")
-                .nickname("먼지구름")
                 .deviceId(isMine ? 1L : 2L)
                 .build();
         ReflectionTestUtils.setField(emotion, "id", emotionId);
@@ -662,6 +924,20 @@ class EmotionControllerTest {
                 EmotionEmojiResult.of(EmojiType.RAGE, 0, false),
                 EmotionEmojiResult.of(EmojiType.SKULL, 0, false)
         ), null, null, 1L);
+    }
+
+    private static Stream<Arguments> listWithoutBoundsRequests() {
+        UUID groupId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        return Stream.of(
+                Arguments.of("", null, null),
+                Arguments.of("?groupId=" + groupId, groupId, null),
+                Arguments.of("?cursor=next", null, "next"),
+                Arguments.of("?groupId=" + groupId + "&cursor=next", groupId, "next"));
+    }
+
+    private static Stream<Arguments> v3AnonymousOptions() {
+        return Stream.of(Arguments.of("", null), Arguments.of(",\"anonymous\":null", null),
+                Arguments.of(",\"anonymous\":true", true), Arguments.of(",\"anonymous\":false", false));
     }
 
     private static Stream<Arguments> updateContents() {

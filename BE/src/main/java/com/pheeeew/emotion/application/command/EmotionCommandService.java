@@ -1,6 +1,7 @@
 package com.pheeeew.emotion.application.command;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
+import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NICKNAME_REQUIRED;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REQUEST_ID_CONFLICT;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
@@ -11,7 +12,6 @@ import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
-import com.pheeeew.emotion.application.EmotionNicknameGenerator;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionContent;
@@ -50,9 +50,16 @@ public class EmotionCommandService {
     private final DeviceRepository deviceRepository;
     private final GroupStampRepository groupStampRepository;
     private final EmotionContentResolver contentResolver;
-    private final EmotionNicknameGenerator nicknameGenerator;
     private final PlatformTransactionManager transactionManager;
     private final RegionClassifier regionClassifier;
+
+    public Emotion save(
+            UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
+            String memo, String audioUploadId, UUID groupPublicId, UUID devicePublicId
+    ) {
+        return save(requestId, state, longitude, latitude, rotationDegrees,
+                memo, audioUploadId, groupPublicId, devicePublicId, null);
+    }
 
     /**
      * ADR-0004에 따라 선조회와 실패 후 재조회를 저장 트랜잭션 밖에서 수행한다.
@@ -60,21 +67,24 @@ public class EmotionCommandService {
      */
     public Emotion save(
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
-            String memo, String audioUploadId, UUID groupPublicId, UUID devicePublicId
+            String memo, String audioUploadId, UUID groupPublicId, UUID devicePublicId, Boolean anonymous
     ) {
-        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
-                .map(Device::getId)
+        Device device = deviceRepository.findByPublicId(devicePublicId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+        Long deviceId = device.getId();
         Optional<Emotion> existing = findRegisteredEmotion(requestId, deviceId);
         if (existing.isPresent()) {
             return existing.get();
+        }
+        if (Boolean.FALSE.equals(anonymous) && device.getNickname() == null) {
+            throw new DeviceException(DEVICE_NICKNAME_REQUIRED);
         }
 
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         try {
             return transaction.execute(status -> saveNewEmotion(requestId, state, longitude, latitude,
-                    rotationDegrees, memo, audioUploadId, groupPublicId, deviceId));
+                    rotationDegrees, memo, audioUploadId, groupPublicId, deviceId, anonymous));
         } catch (DataIntegrityViolationException cause) {
             return findRegisteredEmotion(requestId, deviceId)
                     .orElseThrow(() -> new EmotionException(EMOTION_SAVE_FAILED, cause));
@@ -109,7 +119,7 @@ public class EmotionCommandService {
             if (memo != null || audioUploadId != null) {
                 throw new IllegalArgumentException("녹음 유지와 새 내용은 함께 요청할 수 없습니다.");
             }
-            if (emotion.getContent().getAudio() == null) {
+            if (!emotion.getContent().hasAudio()) {
                 throw new EmotionException(EMOTION_AUDIO_REQUIRED);
             }
             content = emotion.getContent();
@@ -126,7 +136,7 @@ public class EmotionCommandService {
 
     private Emotion saveNewEmotion(
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
-            String memo, String audioUploadId, UUID groupPublicId, Long deviceId
+            String memo, String audioUploadId, UUID groupPublicId, Long deviceId, Boolean anonymous
     ) {
         if (requestId == null || state == null) {
             throw new IllegalArgumentException("요청 식별자와 감정 상태는 필수입니다.");
@@ -154,7 +164,7 @@ public class EmotionCommandService {
                 .memo(content.getMemo())
                 .audio(content.getAudio())
                 .groupStamp(stamp)
-                .nickname(nicknameGenerator.generate())
+                .anonymous(anonymous)
                 .deviceId(deviceId)
                 .build());
     }

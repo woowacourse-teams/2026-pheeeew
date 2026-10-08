@@ -46,6 +46,16 @@ public record EmotionContentRequest(
         };
     }
 
+    public boolean isRequiredContentValid() {
+        if (contentType == null || contentType == EmotionContentType.NONE) {
+            return false;
+        }
+        if (contentType == EmotionContentType.MEMO && (memo == null || memo.strip().isEmpty())) {
+            return false;
+        }
+        return isContentCombinationValid() && isMemoLengthValid();
+    }
+
     @AssertTrue(message = "메모는 200자를 초과할 수 없습니다.")
     @Schema(hidden = true)
     public boolean isMemoLengthValid() {

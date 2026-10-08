@@ -1,6 +1,7 @@
 package com.pheeeew.emotion.application.command;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
+import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NICKNAME_REQUIRED;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.emotion.fixture.AudioUploadFixture.기본_업로드_빌더;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
@@ -13,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
@@ -58,6 +60,9 @@ class EmotionCommandServiceSaveIntegrationTest {
 
     @Autowired
     private DeviceRepository deviceRepository;
+
+    @Autowired
+    private DeviceService deviceService;
 
     @Autowired
     private AudioUploadRepository uploads;
@@ -110,10 +115,95 @@ class EmotionCommandServiceSaveIntegrationTest {
         assertThat(loaded.getRotationDegrees()).isEqualTo(35.5);
         assertThat(loaded.getState()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(loaded.getDeviceId()).isEqualTo(device.getId());
-        assertThat(loaded.getNickname()).isNotBlank();
+        assertThat(jdbc.sql("SELECT nickname FROM emotions WHERE id = :id")
+                .param("id", loaded.getId()).query(String.class).single()).isEqualTo("익명");
+        assertThat(loaded.isAnonymous()).isTrue();
         assertThat(loaded.getRegionCode()).isEqualTo("11010530");
         assertThat(loaded.getRegionClassifiedAt()).isNotNull();
         assertThat(linkCount()).isZero();
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(booleans = {true, false})
+    void 익명_선택을_저장하고_과거_닉네임_컬럼에는_DB_기본값을_적용한다(Boolean anonymous) {
+        // given
+        deviceService.updateNickname(device.getPublicId(), "스타크");
+
+        // when
+        Emotion saved = commandService.save(UUID.randomUUID(), EmotionState.FRUSTRATED,
+                126.9774, 37.5669, 35.5, "메모", null, null, device.getPublicId(), anonymous);
+        Emotion loaded = emotionRepository.findById(saved.getId()).orElseThrow();
+
+        // then
+        assertThat(loaded.isAnonymous()).isEqualTo(!Boolean.FALSE.equals(anonymous));
+        assertThat(loaded.getDeviceId()).isEqualTo(device.getId());
+        assertThat(jdbc.sql("SELECT nickname FROM emotions WHERE id = :id")
+                .param("id", loaded.getId()).query(String.class).single()).isEqualTo("익명");
+    }
+
+    @Test
+    void 닉네임_없는_기명_등록은_녹음을_연결하지_않고_설정_후_같은_요청으로_등록할_수_있다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+
+        // when / then
+        assertThatThrownBy(() -> commandService.save(requestId, EmotionState.FRUSTRATED,
+                126.9774, 37.5669, 35.5, null, upload.getUploadId(), null, device.getPublicId(), false))
+                .isInstanceOfSatisfying(DeviceException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(DEVICE_NICKNAME_REQUIRED));
+        assertThat(emotionRepository.count()).isZero();
+        assertThat(linkCount()).isZero();
+        verifyNoInteractions(objectVerifier);
+
+        deviceService.updateNickname(device.getPublicId(), "스타크");
+        Emotion saved = commandService.save(requestId, EmotionState.FRUSTRATED,
+                126.9774, 37.5669, 35.5, null, upload.getUploadId(), null, device.getPublicId(), false);
+        assertThat(emotionRepository.findById(saved.getId()).orElseThrow().isAnonymous()).isFalse();
+        assertThat(emotionRepository.count()).isOne();
+        assertThat(linkCount()).isOne();
+    }
+
+    @Test
+    void 닉네임_없는_기기의_기명_재시도도_최초_익명_감정을_반환한다() {
+        // given
+        UUID requestId = UUID.randomUUID();
+        Emotion first = save(requestId, "최초 메모", null);
+
+        // when
+        Emotion retried = commandService.save(requestId, EmotionState.ANGRY,
+                0, 0, 0, null, upload.getUploadId(), UUID.randomUUID(), device.getPublicId(), false);
+
+        // then
+        assertThat(retried.getId()).isEqualTo(first.getId());
+        assertThat(retried.isAnonymous()).isTrue();
+        assertThat(retried.getMemo()).isEqualTo("최초 메모");
+        assertThat(emotionRepository.count()).isOne();
+        assertThat(linkCount()).isZero();
+        verifyNoInteractions(objectVerifier);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(booleans = {true, false})
+    void 내용_필수_버전의_유효한_재시도도_기존_NONE_감정을_덮어쓰지_않는다(Boolean anonymous) {
+        // given: V1의 내용 없는 감정을 V2(null) 또는 V3의 메모 본문으로 재시도한다.
+        UUID requestId = UUID.randomUUID();
+        Emotion first = save(requestId, null, null);
+
+        // when
+        Emotion retried = commandService.save(requestId, EmotionState.ANGRY,
+                126.9774, 37.5669, 90, "새 메모", null, null, device.getPublicId(), anonymous);
+
+        // then
+        assertThat(retried.getId()).isEqualTo(first.getId());
+        assertThat(retried.isAnonymous()).isTrue();
+        assertThat(retried.getMemo()).isNull();
+        assertThat(retried.getContent().hasAudio()).isFalse();
+        assertThat(retried.getState()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(emotionRepository.count()).isOne();
+        assertThat(linkCount()).isZero();
+        verifyNoInteractions(objectVerifier);
     }
 
     @Test

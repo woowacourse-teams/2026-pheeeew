@@ -1,5 +1,6 @@
 package com.pheeeew.groups.presentation;
 
+import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.groups.presentation.dto.GroupCreateRequest;
 import com.pheeeew.groups.presentation.dto.GroupDetailResponse;
 import com.pheeeew.groups.presentation.dto.GroupPressCountResponse;
@@ -7,9 +8,6 @@ import com.pheeeew.groups.presentation.dto.GroupPressRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,8 +15,11 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.MediaType;
@@ -44,7 +45,24 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "생성 성공"),
-            @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름")
+            @ApiResponse(responseCode = "400", description = "이름, 설명, 스탬프 값이 올바르지 않음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-002", "message": "이미 사용 중인 그룹 이름입니다."}
+                                    """)))
     })
     ResponseEntity<GroupResponse> save(
             @Valid GroupCreateRequest request,
@@ -76,13 +94,23 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "내 그룹 스탬프 목록 조회 성공"),
-            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기")
+            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """)))
     })
     List<GroupStampItemResponse> findMyStamps(@Parameter(hidden = true) UUID devicePublicId);
 
     @Operation(
-            summary = "그룹 상세",
+            summary = "그룹 상세 (구버전 호환)",
+            deprecated = true,
             description = """
+                    **이 엔드포인트는 전환 기간에만 남아 있습니다.** 새 클라이언트는
+                    `GET /api/v3/groups/{groupId}` 를 씁니다. 이 경로는 **그룹 멤버만** 조회할 수 있고,
+                    비멤버는 `GROUP-008` 과 403 입니다.
+
                     그룹 정보와 스탬프, 현재 인원수를 반환합니다.
 
                     - **멤버만 조회할 수 있습니다.** 속하지 않은 그룹은 **403** 입니다.
@@ -136,9 +164,29 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "변경 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹"),
-            @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름")
+            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "그룹장 아님", value = """
+                                            {"code": "GROUP-003", "message": "그룹장만 할 수 있습니다."}
+                                            """),
+                                    @ExampleObject(name = "멤버 아님", value = """
+                                            {"code": "GROUP-008", "message": "그룹 멤버만 할 수 있습니다."}
+                                            """)
+                            })),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-001", "message": "그룹을 찾을 수 없습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "409", description = "이미 사용 중인 그룹 이름",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-002", "message": "이미 사용 중인 그룹 이름입니다."}
+                                    """)))
     })
     GroupResponse update(
             UUID groupId,
@@ -147,30 +195,36 @@ public interface GroupControllerApi {
     );
 
     @Operation(
-            summary = "감정 버튼 누르기",
+            summary = "감정 버튼 누르기 (구버전 호환)",
+            deprecated = true,
             description = """
-                    그룹 화면의 감정 버튼을 누릅니다. **그룹 멤버만** 누를 수 있습니다.
+                    구버전 앱의 그룹 화면 감정 버튼입니다. **그룹 멤버만** 누를 수 있습니다.
+
+                    **이 엔드포인트는 전환 기간에만 남아 있습니다.** 새 클라이언트는
+                    `POST /api/v2/emotions/presses` 를 씁니다.
+                    최소 지원 앱 버전이 구버전을 배제하면 제거합니다.
 
                     - 요청 형식이 두 가지입니다. `state` 와 `counts` 중 **정확히 하나만** 보냅니다.
                       둘 다 보내거나 둘 다 비우면 400 입니다.
-                    - `counts` 는 감정별 누른 횟수를 한 번에 묶어 보냅니다. 예: `{"ANGRY": 9, "EXHAUSTED": 3}`.
-                      **일정 주기로 모아 보내는 쪽을 권장합니다.** 버튼마다 요청을 보내지 않습니다.
-                    - `state` 는 **구버전 호환용**입니다. `counts` 에 `1` 을 보낸 것과 같게 처리합니다.
+                    - `state` 는 그 감정을 1회 누른 것으로 처리합니다. `counts` 는 감정별 횟수를 묶어 보냅니다.
                     - `counts` 의 값이 `0` 인 감정은 **누르지 않은 것으로 보고 넘깁니다.**
                       모든 값이 `0` 이거나 빈 객체여도 400 이 아니라 **오늘 집계만 돌려줍니다.**
                       음수는 400 입니다.
                     - 상한을 넘겨도 **거절하지 않고 넘친 만큼만 버립니다.** 감정 하나당 `30`,
-                      요청 전체 합 `100` 까지 반영합니다. 전체 합이 넘치면 감정 이름 오름차순으로 채웁니다.
-                    - 누른 뒤의 **오늘 집계를 바로 돌려줍니다.** 다시 조회할 필요가 없습니다.
-                      누르지 않은 감정도 `0` 으로 내려와 다섯 감정이 항상 모두 있습니다.
+                      요청 전체 합 `100` 까지 반영하며 전체 합이 넘치면 감정 이름 오름차순으로 채웁니다.
+                    - 누른 뒤의 **오늘 집계를 바로 돌려줍니다.** 누르지 않은 감정도 `0` 으로 내려와
+                      다섯 감정이 항상 모두 있습니다.
+                    - **여기 눌린 것은 `GET /api/v2/groups/{groupId}` 의 세 프레스 값과
+                      `/press-rankings` 의 점수에 들어갑니다.**
+                      `GET /api/v3/groups/{groupId}` 의 `weeklyEmotionPressCount` 와
+                      지도 감정(스탬프) 점수에는 들어가지 않습니다.
                     - 취소는 없습니다.
-                    - **지도에 감정이 찍히지 않고 그룹 점수와 순위에도 영향이 없습니다.**
-                      점수는 지도에 남긴 감정만 셉니다.
                     """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "누르기 성공"),
             @ApiResponse(responseCode = "400", description = "state 와 counts 를 둘 다 또는 둘 다 보내지 않음, 다루지 않는 감정, counts 값이 음수이거나 null"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기"),
             @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
             @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
     })
@@ -201,22 +255,28 @@ public interface GroupControllerApi {
     );
 
     @Operation(
-            summary = "감정 버튼 주간 집계",
+            summary = "감정 버튼 주간 집계 (구버전 호환)",
+            deprecated = true,
             description = """
-                    그 주에 그룹이 누른 감정 버튼을 감정별로 합쳐서 돌려줍니다. **그룹 멤버만** 볼 수 있습니다.
+                    그 주에 이 그룹에서 그룹 버튼으로 누른 감정 버튼을 감정별로 합쳐 돌려줍니다.
+                    **그룹 멤버만** 볼 수 있습니다.
 
-                    - 주는 **월요일 00:00 KST** 에 바뀝니다. 그룹 간 주간 랭킹과 같은 경계입니다.
-                    - `weeksAgo` 로 몇 주 전인지 고릅니다. `0` 이 이번 주, `1` 이 지난주입니다.
+                    **이 엔드포인트는 전환 기간에만 남아 있습니다.** 이번 주 집계는
+                    `GET /api/v2/groups/{groupId}` 의 `weeklyPresses` 로도 볼 수 있고,
+                    감정별 전 그룹 순위는 `GET /api/v2/groups/press-rankings/states/{state}` 를 씁니다.
+
+                    - 주는 **월요일 00:00 KST** 에 바뀝니다. 그룹 랭킹과 같은 경계입니다.
+                    - `weeksAgo` 로 몇 주 전인지 고릅니다. `0` 이 이번 주, `1` 이 지난주입니다. `0`~`520`.
                     - 누르지 않은 감정도 `0` 으로 내려와 **다섯 감정이 항상 모두 있습니다.**
-                    - `POST /api/v2/groups/{groupId}/presses` 와 그룹 상세의 집계는 **오늘치**입니다.
-                      이 API 만 주간입니다.
-                    - **지도에 남긴 감정과는 다릅니다.** 그룹 점수와 순위는 지도 감정만 세고,
-                      버튼 누르기는 이 집계에만 들어갑니다.
+                    - **멤버들이 `POST /api/v2/emotions/presses` 로 누른 것은 여기 들어가지 않습니다.**
+                      그 값은 `GET /api/v3/groups/{groupId}` 의 `weeklyEmotionPressCount` 에 있습니다.
+                    - **지도에 남긴 감정(스탬프)과는 다릅니다.**
                     """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "400", description = "weeksAgo 값이 올바르지 않음"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기"),
             @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
             @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
     })
@@ -239,8 +299,23 @@ public interface GroupControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "재발급 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹")
+            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "그룹장 아님", value = """
+                                            {"code": "GROUP-003", "message": "그룹장만 할 수 있습니다."}
+                                            """),
+                                    @ExampleObject(name = "멤버 아님", value = """
+                                            {"code": "GROUP-008", "message": "그룹 멤버만 할 수 있습니다."}
+                                            """)
+                            })),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-001", "message": "그룹을 찾을 수 없습니다."}
+                                    """)))
     })
     GroupResponse reissueInviteCode(
             UUID groupId,

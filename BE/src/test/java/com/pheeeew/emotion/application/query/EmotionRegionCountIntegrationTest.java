@@ -63,6 +63,56 @@ class EmotionRegionCountIntegrationTest {
 
     @ParameterizedTest
     @EnumSource(RegionLevel.class)
+    void 내용_있는_지역_지도는_NONE을_개수와_대표_감정에서_함께_제외한다(RegionLevel level) {
+        // given
+        for (int i = 0; i < 5; i++) {
+            save(classified().state(EmotionState.FRUSTRATED));
+        }
+        save(classified().memo("메모").state(EmotionState.ANGRY));
+        save(classified().audio(Audio.builder().objectKey("recordings/region.m4a").build()).state(EmotionState.DISCOURAGED));
+        save(classified().memo("삭제").state(EmotionState.FRUSTRATED)).delete();
+        Emotion future = save(classified().memo("미래").state(EmotionState.FRUSTRATED));
+        entityManager.flush();
+        jdbc.sql("UPDATE emotions SET created_at = '2025-01-01T00:00:00Z'").update();
+        jdbc.sql("UPDATE emotions SET created_at = '2100-01-01T00:00:00Z' WHERE id = :id")
+                .param("id", future.getId()).update();
+        entityManager.clear();
+        var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
+
+        // when / then: 화면 밖 기록까지 선택 지역 전체를 합산한다.
+        assertThat(service.findContentRegionMap(bounds, level, null)).singleElement().satisfies(item ->
+                assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(2L, EmotionState.ANGRY)));
+        assertThat(service.findRegionMap(bounds, level, null)).singleElement().satisfies(item ->
+                assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(7L, EmotionState.FRUSTRATED)));
+    }
+
+    @Test
+    void 내용_있는_지역_지도는_그룹_조건을_유지하고_NONE만_있는_지역을_생략한다() {
+        // given
+        Group target = 기본_그룹_빌더().build();
+        Group other = 기본_그룹_빌더().name("다른 그룹").build();
+        entityManager.persist(target);
+        entityManager.persist(other);
+        GroupStamp targetStamp = 기본_스탬프_빌더(target).build();
+        GroupStamp otherStamp = 기본_스탬프_빌더(other).build();
+        entityManager.persist(targetStamp);
+        entityManager.persist(otherStamp);
+        save(classified().groupStamp(targetStamp).memo("메모").state(EmotionState.DISCOURAGED));
+        save(classified().groupStamp(targetStamp).state(EmotionState.ANGRY));
+        save(classified().groupStamp(otherStamp).state(EmotionState.FRUSTRATED));
+        entityManager.flush();
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 39);
+
+        // when / then
+        assertThat(service.findContentRegionMap(bounds, RegionLevel.EMD, target.getPublicId()))
+                .singleElement().satisfies(item ->
+                        assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(1L, EmotionState.DISCOURAGED)));
+        assertThat(service.findContentRegionMap(bounds, RegionLevel.EMD, other.getPublicId())).isEmpty();
+        assertThat(service.findRegionMap(bounds, RegionLevel.EMD, other.getPublicId())).hasSize(1);
+    }
+
+    @ParameterizedTest
+    @EnumSource(RegionLevel.class)
     void 각_계층에서_선택한_지역의_하위_기록만_중복없이_합산한다(RegionLevel level) {
         // given: 형제 읍면동, 다른 시군구, 다른 시도에 각각 다른 수의 기록을 둔다.
         addRegion("11010531", RegionLevel.EMD, "11010");
@@ -197,8 +247,7 @@ class EmotionRegionCountIntegrationTest {
         assertThat(service.findSummariesByRegionCodes(List.of(code), null).get(code).representativeState())
                 .isEqualTo(EmotionState.ANGRY);
         assertThat(counts(List.of(code), UUID.randomUUID())).isEmpty();
-        assertThat(service.findFirstMapPage(EmotionSearchBounds.of(126, 37, 128, 39),
-                viewer.getPublicId(), target.getPublicId()).items()).isEmpty();
+        assertThat(service.findMapWithinBounds(EmotionSearchBounds.of(126, 37, 128, 39), viewer.getPublicId(), target.getPublicId(), null).items()).isEmpty();
         RegionLevel level = switch (code.length()) {
             case 2 -> RegionLevel.SIDO;
             case 5 -> RegionLevel.SIGUNGU;

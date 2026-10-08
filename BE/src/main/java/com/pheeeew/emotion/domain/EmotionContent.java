@@ -32,6 +32,10 @@ public class EmotionContent {
         this.audio = audio;
     }
 
+    public boolean hasAudio() {
+        return audio != null;
+    }
+
     private String normalizeMemo(String memo) {
         if (memo == null) {
             return null;

@@ -18,6 +18,6 @@ public class EmotionWebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(new EmotionCreateRateLimitInterceptor(emotionCreateRateLimiter))
-                .addPathPatterns("/api/v1/emotions");
+                .addPathPatterns("/api/v1/emotions", "/api/v2/emotions", "/api/v3/emotions");
     }
 }

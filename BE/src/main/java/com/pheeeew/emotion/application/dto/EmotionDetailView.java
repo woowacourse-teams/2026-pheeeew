@@ -40,12 +40,27 @@ public record EmotionDetailView(
 
     public static EmotionDetailView of(Emotion emotion, List<EmotionEmojiResult> emojis, PlaybackUrl audio,
             GroupStampResult groupStamp, Long viewerDeviceId) {
+        return of(emotion, emojis, audio, groupStamp, viewerDeviceId, null);
+    }
+
+    public static EmotionDetailView of(Emotion emotion, List<EmotionEmojiResult> emojis, PlaybackUrl audio,
+            GroupStampResult groupStamp, Long viewerDeviceId, String authorNickname) {
+        String nickname = "익명";
+        if (!emotion.isAnonymous() && authorNickname != null) {
+            nickname = authorNickname;
+        }
+
+        UUID groupId = null;
+        if (emotion.getGroupStamp() != null) {
+            groupId = emotion.getGroupStamp().getGroup().getPublicId();
+        }
+
         return new EmotionDetailView(
                 emotion.getId(), emotion.getLongitude(), emotion.getLatitude(), emotion.getCreatedAt(),
-                emotion.getState(), emotion.getRotationDegrees(), emotion.getMemo(), emotion.getNickname(),
-                List.copyOf(emojis), emotion.getContent().getAudio() != null, audio, groupStamp,
-                emotion.getGroupStamp() == null ? null : emotion.getGroupStamp().getGroup().getPublicId(),
-                emotion.getDeviceId() != null && emotion.getDeviceId().equals(viewerDeviceId)
+                emotion.getState(), emotion.getRotationDegrees(), emotion.getMemo(), nickname,
+                List.copyOf(emojis), emotion.getContent().hasAudio(), audio, groupStamp,
+                groupId,
+                emotion.isWrittenBy(viewerDeviceId)
         );
     }
 }

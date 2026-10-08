@@ -13,8 +13,8 @@ import static org.mockito.Mockito.when;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
-import com.pheeeew.emotion.application.EmotionListCursorCodec;
-import com.pheeeew.emotion.application.dto.EmotionListCursor;
+import com.pheeeew.emotion.application.EmotionCursorCodec;
+import com.pheeeew.emotion.application.dto.EmotionCursor;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.repository.EmotionEmojiRepository;
@@ -79,7 +79,7 @@ class EmotionMetricsAspectTest {
     @ValueSource(ints = {0, 20, 21})
     void 첫_페이지의_실제_반환_개수와_다음_페이지_여부를_기록한다(int count) {
         when(repository.findVisiblePageWithinBounds(any(), any(), any(), anyLong(), any(), any(), anyBoolean(), anyInt())).thenReturn(items(count));
-        service.findFirstListPage(BOUNDS, device.getPublicId());
+        service.findListWithinBounds(BOUNDS, device.getPublicId(), null, null);
         var summary = registry.get("pheeeew.sigh.list.results").tags("page", "first", "has_next", Boolean.toString(count > 20)).summary();
         assertThat(summary.count()).isOne();
         assertThat(summary.totalAmount()).isEqualTo(Math.min(count, 20));
@@ -88,8 +88,8 @@ class EmotionMetricsAspectTest {
 
     @Test
     void 다음_페이지를_별도로_기록한다() {
-        String cursor = EmotionListCursorCodec.encode(EmotionListCursor.initial(BOUNDS, NOW));
-        service.findNextListPage(cursor, device.getPublicId());
+        String cursor = EmotionCursorCodec.encode(EmotionCursor.initialWithinBounds(BOUNDS, NOW, null));
+        service.findListWithinBounds(null, device.getPublicId(), null, cursor);
         assertThat(registry.get("pheeeew.sigh.list.results").tags("page", "next", "has_next", "false").summary().count()).isOne();
     }
 
@@ -97,9 +97,59 @@ class EmotionMetricsAspectTest {
     void 실패한_쿼리도_시간을_기록하지만_결과는_기록하지_않는다() {
         when(repository.findVisiblePageWithinBounds(any(), any(), any(), anyLong(), any(), any(), anyBoolean(), anyInt()))
                 .thenThrow(new IllegalStateException("database unavailable"));
-        assertThatThrownBy(() -> service.findFirstListPage(BOUNDS, device.getPublicId())).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> service.findListWithinBounds(BOUNDS, device.getPublicId(), null, null)).isInstanceOf(IllegalStateException.class);
         assertThat(registry.get("pheeeew.sigh.list.query").timer().count()).isOne();
         assertThat(registry.get("pheeeew.sigh.list.results").tags("page", "first", "has_next", "false").summary().count()).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 50, 51})
+    void 좌표_없는_첫_페이지의_실제_반환_개수와_다음_페이지_여부를_기록한다(int count) {
+        // given
+        when(repository.findVisiblePageWithoutBounds(any(), any(), anyLong(), any(), any(), anyInt()))
+                .thenReturn(items(count));
+
+        // when
+        service.findListWithoutBounds(device.getPublicId(), null, null);
+
+        // then
+        var summary = registry.get("pheeeew.sigh.list.results")
+                .tags("page", "first", "has_next", Boolean.toString(count > 50)).summary();
+        assertThat(summary.count()).isOne();
+        assertThat(summary.totalAmount()).isEqualTo(Math.min(count, 50));
+        assertThat(registry.get("pheeeew.sigh.list.query").timer().count()).isOne();
+    }
+
+    @Test
+    void 좌표_없는_다음_페이지도_첫_페이지와_구분하여_기록한다() {
+        // given
+        String cursor = EmotionCursorCodec.encode(EmotionCursor.initialWithoutBounds(NOW, null));
+
+        // when
+        service.findListWithoutBounds(device.getPublicId(), null, cursor);
+
+        // then
+        var summary = registry.get("pheeeew.sigh.list.results")
+                .tags("page", "next", "has_next", "false").summary();
+        assertThat(summary.count()).isOne();
+        assertThat(summary.totalAmount()).isZero();
+        assertThat(registry.get("pheeeew.sigh.list.results")
+                .tags("page", "first", "has_next", "false").summary().count()).isZero();
+        assertThat(registry.get("pheeeew.sigh.list.query").timer().count()).isOne();
+    }
+
+    @Test
+    void 좌표_없는_쿼리가_실패해도_시간을_기록하고_원래_예외를_전달한다() {
+        // given
+        IllegalStateException failure = new IllegalStateException("database unavailable");
+        when(repository.findVisiblePageWithoutBounds(any(), any(), anyLong(), any(), any(), anyInt()))
+                .thenThrow(failure);
+
+        // when / then
+        assertThatThrownBy(() -> service.findListWithoutBounds(device.getPublicId(), null, null)).isSameAs(failure);
+        assertThat(registry.get("pheeeew.sigh.list.query").timer().count()).isOne();
+        assertThat(registry.get("pheeeew.sigh.list.results")
+                .tags("page", "first", "has_next", "false").summary().count()).isZero();
     }
 
     private List<Emotion> items(int count) {

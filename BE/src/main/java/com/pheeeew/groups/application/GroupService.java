@@ -14,22 +14,24 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.domain.PressCounts;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
+import com.pheeeew.groups.application.dto.GroupDetailV3Result;
 import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
-import com.pheeeew.groups.application.dto.GroupPreviewResult;
 import com.pheeeew.groups.application.dto.GroupPressRankingItem;
+import com.pheeeew.groups.application.dto.GroupPreviewResult;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.application.dto.GroupStampItemResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
+import com.pheeeew.groups.domain.GroupDailyPress;
 import com.pheeeew.groups.domain.GroupMember;
 import com.pheeeew.groups.domain.GroupRole;
-import com.pheeeew.groups.domain.GroupDailyPress;
 import com.pheeeew.groups.domain.GroupStamp;
-import com.pheeeew.groups.domain.PressCounts;
+import com.pheeeew.groups.domain.GroupViewerRole;
 import com.pheeeew.groups.domain.repository.GroupDailyPressRepository;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
@@ -42,8 +44,8 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.EnumMap;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataAccessException;
@@ -133,6 +135,18 @@ public class GroupService {
                 stampRanked == null ? 0 : stampRanked.score(),
                 stampRanked == null ? null : stampRanked.rank(),
                 pressRanked == null ? null : pressRanked.rank()
+        );
+    }
+
+    public GroupDetailV3Result findDetailV3(UUID groupPublicId, UUID devicePublicId) {
+        Group group = findGroup(groupPublicId);
+
+        return GroupDetailV3Result.of(
+                group,
+                viewerRoleOf(group, devicePublicId),
+                groupMemberRepository.countByGroupIdAndLeftAtIsNull(group.getId()),
+                GroupStampResult.from(findStamp(group)),
+                groupRankingService.findWeeklyRanks(groupPublicId)
         );
     }
 
@@ -351,6 +365,15 @@ public class GroupService {
     private Group findGroup(UUID groupPublicId) {
         return groupRepository.findByPublicIdAndDeletedAtIsNull(groupPublicId)
                 .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));
+    }
+
+    private GroupViewerRole viewerRoleOf(Group group, UUID devicePublicId) {
+        Device device = findDevice(devicePublicId);
+
+        return groupMemberRepository.findByGroupIdAndDeviceIdAndLeftAtIsNull(group.getId(), device.getId())
+                .map(GroupMember::getRole)
+                .map(GroupViewerRole::from)
+                .orElse(GroupViewerRole.NONE);
     }
 
     private GroupMember requireMember(Group group, UUID devicePublicId) {

@@ -16,7 +16,8 @@ public class EmotionMetricsAspect {
 
     private final EmotionMetrics metrics;
 
-    @Around("execution(* com.pheeeew.emotion.domain.repository.EmotionRepository.findVisiblePageWithinBounds(..))")
+    @Around("execution(* com.pheeeew.emotion.domain.repository.EmotionRepository.findVisiblePageWithinBounds(..))"
+            + " || execution(* com.pheeeew.emotion.domain.repository.EmotionRepository.findVisiblePageWithoutBounds(..))")
     public Object recordListQuery(ProceedingJoinPoint joinPoint) throws Throwable {
         Timer.Sample sample = metrics.startQuery();
         try {
@@ -27,18 +28,14 @@ public class EmotionMetricsAspect {
     }
 
     @AfterReturning(
-            pointcut = "execution(* com.pheeeew.emotion.application.query.EmotionQueryService.findFirstListPage(..))",
-            returning = "result"
+            pointcut = "(execution(* com.pheeeew.emotion.application.query.EmotionQueryService.findListWithinBounds(..))"
+                    + " || execution(* com.pheeeew.emotion.application.query.EmotionQueryService.findListWithoutBounds(..)))"
+                    + " && args(.., encodedCursor)",
+            returning = "result",
+            argNames = "encodedCursor,result"
     )
-    public void recordFirstListResult(EmotionPageView result) {
-        metrics.recordListResult("first", result.items().size(), result.hasNext());
-    }
-
-    @AfterReturning(
-            pointcut = "execution(* com.pheeeew.emotion.application.query.EmotionQueryService.findNextListPage(..))",
-            returning = "result"
-    )
-    public void recordNextListResult(EmotionPageView result) {
-        metrics.recordListResult("next", result.items().size(), result.hasNext());
+    public void recordListResult(String encodedCursor, EmotionPageView result) {
+        String page = encodedCursor == null ? "first" : "next";
+        metrics.recordListResult(page, result.items().size(), result.hasNext());
     }
 }

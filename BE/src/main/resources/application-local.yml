@@ -3,3 +3,11 @@ spring:
     url: jdbc:postgresql://localhost:5432/pheeeew
     username: pheeeew
     password: pheeeew
+
+# S3 환경변수가 없어도 뜨도록 더미로 대체한다. 값을 주면 그대로 쓴다.
+# 더미로 뜬 상태에서는 오디오 업로드가 실제 호출 시 실패한다.
+pheeeew:
+  s3:
+    bucket: ${S3_BUCKET:pheeeew-local}
+    key-prefix: ${S3_KEY_PREFIX:local/}
+    region: ${S3_REGION:ap-northeast-2}

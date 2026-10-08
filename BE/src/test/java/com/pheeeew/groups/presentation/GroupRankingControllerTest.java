@@ -7,15 +7,15 @@ import static org.mockito.Mockito.when;
 import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.GroupRankingService;
 import com.pheeeew.groups.application.dto.GroupPressRankingItem;
 import com.pheeeew.groups.application.dto.GroupPressRankingResult;
 import com.pheeeew.groups.application.dto.GroupRankingItem;
 import com.pheeeew.groups.application.dto.GroupRankingResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
-import com.pheeeew.groups.domain.StampFrame;
-import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
+import com.pheeeew.groups.domain.StampFrame;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -198,6 +198,111 @@ class GroupRankingControllerTest {
         // then
         result.expectStatus().isBadRequest();
         verifyNoInteractions(groupRankingService);
+    }
+
+    @Test
+    void 멤버_합산_프레스_랭킹_경로가_감정별_경로로_잘못_라우팅되지_않는다() {
+        // given
+        when(groupRankingService.findEmotionPressRanking(기기_공개_식별자, 0)).thenReturn(기본_프레스_랭킹());
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings/members")
+                .exchange();
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.items[0].name").isEqualTo("한숨모임")
+                .jsonPath("$.items[0].score").isEqualTo(7)
+                .jsonPath("$.items[0].mine").isEqualTo(true);
+        verify(groupRankingService).findEmotionPressRanking(기기_공개_식별자, 0);
+    }
+
+    @Test
+    void 멤버_합산_프레스_랭킹은_몇_주_전인지_골라_조회한다() {
+        // given
+        when(groupRankingService.findEmotionPressRanking(기기_공개_식별자, 3)).thenReturn(기본_프레스_랭킹());
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings/members?weeksAgo=3")
+                .exchange();
+
+        // then
+        result.expectStatus().isOk();
+        verify(groupRankingService).findEmotionPressRanking(기기_공개_식별자, 3);
+    }
+
+    @Test
+    void 멤버_합산_프레스_랭킹은_몇_주_전인지가_음수면_조회하지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings/members?weeksAgo=-1")
+                .exchange();
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupRankingService);
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹은_요청한_감정의_순위표를_돌려준다() {
+        // given
+        when(groupRankingService.findEmotionPressRankingByState(기기_공개_식별자, EmotionState.ANGRY, 0))
+                .thenReturn(기본_감정별_랭킹(EmotionState.ANGRY));
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings/members/states/ANGRY")
+                .exchange();
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.state").isEqualTo("ANGRY")
+                .jsonPath("$.items[0].name").isEqualTo("한숨모임");
+        verify(groupRankingService).findEmotionPressRankingByState(기기_공개_식별자, EmotionState.ANGRY, 0);
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹은_없는_감정을_요청하면_조회하지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings/members/states/HAPPY")
+                .exchange();
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupRankingService);
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹은_몇_주_전인지가_음수면_조회하지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings/members/states/ANGRY?weeksAgo=-1")
+                .exchange();
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupRankingService);
+    }
+
+    @Test
+    void 멤버_합산_감정별_랭킹은_몇_주_전인지_골라_조회한다() {
+        // given
+        when(groupRankingService.findEmotionPressRankingByState(기기_공개_식별자, EmotionState.ANGRY, 2))
+                .thenReturn(기본_감정별_랭킹(EmotionState.ANGRY));
+
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/press-rankings/members/states/ANGRY?weeksAgo=2")
+                .exchange();
+
+        // then
+        result.expectStatus().isOk();
+        verify(groupRankingService).findEmotionPressRankingByState(기기_공개_식별자, EmotionState.ANGRY, 2);
     }
 
     private GroupPressRankingResult 기본_프레스_랭킹() {
