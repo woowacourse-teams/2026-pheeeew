@@ -4,6 +4,7 @@ import com.pheeeew.core.network.AccessToken
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createApiClient
 import com.pheeeew.data.remote.group.api.GroupCreateApi
+import com.pheeeew.domain.model.group.GroupId
 import com.pheeeew.domain.model.group.GroupStamp
 import com.pheeeew.domain.model.group.GroupStampFrame
 import com.pheeeew.domain.model.group.StampColor
@@ -52,8 +53,7 @@ class GroupCreateRepositoryImplTest {
 
                 assertEquals(
                     GroupCreateRepositoryResult.Created(
-                        com.pheeeew.domain.model.group.GroupId
-                            .parse("10000000-0000-0000-0000-000000000001")!!,
+                        GroupId.parse("10000000-0000-0000-0000-000000000001")!!,
                     ),
                     result,
                 )

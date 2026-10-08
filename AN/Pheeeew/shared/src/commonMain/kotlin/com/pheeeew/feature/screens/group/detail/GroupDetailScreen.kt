@@ -64,6 +64,7 @@ import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_detail_back
 import pheeeew.shared.generated.resources.group_detail_copy_failed
 import pheeeew.shared.generated.resources.group_detail_copy_succeeded
+import pheeeew.shared.generated.resources.group_detail_invite_share_unavailable
 import pheeeew.shared.generated.resources.group_detail_loading
 import pheeeew.shared.generated.resources.group_detail_membership_changed_body
 import pheeeew.shared.generated.resources.group_detail_membership_changed_title
@@ -177,6 +178,10 @@ fun GroupDetailScreen(
                         stringResource(Res.string.group_detail_copy_succeeded)
                     }
 
+                    GroupDetailNoticeKind.InviteShareUnavailable -> {
+                        stringResource(Res.string.group_detail_invite_share_unavailable)
+                    }
+
                     GroupDetailNoticeKind.CopyFailed -> {
                         stringResource(Res.string.group_detail_copy_failed)
                     }
@@ -201,6 +206,7 @@ fun GroupDetailScreen(
                     code = detail.inviteCode,
                     isCopying = uiState.copyRequest != null,
                     onCopy = actions.onCopyCodeClick,
+                    onShare = actions.onShareInviteClick,
                     onDismiss = actions.onDismissOverlay,
                 )
             }

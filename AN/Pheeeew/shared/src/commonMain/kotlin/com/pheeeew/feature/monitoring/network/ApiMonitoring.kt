@@ -9,6 +9,9 @@ import com.pheeeew.core.monitoring.ValueType
 import com.pheeeew.core.network.ApiAttempt
 import com.pheeeew.core.network.ApiAttemptObserver
 import com.pheeeew.core.network.HttpAttemptOutcome
+import com.pheeeew.domain.model.device.DeviceDiagnosticOutcome
+import com.pheeeew.domain.model.device.DeviceSessionFailureKind
+import com.pheeeew.domain.model.device.DeviceSessionStage
 
 object ApiMonitoringEvents {
     val endpoints =
@@ -59,7 +62,35 @@ object ApiMonitoringEvents {
                     "duration_ms" to PropertyRule(ValueType.INTEGER, required = true, minimum = 0.0),
                 ),
         )
-    val definitions = listOf(finished)
+    val deviceSessionDiagnostic =
+        EventDefinition(
+            "device_session_diagnostic",
+            properties =
+                mapOf(
+                    "stage" to
+                        PropertyRule(
+                            ValueType.TEXT,
+                            required = true,
+                            allowed = DeviceSessionStage.entries.map { it.name.lowercase() }.toSet(),
+                        ),
+                    "outcome" to
+                        PropertyRule(
+                            ValueType.TEXT,
+                            required = true,
+                            allowed = DeviceDiagnosticOutcome.entries.map { it.name.lowercase() }.toSet(),
+                        ),
+                    "failure_kind" to
+                        PropertyRule(
+                            ValueType.TEXT,
+                            allowed = DeviceSessionFailureKind.entries.map { it.name.lowercase() }.toSet(),
+                        ),
+                    "status_code" to PropertyRule(ValueType.INTEGER, minimum = 100.0),
+                    "server_code" to PropertyRule(ValueType.TEXT, maxLength = 32),
+                    "sdk_code" to PropertyRule(ValueType.INTEGER),
+                    "exception_type" to PropertyRule(ValueType.TEXT, maxLength = 64),
+                ),
+        )
+    val definitions = listOf(finished, deviceSessionDiagnostic)
 }
 
 class MonitoringApiObserver(

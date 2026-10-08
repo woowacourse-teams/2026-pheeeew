@@ -32,7 +32,9 @@ import pheeeew.shared.generated.resources.ranking_weekly_title
 internal val RankingTopBarHeight = 56.dp
 
 @Stable
-internal class RankingTopBarScrollBehavior {
+internal class RankingTopBarScrollBehavior(
+    private val canScrollDown: () -> Boolean,
+) {
     var isVisible by mutableStateOf(true)
         private set
 
@@ -43,7 +45,7 @@ internal class RankingTopBarScrollBehavior {
                 source: NestedScrollSource,
             ): Offset {
                 when {
-                    available.y < -1f -> isVisible = false
+                    available.y < -1f && canScrollDown() -> isVisible = false
                     available.y > 1f -> isVisible = true
                 }
                 return Offset.Zero
@@ -56,9 +58,9 @@ internal class RankingTopBarScrollBehavior {
 }
 
 @Composable
-internal fun rememberRankingTopBarScrollBehavior(): RankingTopBarScrollBehavior =
+internal fun rememberRankingTopBarScrollBehavior(canScrollDown: () -> Boolean): RankingTopBarScrollBehavior =
     remember {
-        RankingTopBarScrollBehavior()
+        RankingTopBarScrollBehavior(canScrollDown)
     }
 
 @Composable
@@ -92,7 +94,7 @@ private fun RankingTopBarPreview() {
     AppTheme {
         RankingTopBarOverlay(
             title = stringResource(Res.string.ranking_weekly_title),
-            behavior = rememberRankingTopBarScrollBehavior(),
+            behavior = rememberRankingTopBarScrollBehavior { false },
         )
     }
 }

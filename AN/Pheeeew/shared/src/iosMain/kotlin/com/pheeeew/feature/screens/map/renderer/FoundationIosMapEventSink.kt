@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.map.renderer
 
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
+import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 
 interface FoundationIosMapEventSink {
@@ -14,6 +15,8 @@ interface FoundationIosMapEventSink {
     )
 
     fun onEmotionPinClick(id: Long)
+
+    fun onRegionClusterClick(id: String)
 
     fun onMapBackgroundClick()
 
@@ -31,5 +34,5 @@ interface FoundationIosMapEventSink {
         radius: Float,
     )
 
-    fun onViewportChanged(bounds: EmotionMapBounds)
+    fun onViewportChanged(viewport: EmotionMapViewport)
 }

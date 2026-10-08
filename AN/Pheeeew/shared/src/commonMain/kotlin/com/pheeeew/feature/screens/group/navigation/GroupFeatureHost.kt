@@ -11,6 +11,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -97,7 +98,7 @@ fun GroupFeatureHost(
             GroupCreateRoute(
                 viewModel = createViewModel,
                 isCurrentDestination = currentBackStackEntry == entry,
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStackIfCurrent(entry) },
                 onCreated = { groupId, _ ->
                     onMembershipChanged()
                     navController.navigate(GroupDetailDestination(groupId.value)) {
@@ -132,7 +133,7 @@ fun GroupFeatureHost(
             GroupDetailRoute(
                 viewModel = detailViewModel,
                 isCurrentDestination = currentBackStackEntry == entry,
-                onBack = { navController.popBackStack() },
+                onBack = { navController.popBackStackIfCurrent(entry) },
                 onReturnHome = { returnHomeAndRefresh(groupId) },
                 onLeft = { leftGroupId, _ -> returnHomeAndRefresh(leftGroupId) },
                 onMembershipUnavailable = { unavailableGroupId, _, _ ->
@@ -165,5 +166,9 @@ private fun rememberGroupHomeViewModel(
             invalidateSharedMembership = dependencies.invalidateSharedMembership,
         )
     }
+
+private fun NavController.popBackStackIfCurrent(entry: NavBackStackEntry) {
+    if (currentBackStackEntry == entry) popBackStack()
+}
 
 private const val GROUP_HOME_VIEW_MODEL_KEY = "group-home"

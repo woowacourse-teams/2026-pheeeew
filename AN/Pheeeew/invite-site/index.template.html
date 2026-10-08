@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>히유 그룹 초대</title>
+    <style>
+      :root { color-scheme: light; font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", sans-serif; }
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f7f5f0; color: #28312d; }
+      main { box-sizing: border-box; width: min(100% - 32px, 420px); padding: 32px 24px; border: 1px solid #d9ded8; border-radius: 20px; background: white; text-align: center; }
+      h1 { margin: 0 0 12px; font-size: 23px; }
+      p { margin: 0 0 22px; color: #68716a; line-height: 1.6; }
+      nav { display: grid; gap: 10px; }
+      a { display: block; padding: 14px 16px; border-radius: 12px; background: #27352e; color: white; font-weight: 700; text-decoration: none; }
+      a.secondary { background: #eaf0e9; color: #28312d; }
+      #redirect-status { min-height: 1.5em; margin-top: 18px; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>히유 그룹 초대</h1>
+      <p id="message">기기의 앱 스토어로 이동합니다. 설치 후 공유 메시지의 초대 코드를 복사해 앱에서 입력해 주세요.</p>
+      <nav aria-label="앱 다운로드">
+        <a id="ios-store" href="{{APP_STORE_URL}}">App Store에서 다운로드</a>
+        <a id="android-store" class="secondary" href="{{GOOGLE_PLAY_URL}}">Google Play에서 다운로드</a>
+      </nav>
+      <p id="redirect-status" aria-live="polite"></p>
+    </main>
+    <script>
+      const agent = navigator.userAgent || "";
+      const isAndroid = /Android/i.test(agent);
+      const isAppleMobile = /iPhone|iPad|iPod/i.test(agent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+      const storeLinks = Object.freeze({
+        ios: document.querySelector("#ios-store").href,
+        android: document.querySelector("#android-store").href,
+      });
+      const storeUrl = isAppleMobile
+        ? storeLinks.ios
+        : isAndroid
+          ? storeLinks.android
+          : null;
+
+      if (storeUrl) {
+        document.querySelector("#redirect-status").textContent = "기기의 앱 스토어로 이동합니다.";
+        window.setTimeout(() => window.location.replace(storeUrl), 350);
+      }
+    </script>
+  </body>
+</html>

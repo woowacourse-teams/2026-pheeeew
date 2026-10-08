@@ -29,6 +29,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
+import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
@@ -74,8 +75,9 @@ internal actual fun NativeMap(
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
-    onViewportChanged: (EmotionMapBounds) -> Unit,
+    onViewportChanged: (EmotionMapViewport) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
+    onRegionClusterClick: (String) -> Unit,
     onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
@@ -89,6 +91,7 @@ internal actual fun NativeMap(
     val currentIsVisible by rememberUpdatedState(isVisible)
     val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
+    val currentOnRegionClusterClick by rememberUpdatedState(onRegionClusterClick)
     val currentOnMapBackgroundClick by rememberUpdatedState(onMapBackgroundClick)
     val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
     val currentOnMapError by rememberUpdatedState(onMapError)
@@ -118,6 +121,7 @@ internal actual fun NativeMap(
                         onRecordViewportChanged = onRecordViewportChanged,
                         onViewportChanged = onViewportChanged,
                         onEmotionPinClick = { currentOnEmotionPinClick(it) },
+                        onRegionClusterClick = { currentOnRegionClusterClick(it) },
                         onMapBackgroundClick = { currentOnMapBackgroundClick() },
                         onHighlightedPinPositionChanged = { currentOnHighlightPosition(it) },
                         onContentPresented = { token, ids -> currentOnContentPresented(token, ids) },
@@ -174,8 +178,9 @@ private class AndroidFoundationMapHost(
     private val onMapError: (MapErrorUiModel) -> Unit,
     private val onMapRecovered: () -> Unit,
     private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
-    private val onViewportChanged: (EmotionMapBounds) -> Unit,
+    private val onViewportChanged: (EmotionMapViewport) -> Unit,
     private val onEmotionPinClick: (Long) -> Unit,
+    private val onRegionClusterClick: (String) -> Unit,
     private val onMapBackgroundClick: () -> Unit,
     private val onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     private val onContentPresented: (String, List<String>) -> Unit,
@@ -183,6 +188,7 @@ private class AndroidFoundationMapHost(
     private val onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
 ) {
     private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
+    private val regionClusterSymbolLayer = RegionClusterSymbolLayer()
     private val recordStampLayer = AndroidRecordStampLayer()
     private val recordRangeLayer = AndroidRecordRangeLayer()
     private var map: MapLibreMap? = null
@@ -273,7 +279,17 @@ private class AndroidFoundationMapHost(
                         .firstOrNull()
                         ?.id()
                         ?.toLongOrNull()
-                if (id != null) onEmotionPinClick(id) else onMapBackgroundClick()
+                val regionId =
+                    if (id == null) {
+                        readyMap.queryRenderedFeatures(point, RegionClusterSymbolLayer.LAYER_ID).firstOrNull()?.id()
+                    } else {
+                        null
+                    }
+                when {
+                    id != null -> onEmotionPinClick(id)
+                    regionId != null -> onRegionClusterClick(regionId)
+                    else -> onMapBackgroundClick()
+                }
                 true
             }
             readyMap.setMinZoomPreference(MINIMUM_ZOOM)
@@ -491,6 +507,7 @@ private class AndroidFoundationMapHost(
         style = loadedStyle
         AndroidMapAppearance.apply(loadedStyle)
         emotionPinSymbolLayer.install(loadedStyle)
+        regionClusterSymbolLayer.install(loadedStyle)
         recordRangeLayer.install(loadedStyle)
         AndroidCurrentLocationLayer.install(loadedStyle)
         recordStampLayer.install(loadedStyle)
@@ -543,6 +560,7 @@ private class AndroidFoundationMapHost(
                     focusedId = state.focusedEmotionId,
                 )
             emotionPinSymbolLayer.updatePress(loadedStyle, state.pressedEmotionId, state.pressedEmotionScale)
+            regionClusterSymbolLayer.update(loadedStyle, state.regionClusters, state.regionClusterSymbolImages)
             recordStampLayer.update(loadedStyle, state.recordPreviewPin, state.recordPreviewScale)
         }
         val loadId = state.emotionContentLoad?.loadId
@@ -749,6 +767,6 @@ private class AndroidFoundationMapHost(
                 maxLongitude = bounds.longitudeEast,
                 maxLatitude = bounds.latitudeNorth,
             )
-        if (queryBounds.isValid()) onViewportChanged(queryBounds)
+        if (queryBounds.isValid()) onViewportChanged(EmotionMapViewport(queryBounds, currentMap.cameraPosition.zoom))
     }
 }

@@ -98,6 +98,7 @@ data class GroupDetailNotice(
 enum class GroupDetailNoticeKind {
     CopySucceeded,
     CopyFailed,
+    InviteShareUnavailable,
 }
 
 data class GroupDetailMembershipEvent(

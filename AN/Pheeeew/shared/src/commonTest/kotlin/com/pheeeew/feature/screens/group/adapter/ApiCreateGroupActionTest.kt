@@ -23,7 +23,7 @@ class ApiCreateGroupActionTest {
     @Test
     fun `maps the exact selected stamp and empty description into the domain command`() =
         runTest {
-            var captured: com.pheeeew.domain.repository.group.GroupCreateCommand? = null
+            var captured: GroupCreateCommand? = null
             val action =
                 ApiCreateGroupAction(
                     GroupCreateRepository { command ->

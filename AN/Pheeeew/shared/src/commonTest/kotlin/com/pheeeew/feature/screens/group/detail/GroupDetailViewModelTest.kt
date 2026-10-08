@@ -36,6 +36,50 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupDetailViewModelTest {
     @Test
+    fun `invite share failure dismisses member popup and displays notice`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val viewModel = createViewModel(source = { GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER)) })
+                runCurrent()
+                viewModel.onInviteClick()
+                viewModel.onInviteShareUnavailable()
+
+                assertEquals(GroupDetailOverlay.None, viewModel.uiState.value.overlay)
+                assertEquals(
+                    GroupDetailNoticeKind.InviteShareUnavailable,
+                    viewModel.uiState.value.notice
+                        ?.kind,
+                )
+                assertNull(viewModel.uiState.value.copyRequest)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `invite share failure is ignored for nonmember and closed popup`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                for (role in GroupRole.entries) {
+                    val viewModel = createViewModel(source = { GroupDetailLoadResult.Loaded(detail(role)) })
+                    runCurrent()
+                    viewModel.onInviteShareUnavailable()
+                    assertNull(viewModel.uiState.value.notice)
+                    if (role == GroupRole.NONE) {
+                        viewModel.onInviteClick()
+                        viewModel.onInviteShareUnavailable()
+                        assertEquals(GroupDetailOverlay.None, viewModel.uiState.value.overlay)
+                        assertNull(viewModel.uiState.value.notice)
+                    }
+                }
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `fast initial response does not show loading indicator`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))

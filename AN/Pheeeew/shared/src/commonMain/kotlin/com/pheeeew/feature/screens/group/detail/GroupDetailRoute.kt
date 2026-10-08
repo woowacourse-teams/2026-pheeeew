@@ -11,8 +11,11 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.pheeeew.core.share.rememberSystemTextShareLauncher
+import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.monitoring.product.rememberObservedEmotionPlayer
+import com.pheeeew.feature.screens.group.join.GroupInviteLinkCodec
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -43,6 +46,7 @@ fun GroupDetailRoute(
 ) {
     ProductScreen(viewModel.telemetry, isCurrentDestination)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val shareLauncher = rememberSystemTextShareLauncher()
     val lifecycleOwner = LocalLifecycleOwner.current
     val audioPlayer = rememberObservedEmotionPlayer(viewModel.telemetry) { "group_detail" }
     val playback by audioPlayer.state.collectAsStateWithLifecycle()
@@ -134,6 +138,18 @@ fun GroupDetailRoute(
                 onMoreClick = viewModel::onMoreClick,
                 onInviteClick = viewModel::onInviteClick,
                 onCopyCodeClick = viewModel::onCopyCodeClick,
+                onShareInviteClick = {
+                    val current = viewModel.uiState.value
+                    val detail = current.detail
+                    if (detail != null && detail.role != GroupRole.NONE &&
+                        current.overlay == GroupDetailOverlay.InviteCode
+                    ) {
+                        val message = GroupInviteLinkCodec.createShareMessage(detail.group.name, detail.inviteCode)
+                        if (message == null || !shareLauncher.shareText(message)) {
+                            viewModel.onInviteShareUnavailable()
+                        }
+                    }
+                },
                 onDismissOverlay = viewModel::onDismissOverlay,
                 onLeaveMenuClick = viewModel::onLeaveMenuClick,
                 onConfirmLeave = viewModel::onConfirmLeave,

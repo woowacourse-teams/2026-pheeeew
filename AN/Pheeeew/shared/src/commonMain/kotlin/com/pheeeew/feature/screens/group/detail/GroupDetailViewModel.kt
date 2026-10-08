@@ -590,6 +590,13 @@ class GroupDetailViewModel(
         }
     }
 
+    fun onInviteShareUnavailable() {
+        val current = _uiState.value
+        if (current.detail?.role == GroupRole.NONE || current.overlay != GroupDetailOverlay.InviteCode) return
+        onDismissOverlay()
+        showNotice(GroupDetailNoticeKind.InviteShareUnavailable)
+    }
+
     fun acknowledgeNotice(operationKey: GroupOperationKey) {
         _uiState.update { state ->
             if (state.notice?.operationKey == operationKey) state.copy(notice = null) else state

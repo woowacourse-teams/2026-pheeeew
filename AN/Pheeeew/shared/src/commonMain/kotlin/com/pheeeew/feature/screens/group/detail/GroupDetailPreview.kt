@@ -141,6 +141,7 @@ internal fun previewActions() =
         onMoreClick = {},
         onInviteClick = {},
         onCopyCodeClick = {},
+        onShareInviteClick = {},
         onDismissOverlay = {},
         onLeaveMenuClick = {},
         onConfirmLeave = {},

@@ -31,7 +31,7 @@ class PressRankingApi(
     }
 
     private companion object {
-        const val PATH = "/api/v2/groups/press-rankings"
+        const val PATH = "/api/v2/groups/press-rankings/members"
         val STATES = setOf("FRUSTRATED", "IRRITATED", "EXHAUSTED", "DISCOURAGED", "ANGRY")
     }
 }

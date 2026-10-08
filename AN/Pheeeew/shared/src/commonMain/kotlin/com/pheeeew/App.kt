@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -69,8 +70,8 @@ import com.pheeeew.core.di.group.createGroupStampListRepository
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.GroupRootDestination
 import com.pheeeew.core.navigation.MapRootDestination
+import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
-import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.data.remote.version.AppVersionApi
 import com.pheeeew.data.remote.version.toPolicy
@@ -107,9 +108,12 @@ import com.pheeeew.feature.screens.map.record.RegisteredEmotionUiModel
 import com.pheeeew.feature.screens.map.record.location.RecordMapViewport
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.rememberEmotionPinSymbolImages
+import com.pheeeew.feature.screens.map.rememberRegionClusterRenderState
+import com.pheeeew.feature.screens.map.rememberRegionClusterSymbolImages
 import com.pheeeew.feature.screens.map.renderer.MapCameraSnapshotUiModel
 import com.pheeeew.feature.screens.map.renderer.NativeMap
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
+import com.pheeeew.feature.screens.press.PressRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
@@ -150,7 +154,6 @@ fun App(
     appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
-    connectivityObserver: ConnectivityObserver,
 ) {
     AppTheme {
         AppContent(
@@ -160,7 +163,6 @@ fun App(
             groupCreateSessionStore = groupCreateSessionStore,
             appVersion = appVersion,
             appVersionApi = appVersionApi,
-            connectivityObserver = connectivityObserver,
             permissionSettingsLauncher = permissionSettingsLauncher,
             appSettingsLauncher = appSettingsLauncher,
             hasCompletedOnboarding = hasCompletedOnboarding,
@@ -177,7 +179,6 @@ private fun AppContent(
     groupCreateSessionStore: GroupCreateSessionStore,
     appVersion: String,
     appVersionApi: AppVersionApi,
-    connectivityObserver: ConnectivityObserver,
     permissionSettingsLauncher: AppSettingsLauncher,
     appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
@@ -185,6 +186,8 @@ private fun AppContent(
 ) {
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val connectivityObserver = apiDependencies.connectivityObserver
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
     var versionCheckAttempt by remember { mutableStateOf(0) }
     var initialVersionCheckComplete by remember { mutableStateOf(false) }
     var splashAnimationCompleted by rememberSaveable { mutableStateOf(false) }
@@ -211,6 +214,8 @@ private fun AppContent(
                 emotionMapDependencies.findPage,
                 emotionMapDependencies.findSnapshot,
                 apiDependencies.client.monitoring,
+                findRegions = emotionMapDependencies.findRegions,
+                findRegionSnapshot = emotionMapDependencies.findRegionSnapshot,
             )
         }
     LaunchedEffect(mapViewModel) { mapViewModel.onMapRendererAttached() }
@@ -289,12 +294,16 @@ private fun AppContent(
                 )
             }
     val nativeMapSymbolImages = rememberEmotionPinSymbolImages(mapUiModel.emotionPins + listOfNotNull(previewPin))
+    val regionImages = rememberRegionClusterSymbolImages(mapUiModel.regionClusters)
+    val regionRenderState = rememberRegionClusterRenderState(mapUiModel.regionClusters, regionImages)
     val nativeMapState =
         mapUiModel.copy(
             recordOrigin = recordUiModel.origin,
             recordPreviewPin = previewPin,
             recordPreviewScale = previewScale,
             emotionPinSymbolImages = nativeMapSymbolImages,
+            regionClusters = regionRenderState.regions.takeUnless { mapUiModel.isRecordLocationPicking }.orEmpty(),
+            regionClusterSymbolImages = regionRenderState.images,
             highlightedEmotionId = mapUiModel.focusedEmotionId ?: highlightedEmotion?.id,
             pressedEmotionId = pressedPinId,
             pressedEmotionScale = pinPressScale.value,
@@ -341,8 +350,9 @@ private fun AppContent(
                     val viewport = RecordMapViewport(centerX, centerY, radius)
                     if (recordViewport.value != viewport) recordViewport.value = viewport
                 },
-                onViewportChanged = { bounds ->
-                    mapViewModel.onViewportChanged(bounds)
+                onViewportChanged = { viewport ->
+                    mapViewModel.onViewportChanged(viewport)
+                    val bounds = viewport.bounds
                     nearbyViewModel.onViewportChanged(
                         EmotionBounds(
                             bounds.minLongitude,
@@ -368,6 +378,7 @@ private fun AppContent(
                             detailViewModel.open(id, mapViewModel.exploration.viewId)
                         }
                 },
+                onRegionClusterClick = mapViewModel::focusOnRegionCluster,
                 onMapBackgroundClick = { if (nearbyState.visible) nearbyViewModel.dismiss() },
                 onHighlightedPinPositionChanged = { highlightedPinPosition.value = it },
                 onContentPresented = mapViewModel::contentPresented,
@@ -489,6 +500,8 @@ private fun AppContent(
             currentBackStackEntry?.destination?.hasRoute<GroupDetailDestination>() == true
         val selectedDestination =
             when {
+                currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> AppDestination.Press
+
                 currentBackStackEntry?.destination?.hasRoute<GroupRootDestination>() == true -> AppDestination.Group
 
                 currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true ||
@@ -641,6 +654,13 @@ private fun AppContent(
                     }
                 }
 
+                composable<PressRootDestination> {
+                    PressRoute(
+                        repository = apiDependencies.appSession.pressRepository,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+
                 composable<RankingRootDestination>(
                     enterTransition = {
                         if (initialState.destination.hasRoute<GroupRootDestination>() ||
@@ -777,6 +797,7 @@ private fun AppContent(
                         val route =
                             when (destination) {
                                 AppDestination.Map -> MapRootDestination
+                                AppDestination.Press -> PressRootDestination
                                 AppDestination.Group -> GroupRootDestination
                                 AppDestination.Ranking -> RankingRootDestination
                             }
@@ -784,6 +805,7 @@ private fun AppContent(
                         if (navController.currentDestination?.hasRoute(route::class) == true) {
                             when (destination) {
                                 AppDestination.Map -> mapViewModel.refreshEmotionPins()
+                                AppDestination.Press -> Unit
                                 AppDestination.Group -> refreshGroup?.invoke()
                                 AppDestination.Ranking -> refreshRanking?.invoke()
                             }
