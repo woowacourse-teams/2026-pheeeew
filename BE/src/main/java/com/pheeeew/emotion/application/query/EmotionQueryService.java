@@ -56,7 +56,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EmotionQueryService {
 
-    private static final int PAGE_SIZE = 20;
+    private static final int WITHIN_BOUNDS_PAGE_SIZE = 20;
+    private static final int WITHOUT_BOUNDS_PAGE_SIZE = 50;
     private static final int MAP_PAGE_SIZE = 200;
 
     private final ObjectProvider<AudioUrlIssuer> audioUrlIssuer;
@@ -126,26 +127,35 @@ public class EmotionQueryService {
                 findAuthorNickname(emotion, nicknames))).toList();
     }
 
-    public EmotionPageView findFirstListPage(EmotionSearchBounds bounds, UUID devicePublicId) {
-        return findFirstListPage(bounds, devicePublicId, null);
+    public EmotionPageView findListWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor) {
+        EmotionListCursor cursor = encodedCursor == null
+                ? EmotionListCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
+                : EmotionListCursorCodec.decodeWithinBounds(encodedCursor);
+        validateSnapshotAt(cursor.snapshotAt());
+
+        return findList(cursor, devicePublicId);
     }
 
-    public EmotionPageView findFirstListPage(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId) {
-        Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
-        return findList(EmotionListCursor.initialWithinBounds(bounds, snapshotAt, groupId), devicePublicId);
+    public EmotionPageView findListWithoutBounds(UUID devicePublicId, UUID groupId, String encodedCursor) {
+        EmotionListCursor cursor = encodedCursor == null
+                ? EmotionListCursor.initialWithoutBounds(currentSnapshotAt(), groupId)
+                : EmotionListCursorCodec.decodeWithoutBounds(encodedCursor);
+        validateSnapshotAt(cursor.snapshotAt());
+
+        return findList(cursor, devicePublicId);
     }
 
-    public EmotionPageView findNextListPage(String encodedCursor, UUID devicePublicId) {
-        return findList(decodeCursor(encodedCursor), devicePublicId);
+    public EmotionMapPageView findMapWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor) {
+        EmotionListCursor cursor = encodedCursor == null
+                ? EmotionListCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
+                : EmotionListCursorCodec.decodeWithinBounds(encodedCursor);
+        validateSnapshotAt(cursor.snapshotAt());
+
+        return findMap(cursor, devicePublicId);
     }
 
-    public EmotionMapPageView findFirstMapPage(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId) {
-        Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
-        return findMap(EmotionListCursor.initialWithinBounds(bounds, snapshotAt, groupId), devicePublicId);
-    }
-
-    public EmotionMapPageView findNextMapPage(String encodedCursor, UUID devicePublicId) {
-        return findMap(decodeCursor(encodedCursor), devicePublicId);
+    private Instant currentSnapshotAt() {
+        return Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
     }
 
     private Map<Long, String> findNicknames(List<Emotion> page) {
@@ -189,17 +199,28 @@ public class EmotionQueryService {
     private EmotionPageView findList(EmotionListCursor cursor, UUID devicePublicId) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
-        List<Emotion> found = emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), true, PAGE_SIZE + 1);
 
-        boolean hasNext = found.size() > PAGE_SIZE;
-        List<Emotion> page = hasNext ? found.subList(0, PAGE_SIZE) : found;
+        int pageSize = cursor.bounds() == null ? WITHOUT_BOUNDS_PAGE_SIZE : WITHIN_BOUNDS_PAGE_SIZE;
+        List<Emotion> found = findListEmotions(cursor, deviceId, pageSize + 1);
+
+        boolean hasNext = found.size() > pageSize;
+        List<Emotion> page = hasNext ? found.subList(0, pageSize) : found;
 
         List<EmotionDetailView> items = toListItems(page, deviceId);
         String nextCursor = hasNext ? EmotionListCursorCodec.encode(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId())) : null;
 
         return EmotionPageView.of(items, hasNext, nextCursor);
+    }
+
+    private List<Emotion> findListEmotions(EmotionListCursor cursor, Long deviceId, int limit) {
+        if (cursor.bounds() == null) {
+            return emotionRepository.findVisiblePageWithoutBounds(cursor.snapshotAt(),
+                    cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), limit);
+        }
+
+        return emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
+                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), true, limit);
     }
 
     private List<EmotionDetailView> toListItems(List<Emotion> page, Long deviceId) {
@@ -245,12 +266,10 @@ public class EmotionQueryService {
         return EmotionMapPageView.of(items, hasNext, nextCursor);
     }
 
-    private EmotionListCursor decodeCursor(String encodedCursor) {
-        EmotionListCursor cursor = EmotionListCursorCodec.decodeWithinBounds(encodedCursor);
-        if (cursor.snapshotAt().isAfter(Instant.now(clock))) {
+    private void validateSnapshotAt(Instant snapshotAt) {
+        if (snapshotAt.isAfter(Instant.now(clock))) {
             throw new EmotionException(EMOTION_INVALID_CURSOR);
         }
-        return cursor;
     }
 
     private Map<Long, GroupStampResult> findStamps(List<Emotion> page) {

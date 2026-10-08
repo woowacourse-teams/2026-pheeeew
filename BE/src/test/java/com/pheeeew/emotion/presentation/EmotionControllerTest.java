@@ -6,6 +6,7 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -164,7 +165,7 @@ class EmotionControllerTest {
                 "https://audio.example.test/signed", Instant.parse("2026-09-25T12:05:00Z"));
         var view = EmotionDetailView.of(emotion, List.of(), playback);
         when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(view);
-        when(emotionQueryService.findFirstListPage(any(), eq(DEVICE_PUBLIC_ID), any()))
+        when(emotionQueryService.findListWithinBounds(any(), eq(DEVICE_PUBLIC_ID), any(), isNull()))
                 .thenReturn(EmotionPageView.of(List.of(view), false, null));
         String uri = list
                 ? "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38" : EMOTION_URI;
@@ -187,7 +188,7 @@ class EmotionControllerTest {
         var stamp = new GroupStampResult("모임", "#FFFFFF", "#000000", StampFrame.CIRCLE);
         EmotionDetailView view = EmotionDetailView.of(emotion, List.of(), null, stamp);
         when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(view);
-        when(emotionQueryService.findFirstListPage(any(), eq(DEVICE_PUBLIC_ID), any()))
+        when(emotionQueryService.findListWithinBounds(any(), eq(DEVICE_PUBLIC_ID), any(), isNull()))
                 .thenReturn(EmotionPageView.of(List.of(view), false, null));
 
         // when / then
@@ -505,9 +506,9 @@ class EmotionControllerTest {
     @Test
     void 목록의_첫_페이지와_다음_페이지를_인증된_기기로_조회한다() {
         EmotionSearchBounds bounds = EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6);
-        when(emotionQueryService.findFirstListPage(bounds, DEVICE_PUBLIC_ID, null))
+        when(emotionQueryService.findListWithinBounds(bounds, DEVICE_PUBLIC_ID, null, null))
                 .thenReturn(EmotionPageView.of(List.of(detailView(42L, true), detailView(43L, false)), true, "next"));
-        when(emotionQueryService.findNextListPage("next", DEVICE_PUBLIC_ID))
+        when(emotionQueryService.findListWithinBounds(null, DEVICE_PUBLIC_ID, null, "next"))
                 .thenReturn(EmotionPageView.of(List.of(), false, null));
 
         request(HttpMethod.GET, "/api/v1/emotions?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6", "access-token")
@@ -518,8 +519,8 @@ class EmotionControllerTest {
                 .jsonPath("$.hasNext").isEqualTo(true).jsonPath("$.nextCursor").isEqualTo("next");
         request(HttpMethod.GET, "/api/v1/emotions?cursor=next", "access-token")
                 .expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty().jsonPath("$.hasNext").isEqualTo(false);
-        verify(emotionQueryService).findFirstListPage(bounds, DEVICE_PUBLIC_ID, null);
-        verify(emotionQueryService).findNextListPage("next", DEVICE_PUBLIC_ID);
+        verify(emotionQueryService).findListWithinBounds(bounds, DEVICE_PUBLIC_ID, null, null);
+        verify(emotionQueryService).findListWithinBounds(null, DEVICE_PUBLIC_ID, null, "next");
     }
 
     @ParameterizedTest
@@ -543,13 +544,13 @@ class EmotionControllerTest {
         // given
         UUID groupId = UUID.randomUUID();
         var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
-        when(emotionQueryService.findFirstListPage(bounds, DEVICE_PUBLIC_ID, groupId))
+        when(emotionQueryService.findListWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null))
                 .thenReturn(EmotionPageView.of(List.of(), false, null));
 
         // when / then
         request(HttpMethod.GET, "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38&groupId=" + groupId,
                 "access-token").expectStatus().isOk();
-        verify(emotionQueryService).findFirstListPage(bounds, DEVICE_PUBLIC_ID, groupId);
+        verify(emotionQueryService).findListWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null);
     }
 
     @Test
@@ -565,7 +566,7 @@ class EmotionControllerTest {
         var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
         var item = new EmotionMapItemView(42L, 126.9774, 37.5669,
                 Instant.parse("2026-09-24T12:00:00Z"), EmotionState.FRUSTRATED, 35.5, null, null);
-        when(emotionQueryService.findFirstMapPage(bounds, DEVICE_PUBLIC_ID, null))
+        when(emotionQueryService.findMapWithinBounds(bounds, DEVICE_PUBLIC_ID, null, null))
                 .thenReturn(EmotionMapPageView.of(List.of(item), true, "next-map"));
 
         // when / then
@@ -579,28 +580,28 @@ class EmotionControllerTest {
                           "rotationDegrees":35.5,"groupStamp":null,"groupId":null}}],
                           "hasNext":true,"nextCursor":"next-map"}
                         """, JsonCompareMode.STRICT);
-        verify(emotionQueryService).findFirstMapPage(bounds, DEVICE_PUBLIC_ID, null);
+        verify(emotionQueryService).findMapWithinBounds(bounds, DEVICE_PUBLIC_ID, null, null);
         org.mockito.Mockito.verifyNoMoreInteractions(emotionQueryService);
     }
 
     @Test
     void 지도_다음_페이지는_지도_조회에_커서를_전달한다() {
-        when(emotionQueryService.findNextMapPage("next-map", DEVICE_PUBLIC_ID))
+        when(emotionQueryService.findMapWithinBounds(null, DEVICE_PUBLIC_ID, null, "next-map"))
                 .thenReturn(EmotionMapPageView.of(List.of(), false, null));
         request(HttpMethod.GET, "/api/v1/emotions/map?cursor=next-map", "access-token").expectStatus().isOk()
                 .expectBody().jsonPath("$.items").isEmpty();
-        verify(emotionQueryService).findNextMapPage("next-map", DEVICE_PUBLIC_ID);
+        verify(emotionQueryService).findMapWithinBounds(null, DEVICE_PUBLIC_ID, null, "next-map");
     }
 
     @Test
     void 지도도_그룹_필터를_전달한다() {
         UUID groupId = UUID.randomUUID();
         var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
-        when(emotionQueryService.findFirstMapPage(bounds, DEVICE_PUBLIC_ID, groupId))
+        when(emotionQueryService.findMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null))
                 .thenReturn(EmotionMapPageView.of(List.of(), false, null));
         request(HttpMethod.GET, "/api/v1/emotions/map?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38&groupId=" + groupId,
                 "access-token").expectStatus().isOk();
-        verify(emotionQueryService).findFirstMapPage(bounds, DEVICE_PUBLIC_ID, groupId);
+        verify(emotionQueryService).findMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null);
     }
 
     @Test

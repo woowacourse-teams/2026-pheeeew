@@ -197,8 +197,7 @@ class EmotionRegionCountIntegrationTest {
         assertThat(service.findSummariesByRegionCodes(List.of(code), null).get(code).representativeState())
                 .isEqualTo(EmotionState.ANGRY);
         assertThat(counts(List.of(code), UUID.randomUUID())).isEmpty();
-        assertThat(service.findFirstMapPage(EmotionSearchBounds.of(126, 37, 128, 39),
-                viewer.getPublicId(), target.getPublicId()).items()).isEmpty();
+        assertThat(service.findMapWithinBounds(EmotionSearchBounds.of(126, 37, 128, 39), viewer.getPublicId(), target.getPublicId(), null).items()).isEmpty();
         RegionLevel level = switch (code.length()) {
             case 2 -> RegionLevel.SIDO;
             case 5 -> RegionLevel.SIGUNGU;

@@ -66,11 +66,11 @@ public record EmotionListRequest(
         return minLatitude == null || maxLatitude == null || minLatitude < maxLatitude;
     }
 
-    public boolean isNextPageRequest() {
-        return cursor != null;
-    }
-
     public EmotionSearchBounds toBounds() {
+        if (cursor != null) {
+            return null;
+        }
+
         return EmotionSearchBounds.of(minLongitude, minLatitude, maxLongitude, maxLatitude);
     }
 }

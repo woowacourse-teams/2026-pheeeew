@@ -79,7 +79,7 @@ class EmotionMetricsAspectTest {
     @ValueSource(ints = {0, 20, 21})
     void 첫_페이지의_실제_반환_개수와_다음_페이지_여부를_기록한다(int count) {
         when(repository.findVisiblePageWithinBounds(any(), any(), any(), anyLong(), any(), any(), anyBoolean(), anyInt())).thenReturn(items(count));
-        service.findFirstListPage(BOUNDS, device.getPublicId());
+        service.findListWithinBounds(BOUNDS, device.getPublicId(), null, null);
         var summary = registry.get("pheeeew.sigh.list.results").tags("page", "first", "has_next", Boolean.toString(count > 20)).summary();
         assertThat(summary.count()).isOne();
         assertThat(summary.totalAmount()).isEqualTo(Math.min(count, 20));
@@ -89,7 +89,7 @@ class EmotionMetricsAspectTest {
     @Test
     void 다음_페이지를_별도로_기록한다() {
         String cursor = EmotionListCursorCodec.encode(EmotionListCursor.initialWithinBounds(BOUNDS, NOW));
-        service.findNextListPage(cursor, device.getPublicId());
+        service.findListWithinBounds(null, device.getPublicId(), null, cursor);
         assertThat(registry.get("pheeeew.sigh.list.results").tags("page", "next", "has_next", "false").summary().count()).isOne();
     }
 
@@ -97,7 +97,7 @@ class EmotionMetricsAspectTest {
     void 실패한_쿼리도_시간을_기록하지만_결과는_기록하지_않는다() {
         when(repository.findVisiblePageWithinBounds(any(), any(), any(), anyLong(), any(), any(), anyBoolean(), anyInt()))
                 .thenThrow(new IllegalStateException("database unavailable"));
-        assertThatThrownBy(() -> service.findFirstListPage(BOUNDS, device.getPublicId())).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> service.findListWithinBounds(BOUNDS, device.getPublicId(), null, null)).isInstanceOf(IllegalStateException.class);
         assertThat(registry.get("pheeeew.sigh.list.query").timer().count()).isOne();
         assertThat(registry.get("pheeeew.sigh.list.results").tags("page", "first", "has_next", "false").summary().count()).isZero();
     }

@@ -195,7 +195,7 @@ class EmotionEditIntegrationTest {
         assertThat(deleted.getDeletedAt()).isEqualTo(deletedAt).isNotNull();
         assertThat(deleted.getContent().getAudio().getObjectKey()).isEqualTo("recordings/old.m4a");
         assertThat(reports.existsById(report.getId())).isTrue();
-        assertThat(query.findFirstListPage(EmotionSearchBounds.of(126, 37, 128, 38), owner.getPublicId()).items()).isEmpty();
+        assertThat(query.findListWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), owner.getPublicId(), null, null).items()).isEmpty();
         assertThatThrownBy(() -> query.findById(emotion.getId(), owner.getPublicId())).isInstanceOf(EmotionException.class);
         assertThatThrownBy(() -> command.update(emotion.getId(), owner.getPublicId(), EmotionState.ANGRY,
                 "수정", null, false, null)).isInstanceOf(EmotionException.class);
