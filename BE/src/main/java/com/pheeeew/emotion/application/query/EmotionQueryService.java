@@ -163,7 +163,7 @@ public class EmotionQueryService {
     }
 
     private PlaybackUrl issuePlaybackUrl(Emotion emotion) {
-        if (emotion.getContent().getAudio() == null) {
+        if (!emotion.getContent().hasAudio()) {
             return null;
         }
         AudioUrlIssuer issuer = audioUrlIssuer.getIfAvailable();

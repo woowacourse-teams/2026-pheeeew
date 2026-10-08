@@ -130,6 +130,10 @@ public class Emotion extends BaseEntity {
         return getContent().getMemo();
     }
 
+    public boolean isWrittenBy(Long viewerDeviceId) {
+        return deviceId != null && deviceId.equals(viewerDeviceId);
+    }
+
     private Point requireWgs84Point(Point location) {
         Objects.requireNonNull(location);
         if (location.isEmpty() || location.getSRID() != WGS84_SRID) {

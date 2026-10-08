@@ -119,7 +119,7 @@ public class EmotionCommandService {
             if (memo != null || audioUploadId != null) {
                 throw new IllegalArgumentException("녹음 유지와 새 내용은 함께 요청할 수 없습니다.");
             }
-            if (emotion.getContent().getAudio() == null) {
+            if (!emotion.getContent().hasAudio()) {
                 throw new EmotionException(EMOTION_AUDIO_REQUIRED);
             }
             content = emotion.getContent();
