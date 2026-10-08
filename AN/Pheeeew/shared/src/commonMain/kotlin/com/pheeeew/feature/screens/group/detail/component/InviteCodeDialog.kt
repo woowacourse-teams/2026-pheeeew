@@ -25,12 +25,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.AppTheme
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_detail_close
@@ -143,5 +145,19 @@ internal fun InviteCodeDialog(
                 )
             }
         }
+    }
+}
+
+@Preview(name = "초대코드 공유", widthDp = 402, heightDp = 815, showBackground = true)
+@Composable
+private fun InviteCodeDialogPreview() {
+    AppTheme {
+        InviteCodeDialog(
+            code = "ABCD1234",
+            isCopying = false,
+            onCopy = {},
+            onShare = {},
+            onDismiss = {},
+        )
     }
 }

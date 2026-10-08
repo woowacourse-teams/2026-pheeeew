@@ -1,14 +1,13 @@
 package com.pheeeew.data.remote.group.mapper
 
 import com.pheeeew.data.remote.group.dto.GroupDetailResponseDto
-import com.pheeeew.data.remote.group.dto.GroupPressCountResponseDto
 import com.pheeeew.data.remote.group.dto.GroupResponseDto
 import com.pheeeew.domain.model.group.GroupDetail
-import com.pheeeew.domain.model.group.GroupPressCounts
-import com.pheeeew.domain.model.group.GroupPressState
 
 object GroupDetailResponseMapper {
     fun toDomain(dto: GroupDetailResponseDto): GroupDetail {
+        validateMetric("weeklyStampCount", dto.weeklyStampCount, dto.weeklyStampRank)
+        validateMetric("weeklyEmotionPressCount", dto.weeklyEmotionPressCount, dto.weeklyEmotionPressRank)
         val group =
             GroupResponseMapper.toDomain(
                 GroupResponseDto(
@@ -25,24 +24,21 @@ object GroupDetailResponseMapper {
 
         return GroupDetail(
             group = group,
-            todayPresses = dto.todayPresses.toDomain(),
-            weeklyScore = dto.weeklyScore,
-            weeklyRank = dto.weeklyRank,
+            weeklyStampCount = dto.weeklyStampCount,
+            weeklyStampRank = dto.weeklyStampRank,
+            weeklyEmotionPressCount = dto.weeklyEmotionPressCount,
+            weeklyEmotionPressRank = dto.weeklyEmotionPressRank,
         )
     }
 
-    private fun GroupPressCountResponseDto.toDomain(): GroupPressCounts {
-        val requiredKeys = GroupPressState.entries.map { it.name }.toSet()
-        if (counts.keys != requiredKeys) throw GroupContractException("todayPresses.counts")
-
-        val parsedCounts =
-            GroupPressState.entries.associateWith { state ->
-                counts.getValue(state.name)
-            }
-        return try {
-            GroupPressCounts(counts = parsedCounts, total = total)
-        } catch (_: IllegalArgumentException) {
-            throw GroupContractException("todayPresses")
-        }
+    private fun validateMetric(
+        countField: String,
+        count: Long,
+        rank: Int?,
+    ) {
+        if (count < 0L) throw GroupContractException(countField)
+        val rankField = countField.replace("Count", "Rank")
+        if (rank != null && rank <= 0) throw GroupContractException(rankField)
+        if (count == 0L && rank != null) throw GroupContractException(rankField)
     }
 }

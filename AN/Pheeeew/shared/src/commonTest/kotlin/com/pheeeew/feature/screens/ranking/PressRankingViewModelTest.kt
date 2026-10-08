@@ -31,7 +31,8 @@ class PressRankingViewModelTest {
             try {
                 val calls = mutableListOf<Pair<PressEmotion, Int>>()
                 var shouldFail = false
-                val groups = listOf(PressGroupRank(1, "히유 클럽", "내 그룹", 42, true))
+                val groups =
+                    listOf(PressGroupRank("00000000-0000-0000-0000-000000000001", 1, "히유 클럽", "내 그룹", 42, true))
                 val source =
                     object : PressRankingSource {
                         override suspend fun load(
@@ -133,7 +134,10 @@ class PressRankingViewModelTest {
                                     startAt = "2026-09-28T00:00:00Z",
                                     endAt = "2026-10-05T00:00:00Z",
                                     hasPrevious = false,
-                                    groups = listOf(PressGroupRank(1, "현재 결과", "", 20)),
+                                    groups =
+                                        listOf(
+                                            PressGroupRank("00000000-0000-0000-0000-000000000001", 1, "현재 결과", "", 20),
+                                        ),
                                 )
                             }
                     }
@@ -154,7 +158,7 @@ class PressRankingViewModelTest {
                         startAt = "2026-09-21T00:00:00Z",
                         endAt = "2026-09-28T00:00:00Z",
                         hasPrevious = true,
-                        groups = listOf(PressGroupRank(1, "늦은 결과", "", 99)),
+                        groups = listOf(PressGroupRank("00000000-0000-0000-0000-000000000001", 1, "늦은 결과", "", 99)),
                     ),
                 )
                 advanceUntilIdle()

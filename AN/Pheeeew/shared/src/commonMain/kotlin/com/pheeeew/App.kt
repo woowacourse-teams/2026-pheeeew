@@ -30,7 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -47,6 +49,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import com.pheeeew.core.audio.rememberVoiceRecorder
 import com.pheeeew.core.designsystem.component.AppAlertDialog
 import com.pheeeew.core.designsystem.component.AppDialog
@@ -81,8 +84,14 @@ import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.component.RankingBottomNavigationDestination
+import com.pheeeew.feature.component.emotion.face
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
 import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
+import com.pheeeew.feature.screens.group.detail.GroupCopyCodeResult
+import com.pheeeew.feature.screens.group.detail.GroupDetailRoute
+import com.pheeeew.feature.screens.group.detail.GroupDetailViewModel
+import com.pheeeew.feature.screens.group.model.GroupId
+import com.pheeeew.feature.screens.group.navigation.GroupDetailDestination
 import com.pheeeew.feature.screens.group.navigation.GroupFeatureHost
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
@@ -93,7 +102,6 @@ import com.pheeeew.feature.screens.map.detail.EmotionDetailOverlay
 import com.pheeeew.feature.screens.map.detail.EmotionDetailViewModel
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionSheet
 import com.pheeeew.feature.screens.map.nearby.NearbyEmotionViewModel
-import com.pheeeew.feature.screens.map.nearby.face
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.MapRecordViewModel
 import com.pheeeew.feature.screens.map.record.RegisteredEmotionUiModel
@@ -484,14 +492,21 @@ private fun AppContent(
                 )
             }
 
+        val clipboardManager = LocalClipboardManager.current
         val navController = rememberNavController()
         val currentBackStackEntry by navController.currentBackStackEntryAsState()
 
+        val isRankingGroupDetailVisible =
+            currentBackStackEntry?.destination?.hasRoute<GroupDetailDestination>() == true
         val selectedDestination =
             when {
                 currentBackStackEntry?.destination?.hasRoute<PressRootDestination>() == true -> AppDestination.Press
+
                 currentBackStackEntry?.destination?.hasRoute<GroupRootDestination>() == true -> AppDestination.Group
-                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true -> AppDestination.Ranking
+
+                currentBackStackEntry?.destination?.hasRoute<RankingRootDestination>() == true ||
+                    isRankingGroupDetailVisible -> AppDestination.Ranking
+
                 else -> AppDestination.Map
             }
 
@@ -665,24 +680,67 @@ private fun AppContent(
                             null
                         }
                     },
-                ) {
+                ) { entry ->
+                    val openGroupDetail: (String) -> Unit = { groupId ->
+                        if (navController.currentBackStackEntry == entry) {
+                            navController.navigate(GroupDetailDestination(groupId)) {
+                                launchSingleTop = true
+                            }
+                        }
+                    }
                     CompositionLocalProvider(
                         LocalProductMonitoringVisible provides
                             (!isSettingsVisible && reportTarget == null),
                     ) {
                         if (rankingDestination == RankingBottomNavigationDestination.Stamp) {
                             WeeklyRankingRoute(
-                                apiDependencies.client,
-                                Modifier.fillMaxSize(),
+                                apiClient = apiDependencies.client,
+                                onGroupClick = openGroupDetail,
+                                modifier = Modifier.fillMaxSize(),
                                 onRefreshActionChanged = { refreshRanking = it },
                             )
                         } else {
                             PressRankingRoute(
-                                apiDependencies.client,
-                                Modifier.fillMaxSize(),
+                                apiClient = apiDependencies.client,
+                                onGroupClick = openGroupDetail,
+                                modifier = Modifier.fillMaxSize(),
                                 onRefreshActionChanged = { refreshRanking = it },
                             )
                         }
+                    }
+                }
+
+                composable<GroupDetailDestination> { entry ->
+                    val destination = entry.toRoute<GroupDetailDestination>()
+                    val groupId = GroupId(destination.groupId)
+                    val groupDetailViewModel: GroupDetailViewModel =
+                        viewModel(viewModelStoreOwner = entry) {
+                            GroupDetailViewModel(groupId = groupId, dependencies = groupDependencies.detail)
+                        }
+
+                    fun returnToRanking() {
+                        groupStampListRepository.invalidate()
+                        nearbyViewModel.onMembershipChanged()
+                        navController.popBackStack()
+                    }
+
+                    CompositionLocalProvider(
+                        LocalProductMonitoringVisible provides (!isSettingsVisible && reportTarget == null),
+                    ) {
+                        GroupDetailRoute(
+                            viewModel = groupDetailViewModel,
+                            isCurrentDestination = currentBackStackEntry == entry,
+                            onBack = { navController.popBackStack() },
+                            onReturnHome = { returnToRanking() },
+                            onLeft = { _, _ -> returnToRanking() },
+                            onMembershipUnavailable = { _, _, _ -> returnToRanking() },
+                            onCopyCode = { code, _ ->
+                                clipboardManager.setText(AnnotatedString(code))
+                                GroupCopyCodeResult.Copied
+                            },
+                            onMoodBlockClick = null,
+                            onMoodReportClick = null,
+                        )
                     }
                 }
             }
@@ -712,6 +770,7 @@ private fun AppContent(
             }
 
             if (reportTarget == null && !isSettingsVisible && !nearbyState.visible && !isEmotionRecordFlowActive &&
+                !isRankingGroupDetailVisible &&
                 (selectedDestination != AppDestination.Group || (!isGroupDetailVisible && !isGroupCreateVisible))
             ) {
                 AppBottomNavigationBar(

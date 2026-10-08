@@ -57,6 +57,7 @@ import pheeeew.shared.generated.resources.ranking_press_title
 @Composable
 fun PressRankingRoute(
     apiClient: ApiClient,
+    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
 ) {
@@ -75,6 +76,7 @@ fun PressRankingRoute(
         onNextWeek = viewModel::onNextWeek,
         onRetry = viewModel::onRetry,
         onRefresh = viewModel::onRefresh,
+        onGroupClick = onGroupClick,
         modifier = modifier,
     )
 }
@@ -87,6 +89,7 @@ internal fun PressRankingScreen(
     onNextWeek: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
+    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pullState = rememberPullToRefreshState()
@@ -175,6 +178,7 @@ internal fun PressRankingScreen(
                                 MyPressRankList(
                                     groups = myGroups,
                                     emotion = uiState.selectedEmotion,
+                                    onGroupClick = { onGroupClick(it.groupId) },
                                     modifier = Modifier.padding(horizontal = 24.dp),
                                 )
                                 Spacer(Modifier.height(24.dp))
@@ -191,6 +195,7 @@ internal fun PressRankingScreen(
                             } else {
                                 PressGroupRankList(
                                     groups = uiState.groups,
+                                    onGroupClick = { onGroupClick(it.groupId) },
                                     modifier = Modifier.padding(horizontal = 24.dp),
                                 )
                             }
@@ -226,6 +231,7 @@ private fun PressRankingScreenPreview() {
             onNextWeek = {},
             onRetry = {},
             onRefresh = {},
+            onGroupClick = {},
         )
     }
 }

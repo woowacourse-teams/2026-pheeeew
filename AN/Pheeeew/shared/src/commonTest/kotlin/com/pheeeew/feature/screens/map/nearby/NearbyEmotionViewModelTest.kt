@@ -91,6 +91,53 @@ class NearbyEmotionViewModelTest {
         }
 
     @Test
+    fun `재시도 중 다시 누르면 ViewModel이 중복 요청을 막는다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val retryResult = CompletableDeferred<EmotionResult<EmotionPage>>()
+                var calls = 0
+                val repo =
+                    FakeRepository().apply {
+                        first = {
+                            calls++
+                            if (calls == 1) {
+                                EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
+                            } else {
+                                retryResult.await()
+                            }
+                        }
+                    }
+                val vm = viewModel(repo)
+                vm.onViewportChanged(BOUNDS)
+                vm.open()
+                advanceUntilIdle()
+                assertTrue(vm.state.value.error != null)
+
+                vm.retryError()
+                runCurrent()
+                assertTrue(vm.state.value.loading)
+                assertEquals(2, calls)
+
+                vm.retryError()
+                runCurrent()
+                assertEquals(2, calls)
+
+                retryResult.complete(successPage(2))
+                advanceUntilIdle()
+                assertFalse(vm.state.value.loading)
+                assertEquals(
+                    listOf(2L),
+                    vm.state.value.items
+                        .map { it.id },
+                )
+                vm.dismiss()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `취소를 무시하고 늦게 도착한 이전 페이지는 새 목록을 덮지 않는다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -369,6 +416,11 @@ class NearbyEmotionViewModelTest {
         }
 
         override suspend fun nextPage(cursor: String) = next()
+
+        override suspend fun feedPage(
+            groupId: String,
+            cursor: String?,
+        ) = next()
 
         override suspend fun detail(id: Long): EmotionResult<Emotion> =
             EmotionResult.Failure(EmotionFailure.UNAVAILABLE)

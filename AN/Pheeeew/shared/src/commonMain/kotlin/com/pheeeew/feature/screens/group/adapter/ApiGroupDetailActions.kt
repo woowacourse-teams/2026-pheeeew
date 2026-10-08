@@ -1,7 +1,6 @@
 package com.pheeeew.feature.screens.group.adapter
 
 import com.pheeeew.domain.model.group.GroupDetail
-import com.pheeeew.domain.model.group.GroupPressState
 import com.pheeeew.domain.repository.group.GroupDetailLookupResult
 import com.pheeeew.domain.repository.group.GroupDetailRepository
 import com.pheeeew.domain.repository.group.GroupLeaveResult
@@ -9,14 +8,7 @@ import com.pheeeew.feature.screens.group.detail.GroupDetailLoadResult
 import com.pheeeew.feature.screens.group.detail.GroupDetailSource
 import com.pheeeew.feature.screens.group.detail.LeaveGroupAction
 import com.pheeeew.feature.screens.group.detail.LeaveGroupResult
-import com.pheeeew.feature.screens.group.detail.model.EmotionCountUiModel
-import com.pheeeew.feature.screens.group.detail.model.EmotionKind
-import com.pheeeew.feature.screens.group.detail.model.GroupDetailCopyKey
-import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationKind
-import com.pheeeew.feature.screens.group.detail.model.GroupDetailPresentationUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
-import com.pheeeew.feature.screens.group.detail.model.GroupRankUiModel
-import com.pheeeew.feature.screens.group.detail.model.dominantEmotionSummary
 import com.pheeeew.feature.screens.group.mapper.toSummaryUiModel
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.domain.model.group.GroupId as DomainGroupId
@@ -30,7 +22,6 @@ class ApiGroupDetailSource(
                 ?: return GroupDetailLoadResult.Unavailable
         return when (val result = repository.findById(domainGroupId)) {
             is GroupDetailLookupResult.Found -> GroupDetailLoadResult.Loaded(result.detail.toUiModel())
-            GroupDetailLookupResult.MembershipChanged -> GroupDetailLoadResult.MembershipChanged
             GroupDetailLookupResult.NotFound -> GroupDetailLoadResult.NotFound
             GroupDetailLookupResult.Unavailable -> GroupDetailLoadResult.Unavailable
         }
@@ -55,51 +46,13 @@ class ApiLeaveGroupAction(
     }
 }
 
-private fun GroupDetail.toUiModel(): GroupDetailUiModel {
-    val emotionCounts =
-        GroupPressState.entries.map { state ->
-            EmotionCountUiModel(
-                kind = state.toUiKind(),
-                count = todayPresses.counts.getValue(state),
-            )
-        }
-    val hasRecordedPress = emotionCounts.any { it.count > 0L }
-    val summary = emotionCounts.dominantEmotionSummary()
-    val presentationKind =
-        if (hasRecordedPress) GroupDetailPresentationKind.Active else GroupDetailPresentationKind.Neutral
-
-    return GroupDetailUiModel(
-        group = group.toSummaryUiModel(weeklyStampCount = weeklyScore),
+private fun GroupDetail.toUiModel() =
+    GroupDetailUiModel(
+        group = group.toSummaryUiModel(),
         role = group.role,
-        emotionCounts = emotionCounts,
-        todayTotal = todayPresses.total,
-        rank = weeklyRank?.let { GroupRankUiModel.Ranked(it) } ?: GroupRankUiModel.Unranked,
         inviteCode = group.inviteCode,
-        presentation =
-            GroupDetailPresentationUiModel(
-                kind = presentationKind,
-                heroTitle =
-                    if (presentationKind == GroupDetailPresentationKind.Active) {
-                        GroupDetailCopyKey.ActiveHeroTitle
-                    } else {
-                        GroupDetailCopyKey.NeutralHeroTitle
-                    },
-                heroSubtitle =
-                    if (presentationKind == GroupDetailPresentationKind.Active) {
-                        GroupDetailCopyKey.ActiveHeroSubtitle
-                    } else {
-                        GroupDetailCopyKey.NeutralHeroSubtitle
-                    },
-                summaryMessage = summary,
-            ),
+        weeklyStampCount = weeklyStampCount,
+        weeklyStampRank = weeklyStampRank,
+        weeklyEmotionPressCount = weeklyEmotionPressCount,
+        weeklyEmotionPressRank = weeklyEmotionPressRank,
     )
-}
-
-private fun GroupPressState.toUiKind(): EmotionKind =
-    when (this) {
-        GroupPressState.FRUSTRATED -> EmotionKind.Blocked
-        GroupPressState.IRRITATED -> EmotionKind.Annoyed
-        GroupPressState.EXHAUSTED -> EmotionKind.Tired
-        GroupPressState.DISCOURAGED -> EmotionKind.Defeated
-        GroupPressState.ANGRY -> EmotionKind.Angry
-    }

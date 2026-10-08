@@ -16,6 +16,7 @@ object AppColors {
     val Primary = Color(0xffFFE164)
 
     val Border = Color(0xFF000000)
+    val BorderLight = Color(0xFFE8E8E8)
 
     val TextPrimary = Color(0xFF000000)
     val TextSecondary = Color(0xFF7D837A)

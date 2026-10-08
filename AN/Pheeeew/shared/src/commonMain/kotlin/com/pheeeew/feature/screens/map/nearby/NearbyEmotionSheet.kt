@@ -48,12 +48,17 @@ import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.navigation.PredictiveBackEffect
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.usecase.BlockUserUseCase
+import com.pheeeew.feature.component.emotion.EmotionActionsMenuMode
+import com.pheeeew.feature.component.emotion.face
 import com.pheeeew.feature.component.stamp.GroupStamp
+import com.pheeeew.feature.monitoring.product.rememberObservedEmotionPlayer
+import com.pheeeew.feature.monitoring.product.stopForReplacement
 import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
 import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import com.pheeeew.feature.screens.map.record.group.groupSelectorDialogProperties
 import com.pheeeew.feature.screens.map.record.noRippleClickable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import org.jetbrains.compose.resources.DrawableResource
@@ -67,6 +72,8 @@ import pheeeew.shared.generated.resources.emotion_moderation_hidden_notice
 import pheeeew.shared.generated.resources.ic_refresh
 import pheeeew.shared.generated.resources.nearby_groups_load_error
 import pheeeew.shared.generated.resources.nearby_groups_loading
+import kotlin.time.TimeSource
+import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
 @Composable
 fun NearbyEmotionSheet(
@@ -82,6 +89,16 @@ fun NearbyEmotionSheet(
 ) {
     val state by viewModel.state.collectAsState()
     var expanded by remember(state.visible) { mutableStateOf(false) }
+    var openMenu by remember { mutableStateOf<Pair<Long, EmotionActionsMenuMode>?>(null) }
+    val itemIds = state.items.map { it.id }
+    LaunchedEffect(state.selectedId, itemIds, state.visible, openMenu?.first) {
+        if (!state.visible || openMenu?.first != state.selectedId || openMenu?.first?.let { it !in itemIds } == true) {
+            openMenu = null
+            if (state.selectedId != null && (!state.visible || state.selectedId !in itemIds)) {
+                viewModel.select(null)
+            }
+        }
+    }
     val foreground = rememberMonitoringForeground()
     val contentVisible =
         monitoringVisible && foreground && state.visible && !state.groupSelectorVisible && state.blockId == null
@@ -90,7 +107,7 @@ fun NearbyEmotionSheet(
         onDispose { viewModel.contentVisibility(false) }
     }
     val player =
-        com.pheeeew.feature.monitoring.product.rememberObservedEmotionPlayer(viewModel.telemetry) {
+        rememberObservedEmotionPlayer(viewModel.telemetry) {
             viewModel.exploration.viewId
         }
     val playback by player.state.collectAsState()
@@ -142,7 +159,7 @@ fun NearbyEmotionSheet(
     LaunchedEffect(contentVisible, state.revision, state.items) {
         if (!contentVisible) return@LaunchedEffect
         // Track each item's uninterrupted qualifying interval independently while scrolling.
-        val starts = mutableMapOf<Long, kotlin.time.TimeSource.Monotonic.ValueTimeMark>()
+        val starts = mutableMapOf<Long, ValueTimeMark>()
         while (true) {
             val layout = scroll.layoutInfo
             val visible =
@@ -160,7 +177,7 @@ fun NearbyEmotionSheet(
             visible.forEach { id ->
                 val start =
                     starts.getOrPut(id) {
-                        kotlin.time.TimeSource.Monotonic
+                        TimeSource.Monotonic
                             .markNow()
                     }
                 if (start.elapsedNow().inWholeMilliseconds >=
@@ -177,7 +194,7 @@ fun NearbyEmotionSheet(
                     )
                 }
             }
-            kotlinx.coroutines.delay(100)
+            delay(100)
         }
     }
     val atEnd by remember {
@@ -235,7 +252,11 @@ fun NearbyEmotionSheet(
                 items(state.items, key = { it.id }) { emotion ->
                     EmotionChatRow(
                         emotion,
-                        selected = state.selectedId == emotion.id,
+                        menuMode =
+                            openMenu
+                                ?.takeIf {
+                                    it.first == emotion.id && state.selectedId == emotion.id
+                                }?.second,
                         focused = focusedEmotionId == emotion.id,
                         busy = emotion.id in state.pendingIds,
                         playing = playback.id == emotion.id,
@@ -244,8 +265,14 @@ fun NearbyEmotionSheet(
                             expanded = false
                             viewModel.openOnMap(emotion.id, onOpenEmotionOnMap)
                         },
-                        onSelect = { viewModel.select(emotion.id) },
-                        onDismissMenu = { viewModel.select(null) },
+                        onOpenMenu = { mode ->
+                            openMenu = emotion.id to mode
+                            viewModel.select(emotion.id)
+                        },
+                        onDismissMenu = {
+                            openMenu = null
+                            viewModel.select(null)
+                        },
                         onReact = { viewModel.react(emotion.id, it) },
                         onBlock = { viewModel.requestBlock(emotion.id) },
                         onReport = {
@@ -259,8 +286,7 @@ fun NearbyEmotionSheet(
                             ) {
                                 player.stop()
                             } else {
-                                com.pheeeew.feature.monitoring.product
-                                    .stopForReplacement(player)
+                                stopForReplacement(player)
                                 viewModel.play(emotion.id)
                             }
                         },
@@ -269,12 +295,11 @@ fun NearbyEmotionSheet(
                 state.error?.let { error ->
                     item {
                         NearbyLoadError(
-                            error,
-                            state.items.isNotEmpty(),
+                            message = error,
+                            hasItems = state.items.isNotEmpty(),
                             modifier = if (state.items.isEmpty()) Modifier.fillParentMaxHeight() else Modifier,
-                        ) {
-                            if (state.items.isEmpty()) viewModel.refresh() else viewModel.loadMore()
-                        }
+                            onRetry = viewModel::retryError,
+                        )
                     }
                 }
                 if (state.loadingMore) {
