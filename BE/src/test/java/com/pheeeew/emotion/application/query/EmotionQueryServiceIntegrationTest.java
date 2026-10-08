@@ -734,7 +734,7 @@ class EmotionQueryServiceIntegrationTest {
         assertThatThrownBy(() -> emotionQueryService.findListWithinBounds(null, viewer.getPublicId(), null, "invalid"))
                 .isInstanceOf(EmotionException.class);
         String future = EmotionCursorCodec.encode(EmotionCursor.initialWithinBounds(
-                EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0), Instant.now().plusSeconds(60)));
+                EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0), Instant.now().plusSeconds(60), null));
         assertThatThrownBy(() -> emotionQueryService.findListWithinBounds(null, viewer.getPublicId(), null, future))
                 .isInstanceOf(EmotionException.class);
     }

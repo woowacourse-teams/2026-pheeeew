@@ -21,18 +21,19 @@ public record EmotionCursor(EmotionSearchBounds bounds, Instant snapshotAt, Inst
         }
     }
 
-    public static EmotionCursor initialWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt) {
-        return initialWithinBounds(bounds, snapshotAt, null);
-    }
-
     public static EmotionCursor initialWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt, UUID groupId) {
-        Objects.requireNonNull(bounds);
-        return new EmotionCursor(bounds, snapshotAt, snapshotAt, Long.MAX_VALUE, groupId);
+        return ofWithinBounds(bounds, snapshotAt, snapshotAt, Long.MAX_VALUE, groupId);
     }
 
-    public static EmotionCursor ofWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId) {
+    public static EmotionCursor ofWithinBounds(
+            EmotionSearchBounds bounds,
+            Instant snapshotAt,
+            Instant lastItemCreatedAt,
+            long lastId,
+            UUID groupId
+    ) {
         Objects.requireNonNull(bounds);
-        return new EmotionCursor(bounds, snapshotAt, lastItemCreatedAt, lastId, null);
+        return new EmotionCursor(bounds, snapshotAt, lastItemCreatedAt, lastId, groupId);
     }
 
     public static EmotionCursor initialWithoutBounds(Instant snapshotAt, UUID groupId) {

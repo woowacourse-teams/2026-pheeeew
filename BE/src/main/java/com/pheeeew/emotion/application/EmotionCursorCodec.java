@@ -32,7 +32,7 @@ public final class EmotionCursorCodec {
                 throw invalidCursor();
             }
 
-            return new EmotionCursor(
+            return EmotionCursor.ofWithinBounds(
                     EmotionSearchBounds.of(
                             Double.parseDouble(fields[1]), Double.parseDouble(fields[2]),
                             Double.parseDouble(fields[3]), Double.parseDouble(fields[4])

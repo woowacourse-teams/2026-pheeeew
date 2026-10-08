@@ -88,7 +88,7 @@ class EmotionMetricsAspectTest {
 
     @Test
     void 다음_페이지를_별도로_기록한다() {
-        String cursor = EmotionCursorCodec.encode(EmotionCursor.initialWithinBounds(BOUNDS, NOW));
+        String cursor = EmotionCursorCodec.encode(EmotionCursor.initialWithinBounds(BOUNDS, NOW, null));
         service.findListWithinBounds(null, device.getPublicId(), null, cursor);
         assertThat(registry.get("pheeeew.sigh.list.results").tags("page", "next", "has_next", "false").summary().count()).isOne();
     }

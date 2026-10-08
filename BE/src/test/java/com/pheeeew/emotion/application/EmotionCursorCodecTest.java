@@ -29,7 +29,8 @@ class EmotionCursorCodecTest {
                 EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6),
                 Instant.parse("2026-09-03T03:00:00.123456Z"),
                 Instant.parse("2026-09-01T12:00:00.654321Z"),
-                42L
+                42L,
+                null
         );
 
         // when
@@ -66,9 +67,9 @@ class EmotionCursorCodecTest {
     @Test
     void 기존_커서의_생성_경로는_좌표를_생략할_수_없다() {
         // given / when / then
-        assertThatThrownBy(() -> EmotionCursor.initialWithinBounds(null, SNAPSHOT))
+        assertThatThrownBy(() -> EmotionCursor.initialWithinBounds(null, SNAPSHOT, null))
                 .isInstanceOf(NullPointerException.class);
-        assertThatThrownBy(() -> EmotionCursor.ofWithinBounds(null, SNAPSHOT, LAST_CREATED_AT, 42L))
+        assertThatThrownBy(() -> EmotionCursor.ofWithinBounds(null, SNAPSHOT, LAST_CREATED_AT, 42L, null))
                 .isInstanceOf(NullPointerException.class);
     }
 
