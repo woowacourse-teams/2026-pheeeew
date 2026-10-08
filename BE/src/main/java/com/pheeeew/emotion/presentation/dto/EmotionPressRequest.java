@@ -3,30 +3,10 @@ package com.pheeeew.emotion.presentation.dto;
 import com.pheeeew.emotion.domain.EmotionState;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import java.util.Map;
 
 public record EmotionPressRequest(
-        @NotNull @DecimalMin("-180") @DecimalMax("180")
-        @Schema(
-                description = "현재 위치의 WGS84 경도. 읍면동을 고르는 데에만 쓰고 저장하지 않습니다.",
-                minimum = "-180",
-                maximum = "180",
-                example = "126.9774"
-        )
-        Double longitude,
-
-        @NotNull @DecimalMin("-90") @DecimalMax("90")
-        @Schema(
-                description = "현재 위치의 WGS84 위도. 저장하지 않습니다.",
-                minimum = "-90",
-                maximum = "90",
-                example = "37.5669"
-        )
-        Double latitude,
-
         @NotNull
         @Schema(
                 description = "감정별 누른 횟수. "

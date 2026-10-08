@@ -1,6 +1,6 @@
 package com.pheeeew.groups.domain.repository;
 
-import com.pheeeew.emotion.domain.DeviceRegionDailyPress;
+import com.pheeeew.emotion.domain.DeviceDailyPress;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.domain.repository.projection.GroupScoreProjection;
 import java.time.LocalDate;
@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
-public interface GroupPressRankingRepository extends Repository<DeviceRegionDailyPress, Long> {
+public interface GroupPressRankingRepository extends Repository<DeviceDailyPress, Long> {
 
     @Query("""
             SELECT g.publicId AS groupPublicId,
@@ -19,7 +19,7 @@ public interface GroupPressRankingRepository extends Repository<DeviceRegionDail
                    s.backgroundColor AS stampBackgroundColor,
                    s.frame AS stampFrame,
                    SUM(press.pressCount) AS score
-            FROM DeviceRegionDailyPress press
+            FROM DeviceDailyPress press
             JOIN GroupMember member ON member.device.id = press.deviceId AND member.leftAt IS NULL
             JOIN member.group g
             JOIN GroupStamp s ON s.group = g
@@ -42,7 +42,7 @@ public interface GroupPressRankingRepository extends Repository<DeviceRegionDail
                    s.backgroundColor AS stampBackgroundColor,
                    s.frame AS stampFrame,
                    SUM(press.pressCount) AS score
-            FROM DeviceRegionDailyPress press
+            FROM DeviceDailyPress press
             JOIN GroupMember member ON member.device.id = press.deviceId AND member.leftAt IS NULL
             JOIN member.group g
             JOIN GroupStamp s ON s.group = g
@@ -61,7 +61,7 @@ public interface GroupPressRankingRepository extends Repository<DeviceRegionDail
 
     @Query("""
             SELECT COUNT(press.id) > 0
-            FROM DeviceRegionDailyPress press
+            FROM DeviceDailyPress press
             JOIN GroupMember member ON member.device.id = press.deviceId AND member.leftAt IS NULL
             JOIN member.group g
             WHERE g.deletedAt IS NULL

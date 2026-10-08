@@ -8,8 +8,8 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.dto.EmotionPressDailyResult;
 import com.pheeeew.emotion.application.dto.EmotionPressTotalResult;
 import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.emotion.domain.repository.DeviceRegionDailyPressRepository;
-import com.pheeeew.emotion.domain.repository.projection.DeviceRegionPressSum;
+import com.pheeeew.emotion.domain.repository.DeviceDailyPressRepository;
+import com.pheeeew.emotion.domain.repository.projection.DevicePressSum;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.EnumMap;
@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class EmotionPressQueryService {
 
-    private final DeviceRegionDailyPressRepository deviceRegionDailyPressRepository;
+    private final DeviceDailyPressRepository deviceDailyPressRepository;
     private final DeviceRepository deviceRepository;
     private final Clock clock;
 
@@ -36,9 +36,9 @@ public class EmotionPressQueryService {
         LocalDate pressDate = pressDateOf(daysAgo);
 
         Map<EmotionState, Long> counts = emptyCounts();
-        List<DeviceRegionPressSum> pressed =
-                deviceRegionDailyPressRepository.findByPressDateAndDeviceId(pressDate, deviceId);
-        for (DeviceRegionPressSum press : pressed) {
+        List<DevicePressSum> pressed =
+                deviceDailyPressRepository.findByPressDateAndDeviceId(pressDate, deviceId);
+        for (DevicePressSum press : pressed) {
             counts.put(press.state(), press.pressCount());
         }
 
@@ -50,7 +50,7 @@ public class EmotionPressQueryService {
 
         return EmotionPressTotalResult.of(
                 pressDate,
-                deviceRegionDailyPressRepository.sumByPressDate(pressDate)
+                deviceDailyPressRepository.sumByPressDate(pressDate)
         );
     }
 

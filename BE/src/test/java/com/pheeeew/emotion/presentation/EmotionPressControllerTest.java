@@ -1,7 +1,6 @@
 package com.pheeeew.emotion.presentation;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -21,8 +20,6 @@ import com.pheeeew.emotion.application.dto.EmotionPressResult;
 import com.pheeeew.emotion.application.dto.EmotionPressTotalResult;
 import com.pheeeew.emotion.application.query.EmotionPressQueryService;
 import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.emotion.exception.EmotionErrorCode;
-import com.pheeeew.emotion.exception.EmotionException;
 import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.Map;
@@ -31,7 +28,6 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -64,7 +60,7 @@ class EmotionPressControllerTest {
     private static final UUID DEVICE_PUBLIC_ID = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
     private static final String PRESS_URI = "/api/v2/emotions/presses";
     private static final String 정상_본문 = """
-            {"longitude":126.9774,"latitude":37.5669,"counts":{"ANGRY":9,"EXHAUSTED":3}}
+            {"counts":{"ANGRY":9,"EXHAUSTED":3}}
             """;
 
     @Autowired
@@ -86,11 +82,10 @@ class EmotionPressControllerTest {
     }
 
     @Test
-    void 좌표와_감정별_횟수를_서비스로_넘기고_오늘_집계를_반환한다() {
+    void 감정별_횟수를_서비스로_넘기고_오늘_집계를_반환한다() {
         // given
-        when(emotionPressService.press(DEVICE_PUBLIC_ID, 126.9774, 37.5669,
-                Map.of(EmotionState.ANGRY, 9, EmotionState.EXHAUSTED, 3)))
-                .thenReturn(집계("11010530", 9, 3));
+        when(emotionPressService.press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 9, EmotionState.EXHAUSTED, 3)))
+                .thenReturn(집계(9, 3));
 
         // when
         RestTestClient.ResponseSpec 응답 = 누른다(정상_본문, "access-token");
@@ -98,42 +93,41 @@ class EmotionPressControllerTest {
         // then
         응답.expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.regionCode").isEqualTo("11010530")
+                .jsonPath("$.regionCode").doesNotExist()
                 .jsonPath("$.total").isEqualTo(12)
                 .jsonPath("$.counts.ANGRY").isEqualTo(9)
                 .jsonPath("$.counts.EXHAUSTED").isEqualTo(3)
                 .jsonPath("$.counts.FRUSTRATED").isEqualTo(0)
                 .jsonPath("$.counts.IRRITATED").isEqualTo(0)
                 .jsonPath("$.counts.DISCOURAGED").isEqualTo(0);
-        verify(emotionPressService).press(DEVICE_PUBLIC_ID, 126.9774, 37.5669,
-                Map.of(EmotionState.ANGRY, 9, EmotionState.EXHAUSTED, 3));
+        verify(emotionPressService).press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 9, EmotionState.EXHAUSTED, 3));
     }
 
     @Test
     void 빈_감정_목록도_거절하지_않고_오늘_집계를_반환한다() {
         // given
-        when(emotionPressService.press(DEVICE_PUBLIC_ID, 126.9774, 37.5669, Map.of()))
-                .thenReturn(집계("11010530", 0, 0));
+        when(emotionPressService.press(DEVICE_PUBLIC_ID, Map.of()))
+                .thenReturn(집계(0, 0));
 
         // when
         RestTestClient.ResponseSpec 응답 = 누른다("""
-                {"longitude":126.9774,"latitude":37.5669,"counts":{}}
+                {"counts":{}}
                 """, "access-token");
 
         // then
         응답.expectStatus().isOk().expectBody().jsonPath("$.total").isEqualTo(0);
-        verify(emotionPressService).press(DEVICE_PUBLIC_ID, 126.9774, 37.5669, Map.of());
+        verify(emotionPressService).press(DEVICE_PUBLIC_ID, Map.of());
     }
 
     @Test
     void 값이_영인_감정도_거절하지_않고_영이_그대로_서비스로_간다() {
         // given
-        when(emotionPressService.press(DEVICE_PUBLIC_ID, 126.9774, 37.5669, Map.of(EmotionState.ANGRY, 0)))
-                .thenReturn(집계("11010530", 7, 0));
+        when(emotionPressService.press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 0)))
+                .thenReturn(집계(7, 0));
 
         // when
         RestTestClient.ResponseSpec 응답 = 누른다("""
-                {"longitude":126.9774,"latitude":37.5669,"counts":{"ANGRY":0}}
+                {"counts":{"ANGRY":0}}
                 """, "access-token");
 
         // then
@@ -141,7 +135,7 @@ class EmotionPressControllerTest {
                 .expectBody()
                 .jsonPath("$.counts.ANGRY").isEqualTo(7)
                 .jsonPath("$.total").isEqualTo(7);
-        verify(emotionPressService).press(DEVICE_PUBLIC_ID, 126.9774, 37.5669, Map.of(EmotionState.ANGRY, 0));
+        verify(emotionPressService).press(DEVICE_PUBLIC_ID, Map.of(EmotionState.ANGRY, 0));
     }
 
     @ParameterizedTest
@@ -158,7 +152,7 @@ class EmotionPressControllerTest {
 
     @ParameterizedTest
     @MethodSource("잘못된_본문들")
-    void 좌표와_감정별_횟수가_올바르지_않으면_누르지_않는다(String 본문) {
+    void 감정별_횟수가_올바르지_않으면_누르지_않는다(String 본문) {
         // when
         RestTestClient.ResponseSpec 응답 = 누른다(본문, "access-token");
 
@@ -167,17 +161,17 @@ class EmotionPressControllerTest {
         verifyNoInteractions(emotionPressService);
     }
 
-    @ParameterizedTest
-    @MethodSource("서비스_실패들")
-    void 서비스가_던진_실패_상태와_코드를_그대로_전달한다(RuntimeException 예외, int 상태, String 코드) {
+    @Test
+    void 서비스가_던진_실패_상태와_코드를_그대로_전달한다() {
         // given
-        when(emotionPressService.press(any(), anyDouble(), anyDouble(), any())).thenThrow(예외);
+        when(emotionPressService.press(any(), any()))
+                .thenThrow(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND));
 
         // when
         RestTestClient.ResponseSpec 응답 = 누른다(정상_본문, "access-token");
 
         // then
-        응답.expectStatus().isEqualTo(상태).expectBody().jsonPath("$.code").isEqualTo(코드);
+        응답.expectStatus().isUnauthorized().expectBody().jsonPath("$.code").isEqualTo("DEVICE-004");
     }
 
     @Test
@@ -212,21 +206,6 @@ class EmotionPressControllerTest {
         // then
         응답.expectStatus().isOk();
         verify(emotionPressQueryService).findMyDailyPresses(DEVICE_PUBLIC_ID, 3);
-    }
-
-    @Test
-    void 내_집계_응답에는_지역_코드가_없다() {
-        // given
-        when(emotionPressQueryService.findMyDailyPresses(DEVICE_PUBLIC_ID, 0))
-                .thenReturn(일별_집계(LocalDate.of(2026, 10, 8), 1, 0));
-
-        // when
-        RestTestClient.ResponseSpec 응답 = 조회한다(PRESS_URI + "/me", "access-token");
-
-        // then
-        응답.expectStatus().isOk()
-                .expectBody()
-                .jsonPath("$.regionCode").doesNotExist();
     }
 
     @Test
@@ -300,7 +279,7 @@ class EmotionPressControllerTest {
         return 요청.contentType(MediaType.APPLICATION_JSON).body(본문).exchange();
     }
 
-    private EmotionPressResult 집계(String regionCode, long angry, long exhausted) {
+    private EmotionPressResult 집계(long angry, long exhausted) {
         Map<EmotionState, Long> counts = new EnumMap<>(EmotionState.class);
         for (EmotionState state : EmotionState.values()) {
             counts.put(state, 0L);
@@ -308,48 +287,26 @@ class EmotionPressControllerTest {
         counts.put(EmotionState.ANGRY, angry);
         counts.put(EmotionState.EXHAUSTED, exhausted);
 
-        return EmotionPressResult.of(regionCode, counts);
+        return EmotionPressResult.from(counts);
     }
 
     private static Stream<String> 잘못된_본문들() {
         return Stream.of(
                 """
-                {"latitude":37.5669,"counts":{"ANGRY":1}}
+                {}
                 """,
                 """
-                {"longitude":null,"latitude":37.5669,"counts":{"ANGRY":1}}
+                {"counts":null}
                 """,
                 """
-                {"longitude":181,"latitude":37.5669,"counts":{"ANGRY":1}}
+                {"counts":{"ANGRY":-1}}
                 """,
                 """
-                {"longitude":126.9774,"latitude":91,"counts":{"ANGRY":1}}
+                {"counts":{"ANGRY":null}}
                 """,
                 """
-                {"longitude":126.9774,"latitude":37.5669}
-                """,
+                {"counts":{"HAPPY":1}}
                 """
-                {"longitude":126.9774,"latitude":37.5669,"counts":null}
-                """,
-                """
-                {"longitude":126.9774,"latitude":37.5669,"counts":{"ANGRY":-1}}
-                """,
-                """
-                {"longitude":126.9774,"latitude":37.5669,"counts":{"ANGRY":null}}
-                """,
-                """
-                {"longitude":126.9774,"latitude":37.5669,"counts":{"HAPPY":1}}
-                """
-        );
-    }
-
-    private static Stream<Arguments> 서비스_실패들() {
-        return Stream.of(
-                Arguments.of(new EmotionException(EmotionErrorCode.EMOTION_LOCATION_OUT_OF_SERVICE_AREA),
-                        400, "EMOTION-014"),
-                Arguments.of(new EmotionException(EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE),
-                        503, "EMOTION-013"),
-                Arguments.of(new DeviceException(DeviceErrorCode.DEVICE_NOT_FOUND), 401, "DEVICE-004")
         );
     }
 }
