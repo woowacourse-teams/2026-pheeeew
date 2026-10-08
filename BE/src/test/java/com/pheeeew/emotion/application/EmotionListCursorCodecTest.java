@@ -14,14 +14,18 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 class EmotionListCursorCodecTest {
 
+    private static final Instant SNAPSHOT = Instant.parse("2026-10-08T01:00:00.123456Z");
+    private static final Instant LAST_CREATED_AT = Instant.parse("2026-10-07T01:00:00.654321Z");
+
     @Test
     void 커서를_인코딩하고_디코딩하면_검색_조건을_복원한다() {
         // given
-        EmotionListCursor cursor = EmotionListCursor.of(
+        EmotionListCursor cursor = EmotionListCursor.ofWithinBounds(
                 EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6),
                 Instant.parse("2026-09-03T03:00:00.123456Z"),
                 Instant.parse("2026-09-01T12:00:00.654321Z"),
@@ -30,7 +34,7 @@ class EmotionListCursorCodecTest {
 
         // when
         String encoded = EmotionListCursorCodec.encode(cursor);
-        EmotionListCursor decoded = EmotionListCursorCodec.decode(encoded);
+        EmotionListCursor decoded = EmotionListCursorCodec.decodeWithinBounds(encoded);
         String payload = new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8);
 
         // then
@@ -45,16 +49,27 @@ class EmotionListCursorCodecTest {
     void 그룹_필터는_인코딩과_다음_페이지에서도_유지된다() {
         // given
         UUID groupId = UUID.randomUUID();
-        var initial = EmotionListCursor.initial(EmotionSearchBounds.of(126, 37, 128, 38),
+        var initial = EmotionListCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38),
                 Instant.parse("2026-09-25T00:00:00Z"), groupId);
 
         // when
-        var next = EmotionListCursorCodec.decode(EmotionListCursorCodec.encode(initial))
+        var next = EmotionListCursorCodec.decodeWithinBounds(EmotionListCursorCodec.encode(initial))
                 .next(Instant.parse("2026-09-24T00:00:00Z"), 42L);
 
         // then
         assertThat(next.groupId()).isEqualTo(groupId);
-        assertThat(EmotionListCursorCodec.decode(EmotionListCursorCodec.encode(next))).isEqualTo(next);
+        assertThat(EmotionListCursorCodec.decodeWithinBounds(EmotionListCursorCodec.encode(next))).isEqualTo(next);
+        assertThat(new String(Base64.getUrlDecoder().decode(EmotionListCursorCodec.encode(next)), StandardCharsets.UTF_8))
+                .isEqualTo("2|126.0|37.0|128.0|38.0|2026-09-25T00:00:00Z|2026-09-24T00:00:00Z|42|" + groupId);
+    }
+
+    @Test
+    void 기존_커서의_생성_경로는_좌표를_생략할_수_없다() {
+        // given / when / then
+        assertThatThrownBy(() -> EmotionListCursor.initialWithinBounds(null, SNAPSHOT))
+                .isInstanceOf(NullPointerException.class);
+        assertThatThrownBy(() -> EmotionListCursor.ofWithinBounds(null, SNAPSHOT, LAST_CREATED_AT, 42L))
+                .isInstanceOf(NullPointerException.class);
     }
 
     @ParameterizedTest
@@ -84,8 +99,97 @@ class EmotionListCursorCodecTest {
         잘못된_커서임을_검증한다(encoded);
     }
 
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "f6ebff29-9f33-40fc-9779-878710f3f163")
+    void 전체와_그룹_범위는_왕복_변환과_다음_커서에서도_유지된다(String group) {
+        // given
+        UUID groupId = group == null ? null : UUID.fromString(group);
+        EmotionListCursor initial = EmotionListCursor.initialWithoutBounds(SNAPSHOT, groupId);
+
+        // when
+        EmotionListCursor restored = EmotionListCursorCodec.decodeWithoutBounds(EmotionListCursorCodec.encode(initial));
+        EmotionListCursor next = restored.next(LAST_CREATED_AT, 42L);
+        String encoded = EmotionListCursorCodec.encode(next);
+
+        // then
+        assertThat(restored).isEqualTo(initial);
+        assertThat(restored.bounds()).isNull();
+        assertThat(initial.lastItemCreatedAt()).isEqualTo(SNAPSHOT);
+        assertThat(initial.lastId()).isEqualTo(Long.MAX_VALUE);
+        assertThat(next).isEqualTo(EmotionListCursor.ofWithoutBounds(SNAPSHOT, LAST_CREATED_AT, 42L, groupId));
+        assertThat(EmotionListCursorCodec.decodeWithoutBounds(encoded)).isEqualTo(next);
+        assertThat(new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8))
+                .isEqualTo("3|" + SNAPSHOT + "|" + LAST_CREATED_AT + "|42|"
+                        + (group == null ? "" : group));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "f6ebff29-9f33-40fc-9779-878710f3f163")
+    void 좌표가_있는_커서와_없는_커서는_양방향으로_혼용할_수_없다(String group) {
+        // given
+        UUID groupId = group == null ? null : UUID.fromString(group);
+        EmotionListCursor legacy = EmotionListCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38),
+                SNAPSHOT, groupId);
+        String legacyEncoded = EmotionListCursorCodec.encode(legacy);
+        String withoutBoundsEncoded = EmotionListCursorCodec.encode(EmotionListCursor.initialWithoutBounds(SNAPSHOT, groupId));
+
+        // when / then
+        잘못된_좌표_없는_커서임을_검증한다(legacyEncoded);
+        assertThatThrownBy(() -> EmotionListCursorCodec.decodeWithinBounds(withoutBoundsEncoded))
+                .isInstanceOf(EmotionException.class)
+                .extracting(exception -> ((EmotionException) exception).getErrorCode())
+                .isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "not-a-cursor", "%%%"})
+    void 비어_있거나_잘못_인코딩된_커서를_거부한다(String encoded) {
+        // given / when / then
+        잘못된_좌표_없는_커서임을_검증한다(encoded);
+    }
+
+    @Test
+    void 길이_제한을_초과한_커서를_거부한다() {
+        // given / when / then
+        잘못된_좌표_없는_커서임을_검증한다("a".repeat(2_049));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "1|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42|",
+            "4|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42|",
+            "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42",
+            "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42||",
+            "3|invalid|2026-10-07T00:00:00Z|42|",
+            "3|2026-10-08T00:00:00Z|invalid|42|",
+            "3|2026-10-08T00:00:00Z|2026-10-09T00:00:00Z|42|",
+            "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|0|",
+            "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|-1|",
+            "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|9223372036854775808|",
+            "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|invalid|",
+            "3|2026-10-08T00:00:00Z|2026-10-07T00:00:00Z|42|invalid"
+    })
+    void 범위나_마지막_항목을_복원할_수_없는_커서를_거부한다(String payload) {
+        // given
+        String encoded = Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+
+        // when / then
+        잘못된_좌표_없는_커서임을_검증한다(encoded);
+    }
+
+    private void 잘못된_좌표_없는_커서임을_검증한다(String encoded) {
+        assertThatThrownBy(() -> EmotionListCursorCodec.decodeWithoutBounds(encoded))
+                .isInstanceOf(EmotionException.class)
+                .extracting(exception -> ((EmotionException) exception).getErrorCode())
+                .isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR);
+    }
+
     private void 잘못된_커서임을_검증한다(String encoded) {
-        assertThatThrownBy(() -> EmotionListCursorCodec.decode(encoded))
+        assertThatThrownBy(() -> EmotionListCursorCodec.decodeWithinBounds(encoded))
                 .isInstanceOf(EmotionException.class)
                 .extracting(exception -> ((EmotionException) exception).getErrorCode())
                 .isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR);

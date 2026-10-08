@@ -8,7 +8,6 @@ import java.util.UUID;
 public record EmotionListCursor(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId, UUID groupId) {
 
     public EmotionListCursor {
-        Objects.requireNonNull(bounds);
         Objects.requireNonNull(snapshotAt);
         Objects.requireNonNull(lastItemCreatedAt);
         if (lastItemCreatedAt.isAfter(snapshotAt)) {
@@ -19,16 +18,26 @@ public record EmotionListCursor(EmotionSearchBounds bounds, Instant snapshotAt, 
         }
     }
 
-    public static EmotionListCursor initial(EmotionSearchBounds bounds, Instant snapshotAt) {
-        return initial(bounds, snapshotAt, null);
+    public static EmotionListCursor initialWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt) {
+        return initialWithinBounds(bounds, snapshotAt, null);
     }
 
-    public static EmotionListCursor initial(EmotionSearchBounds bounds, Instant snapshotAt, UUID groupId) {
+    public static EmotionListCursor initialWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt, UUID groupId) {
+        Objects.requireNonNull(bounds);
         return new EmotionListCursor(bounds, snapshotAt, snapshotAt, Long.MAX_VALUE, groupId);
     }
 
-    public static EmotionListCursor of(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId) {
+    public static EmotionListCursor ofWithinBounds(EmotionSearchBounds bounds, Instant snapshotAt, Instant lastItemCreatedAt, long lastId) {
+        Objects.requireNonNull(bounds);
         return new EmotionListCursor(bounds, snapshotAt, lastItemCreatedAt, lastId, null);
+    }
+
+    public static EmotionListCursor initialWithoutBounds(Instant snapshotAt, UUID groupId) {
+        return ofWithoutBounds(snapshotAt, snapshotAt, Long.MAX_VALUE, groupId);
+    }
+
+    public static EmotionListCursor ofWithoutBounds(Instant snapshotAt, Instant lastItemCreatedAt, long lastId, UUID groupId) {
+        return new EmotionListCursor(null, snapshotAt, lastItemCreatedAt, lastId, groupId);
     }
 
     public EmotionListCursor next(Instant lastItemCreatedAt, long lastId) {

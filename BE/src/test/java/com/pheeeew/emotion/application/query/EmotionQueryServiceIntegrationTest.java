@@ -682,7 +682,7 @@ class EmotionQueryServiceIntegrationTest {
     void 공개_목록은_변조된_커서와_미래_스냅샷을_거부한다() {
         assertThatThrownBy(() -> emotionQueryService.findNextListPage("invalid", viewer.getPublicId()))
                 .isInstanceOf(EmotionException.class);
-        String future = EmotionListCursorCodec.encode(EmotionListCursor.initial(
+        String future = EmotionListCursorCodec.encode(EmotionListCursor.initialWithinBounds(
                 EmotionSearchBounds.of(126.0, 37.0, 128.0, 38.0), Instant.now().plusSeconds(60)));
         assertThatThrownBy(() -> emotionQueryService.findNextListPage(future, viewer.getPublicId()))
                 .isInstanceOf(EmotionException.class);

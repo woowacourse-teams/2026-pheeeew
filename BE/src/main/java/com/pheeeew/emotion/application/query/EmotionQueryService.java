@@ -132,7 +132,7 @@ public class EmotionQueryService {
 
     public EmotionPageView findFirstListPage(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId) {
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
-        return findList(EmotionListCursor.initial(bounds, snapshotAt, groupId), devicePublicId);
+        return findList(EmotionListCursor.initialWithinBounds(bounds, snapshotAt, groupId), devicePublicId);
     }
 
     public EmotionPageView findNextListPage(String encodedCursor, UUID devicePublicId) {
@@ -141,7 +141,7 @@ public class EmotionQueryService {
 
     public EmotionMapPageView findFirstMapPage(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId) {
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
-        return findMap(EmotionListCursor.initial(bounds, snapshotAt, groupId), devicePublicId);
+        return findMap(EmotionListCursor.initialWithinBounds(bounds, snapshotAt, groupId), devicePublicId);
     }
 
     public EmotionMapPageView findNextMapPage(String encodedCursor, UUID devicePublicId) {
@@ -235,7 +235,7 @@ public class EmotionQueryService {
     }
 
     private EmotionListCursor decodeCursor(String encodedCursor) {
-        EmotionListCursor cursor = EmotionListCursorCodec.decode(encodedCursor);
+        EmotionListCursor cursor = EmotionListCursorCodec.decodeWithinBounds(encodedCursor);
         if (cursor.snapshotAt().isAfter(Instant.now(clock))) {
             throw new EmotionException(EMOTION_INVALID_CURSOR);
         }
