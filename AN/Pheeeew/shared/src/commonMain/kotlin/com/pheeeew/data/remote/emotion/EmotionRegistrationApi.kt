@@ -14,7 +14,7 @@ internal class EmotionRegistrationApi(
         requests.execute(
             ApiRequest(
                 method = HttpMethod.Post,
-                path = "/api/v1/emotions",
+                path = "/api/v2/emotions",
                 kind = RequestKind.WRITE,
                 body = request,
                 replayAfterAuthentication = true,

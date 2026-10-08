@@ -43,13 +43,6 @@ internal class MapRecordFlowCoordinator(
         mapViewModel.onRecordLocationPickingChanged(true)
     }
 
-    fun skip(currentLocation: CurrentLocation?) {
-        if (recordViewModel.uiModel.value.isGroupSelectionLoading) return
-        voiceRecorder.clear()
-        recordViewModel.onSkip(currentLocation)
-        mapViewModel.onRecordLocationPickingChanged(true)
-    }
-
     fun backToInput() {
         if (recordViewModel.uiModel.value.isSubmitting) return
         recordViewModel.onBackToInput()
