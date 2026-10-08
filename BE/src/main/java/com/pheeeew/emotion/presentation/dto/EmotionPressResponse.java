@@ -14,7 +14,10 @@ public record EmotionPressResponse(
 
         @Schema(
                 description = "이 기기가 해당 읍면동에서 오늘 누른 감정별 횟수. "
-                        + "누르지 않은 감정도 0으로 내려와 다섯 감정이 항상 모두 있습니다. 지역 전체 합이 아닙니다."
+                        + "누르지 않은 감정도 0으로 내려와 다섯 감정이 항상 모두 있습니다. 지역 전체 합이 아닙니다.",
+                example = """
+                        {"FRUSTRATED": 0, "IRRITATED": 0, "EXHAUSTED": 3, "DISCOURAGED": 0, "ANGRY": 9}
+                        """
         )
         Map<EmotionState, Long> counts,
 

@@ -1,17 +1,22 @@
 package com.pheeeew.groups.presentation;
 
+import com.pheeeew.common.exception.ErrorResponse;
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.presentation.dto.GroupPressRankingResponse;
-import java.util.UUID;
 import com.pheeeew.groups.presentation.dto.GroupRankingResponse;
 import com.pheeeew.groups.presentation.dto.GroupStatePressRankingResponse;
-import com.pheeeew.emotion.domain.EmotionState;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import java.util.UUID;
+import org.springframework.http.MediaType;
 
 @Tag(name = "그룹 랭킹", description = "그룹끼리의 주간 경쟁과 그룹 안의 감정 순위를 봅니다.")
 public interface GroupRankingControllerApi {
@@ -64,8 +69,18 @@ public interface GroupRankingControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "weeksAgo 값이 올바르지 않음"),
-            @ApiResponse(responseCode = "401", description = "인증할 수 없음")
+            @ApiResponse(responseCode = "400", description = "weeksAgo 값이 범위를 벗어남",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """)))
     })
     GroupPressRankingResponse findPressRanking(
             @Min(value = 0, message = "몇 주 전인지는 0 이상이어야 합니다.")
@@ -112,8 +127,18 @@ public interface GroupRankingControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "weeksAgo 값이 올바르지 않음"),
-            @ApiResponse(responseCode = "401", description = "인증할 수 없음")
+            @ApiResponse(responseCode = "400", description = "weeksAgo 값이 범위를 벗어남",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """)))
     })
     GroupPressRankingResponse findEmotionPressRanking(
             @Min(value = 0, message = "몇 주 전인지는 0 이상이어야 합니다.")
@@ -146,8 +171,18 @@ public interface GroupRankingControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "감정 값이나 weeksAgo 값이 올바르지 않음"),
-            @ApiResponse(responseCode = "401", description = "인증할 수 없음")
+            @ApiResponse(responseCode = "400", description = "감정 값이나 weeksAgo 값이 올바르지 않음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """)))
     })
     GroupStatePressRankingResponse findEmotionPressRankingByState(
             @Parameter(description = "순위를 매길 감정", required = true, example = "ANGRY")
@@ -175,8 +210,18 @@ public interface GroupRankingControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
-            @ApiResponse(responseCode = "400", description = "감정 값이나 weeksAgo 값이 올바르지 않음"),
-            @ApiResponse(responseCode = "401", description = "인증할 수 없음")
+            @ApiResponse(responseCode = "400", description = "감정 값이나 weeksAgo 값이 올바르지 않음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """)))
     })
     GroupStatePressRankingResponse findPressRankingByState(
             @Parameter(description = "순위를 매길 감정", required = true, example = "ANGRY")
