@@ -72,6 +72,7 @@ public class EmotionQueryService {
         List<String> regionCodes = regions.stream()
                 .map(Region::code)
                 .toList();
+
         Map<String, RegionEmotionSummary> summaries = findSummariesByRegionCodes(regionCodes, groupId);
 
         return regions.stream()
@@ -84,11 +85,13 @@ public class EmotionQueryService {
         if (!regionRepository.isAggregationReady()) {
             throw new EmotionException(EMOTION_REGION_DATA_UNAVAILABLE);
         }
+
         if (regionCodes.isEmpty()) {
             return Map.of();
         }
 
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
+
         return emotionRepository.findSummariesByRegionCodes(regionCodes, groupId, snapshotAt).stream()
                 .collect(Collectors.toMap(RegionEmotionSummaryProjection::getRegionCode, RegionEmotionSummary::from));
     }
@@ -97,8 +100,10 @@ public class EmotionQueryService {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+
         Emotion emotion = emotionRepository.findVisibleById(emotionId, deviceId)
                 .orElseThrow(() -> new EmotionException(EMOTION_NOT_VISIBLE));
+
         Map<Long, String> nicknames = findNicknames(List.of(emotion));
         GroupStampResult stamp = null;
         if (emotion.getGroupStamp() != null) {
@@ -147,6 +152,7 @@ public class EmotionQueryService {
     private Map<Long, String> findNicknames(List<Emotion> page) {
         List<Long> authorIds = page.stream().filter(emotion -> !emotion.isAnonymous())
                 .map(Emotion::getDeviceId).filter(Objects::nonNull).distinct().toList();
+
         if (authorIds.isEmpty()) {
             return Map.of();
         }
@@ -159,6 +165,7 @@ public class EmotionQueryService {
         if (emotion.isAnonymous()) {
             return null;
         }
+
         return nicknames.get(emotion.getDeviceId());
     }
 
@@ -166,16 +173,20 @@ public class EmotionQueryService {
         if (!emotion.getContent().hasAudio()) {
             return null;
         }
+
         AudioUrlIssuer issuer = audioUrlIssuer.getIfAvailable();
         if (issuer == null) {
             throw new EmotionException(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE);
         }
+
         try {
             PlaybackUrl result = issuer.issuePlayback(emotion.getContent().getAudio().getObjectKey());
+
             if (result == null || result.playbackUrl() == null || result.playbackUrl().isBlank()
                     || result.expiresAt() == null || !result.expiresAt().isAfter(Instant.now(clock))) {
                 throw new IllegalStateException("유효한 재생 URL과 만료 시각이 필요합니다.");
             }
+
             return result;
         } catch (RuntimeException exception) {
             throw new EmotionException(EMOTION_AUDIO_PLAYBACK_UNAVAILABLE, exception);
@@ -210,6 +221,22 @@ public class EmotionQueryService {
     }
 
     private List<EmotionDetailView> toListItems(List<Emotion> page, Long deviceId) {
+        Map<Long, EnumMap<EmojiType, EmotionEmojiResult>> emojis = findEmojisForPage(page, deviceId);
+        Map<Long, GroupStampResult> stamps = findStamps(page);
+        Map<Long, String> nicknames = findNicknames(page);
+
+        return page.stream().map(emotion -> {
+            GroupStampResult stamp = null;
+            if (emotion.getGroupStamp() != null) {
+                stamp = stamps.get(emotion.getGroupStamp().getId());
+            }
+
+            return EmotionDetailView.of(emotion, List.copyOf(emojis.get(emotion.getId()).values()),
+                    issuePlaybackUrl(emotion), stamp, deviceId, findAuthorNickname(emotion, nicknames));
+        }).toList();
+    }
+
+    private Map<Long, EnumMap<EmojiType, EmotionEmojiResult>> findEmojisForPage(List<Emotion> page, Long deviceId) {
         Map<Long, EnumMap<EmojiType, EmotionEmojiResult>> counts = new HashMap<>();
         for (Emotion emotion : page) {
             counts.put(emotion.getId(), emptyEmojis());
@@ -223,38 +250,32 @@ public class EmotionQueryService {
             }
         }
 
-        Map<Long, GroupStampResult> stamps = findStamps(page);
-        Map<Long, String> nicknames = findNicknames(page);
-
-        return page.stream().map(emotion -> {
-            GroupStampResult stamp = null;
-            if (emotion.getGroupStamp() != null) {
-                stamp = stamps.get(emotion.getGroupStamp().getId());
-            }
-
-            return EmotionDetailView.of(emotion, List.copyOf(counts.get(emotion.getId()).values()),
-                    issuePlaybackUrl(emotion), stamp, deviceId, findAuthorNickname(emotion, nicknames));
-        }).toList();
+        return counts;
     }
 
     private EmotionMapPageView findMap(EmotionCursor cursor, UUID devicePublicId) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+
         List<Emotion> found = emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
                 cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), false, MAP_PAGE_SIZE + 1);
+
         boolean hasNext = found.size() > MAP_PAGE_SIZE;
         List<Emotion> page = hasNext ? found.subList(0, MAP_PAGE_SIZE) : found;
+
         Map<Long, GroupStampResult> stamps = findStamps(page);
         List<EmotionMapItemView> items = page.stream().map(emotion -> EmotionMapItemView.of(emotion,
                 emotion.getGroupStamp() == null ? null : stamps.get(emotion.getGroupStamp().getId()))).toList();
         String nextCursor = hasNext ? EmotionCursorCodec.encode(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId())) : null;
+
         return EmotionMapPageView.of(items, hasNext, nextCursor);
     }
 
     private Map<Long, GroupStampResult> findStamps(List<Emotion> page) {
         List<Long> stampIds = page.stream().map(Emotion::getGroupStamp).filter(Objects::nonNull)
                 .map(GroupStamp::getId).distinct().toList();
+
         return stampIds.isEmpty() ? Map.of()
                 : groupStampRepository.findAllWithGroupByIdIn(stampIds).stream()
                         .collect(Collectors.toMap(GroupStamp::getId, GroupStampResult::from));
@@ -265,6 +286,7 @@ public class EmotionQueryService {
         for (EmojiType type : EmojiType.values()) {
             results.put(type, EmotionEmojiResult.of(type, 0, false));
         }
+
         return results;
     }
 
