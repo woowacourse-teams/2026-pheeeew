@@ -624,6 +624,69 @@ class EmotionQueryServiceIntegrationTest {
     }
 
     @Test
+    void 내용_있는_지도는_NONE을_페이지_제한_전에_제외하고_다음_페이지에서도_그룹과_가시성을_유지한다() {
+        // given
+        Group group = 기본_그룹_빌더().build();
+        entityManager.persist(group);
+        GroupStamp stamp = 기본_스탬프_빌더(group).build();
+        entityManager.persist(stamp);
+        List<Long> expected = new ArrayList<>();
+        for (int i = 0; i < 201; i++) {
+            Emotion saved = 기본_한숨_빌더().memo("지도 메모").deviceId(author.getId()).groupStamp(stamp).build();
+            entityManager.persist(saved);
+            expected.add(saved.getId());
+        }
+        Emotion audio = 기본_한숨_빌더().audio(Audio.builder().objectKey("recordings/map.m4a").build())
+                .deviceId(author.getId()).groupStamp(stamp).build();
+        entityManager.persist(audio);
+        expected.add(audio.getId());
+        // 내용 없는 기록이 최신 200개보다 많아도 첫 페이지를 비우지 않아야 한다.
+        for (int i = 0; i < 205; i++) {
+            entityManager.persist(기본_한숨_빌더().deviceId(author.getId()).groupStamp(stamp).build());
+        }
+        Emotion deleted = 기본_한숨_빌더().memo("삭제").groupStamp(stamp).build();
+        deleted.delete();
+        entityManager.persist(deleted);
+        Emotion blocked = 기본_한숨_빌더().memo("차단").groupStamp(stamp).build();
+        entityManager.persist(blocked);
+        emotionBlockRepository.save(EmotionBlock.builder().blockerDeviceId(viewer.getId()).emotionId(blocked.getId()).build());
+        Device blockedAuthor = deviceRepository.save(기본_기기_빌더().build());
+        Emotion blockedAuthorEmotion = 기본_한숨_빌더().memo("작성자 차단")
+                .deviceId(blockedAuthor.getId()).groupStamp(stamp).build();
+        entityManager.persist(blockedAuthorEmotion);
+        deviceBlockRepository.save(DeviceBlock.builder().blockerDeviceId(viewer.getId())
+                .blockedDeviceId(blockedAuthor.getId()).originEmotionId(blockedAuthorEmotion.getId()).build());
+        entityManager.persist(기본_한숨_빌더().memo("영역 밖").groupStamp(stamp).location(new GeometryFactory(new PrecisionModel(), 4326).createPoint(new Coordinate(129, 35))).build());
+        Emotion future = 기본_한숨_빌더().memo("미래").groupStamp(stamp).build();
+        entityManager.persist(future);
+        entityManager.flush();
+        jdbcClient.sql("UPDATE emotions SET created_at = '2025-01-01T00:00:00Z'").update();
+        jdbcClient.sql("UPDATE emotions SET created_at = '2100-01-01T00:00:00Z' WHERE id = :id")
+                .param("id", future.getId()).update();
+        entityManager.clear();
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+
+        // when
+        var first = emotionQueryService.findContentMapWithinBounds(bounds, viewer.getPublicId(), group.getPublicId(), null);
+        var second = emotionQueryService.findContentMapWithinBounds(null, viewer.getPublicId(), null, first.nextCursor());
+
+        // then
+        assertThat(first.items()).hasSize(200);
+        assertThat(first.hasNext()).isTrue();
+        assertThat(second.items()).hasSize(2);
+        assertThat(second.hasNext()).isFalse();
+        assertThat(second.nextCursor()).isNull();
+        var all = Stream.concat(first.items().stream(), second.items().stream()).toList();
+        assertThat(all).extracting(EmotionMapItemView::id).containsExactlyElementsOf(expected.reversed());
+        assertThat(all).allSatisfy(item -> assertThat(item.groupId()).isEqualTo(group.getPublicId()));
+        var legacy = emotionQueryService.findMapWithinBounds(bounds, viewer.getPublicId(), group.getPublicId(), null);
+        assertThat(legacy.items()).hasSize(200).extracting(EmotionMapItemView::id)
+                .doesNotContainAnyElementsOf(expected);
+        assertThat(emotionQueryService.findContentMapWithinBounds(bounds, viewer.getPublicId(), UUID.randomUUID(), null).items())
+                .isEmpty();
+    }
+
+    @Test
     void 그룹_필터는_페이지_제한_전에_적용하고_다음_페이지에서도_유지한다() {
         // given: 조회 기기는 그룹 멤버가 아니어도 공개 감정을 조회한다.
         Group group = 기본_그룹_빌더().build();
