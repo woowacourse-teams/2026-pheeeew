@@ -71,7 +71,8 @@ class DeviceActivityFilterTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"GET,/api/v1/emotions,200", "POST,/api/v1/emotions,200", "POST,/api/v3/emotions,200", "GET,/api/v1/emotions/1,200",
+    @CsvSource({"GET,/api/v1/emotions,200", "GET,/api/v3/emotions,200",
+            "POST,/api/v1/emotions,200", "POST,/api/v3/emotions,200", "GET,/api/v1/emotions/1,200",
             "PUT,/api/v1/emotions/1/emojis/HEART,204", "DELETE,/api/v1/emotions/1/emojis/HEART,204",
             "POST,/api/v2/emotions/presses,200",
             "POST,/api/v2/reports,201", "GET,/api/v2/blocks/emotions,200", "POST,/api/v2/blocks/devices,201",
@@ -124,7 +125,7 @@ class DeviceActivityFilterTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"GET,/api/v3/emotions", "PUT,/api/v3/emotions/1", "POST,/api/v12/emotions"})
+    @CsvSource({"GET,/api/v12/emotions", "PUT,/api/v3/emotions/1", "POST,/api/v12/emotions"})
     void 활동_경로에_포함돼도_인증_설정이_허용하지_않은_API는_호출할_수_없다(String method, String path) {
         // given / when
         client.method(HttpMethod.valueOf(method)).uri(path)
