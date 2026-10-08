@@ -21,7 +21,7 @@ class MeaningfulActivityTest {
     private val afterMidnight = beforeMidnight + 120_000
 
     @Test
-    fun `thousand presses and three action types produce only three records across restart`() =
+    fun `thousand presses and two action types produce only two records across restart`() =
         runTest {
             val store = Store()
             val transport = Transport()
@@ -30,11 +30,10 @@ class MeaningfulActivityTest {
             repeat(1000) { runtime.recordSuccessfulActivity(ActivityType.PERSONAL_PRESS, beforeMidnight) }
             runCurrent()
             runtime.recordSuccessfulActivity(ActivityType.EMOTION_RECORD, beforeMidnight)
-            runtime.recordSuccessfulActivity(ActivityType.GROUP_PRESS, beforeMidnight)
             runCurrent()
-            assertEquals(3, transport.events.size)
+            assertEquals(2, transport.events.size)
             assertEquals(
-                setOf("personal_press", "emotion_record", "group_press"),
+                setOf("personal_press", "emotion_record"),
                 transport.events
                     .map {
                         it.properties["activity_type"]!!.toString().trim('"')
@@ -46,7 +45,7 @@ class MeaningfulActivityTest {
             runCurrent()
             ActivityType.entries.forEach { restored.recordSuccessfulActivity(it, beforeMidnight) }
             runCurrent()
-            assertEquals(3, transport.events.size)
+            assertEquals(2, transport.events.size)
             assertEquals(identity, assertNotNull(restored.awaitInitialState()).anonymousId)
             restored.close()
         }
@@ -127,7 +126,7 @@ class MeaningfulActivityTest {
             val runtime = runtime(store, transport) { beforeMidnight }
             runCurrent()
             store.fail = true
-            runtime.recordSuccessfulActivity(ActivityType.GROUP_PRESS, beforeMidnight)
+            runtime.recordSuccessfulActivity(ActivityType.EMOTION_RECORD, beforeMidnight)
             runCurrent()
             assertTrue(transport.events.isEmpty())
             assertTrue(monitoringJson.decodeFromString<CollectionState>(store.raw!!).meaningfulDays.isEmpty())

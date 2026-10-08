@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.ranking.press.PressGroupRank
 import com.pheeeew.feature.screens.ranking.press.samplePressGroupRanks
 import org.jetbrains.compose.resources.stringResource
@@ -61,6 +62,10 @@ internal fun PressGroupRankRow(
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.width(18.dp))
+            group.stamp?.let { stamp ->
+                GroupStamp(stamp, 47.dp)
+                Spacer(Modifier.width(14.dp))
+            }
             Box(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.CenterStart,

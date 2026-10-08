@@ -16,10 +16,13 @@ object AppColors {
     val Primary = Color(0xffFFE164)
 
     val Border = Color(0xFF000000)
+    val BorderLight = Color(0xFFE8E8E8)
 
     val TextPrimary = Color(0xFF000000)
     val TextSecondary = Color(0xFF7D837A)
-    val Gray100 = Color(0xFFF0F1EC)
+
+    val Gray50 = Color(0xFFF5F5F5)
+    val Gray100 = Color(0xFFE5E5E5)
     val RecordSheetInputSurface = Color(0xFFECECEC)
     val RecordSheetAction = Color(0xFF202323)
     val RecordSheetRecording = Color(0xFFE26962)

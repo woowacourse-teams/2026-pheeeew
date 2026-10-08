@@ -45,7 +45,7 @@ def build_report(events, audiences, start, through, as_of):
                 or props.get("environment") != "prod"
                 or props.get("measurement_version") != "user_report_v1"):
             continue
-        if props.get("activity_type") not in {"emotion_record", "personal_press", "group_press"}:
+        if props.get("activity_type") not in {"emotion_record", "personal_press"}:
             raise ValueError("Invalid activity type")
         identity = props.get("anonymous_id")
         if not identity:

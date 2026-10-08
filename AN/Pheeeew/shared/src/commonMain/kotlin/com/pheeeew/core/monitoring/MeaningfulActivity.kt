@@ -9,7 +9,6 @@ enum class ActivityType(
 ) {
     EMOTION_RECORD("emotion_record"),
     PERSONAL_PRESS("personal_press"),
-    GROUP_PRESS("group_press"),
 }
 
 internal const val DAY_MILLIS = 86_400_000L

@@ -1,6 +1,6 @@
 # 최소 이벤트 리포트 집계
 
-`monitoring-user-report.py`는 `meaningful_activity_day` 이벤트로 주간 WAU, 주간 반복 감정 표현율, W+1~W+4를 계산한다. 출력은 집계 JSON이며 사용자 ID는 출력하지 않는다. 실제 사람 대신 설치 익명 ID를 사용한다.
+`monitoring-user-report.py`는 감정 기록과 개인 프레스의 `meaningful_activity_day` 이벤트로 주간 WAU, 주간 반복 활동률, W+1~W+4를 계산한다. 출력은 집계 JSON이며 사용자 ID는 출력하지 않는다. 실제 사람 대신 설치 익명 ID를 사용한다.
 
 ## 입력
 

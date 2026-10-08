@@ -1,5 +1,7 @@
 package com.pheeeew.domain.model.ranking
 
+import com.pheeeew.domain.model.group.GroupStamp
+
 data class PressRanking(
     val weeksAgo: Int,
     val startAt: String,
@@ -14,4 +16,5 @@ data class PressRankingItem(
     val name: String,
     val score: Int,
     val mine: Boolean,
+    val stamp: GroupStamp? = null,
 )

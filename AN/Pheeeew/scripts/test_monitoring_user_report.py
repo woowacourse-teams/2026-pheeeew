@@ -17,7 +17,7 @@ def event(identity, day, kind="personal_press"):
 class ReportTest(unittest.TestCase):
     def test_fixture_and_retrospective_exclusion(self):
         events = [event("A", "2026-10-12"), event("A", "2026-10-13"),
-                  event("A", "2026-10-12", "group_press"), event("A", "2026-10-12"),
+                  event("A", "2026-10-12", "emotion_record"), event("A", "2026-10-12"),
                   event("B", "2026-10-12"), event("C", "2026-10-14"),
                   event("A", "2026-11-09"), event("D", "2026-11-09"),
                   event("I", "2026-10-12"), event("U", "2026-10-12")]

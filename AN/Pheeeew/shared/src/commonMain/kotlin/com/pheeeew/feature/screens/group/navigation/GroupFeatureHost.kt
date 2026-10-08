@@ -24,12 +24,10 @@ import com.pheeeew.feature.screens.group.create.GroupCreateViewModel
 import com.pheeeew.feature.screens.group.detail.GroupCopyCodeResult
 import com.pheeeew.feature.screens.group.detail.GroupDetailRoute
 import com.pheeeew.feature.screens.group.detail.GroupDetailViewModel
-import com.pheeeew.feature.screens.group.detail.GroupEmotionPressWorkOwner
 import com.pheeeew.feature.screens.group.home.GroupHomeRoute
 import com.pheeeew.feature.screens.group.home.GroupHomeViewModel
 import com.pheeeew.feature.screens.group.model.GroupId
 
-/** Owns the group-only back stack and reports when its detail destination is active. */
 @Composable
 @Suppress("DEPRECATION")
 fun GroupFeatureHost(
@@ -116,10 +114,6 @@ fun GroupFeatureHost(
             val groupId = GroupId(destination.groupId)
             val homeBackStackEntry = remember(navController) { navController.getBackStackEntry<GroupHomeDestination>() }
             val homeViewModel = rememberGroupHomeViewModel(homeBackStackEntry, dependencies)
-            val pressWorkOwner: GroupEmotionPressWorkOwner =
-                viewModel(viewModelStoreOwner = homeBackStackEntry, key = "group-emotion-press-work") {
-                    GroupEmotionPressWorkOwner()
-                }
             val detailViewModel: GroupDetailViewModel =
                 viewModel(
                     viewModelStoreOwner = entry,
@@ -127,7 +121,6 @@ fun GroupFeatureHost(
                     GroupDetailViewModel(
                         groupId = groupId,
                         dependencies = dependencies.detail,
-                        pressWorkOwner = pressWorkOwner,
                     )
                 }
 
@@ -150,6 +143,8 @@ fun GroupFeatureHost(
                     clipboardManager.setText(AnnotatedString(code))
                     GroupCopyCodeResult.Copied
                 },
+                onMoodBlockClick = null,
+                onMoodReportClick = null,
             )
         }
     }

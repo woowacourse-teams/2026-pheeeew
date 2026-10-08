@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -29,6 +30,8 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.feature.component.emotion.EmotionListLoadError
+import com.pheeeew.feature.component.emotion.face
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -86,40 +89,16 @@ internal fun NearbyLoadError(
     modifier: Modifier = Modifier,
     onRetry: () -> Unit,
 ) {
-    Surface(
+    EmotionListLoadError(
+        title =
+            stringResource(
+                if (hasItems) Res.string.nearby_next_load_error else Res.string.nearby_load_error,
+            ),
+        message = message,
+        hasItems = hasItems,
+        onRetry = onRetry,
         modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = Color.Transparent,
-    ) {
-        Column(
-            Modifier.fillMaxWidth().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        ) {
-            if (!hasItems) {
-                Image(
-                    painter = painterResource(EmotionState.FRUSTRATED.face),
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                )
-            }
-            Text(
-                if (hasItems) {
-                    stringResource(
-                        Res.string.nearby_next_load_error,
-                    )
-                } else {
-                    stringResource(Res.string.nearby_load_error)
-                },
-                color = FeedbackInk,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-            Text(message, color = FeedbackSecondary, fontSize = 13.sp, lineHeight = 19.sp, textAlign = TextAlign.Center)
-            FeedbackButton("다시 불러오기", onRetry)
-        }
-    }
+    )
 }
 
 @Composable
@@ -137,7 +116,7 @@ internal fun NearbyNotice(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(message, Modifier.weight(1f), color = FeedbackInk, fontSize = 13.sp, lineHeight = 18.sp)
-            androidx.compose.material3.TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss) {
                 Text(stringResource(Res.string.nearby_confirm), color = FeedbackInk)
             }
         }
@@ -148,7 +127,7 @@ internal fun NearbyNotice(
 private fun FeedbackButton(
     label: String,
     onClick: () -> Unit,
-    highlighted: Boolean = false,
+    highlighted: Boolean,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Button(
@@ -164,8 +143,8 @@ private fun FeedbackButton(
     ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
 }
 
-@Preview(name = "Nearby · 오류 및 안내", widthDp = 402, showBackground = true)
 @Composable
+@Preview(name = "Nearby · 오류 및 안내", widthDp = 402, showBackground = true)
 private fun NearbyFeedbackPreview() {
     AppTheme {
         Column(Modifier.padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

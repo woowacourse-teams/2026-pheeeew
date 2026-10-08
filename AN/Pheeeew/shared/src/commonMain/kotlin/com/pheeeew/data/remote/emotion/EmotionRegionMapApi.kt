@@ -21,7 +21,7 @@ class EmotionRegionMapApi(
         requests.execute(
             ApiRequest(
                 HttpMethod.Get,
-                "/api/v1/emotions/map/regions",
+                "/api/v2/emotions/map/regions",
                 RequestKind.READ,
                 monitoringEndpoint = "emotion_region_map",
                 queryParameters =

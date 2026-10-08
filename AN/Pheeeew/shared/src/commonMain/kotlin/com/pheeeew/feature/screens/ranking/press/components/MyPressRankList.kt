@@ -28,21 +28,13 @@ private const val GROUP_CARD_FADE_MILLIS = 800
 internal fun MyPressRankList(
     groups: List<PressGroupRank>,
     emotion: PressEmotion,
+    onGroupClick: (PressGroupRank) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (groups.isEmpty()) return
 
     var currentIndex by remember(groups) { mutableIntStateOf(0) }
-    var rotationResetKey by remember(groups) { mutableIntStateOf(0) }
-
-    fun showNextGroup() {
-        if (groups.size > 1) {
-            currentIndex = (currentIndex + 1) % groups.size
-            rotationResetKey++
-        }
-    }
-
-    LaunchedEffect(groups, rotationResetKey) {
+    LaunchedEffect(groups) {
         if (groups.size > 1) {
             while (true) {
                 delay(GROUP_CARD_INTERVAL_MILLIS)
@@ -65,7 +57,7 @@ internal fun MyPressRankList(
         MyPressRankCard(
             group = group,
             emotion = emotion,
-            onClick = { showNextGroup() },
+            onClick = { onGroupClick(group) },
         )
     }
 }
@@ -77,6 +69,7 @@ private fun MyPressRankListPreview() {
         MyPressRankList(
             groups = samplePressGroupRanks.filter { it.isMyGroup },
             emotion = PressEmotion.Frustrated,
+            onGroupClick = {},
         )
     }
 }

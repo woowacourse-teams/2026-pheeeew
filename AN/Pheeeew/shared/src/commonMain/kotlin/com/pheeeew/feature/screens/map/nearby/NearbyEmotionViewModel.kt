@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.map.nearby
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.monitoring.EventValue
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.model.GeoCoordinate
@@ -33,6 +34,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 
 class NearbyEmotionViewModel(
     private val repository: EmotionRepository,
@@ -151,6 +153,12 @@ class NearbyEmotionViewModel(
                 val observation = exploration.load(if (state.value.revision == 1L) "initial" else "refresh")
                 loadPage(observation, ticket, append = false) { repository.firstPage(bounds, groupId) }
             }
+    }
+
+    fun retryError() {
+        val current = state.value
+        if (current.loading || current.loadingMore) return
+        if (current.items.isEmpty()) refresh() else loadMore()
     }
 
     fun refreshCurrentViewport() {
@@ -283,8 +291,7 @@ class NearbyEmotionViewModel(
                             ) +
                                 mapOf(
                                     "is_own" to
-                                        com.pheeeew.core.monitoring.EventValue
-                                            .Flag(item.isMine),
+                                        EventValue.Flag(item.isMine),
                                 ),
                             "emotion_reaction_started",
                         ).observe(::resultLabel) { repository.react(id, type, selected) }
@@ -535,7 +542,7 @@ class NearbyEmotionViewModel(
         val version = contentVersion
         val currentAudio = item.audio
         if (currentAudio != null && currentAudio.expiresAt >
-            kotlin.time.Clock.System
+            Clock.System
                 .now()
         ) {
             mutableState.update { it.copy(selectedId = null, audioLoadingId = null) }
@@ -561,8 +568,7 @@ class NearbyEmotionViewModel(
                         ) +
                             mapOf(
                                 "is_own" to
-                                    com.pheeeew.core.monitoring.EventValue
-                                        .Flag(item.isMine),
+                                    EventValue.Flag(item.isMine),
                             ),
                     )
                 var handedOff = false
@@ -575,7 +581,7 @@ class NearbyEmotionViewModel(
                             }
                             val audio = result.value.audio
                             if (audio != null && audio.expiresAt >
-                                kotlin.time.Clock.System
+                                Clock.System
                                     .now()
                             ) {
                                 eventChannel.send(NearbyEmotionEvent.Play(id, audio.url, ticket))
