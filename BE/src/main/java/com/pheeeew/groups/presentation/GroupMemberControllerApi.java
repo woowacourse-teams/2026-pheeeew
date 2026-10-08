@@ -1,14 +1,19 @@
 package com.pheeeew.groups.presentation;
 
+import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.groups.presentation.dto.GroupJoinRequest;
 import com.pheeeew.groups.presentation.dto.GroupPreviewResponse;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.UUID;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
 @Tag(name = "그룹 참여", description = "초대 코드로 그룹에 들어가고 나갑니다.")
@@ -30,7 +35,12 @@ public interface GroupMemberControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "찾음"),
-            @ApiResponse(responseCode = "404", description = "없는 코드이거나 삭제된 그룹")
+            @ApiResponse(responseCode = "404", description = "없는 코드이거나 삭제된 그룹",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-001", "message": "그룹을 찾을 수 없습니다."}
+                                    """)))
     })
     GroupPreviewResponse findByInviteCode(String inviteCode);
 
@@ -53,8 +63,18 @@ public interface GroupMemberControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "참여 성공"),
-            @ApiResponse(responseCode = "404", description = "없는 코드이거나 삭제된 그룹"),
-            @ApiResponse(responseCode = "409", description = "이미 속해 있음")
+            @ApiResponse(responseCode = "404", description = "없는 코드이거나 삭제된 그룹",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-001", "message": "그룹을 찾을 수 없습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "409", description = "이미 속해 있음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-007", "message": "이미 속해 있는 그룹입니다."}
+                                    """)))
     })
     ResponseEntity<GroupResponse> join(
             GroupJoinRequest request,
@@ -75,11 +95,27 @@ public interface GroupMemberControllerApi {
     )
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "나가기 성공"),
-            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님"),
-            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹"),
-            @ApiResponse(responseCode = "409", description = "그룹장은 나갈 수 없음")
+            @ApiResponse(responseCode = "403", description = "그룹 멤버가 아님",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-008", "message": "그룹 멤버만 할 수 있습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-001", "message": "그룹을 찾을 수 없습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "409", description = "그룹장은 나갈 수 없음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-006", "message": "그룹장은 그룹을 나갈 수 없습니다."}
+                                    """)))
     })
     ResponseEntity<Void> leave(
+            @Parameter(description = "나갈 그룹의 공개 식별자", example = "5f2b1c84-9d0e-4a13-b6c7-2e8f0a4d7b19")
             UUID groupId,
             @Parameter(hidden = true) UUID devicePublicId
     );
