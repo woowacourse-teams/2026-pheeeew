@@ -4,8 +4,6 @@ import com.pheeeew.core.network.ApiRequest
 import com.pheeeew.core.network.ApiRequestExecutor
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.RequestKind
-import com.pheeeew.domain.model.CurrentLocation
-import com.pheeeew.domain.model.emotion.EmotionState
 import io.ktor.client.call.body
 import io.ktor.http.HttpMethod
 
@@ -34,25 +32,17 @@ internal class EmotionPressApi(
             ),
         ) { response -> response.body<AllDailyPressResponseDto>() }
 
-    suspend fun submit(
-        location: CurrentLocation,
-        counts: Map<EmotionState, Int>,
-    ): ApiResult<EmotionPressResponseDto> =
+    suspend fun press(counts: Map<String, Int>): ApiResult<EmotionPressWriteResponseDto> =
         requests.execute(
             ApiRequest(
                 method = HttpMethod.Post,
                 path = PRESSES_PATH,
                 kind = RequestKind.WRITE,
-                body =
-                    EmotionPressRequestDto(
-                        latitude = location.latitude,
-                        longitude = location.longitude,
-                        counts = counts.mapKeys { (emotion, _) -> emotion.name },
-                    ),
+                body = EmotionPressWriteRequestDto(counts),
                 replayAfterAuthentication = true,
-                monitoringEndpoint = "emotion_press_submit",
+                monitoringEndpoint = "emotion_press_write",
             ),
-        ) { response -> response.body<EmotionPressResponseDto>() }
+        ) { response -> response.body<EmotionPressWriteResponseDto>() }
 
     private companion object {
         const val PRESSES_PATH = "/api/v2/emotions/presses"

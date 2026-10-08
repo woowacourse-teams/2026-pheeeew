@@ -5,8 +5,6 @@ import com.pheeeew.core.network.AccessTokenProvider
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.createApiClient
-import com.pheeeew.domain.model.CurrentLocation
-import com.pheeeew.domain.model.emotion.EmotionState
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.engine.mock.toByteArray
@@ -63,37 +61,33 @@ class EmotionPressApiTest {
         }
 
     @Test
-    fun `sends one accepted batch with coordinates and server emotion keys`() =
+    fun `posts only positive emotion counts and decodes the device daily aggregate`() =
         runTest {
-            var requestPath = ""
-            var requestBody = ""
             val client =
                 createApiClient(
                     engine =
                         MockEngine { request ->
-                            requestPath = request.url.encodedPath
-                            requestBody = request.body.toByteArray().decodeToString()
-                            respond(PRESS_RESPONSE, headers = jsonHeaders())
+                            assertEquals(HttpMethod.Post, request.method)
+                            assertEquals("/api/v2/emotions/presses", request.url.encodedPath)
+                            assertEquals(
+                                """{"counts":{"ANGRY":2,"EXHAUSTED":1}}""",
+                                request.body.toByteArray().decodeToString(),
+                            )
+                            respond(POST_RESPONSE, headers = jsonHeaders())
                         },
                     config = ApiConfig("https://api.test"),
                     accessTokenProvider = AccessTokenProvider { AccessToken("app-access-token") },
                 )
 
             try {
-                val response =
-                    assertIs<ApiResult.Success<EmotionPressResponseDto>>(
-                        EmotionPressApi(client.requests).submit(
-                            location = CurrentLocation(37.5, 127.0, 10f, 1_791_416_400_000L),
-                            counts = mapOf(EmotionState.FRUSTRATED to 2, EmotionState.ANGRY to 1),
-                        ),
+                val api = EmotionPressApi(client.requests)
+                val result =
+                    assertIs<ApiResult.Success<EmotionPressWriteResponseDto>>(
+                        api.press(linkedMapOf("ANGRY" to 2, "EXHAUSTED" to 1)),
                     )
-
-                assertEquals("/api/v2/emotions/presses", requestPath)
-                assertEquals(
-                    """{"latitude":37.5,"longitude":127.0,"counts":{"FRUSTRATED":2,"ANGRY":1}}""",
-                    requestBody,
-                )
-                assertEquals("SEOUL", response.value.regionCode)
+                assertEquals(6L, result.value.total)
+                assertEquals(2L, result.value.counts.getValue("ANGRY"))
+                assertEquals(0L, result.value.counts.getValue("FRUSTRATED"))
             } finally {
                 client.close()
             }
@@ -105,7 +99,7 @@ class EmotionPressApiTest {
         const val MY_TODAY_RESPONSE =
             """{"pressDate":"2026-10-08","counts":{"FRUSTRATED":2,"IRRITATED":3,"EXHAUSTED":4,"DISCOURAGED":0,"ANGRY":0},"total":9}"""
         const val ALL_TODAY_RESPONSE = """{"pressDate":"2026-10-08","total":82}"""
-        const val PRESS_RESPONSE =
-            """{"regionCode":"SEOUL","counts":{"FRUSTRATED":2,"IRRITATED":0,"EXHAUSTED":0,"DISCOURAGED":0,"ANGRY":1},"total":3}"""
+        const val POST_RESPONSE =
+            """{"counts":{"FRUSTRATED":0,"IRRITATED":0,"EXHAUSTED":1,"DISCOURAGED":3,"ANGRY":2},"total":6}"""
     }
 }

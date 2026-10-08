@@ -1,35 +1,19 @@
 package com.pheeeew.domain.repository.press
 
-import com.pheeeew.domain.model.CurrentLocation
 import com.pheeeew.domain.model.emotion.EmotionState
-import com.pheeeew.domain.model.press.AllDailyPressSnapshot
-import com.pheeeew.domain.model.press.MyDailyPressSnapshot
+import com.pheeeew.domain.model.press.PressAcceptance
+import com.pheeeew.domain.model.press.PressSessionState
+import kotlinx.coroutines.flow.StateFlow
 
+/** App-session press state and work owner. Calls that mutate state are confined to its owner dispatcher. */
 interface PressRepository {
-    suspend fun findMyToday(): PressReadResult<MyDailyPressSnapshot>
+    val state: StateFlow<PressSessionState>
 
-    suspend fun findAllToday(): PressReadResult<AllDailyPressSnapshot>
+    fun accept(emotion: EmotionState): PressAcceptance
 
-    suspend fun submit(
-        location: CurrentLocation,
-        counts: Map<EmotionState, Int>,
-    ): PressSubmitResult
-}
+    fun refreshToday(force: Boolean = false)
 
-sealed interface PressReadResult<out T> {
-    data class Loaded<T>(
-        val value: T,
-    ) : PressReadResult<T>
+    fun retryUnsent()
 
-    data object Unavailable : PressReadResult<Nothing>
-}
-
-sealed interface PressSubmitResult {
-    data object Submitted : PressSubmitResult
-
-    data object Rejected : PressSubmitResult
-
-    data object OutcomeUnknown : PressSubmitResult
-
-    data object Unavailable : PressSubmitResult
+    fun onForeground()
 }

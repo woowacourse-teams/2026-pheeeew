@@ -19,7 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -44,17 +43,8 @@ import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_count_unavailable
 import pheeeew.shared.generated.resources.press_emotion_counts_today_title
-import pheeeew.shared.generated.resources.press_input_location_preparing
-import pheeeew.shared.generated.resources.press_input_location_unavailable
-import pheeeew.shared.generated.resources.press_input_outcome_unknown
-import pheeeew.shared.generated.resources.press_input_queue_full
-import pheeeew.shared.generated.resources.press_input_rejected
-import pheeeew.shared.generated.resources.press_pending_count
-import pheeeew.shared.generated.resources.press_retry
-import pheeeew.shared.generated.resources.press_retry_location
 import pheeeew.shared.generated.resources.press_screen_subtitle
 import pheeeew.shared.generated.resources.press_screen_title
-import pheeeew.shared.generated.resources.press_statistics_failed
 import pheeeew.shared.generated.resources.press_summary_all_label
 import pheeeew.shared.generated.resources.press_summary_my_label
 import pheeeew.shared.generated.resources.press_summary_title
@@ -63,14 +53,21 @@ import pheeeew.shared.generated.resources.press_summary_title
 internal fun PressScreen(
     uiState: PressUiState,
     onEmotionTap: (EmotionKind) -> Boolean,
-    onRetryStatistics: () -> Unit,
-    onRetryLocation: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val font = notoSansKrFontFamily()
     val emotionCounts =
         EmotionKind.entries.map { kind ->
             EmotionCountUiModel(kind, uiState.myEmotionCounts[kind] ?: 0L)
+        }
+    val unavailableCount = stringResource(Res.string.press_count_unavailable)
+    val countTextOverrides =
+        if (uiState.myToday == null && !uiState.isLoadingMy) {
+            EmotionKind.entries.associateWith { kind ->
+                uiState.optimisticPressCounts[kind]?.let { "+${formatCount(it)}" } ?: unavailableCount
+            }
+        } else {
+            emptyMap()
         }
     Column(
         modifier =
@@ -100,30 +97,21 @@ internal fun PressScreen(
             )
         }
         Spacer(Modifier.height(24.dp))
+        val allCount =
+            uiState.allToday?.total?.let { serverTotal ->
+                if (serverTotal <= Long.MAX_VALUE - uiState.optimisticAllPressCount) {
+                    serverTotal + uiState.optimisticAllPressCount
+                } else {
+                    null
+                }
+            }
         PressSummaryCard(
-            allCount = uiState.allToday?.total,
-            myCount = uiState.myToday?.total,
+            allCount = allCount,
+            myCount = uiState.myToday?.total?.plus(uiState.optimisticMyTotalCount),
             isLoadingAll = uiState.isLoadingAll,
             isLoadingMy = uiState.isLoadingMy,
             modifier = Modifier.padding(horizontal = 24.dp),
         )
-        if (uiState.hasAllError || uiState.hasMyError) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 28.dp, end = 20.dp, top = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = stringResource(Res.string.press_statistics_failed),
-                    color = Color(0xFF777C78),
-                    fontSize = 12.sp,
-                    fontFamily = font,
-                )
-                TextButton(onClick = onRetryStatistics) {
-                    Text(stringResource(Res.string.press_retry), fontFamily = font)
-                }
-            }
-        }
         Spacer(Modifier.height(20.dp))
         Text(
             text = stringResource(Res.string.press_emotion_counts_today_title),
@@ -136,56 +124,13 @@ internal fun PressScreen(
         Spacer(Modifier.height(10.dp))
         EmotionPad(
             counts = emotionCounts,
-            countPlaceholder =
-                if (uiState.myToday ==
-                    null
-                ) {
-                    stringResource(Res.string.press_count_unavailable)
-                } else {
-                    null
-                },
+            optimisticPressCounts = uiState.optimisticPressCounts,
+            countTextOverrides = countTextOverrides,
             enabled = true,
             onEmotionTap = onEmotionTap,
             arrangement = EmotionPadArrangement.TwoThree,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
-        uiState.notice?.let { notice ->
-            val message =
-                when (notice) {
-                    PressNotice.LocationPreparing -> stringResource(Res.string.press_input_location_preparing)
-                    PressNotice.LocationUnavailable -> stringResource(Res.string.press_input_location_unavailable)
-                    PressNotice.QueueFull -> stringResource(Res.string.press_input_queue_full)
-                    PressNotice.Rejected -> stringResource(Res.string.press_input_rejected)
-                    PressNotice.OutcomeUnknown -> stringResource(Res.string.press_input_outcome_unknown)
-                }
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, top = 4.dp, bottom = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = message,
-                    color = Color(0xFF777C78),
-                    fontSize = 12.sp,
-                    fontFamily = font,
-                    modifier = Modifier.weight(1f).padding(vertical = 4.dp),
-                )
-                if (notice == PressNotice.LocationUnavailable) {
-                    TextButton(onClick = onRetryLocation) {
-                        Text(stringResource(Res.string.press_retry_location), fontFamily = font)
-                    }
-                }
-            }
-        }
-        if (uiState.pendingPressCount > 0 || uiState.isSending) {
-            Text(
-                text = stringResource(Res.string.press_pending_count, uiState.pendingPressCount),
-                color = Color(0xFF777C78),
-                fontSize = 12.sp,
-                fontFamily = font,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
-            )
-        }
         Spacer(Modifier.height(24.dp))
         Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
     }
@@ -315,8 +260,6 @@ private fun PressScreenPreview() {
                     isLoadingAll = false,
                 ),
             onEmotionTap = { true },
-            onRetryStatistics = {},
-            onRetryLocation = {},
         )
     }
 }
