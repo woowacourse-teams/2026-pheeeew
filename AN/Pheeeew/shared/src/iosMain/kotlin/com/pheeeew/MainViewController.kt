@@ -3,7 +3,6 @@ package com.pheeeew
 import androidx.compose.runtime.remember
 import androidx.compose.ui.window.ComposeUIViewController
 import com.pheeeew.core.di.IosApiDependencies
-import com.pheeeew.core.network.IosConnectivityObserver
 import com.pheeeew.core.permission.IosAppSettingsLauncher
 import com.pheeeew.data.local.group.IosGroupCreateSessionStore
 import com.pheeeew.data.local.group.IosLastRecordedGroupRepository
@@ -23,7 +22,6 @@ fun MainViewController() =
         val appSettingsLauncher = remember { IosAppSettingsLauncher() }
         App(
             locationDependencies = locationDependencies,
-            connectivityObserver = remember { IosConnectivityObserver() },
             lastRecordedGroupRepository =
                 remember {
                     IosLastRecordedGroupRepository(NSUserDefaults.standardUserDefaults)

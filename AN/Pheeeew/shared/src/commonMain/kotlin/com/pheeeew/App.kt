@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -68,7 +69,6 @@ import com.pheeeew.core.navigation.GroupRootDestination
 import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
-import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.data.remote.version.AppVersionApi
 import com.pheeeew.data.remote.version.toPolicy
@@ -105,7 +105,6 @@ import com.pheeeew.feature.screens.map.rememberRegionClusterSymbolImages
 import com.pheeeew.feature.screens.map.renderer.MapCameraSnapshotUiModel
 import com.pheeeew.feature.screens.map.renderer.NativeMap
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
-import com.pheeeew.feature.screens.press.PressFixtureSessionViewModel
 import com.pheeeew.feature.screens.press.PressRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
@@ -147,7 +146,6 @@ fun App(
     appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
-    connectivityObserver: ConnectivityObserver,
 ) {
     AppTheme {
         AppContent(
@@ -157,7 +155,6 @@ fun App(
             groupCreateSessionStore = groupCreateSessionStore,
             appVersion = appVersion,
             appVersionApi = appVersionApi,
-            connectivityObserver = connectivityObserver,
             permissionSettingsLauncher = permissionSettingsLauncher,
             appSettingsLauncher = appSettingsLauncher,
             hasCompletedOnboarding = hasCompletedOnboarding,
@@ -174,7 +171,6 @@ private fun AppContent(
     groupCreateSessionStore: GroupCreateSessionStore,
     appVersion: String,
     appVersionApi: AppVersionApi,
-    connectivityObserver: ConnectivityObserver,
     permissionSettingsLauncher: AppSettingsLauncher,
     appSettingsLauncher: AppSettingsLauncher,
     hasCompletedOnboarding: Boolean,
@@ -182,7 +178,8 @@ private fun AppContent(
 ) {
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val pressFixtureSession: PressFixtureSessionViewModel = viewModel { PressFixtureSessionViewModel() }
+    val connectivityObserver = apiDependencies.connectivityObserver
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
     var versionCheckAttempt by remember { mutableStateOf(0) }
     var initialVersionCheckComplete by remember { mutableStateOf(false) }
     var splashAnimationCompleted by rememberSaveable { mutableStateOf(false) }
@@ -644,7 +641,7 @@ private fun AppContent(
 
                 composable<PressRootDestination> {
                     PressRoute(
-                        dataSource = pressFixtureSession.dataSource,
+                        repository = apiDependencies.appSession.pressRepository,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

@@ -1,42 +1,89 @@
 package com.pheeeew.feature.screens.press
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.model.press.AllDailyPressSnapshot
+import com.pheeeew.domain.model.press.MyDailyPressSnapshot
+import com.pheeeew.domain.model.press.PressAcceptance
+import com.pheeeew.domain.model.press.PressSessionState
+import com.pheeeew.domain.repository.press.PressRepository
 import com.pheeeew.feature.emotion.model.EmotionKind
-import com.pheeeew.feature.screens.press.data.PressDataSource
-import com.pheeeew.feature.screens.press.model.PressPeriod
-import com.pheeeew.feature.screens.press.model.PressPeriodSnapshots
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+private fun EmotionState.toUiKind(): EmotionKind =
+    when (this) {
+        EmotionState.FRUSTRATED -> EmotionKind.Blocked
+        EmotionState.IRRITATED -> EmotionKind.Annoyed
+        EmotionState.EXHAUSTED -> EmotionKind.Tired
+        EmotionState.DISCOURAGED -> EmotionKind.Defeated
+        EmotionState.ANGRY -> EmotionKind.Angry
+    }
 
 internal data class PressUiState(
-    val period: PressPeriod = PressPeriod.Today,
-    val snapshots: PressPeriodSnapshots,
+    val myToday: MyDailyPressSnapshot? = null,
+    val allToday: AllDailyPressSnapshot? = null,
+    val isLoadingMy: Boolean = true,
+    val isLoadingAll: Boolean = true,
+    val isSending: Boolean = false,
+    val pendingPressCount: Long = 0L,
+    val optimisticPressCounts: Map<EmotionKind, Long> = emptyMap(),
+    val optimisticAllPressCount: Long = 0L,
 ) {
-    val todayEmotionCounts
-        get() = snapshots.today.emotionCounts
+    val optimisticMyTotalCount: Long
+        get() = optimisticPressCounts.values.sum()
 
-    val selectedSnapshot
+    val myEmotionCounts: Map<EmotionKind, Long>
         get() =
-            when (period) {
-                PressPeriod.Today -> snapshots.today
-                PressPeriod.ThisWeek -> snapshots.thisWeek
-            }
+            myToday?.counts?.mapKeys { (emotion, _) -> emotion.toUiKind() }.orEmpty()
 }
 
+/** Owns only this screen's projection; durable-for-session data and work live in PressRepository. */
 internal class PressViewModel(
-    private val dataSource: PressDataSource,
+    private val repository: PressRepository,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(PressUiState(snapshots = dataSource.load()))
-    val uiState = _uiState.asStateFlow()
+    // Project the session cache synchronously so a recreated screen never flashes its empty default state.
+    private val mutableUiState = MutableStateFlow(repository.state.value.toUiState())
+    val uiState = mutableUiState.asStateFlow()
 
-    fun onPeriodSelected(period: PressPeriod) {
-        _uiState.update { state -> state.copy(period = period) }
+    init {
+        viewModelScope.launch {
+            repository.state.collect { sessionState ->
+                mutableUiState.value = sessionState.toUiState()
+            }
+        }
     }
 
-    fun onEmotionTap(emotion: EmotionKind): Boolean {
-        val snapshots = dataSource.recordPress(emotion)
-        _uiState.update { state -> state.copy(snapshots = snapshots) }
-        return true
+    fun onScreenResumed() {
+        repository.refreshToday()
+        repository.retryUnsent()
     }
+
+    fun retryUnsent() = repository.retryUnsent()
+
+    fun onEmotionTap(emotion: EmotionKind): Boolean =
+        repository.accept(emotion.toDomainState()) == PressAcceptance.Accepted
+
+    private fun PressSessionState.toUiState(): PressUiState =
+        PressUiState(
+            myToday = myToday,
+            allToday = allToday,
+            isLoadingMy = isLoadingMy,
+            isLoadingAll = isLoadingAll,
+            isSending = isSending,
+            pendingPressCount = pendingPressCount,
+            optimisticPressCounts = optimisticCounts.mapKeys { (emotion, _) -> emotion.toUiKind() },
+            optimisticAllPressCount = optimisticAllPressCount,
+        )
+
+    private fun EmotionKind.toDomainState(): EmotionState =
+        when (this) {
+            EmotionKind.Blocked -> EmotionState.FRUSTRATED
+            EmotionKind.Annoyed -> EmotionState.IRRITATED
+            EmotionKind.Tired -> EmotionState.EXHAUSTED
+            EmotionKind.Defeated -> EmotionState.DISCOURAGED
+            EmotionKind.Angry -> EmotionState.ANGRY
+        }
 }

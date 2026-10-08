@@ -35,12 +35,19 @@
     <string name="navigation_press">프레스</string>
     <string name="press_screen_title">프레스</string>
     <string name="press_screen_subtitle">지금의 마음을 가볍게 눌러봐요</string>
-    <string name="press_period_today">오늘</string>
-    <string name="press_period_this_week">이번 주</string>
     <string name="press_summary_all_label">함께 누른 횟수</string>
     <string name="press_summary_my_label">내가 누른 횟수</string>
-    <string name="press_summary_title">감정 집계</string>
-    <string name="press_emotion_counts_today_title">오늘 감정별 함께 누른 횟수</string>
+    <string name="press_summary_title">오늘 집계</string>
+    <string name="press_emotion_counts_today_title">내가 오늘 누른 횟수</string>
+    <string name="press_count_unavailable">—</string>
+    <string name="press_statistics_failed">집계를 불러오지 못했어요.</string>
+    <string name="press_retry">다시 시도</string>
+    <string name="press_input_numeric_limit">표시할 수 있는 최대 횟수에 도달했어요.</string>
+    <string name="press_input_rejected">프레스 입력을 전송하지 못했어요. 잠시 뒤 다시 눌러주세요.</string>
+    <string name="press_input_waiting_retry">전송이 보류됐어요. 연결 상태를 확인하고 다시 시도해 주세요.</string>
+    <string name="press_input_api_pending">전송 API 스키마 연결 후 대기 중인 입력을 보낼 수 있어요.</string>
+    <string name="press_input_outcome_unknown">전송 결과를 확인하지 못해 다시 보내지 않았어요. 집계를 새로 확인해 주세요.</string>
+    <string name="press_retry_send">다시 시도</string>
 
     <!-- 지도 -->
     <string name="map_open_list">목록 열기</string>

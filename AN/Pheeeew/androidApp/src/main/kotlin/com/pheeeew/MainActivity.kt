@@ -7,7 +7,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModelProvider
 import com.pheeeew.core.di.AndroidApiDependencies
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
-import com.pheeeew.core.network.AndroidConnectivityObserver
 import com.pheeeew.core.permission.AndroidAppSettingsLauncher
 import com.pheeeew.data.local.group.AndroidGroupCreateSessionStore
 import com.pheeeew.data.local.group.AndroidLastRecordedGroupRepository
@@ -46,13 +45,11 @@ class MainActivity : ComponentActivity() {
                 monitoring = (application as PheeeewApplication).monitoring,
             )
         val appVersionApi = AppVersionApi(apiDependencies.client.requests, "android")
-        val connectivityObserver = AndroidConnectivityObserver(applicationContext)
         val appSettingsLauncher = AndroidAppSettingsLauncher(this@MainActivity)
 
         setContent {
             App(
                 locationDependencies = locationDependencies,
-                connectivityObserver = connectivityObserver,
                 lastRecordedGroupRepository = lastRecordedGroupRepository,
                 groupCreateSessionStore = groupCreateSessionStore,
                 hasCompletedOnboarding = hasCompletedOnboarding,

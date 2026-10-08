@@ -8,6 +8,7 @@ import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.network.ApiClient
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ApiResponseObserver
+import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.network.createPlatformApiClient
 import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.local.device.DeviceCredentialStorage
@@ -34,6 +35,8 @@ class ApiDependencies private constructor(
     private val bootstrap: ApiClient,
     val client: ApiClient,
     val session: DeviceSessionManager,
+    val connectivityObserver: ConnectivityObserver,
+    val appSession: AppSession,
     private val scope: CoroutineScope,
 ) {
     fun prepareSession() {
@@ -41,6 +44,7 @@ class ApiDependencies private constructor(
     }
 
     fun close() {
+        appSession.close()
         scope.cancel()
         client.close()
         bootstrap.close()
@@ -52,6 +56,7 @@ class ApiDependencies private constructor(
             storage: DeviceCredentialStorage,
             platform: DevicePlatform,
             createProofProvider: () -> DeviceProofProvider,
+            connectivityObserver: ConnectivityObserver,
             diagnostics: DeviceSessionDiagnostics = DeviceSessionDiagnostics {},
             monitoring: Monitoring = NoOpMonitoring,
         ): ApiDependencies {
@@ -119,10 +124,13 @@ class ApiDependencies private constructor(
                         ),
                     )
                 }
+            val client = createPlatformApiClient(config, session, observer, attemptObserver, monitoring)
             return ApiDependencies(
                 bootstrap,
-                createPlatformApiClient(config, session, observer, attemptObserver, monitoring),
+                client,
                 session,
+                connectivityObserver,
+                AppSession(client, connectivityObserver),
                 scope,
             )
         }

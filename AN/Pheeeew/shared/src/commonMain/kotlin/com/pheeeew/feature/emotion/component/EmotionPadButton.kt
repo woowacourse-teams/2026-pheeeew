@@ -69,6 +69,7 @@ internal fun EmotionPadButton(
     kind: EmotionKind,
     emotionLabel: String,
     count: Long,
+    countPlaceholder: String?,
     unit: Float,
     enabled: Boolean,
     reducedMotion: Boolean,
@@ -87,11 +88,12 @@ internal fun EmotionPadButton(
     val interactions = remember(kind) { MutableInteractionSource() }
     val pressedKeys = remember(kind) { mutableSetOf<Key>() }
     var keyboardActivation by remember(kind) { mutableStateOf(false) }
+    val countText = countPlaceholder ?: formatCount(count)
     val accessibilityDescription =
         stringResource(
             Res.string.emotion_tap_accessibility,
             emotionLabel,
-            formatCount(count),
+            countText,
         )
 
     LaunchedEffect(enabled, reducedMotion, focused) {
@@ -231,7 +233,7 @@ internal fun EmotionPadButton(
             )
             Spacer(Modifier.height((3.6f * unit).dp))
             BasicText(
-                text = formatCount(count),
+                text = countText,
                 modifier = Modifier.fillMaxWidth(),
                 style =
                     TextStyle(
