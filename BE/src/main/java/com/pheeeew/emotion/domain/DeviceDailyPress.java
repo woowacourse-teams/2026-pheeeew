@@ -16,9 +16,9 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "device_region_daily_presses")
+@Table(name = "device_daily_presses")
 @Entity
-public class DeviceRegionDailyPress extends BaseEntity {
+public class DeviceDailyPress extends BaseEntity {
 
     private static final int MAX_STATE_LENGTH = 20;
 

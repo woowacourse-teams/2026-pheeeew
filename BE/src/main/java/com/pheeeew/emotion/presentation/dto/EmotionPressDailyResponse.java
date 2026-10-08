@@ -13,7 +13,7 @@ public record EmotionPressDailyResponse(
         )
         LocalDate pressDate,
         @Schema(
-                description = "이 기기가 그날 누른 감정별 횟수. 지역을 구분하지 않고 모두 합칩니다. "
+                description = "이 기기가 그날 누른 감정별 횟수. "
                         + "누르지 않은 감정도 0으로 내려와 다섯 감정이 항상 모두 있습니다.",
                 example = """
                         {"FRUSTRATED": 12, "IRRITATED": 3, "EXHAUSTED": 27, "DISCOURAGED": 0, "ANGRY": 8}

@@ -1,9 +1,7 @@
 package com.pheeeew.emotion.application.query;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
-import static com.pheeeew.emotion.fixture.DeviceRegionDailyPressFixture.개인_프레스를_저장한다;
-import static com.pheeeew.emotion.fixture.DeviceRegionDailyPressFixture.검증용_읍면동;
-import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
+import static com.pheeeew.emotion.fixture.DeviceDailyPressFixture.개인_프레스를_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.when;
@@ -34,7 +32,6 @@ import org.springframework.transaction.annotation.Transactional;
 class EmotionPressQueryServiceIntegrationTest {
 
     private static final Instant 기준_시각 = Instant.parse("2026-10-08T03:00:00Z");
-    private static final String 다른_읍면동 = "11010540";
 
     @MockitoBean
     private Clock clock;
@@ -52,38 +49,19 @@ class EmotionPressQueryServiceIntegrationTest {
     void setUp() {
         when(clock.getZone()).thenReturn(ZoneId.of("Asia/Seoul"));
         when(clock.instant()).thenReturn(기준_시각);
-        검증용_지역_계층을_저장한다(jdbc);
-        다른_읍면동을_저장한다();
     }
 
     @AfterEach
     void tearDown() {
-        jdbc.sql("DELETE FROM device_region_daily_presses").update();
-        jdbc.sql("DELETE FROM regions").update();
+        jdbc.sql("DELETE FROM device_daily_presses").update();
         deviceRepository.deleteAllInBatch();
-    }
-
-    @Test
-    void 내_집계는_여러_지역에서_누른_것을_하나로_합친다() {
-        // given
-        Device 기기 = 기기를_저장한다();
-        개인_프레스를_저장한다(jdbc, 기기.getId(), 검증용_읍면동, 오늘(), EmotionState.ANGRY, 4);
-        개인_프레스를_저장한다(jdbc, 기기.getId(), 다른_읍면동, 오늘(), EmotionState.ANGRY, 3);
-
-        // when
-        EmotionPressDailyResult 결과 = emotionPressQueryService.findMyDailyPresses(기기.getPublicId(), 0);
-
-        // then
-        assertThat(결과.pressDate()).isEqualTo(오늘());
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(7);
-        assertThat(결과.total()).isEqualTo(7);
     }
 
     @Test
     void 내_집계는_누르지_않은_감정도_영으로_돌려준다() {
         // given
         Device 기기 = 기기를_저장한다();
-        개인_프레스를_저장한다(jdbc, 기기.getId(), 검증용_읍면동, 오늘(), EmotionState.ANGRY, 2);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 오늘(), EmotionState.ANGRY, 2);
 
         // when
         EmotionPressDailyResult 결과 = emotionPressQueryService.findMyDailyPresses(기기.getPublicId(), 0);
@@ -98,8 +76,8 @@ class EmotionPressQueryServiceIntegrationTest {
     void 내_집계는_어제_기록을_섞지_않는다() {
         // given
         Device 기기 = 기기를_저장한다();
-        개인_프레스를_저장한다(jdbc, 기기.getId(), 검증용_읍면동, 오늘().minusDays(1), EmotionState.ANGRY, 9);
-        개인_프레스를_저장한다(jdbc, 기기.getId(), 검증용_읍면동, 오늘(), EmotionState.ANGRY, 2);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 오늘().minusDays(1), EmotionState.ANGRY, 9);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 오늘(), EmotionState.ANGRY, 2);
 
         // when
         EmotionPressDailyResult 오늘_결과 = emotionPressQueryService.findMyDailyPresses(기기.getPublicId(), 0);
@@ -116,8 +94,8 @@ class EmotionPressQueryServiceIntegrationTest {
         // given
         Device 내_기기 = 기기를_저장한다();
         Device 남의_기기 = 기기를_저장한다();
-        개인_프레스를_저장한다(jdbc, 내_기기.getId(), 검증용_읍면동, 오늘(), EmotionState.ANGRY, 2);
-        개인_프레스를_저장한다(jdbc, 남의_기기.getId(), 검증용_읍면동, 오늘(), EmotionState.ANGRY, 100);
+        개인_프레스를_저장한다(jdbc, 내_기기.getId(), 오늘(), EmotionState.ANGRY, 2);
+        개인_프레스를_저장한다(jdbc, 남의_기기.getId(), 오늘(), EmotionState.ANGRY, 100);
 
         // when
         EmotionPressDailyResult 결과 = emotionPressQueryService.findMyDailyPresses(내_기기.getPublicId(), 0);
@@ -150,13 +128,13 @@ class EmotionPressQueryServiceIntegrationTest {
     }
 
     @Test
-    void 전체_총합은_모든_기기와_지역을_더한다() {
+    void 전체_총합은_모든_기기를_더한다() {
         // given
         Device 기기 = 기기를_저장한다();
         Device 다른_기기 = 기기를_저장한다();
-        개인_프레스를_저장한다(jdbc, 기기.getId(), 검증용_읍면동, 오늘(), EmotionState.ANGRY, 4);
-        개인_프레스를_저장한다(jdbc, 기기.getId(), 다른_읍면동, 오늘(), EmotionState.EXHAUSTED, 3);
-        개인_프레스를_저장한다(jdbc, 다른_기기.getId(), 검증용_읍면동, 오늘(), EmotionState.ANGRY, 5);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 오늘(), EmotionState.ANGRY, 4);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 오늘(), EmotionState.EXHAUSTED, 3);
+        개인_프레스를_저장한다(jdbc, 다른_기기.getId(), 오늘(), EmotionState.ANGRY, 5);
 
         // when
         EmotionPressTotalResult 결과 = emotionPressQueryService.findDailyTotal(0);
@@ -170,8 +148,8 @@ class EmotionPressQueryServiceIntegrationTest {
     void 전체_총합도_어제_기록을_섞지_않는다() {
         // given
         Device 기기 = 기기를_저장한다();
-        개인_프레스를_저장한다(jdbc, 기기.getId(), 검증용_읍면동, 오늘().minusDays(1), EmotionState.ANGRY, 9);
-        개인_프레스를_저장한다(jdbc, 기기.getId(), 검증용_읍면동, 오늘(), EmotionState.ANGRY, 2);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 오늘().minusDays(1), EmotionState.ANGRY, 9);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 오늘(), EmotionState.ANGRY, 2);
 
         // when
         EmotionPressTotalResult 오늘_결과 = emotionPressQueryService.findDailyTotal(0);
@@ -197,14 +175,5 @@ class EmotionPressQueryServiceIntegrationTest {
 
     private Device 기기를_저장한다() {
         return deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
-    }
-
-    private void 다른_읍면동을_저장한다() {
-        jdbc.sql("""
-                INSERT INTO regions (code, level, name, parent_code, boundary, display_point)
-                SELECT :code, 'EMD', '검증용 다른 행정동', '11010', boundary, ST_PointOnSurface(boundary)
-                FROM (SELECT boundary FROM regions WHERE code = :source) source
-                ON CONFLICT (code) DO NOTHING
-                """).param("code", 다른_읍면동).param("source", 검증용_읍면동).update();
     }
 }

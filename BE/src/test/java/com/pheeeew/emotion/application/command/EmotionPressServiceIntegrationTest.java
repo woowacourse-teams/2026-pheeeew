@@ -1,9 +1,6 @@
 package com.pheeeew.emotion.application.command;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
-import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_LOCATION_OUT_OF_SERVICE_AREA;
-import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE;
-import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.when;
@@ -12,10 +9,10 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
+import com.pheeeew.emotion.application.dto.EmotionPressDailyResult;
 import com.pheeeew.emotion.application.dto.EmotionPressResult;
+import com.pheeeew.emotion.application.query.EmotionPressQueryService;
 import com.pheeeew.emotion.domain.EmotionState;
-import com.pheeeew.emotion.exception.EmotionErrorCode;
-import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.support.PostgisDataJpaTest;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -46,16 +43,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class EmotionPressServiceIntegrationTest {
 
-    private static final String 읍면동 = "11010530";
-    private static final String 인접_읍면동 = "11010529";
-    private static final double 경계_안_경도 = 127;
-    private static final double 경계_안_위도 = 38;
-    private static final double 인접_읍면동_안_경도 = 129;
     private static final Instant 기준_시각 = Instant.parse("2026-10-06T03:00:00Z");
     private static final int 동시_요청_수 = 6;
     private static final int 데드락_회전_수 = 30;
     private static final int 정합성_회전_수 = 10;
-    private static final String 분류_지표 = "pheeeew.emotion.press.classify";
     private static final String 자른_양_지표 = "pheeeew.emotion.press.clamped";
 
     @MockitoBean
@@ -63,6 +54,9 @@ class EmotionPressServiceIntegrationTest {
 
     @Autowired
     private EmotionPressService emotionPressService;
+
+    @Autowired
+    private EmotionPressQueryService emotionPressQueryService;
 
     @Autowired
     private DeviceRepository deviceRepository;
@@ -77,94 +71,22 @@ class EmotionPressServiceIntegrationTest {
     void setUp() {
         when(clock.getZone()).thenReturn(ZoneId.of("Asia/Seoul"));
         when(clock.instant()).thenReturn(기준_시각);
-        검증용_지역_계층을_저장한다(jdbc);
-        경계_검증을_완료한다();
     }
 
     @AfterEach
     void tearDown() {
-        jdbc.sql("DELETE FROM device_region_daily_presses").update();
-        jdbc.sql("DELETE FROM regions").update();
+        jdbc.sql("DELETE FROM device_daily_presses").update();
         deviceRepository.deleteAllInBatch();
-        jdbc.sql("""
-                INSERT INTO region_datasets (dataset_key) VALUES ('SGIS_2025_2Q')
-                ON CONFLICT (dataset_key) DO UPDATE
-                   SET boundaries_verified_at = NULL, backfill_verified_at = NULL
-                """).update();
     }
 
     @Test
-    void 읍면동_경계_안의_좌표는_그_읍면동_오늘_집계로_돌아온다() {
+    void 같은_기기가_같은_날_다시_누르면_행_하나에_누적되고_응답은_오늘_전체_집계다() {
         // given
         Device 기기 = 기기를_저장한다();
+        누른다(기기, Map.of(EmotionState.ANGRY, 2));
 
         // when
-        EmotionPressResult 결과 = 누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 2));
-
-        // then
-        assertThat(결과.regionCode()).isEqualTo(읍면동);
-        assertThat(결과.counts()).hasSize(EmotionState.values().length);
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(2);
-        assertThat(결과.counts().get(EmotionState.EXHAUSTED)).isZero();
-        assertThat(결과.total()).isEqualTo(2);
-        assertThat(행_수()).isOne();
-    }
-
-    @Test
-    void 경계_밖이어도_1km_이내면_최근접_읍면동에_배정한다() {
-        // given: 동쪽 경계의 점 (128, 38)에서 타원체 기준 동쪽으로 999.9m 이동한 좌표다.
-        Device 기기 = 기기를_저장한다();
-
-        // when
-        EmotionPressResult 결과 = 동쪽으로_투영해_누른다(기기, 999.9, Map.of(EmotionState.ANGRY, 1));
-
-        // then
-        assertThat(결과.regionCode()).isEqualTo(읍면동);
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isOne();
-        assertThat(행_수()).isOne();
-    }
-
-    @Test
-    void 경계에서_1km를_넘으면_거절하고_한_건도_집계하지_않는다() {
-        // given: 같은 경계점에서 동쪽으로 1000.1m 이동해 1km 임계를 막 넘긴 좌표다.
-        Device 기기 = 기기를_저장한다();
-        long 기존_거부_수 = 미배정_거부_수();
-        long 기존_미배정_분류_수 = 분류_수("unassigned");
-
-        // when
-        Throwable 예외 = catchThrowable(() -> 동쪽으로_투영해_누른다(기기, 1000.1, Map.of(EmotionState.ANGRY, 1)));
-
-        // then
-        감정_오류다(예외, EMOTION_LOCATION_OUT_OF_SERVICE_AREA);
-        assertThat(행_수()).isZero();
-        assertThat(미배정_거부_수() - 기존_거부_수).isOne();
-        assertThat(분류_수("unassigned") - 기존_미배정_분류_수).isOne();
-    }
-
-    @Test
-    void 경계가_검증되지_않으면_분류_자료_오류를_그대로_전파하고_집계하지_않는다() {
-        // given
-        Device 기기 = 기기를_저장한다();
-        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
-        long 기존_실패_분류_수 = 분류_수("failed");
-
-        // when
-        Throwable 예외 = catchThrowable(() -> 누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 1)));
-
-        // then
-        감정_오류다(예외, EMOTION_REGION_DATA_UNAVAILABLE);
-        assertThat(행_수()).isZero();
-        assertThat(분류_수("failed") - 기존_실패_분류_수).isOne();
-    }
-
-    @Test
-    void 같은_기기가_같은_지역에서_다시_누르면_행_하나에_누적된다() {
-        // given
-        Device 기기 = 기기를_저장한다();
-        누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 2));
-
-        // when
-        EmotionPressResult 결과 = 누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 3));
+        EmotionPressResult 결과 = 누른다(기기, Map.of(EmotionState.ANGRY, 3));
 
         // then
         assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(5);
@@ -173,7 +95,30 @@ class EmotionPressServiceIntegrationTest {
     }
 
     @Test
-    void 다른_기기들이_같은_지역_같은_감정을_동시에_눌러도_서로_다른_행에_정확히_집계된다() throws Exception {
+    void 누른_직후_응답은_내_일별_집계_조회와_같은_값이다() {
+        // given
+        Device 기기 = 기기를_저장한다();
+        누른다(기기, Map.of(EmotionState.ANGRY, 2));
+
+        // when
+        EmotionPressResult 누른_결과 = 누른다(기기, Map.of(EmotionState.ANGRY, 1, EmotionState.EXHAUSTED, 3));
+        EmotionPressDailyResult 조회_결과 = emotionPressQueryService.findMyDailyPresses(기기.getPublicId(), 0);
+
+        // then
+        assertThat(누른_결과.counts()).isEqualTo(조회_결과.counts());
+        assertThat(누른_결과.total()).isEqualTo(조회_결과.total());
+        assertThat(누른_결과.counts()).containsOnly(
+                Map.entry(EmotionState.ANGRY, 3L),
+                Map.entry(EmotionState.EXHAUSTED, 3L),
+                Map.entry(EmotionState.FRUSTRATED, 0L),
+                Map.entry(EmotionState.IRRITATED, 0L),
+                Map.entry(EmotionState.DISCOURAGED, 0L));
+        assertThat(누른_결과.total()).isEqualTo(6);
+        assertThat(조회_결과.pressDate()).isEqualTo(LocalDate.ofInstant(기준_시각, ZoneId.of("Asia/Seoul")));
+    }
+
+    @Test
+    void 다른_기기들이_같은_감정을_동시에_눌러도_서로_다른_행에_정확히_집계된다() throws Exception {
         // given
         List<Device> 기기들 = new ArrayList<>();
         for (int 번호 = 0; 번호 < 동시_요청_수; 번호++) {
@@ -183,7 +128,7 @@ class EmotionPressServiceIntegrationTest {
         List<Callable<Boolean>> 작업들 = 기기들.stream()
                 .map(기기 -> (Callable<Boolean>) () -> {
                     for (int 회전 = 0; 회전 < 정합성_회전_수; 회전++) {
-                        누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 3));
+                        누른다(기기, Map.of(EmotionState.ANGRY, 3));
                     }
 
                     return true;
@@ -215,7 +160,7 @@ class EmotionPressServiceIntegrationTest {
                     : 순서대로(Map.entry(EmotionState.EXHAUSTED, 1), Map.entry(EmotionState.ANGRY, 1));
             작업들.add(() -> {
                 for (int 회전 = 0; 회전 < 데드락_회전_수; 회전++) {
-                    누른다(기기, 경계_안_경도, 경계_안_위도, 반대_순서);
+                    누른다(기기, 반대_순서);
                 }
 
                 return true;
@@ -240,34 +185,17 @@ class EmotionPressServiceIntegrationTest {
         // given
         Device 기기 = 기기를_저장한다();
         when(clock.instant()).thenReturn(Instant.parse("2026-10-06T14:59:59Z"));
-        누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 2));
+        누른다(기기, Map.of(EmotionState.ANGRY, 2));
 
         // when
         when(clock.instant()).thenReturn(Instant.parse("2026-10-06T15:00:00Z"));
-        EmotionPressResult 결과 = 누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 1));
+        EmotionPressResult 결과 = 누른다(기기, Map.of(EmotionState.ANGRY, 1));
 
         // then
         assertThat(결과.counts().get(EmotionState.ANGRY)).isOne();
         assertThat(결과.total()).isOne();
         assertThat(행_수()).isEqualTo(2);
         assertThat(날짜들()).containsExactly(LocalDate.of(2026, 10, 6), LocalDate.of(2026, 10, 7));
-    }
-
-    @Test
-    void 같은_날_다른_지역을_누르면_행이_갈리고_응답은_요청한_지역만_돌려준다() {
-        // given
-        Device 기기 = 기기를_저장한다();
-        인접_읍면동을_추가한다();
-        누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 2));
-
-        // when
-        EmotionPressResult 결과 = 누른다(기기, 인접_읍면동_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 1));
-
-        // then
-        assertThat(결과.regionCode()).isEqualTo(인접_읍면동);
-        assertThat(결과.counts().get(EmotionState.ANGRY)).isOne();
-        assertThat(결과.total()).isOne();
-        assertThat(행_수()).isEqualTo(2);
     }
 
     @Test
@@ -278,7 +206,7 @@ class EmotionPressServiceIntegrationTest {
         double 기존_적용_합 = 적용된_합();
 
         // when
-        EmotionPressResult 결과 = 누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 45));
+        EmotionPressResult 결과 = 누른다(기기, Map.of(EmotionState.ANGRY, 45));
 
         // then
         assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(30);
@@ -294,7 +222,7 @@ class EmotionPressServiceIntegrationTest {
         double 기존_자른_양 = 자른_양("total");
 
         // when
-        EmotionPressResult 결과 = 누른다(기기, 경계_안_경도, 경계_안_위도, 순서대로(
+        EmotionPressResult 결과 = 누른다(기기, 순서대로(
                 Map.entry(EmotionState.IRRITATED, 30),
                 Map.entry(EmotionState.FRUSTRATED, 30),
                 Map.entry(EmotionState.EXHAUSTED, 30),
@@ -314,11 +242,10 @@ class EmotionPressServiceIntegrationTest {
     void 값이_영인_감정은_행을_만들지_않고_집계를_그대로_돌려준다() {
         // given
         Device 기기 = 기기를_저장한다();
-        누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 2));
+        누른다(기기, Map.of(EmotionState.ANGRY, 2));
 
         // when
-        EmotionPressResult 결과 = 누른다(기기, 경계_안_경도, 경계_안_위도,
-                Map.of(EmotionState.ANGRY, 0, EmotionState.EXHAUSTED, 0));
+        EmotionPressResult 결과 = 누른다(기기, Map.of(EmotionState.ANGRY, 0, EmotionState.EXHAUSTED, 0));
 
         // then
         assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(2);
@@ -335,43 +262,14 @@ class EmotionPressServiceIntegrationTest {
         long 기존_적용_기록_수 = 적용_기록_수();
 
         // when
-        EmotionPressResult 결과 = 누른다(기기, 경계_안_경도, 경계_안_위도, Map.of());
+        EmotionPressResult 결과 = 누른다(기기, Map.of());
 
         // then
-        assertThat(결과.regionCode()).isEqualTo(읍면동);
         assertThat(결과.counts()).hasSize(EmotionState.values().length);
         assertThat(결과.total()).isZero();
         assertThat(행_수()).isZero();
         assertThat(빈_요청_수() - 기존_빈_요청_수).isOne();
         assertThat(적용_기록_수() - 기존_적용_기록_수).isZero();
-    }
-
-    @Test
-    void 빈_요청이어도_배정할_읍면동이_없으면_거절한다() {
-        // given
-        Device 기기 = 기기를_저장한다();
-
-        // when
-        Throwable 예외 = catchThrowable(() -> 동쪽으로_투영해_누른다(기기, 1000.1, Map.of()));
-
-        // then
-        감정_오류다(예외, EMOTION_LOCATION_OUT_OF_SERVICE_AREA);
-        assertThat(행_수()).isZero();
-    }
-
-    @Test
-    void 배정_성공은_assigned_태그로_분류_시간을_기록한다() {
-        // given
-        Device 기기 = 기기를_저장한다();
-        long 기존_배정_분류_수 = 분류_수("assigned");
-
-        // when
-        누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 1));
-
-        // then
-        assertThat(분류_수("assigned") - 기존_배정_분류_수).isOne();
-        assertThat(meterRegistry.get(분류_지표).tag("result", "assigned").timer().totalTime(TimeUnit.NANOSECONDS))
-                .isPositive();
     }
 
     @Test
@@ -381,7 +279,7 @@ class EmotionPressServiceIntegrationTest {
 
         // when
         Throwable 예외 = catchThrowable(
-                () -> emotionPressService.press(없는_기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 1))
+                () -> emotionPressService.press(없는_기기, Map.of(EmotionState.ANGRY, 1))
         );
 
         // then
@@ -391,62 +289,28 @@ class EmotionPressServiceIntegrationTest {
     }
 
     @Test
-    void 저장된_프레스_행에는_좌표가_남지_않는다() {
+    void 저장된_프레스_행에는_좌표와_지역이_남지_않는다() {
         // given
         Device 기기 = 기기를_저장한다();
 
         // when
-        누른다(기기, 경계_안_경도, 경계_안_위도, Map.of(EmotionState.ANGRY, 1));
+        누른다(기기, Map.of(EmotionState.ANGRY, 1));
 
         // then
         assertThat(프레스_표의_열_이름들()).containsExactly(
-                "created_at", "device_id", "id", "press_count", "press_date", "region_code", "state", "updated_at");
+                "created_at", "device_id", "id", "press_count", "press_date", "state", "updated_at");
     }
 
-    private EmotionPressResult 누른다(
-            Device 기기, double longitude, double latitude, Map<EmotionState, Integer> counts
-    ) {
-        return emotionPressService.press(기기.getPublicId(), longitude, latitude, counts);
-    }
-
-    private EmotionPressResult 동쪽으로_투영해_누른다(Device 기기, double 미터, Map<EmotionState, Integer> counts) {
-        List<Double> 좌표 = jdbc.sql("""
-                        SELECT ST_X(p) AS longitude, ST_Y(p) AS latitude FROM (
-                            SELECT ST_Project(ST_SetSRID(ST_MakePoint(128, 38), 4326)::geography,
-                                :meters, radians(90))::geometry AS p
-                        ) projected
-                        """).param("meters", 미터)
-                .query((row, index) -> List.of(row.getDouble("longitude"), row.getDouble("latitude")))
-                .single();
-
-        return 누른다(기기, 좌표.get(0), 좌표.get(1), counts);
+    private EmotionPressResult 누른다(Device 기기, Map<EmotionState, Integer> counts) {
+        return emotionPressService.press(기기.getPublicId(), counts);
     }
 
     private EmotionPressResult 오늘_집계(Device 기기) {
-        return 누른다(기기, 경계_안_경도, 경계_안_위도, Map.of());
-    }
-
-    private void 감정_오류다(Throwable 예외, EmotionErrorCode 기대) {
-        assertThat(예외).isInstanceOfSatisfying(EmotionException.class,
-                오류 -> assertThat(오류.getErrorCode()).isEqualTo(기대));
+        return 누른다(기기, Map.of());
     }
 
     private Device 기기를_저장한다() {
         return deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
-    }
-
-    private void 경계_검증을_완료한다() {
-        jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = CURRENT_TIMESTAMP").update();
-    }
-
-    private void 인접_읍면동을_추가한다() {
-        jdbc.sql("""
-                        INSERT INTO regions (code, level, name, parent_code, boundary, display_point)
-                        SELECT :code, level, name, parent_code,
-                            ST_Translate(boundary, 2.001, 0), ST_Translate(display_point, 2.001, 0)
-                        FROM regions WHERE code = :origin
-                        """).param("code", 인접_읍면동).param("origin", 읍면동)
-                .update();
     }
 
     @SafeVarargs
@@ -460,34 +324,25 @@ class EmotionPressServiceIntegrationTest {
     }
 
     private long 행_수() {
-        return jdbc.sql("SELECT count(*) FROM device_region_daily_presses").query(Long.class).single();
+        return jdbc.sql("SELECT count(*) FROM device_daily_presses").query(Long.class).single();
     }
 
     private long 전체_합() {
-        return jdbc.sql("SELECT COALESCE(SUM(press_count), 0) FROM device_region_daily_presses")
+        return jdbc.sql("SELECT COALESCE(SUM(press_count), 0) FROM device_daily_presses")
                 .query(Long.class).single();
     }
 
     private List<LocalDate> 날짜들() {
-        return jdbc.sql("SELECT DISTINCT press_date FROM device_region_daily_presses ORDER BY press_date")
+        return jdbc.sql("SELECT DISTINCT press_date FROM device_daily_presses ORDER BY press_date")
                 .query(LocalDate.class).list();
     }
 
     private List<String> 프레스_표의_열_이름들() {
         return jdbc.sql("""
                 SELECT column_name FROM information_schema.columns
-                WHERE table_name = 'device_region_daily_presses'
+                WHERE table_name = 'device_daily_presses'
                 ORDER BY column_name
                 """).query(String.class).list();
-    }
-
-    private long 분류_수(String 결과) {
-        return meterRegistry.get(분류_지표).tag("result", 결과).timer().count();
-    }
-
-    private long 미배정_거부_수() {
-        return (long) meterRegistry.get("pheeeew.emotion.press.rejected")
-                .tag("reason", "region_unassigned").counter().count();
     }
 
     private long 빈_요청_수() {
