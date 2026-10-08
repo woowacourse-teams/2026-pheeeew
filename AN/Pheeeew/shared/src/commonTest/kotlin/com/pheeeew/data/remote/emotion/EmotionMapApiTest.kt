@@ -30,7 +30,7 @@ class EmotionMapApiTest {
                     engine =
                         MockEngine { request ->
                             assertEquals(HttpMethod.Get, request.method)
-                            assertEquals("/api/v1/emotions/map", request.url.encodedPath)
+                            assertEquals("/api/v2/emotions/map", request.url.encodedPath)
                             assertEquals("Bearer test-token", request.headers[HttpHeaders.Authorization])
                             if (requestNumber++ == 0) {
                                 assertEquals("126.9", request.url.parameters["minLongitude"])
