@@ -140,4 +140,37 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
             @Param("limit") int limit
     );
 
+    @Query(value = """
+            SELECT emotion.*
+            FROM emotions emotion
+            WHERE emotion.deleted_at IS NULL
+              AND (emotion.memo IS NOT NULL OR emotion.audio_object_key IS NOT NULL)
+              AND emotion.created_at <= :snapshotAt
+              AND (emotion.created_at, emotion.id) < (:lastCreatedAt, :lastId)
+              AND (CAST(:groupId AS UUID) IS NULL OR EXISTS (
+                  SELECT 1 FROM group_stamps stamp JOIN groups stamp_group ON stamp_group.id = stamp.group_id
+                  WHERE stamp.id = emotion.group_stamp_id AND stamp_group.public_id = CAST(:groupId AS UUID)
+              ))
+              AND NOT EXISTS (
+                  SELECT 1 FROM emotion_blocks emotion_block
+                  WHERE emotion_block.blocker_device_id = :deviceId
+                    AND emotion_block.emotion_id = emotion.id
+              )
+              AND NOT EXISTS (
+                  SELECT 1 FROM device_blocks device_block
+                  WHERE device_block.blocker_device_id = :deviceId
+                    AND device_block.blocked_device_id = emotion.device_id
+              )
+            ORDER BY emotion.created_at DESC, emotion.id DESC
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<Emotion> findVisiblePageWithoutBounds(
+            @Param("snapshotAt") Instant snapshotAt,
+            @Param("lastCreatedAt") Instant lastCreatedAt,
+            @Param("lastId") long lastId,
+            @Param("deviceId") Long deviceId,
+            @Param("groupId") UUID groupId,
+            @Param("limit") int limit
+    );
+
 }

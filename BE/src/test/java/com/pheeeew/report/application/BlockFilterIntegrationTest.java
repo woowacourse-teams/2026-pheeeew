@@ -272,7 +272,7 @@ class BlockFilterIntegrationTest {
     }
 
     private List<Long> 조회한다(UUID viewerPublicId) {
-        return emotionQueryService.findFirstListPage(SEOUL_BOUNDS, viewerPublicId).items().stream()
+        return emotionQueryService.findListWithinBounds(SEOUL_BOUNDS, viewerPublicId, null, null).items().stream()
                 .map(item -> item.id()).toList();
     }
 }
