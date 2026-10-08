@@ -24,7 +24,6 @@ object ProductEvents {
         group_list_load_finished group_create_form_viewed group_create_validation_failed
         group_create_confirmation_resolved group_join_started group_lookup_finished
         group_join_submit_started group_join_finished group_flow_closed group_detail_load_finished
-        group_emotion_press_started group_emotion_press_finished group_emotion_feedback_viewed
         group_invite_copy_finished group_leave_finished ranking_viewed ranking_load_finished ranking_week_changed
         device_session_prepare_finished location_acquire_finished map_load_finished map_location_requested
         onboarding_step_viewed onboarding_finished operation_reconciled

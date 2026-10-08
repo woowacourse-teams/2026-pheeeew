@@ -30,7 +30,6 @@ object ApiMonitoringEvents {
             "group_join",
             "group_detail",
             "group_leave",
-            "group_press",
             "group_ranking",
             "emotion_report",
             "emotion_register",
