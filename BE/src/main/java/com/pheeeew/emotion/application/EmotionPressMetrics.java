@@ -4,23 +4,14 @@ import com.pheeeew.emotion.domain.PressCounts;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Timer;
 import org.springframework.stereotype.Component;
 
 @Component
 public class EmotionPressMetrics {
 
-    private static final String CLASSIFY_NAME = "pheeeew.emotion.press.classify";
-    private static final String CLASSIFY_DESCRIPTION =
-            "Region classification duration per region press request, including failed calls";
     private static final String CLAMPED_NAME = "pheeeew.emotion.press.clamped";
     private static final String CLAMPED_DESCRIPTION = "Press count dropped by a press limit, per request that hit it";
 
-    private final MeterRegistry registry;
-    private final Timer classifyAssigned;
-    private final Timer classifyUnassigned;
-    private final Timer classifyFailed;
-    private final Counter regionUnassignedRejections;
     private final DistributionSummary applied;
     private final DistributionSummary perStateClamped;
     private final DistributionSummary totalClamped;
@@ -29,23 +20,6 @@ public class EmotionPressMetrics {
     private final Counter deadlocks;
 
     public EmotionPressMetrics(MeterRegistry registry) {
-        this.registry = registry;
-        classifyAssigned = Timer.builder(CLASSIFY_NAME)
-                .description(CLASSIFY_DESCRIPTION)
-                .tag("result", "assigned")
-                .register(registry);
-        classifyUnassigned = Timer.builder(CLASSIFY_NAME)
-                .description(CLASSIFY_DESCRIPTION)
-                .tag("result", "unassigned")
-                .register(registry);
-        classifyFailed = Timer.builder(CLASSIFY_NAME)
-                .description(CLASSIFY_DESCRIPTION)
-                .tag("result", "failed")
-                .register(registry);
-        regionUnassignedRejections = Counter.builder("pheeeew.emotion.press.rejected")
-                .description("Region press requests rejected before applying any press")
-                .tag("reason", "region_unassigned")
-                .register(registry);
         applied = DistributionSummary.builder("pheeeew.emotion.press.applied")
                 .description("Applied press count per request, after clamping")
                 .register(registry);
@@ -66,22 +40,6 @@ public class EmotionPressMetrics {
         deadlocks = Counter.builder("pheeeew.emotion.press.deadlocks")
                 .description("Press upsert attempts aborted by a PostgreSQL deadlock")
                 .register(registry);
-    }
-
-    public Timer.Sample startClassify() {
-        return Timer.start(registry);
-    }
-
-    public void recordClassify(Timer.Sample sample, boolean assigned) {
-        sample.stop(assigned ? classifyAssigned : classifyUnassigned);
-    }
-
-    public void recordClassifyFailure(Timer.Sample sample) {
-        sample.stop(classifyFailed);
-    }
-
-    public void recordRegionUnassigned() {
-        regionUnassignedRejections.increment();
     }
 
     public void recordApplied(PressCounts pressCounts) {

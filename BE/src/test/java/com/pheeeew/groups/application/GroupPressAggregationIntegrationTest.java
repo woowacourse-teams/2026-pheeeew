@@ -1,7 +1,7 @@
 package com.pheeeew.groups.application;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
-import static com.pheeeew.emotion.fixture.DeviceRegionDailyPressFixture.개인_프레스를_저장한다;
+import static com.pheeeew.emotion.fixture.DeviceDailyPressFixture.개인_프레스를_저장한다;
 import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층을_저장한다;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -73,7 +73,7 @@ class GroupPressAggregationIntegrationTest {
 
     @AfterEach
     void tearDown() {
-        jdbcClient.sql("DELETE FROM device_region_daily_presses").update();
+        jdbcClient.sql("DELETE FROM device_daily_presses").update();
         jdbcClient.sql("DELETE FROM group_daily_presses").update();
         jdbcClient.sql("DELETE FROM regions").update();
         groupMemberRepository.deleteAllInBatch();

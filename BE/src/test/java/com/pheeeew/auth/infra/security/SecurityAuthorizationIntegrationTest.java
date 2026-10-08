@@ -137,7 +137,7 @@ class SecurityAuthorizationIntegrationTest {
         // given
         String token = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
         String body = """
-                {"longitude":126.9774,"latitude":37.5669,"counts":{}}
+                {"counts":{}}
                 """;
 
         // when
@@ -150,7 +150,6 @@ class SecurityAuthorizationIntegrationTest {
         // then
         인증_필요를_검증한다(unauthenticated);
         authenticated.expectStatus().isOk().expectBody()
-                .jsonPath("$.regionCode").isEqualTo("11010530")
                 .jsonPath("$.total").isEqualTo(0);
     }
 
