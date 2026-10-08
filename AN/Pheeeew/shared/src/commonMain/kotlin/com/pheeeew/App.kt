@@ -60,6 +60,7 @@ import com.pheeeew.core.di.createEmotionDetailRepository
 import com.pheeeew.core.di.createEmotionMapDependencies
 import com.pheeeew.core.di.createEmotionModerationDependencies
 import com.pheeeew.core.di.createEmotionRegistrationRepository
+import com.pheeeew.core.di.createPressRepository
 import com.pheeeew.core.di.emotion.createNearbyEmotionViewModel
 import com.pheeeew.core.di.group.createGroupDependencies
 import com.pheeeew.core.di.group.createGroupStampListRepository
@@ -105,8 +106,8 @@ import com.pheeeew.feature.screens.map.rememberRegionClusterSymbolImages
 import com.pheeeew.feature.screens.map.renderer.MapCameraSnapshotUiModel
 import com.pheeeew.feature.screens.map.renderer.NativeMap
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
-import com.pheeeew.feature.screens.press.PressFixtureSessionViewModel
 import com.pheeeew.feature.screens.press.PressRoute
+import com.pheeeew.feature.screens.press.PressViewModel
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
@@ -182,7 +183,8 @@ private fun AppContent(
 ) {
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val pressFixtureSession: PressFixtureSessionViewModel = viewModel { PressFixtureSessionViewModel() }
+    val pressRepository = remember(apiDependencies.client) { createPressRepository(apiDependencies.client) }
+    val pressViewModel: PressViewModel = viewModel { PressViewModel(pressRepository, locationDependencies) }
     var versionCheckAttempt by remember { mutableStateOf(0) }
     var initialVersionCheckComplete by remember { mutableStateOf(false) }
     var splashAnimationCompleted by rememberSaveable { mutableStateOf(false) }
@@ -644,7 +646,7 @@ private fun AppContent(
 
                 composable<PressRootDestination> {
                     PressRoute(
-                        dataSource = pressFixtureSession.dataSource,
+                        viewModel = pressViewModel,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }

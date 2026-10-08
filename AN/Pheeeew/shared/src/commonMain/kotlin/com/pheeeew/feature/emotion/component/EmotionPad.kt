@@ -48,6 +48,7 @@ import kotlin.time.TimeSource
 internal fun EmotionPad(
     counts: List<EmotionCountUiModel>,
     optimisticPressCounts: Map<EmotionKind, Long> = emptyMap(),
+    countPlaceholder: String? = null,
     enabled: Boolean,
     onEmotionTap: (EmotionKind) -> Boolean,
     arrangement: EmotionPadArrangement = EmotionPadArrangement.ThreeTwo,
@@ -230,6 +231,7 @@ internal fun EmotionPad(
                     kind = kind,
                     emotionLabel = emotionLabel,
                     count = count,
+                    countPlaceholder = countPlaceholder,
                     unit = unit,
                     enabled = enabled,
                     reducedMotion = reduce,
