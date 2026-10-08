@@ -46,6 +46,8 @@ import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -59,14 +61,14 @@ import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.bottom_navigation_group
+import pheeeew.shared.generated.resources.bottom_navigation_map
+import pheeeew.shared.generated.resources.bottom_navigation_press
+import pheeeew.shared.generated.resources.bottom_navigation_ranking
+import pheeeew.shared.generated.resources.bottom_navigation_ranking_press
+import pheeeew.shared.generated.resources.bottom_navigation_stamp
 import pheeeew.shared.generated.resources.hiyu_nav_face
 import pheeeew.shared.generated.resources.hiyu_nav_ticket
-import pheeeew.shared.generated.resources.navigation_group
-import pheeeew.shared.generated.resources.navigation_map
-import pheeeew.shared.generated.resources.navigation_press
-import pheeeew.shared.generated.resources.navigation_ranking
-import pheeeew.shared.generated.resources.ranking_press_tab
-import pheeeew.shared.generated.resources.ranking_stamps
 
 private val NavigationInk = Color(0xFF202323)
 internal val AppBottomNavigationBarHeight = 55.dp
@@ -106,6 +108,7 @@ internal fun AppBottomNavigationBar(
     onRankingDestinationSelected: (RankingBottomNavigationDestination) -> Unit = {},
 ) {
     val navigationFont = notoSansKrFontFamily()
+    val hapticFeedback = LocalHapticFeedback.current
     val isRankingMode = selectedDestination == AppDestination.Ranking
     val mainDestinations = AppDestination.entries
     var previousMainDestination by
@@ -154,7 +157,8 @@ internal fun AppBottomNavigationBar(
                 backSlotWidth * motionProgress
         val animatedRankingItemWidth =
             mainItemWidth * (1f - motionProgress) + rankingItemWidth * motionProgress
-        val selectedPillWidth = mainItemWidth - indicatorInset * 2
+        val selectedPillWidth =
+            mainItemWidth * (1f - motionProgress) + rankingItemWidth * 0.7f * motionProgress - indicatorInset * 2
         val stampCenter = backSlotWidth + rankingItemWidth / 2
         val pressCenter = backSlotWidth + rankingItemWidth * 1.5f
         val secondaryItemsAlpha = 1f - (motionProgress / 0.34f).coerceIn(0f, 1f)
@@ -203,7 +207,10 @@ internal fun AppBottomNavigationBar(
                             interactionSource = null,
                             indication = null,
                             role = Role.Tab,
-                            onClick = { onDestinationSelected(destination) },
+                            onClick = {
+                                hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onDestinationSelected(destination)
+                            },
                         ).semantics { selected = isSelected }
                         .padding(horizontal = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -223,10 +230,10 @@ internal fun AppBottomNavigationBar(
                     text =
                         stringResource(
                             when (destination) {
-                                AppDestination.Map -> Res.string.navigation_map
-                                AppDestination.Press -> Res.string.navigation_press
-                                AppDestination.Group -> Res.string.navigation_group
-                                AppDestination.Ranking -> Res.string.navigation_ranking
+                                AppDestination.Map -> Res.string.bottom_navigation_map
+                                AppDestination.Press -> Res.string.bottom_navigation_press
+                                AppDestination.Group -> Res.string.bottom_navigation_group
+                                AppDestination.Ranking -> Res.string.bottom_navigation_ranking
                             },
                         ),
                     color = NavigationInk,
@@ -254,6 +261,7 @@ internal fun AppBottomNavigationBar(
                         indication = null,
                         role = Role.Tab,
                         onClick = {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                             if (isRankingMode) {
                                 onRankingDestinationSelected(RankingBottomNavigationDestination.Stamp)
                             } else {
@@ -279,7 +287,7 @@ internal fun AppBottomNavigationBar(
                     DestinationIconView(DestinationIcon.Ranking, pressScale = 1f)
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        text = stringResource(Res.string.navigation_ranking),
+                        text = stringResource(Res.string.bottom_navigation_ranking),
                         color = NavigationInk,
                         fontSize = 14.sp,
                         fontFamily = navigationFont,
@@ -303,7 +311,7 @@ internal fun AppBottomNavigationBar(
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = stringResource(Res.string.ranking_stamps),
+                        text = stringResource(Res.string.bottom_navigation_stamp),
                         color = NavigationInk,
                         fontSize = 14.sp,
                         fontFamily = navigationFont,
@@ -329,7 +337,10 @@ internal fun AppBottomNavigationBar(
                         interactionSource = null,
                         indication = null,
                         role = Role.Button,
-                        onClick = onRankingBackClick,
+                        onClick = {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onRankingBackClick()
+                        },
                     ),
             contentAlignment = Alignment.Center,
         ) {
@@ -355,7 +366,10 @@ internal fun AppBottomNavigationBar(
                         interactionSource = null,
                         indication = null,
                         role = Role.Tab,
-                        onClick = { onRankingDestinationSelected(RankingBottomNavigationDestination.Press) },
+                        onClick = {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onRankingDestinationSelected(RankingBottomNavigationDestination.Press)
+                        },
                     ).semantics { selected = isPressTabSelected }
                     .padding(horizontal = 2.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -368,7 +382,7 @@ internal fun AppBottomNavigationBar(
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = stringResource(Res.string.ranking_press_tab),
+                text = stringResource(Res.string.bottom_navigation_ranking_press),
                 color = NavigationInk,
                 fontSize = 14.sp,
                 fontFamily = navigationFont,
