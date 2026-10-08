@@ -24,6 +24,7 @@ import com.pheeeew.device.domain.repository.DeviceChallengeRepository;
 import com.pheeeew.device.domain.repository.DeviceRefreshTokenRepository;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.report.domain.repository.EmotionReportRepository;
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.support.SharedPostgisTestConfiguration;
 import java.util.List;
@@ -822,7 +823,11 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"/api/v1/emotions,/api/v3/emotions,true", "/api/v3/emotions,/api/v1/emotions,false"})
+    @CsvSource({
+            "/api/v1/emotions,/api/v3/emotions,true", "/api/v3/emotions,/api/v1/emotions,false",
+            "/api/v1/emotions,/api/v2/emotions,true", "/api/v2/emotions,/api/v1/emotions,true",
+            "/api/v2/emotions,/api/v3/emotions,true", "/api/v3/emotions,/api/v2/emotions,false"
+    })
     void 버전을_바꾼_재시도는_최초_익명_선택과_작성자를_유지한다(String first, String next, boolean anonymous) {
         // given
         UUID deviceRequestId = UUID.randomUUID();
@@ -830,7 +835,7 @@ class SecurityAuthorizationIntegrationTest {
         Device device = deviceRepository.findByRequestId(deviceRequestId).orElseThrow();
         UUID requestId = UUID.randomUUID();
         Map<String, Object> body = Map.of("requestId", requestId, "latitude", 37.5664, "longitude", 126.9780,
-                "state", "FRUSTRATED", "rotationDegrees", 0, "contentType", "NONE", "anonymous", false);
+                "state", "FRUSTRATED", "rotationDegrees", 0, "contentType", "MEMO", "memo", "최초 메모", "anonymous", false);
         client.post().uri(first + "?devicePublicId=" + 사칭하려는_기기_식별자)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
                 .body(body).exchange().expectStatus().isOk();
@@ -840,7 +845,7 @@ class SecurityAuthorizationIntegrationTest {
         RestTestClient.ResponseSpec result = client.post().uri(next)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of("requestId", requestId, "latitude", 37.5664, "longitude", 126.9780,
-                        "state", "FRUSTRATED", "rotationDegrees", 0, "contentType", "NONE", "anonymous", true)).exchange();
+                        "state", "FRUSTRATED", "rotationDegrees", 0, "contentType", "MEMO", "memo", "재시도 메모", "anonymous", true)).exchange();
 
         // then
         result.expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.LOCATION, "/api/v1/emotions/" + id)
@@ -850,6 +855,43 @@ class SecurityAuthorizationIntegrationTest {
         var saved = emotionRepository.findById(id).orElseThrow();
         assertThat(saved.isAnonymous()).isEqualTo(anonymous);
         assertThat(saved.getDeviceId()).isEqualTo(device.getId());
+        assertThat(saved.getMemo()).isEqualTo("최초 메모");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v2/emotions", "/api/v3/emotions"})
+    void 기존_V1_NONE을_내용_필수_버전으로_재시도해도_최초_결과를_유지한다(String uri) {
+        // given
+        UUID deviceRequestId = UUID.randomUUID();
+        String token = 기기를_등록하고_토큰을_받는다(deviceRequestId);
+        Device device = deviceRepository.findByRequestId(deviceRequestId).orElseThrow();
+        UUID requestId = UUID.randomUUID();
+        client.post().uri("/api/v1/emotions")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("requestId", requestId, "latitude", 37.5664, "longitude", 126.9780,
+                        "state", "FRUSTRATED", "rotationDegrees", 0, "contentType", "NONE"))
+                .exchange().expectStatus().isOk();
+        Long id = emotionRepository.findByRequestId(requestId).orElseThrow().getId();
+
+        // when
+        RestTestClient.ResponseSpec result = client.post().uri(uri + "?devicePublicId=" + 사칭하려는_기기_식별자)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token).contentType(MediaType.APPLICATION_JSON)
+                .body(Map.of("requestId", requestId, "latitude", 37.5664, "longitude", 126.9780,
+                        "state", "ANGRY", "rotationDegrees", 90, "contentType", "MEMO", "memo", "새 메모", "anonymous", false))
+                .exchange();
+
+        // then
+        result.expectStatus().isOk().expectHeader().valueEquals(HttpHeaders.LOCATION, "/api/v1/emotions/" + id)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-store")
+                .expectBody().jsonPath("$.id").isEqualTo(id.intValue());
+        assertThat(emotionRepository.count()).isEqualTo(1);
+        var saved = emotionRepository.findById(id).orElseThrow();
+        assertThat(saved.isAnonymous()).isTrue();
+        assertThat(saved.getDeviceId()).isEqualTo(device.getId());
+        assertThat(saved.getMemo()).isNull();
+        assertThat(saved.getContent().hasAudio()).isFalse();
+        assertThat(saved.getState()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(saved.getRotationDegrees()).isZero();
     }
 
     @ParameterizedTest
