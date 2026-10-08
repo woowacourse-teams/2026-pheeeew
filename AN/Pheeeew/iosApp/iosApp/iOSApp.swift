@@ -47,6 +47,7 @@ struct iOSApp: App {
                                 fatalError("Development monitoring native crash test")
                             }
                             let monitoring = IosMonitoring.shared.instance
+                            IosMonitoring.shared.smokeTestActivity()
                             monitoring.reportError(
                                 error: KotlinIllegalStateException(message: "Development monitoring smoke test"),
                                 context: monitoring.context(screen: "unknown", parent: nil)

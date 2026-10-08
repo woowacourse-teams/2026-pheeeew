@@ -2,6 +2,7 @@
 
 package com.pheeeew.core.di
 
+import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.MonitoringConfig
 import com.pheeeew.core.monitoring.MonitoringRuntime
 import com.pheeeew.core.monitoring.MonitoringStore
@@ -18,7 +19,6 @@ import platform.Foundation.NSApplicationSupportDirectory
 import platform.Foundation.NSBundle
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSString
-import platform.Foundation.NSURL
 import platform.Foundation.NSURLIsExcludedFromBackupKey
 import platform.Foundation.NSUTF8StringEncoding
 import platform.Foundation.NSUserDefaults
@@ -31,6 +31,19 @@ import platform.UIKit.UIDevice
 object IosMonitoring {
     private val owner: AppMonitoring by lazy { create() }
     val instance: MonitoringRuntime get() = owner.runtime
+
+    /** Explicit Debug smoke-test entry point; never creates production activity. */
+    fun smokeTestActivity() {
+        if (NSBundle.mainBundle.objectForInfoDictionaryKey("MONITORING_ENVIRONMENT") != "dev") return
+        val occurredAt =
+            kotlin.time.Clock.System
+                .now()
+                .toEpochMilliseconds()
+        com.pheeeew.core.monitoring.ActivityType.entries.forEach {
+            instance.recordSuccessfulActivity(it, occurredAt)
+        }
+        instance.flush()
+    }
 
     suspend fun compatibility() = owner.compatibility()
 
@@ -138,9 +151,10 @@ object IosMonitoring {
                                 }
                             }
                         }
-                        PostHog.setup(config.posthogConfig(registry), PostHogContext())
+                        val analyticsReady = runCatching { migrateIosAnalyticsQueue(manager) }.isSuccess
+                        if (analyticsReady) PostHog.setup(config.posthogConfig(registry), PostHogContext())
                         identifyMonitoring(anonymousId, config)
-                        SdkMonitoringTransport(registry)
+                        SdkMonitoringTransport(registry, analyticsReady)
                     }
                 },
             )
@@ -166,4 +180,42 @@ private class IosMonitoringStore(
                 .writeToFile(checkNotNull(path), true, NSUTF8StringEncoding, null),
         )
     }
+}
+
+/** posthog-ios 3.64.1: Application Support/<bundle>/<token>, plus pre-token legacy storage. */
+private fun migrateIosAnalyticsQueue(manager: NSFileManager) {
+    val support =
+        checkNotNull(manager.URLForDirectory(NSApplicationSupportDirectory, NSUserDomainMask, null, true, null))
+    val marker = checkNotNull(support.URLByAppendingPathComponent("Monitoring/user-report-v1-native-queue-migrated"))
+    if (manager.fileExistsAtPath(checkNotNull(marker.path))) return
+    val bundle = checkNotNull(NSBundle.mainBundle.bundleIdentifier)
+    val base = checkNotNull(support.URLByAppendingPathComponent(bundle, true))
+    val basePath = checkNotNull(base.path)
+    val keys =
+        listOf(
+            "posthog.queueFolder.uuid",
+            "posthog.queueFolder",
+            "posthog.queue.plist",
+            "posthog.replayFolder.uuid",
+            "posthog.replayFolder",
+            "posthog.replayBufferFolder",
+            "posthog.logsFolder",
+        )
+    if (manager.fileExistsAtPath(basePath)) {
+        val children = checkNotNull(manager.contentsOfDirectoryAtPath(basePath, null)).filterIsInstance<String>()
+        // Only known queue filenames at the legacy root or direct project-token directories.
+        val directories = listOf(basePath) + children.map { "$basePath/$it" }
+        for (directory in directories) {
+            for (key in keys) {
+                val path = "$directory/$key"
+                if (manager.fileExistsAtPath(path)) check(manager.removeItemAtPath(path, null))
+            }
+        }
+    }
+    check(
+        NSString
+            .create(
+                string = "user_report_v1",
+            ).writeToFile(checkNotNull(marker.path), true, NSUTF8StringEncoding, null),
+    )
 }

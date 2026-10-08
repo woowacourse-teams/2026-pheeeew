@@ -4,24 +4,13 @@ import com.pheeeew.core.monitoring.ClassificationSource
 import com.pheeeew.core.monitoring.CollectionMetadata
 import com.pheeeew.core.monitoring.CollectionState
 import com.pheeeew.core.monitoring.DataSource
-import com.pheeeew.core.monitoring.EventDefinition
 import com.pheeeew.core.monitoring.EventEnvelope
 import com.pheeeew.core.monitoring.EventRegistry
-import com.pheeeew.core.monitoring.LifecycleEvents
+import com.pheeeew.core.monitoring.MeaningfulActivity
 import com.pheeeew.core.monitoring.MonitoringConfig
 import com.pheeeew.core.monitoring.MonitoringRuntime
-import com.pheeeew.core.monitoring.PropertyRule
-import com.pheeeew.core.monitoring.RESERVED_PROPERTIES
-import com.pheeeew.core.monitoring.ValueType
 import com.pheeeew.core.monitoring.monitoringJson
-import com.pheeeew.feature.monitoring.compat.MONITORING_PROPERTIES
-import com.pheeeew.feature.monitoring.compat.MonitoringEventNames
 import com.pheeeew.feature.monitoring.compat.MonitoringTicker
-import com.pheeeew.feature.monitoring.network.ApiMonitoringEvents
-import com.pheeeew.feature.screens.group.monitoring.GroupMonitoringEvents
-import com.pheeeew.feature.screens.map.monitoring.ExplorationEvents
-import com.pheeeew.feature.screens.map.monitoring.RecordFunnelEvents
-import com.pheeeew.feature.screens.map.monitoring.RecordSaveEvents
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -36,24 +25,9 @@ import com.pheeeew.feature.monitoring.compat.Monitoring as CompatibilityMonitori
 import com.pheeeew.feature.monitoring.compat.MonitoringConfig as CompatibilityConfig
 import com.pheeeew.feature.monitoring.compat.MonitoringState as CompatibilityState
 
-fun appMonitoringRegistry(): EventRegistry {
-    val compatibility =
-        MonitoringEventNames.definitions.map { old ->
-            EventDefinition(
-                old.value,
-                properties =
-                    (MONITORING_PROPERTIES - RESERVED_PROPERTIES).associateWith { key ->
-                        PropertyRule(ValueType.PRIMITIVE, required = key in old.requiredProperties)
-                    },
-                preserveOnOverflow = old.value in setOf("app_first_opened", "first_sigh_saved"),
-            )
-        }
-    return EventRegistry(
-        compatibility + LifecycleEvents.definitions + ApiMonitoringEvents.definitions +
-            com.pheeeew.feature.monitoring.product.ProductEvents.definitions + GroupMonitoringEvents.definitions +
-            RecordFunnelEvents.definitions +
-            RecordSaveEvents.definitions +
-            ExplorationEvents.definitions,
+fun appMonitoringRegistry(): EventRegistry =
+    EventRegistry(
+        listOf(MeaningfulActivity.definition),
         setOf(
             "splash",
             "map",
@@ -67,7 +41,6 @@ fun appMonitoringRegistry(): EventRegistry {
             "network",
         ),
     )
-}
 
 /** Only composition understands the retired state. Core can also run with its default v3 decoder. */
 fun decodeAppMonitoringState(raw: String): CollectionState {
@@ -105,28 +78,9 @@ fun decodeAppMonitoringState(raw: String): CollectionState {
                 error("Unsupported monitoring storage version")
             }
         }
-    // Recover a legacy producer's unacknowledged events even if its UI is never opened again.
-    val extension = loaded.extensions["sigh_v2"] ?: return loaded
-    val old = monitoringJson.decodeFromString<CompatibilityState>(extension.toString())
     return loaded.copy(
-        pending =
-            (
-                loaded.pending +
-                    old.pending
-                        .filterNot {
-                            it.name.startsWith(
-                                "app_",
-                            )
-                        }.map { EventEnvelope(it.name, it.timestamp, it.properties) }
-            ).distinctBy { it.properties["event_id"] },
-        extensions =
-            loaded.extensions +
-                (
-                    "sigh_v2" to
-                        monitoringJson.parseToJsonElement(
-                            monitoringJson.encodeToString(old.copy(pending = emptyList())),
-                        ) as JsonObject
-                ),
+        pending = loaded.pending.filter { it.name == MeaningfulActivity.NAME },
+        extensions = loaded.extensions - "sigh_v2",
     )
 }
 
@@ -188,7 +142,7 @@ class AppMonitoring(
                 config.appVersion,
                 config.buildNumber,
                 config.osVersion,
-                initial != null,
+                false,
                 config.posthogToken,
                 config.posthogHost,
                 config.sentryDsn,

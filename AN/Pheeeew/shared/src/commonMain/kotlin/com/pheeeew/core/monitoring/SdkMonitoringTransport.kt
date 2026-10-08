@@ -16,8 +16,15 @@ import kotlinx.serialization.json.longOrNull
 
 internal class SdkMonitoringTransport(
     private val registry: EventRegistry,
+    private val analyticsEnabled: Boolean = true,
 ) : MonitoringTransport {
     override fun track(event: EventEnvelope): Boolean {
+        if (!analyticsEnabled) return false
+        if (event.name == MeaningfulActivity.NAME &&
+            event.properties["activity_date"] != JsonPrimitive(activityDate(event.timestamp))
+        ) {
+            return false
+        }
         val fields = event.properties.mapValues { (_, value) -> value as? JsonPrimitive ?: return false }
         val safe = registry.sanitizeEnvelope(event.name, fields) ?: return false
         PostHog.capture(
@@ -41,7 +48,7 @@ internal class SdkMonitoringTransport(
     }
 
     override fun flush() {
-        PostHog.flush()
+        if (analyticsEnabled) PostHog.flush()
     }
 }
 
