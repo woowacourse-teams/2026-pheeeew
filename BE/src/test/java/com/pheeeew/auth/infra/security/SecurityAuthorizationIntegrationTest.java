@@ -853,9 +853,9 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"GET,/api/v3/emotions", "PUT,/api/v3/emotions", "DELETE,/api/v3/emotions/1",
+    @CsvSource({"GET,/api/v3/emotions/42", "PUT,/api/v3/emotions", "DELETE,/api/v3/emotions/1",
             "POST,/api/v3/emotions/1", "GET,/api/v3/emotions/map"})
-    void v3_감정_등록_외의_경로와_메서드는_열지_않는다(String method, String path) {
+    void v3_감정_등록과_목록_외의_경로와_메서드는_열지_않는다(String method, String path) {
         // given / when
         client.method(HttpMethod.valueOf(method)).uri(path)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + AccessTokenFixture.유효한_토큰(기기_공개_식별자))
@@ -1035,8 +1035,8 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v1/emotions/42"})
-    void 토큰_없이_v2_목록이나_단건을_조회하면_401을_반환한다(String uri) {
+    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v3/emotions", "/api/v1/emotions/42"})
+    void 토큰_없이_감정_목록이나_단건을_조회하면_401을_반환한다(String uri) {
         // given / when
         RestTestClient.ResponseSpec result = client.get().uri(uri).exchange();
 
@@ -1045,8 +1045,8 @@ class SecurityAuthorizationIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v1/emotions/42"})
-    void 만료된_토큰으로_v2_목록이나_단건을_조회하면_401을_반환한다(String uri) {
+    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v3/emotions", "/api/v1/emotions/42"})
+    void 만료된_토큰으로_감정_목록이나_단건을_조회하면_401을_반환한다(String uri) {
         // given
         String accessToken = AccessTokenFixture.만료된_토큰(기기_공개_식별자);
 
@@ -1060,15 +1060,16 @@ class SecurityAuthorizationIntegrationTest {
         인증_필요를_검증한다(result);
     }
 
-    @Test
-    void 유효한_토큰으로_v2_목록과_단건을_조회할_수_있다() {
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/emotions" + 지도_영역_질의, "/api/v3/emotions"})
+    void 유효한_토큰으로_감정_목록과_단건을_조회할_수_있다(String listUri) {
         // given
         String accessToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
         Long emotionId = 한숨을_등록한다(accessToken);
 
         // when
         RestTestClient.ResponseSpec listResult = client.get()
-                .uri("/api/v1/emotions" + 지도_영역_질의)
+                .uri(listUri)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                 .exchange();
         RestTestClient.ResponseSpec detailResult = client.get()
@@ -1285,7 +1286,7 @@ class SecurityAuthorizationIntegrationTest {
                 .isEqualTo("#/components/schemas/EmotionV3CreateRequest");
         assertThat(schemas.path("EmotionCreateRequest").path("properties").has("anonymous")).isFalse();
         assertThat(schemas.path("EmotionV3CreateRequest").path("properties").has("anonymous")).isTrue();
-        assertThat(paths.path("/api/v3/emotions").has("get")).isFalse();
+        assertThat(paths.path("/api/v3/emotions").has("get")).isTrue();
         assertThat(paths.has("/api/v3/emotions/{emotionId}")).isFalse();
     }
 

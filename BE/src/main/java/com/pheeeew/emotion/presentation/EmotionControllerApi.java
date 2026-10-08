@@ -2,7 +2,8 @@ package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.common.exception.ErrorResponse;
 import com.pheeeew.common.presentation.dto.CursorResponse;
-import com.pheeeew.emotion.presentation.dto.EmotionListRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionsWithinBoundsRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionsWithoutBoundsRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
@@ -50,9 +51,23 @@ public interface EmotionControllerApi {
             @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
             @ApiResponse(responseCode = "503", description = "녹음 재생 URL을 발급할 수 없음")
     })
-    ResponseEntity<CursorResponse<EmotionDetailResponse>> findAll(@Valid EmotionListRequest request,
-            @Parameter(hidden = true) UUID devicePublicId);
+    ResponseEntity<CursorResponse<EmotionDetailResponse>> findListWithinBounds(
+            @Valid EmotionsWithinBoundsRequest request,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
 
+
+    @Operation(summary = "전체·그룹 감정 목록 조회", security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "감정 목록과 다음 커서"),
+            @ApiResponse(responseCode = "400", description = "그룹 ID나 커서가 올바르지 않거나 커서의 그룹과 요청 그룹이 다름"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
+            @ApiResponse(responseCode = "503", description = "녹음 재생 URL을 발급할 수 없음")
+    })
+    ResponseEntity<CursorResponse<EmotionDetailResponse>> findListWithoutBounds(
+            @Valid EmotionsWithoutBoundsRequest request,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
 
     @Operation(summary = "지도 스탬프 조회", description = """
             내용 유무와 관계없이 NONE, MEMO, AUDIO 유형의 감정을 모두 조회합니다.
@@ -71,7 +86,7 @@ public interface EmotionControllerApi {
             @ApiResponse(responseCode = "401", description = "인증할 수 없음")
     })
     ResponseEntity<CursorResponse<EmotionMapResponse>> findMap(
-            @Valid EmotionListRequest request,
+            @Valid EmotionsWithinBoundsRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 

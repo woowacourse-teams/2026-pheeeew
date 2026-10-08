@@ -155,8 +155,12 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void 녹음_목록과_상세는_내용_유형과_메모와_재생_정보를_순서대로_반환한다(boolean list) {
+    @CsvSource({
+            "/api/v1/emotions/42,$.properties",
+            "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38,$.items[0].properties",
+            "/api/v3/emotions,$.items[0].properties"
+    })
+    void 녹음_목록과_상세는_내용_유형과_메모와_재생_정보를_순서대로_반환한다(String uri, String path) {
         // given
         Emotion emotion = 기본_한숨_빌더()
                 .state(EmotionState.FRUSTRATED).rotationDegrees(0).deviceId(1L)
@@ -167,9 +171,8 @@ class EmotionControllerTest {
         when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(view);
         when(emotionQueryService.findListWithinBounds(any(), eq(DEVICE_PUBLIC_ID), any(), isNull()))
                 .thenReturn(EmotionPageView.of(List.of(view), false, null));
-        String uri = list
-                ? "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38" : EMOTION_URI;
-        String path = list ? "$.items[0].properties" : "$.properties";
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, null, null))
+                .thenReturn(EmotionPageView.of(List.of(view), false, null));
 
         // when / then
         request(HttpMethod.GET, uri, "access-token").expectStatus().isOk().expectBody()
@@ -190,6 +193,8 @@ class EmotionControllerTest {
         when(emotionQueryService.findById(42L, DEVICE_PUBLIC_ID)).thenReturn(view);
         when(emotionQueryService.findListWithinBounds(any(), eq(DEVICE_PUBLIC_ID), any(), isNull()))
                 .thenReturn(EmotionPageView.of(List.of(view), false, null));
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, null, null))
+                .thenReturn(EmotionPageView.of(List.of(view), false, null));
 
         // when / then
         request(HttpMethod.GET, EMOTION_URI, "access-token").expectStatus().isOk().expectBody()
@@ -199,6 +204,8 @@ class EmotionControllerTest {
                 .jsonPath("$.properties.groupStamp.frame").isEqualTo("CIRCLE");
         request(HttpMethod.GET, "/api/v1/emotions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38",
                 "access-token").expectStatus().isOk().expectBody()
+                .jsonPath("$.items[0].properties.groupStamp.text").isEqualTo("모임");
+        request(HttpMethod.GET, "/api/v3/emotions", "access-token").expectStatus().isOk().expectBody()
                 .jsonPath("$.items[0].properties.groupStamp.text").isEqualTo("모임");
     }
 
@@ -503,6 +510,81 @@ class EmotionControllerTest {
                 .exchange().expectStatus().isEqualTo(error.getStatus().value()).expectBody().jsonPath("$.code").isEqualTo(error.getCode());
     }
 
+    @ParameterizedTest
+    @MethodSource("listWithoutBoundsRequests")
+    void 좌표_없는_목록은_그룹과_커서를_인증된_기기로_조회하고_기존_응답을_유지한다(String query, UUID groupId, String cursor) {
+        // given
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groupId, cursor))
+                .thenReturn(EmotionPageView.of(List.of(detailView(42L, true), detailView(43L, false)), true, "next-page"));
+        String separator = query.isEmpty() ? "?" : "&";
+
+        // when / then: 조회 기기는 쿼리 값으로 바꿀 수 없다.
+        request(HttpMethod.GET, "/api/v3/emotions" + query + separator + "devicePublicId=" + UUID.randomUUID(), "access-token")
+                .expectStatus().isOk().expectHeader().contentType(MediaType.APPLICATION_JSON)
+                .expectHeader().valueEquals(HttpHeaders.CACHE_CONTROL, "no-cache, private")
+                .expectBody().jsonPath("$.items.length()").isEqualTo(2)
+                .jsonPath("$.items[0].type").isEqualTo("Feature")
+                .jsonPath("$.items[0].geometry.coordinates[0]").isEqualTo(126.9774)
+                .jsonPath("$.items[0].geometry.coordinates[1]").isEqualTo(37.5669)
+                .jsonPath("$.items[0].properties.contentType").isEqualTo("MEMO")
+                .jsonPath("$.items[0].properties.nickname").isEqualTo("익명")
+                .jsonPath("$.items[0].properties.emojis.length()").isEqualTo(6)
+                .jsonPath("$.items[0].properties.emojis[0].selected").isEqualTo(true)
+                .jsonPath("$.items[0].properties.isMine").isEqualTo(true)
+                .jsonPath("$.items[1].properties.isMine").isEqualTo(false)
+                .jsonPath("$.hasNext").isEqualTo(true).jsonPath("$.nextCursor").isEqualTo("next-page");
+        verify(emotionQueryService).findListWithoutBounds(DEVICE_PUBLIC_ID, groupId, cursor);
+    }
+
+    @Test
+    void 좌표_없는_목록에_좌표를_전달해도_조회_조건에_포함하지_않고_빈_결과도_그대로_반환한다() {
+        // given
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, null, null))
+                .thenReturn(EmotionPageView.of(List.of(), false, null));
+
+        // when / then
+        request(HttpMethod.GET, "/api/v3/emotions?minLongitude=invalid&minLatitude=37&maxLongitude=128&maxLatitude=38", "access-token")
+                .expectStatus().isOk().expectBody()
+                .json("{\"items\":[],\"hasNext\":false,\"nextCursor\":null}", JsonCompareMode.STRICT);
+        verify(emotionQueryService).findListWithoutBounds(DEVICE_PUBLIC_ID, null, null);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = "invalid-token")
+    void 좌표_없는_목록도_유효한_기기_인증이_필요하다(String token) {
+        request(HttpMethod.GET, "/api/v3/emotions", token).expectStatus().isUnauthorized();
+        verifyNoInteractions(emotionQueryService);
+    }
+
+    @Test
+    void 좌표_없는_목록의_허용_범위는_정확한_GET_경로로_제한한다() {
+        request(HttpMethod.PUT, "/api/v3/emotions", "access-token").expectStatus().isForbidden();
+        request(HttpMethod.DELETE, "/api/v3/emotions", "access-token").expectStatus().isForbidden();
+        request(HttpMethod.GET, "/api/v3/emotions/42", "access-token").expectStatus().isForbidden();
+        verifyNoInteractions(emotionQueryService);
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @Test
+    void 좌표_없는_목록의_잘못된_그룹_ID는_전체_조회로_처리하지_않는다() {
+        request(HttpMethod.GET, "/api/v3/emotions?groupId=invalid", "access-token").expectStatus().isBadRequest();
+        verifyNoInteractions(emotionQueryService);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"EMOTION_INVALID_CURSOR,400", "EMOTION_AUDIO_PLAYBACK_UNAVAILABLE,503"})
+    void 좌표_없는_목록의_커서와_재생_오류는_기존_오류_응답으로_반환한다(EmotionErrorCode error, int status) {
+        // given
+        UUID groupId = UUID.randomUUID();
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groupId, "cursor"))
+                .thenThrow(new EmotionException(error));
+
+        // when / then
+        request(HttpMethod.GET, "/api/v3/emotions?groupId=" + groupId + "&cursor=cursor", "access-token")
+                .expectStatus().isEqualTo(status).expectBody().jsonPath("$.code").isEqualTo(error.getCode());
+    }
+
     @Test
     void 목록의_첫_페이지와_다음_페이지를_인증된_기기로_조회한다() {
         EmotionSearchBounds bounds = EmotionSearchBounds.of(126.9, 37.5, 127.1, 37.6);
@@ -737,6 +819,15 @@ class EmotionControllerTest {
                 EmotionEmojiResult.of(EmojiType.RAGE, 0, false),
                 EmotionEmojiResult.of(EmojiType.SKULL, 0, false)
         ), null, null, 1L);
+    }
+
+    private static Stream<Arguments> listWithoutBoundsRequests() {
+        UUID groupId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+        return Stream.of(
+                Arguments.of("", null, null),
+                Arguments.of("?groupId=" + groupId, groupId, null),
+                Arguments.of("?cursor=next", null, "next"),
+                Arguments.of("?groupId=" + groupId + "&cursor=next", groupId, "next"));
     }
 
     private static Stream<Arguments> v3AnonymousOptions() {

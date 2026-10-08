@@ -7,8 +7,8 @@ import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 
-@Schema(name = "EmotionListRequest")
-public record EmotionListRequest(
+@Schema(name = "EmotionsWithinBoundsRequest")
+public record EmotionsWithinBoundsRequest(
         @DecimalMin("-180.0")
         @DecimalMax("180.0")
         @Schema(description = "첫 페이지 검색 영역의 서쪽 경계 경도", minimum = "-180", maximum = "180", example = "126.9")

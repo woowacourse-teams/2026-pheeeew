@@ -876,12 +876,30 @@ class EmotionQueryServiceIntegrationTest {
             assertThat(next.items()).allSatisfy(item -> assertThat(item.groupId()).isEqualTo(group.getPublicId()));
             assertThat(next.hasNext()).isFalse();
             assertThat(next.nextCursor()).isNull();
+
+            EmotionPageView nextWithGroup = emotionQueryService.findListWithoutBounds(
+                    viewer.getPublicId(), group.getPublicId(), page.nextCursor());
+            assertThat(nextWithGroup).isEqualTo(next);
         }
 
         EmotionPageView all = emotionQueryService.findListWithoutBounds(viewer.getPublicId(), null, null);
         assertThat(all.items()).extracting(EmotionDetailView::groupId).containsNull().contains(otherGroup.getPublicId());
         assertThat(all.items()).extracting(EmotionDetailView::id).contains(withoutStamp.getId());
         assertThat(emotionQueryService.findListWithoutBounds(viewer.getPublicId(), UUID.randomUUID(), null).items()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 좌표_없는_목록은_전체나_다른_그룹의_커서에_새_그룹_조건을_지정하면_거부한다(boolean cursorHasGroup) {
+        // given
+        UUID cursorGroupId = cursorHasGroup ? UUID.randomUUID() : null;
+        String cursor = EmotionListCursorCodec.encode(EmotionListCursor.initialWithoutBounds(Instant.now(), cursorGroupId));
+        UUID requestedGroupId = UUID.randomUUID();
+
+        // when / then
+        assertThatThrownBy(() -> emotionQueryService.findListWithoutBounds(viewer.getPublicId(), requestedGroupId, cursor))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_INVALID_CURSOR));
     }
 
     @Test

@@ -140,7 +140,11 @@ public class EmotionQueryService {
         EmotionListCursor cursor = encodedCursor == null
                 ? EmotionListCursor.initialWithoutBounds(currentSnapshotAt(), groupId)
                 : EmotionListCursorCodec.decodeWithoutBounds(encodedCursor);
+
         validateSnapshotAt(cursor.snapshotAt());
+        if (groupId != null && !groupId.equals(cursor.groupId())) {
+            throw new EmotionException(EMOTION_INVALID_CURSOR);
+        }
 
         return findList(cursor, devicePublicId);
     }
