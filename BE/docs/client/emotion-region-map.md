@@ -1,11 +1,41 @@
 # 행정구역 지도 감정 요약 API
 
+## 내용 필수 API 전환 (이슈 #694)
+
+구현 대상 계약이며 개발·운영 배포 완료를 의미하지 않습니다.
+
+| 용도 | 기존 | 내용 필수 계약 |
+| --- | --- | --- |
+| 익명 등록 | `POST /api/v1/emotions` | `POST /api/v2/emotions` |
+| 익명·기명 선택 등록 | `POST /api/v3/emotions` | 경로 유지, 내용 필수 |
+| 개별 지도 | `GET /api/v1/emotions/map` | `GET /api/v2/emotions/map` |
+| 지역 요약 | `GET /api/v1/emotions/map/regions` | `GET /api/v2/emotions/map/regions` |
+
+V2·V3 신규 등록은 `MEMO` 또는 `AUDIO`만 허용합니다. `NONE`·누락/null 유형과
+null·빈 문자열·공백뿐인 메모는 400입니다. 메모는 앞뒤 공백 제거 후 최대 200 Unicode codepoint입니다.
+녹음은 업로드 완료된 `audioUploadId`가 필요하며 메모와 동시에 전달하지 않습니다.
+V2는 익명 등록이며, V3는 기존 JSON boolean `anonymous` 선택을 유지합니다.
+
+V2 지도 요청·응답 구조와 커서·그룹·삭제·차단·스냅샷 정책은 V1과 같습니다.
+내용 필터를 페이지 제한 전에 적용하며, 지역 개수와 대표 감정도 같은 내용 필터로 계산합니다.
+NONE만 있는 지역은 결과에 포함하지 않습니다. V3 등록을 쓰는 앱도 V2 지도를 호출합니다.
+`GET /api/v3/emotions` 전체·그룹 목록은 이미 내용 있는 감정만 반환하며 이번에 변경하지 않습니다.
+
+V1 등록·개별 지도와 기존 데이터는 유지합니다. 지역 요약은 V1에서 V2로 옮기며 V1 지역 요약 경로는 제거합니다. 상세·수정 API에는 이번 조건을 추가하지 않습니다.
+유효한 V2/V3 등록 본문으로 기존 V1 NONE의 `requestId`를 재시도하면 멱등 계약에 따라
+최초 ID를 반환하며 내용을 덮어쓰지 않습니다. 새 등록에는 새 `requestId`를 사용합니다.
+생성 제한은 V1·V2·V3를 합쳐 기기당 1초에 한 번입니다.
+
+아래는 V2 지역 요약 계약입니다. ADR-0027의 기존 모든 내용 유형 집계에서,
+이번 사용자 결정으로 공개 지역 요약 API를 내용 있는 감정만 집계하도록 전환합니다.
+
+
 BE 구현 기준 계약이에요. 클라이언트 연동과 실제 기기 성능 검증은 아직 수행하지 않았어요.
 
 ## 요청
 
 ```http
-GET /api/v1/emotions/map/regions?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6&level=EMD
+GET /api/v2/emotions/map/regions?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6&level=EMD
 Authorization: Bearer <access-token>
 ```
 
@@ -30,14 +60,14 @@ Authorization: Bearer <access-token>
 | `EMD` | 8자리 | 행정동·읍·면. 법정동 기준이 아니에요. |
 
 수원·성남·용인은 `SIGUNGU`에서 각 구로 나뉘며 시 전체를 묶는 별도 `CITY` 계층은 없어요.
-클라이언트가 확대 정도에 따라 계층과 기존 `GET /api/v1/emotions/map`의 개별 조회 전환을 선택해요.
+클라이언트가 확대 정도에 따라 계층과 `GET /api/v2/emotions/map`의 개별 조회 전환을 선택해요.
 정확한 줌 경계는 아직 미확정이에요. 서버는 요청한 계층을 자동으로 바꾸지 않아요.
 
 ## 집계 대상
 
 - bbox는 지역 선택에만 사용해요. 경계 일부나 경계선이 화면에 걸쳐도 지역을 선택해요.
 - 총 개수와 대표 감정은 선택한 지역 전체의 같은 기록에서 계산해요. 기간 하한과 개별 지도 페이지 제한을 적용하지 않아요.
-- `NONE`, `MEMO`, `AUDIO`를 모두 포함하고, 삭제·서비스 전체 비노출 기록과 집계 조회 시점 이후 작성된 기록은 제외해요.
+- `MEMO`, `AUDIO`만 포함하고 `NONE`은 제외하며, 삭제·서비스 전체 비노출 기록과 집계 조회 시점 이후 작성된 기록은 제외해요.
 - 개인 감정 차단·작성자 차단을 요약에 적용하지 않아요. 기존 개별 지도·상세의 차단 정책은 유지해요.
 - 그룹을 지정하면 해당 그룹의 기록만 총 개수와 대표 감정에 함께 반영해요.
 

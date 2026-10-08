@@ -18,6 +18,7 @@ import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.presentation.dto.EmotionDetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionV3CreateRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV2CreateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateResponse;
 import java.net.URI;
 import java.util.List;
@@ -85,12 +86,12 @@ public class EmotionController implements EmotionControllerApi {
     }
 
     @Override
-    @GetMapping(value = "/v1/emotions/map/regions", produces = MediaType.APPLICATION_JSON_VALUE)
+    @GetMapping(value = "/v2/emotions/map/regions", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<EmotionRegionMapResponse>> findRegionMap(
             @ModelAttribute EmotionRegionMapRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
-        List<EmotionRegionMapItemView> items = emotionQueryService.findRegionMap(request.toBounds(), request.level(), request.groupId());
+        List<EmotionRegionMapItemView> items = emotionQueryService.findContentRegionMap(request.toBounds(), request.level(), request.groupId());
         List<EmotionRegionMapResponse> responses = items.stream()
                 .map(EmotionRegionMapResponse::from)
                 .toList();
@@ -98,6 +99,30 @@ public class EmotionController implements EmotionControllerApi {
         return ResponseEntity.ok()
                 .cacheControl(CacheControl.noCache().cachePrivate())
                 .body(responses);
+    }
+
+    @Override
+    @GetMapping("/v2/emotions/map")
+    public ResponseEntity<CursorResponse<EmotionMapResponse>> findContentMap(
+            @ModelAttribute EmotionsWithinBoundsRequest request, @CurrentDevice UUID devicePublicId
+    ) {
+        EmotionMapPageView page = emotionQueryService.findContentMapWithinBounds(
+                request.toBounds(), devicePublicId, request.groupId(), request.cursor());
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
+                .body(CursorResponse.of(page.items().stream().map(EmotionMapResponse::from).toList(),
+                        page.hasNext(), page.nextCursor()));
+    }
+
+    @Override
+    @PostMapping("/v2/emotions")
+    public ResponseEntity<EmotionCreateResponse> saveV2(
+            @RequestBody EmotionV2CreateRequest request, @CurrentDevice UUID devicePublicId
+    ) {
+        EmotionCreateResponse result = EmotionCreateResponse.from(emotionCommandService.save(
+                request.requestId(), request.state(), request.longitude(), request.latitude(), request.rotationDegrees(),
+                request.memo(), request.audioUploadId(), request.groupId(), devicePublicId, null));
+        return ResponseEntity.ok().location(URI.create("/api/v1/emotions/" + result.id()))
+                .cacheControl(CacheControl.noStore()).body(result);
     }
 
     @Override

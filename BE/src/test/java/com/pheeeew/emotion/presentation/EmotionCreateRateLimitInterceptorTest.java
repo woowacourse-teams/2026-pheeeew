@@ -93,7 +93,7 @@ class EmotionCreateRateLimitInterceptorTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/api/v1/emotions", "/api/v3/emotions"})
+    @ValueSource(strings = {"/api/v1/emotions", "/api/v2/emotions", "/api/v3/emotions"})
     void 같은_requestId도_1초_안에는_429이며_1초_후에는_다시_조회한다(String uri) {
         // given
         String token = newDeviceToken();
@@ -118,7 +118,9 @@ class EmotionCreateRateLimitInterceptorTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"/api/v1/emotions,/api/v3/emotions", "/api/v3/emotions,/api/v1/emotions"})
+    @CsvSource({"/api/v1/emotions,/api/v3/emotions", "/api/v3/emotions,/api/v1/emotions",
+            "/api/v1/emotions,/api/v2/emotions", "/api/v2/emotions,/api/v3/emotions",
+            "/api/v3/emotions,/api/v2/emotions", "/api/v2/emotions,/api/v1/emotions"})
     void 버전을_바꿔도_같은_기기의_1초_제한을_공유한다(String first, String next) {
         // given
         String token = newDeviceToken();
@@ -215,7 +217,7 @@ class EmotionCreateRateLimitInterceptorTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("""
                         {"requestId":"%s","state":"FRUSTRATED","longitude":126.97,"latitude":37.56,
-                         "rotationDegrees":35.5,"contentType":"NONE"}
+                         "rotationDegrees":35.5,"contentType":"MEMO","memo":"메모"}
                         """.formatted(requestId))
                 .exchange();
     }

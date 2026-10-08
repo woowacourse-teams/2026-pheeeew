@@ -183,6 +183,29 @@ class EmotionCommandServiceSaveIntegrationTest {
         verifyNoInteractions(objectVerifier);
     }
 
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(booleans = {true, false})
+    void 내용_필수_버전의_유효한_재시도도_기존_NONE_감정을_덮어쓰지_않는다(Boolean anonymous) {
+        // given: V1의 내용 없는 감정을 V2(null) 또는 V3의 메모 본문으로 재시도한다.
+        UUID requestId = UUID.randomUUID();
+        Emotion first = save(requestId, null, null);
+
+        // when
+        Emotion retried = commandService.save(requestId, EmotionState.ANGRY,
+                126.9774, 37.5669, 90, "새 메모", null, null, device.getPublicId(), anonymous);
+
+        // then
+        assertThat(retried.getId()).isEqualTo(first.getId());
+        assertThat(retried.isAnonymous()).isTrue();
+        assertThat(retried.getMemo()).isNull();
+        assertThat(retried.getContent().hasAudio()).isFalse();
+        assertThat(retried.getState()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(emotionRepository.count()).isOne();
+        assertThat(linkCount()).isZero();
+        verifyNoInteractions(objectVerifier);
+    }
+
     @Test
     void 녹음_연결과_감정을_함께_확정한다() {
         // given
