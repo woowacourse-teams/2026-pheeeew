@@ -417,6 +417,11 @@ class NearbyEmotionViewModelTest {
 
         override suspend fun nextPage(cursor: String) = next()
 
+        override suspend fun feedPage(
+            groupId: String,
+            cursor: String?,
+        ) = next()
+
         override suspend fun detail(id: Long): EmotionResult<Emotion> =
             EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
 

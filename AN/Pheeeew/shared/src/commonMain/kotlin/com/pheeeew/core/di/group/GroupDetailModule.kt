@@ -1,7 +1,9 @@
 package com.pheeeew.core.di.group
 
 import com.pheeeew.core.network.ApiClient
+import com.pheeeew.data.remote.emotion.EmotionApi
 import com.pheeeew.data.remote.group.api.GroupDetailApi
+import com.pheeeew.data.repository.emotion.EmotionRepositoryImpl
 import com.pheeeew.data.repository.group.GroupDetailRepositoryImpl
 import com.pheeeew.feature.screens.group.adapter.ApiGroupDetailSource
 import com.pheeeew.feature.screens.group.adapter.ApiLeaveGroupAction
@@ -17,6 +19,7 @@ fun createGroupDetailDependencies(
     val repository = GroupDetailRepositoryImpl(GroupDetailApi(apiClient.requests))
     return GroupDetailDependencies(
         source = ApiGroupDetailSource(repository),
+        emotionRepository = EmotionRepositoryImpl(EmotionApi(apiClient.requests)),
         leaveGroupAction = ApiLeaveGroupAction(repository),
         monitoring = apiClient.monitoring,
         errorReporter = errorReporter,

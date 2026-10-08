@@ -31,6 +31,17 @@ internal class EmotionRepositoryImpl(
     override suspend fun nextPage(cursor: String) =
         api.list(mapOf("cursor" to cursor)).mapped(EmotionResponseMapper::page)
 
+    override suspend fun feedPage(
+        groupId: String,
+        cursor: String?,
+    ) = api
+        .listWithoutBounds(
+            buildMap {
+                put("groupId", groupId)
+                cursor?.let { put("cursor", it) }
+            },
+        ).mapped(EmotionResponseMapper::feedPage)
+
     override suspend fun detail(id: Long) = api.detail(id).mapped(EmotionResponseMapper::emotion)
 
     override suspend fun react(

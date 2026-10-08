@@ -1,9 +1,18 @@
 package com.pheeeew.feature.screens.group.detail
 
+import com.pheeeew.domain.model.emotion.Emotion
+import com.pheeeew.domain.model.emotion.EmotionBounds
+import com.pheeeew.domain.model.emotion.EmotionPage
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.group.GroupRole
+import com.pheeeew.domain.repository.emotion.EmotionFailure
+import com.pheeeew.domain.repository.emotion.EmotionRepository
+import com.pheeeew.domain.repository.emotion.EmotionResult
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
+import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedLoadState
+import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedUiState
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
@@ -201,6 +210,95 @@ class GroupDetailViewModelTest {
         }
 
     @Test
+    fun `그룹 감정 목록 다음 페이지 요청에 같은 그룹과 커서를 전달한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val requests = mutableListOf<Pair<String, String?>>()
+                val emotionRepository =
+                    object : EmotionRepository by TestEmotionRepository {
+                        override suspend fun feedPage(
+                            groupId: String,
+                            cursor: String?,
+                        ): EmotionResult<EmotionPage> {
+                            requests += groupId to cursor
+                            return EmotionResult.Success(
+                                EmotionPage(
+                                    items = emptyList(),
+                                    nextCursor = if (cursor == null) "opaque-cursor" else null,
+                                ),
+                            )
+                        }
+                    }
+                val viewModel =
+                    createViewModel(
+                        source = { GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER)) },
+                        emotionRepository = emotionRepository,
+                    )
+                runCurrent()
+
+                viewModel.onMoodFeedLoadMore()
+                runCurrent()
+
+                assertEquals(
+                    listOf(GROUP_ID.value to null, GROUP_ID.value to "opaque-cursor"),
+                    requests,
+                )
+                assertFalse((viewModel.uiState.value.moodFeed as GroupMoodFeedUiState.Available).hasMore)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `초기 목록 오류에서 새로고침을 시작해도 오류 화면을 유지한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val refreshFeed = CompletableDeferred<EmotionResult<EmotionPage>>()
+                var feedRequests = 0
+                val emotionRepository =
+                    object : EmotionRepository by TestEmotionRepository {
+                        override suspend fun feedPage(
+                            groupId: String,
+                            cursor: String?,
+                        ): EmotionResult<EmotionPage> {
+                            feedRequests++
+                            return if (feedRequests == 1) {
+                                EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
+                            } else {
+                                refreshFeed.await()
+                            }
+                        }
+                    }
+                val viewModel =
+                    createViewModel(
+                        source = { GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER)) },
+                        emotionRepository = emotionRepository,
+                    )
+                runCurrent()
+                assertEquals(GroupMoodFeedUiState.LoadFailed(isRetrying = false), viewModel.uiState.value.moodFeed)
+
+                viewModel.onRefresh()
+                runCurrent()
+
+                assertEquals(GroupMoodFeedUiState.LoadFailed(isRetrying = true), viewModel.uiState.value.moodFeed)
+                refreshFeed.complete(EmotionResult.Success(EmotionPage(emptyList(), null)))
+                runCurrent()
+                assertEquals(
+                    GroupMoodFeedUiState.Available(
+                        posts = emptyList(),
+                        hasMore = false,
+                        loadState = GroupMoodFeedLoadState.Idle,
+                    ),
+                    viewModel.uiState.value.moodFeed,
+                )
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `member leave completes without a press session`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -366,11 +464,13 @@ class GroupDetailViewModelTest {
     private fun createViewModel(
         source: suspend () -> GroupDetailLoadResult,
         leave: suspend () -> LeaveGroupResult = { LeaveGroupResult.Unavailable },
+        emotionRepository: EmotionRepository = TestEmotionRepository,
     ) = GroupDetailViewModel(
         groupId = GROUP_ID,
         dependencies =
             GroupDetailDependencies(
                 source = { source() },
+                emotionRepository = emotionRepository,
                 leaveGroupAction = { leave() },
                 errorReporter = { throw it },
                 operationKeyAllocator = GroupOperationKeyAllocator("detail-test"),
@@ -398,5 +498,31 @@ class GroupDetailViewModelTest {
 
     private companion object {
         val GROUP_ID = GroupId("0b8f3a2e-5c71-4d9a-b0e4-7f2c1a6d8e39")
+    }
+
+    private object TestEmotionRepository : EmotionRepository {
+        override suspend fun firstPage(
+            bounds: EmotionBounds,
+            groupId: String?,
+        ) = unavailable<EmotionPage>()
+
+        override suspend fun nextPage(cursor: String) = unavailable<EmotionPage>()
+
+        override suspend fun feedPage(
+            groupId: String,
+            cursor: String?,
+        ) = EmotionResult.Success(EmotionPage(emptyList(), null))
+
+        override suspend fun detail(id: Long): EmotionResult<Emotion> = unavailable<Emotion>()
+
+        override suspend fun react(
+            id: Long,
+            type: EmotionReactionType,
+            selected: Boolean,
+        ) = unavailable<Unit>()
+
+        override suspend fun block(id: Long) = unavailable<Unit>()
+
+        private fun <T> unavailable() = EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
     }
 }

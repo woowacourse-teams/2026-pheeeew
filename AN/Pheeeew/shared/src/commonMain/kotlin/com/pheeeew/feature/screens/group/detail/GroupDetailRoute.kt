@@ -1,16 +1,18 @@
 package com.pheeeew.feature.screens.group.detail
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.feature.monitoring.product.ProductScreen
+import com.pheeeew.feature.monitoring.product.rememberObservedEmotionPlayer
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -36,21 +38,47 @@ fun GroupDetailRoute(
     ) -> Unit,
     onCopyCode: suspend (code: String, operationKey: GroupOperationKey) -> GroupCopyCodeResult,
     modifier: Modifier = Modifier,
-    onMoodReactionClick: ((String, EmotionReactionType) -> Unit)?,
-    onMoodAudioClick: ((String) -> Unit)?,
     onMoodBlockClick: ((String) -> Unit)?,
     onMoodReportClick: ((String) -> Unit)?,
-    onMoodFeedRetry: (() -> Unit)?,
-    onMoodFeedLoadMore: (() -> Unit)?,
 ) {
     ProductScreen(viewModel.telemetry, isCurrentDestination)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val audioPlayer = rememberObservedEmotionPlayer(viewModel.telemetry) { "group_detail" }
+    val playback by audioPlayer.state.collectAsStateWithLifecycle()
     val currentOnBack by rememberUpdatedState(onBack)
     val currentOnReturnHome by rememberUpdatedState(onReturnHome)
     val currentOnLeft by rememberUpdatedState(onLeft)
     val currentOnMembershipUnavailable by rememberUpdatedState(onMembershipUnavailable)
     val currentOnCopyCode by rememberUpdatedState(onCopyCode)
+
+    LaunchedEffect(lifecycleOwner, viewModel, audioPlayer, isCurrentDestination) {
+        if (!isCurrentDestination) return@LaunchedEffect
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.events.collect { event ->
+                when (event) {
+                    is GroupDetailEvent.PlayMoodAudio -> audioPlayer.play(event.emotionId, event.url)
+                    GroupDetailEvent.StopMoodAudio -> audioPlayer.stop()
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(viewModel, playback.id) {
+        viewModel.onMoodAudioPlaybackChanged(playback.id)
+    }
+
+    DisposableEffect(lifecycleOwner, audioPlayer) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_STOP) audioPlayer.stop()
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            audioPlayer.stop()
+        }
+    }
 
     LaunchedEffect(lifecycleOwner, viewModel, isCurrentDestination) {
         if (!isCurrentDestination) return@LaunchedEffect
@@ -112,12 +140,12 @@ fun GroupDetailRoute(
                 onRetryLeave = viewModel::onRetryLeave,
                 onResolveLeaveOutcome = viewModel::onResolveLeaveOutcome,
                 onNoticeDismissed = viewModel::acknowledgeNotice,
-                onMoodReactionClick = onMoodReactionClick,
-                onMoodAudioClick = onMoodAudioClick,
+                onMoodReactionClick = viewModel::onMoodReactionClick,
+                onMoodAudioClick = viewModel::onMoodAudioClick,
                 onMoodBlockClick = onMoodBlockClick,
                 onMoodReportClick = onMoodReportClick,
-                onMoodFeedRetry = onMoodFeedRetry,
-                onMoodFeedLoadMore = onMoodFeedLoadMore,
+                onMoodFeedRetry = viewModel::onMoodFeedRetry,
+                onMoodFeedLoadMore = viewModel::onMoodFeedLoadMore,
             ),
         modifier = modifier,
     )

@@ -14,7 +14,7 @@ data class GroupDetailUiState(
     val notice: GroupDetailNotice? = null,
     val groupName: String? = null,
     val membershipEvent: GroupDetailMembershipEvent? = null,
-    val moodFeed: GroupMoodFeedUiState = GroupMoodFeedUiState.LoadFailed(isRetrying = false),
+    val moodFeed: GroupMoodFeedUiState = GroupMoodFeedUiState.Loading,
 ) {
     val detail: GroupDetailUiModel?
         get() = (content as? GroupDetailContent.Ready)?.detail

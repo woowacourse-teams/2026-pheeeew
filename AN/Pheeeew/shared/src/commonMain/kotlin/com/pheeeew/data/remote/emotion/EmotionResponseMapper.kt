@@ -19,6 +19,18 @@ internal object EmotionResponseMapper {
         return EmotionPage(dto.items.map(::emotion), dto.nextCursor.takeIf { dto.hasNext })
     }
 
+    fun feedPage(dto: EmotionPageDto): EmotionPage {
+        val page = page(dto)
+        require(
+            page.items.all {
+                it.contentType == EmotionContentType.MEMO || it.contentType == EmotionContentType.AUDIO
+            },
+        )
+        require(page.items.all { it.contentType != EmotionContentType.MEMO || it.memo != null })
+        require(page.items.all { it.contentType != EmotionContentType.AUDIO || it.audio != null })
+        return page
+    }
+
     fun emotion(dto: EmotionDto): Emotion {
         require(dto.id > 0)
         val p = dto.properties

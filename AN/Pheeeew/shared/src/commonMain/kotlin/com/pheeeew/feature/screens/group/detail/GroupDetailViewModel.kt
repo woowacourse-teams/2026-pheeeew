@@ -2,22 +2,33 @@ package com.pheeeew.feature.screens.group.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.domain.model.emotion.EmotionPage
+import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.group.GroupRole
+import com.pheeeew.domain.repository.emotion.EmotionFailure
+import com.pheeeew.domain.repository.emotion.EmotionResult
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.monitoring.product.resultLabel
+import com.pheeeew.feature.screens.group.detail.model.GroupMoodContentUiModel
+import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedLoadState
+import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedUiState
+import com.pheeeew.feature.screens.group.detail.model.GroupMoodPostUiModel
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlin.time.Clock
 
 class GroupDetailViewModel(
     val groupId: GroupId,
@@ -38,11 +49,23 @@ class GroupDetailViewModel(
     private var loadingIndicatorMinimumJob: Job? = null
     private var loadingIndicatorRequestId: Long? = null
     private var leaveJob: Job? = null
+    private var moodFeedJob: Job? = null
+    private var moodFeedGeneration = 0L
+    private var moodFeedNextCursor: String? = null
+    private val moodAudioEvents = Channel<GroupDetailEvent>(Channel.BUFFERED)
+    val events = moodAudioEvents.receiveAsFlow()
     private var loadGeneration = 0L
     private var hasResumed = false
 
     init {
         loadDetail()
+        loadInitialMoodFeed()
+    }
+
+    override fun onCleared() {
+        moodFeedGeneration += 1
+        moodFeedJob?.cancel()
+        super.onCleared()
     }
 
     fun onResumed() {
@@ -77,6 +100,7 @@ class GroupDetailViewModel(
         ) {
             return
         }
+        refreshMoodFeed()
         if (loadJob?.isActive == true) {
             if (showRefreshIndicator && state.detail != null) {
                 _uiState.update { current ->
@@ -88,6 +112,338 @@ class GroupDetailViewModel(
         }
         loadDetail(showRefreshIndicator = showRefreshIndicator)
     }
+
+    fun onMoodFeedRetry() {
+        when (val feed = _uiState.value.moodFeed) {
+            GroupMoodFeedUiState.Loading -> {
+                Unit
+            }
+
+            is GroupMoodFeedUiState.LoadFailed -> {
+                loadInitialMoodFeed(isRetrying = true)
+            }
+
+            is GroupMoodFeedUiState.Available -> {
+                when (feed.loadState) {
+                    is GroupMoodFeedLoadState.RefreshFailed -> {
+                        refreshMoodFeed()
+                    }
+
+                    is GroupMoodFeedLoadState.LoadMoreFailed -> {
+                        loadMoreMoodFeed(isRetrying = true)
+                    }
+
+                    else -> {
+                        Unit
+                    }
+                }
+            }
+        }
+    }
+
+    fun onMoodFeedLoadMore() {
+        loadMoreMoodFeed(isRetrying = false)
+    }
+
+    fun onMoodReactionClick(
+        emotionId: String,
+        type: EmotionReactionType,
+    ) {
+        val id = emotionId.toLongOrNull() ?: return
+        val post = findMoodPost(emotionId) ?: return
+        if (post.isReactionBusy) return
+        val reaction = post.reactions.firstOrNull { it.type == type } ?: return
+        updateMoodPost(emotionId) { it.copy(isReactionBusy = true) }
+        viewModelScope.launch {
+            val result =
+                try {
+                    dependencies.emotionRepository.react(id, type, selected = !reaction.selected)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (exception: Exception) {
+                    dependencies.errorReporter.reportUnexpected(exception)
+                    EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
+                }
+            if (result is EmotionResult.Success) {
+                updateMoodPost(emotionId) { current ->
+                    current.copy(
+                        reactions =
+                            current.reactions.map { count ->
+                                when {
+                                    count.type != type -> {
+                                        count
+                                    }
+
+                                    reaction.selected -> {
+                                        count.copy(
+                                            count = (count.count - 1).coerceAtLeast(0),
+                                            selected = false,
+                                        )
+                                    }
+
+                                    else -> {
+                                        count.copy(count = count.count + 1, selected = true)
+                                    }
+                                }
+                            },
+                    )
+                }
+            }
+            updateMoodPost(emotionId) { it.copy(isReactionBusy = false) }
+        }
+    }
+
+    fun onMoodAudioClick(emotionId: String) {
+        val post = findMoodPost(emotionId) ?: return
+        val audioContent = post.content as? GroupMoodContentUiModel.AudioContent ?: return
+        if (post.isAudioLoading) return
+        if (audioContent.isPlaying) {
+            moodAudioEvents.trySend(GroupDetailEvent.StopMoodAudio)
+            return
+        }
+        val id = emotionId.toLongOrNull() ?: return
+        val audio = audioContent.audio ?: return
+        updateMoodPost(emotionId) { it.copy(isAudioLoading = true) }
+        viewModelScope.launch {
+            try {
+                val playback =
+                    if (audio.expiresAt > Clock.System.now()) {
+                        audio
+                    } else {
+                        when (val refreshed = dependencies.emotionRepository.detail(id)) {
+                            is EmotionResult.Success -> refreshed.value.audio
+                            is EmotionResult.Failure -> null
+                        }
+                    }
+                if (playback == null) {
+                    updateMoodPost(emotionId) { it.copy(isAudioLoading = false) }
+                } else {
+                    updateMoodPost(emotionId) { current ->
+                        val content = current.content as? GroupMoodContentUiModel.AudioContent
+                        if (content == null) current else current.copy(content = content.copy(audio = playback))
+                    }
+                    moodAudioEvents.send(GroupDetailEvent.PlayMoodAudio(id, playback.url))
+                }
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (exception: Exception) {
+                dependencies.errorReporter.reportUnexpected(exception)
+                updateMoodPost(emotionId) { it.copy(isAudioLoading = false) }
+            }
+        }
+    }
+
+    fun onMoodAudioPlaybackChanged(playingId: Long?) {
+        _uiState.update { state ->
+            val feed = state.moodFeed as? GroupMoodFeedUiState.Available ?: return@update state
+            state.copy(
+                moodFeed =
+                    feed.copy(
+                        posts =
+                            feed.posts.map { post ->
+                                val content = post.content as? GroupMoodContentUiModel.AudioContent
+                                if (content == null) {
+                                    post
+                                } else {
+                                    post.copy(
+                                        isAudioLoading = false,
+                                        content = content.copy(isPlaying = post.id.toLongOrNull() == playingId),
+                                    )
+                                }
+                            },
+                    ),
+            )
+        }
+    }
+
+    private fun findMoodPost(id: String): GroupMoodPostUiModel? =
+        (_uiState.value.moodFeed as? GroupMoodFeedUiState.Available)?.posts?.firstOrNull { it.id == id }
+
+    private fun updateMoodPost(
+        id: String,
+        update: (GroupMoodPostUiModel) -> GroupMoodPostUiModel,
+    ) {
+        _uiState.update { state ->
+            val feed = state.moodFeed as? GroupMoodFeedUiState.Available ?: return@update state
+            state.copy(moodFeed = feed.copy(posts = feed.posts.map { if (it.id == id) update(it) else it }))
+        }
+    }
+
+    private fun loadInitialMoodFeed(isRetrying: Boolean = false) {
+        val requestId = beginMoodFeedRequest()
+        moodFeedNextCursor = null
+        _uiState.update {
+            it.copy(
+                moodFeed =
+                    if (isRetrying) {
+                        GroupMoodFeedUiState.LoadFailed(isRetrying = true)
+                    } else {
+                        GroupMoodFeedUiState.Loading
+                    },
+            )
+        }
+        moodFeedJob =
+            viewModelScope.launch {
+                val result = requestMoodFeedPage(cursor = null)
+                if (requestId != moodFeedGeneration) return@launch
+                _uiState.update { state ->
+                    state.copy(moodFeed = result.toInitialFeed())
+                }
+            }
+    }
+
+    private fun refreshMoodFeed() {
+        val currentFeed = _uiState.value.moodFeed
+        val current = currentFeed as? GroupMoodFeedUiState.Available
+        val posts = current?.posts.orEmpty()
+        val keepInitialError = posts.isEmpty() && currentFeed is GroupMoodFeedUiState.LoadFailed
+        val requestId = beginMoodFeedRequest()
+        _uiState.update { state ->
+            state.copy(
+                moodFeed =
+                    if (posts.isEmpty()) {
+                        if (keepInitialError) {
+                            GroupMoodFeedUiState.LoadFailed(isRetrying = true)
+                        } else {
+                            GroupMoodFeedUiState.Loading
+                        }
+                    } else {
+                        GroupMoodFeedUiState.Available(
+                            posts = posts,
+                            hasMore = moodFeedNextCursor != null,
+                            loadState = GroupMoodFeedLoadState.Refreshing,
+                        )
+                    },
+            )
+        }
+        moodFeedJob =
+            viewModelScope.launch {
+                val result = requestMoodFeedPage(cursor = null)
+                if (requestId != moodFeedGeneration) return@launch
+                when (result) {
+                    is EmotionResult.Success -> {
+                        moodFeedNextCursor = result.value.nextCursor
+                        _uiState.update { state ->
+                            state.copy(
+                                moodFeed =
+                                    GroupMoodFeedUiState.Available(
+                                        posts = result.value.items.map { it.toGroupMoodPostUiModel() },
+                                        hasMore = moodFeedNextCursor != null,
+                                        loadState = GroupMoodFeedLoadState.Idle,
+                                    ),
+                            )
+                        }
+                    }
+
+                    is EmotionResult.Failure -> {
+                        if (posts.isEmpty()) {
+                            _uiState.update { it.copy(moodFeed = GroupMoodFeedUiState.LoadFailed(isRetrying = false)) }
+                        } else {
+                            _uiState.update { state ->
+                                state.copy(
+                                    moodFeed =
+                                        GroupMoodFeedUiState.Available(
+                                            posts = posts,
+                                            hasMore = moodFeedNextCursor != null,
+                                            loadState = GroupMoodFeedLoadState.RefreshFailed(isRetrying = false),
+                                        ),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+    }
+
+    private fun loadMoreMoodFeed(isRetrying: Boolean) {
+        val feed = _uiState.value.moodFeed as? GroupMoodFeedUiState.Available ?: return
+        val cursor = moodFeedNextCursor ?: return
+        if (!feed.hasMore || (!isRetrying && feed.loadState != GroupMoodFeedLoadState.Idle)) return
+        if (isRetrying && feed.loadState !is GroupMoodFeedLoadState.LoadMoreFailed) return
+        val requestId = beginMoodFeedRequest()
+        _uiState.update { state ->
+            state.copy(
+                moodFeed =
+                    feed.copy(
+                        loadState = GroupMoodFeedLoadState.LoadingMore,
+                    ),
+            )
+        }
+        moodFeedJob =
+            viewModelScope.launch {
+                val result = requestMoodFeedPage(cursor)
+                if (requestId != moodFeedGeneration) return@launch
+                when (result) {
+                    is EmotionResult.Success -> {
+                        moodFeedNextCursor = result.value.nextCursor
+                        val existingIds = feed.posts.mapTo(mutableSetOf()) { it.id }
+                        val newPosts =
+                            result.value.items
+                                .map { it.toGroupMoodPostUiModel() }
+                                .filterNot { it.id in existingIds }
+                        _uiState.update { state ->
+                            state.copy(
+                                moodFeed =
+                                    GroupMoodFeedUiState.Available(
+                                        posts = feed.posts + newPosts,
+                                        hasMore = moodFeedNextCursor != null,
+                                        loadState = GroupMoodFeedLoadState.Idle,
+                                    ),
+                            )
+                        }
+                    }
+
+                    is EmotionResult.Failure -> {
+                        if (result.reason == EmotionFailure.INVALID_REQUEST) {
+                            loadInitialMoodFeed(isRetrying = true)
+                        } else {
+                            _uiState.update { state ->
+                                state.copy(
+                                    moodFeed =
+                                        GroupMoodFeedUiState.Available(
+                                            posts = feed.posts,
+                                            hasMore = true,
+                                            loadState = GroupMoodFeedLoadState.LoadMoreFailed(isRetrying = false),
+                                        ),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+    }
+
+    private fun beginMoodFeedRequest(): Long {
+        moodFeedGeneration += 1
+        moodFeedJob?.cancel()
+        return moodFeedGeneration
+    }
+
+    private suspend fun requestMoodFeedPage(cursor: String?): EmotionResult<EmotionPage> =
+        try {
+            dependencies.emotionRepository.feedPage(groupId.value, cursor)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (exception: Exception) {
+            dependencies.errorReporter.reportUnexpected(exception)
+            EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
+        }
+
+    private fun EmotionResult<EmotionPage>.toInitialFeed(): GroupMoodFeedUiState =
+        when (this) {
+            is EmotionResult.Success -> {
+                moodFeedNextCursor = value.nextCursor
+                GroupMoodFeedUiState.Available(
+                    posts = value.items.map { it.toGroupMoodPostUiModel() },
+                    hasMore = moodFeedNextCursor != null,
+                    loadState = GroupMoodFeedLoadState.Idle,
+                )
+            }
+
+            is EmotionResult.Failure -> {
+                GroupMoodFeedUiState.LoadFailed(isRetrying = false)
+            }
+        }
 
     fun onMoreClick() {
         _uiState.update { state ->

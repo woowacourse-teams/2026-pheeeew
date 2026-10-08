@@ -209,9 +209,9 @@ internal fun GroupDetailReadyContent(
                     EmotionChatItem(
                         item = post.toEmotionChatItemUiModel(),
                         menuMode = openMenu?.takeIf { it.first == post.id }?.second,
-                        busy = false,
+                        busy = post.isAudioLoading || post.isReactionBusy,
                         playing = (post.content as? GroupMoodContentUiModel.AudioContent)?.isPlaying == true,
-                        audioLoading = false,
+                        audioLoading = post.isAudioLoading,
                         focused = false,
                         onOpenOnMap = null,
                         onOpenMenu = { mode -> openMenu = post.id to mode },
@@ -477,7 +477,7 @@ private fun GroupMoodPostUiModel.toEmotionChatItemUiModel() =
         nickname = author,
         isMine = isMine,
         emotionIcon = emotionIcon,
-        emotionDescription = null,
+        emotionDescription = emotionDescription,
         timeLabel = timeAgo,
         content =
             when (val mood = content) {
@@ -490,5 +490,5 @@ private fun GroupMoodPostUiModel.toEmotionChatItemUiModel() =
                 }
             },
         reactions = reactions,
-        stamp = null,
+        stamp = stamp,
     )

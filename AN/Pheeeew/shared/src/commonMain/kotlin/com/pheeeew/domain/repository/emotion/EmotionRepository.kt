@@ -25,6 +25,11 @@ interface EmotionRepository {
 
     suspend fun nextPage(cursor: String): EmotionResult<EmotionPage>
 
+    suspend fun feedPage(
+        groupId: String,
+        cursor: String?,
+    ): EmotionResult<EmotionPage>
+
     suspend fun detail(id: Long): EmotionResult<Emotion>
 
     suspend fun react(

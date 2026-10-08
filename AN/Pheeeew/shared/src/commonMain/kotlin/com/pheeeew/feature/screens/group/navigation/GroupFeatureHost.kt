@@ -142,12 +142,8 @@ fun GroupFeatureHost(
                     clipboardManager.setText(AnnotatedString(code))
                     GroupCopyCodeResult.Copied
                 },
-                onMoodReactionClick = null,
-                onMoodAudioClick = null,
                 onMoodBlockClick = null,
                 onMoodReportClick = null,
-                onMoodFeedRetry = null,
-                onMoodFeedLoadMore = null,
             )
         }
     }
