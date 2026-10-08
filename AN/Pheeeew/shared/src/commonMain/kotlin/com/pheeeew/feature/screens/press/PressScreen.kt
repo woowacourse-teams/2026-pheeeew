@@ -3,31 +3,36 @@ package com.pheeeew.feature.screens.press
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.domain.model.emotion.EmotionState
@@ -42,7 +47,6 @@ import com.pheeeew.feature.emotion.model.EmotionKind
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.press_count_unavailable
-import pheeeew.shared.generated.resources.press_emotion_counts_today_title
 import pheeeew.shared.generated.resources.press_screen_subtitle
 import pheeeew.shared.generated.resources.press_screen_title
 import pheeeew.shared.generated.resources.press_summary_all_label
@@ -74,63 +78,63 @@ internal fun PressScreen(
             modifier
                 .fillMaxSize()
                 .background(Color.White)
-                .statusBarsPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(top = 28.dp),
+                .statusBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-            Text(
-                text = stringResource(Res.string.press_screen_title),
-                color = Color(0xFF202323),
-                fontSize = 28.sp,
-                fontFamily = font,
-                fontWeight = FontWeight.Black,
+        Column(Modifier.fillMaxWidth()) {
+            Spacer(Modifier.height(28.dp))
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
+                Text(
+                    text = stringResource(Res.string.press_screen_title),
+                    color = AppColors.TextPrimary,
+                    fontSize = 24.sp,
+                    fontFamily = font,
+                    fontWeight = FontWeight.Black,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = stringResource(Res.string.press_screen_subtitle),
+                    color = Color(0xFF777C78),
+                    fontSize = 14.sp,
+                    fontFamily = font,
+                    fontWeight = FontWeight.Medium,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            val allCount =
+                uiState.allToday?.total?.let { serverTotal ->
+                    if (serverTotal <= Long.MAX_VALUE - uiState.optimisticAllPressCount) {
+                        serverTotal + uiState.optimisticAllPressCount
+                    } else {
+                        null
+                    }
+                }
+            PressSummaryCard(
+                allCount = allCount,
+                myCount = uiState.myToday?.total?.plus(uiState.optimisticMyTotalCount),
+                isLoadingAll = uiState.isLoadingAll,
+                isLoadingMy = uiState.isLoadingMy,
+                modifier = Modifier.padding(horizontal = 24.dp),
             )
-            Spacer(Modifier.height(6.dp))
-            Text(
-                text = stringResource(Res.string.press_screen_subtitle),
-                color = Color(0xFF777C78),
-                fontSize = 15.sp,
-                fontFamily = font,
-                fontWeight = FontWeight.Medium,
+            Spacer(Modifier.height(20.dp))
+        }
+        BoxWithConstraints(
+            modifier = Modifier.fillMaxWidth().weight(1f),
+            contentAlignment = Alignment.Center,
+        ) {
+            val padWidth =
+                ((maxHeight.value / 345f * 354f + 32f).dp)
+                    .coerceIn(200.dp.coerceAtMost(maxWidth), maxWidth)
+            EmotionPad(
+                counts = emotionCounts,
+                optimisticPressCounts = uiState.optimisticPressCounts,
+                countTextOverrides = countTextOverrides,
+                enabled = true,
+                onEmotionTap = onEmotionTap,
+                arrangement = EmotionPadArrangement.TwoThree,
+                modifier = Modifier.width(padWidth).padding(horizontal = 16.dp),
             )
         }
-        Spacer(Modifier.height(24.dp))
-        val allCount =
-            uiState.allToday?.total?.let { serverTotal ->
-                if (serverTotal <= Long.MAX_VALUE - uiState.optimisticAllPressCount) {
-                    serverTotal + uiState.optimisticAllPressCount
-                } else {
-                    null
-                }
-            }
-        PressSummaryCard(
-            allCount = allCount,
-            myCount = uiState.myToday?.total?.plus(uiState.optimisticMyTotalCount),
-            isLoadingAll = uiState.isLoadingAll,
-            isLoadingMy = uiState.isLoadingMy,
-            modifier = Modifier.padding(horizontal = 24.dp),
-        )
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text = stringResource(Res.string.press_emotion_counts_today_title),
-            color = Color(0xFF505650),
-            fontSize = 14.sp,
-            fontFamily = font,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-        )
-        Spacer(Modifier.height(10.dp))
-        EmotionPad(
-            counts = emotionCounts,
-            optimisticPressCounts = uiState.optimisticPressCounts,
-            countTextOverrides = countTextOverrides,
-            enabled = true,
-            onEmotionTap = onEmotionTap,
-            arrangement = EmotionPadArrangement.TwoThree,
-            modifier = Modifier.padding(horizontal = 16.dp),
-        )
         Spacer(Modifier.height(24.dp))
         Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
     }
@@ -145,51 +149,68 @@ private fun PressSummaryCard(
     modifier: Modifier = Modifier,
 ) {
     val font = notoSansKrFontFamily()
+    val textMeasurer = rememberTextMeasurer()
+    val density = LocalDensity.current
     Column(
         modifier =
             modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(20.dp))
-                .background(Color(0xFFF7F7F4))
-                .border(1.dp, Color(0xFFE7E9E4), RoundedCornerShape(20.dp))
+                .background(AppColors.Gray50)
+                .border(1.dp, AppColors.BorderLight, RoundedCornerShape(20.dp))
                 .padding(horizontal = 18.dp, vertical = 16.dp),
     ) {
         Text(
             text = stringResource(Res.string.press_summary_title),
-            color = Color(0xFF505650),
-            fontSize = 14.sp,
-            fontFamily = font,
+            color = AppColors.TextSecondary,
+            fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
         )
-        Spacer(Modifier.height(12.dp))
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(Color(0xFFE4E7E2)),
-        )
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(top = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            PressSummaryValue(
-                label = stringResource(Res.string.press_summary_all_label),
-                value = allCount,
-                isLoading = isLoadingAll,
-                modifier = Modifier.weight(1f),
-            )
-            Box(
-                Modifier
-                    .width(1.dp)
-                    .height(42.dp)
-                    .background(Color(0xFFE4E7E2)),
-            )
-            PressSummaryValue(
-                label = stringResource(Res.string.press_summary_my_label),
-                value = myCount,
-                isLoading = isLoadingMy,
-                modifier = Modifier.weight(1f),
-            )
+        HorizontalDivider(thickness = 1.dp, color = AppColors.BorderLight)
+
+        BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+            val numberWidth =
+                (constraints.maxWidth - with(density) { 1.dp.roundToPx() }) / 2 -
+                    textMeasurer
+                        .measure(
+                            "회",
+                            style = TextStyle(fontFamily = font, fontWeight = FontWeight.SemiBold, fontSize = 13.sp),
+                        ).size.width - with(density) { 2.dp.roundToPx() }
+            val numbers = listOfNotNull(allCount, myCount).map(::formatCount)
+            val numberFontSize =
+                listOf(22, 20, 18, 16, 14, 12)
+                    .firstOrNull { size ->
+                        numbers.all { number ->
+                            textMeasurer
+                                .measure(
+                                    number,
+                                    style =
+                                        TextStyle(
+                                            fontFamily = font,
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = size.sp,
+                                        ),
+                                ).size.width <= numberWidth
+                        }
+                    }?.sp ?: 12.sp
+
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                PressSummaryValue(
+                    label = stringResource(Res.string.press_summary_all_label),
+                    value = allCount,
+                    isLoading = isLoadingAll,
+                    numberFontSize = numberFontSize,
+                    modifier = Modifier.weight(1f),
+                )
+                VerticalDivider(thickness = 1.dp, color = AppColors.BorderLight, modifier = Modifier.height(30.dp))
+                PressSummaryValue(
+                    label = stringResource(Res.string.press_summary_my_label),
+                    value = myCount,
+                    isLoading = isLoadingMy,
+                    numberFontSize = numberFontSize,
+                    modifier = Modifier.weight(1f),
+                )
+            }
         }
     }
 }
@@ -199,27 +220,35 @@ private fun PressSummaryValue(
     label: String,
     value: Long?,
     isLoading: Boolean,
+    numberFontSize: TextUnit,
     modifier: Modifier = Modifier,
 ) {
     val font = notoSansKrFontFamily()
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = label,
-            color = Color(0xFF777C78),
+            color = AppColors.TextSecondary,
             fontSize = 12.sp,
             fontFamily = font,
             fontWeight = FontWeight.Medium,
         )
         Spacer(Modifier.height(4.dp))
-        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+        ) {
             Text(
                 text =
                     value?.let(::formatCount)
                         ?: if (isLoading) "…" else stringResource(Res.string.press_count_unavailable),
-                color = Color(0xFF202323),
-                fontSize = 26.sp,
+                color = AppColors.TextPrimary,
+                fontSize = numberFontSize,
                 fontFamily = font,
                 fontWeight = FontWeight.Black,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
             if (value != null) {
                 Text(
@@ -228,7 +257,6 @@ private fun PressSummaryValue(
                     fontSize = 13.sp,
                     fontFamily = font,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(bottom = 3.dp),
                 )
             }
         }
@@ -255,7 +283,7 @@ private fun PressScreenPreview() {
                                 ),
                             total = 7,
                         ),
-                    allToday = AllDailyPressSnapshot(pressDate = "2026-10-08", total = 82),
+                    allToday = AllDailyPressSnapshot(pressDate = "2026-10-08", total = 100_000_000),
                     isLoadingMy = false,
                     isLoadingAll = false,
                 ),

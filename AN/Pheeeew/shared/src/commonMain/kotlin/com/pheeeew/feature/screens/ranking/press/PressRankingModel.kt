@@ -1,5 +1,8 @@
 package com.pheeeew.feature.screens.ranking.press
 
+import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
+import com.pheeeew.feature.component.stamp.StampShapeId
+
 internal enum class PressEmotion(
     val label: String,
     val phrase: String,
@@ -20,6 +23,7 @@ internal data class PressGroupRank(
     val subtitle: String,
     val count: Int,
     val isMyGroup: Boolean = false,
+    val stamp: StampAppearanceUiModel? = null,
 )
 
 private val sampleMyGroupNames = setOf("히유 클럽", "별터 모임")
@@ -112,6 +116,7 @@ private fun aggregateSampleRanks(): List<PressGroupRank> =
                 subtitle = if (isMyGroup) "내 그룹" else "함께 누른 마음",
                 count = ranks.sumOf(PressGroupRank::count),
                 isMyGroup = isMyGroup,
+                stamp = ranks.firstNotNullOfOrNull(PressGroupRank::stamp),
             )
         }.sortedWith(compareByDescending<PressGroupRank> { it.count }.thenBy { it.groupName })
         .mapIndexed { index, rank -> rank.copy(rank = index + 1) }
@@ -129,8 +134,11 @@ private fun sampleRanks(
             subtitle = if (isMyGroup) "내 그룹" else "함께 누른 마음",
             count = count,
             isMyGroup = isMyGroup,
+            stamp = samplePressStamp,
         )
     }
+
+private val samplePressStamp = StampAppearanceUiModel("히유", StampShapeId.CIRCLE, 0xFF9DEBD5, 0xFF17191A)
 
 internal val samplePressWeeks =
     listOf(

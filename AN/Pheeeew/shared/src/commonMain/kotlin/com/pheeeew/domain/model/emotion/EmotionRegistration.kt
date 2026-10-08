@@ -1,6 +1,7 @@
 package com.pheeeew.domain.model.emotion
 
 import com.pheeeew.domain.model.GeoCoordinate
+import kotlin.time.Clock
 
 data class EmotionRegistration(
     val requestId: String,
@@ -9,6 +10,10 @@ data class EmotionRegistration(
     val rotationDegrees: Double,
     val groupId: String?,
     val content: EmotionRegistrationContent,
+    val occurredAt: Long =
+        Clock.System
+            .now()
+            .toEpochMilliseconds(),
 )
 
 sealed interface EmotionRegistrationContent {

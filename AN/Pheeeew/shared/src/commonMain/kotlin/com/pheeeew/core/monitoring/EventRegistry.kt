@@ -101,7 +101,7 @@ class EventRegistry(
         return JsonObject(selected)
     }
 
-    /** Used again at the SDK boundary, including persisted SDK batches from old versions. */
+    /** Validates app envelopes and new SDK captures; native persisted queues require separate migration. */
     internal fun sanitizeEnvelope(
         name: String,
         fields: Map<String, JsonPrimitive>,
@@ -133,7 +133,8 @@ class EventRegistry(
                 }.filterValues { PropertyRule(ValueType.PRIMITIVE).accepts(it) }
         val normalized = common.toMutableMap()
         common["screen"]?.let { normalized["screen"] = JsonPrimitive(screen(it.content)) }
-        return JsonObject(safe + normalized)
+        val result = JsonObject(safe + normalized)
+        return if (name == MeaningfulActivity.NAME) MeaningfulActivity.sanitize(result) else result
     }
 }
 

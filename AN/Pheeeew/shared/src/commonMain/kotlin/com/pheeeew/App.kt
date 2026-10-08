@@ -518,6 +518,12 @@ private fun AppContent(
         var refreshGroup by remember { mutableStateOf<(() -> Unit)?>(null) }
         var refreshRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
         var rankingDestination by remember { mutableStateOf(RankingBottomNavigationDestination.Stamp) }
+        var previousMainDestination by remember { mutableStateOf(AppDestination.Map) }
+        LaunchedEffect(selectedDestination) {
+            if (selectedDestination != AppDestination.Ranking) {
+                previousMainDestination = selectedDestination
+            }
+        }
         val isEmotionRecordFlowActive =
             selectedDestination == AppDestination.Map &&
                 (mapUiModel.isEmotionSelectorExpanded || recordUiModel.step != RecordFlowStepUiModel.Closed)
@@ -782,8 +788,16 @@ private fun AppContent(
                     rankingDestination = rankingDestination,
                     onRankingBackClick = {
                         nearbyViewModel.dismiss()
-                        if (!navController.popBackStack()) {
-                            navController.navigate(MapRootDestination) { launchSingleTop = true }
+                        val route =
+                            when (previousMainDestination) {
+                                AppDestination.Map, AppDestination.Ranking -> MapRootDestination
+                                AppDestination.Press -> PressRootDestination
+                                AppDestination.Group -> GroupRootDestination
+                            }
+                        navController.navigate(route) {
+                            popUpTo<MapRootDestination> { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     },
                     onRankingDestinationSelected = { destination ->
@@ -792,7 +806,12 @@ private fun AppContent(
                     onDestinationSelected = { destination ->
                         nearbyViewModel.dismiss()
                         if (destination == AppDestination.Ranking) {
+                            if (selectedDestination != AppDestination.Ranking) {
+                                previousMainDestination = selectedDestination
+                            }
                             rankingDestination = RankingBottomNavigationDestination.Stamp
+                        } else {
+                            previousMainDestination = destination
                         }
                         val route =
                             when (destination) {

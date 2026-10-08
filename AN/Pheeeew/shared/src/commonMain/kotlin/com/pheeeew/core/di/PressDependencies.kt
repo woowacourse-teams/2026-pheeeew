@@ -22,4 +22,5 @@ fun createPressRepository(
         sender = sender ?: PressApiSender(EmotionPressApi(apiClient.requests)),
         sessionScope = sessionScope,
         connectivity = connectivityObserver?.isConnected,
+        monitoring = apiClient.monitoring,
     )

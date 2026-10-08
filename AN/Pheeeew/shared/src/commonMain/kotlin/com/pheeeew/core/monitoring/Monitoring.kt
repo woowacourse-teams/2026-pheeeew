@@ -2,6 +2,15 @@ package com.pheeeew.core.monitoring
 
 /** Feature API. A call requests local collection, not server acknowledgement. */
 interface Monitoring {
+    /** Diagnostic identity for the private report-classification registry; does not emit an event. */
+    suspend fun analyticsIdentity(): String? = null
+
+    /** Records a server-confirmed action at its original input time. */
+    fun recordSuccessfulActivity(
+        type: ActivityType,
+        occurredAt: Long,
+    ) = Unit
+
     fun context(
         screen: String,
         parent: EventContext? = null,
