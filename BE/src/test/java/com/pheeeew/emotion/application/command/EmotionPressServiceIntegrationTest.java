@@ -2,6 +2,7 @@ package com.pheeeew.emotion.application.command;
 
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.when;
 
@@ -13,6 +14,7 @@ import com.pheeeew.emotion.application.dto.EmotionPressDailyResult;
 import com.pheeeew.emotion.application.dto.EmotionPressResult;
 import com.pheeeew.emotion.application.query.EmotionPressQueryService;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.infra.metrics.EmotionPressQueryMetricsAspect;
 import com.pheeeew.support.PostgisDataJpaTest;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -33,13 +35,19 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
+import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
+@Import({AopAutoConfiguration.class, EmotionPressQueryMetricsAspect.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class EmotionPressServiceIntegrationTest {
 
@@ -83,6 +91,9 @@ class EmotionPressServiceIntegrationTest {
     void 같은_기기가_같은_날_다시_누르면_행_하나에_누적되고_응답은_오늘_전체_집계다() {
         // given
         Device 기기 = 기기를_저장한다();
+        long writes = 프레스_조회_수("increase", "success");
+        long reads = 프레스_조회_수("my_daily", "success");
+        long totals = 프레스_조회_수("daily_total", "success");
         누른다(기기, Map.of(EmotionState.ANGRY, 2));
 
         // when
@@ -92,6 +103,34 @@ class EmotionPressServiceIntegrationTest {
         assertThat(결과.counts().get(EmotionState.ANGRY)).isEqualTo(5);
         assertThat(결과.total()).isEqualTo(5);
         assertThat(행_수()).isOne();
+        assertThat(emotionPressQueryService.findMyDailyPresses(기기.getPublicId(), 0).total()).isEqualTo(5);
+        assertThat(emotionPressQueryService.findDailyTotal(0).total()).isEqualTo(5);
+        assertThat(프레스_조회_수("increase", "success")).isEqualTo(writes + 2);
+        assertThat(프레스_조회_수("my_daily", "success")).isEqualTo(reads + 3);
+        assertThat(프레스_조회_수("daily_total", "success")).isEqualTo(totals + 1);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"increase", "my_daily", "daily_total"})
+    void 프레스_SQL_장애를_작업별_실패로_기록하고_예외를_유지한다(String operation) {
+        // given: 실제 서비스 트랜잭션이 실패 후 롤백되도록 테이블 이름으로 장애를 만든다.
+        Device 기기 = 기기를_저장한다();
+        long errors = 프레스_조회_수(operation, "error");
+        jdbc.sql("ALTER TABLE device_daily_presses RENAME TO unavailable_presses").update();
+        try {
+            // when / then
+            assertThatThrownBy(() -> {
+                switch (operation) {
+                    case "increase" -> 누른다(기기, Map.of(EmotionState.ANGRY, 1));
+                    case "my_daily" -> emotionPressQueryService.findMyDailyPresses(기기.getPublicId(), 0);
+                    case "daily_total" -> emotionPressQueryService.findDailyTotal(0);
+                    default -> throw new IllegalArgumentException(operation);
+                }
+            }).isInstanceOf(DataAccessException.class);
+            assertThat(프레스_조회_수(operation, "error")).isEqualTo(errors + 1);
+        } finally {
+            jdbc.sql("ALTER TABLE unavailable_presses RENAME TO device_daily_presses").update();
+        }
     }
 
     @Test
@@ -347,6 +386,11 @@ class EmotionPressServiceIntegrationTest {
 
     private long 빈_요청_수() {
         return (long) meterRegistry.get("pheeeew.emotion.press.empty").counter().count();
+    }
+
+    private long 프레스_조회_수(String operation, String outcome) {
+        return meterRegistry.get("pheeeew.emotion.press.query")
+                .tags("operation", operation, "outcome", outcome).timer().count();
     }
 
     private long 데드락_수() {
