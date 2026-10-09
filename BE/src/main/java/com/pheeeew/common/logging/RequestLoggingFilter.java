@@ -38,6 +38,7 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
         setCorrelationId(response);
         long startedAt = nanoTime.getAsLong();
         Exception unhandledException = null;
+        Object previousTiming = RequestTiming.begin(request);
 
         try {
             filterChain.doFilter(request, response);
@@ -49,7 +50,11 @@ public class RequestLoggingFilter extends OncePerRequestFilter {
                 long durationMillis = TimeUnit.NANOSECONDS.toMillis(nanoTime.getAsLong() - startedAt);
                 logWriter.write(request, response, durationMillis, unhandledException);
             } finally {
-                restoreCorrelationId(previousCorrelationId);
+                try {
+                    RequestTiming.restore(request, previousTiming);
+                } finally {
+                    restoreCorrelationId(previousCorrelationId);
+                }
             }
         }
     }

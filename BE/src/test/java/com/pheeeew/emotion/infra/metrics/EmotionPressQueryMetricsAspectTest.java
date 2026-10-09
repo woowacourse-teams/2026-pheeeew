@@ -7,6 +7,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.pheeeew.common.logging.RequestLoggingFilter;
+import com.pheeeew.common.logging.RequestTiming;
+import com.pheeeew.common.logging.RequestTiming.Measurement;
+import com.pheeeew.common.logging.RequestTiming.Stage;
 import com.pheeeew.emotion.application.EmotionPressMetrics;
 import com.pheeeew.emotion.application.EmotionPressMetrics.QueryOperation;
 import io.micrometer.core.instrument.MockClock;
@@ -15,13 +19,22 @@ import io.micrometer.core.instrument.Timer;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import io.prometheus.metrics.model.registry.PrometheusRegistry;
+import jakarta.servlet.ServletException;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import org.assertj.core.api.ThrowableAssert.ThrowingCallable;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.Signature;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 class EmotionPressQueryMetricsAspectTest {
 
@@ -35,12 +48,15 @@ class EmotionPressQueryMetricsAspectTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"increase,increase,true", "increase,increase,false",
-            "findByPressDateAndDeviceId,my_daily,true", "findByPressDateAndDeviceId,my_daily,false",
-            "sumByPressDate,daily_total,true", "sumByPressDate,daily_total,false"})
-    void JDBC_작업별_성공과_실패_시간을_구분한다(String method, String operation, boolean succeeded) throws Throwable {
+    @CsvSource({"increase,increase,PRESS_INCREASE,true", "increase,increase,PRESS_INCREASE,false",
+            "findByPressDateAndDeviceId,my_daily,PRESS_MY_DAILY,true",
+            "findByPressDateAndDeviceId,my_daily,PRESS_MY_DAILY,false",
+            "sumByPressDate,daily_total,PRESS_DAILY_TOTAL,true", "sumByPressDate,daily_total,PRESS_DAILY_TOTAL,false"})
+    void JDBC_작업별_성공과_실패_시간을_구분한다(
+            String method, String operation, Stage stage, boolean succeeded
+    ) throws Throwable {
         // given
-        var aspect = new EmotionPressQueryMetricsAspect(new EmotionPressMetrics(registry));
+        var aspect = new EmotionPressQueryMetricsAspect(new EmotionPressMetrics(registry), clock::monotonicTime);
         ProceedingJoinPoint joinPoint = queryJoinPoint(method);
         Object result = new Object();
         IllegalStateException original = new IllegalStateException("SQL failure");
@@ -52,11 +68,15 @@ class EmotionPressQueryMetricsAspectTest {
             return result;
         });
         // when / then
-        if (succeeded) {
-            assertThat(aspect.recordQuery(joinPoint)).isSameAs(result);
-        } else {
-            assertThatThrownBy(() -> aspect.recordQuery(joinPoint)).isSameAs(original);
-        }
+        var timings = inRequest(() -> {
+            if (succeeded) {
+                assertThat(aspect.recordQuery(joinPoint)).isSameAs(result);
+            } else {
+                assertThatThrownBy(() -> aspect.recordQuery(joinPoint)).isSameAs(original);
+            }
+        });
+        long durationNanos = TimeUnit.SECONDS.toNanos(231);
+        assertThat(timings).containsExactlyEntriesOf(Map.of(stage, Measurement.of(1, durationNanos, durationNanos)));
         String outcome = succeeded ? "success" : "error";
         Timer timer = registry.get("pheeeew.emotion.press.query").tags("operation", operation, "outcome", outcome).timer();
         assertThat(timer.totalTime(TimeUnit.SECONDS)).isEqualTo(231);
@@ -87,13 +107,63 @@ class EmotionPressQueryMetricsAspectTest {
             return result;
         });
         // when / then
-        var aspect = new EmotionPressQueryMetricsAspect(metrics);
-        if (succeeded) {
-            assertThat(aspect.recordQuery(joinPoint)).isSameAs(result);
-        } else {
-            assertThatThrownBy(() -> aspect.recordQuery(joinPoint)).isSameAs(original);
-        }
+        var aspect = new EmotionPressQueryMetricsAspect(metrics, clock::monotonicTime);
+        var timings = inRequest(() -> {
+            if (succeeded) {
+                assertThat(aspect.recordQuery(joinPoint)).isSameAs(result);
+            } else {
+                assertThatThrownBy(() -> aspect.recordQuery(joinPoint)).isSameAs(original);
+            }
+        });
+        assertThat(timings).containsExactlyEntriesOf(Map.of(Stage.PRESS_INCREASE, Measurement.of(1, 0, 0)));
         verify(metrics).recordQuery(sample, QueryOperation.INCREASE, succeeded);
+    }
+
+    @Test
+    void 반복_저장의_성공과_실패를_한_요청의_호출수_누적시간_최대시간으로_묶는다() throws Throwable {
+        // given
+        var aspect = new EmotionPressQueryMetricsAspect(new EmotionPressMetrics(registry), clock::monotonicTime);
+        var joinPoint = queryJoinPoint("increase");
+        var original = new IllegalStateException("SQL failure");
+        when(joinPoint.proceed()).thenAnswer(invocation -> {
+            clock.addSeconds(1);
+            return null;
+        }).thenAnswer(invocation -> {
+            clock.addSeconds(2);
+            throw original;
+        });
+
+        // when
+        var timings = inRequest(() -> {
+            aspect.recordQuery(joinPoint);
+            assertThatThrownBy(() -> aspect.recordQuery(joinPoint)).isSameAs(original);
+        });
+
+        // then
+        assertThat(timings).containsExactlyEntriesOf(Map.of(Stage.PRESS_INCREASE,
+                Measurement.of(2, TimeUnit.SECONDS.toNanos(3), TimeUnit.SECONDS.toNanos(2))));
+        assertThat(registry.get("pheeeew.emotion.press.query").tags("operation", "increase", "outcome", "success")
+                .timer().count()).isEqualTo(1);
+        assertThat(registry.get("pheeeew.emotion.press.query").tags("operation", "increase", "outcome", "error")
+                .timer().count()).isEqualTo(1);
+    }
+
+    private Map<Stage, Measurement> inRequest(ThrowingCallable operation) throws Exception {
+        var request = new MockHttpServletRequest();
+        var snapshot = new AtomicReference<Map<Stage, Measurement>>();
+        new RequestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
+            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+            try {
+                operation.call();
+                snapshot.set(RequestTiming.snapshot(request));
+            } catch (Throwable error) {
+                throw new ServletException(error);
+            } finally {
+                RequestContextHolder.resetRequestAttributes();
+            }
+        });
+        assertThat(RequestTiming.snapshot(request)).isEmpty();
+        return snapshot.get();
     }
 
     private ProceedingJoinPoint queryJoinPoint(String method) {

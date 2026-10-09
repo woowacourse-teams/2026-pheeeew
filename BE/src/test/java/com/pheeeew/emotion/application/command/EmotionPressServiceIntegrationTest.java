@@ -6,6 +6,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.when;
 
+import com.pheeeew.common.logging.RequestLoggingFilter;
+import com.pheeeew.common.logging.RequestServiceTimingAspect;
+import com.pheeeew.common.logging.RequestTiming;
+import com.pheeeew.common.logging.RequestTiming.Measurement;
+import com.pheeeew.common.logging.RequestTiming.Stage;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
@@ -32,22 +37,27 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @PostgisDataJpaTest
-@Import({AopAutoConfiguration.class, EmotionPressQueryMetricsAspect.class})
+@Import({AopAutoConfiguration.class, EmotionPressQueryMetricsAspect.class, RequestServiceTimingAspect.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class EmotionPressServiceIntegrationTest {
 
@@ -111,26 +121,79 @@ class EmotionPressServiceIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"increase", "my_daily", "daily_total"})
-    void 프레스_SQL_장애를_작업별_실패로_기록하고_예외를_유지한다(String operation) {
+    @CsvSource({"increase,PRESS_INCREASE,PRESS_SERVICE", "my_daily,PRESS_MY_DAILY,PRESS_MY_SERVICE",
+            "daily_total,PRESS_DAILY_TOTAL,PRESS_TOTAL_SERVICE"})
+    void 프레스_SQL_장애를_작업별_실패로_기록하고_예외를_유지한다(
+            String operation, Stage stage, Stage serviceStage
+    ) throws Exception {
         // given: 실제 서비스 트랜잭션이 실패 후 롤백되도록 테이블 이름으로 장애를 만든다.
         Device 기기 = 기기를_저장한다();
         long errors = 프레스_조회_수(operation, "error");
         jdbc.sql("ALTER TABLE device_daily_presses RENAME TO unavailable_presses").update();
         try {
             // when / then
-            assertThatThrownBy(() -> {
+            var timings = inRequest(() -> assertThatThrownBy(() -> {
                 switch (operation) {
                     case "increase" -> 누른다(기기, Map.of(EmotionState.ANGRY, 1));
                     case "my_daily" -> emotionPressQueryService.findMyDailyPresses(기기.getPublicId(), 0);
                     case "daily_total" -> emotionPressQueryService.findDailyTotal(0);
                     default -> throw new IllegalArgumentException(operation);
                 }
-            }).isInstanceOf(DataAccessException.class);
+            }).isInstanceOf(DataAccessException.class));
+            assertThat(timings).containsOnlyKeys(stage, serviceStage);
+            assertThat(timings.get(serviceStage).count()).isEqualTo(1);
+            assertThat(timings.get(stage).count()).isEqualTo(1);
+            assertThat(timings.get(stage).totalNanos()).isGreaterThanOrEqualTo(0);
             assertThat(프레스_조회_수(operation, "error")).isEqualTo(errors + 1);
         } finally {
             jdbc.sql("ALTER TABLE unavailable_presses RENAME TO device_daily_presses").update();
         }
+    }
+
+    @Test
+    void 묶음_저장과_내_집계_전체_집계의_호출수를_요청별로_구분한다() throws Exception {
+        // given
+        Device 기기 = 기기를_저장한다();
+        Map<EmotionState, Integer> counts = new LinkedHashMap<>();
+        for (EmotionState state : EmotionState.values()) {
+            counts.put(state, 1);
+        }
+
+        // when
+        var writes = inRequest(() -> assertThat(누른다(기기, counts).total()).isEqualTo(5));
+        var mine = inRequest(() -> assertThat(emotionPressQueryService.findMyDailyPresses(기기.getPublicId(), 0)
+                .total()).isEqualTo(5));
+        var total = inRequest(() -> assertThat(emotionPressQueryService.findDailyTotal(0).total()).isEqualTo(5));
+
+        // then: 저장 요청의 응답 조회만 함께 기록하고, 다음 요청의 조회는 섞지 않는다.
+        assertThat(writes).containsOnlyKeys(Stage.PRESS_SERVICE, Stage.PRESS_INCREASE, Stage.PRESS_MY_DAILY);
+        assertThat(writes.get(Stage.PRESS_SERVICE).count()).isEqualTo(1);
+        assertThat(writes.get(Stage.PRESS_INCREASE).count()).isEqualTo(5);
+        assertThat(writes.get(Stage.PRESS_INCREASE).totalNanos())
+                .isGreaterThanOrEqualTo(writes.get(Stage.PRESS_INCREASE).maxNanos());
+        assertThat(writes.get(Stage.PRESS_MY_DAILY).count()).isEqualTo(1);
+        assertThat(mine).containsOnlyKeys(Stage.PRESS_MY_SERVICE, Stage.PRESS_MY_DAILY);
+        assertThat(mine.get(Stage.PRESS_MY_SERVICE).count()).isEqualTo(1);
+        assertThat(mine.get(Stage.PRESS_MY_DAILY).count()).isEqualTo(1);
+        assertThat(total).containsOnlyKeys(Stage.PRESS_TOTAL_SERVICE, Stage.PRESS_DAILY_TOTAL);
+        assertThat(total.get(Stage.PRESS_TOTAL_SERVICE).count()).isEqualTo(1);
+        assertThat(total.get(Stage.PRESS_DAILY_TOTAL).count()).isEqualTo(1);
+    }
+
+    private Map<Stage, Measurement> inRequest(Runnable operation) throws Exception {
+        var request = new MockHttpServletRequest();
+        var snapshot = new AtomicReference<Map<Stage, Measurement>>();
+        new RequestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
+            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+            try {
+                operation.run();
+                snapshot.set(RequestTiming.snapshot(request));
+            } finally {
+                RequestContextHolder.resetRequestAttributes();
+            }
+        });
+        assertThat(RequestTiming.snapshot(request)).isEmpty();
+        return snapshot.get();
     }
 
     @Test

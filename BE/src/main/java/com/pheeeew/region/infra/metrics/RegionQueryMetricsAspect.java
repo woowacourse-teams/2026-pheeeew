@@ -1,5 +1,7 @@
 package com.pheeeew.region.infra.metrics;
 
+import com.pheeeew.common.logging.RequestTiming;
+import com.pheeeew.common.logging.RequestTiming.Stage;
 import com.pheeeew.region.infra.metrics.RegionQueryMetrics.Operation;
 import java.util.function.LongSupplier;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -44,11 +46,26 @@ public class RegionQueryMetricsAspect {
             succeeded = true;
             return result;
         } finally {
+            long durationNanos = nanoTime.getAsLong() - startedAt;
             try {
-                metrics.recordQuery(operation, nanoTime.getAsLong() - startedAt, succeeded);
+                RequestTiming.record(requestStage(operation), durationNanos);
+            } catch (RuntimeException ignored) {
+                // 요청별 기록 실패가 조회 결과나 전체 지표 기록을 막지 않게 한다.
+            }
+            try {
+                metrics.recordQuery(operation, durationNanos, succeeded);
             } catch (RuntimeException ignored) {
                 // 계측 기록 실패가 조회 결과나 원래 예외를 바꾸지 않게 한다.
             }
         }
+    }
+
+    private Stage requestStage(Operation operation) {
+        return switch (operation) {
+            case INTERSECTING_REGIONS -> Stage.REGIONS_INTERSECTION;
+            case BOUNDARIES_VERIFIED -> Stage.REGIONS_BOUNDARIES;
+            case AGGREGATION_READY -> Stage.REGIONS_AGGREGATION_READY;
+            case EMD_CODE -> Stage.REGION_EMD_CODE;
+        };
     }
 }
