@@ -14,6 +14,8 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.common.exception.PheeeewException;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
@@ -25,6 +27,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.boot.json.JsonParserFactory;
@@ -38,9 +42,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 class RequestLoggingFilterTest {
 
@@ -102,6 +109,10 @@ class RequestLoggingFilterTest {
         assertThat(second.getResponse().getHeader("X-Correlation-ID")).isNotEqualTo(id);
         assertThat(MDC.get("correlationId")).isEqualTo("outer-context");
         assertThat(output).isEmpty();
+        assertThat(first.getRequest().getAttribute(RequestTiming.ATTRIBUTE)).isNull();
+        assertThat(second.getRequest().getAttribute(RequestTiming.ATTRIBUTE)).isNull();
+        assertThat(controller.timings).hasSize(2).allSatisfy(snapshot -> assertThat(snapshot)
+                .containsExactlyEntriesOf(Map.of(RequestTiming.Stage.PRESS_INCREASE, RequestTiming.Measurement.of(1, 10, 10))));
     }
 
     @Test
@@ -133,7 +144,7 @@ class RequestLoggingFilterTest {
                         "java.lang.IllegalStateException: 집계 상태가 초기화되지 않았습니다.",
                         "java.lang.IllegalArgumentException: 날짜 순서가 올바르지 않습니다."))
                 .containsEntry("correlationId", response.getResponse().getHeader("X-Correlation-ID"))
-                .doesNotContainKeys("params", "sqlState");
+                .doesNotContainKeys("params", "sqlState", "timings");
         assertThat(((Number) event.get("status")).intValue()).isEqualTo(500);
         assertThat(event.get("origin").toString()).matches("RequestLoggingFilterTest\\$TestController\\.fail:\\d+");
         assertThat(event.get("errorStack").toString())
@@ -145,13 +156,16 @@ class RequestLoggingFilterTest {
     @Test
     void 서비스의_5xx_예외도_한_번_기록하지만_예상된_4xx는_기록하지_않는다() throws Exception {
         // given / when
-        client.perform(get("/test/service-failure")).andExpect(status().isInternalServerError());
+        MvcResult failed = client.perform(get("/test/service-failure")).andExpect(status().isInternalServerError()).andReturn();
         client.perform(get("/test/invalid")).andExpect(status().isBadRequest());
 
         // then
         assertThat(output).hasSize(1);
         assertThat(output.getFirst()).contains("COMMON-002", "PheeeewException", "service-cause")
                 .doesNotContain("invalid-cause");
+        assertThat(failed.getRequest().getAttribute(RequestTiming.ATTRIBUTE)).isNull();
+        assertThat(controller.timings).singleElement().satisfies(snapshot -> assertThat(snapshot)
+                .containsEntry(RequestTiming.Stage.PRESS_INCREASE, RequestTiming.Measurement.of(1, 10, 10)));
     }
 
     @Test
@@ -185,6 +199,27 @@ class RequestLoggingFilterTest {
         assertThat(output.getFirst()).contains("http_request_failed").doesNotContain("http_request_slow");
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 느린_요청과_서버_오류에_측정한_단계만_호출_수와_밀리초로_출력한다(boolean failed) throws Exception {
+        // given
+        durationNanos = 1_000_000_000;
+        // when
+        MvcResult result = client.perform(get("/test/timings/" + failed))
+                .andExpect(failed ? status().isInternalServerError() : status().isOk()).andReturn();
+        // then
+        assertThat(output).hasSize(1);
+        Map<String, Object> event = JsonParserFactory.getJsonParser().parseMap(output.getFirst());
+        assertThat(event).containsEntry("event", failed ? "http_request_failed" : "http_request_slow")
+                .containsEntry("correlationId", result.getResponse().getHeader("X-Correlation-ID"));
+        Map<?, ?> timings = (Map<?, ?>) event.get("timings");
+        assertThat(timings).hasSize(3);
+        assertTiming(timings.get("regions_intersection"), 2, 4.0, 2.75);
+        assertTiming(timings.get("press_increase"), 2, 0.75, 0.5);
+        assertTiming(timings.get("regions_service"), 1, 10.0, 10.0);
+        assertThat(result.getRequest().getAttribute(RequestTiming.ATTRIBUTE)).isNull();
+    }
+
     @Test
     void 미처리_예외의_HTTP_로그는_요청_경로와_메서드_원문_없이_남고_전파_후_MDC를_정리한다() {
         // given
@@ -194,12 +229,23 @@ class RequestLoggingFilterTest {
         failure.initCause(new IllegalStateException("unhandled-cause", failure));
 
         // when / then
-        assertThatThrownBy(() -> filter.doFilter(request, response, (req, res) -> { throw failure; }))
+        assertThatThrownBy(() -> filter.doFilter(request, response, (req, res) -> {
+            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+            try {
+                RequestTiming.record(RequestTiming.Stage.PRESS_INCREASE, 1_500_000);
+            } finally {
+                RequestContextHolder.resetRequestAttributes();
+            }
+            throw failure;
+        }))
                 .isSameAs(failure);
         assertThat(output).hasSize(1);
         assertThat(output.getFirst()).contains("UNMAPPED", "OTHER", "IOException", "unhandled-failure", "unhandled-cause")
                 .doesNotContain("PRIVATE-METHOD", "private-path", "sqlState");
         assertThat(MDC.get("correlationId")).isNull();
+        assertThat(request.getAttribute(RequestTiming.ATTRIBUTE)).isNull();
+        Map<?, ?> timings = (Map<?, ?>) JsonParserFactory.getJsonParser().parseMap(output.getFirst()).get("timings");
+        assertTiming(timings.get("press_increase"), 1, 1.5, 1.5);
     }
 
     @Test
@@ -326,13 +372,48 @@ class RequestLoggingFilterTest {
         assertThat(MDC.get("correlationId")).isNull();
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 정상과_예외_종료에서_기존_시간_수집_속성과_MDC를_복원한다(boolean failed) throws Exception {
+        // given
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/test");
+        Object previous = new Object();
+        request.setAttribute(RequestTiming.ATTRIBUTE, previous);
+        MDC.put("correlationId", "outer");
+        IOException failure = new IOException("failure");
+        FilterChain chain = (req, res) -> {
+            assertThat(req.getAttribute(RequestTiming.ATTRIBUTE)).isInstanceOf(RequestTiming.class).isNotSameAs(previous);
+            if (failed) {
+                throw failure;
+            }
+        };
+        // when / then
+        if (failed) {
+            assertThatThrownBy(() -> filter.doFilter(request, new MockHttpServletResponse(), chain)).isSameAs(failure);
+        } else {
+            filter.doFilter(request, new MockHttpServletResponse(), chain);
+        }
+        assertThat(request.getAttribute(RequestTiming.ATTRIBUTE)).isSameAs(previous);
+        assertThat(MDC.get("correlationId")).isEqualTo("outer");
+    }
+
+    private void assertTiming(Object value, long count, double totalMs, double maxMs) {
+        Map<?, ?> timing = (Map<?, ?>) value;
+        assertThat(timing).hasSize(3);
+        assertThat(((Number) timing.get("count")).longValue()).isEqualTo(count);
+        assertThat(((Number) timing.get("totalMs")).doubleValue()).isEqualTo(totalMs);
+        assertThat(((Number) timing.get("maxMs")).doubleValue()).isEqualTo(maxMs);
+    }
+
     @RestController
     static class TestController {
 
         private Exception failure;
+        private final List<Map<RequestTiming.Stage, RequestTiming.Measurement>> timings = new ArrayList<>();
 
         @GetMapping("/test/ok")
-        String ok() {
+        String ok(HttpServletRequest request) {
+            captureTiming(request);
             return MDC.get("correlationId");
         }
 
@@ -345,8 +426,21 @@ class RequestLoggingFilterTest {
         }
 
         @GetMapping("/test/service-failure")
-        void serviceFailure() {
+        void serviceFailure(HttpServletRequest request) {
+            captureTiming(request);
             throw new PheeeewException(INTERNAL_SERVER_ERROR, new IllegalStateException("service-cause"));
+        }
+
+        @GetMapping("/test/timings/{failed}")
+        void timed(@PathVariable boolean failed) {
+            RequestTiming.record(RequestTiming.Stage.REGIONS_INTERSECTION, 1_250_000);
+            RequestTiming.record(RequestTiming.Stage.REGIONS_INTERSECTION, 2_750_000);
+            RequestTiming.record(RequestTiming.Stage.PRESS_INCREASE, 500_000);
+            RequestTiming.record(RequestTiming.Stage.PRESS_INCREASE, 250_000);
+            RequestTiming.record(RequestTiming.Stage.REGIONS_SERVICE, 10_000_000);
+            if (failed) {
+                throw new PheeeewException(INTERNAL_SERVER_ERROR, new IllegalStateException("timed failure"));
+            }
         }
 
         @GetMapping("/test/invalid")
@@ -368,6 +462,11 @@ class RequestLoggingFilterTest {
         void body(
                 @RequestBody Map<String, Object> body
         ) {
+        }
+
+        private void captureTiming(HttpServletRequest request) {
+            RequestTiming.record(RequestTiming.Stage.PRESS_INCREASE, 10);
+            timings.add(RequestTiming.snapshot(request));
         }
     }
 

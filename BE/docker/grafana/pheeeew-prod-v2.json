@@ -1799,7 +1799,7 @@
     {
       "type": "timeseries",
       "title": "DB 조회 · 평균",
-      "description": "Spring Data 리포지터리 메서드 호출 시간이에요. repository 와 method 로 조회 하나하나가 나뉘어요. 실패한 호출은 빼고 성공한 호출만 세요. 리포지터리를 거치지 않는 EntityManager 직접 호출은 잡히지 않아요. 평균이라 느린 호출 하나가 통째로 섞여요.",
+      "description": "성공한 Spring Data 리포지터리 호출과 RegionRepository·개인 Press의 직접 JDBC 작업을 비교해요. JDBC 시간에는 통신·결과 매핑이 포함되며 순수 SQL 시간이나 연결 점유 시간과 달라요. 호출 표본이 없으면 지연을 표시하지 않아요. 범례 Last *는 선택 구간의 마지막 유효 관측값이며 현재 값이 아니에요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -1860,12 +1860,32 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "topk(10, sum by (repository, method) (rate(spring_data_repository_invocations_seconds_sum{job=\"pheeeew-api\",environment=\"prod\",state=\"SUCCESS\"}[$__rate_interval])) / clamp_min(sum by (repository, method) (rate(spring_data_repository_invocations_seconds_count{job=\"pheeeew-api\",environment=\"prod\",state=\"SUCCESS\"}[$__rate_interval])), 0.0001))",
+          "expr": "topk(10, sum by (repository, method) (rate(spring_data_repository_invocations_seconds_sum{job=\"pheeeew-api\",environment=\"prod\",state=\"SUCCESS\"}[$__rate_interval])) / (sum by (repository, method) (rate(spring_data_repository_invocations_seconds_count{job=\"pheeeew-api\",environment=\"prod\",state=\"SUCCESS\"}[$__rate_interval])) > 0))",
           "datasource": {
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
           "legendFormat": "{{repository}}.{{method}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (operation) (rate(pheeeew_region_query_seconds_sum{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval])) / (sum by (operation) (rate(pheeeew_region_query_seconds_count{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval])) > 0)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "legendFormat": "RegionRepository · {{operation}}",
+          "interval": "1m"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (operation) (rate(pheeeew_emotion_press_query_seconds_sum{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval])) / (sum by (operation) (rate(pheeeew_emotion_press_query_seconds_count{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval])) > 0)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "legendFormat": "개인 Press · {{operation}}",
+          "interval": "1m"
         }
       ],
       "id": 117
@@ -1873,7 +1893,7 @@
     {
       "type": "timeseries",
       "title": "DB 조회 · p95",
-      "description": "Spring Data 리포지터리 메서드 호출 시간이에요. repository 와 method 로 조회 하나하나가 나뉘어요. 실패한 호출은 빼고 성공한 호출만 세요. 리포지터리를 거치지 않는 EntityManager 직접 호출은 잡히지 않아요. 버킷 경계는 50ms, 100ms, 200ms, 500ms, 1s, 3s 여섯 개예요. 50ms 아래는 한 칸이라 빠른 조회끼리는 구분되지 않고, 경계 사이는 직선으로 어림해요. 3s 를 넘은 호출은 전부 3s 로 찍히니 실제로는 그보다 느려요.",
+      "description": "성공한 Spring Data 리포지터리 호출과 RegionRepository·개인 Press의 직접 JDBC 작업을 비교해요. JDBC 시간에는 통신·결과 매핑이 포함되며 순수 SQL 시간이나 연결 점유 시간과 달라요. 호출 표본이 없으면 지연을 표시하지 않아요. 범례 Last *는 선택 구간의 마지막 유효 관측값이며 현재 값이 아니에요. p95·p99는 버킷 기반 추정값이에요. Spring Data의 마지막 유한 경계는 3s, Region·개인 Press는 300s예요. 계산한 분위수가 +Inf 버킷에 속하면 마지막 유한 경계로 표시되며, 요청이 적으면 추정값이 크게 흔들려요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -1940,6 +1960,26 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "legendFormat": "{{repository}}.{{method}}"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(pheeeew_region_query_seconds_bucket{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval]))) and on (operation) (sum by (operation) (rate(pheeeew_region_query_seconds_count{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval])) > 0)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "legendFormat": "RegionRepository · {{operation}}",
+          "interval": "1m"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.95, sum by (le, operation) (rate(pheeeew_emotion_press_query_seconds_bucket{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval]))) and on (operation) (sum by (operation) (rate(pheeeew_emotion_press_query_seconds_count{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval])) > 0)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "legendFormat": "개인 Press · {{operation}}",
+          "interval": "1m"
         }
       ],
       "id": 118
@@ -1947,7 +1987,7 @@
     {
       "type": "timeseries",
       "title": "DB 조회 · p99",
-      "description": "Spring Data 리포지터리 메서드 호출 시간이에요. repository 와 method 로 조회 하나하나가 나뉘어요. 실패한 호출은 빼고 성공한 호출만 세요. 리포지터리를 거치지 않는 EntityManager 직접 호출은 잡히지 않아요. 버킷 경계는 50ms, 100ms, 200ms, 500ms, 1s, 3s 여섯 개예요. 50ms 아래는 한 칸이라 빠른 조회끼리는 구분되지 않고, 경계 사이는 직선으로 어림해요. 3s 를 넘은 호출은 전부 3s 로 찍히니 실제로는 그보다 느려요.",
+      "description": "성공한 Spring Data 리포지터리 호출과 RegionRepository·개인 Press의 직접 JDBC 작업을 비교해요. JDBC 시간에는 통신·결과 매핑이 포함되며 순수 SQL 시간이나 연결 점유 시간과 달라요. 호출 표본이 없으면 지연을 표시하지 않아요. 범례 Last *는 선택 구간의 마지막 유효 관측값이며 현재 값이 아니에요. p95·p99는 버킷 기반 추정값이에요. Spring Data의 마지막 유한 경계는 3s, Region·개인 Press는 300s예요. 계산한 분위수가 +Inf 버킷에 속하면 마지막 유한 경계로 표시되며, 요청이 적으면 추정값이 크게 흔들려요.",
       "datasource": {
         "type": "prometheus",
         "uid": "${DS_PROMETHEUS}"
@@ -2014,6 +2054,26 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "legendFormat": "{{repository}}.{{method}}"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.99, sum by (le, operation) (rate(pheeeew_region_query_seconds_bucket{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval]))) and on (operation) (sum by (operation) (rate(pheeeew_region_query_seconds_count{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval])) > 0)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "legendFormat": "RegionRepository · {{operation}}",
+          "interval": "1m"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.99, sum by (le, operation) (rate(pheeeew_emotion_press_query_seconds_bucket{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval]))) and on (operation) (sum by (operation) (rate(pheeeew_emotion_press_query_seconds_count{job=\"pheeeew-api\",environment=\"prod\",outcome=\"success\"}[$__rate_interval])) > 0)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "legendFormat": "개인 Press · {{operation}}",
+          "interval": "1m"
         }
       ],
       "id": 119
@@ -2093,6 +2153,112 @@
       "id": 120
     },
     {
+      "id": 130,
+      "type": "stat",
+      "title": "Region·개인 Press DB 작업 · 선택 기간 표본 수",
+      "description": "선택 기간의 DB 작업 호출 수 추정치를 operation·outcome별로 표시해요. success는 정상 반환, error는 예외 종료예요. 한 HTTP 요청에서 여러 번 실행될 수 있어 HTTP 요청 수·사용자 수와 달라요. Counter 증가량을 보간하므로 정수가 아닐 수 있어요. 계산 가능한 수집 표본에서 증가가 없으면 0, 계산할 표본이 없으면 데이터 없음이에요. 수집 중단 시 선택 기간의 일부만 반영될 수 있어 수집 연결을 함께 확인해요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 63,
+        "w": 24,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "noValue": "데이터 없음",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "#8E8E9E"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1,
+          "mappings": [
+            {
+              "type": "special",
+              "options": {
+                "match": "null",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            },
+            {
+              "type": "special",
+              "options": {
+                "match": "nan",
+                "result": {
+                  "text": "데이터 없음",
+                  "color": "#8E8E9E"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value_and_name",
+        "orientation": "auto",
+        "wideLayout": true,
+        "text": {
+          "valueSize": 24,
+          "titleSize": 13
+        },
+        "justifyMode": "center"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (operation, outcome) (increase(pheeeew_region_query_seconds_count{job=\"pheeeew-api\",environment=\"prod\"}[$__range]))",
+          "legendFormat": "RegionRepository · {{operation}} · {{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (operation, outcome) (increase(pheeeew_emotion_press_query_seconds_count{job=\"pheeeew-api\",environment=\"prod\"}[$__range]))",
+          "legendFormat": "개인 Press · {{operation}} · {{outcome}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "editorMode": "code",
+          "range": false,
+          "instant": true,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
       "type": "row",
       "title": "03  앱 자원  /  메모리, DB 연결, 스레드에 여유가 있나요?",
       "collapsed": false,
@@ -2101,7 +2267,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 63
+        "y": 71
       },
       "id": 121
     },
@@ -2116,7 +2282,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 64,
+        "y": 72,
         "w": 12,
         "h": 8
       },
@@ -2266,7 +2432,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 64,
+        "y": 72,
         "w": 12,
         "h": 8
       },
@@ -2346,7 +2512,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 72,
+        "y": 80,
         "w": 12,
         "h": 8
       },
@@ -2450,7 +2616,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 72,
+        "y": 80,
         "w": 12,
         "h": 8
       },
@@ -2529,7 +2695,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 80,
+        "y": 88,
         "w": 12,
         "h": 8
       },
@@ -2633,7 +2799,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 80,
+        "y": 88,
         "w": 12,
         "h": 8
       },
@@ -2709,7 +2875,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 88
+        "y": 96
       },
       "id": 122
     },
@@ -2720,13 +2886,13 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 89,
+        "y": 97,
         "w": 24,
         "h": 3
       },
       "options": {
         "mode": "markdown",
-        "content": "**5xx 오류 · 1초 이상 지연**만 표시해요. 로그를 펼치면 `correlationId`와 예외 정보를 볼 수 있어요. 검증용 로그는 제외해요.\n\n로그가 비어 있으면 대상 이벤트가 없을 수 있어요. **빈 값은 0이나 정상 판정이 아니에요.**"
+        "content": "**5xx 오류 · 1초 이상 지연**만 표시해요. 로그를 펼치면 `correlationId`와 단계별 **timings**·예외 정보를 볼 수 있어요. 검증용 로그는 제외해요.\n\n로그가 비어 있으면 대상 이벤트가 없을 수 있어요. **빈 값은 0이나 정상 판정이 아니에요.**"
       }
     },
     {
@@ -2740,7 +2906,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 92,
+        "y": 100,
         "w": 24,
         "h": 11
       },
@@ -2775,13 +2941,13 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 103,
+        "y": 111,
         "w": 24,
         "h": 4
       },
       "options": {
         "mode": "markdown",
-        "content": "**읽는 법**　p95 / p99는 요청의 95% / 99%가 완료된 시간의 버킷 기반 추정값이에요. 버킷 경계 사이는 직선으로 어림하고, 마지막 경계를 넘으면 전부 그 값으로 찍혀요. API 는 5s, DB 조회는 3s 가 천장이에요. 요청이 적으면 크게 흔들릴 수 있어요.\n\n**관측 범위**　운영 앱 한 대의 지표예요. 수집 연결은 외부 URL의 정상 응답을 보장하지 않으며, EC2 전체 메모리·디스크와 RDS 내부 지표는 포함하지 않아요. 색상 경계는 초기 참고 기준이에요."
+        "content": "**읽는 법**　p95 / p99는 요청의 95% / 99%가 완료된 시간의 버킷 기반 추정값이에요. 버킷 경계 사이는 직선으로 어림하고, 계산한 분위수가 +Inf 버킷에 속하면 마지막 유한 경계로 표시돼요. 마지막 유한 경계는 API 5s, Spring Data DB 3s, Region·개인 Press 300s예요. 요청이 적으면 크게 흔들릴 수 있어요.\n\n**관측 범위**　운영 앱 한 대의 지표예요. 수집 연결은 외부 URL의 정상 응답을 보장하지 않으며, EC2 전체 메모리·디스크와 RDS 내부 지표는 포함하지 않아요. 색상 경계는 초기 참고 기준이에요."
       }
     },
     {
@@ -2793,7 +2959,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 107
+        "y": 115
       },
       "id": 123
     },
@@ -2808,7 +2974,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 108,
+        "y": 116,
         "w": 12,
         "h": 8
       },
@@ -2900,7 +3066,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 108,
+        "y": 116,
         "w": 12,
         "h": 8
       },
@@ -2976,7 +3142,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 116
+        "y": 124
       },
       "id": 125
     },
@@ -2992,7 +3158,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 117
+        "y": 125
       },
       "fieldConfig": {
         "defaults": {
@@ -3093,7 +3259,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 117
+        "y": 125
       },
       "fieldConfig": {
         "defaults": {

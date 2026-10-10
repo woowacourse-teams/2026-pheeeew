@@ -26,7 +26,28 @@ JSON 에는 토큰이나 특정 계정의 데이터 소스 ID 가 없어요. 기
 | DB 지연 | 감정 목록 조회 하나 | 리포지터리 조회 전체를 `repository`, `method` 로 나눠서 |
 | 감정, 그룹 | 별도 구역 | `01 API` 구역에 합쳐서 |
 
-DB 구역은 `spring.data.repository.invocations` 지표를 써요. Spring Data 가 리포지터리 메서드 호출을 자동으로 재는 지표이고, `application-prod.yml`, `application-dev.yml` 의 SLO 경계와 [Alloy 수집 목록](../alloy/config.alloy)에 둘 다 들어 있어야 값이 보여요. 리포지터리를 거치지 않는 `EntityManager` 직접 호출은 잡히지 않아요.
+DB 평균·p95·p99는 Spring Data 자동 계측과 RegionRepository·개인 Press 직접 JDBC 계측을 함께 보여줘요. 성공한 호출만 비교하며, 호출 수가 0이면 평균의 분모를 보정하지 않고 해당 지연을 제외해요. 미수집과 무호출 모두 지연만으로 구분할 수 없으므로 수집 연결·호출 표본을 함께 확인해요. 범례 `Last *`는 선택 구간의 마지막 유효 관측값으로 현재 값이 아니에요.
+
+| 범례 | 지표·범위 | p95·p99 마지막 유한 경계 |
+| --- | --- | --- |
+| `Repository.method` | `spring_data_repository_invocations_seconds_*`: Spring Data 메서드 | 3초 |
+| `RegionRepository · operation` | `pheeeew_region_query_seconds_*`: `intersecting_regions`, `boundaries_verified`, `aggregation_ready`, 등록 지역 배정의 `emd_code` | 300초 |
+| `개인 Press · operation` | `pheeeew_emotion_press_query_seconds_*`: 쓰기 `increase`, 조회 `my_daily`, `daily_total` | 300초 |
+
+직접 JDBC 시간에는 DB 호출·통신·결과 매핑이 포함돼요. 순수 SQL 실행 시간이나 DB 연결 점유 시간으로 해석하지 않아요. 계산한 p95·p99가 +Inf 버킷에 속하면 마지막 유한 경계로 표시되므로 정확한 요청 시간은 로그로 확인해요. 서로 다른 분포의 p95끼리 빼서 나머지 처리 시간을 구하지 않아요.
+
+JSON의 실제 쿼리는 `python3 docker/grafana/verify.py`로 검증해요. Docker의 `prom/prometheus:v3.14.0`에 포함된 promtool을 사용하며, 운영 저장소·자격 증명 없이 무호출·미수집·환경 및 실패 제외·여러 인스턴스 가중평균·버킷 상한을 검사해요.
+
+### Region·개인 Press 지연을 추적하는 순서
+
+1. 수집 연결과 같은 시간대의 Hikari 사용·대기, 톰캣 사용 스레드를 먼저 확인해요. 현재 값만으로 이전 지연 시점의 상태를 판단하지 않아요.
+2. `Region·개인 Press DB 작업 · 선택 기간 표본 수`에서 단계별 `success/error`를 확인해요. `increase`로 계산한 DB 작업 호출 수 추정치이며 HTTP 요청 수·사용자 수가 아니에요. 관측된 증가가 없으면 0, 계산할 표본이 없으면 데이터 없음이에요. 일부 기간·인스턴스만 수집돼도 값이 나올 수 있으므로 전체 수집을 보장하지 않아요.
+3. 같은 단계의 평균·p95·p99 추이를 비교해요. 지연은 `rate`의 이동 구간, 표본 수는 선택 기간 전체를 사용하므로 표본 수가 양수여도 최근 지연 구간은 비어 있을 수 있어요. 표본이 적으면 분위수만으로 병목을 확정하지 않아요.
+4. 같은 시간대의 느린 요청·5xx 로그를 펼쳐 `correlationId`, `durationMs`, `timings`를 읽어요. `timings`의 `count`는 해당 요청 안의 실행 횟수, `totalMs`는 누적 시간, `maxMs`는 한 번의 최대 시간이에요. 단계가 없다고 0ms로 해석하지 않아요.
+
+`regions_intersection`은 공간 조회, `regions_summary`는 감정 집계 조회에 대응해요. `press_increase`, `press_my_daily`, `press_daily_total`은 개인 Press 쓰기·조회 단계예요. `regions_service`, `press_service`, `press_my_service`, `press_total_service`는 내부 DB 단계를 포함하므로 시간을 합산하지 않아요. 서비스 경계가 자체 트랜잭션을 열 때는 시작·완료도 포함하지만 이미 열린 외부 트랜잭션의 시작·완료는 포함하지 않아요.
+
+DB 작업이 오래 걸렸다는 사실만으로 SQL 실행·잠금·연결 획득 중 무엇이 원인인지 확정할 수는 없어요. 같은 요청의 단계 시간과 같은 시점의 풀 대기·DB 관측을 대조하고, 로컬에서 가설을 나누어 재현해야 해요. 느린 요청·5xx만 로그를 남기며 비동기 로그 큐 포화 시 유실될 수 있으므로 로그 부재도 정상 판정이 아니에요.
 
 앱 자원 구역의 톰캣 스레드 패널은 `tomcat_threads_*` 지표를 써요. `application-prod.yml`, `application-dev.yml` 의 `server.tomcat.mbeanregistry.enabled` 와 [Alloy 수집 목록](../alloy/config.alloy)에 둘 다 들어 있어야 값이 보여요. 사용 중은 지금 요청을 처리하는 스레드 수, 생성됨은 만들어져 있는 스레드 수, 최대는 설정한 한도예요(기본 200). 여유 스레드는 최대에서 사용 중을 뺀 값이고, 0에 가까워지면 새 요청이 스레드를 기다려요.
 
@@ -50,7 +71,7 @@ Grafana가 패널별 쿼리로 Cloud에 저장된 데이터를 읽어요
 | 설정 | 역할 |
 | --- | --- |
 | `title`, `uid` | 대시보드 이름과 고유 식별자예요 |
-| `panels` | 데이터 패널 34개와 구역 제목·안내 9개로 구성된 목록이에요 (v2 기준) |
+| `panels` | 데이터 패널 35개와 구역 제목·안내 9개로 구성된 목록이에요 (v2 기준) |
 | `datasource`, `targets[].expr` | 어떤 저장소에서 어떤 쿼리로 데이터를 읽을지 정해요 |
 | `gridPos`, `fieldConfig` | 패널의 위치·크기, 초·바이트·백분율 같은 표시 단위를 정해요 |
 | `time`, `refresh` | 처음 볼 시간 범위와 화면을 새로 조회할 주기를 정해요 |
