@@ -30,6 +30,8 @@ def verify_metrics(config):
                 "hikaricp_connections"]
     families = {
         "http_server_requests_seconds_": "count sum bucket max",
+        "pheeeew_region_query_seconds_": "count sum bucket max",
+        "pheeeew_emotion_press_query_seconds_": "count sum bucket max",
         "pheeeew_activity_": "dau mau last_aggregated_seconds collection_started_seconds "
                              "record_failures_total aggregation_failures_total",
         "jvm_gc_pause_seconds_": "count sum max",
@@ -45,7 +47,10 @@ def verify_metrics(config):
     accepted.extend(f"tomcat_threads_{kind}_threads" for kind in ("busy", "current", "config_max"))
     rejected = ["pheeeew_activity_device_id", "pheeeew_activity_dau_created",
                 "pheeeew_app_version_checks_created", "pheeeew_sigh_list_results_bucket",
-                "pheeeew_unreviewed_total", "unreviewed_metric"]
+                "pheeeew_unreviewed_total", "unreviewed_metric",
+                "pheeeew_region_query_seconds_created", "pheeeew_region_query_seconds_device_id",
+                "pheeeew_emotion_press_query_seconds_created", "pheeeew_emotion_press_query_seconds_device_id",
+                "pheeeew_group_press_query_seconds_count"]
     rejected.extend(name + "_extra" for name in accepted)
     for name, expected in [(name, True) for name in accepted] + [(name, False) for name in rejected]:
         if bool(re.fullmatch(pattern, name)) != expected:
