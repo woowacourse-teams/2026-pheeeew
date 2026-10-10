@@ -2,6 +2,8 @@ package com.pheeeew.common.logging;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.spi.LoggingEventBuilder;
@@ -69,10 +71,29 @@ public class RequestLogWriter {
             long durationMillis
     ) {
         Object route = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        addTimings(event, request);
         return event.addKeyValue("method", resolveMethod(request.getMethod()))
                 .addKeyValue("route", route == null ? UNMAPPED_ROUTE : route.toString())
                 .addKeyValue("status", status)
                 .addKeyValue("durationMs", durationMillis);
+    }
+
+    private void addTimings(LoggingEventBuilder event, HttpServletRequest request) {
+        Map<RequestTiming.Stage, RequestTiming.Measurement> snapshot = RequestTiming.snapshot(request);
+        if (snapshot.isEmpty()) {
+            return;
+        }
+        Map<String, Map<String, Number>> timings = new LinkedHashMap<>();
+        for (RequestTiming.Stage stage : RequestTiming.Stage.values()) {
+            RequestTiming.Measurement measured = snapshot.get(stage);
+            if (measured != null) {
+                timings.put(stage.name().toLowerCase(Locale.ROOT), Map.of(
+                        "count", measured.count(), "totalMs", measured.totalNanos() / 1_000_000.0,
+                        "maxMs", measured.maxNanos() / 1_000_000.0));
+            }
+        }
+        // 서비스 경계는 내부 DB 단계를 포함할 수 있으므로 단계들을 합산하지 않는다.
+        event.addKeyValue("timings", timings);
     }
 
     private String resolveMethod(String requestMethod) {

@@ -9,6 +9,11 @@ import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층�
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.pheeeew.common.logging.RequestLoggingFilter;
+import com.pheeeew.common.logging.RequestServiceTimingAspect;
+import com.pheeeew.common.logging.RequestTiming;
+import com.pheeeew.common.logging.RequestTiming.Measurement;
+import com.pheeeew.common.logging.RequestTiming.Stage;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.emotion.application.dto.RegionEmotionSummary;
 import com.pheeeew.emotion.domain.Audio;
@@ -16,17 +21,22 @@ import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
+import com.pheeeew.emotion.infra.metrics.EmotionRegionQueryTimingAspect;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.region.domain.RegionLevel;
+import com.pheeeew.region.infra.metrics.RegionQueryMetrics;
+import com.pheeeew.region.infra.metrics.RegionQueryMetricsAspect;
 import com.pheeeew.report.domain.DeviceBlock;
 import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.support.PostgisDataJpaTest;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,12 +45,18 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @PostgisDataJpaTest
-@Import(EmotionQueryService.class)
+@Import({EmotionQueryService.class, AopAutoConfiguration.class, RegionQueryMetrics.class, RegionQueryMetricsAspect.class,
+        EmotionRegionQueryTimingAspect.class, RequestServiceTimingAspect.class})
 class EmotionRegionCountIntegrationTest {
 
     private static final String EMD = "11010530";
@@ -51,6 +67,8 @@ class EmotionRegionCountIntegrationTest {
     private EntityManager entityManager;
     @Autowired
     private JdbcClient jdbc;
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
@@ -333,11 +351,15 @@ class EmotionRegionCountIntegrationTest {
             case 1 -> "UPDATE region_datasets SET backfill_verified_at = NULL";
             default -> "DELETE FROM region_datasets";
         }).update();
+        long successCount = 집계_준비_조회_수("success");
+        long errorCount = 집계_준비_조회_수("error");
 
         // when / then
         assertThatThrownBy(() -> counts(empty ? List.of() : List.of(EMD), null))
                 .isInstanceOfSatisfying(EmotionException.class,
                         error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_REGION_DATA_UNAVAILABLE));
+        assertThat(집계_준비_조회_수("success")).isEqualTo(successCount + 1);
+        assertThat(집계_준비_조회_수("error")).isEqualTo(errorCount);
         var bounds = empty ? EmotionSearchBounds.of(130, 40, 132, 42) : EmotionSearchBounds.of(126, 37, 128, 39);
         assertThatThrownBy(() -> service.findRegionMap(bounds, RegionLevel.EMD, null))
                 .isInstanceOfSatisfying(EmotionException.class,
@@ -347,23 +369,98 @@ class EmotionRegionCountIntegrationTest {
     @Test
     void 집계할_코드나_기록이_없으면_내부_개수_맵도_비어있다() {
         // given / when / then
+        long successCount = 집계_준비_조회_수("success");
         assertThat(counts(List.of(), null)).isEmpty();
         assertThat(counts(List.of(EMD), null)).isEmpty();
         assertThat(service.findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), RegionLevel.EMD, null)).isEmpty();
+        assertThat(집계_준비_조회_수("success")).isEqualTo(successCount + 3);
     }
 
     @Test
-    void 집계_SQL_장애를_정상적인_빈_개수로_숨기지_않는다() {
+    void 집계_준비_조회_SQL_장애를_실패로_기록하고_예외를_유지한다() throws Exception {
+        // given: 테스트 트랜잭션 종료 시 DDL도 롤백된다.
+        jdbc.sql("ALTER TABLE region_datasets RENAME TO unavailable_region_datasets").update();
+        long errorCount = 집계_준비_조회_수("error");
+
+        // when / then
+        var timings = inRequest(() ->
+                assertThatThrownBy(() -> counts(List.of(EMD), null)).isInstanceOf(DataAccessException.class));
+        assertThat(timings).containsOnlyKeys(Stage.REGIONS_AGGREGATION_READY);
+        assertThat(timings.get(Stage.REGIONS_AGGREGATION_READY).count()).isEqualTo(1);
+        assertThat(집계_준비_조회_수("error")).isEqualTo(errorCount + 1);
+    }
+
+    @Test
+    void 집계_SQL_장애를_정상적인_빈_개수로_숨기지_않는다() throws Exception {
         // given: 테스트 트랜잭션 종료 시 DDL도 롤백된다.
         jdbc.sql("ALTER TABLE emotions RENAME TO unavailable_emotions").update();
 
         // when / then
-        assertThatThrownBy(() -> counts(List.of(EMD), null)).isInstanceOf(DataAccessException.class);
+        var timings = inRequest(() ->
+                assertThatThrownBy(() -> counts(List.of(EMD), null)).isInstanceOf(DataAccessException.class));
+        assertThat(timings).containsOnlyKeys(Stage.REGIONS_AGGREGATION_READY, Stage.REGIONS_SUMMARY);
+        assertThat(timings.get(Stage.REGIONS_SUMMARY).count()).isEqualTo(1);
+        assertThat(timings.get(Stage.REGIONS_SUMMARY).totalNanos()).isGreaterThanOrEqualTo(0);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true", "false,false"})
+    void 지역_지도는_실행한_단계만_요청별로_기록한다(boolean intersects, boolean contentOnly) throws Exception {
+        // given
+        save(classified().memo("메모").state(EmotionState.ANGRY));
+        entityManager.flush();
+        var bounds = intersects ? EmotionSearchBounds.of(126, 37, 128, 39)
+                : EmotionSearchBounds.of(130, 40, 132, 42);
+
+        // when
+        var timings = inRequest(() -> {
+            var result = contentOnly ? service.findContentRegionMap(bounds, RegionLevel.EMD, null)
+                    : service.findRegionMap(bounds, RegionLevel.EMD, null);
+            if (intersects) {
+                assertThat(result).singleElement().satisfies(item ->
+                        assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(1L, EmotionState.ANGRY)));
+            } else {
+                assertThat(result).isEmpty();
+            }
+        });
+
+        // then: 조회 생략을 0초짜리 집계 호출로 기록하지 않는다.
+        var expected = intersects
+                ? List.of(Stage.REGIONS_SERVICE, Stage.REGIONS_BOUNDARIES, Stage.REGIONS_INTERSECTION,
+                        Stage.REGIONS_AGGREGATION_READY, Stage.REGIONS_SUMMARY)
+                : List.of(Stage.REGIONS_SERVICE, Stage.REGIONS_BOUNDARIES,
+                        Stage.REGIONS_INTERSECTION, Stage.REGIONS_AGGREGATION_READY);
+        assertThat(timings).containsOnlyKeys(expected);
+        assertThat(timings.values()).allSatisfy(value -> {
+            assertThat(value.count()).isEqualTo(1);
+            assertThat(value.totalNanos()).isGreaterThanOrEqualTo(0).isEqualTo(value.maxNanos());
+        });
+    }
+
+    private Map<Stage, Measurement> inRequest(Runnable operation) throws Exception {
+        var request = new MockHttpServletRequest();
+        var snapshot = new AtomicReference<Map<Stage, Measurement>>();
+        new RequestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
+            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+            try {
+                operation.run();
+                snapshot.set(RequestTiming.snapshot(request));
+            } finally {
+                RequestContextHolder.resetRequestAttributes();
+            }
+        });
+        assertThat(RequestTiming.snapshot(request)).isEmpty();
+        return snapshot.get();
     }
 
     private Map<String, Long> counts(List<String> regionCodes, UUID groupId) {
         return service.findSummariesByRegionCodes(regionCodes, groupId).entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().totalCount()));
+    }
+
+    private long 집계_준비_조회_수(String outcome) {
+        return meterRegistry.get("pheeeew.region.query")
+                .tags("operation", "aggregation_ready", "outcome", outcome).timer().count();
     }
 
     private void addRegion(String code, RegionLevel level, String parentCode) {

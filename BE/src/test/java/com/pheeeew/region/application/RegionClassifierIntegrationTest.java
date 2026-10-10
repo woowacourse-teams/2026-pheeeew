@@ -9,7 +9,10 @@ import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.region.domain.RegionLevel;
 import com.pheeeew.region.domain.repository.RegionRepository;
+import com.pheeeew.region.infra.metrics.RegionQueryMetrics;
+import com.pheeeew.region.infra.metrics.RegionQueryMetricsAspect;
 import com.pheeeew.support.PostgisDataJpaTest;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,12 +24,14 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 @PostgisDataJpaTest
-@Import({RegionClassifier.class, RegionRepository.class})
+@Import({RegionClassifier.class, RegionRepository.class, AopAutoConfiguration.class,
+        RegionQueryMetrics.class, RegionQueryMetricsAspect.class})
 class RegionClassifierIntegrationTest {
 
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
@@ -35,6 +40,8 @@ class RegionClassifierIntegrationTest {
     private RegionClassifier classifier;
     @Autowired
     private JdbcClient jdbc;
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
@@ -45,6 +52,8 @@ class RegionClassifierIntegrationTest {
     void 상위_지역도_덮는_좌표를_행정동으로_분류한다() {
         // given
         경계_검증을_완료한다();
+        long boundaryCount = 지역_조회_수("boundaries_verified", "success");
+        long classificationCount = 지역_조회_수("emd_code", "success");
 
         // when
         var result = classifier.classify(point(127, 38));
@@ -52,6 +61,8 @@ class RegionClassifierIntegrationTest {
         // then
         assertThat(result.regionCode()).isEqualTo("11010530");
         assertThat(result.classifiedAt()).isNotNull();
+        assertThat(지역_조회_수("boundaries_verified", "success")).isEqualTo(boundaryCount + 1);
+        assertThat(지역_조회_수("emd_code", "success")).isEqualTo(classificationCount + 1);
     }
 
     @ParameterizedTest
@@ -180,9 +191,11 @@ class RegionClassifierIntegrationTest {
         // given: 트랜잭션 종료 시 롤백될 DDL로 조회 장애를 만든다.
         경계_검증을_완료한다();
         jdbc.sql("ALTER TABLE regions RENAME TO unavailable_regions").update();
+        long errorCount = 지역_조회_수("emd_code", "error");
 
         // when / then
         assertThatThrownBy(() -> classifier.classify(point(longitude, 38))).isInstanceOf(DataAccessException.class);
+        assertThat(지역_조회_수("emd_code", "error")).isEqualTo(errorCount + 1);
     }
 
     @ParameterizedTest
@@ -190,6 +203,7 @@ class RegionClassifierIntegrationTest {
     void 요청한_계층만_선택하고_코드와_부모_및_고정_표시점을_반환한다(RegionLevel level) {
         // given
         경계_검증을_완료한다();
+        long successCount = 공간_조회_수("success");
         String code = switch (level) {
             case SIDO -> "11";
             case SIGUNGU -> "11010";
@@ -205,6 +219,7 @@ class RegionClassifierIntegrationTest {
                     assertThat(row.longitude()).isEqualTo(127);
                     assertThat(row.latitude()).isEqualTo(38);
                 });
+        assertThat(공간_조회_수("success")).isEqualTo(successCount + 1);
     }
 
     @Test
@@ -278,10 +293,28 @@ class RegionClassifierIntegrationTest {
         // given
         경계_검증을_완료한다();
         jdbc.sql(missing ? "DELETE FROM region_datasets" : "UPDATE region_datasets SET boundaries_verified_at = NULL").update();
+        long successCount = 공간_조회_수("success");
+        long errorCount = 공간_조회_수("error");
+        long boundaryCount = 지역_조회_수("boundaries_verified", "success");
         // when / then
         assertThatThrownBy(() -> classifier.findIntersectingRegions(EmotionSearchBounds.of(126, 37, 128, 39), RegionLevel.EMD))
                 .isInstanceOfSatisfying(EmotionException.class,
                         error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_REGION_DATA_UNAVAILABLE));
+        assertThat(공간_조회_수("success")).isEqualTo(successCount);
+        assertThat(공간_조회_수("error")).isEqualTo(errorCount);
+        assertThat(지역_조회_수("boundaries_verified", "success")).isEqualTo(boundaryCount + 1);
+    }
+
+    @Test
+    void 경계_검증_조회_SQL_장애를_실패로_기록하고_예외를_유지한다() {
+        // given: 테스트 트랜잭션 종료 시 DDL도 롤백된다.
+        jdbc.sql("ALTER TABLE region_datasets RENAME TO unavailable_region_datasets").update();
+        long errorCount = 지역_조회_수("boundaries_verified", "error");
+
+        // when / then
+        assertThatThrownBy(() -> classifier.findIntersectingRegions(EmotionSearchBounds.of(126, 37, 128, 39), RegionLevel.EMD))
+                .isInstanceOf(DataAccessException.class);
+        assertThat(지역_조회_수("boundaries_verified", "error")).isEqualTo(errorCount + 1);
     }
 
     @Test
@@ -289,9 +322,20 @@ class RegionClassifierIntegrationTest {
         // given: 테스트 트랜잭션 종료 시 DDL도 롤백된다.
         경계_검증을_완료한다();
         jdbc.sql("ALTER TABLE regions RENAME TO unavailable_regions").update();
+        long errorCount = 공간_조회_수("error");
         // when / then
         assertThatThrownBy(() -> classifier.findIntersectingRegions(EmotionSearchBounds.of(126, 37, 128, 39), RegionLevel.EMD))
                 .isInstanceOf(DataAccessException.class);
+        assertThat(공간_조회_수("error")).isEqualTo(errorCount + 1);
+    }
+
+    private long 공간_조회_수(String outcome) {
+        return 지역_조회_수("intersecting_regions", outcome);
+    }
+
+    private long 지역_조회_수(String operation, String outcome) {
+        return meterRegistry.get("pheeeew.region.query")
+                .tags("operation", operation, "outcome", outcome).timer().count();
     }
 
     private void 경계_검증을_완료한다() {
