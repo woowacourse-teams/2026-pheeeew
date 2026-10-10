@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProfile name="prod">
+        <include resource="org/springframework/boot/logging/logback/structured-console-appender.xml"/>
+    </springProfile>
+
+    <springProfile name="dev &amp; !prod">
+        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+    </springProfile>
+
+    <springProfile name="prod | dev">
+        <include resource="org/springframework/boot/logging/logback/structured-file-appender.xml"/>
+        <appender name="ASYNC_CONSOLE" class="ch.qos.logback.classic.AsyncAppender">
+            <queueSize>256</queueSize>
+            <discardingThreshold>51</discardingThreshold>
+            <neverBlock>true</neverBlock>
+            <maxFlushTime>1000</maxFlushTime>
+            <includeCallerData>false</includeCallerData>
+            <appender-ref ref="CONSOLE"/>
+        </appender>
+        <appender name="ASYNC_FILE" class="ch.qos.logback.classic.AsyncAppender">
+            <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+                <level>${FILE_LOG_THRESHOLD}</level>
+            </filter>
+            <queueSize>256</queueSize>
+            <discardingThreshold>51</discardingThreshold>
+            <neverBlock>true</neverBlock>
+            <maxFlushTime>1000</maxFlushTime>
+            <includeCallerData>false</includeCallerData>
+            <appender-ref ref="FILE"/>
+        </appender>
+        <root level="INFO">
+            <appender-ref ref="ASYNC_CONSOLE"/>
+            <appender-ref ref="ASYNC_FILE"/>
+        </root>
+    </springProfile>
+
+    <springProfile name="!dev &amp; !prod">
+        <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+        <condition class="ch.qos.logback.core.boolex.IsPropertyDefinedCondition">
+            <key>LOG_FILE</key>
+        </condition>
+        <if>
+            <then>
+                <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
+                <root level="INFO">
+                    <appender-ref ref="FILE"/>
+                </root>
+            </then>
+        </if>
+    </springProfile>
+</configuration>
