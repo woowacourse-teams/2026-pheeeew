@@ -1,8 +1,6 @@
 package com.pheeeew.common.logging;
 
 public enum PheeeewRequestTimingStage implements RequestTimingStage {
-    DB_CONNECTION_ACQUIRE_SUCCESS,
-    DB_CONNECTION_ACQUIRE_FAILED,
     REGIONS_BOUNDARIES,
     REGIONS_INTERSECTION,
     REGIONS_AGGREGATION_READY,

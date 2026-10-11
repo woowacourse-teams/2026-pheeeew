@@ -1,7 +1,7 @@
 package com.pheeeew.common.logging;
 
-import static com.pheeeew.common.logging.PheeeewRequestTimingStage.DB_CONNECTION_ACQUIRE_FAILED;
-import static com.pheeeew.common.logging.PheeeewRequestTimingStage.DB_CONNECTION_ACQUIRE_SUCCESS;
+import static com.pheeeew.common.logging.DataSourceTimingStage.DB_CONNECTION_ACQUIRE_FAILED;
+import static com.pheeeew.common.logging.DataSourceTimingStage.DB_CONNECTION_ACQUIRE_SUCCESS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -29,7 +29,9 @@ import org.springframework.boot.jdbc.health.DataSourceHealthIndicator;
 import org.springframework.boot.micrometer.metrics.autoconfigure.MetricsAutoConfiguration;
 import org.springframework.boot.micrometer.metrics.autoconfigure.export.simple.SimpleMetricsExportAutoConfiguration;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DelegatingDataSource;
@@ -162,7 +164,7 @@ class RequestTimingDataSourceIntegrationTest {
         var database = SharedTestContainers.postgis();
         String schema = "timing_" + UUID.randomUUID().toString().replace("-", "");
         return new ApplicationContextRunner()
-                .withUserConfiguration(RequestTimingDataSourceConfiguration.class, JpaConfiguration.class)
+                .withUserConfiguration(JpaConfiguration.class)
                 .withConfiguration(AutoConfigurations.of(DataSourceAutoConfiguration.class, FlywayAutoConfiguration.class,
                         HibernateJpaAutoConfiguration.class, MetricsAutoConfiguration.class, SimpleMetricsExportAutoConfiguration.class,
                         DataSourcePoolMetricsAutoConfiguration.class, DataSourceHealthContributorAutoConfiguration.class))
@@ -183,6 +185,9 @@ class RequestTimingDataSourceIntegrationTest {
 
     @Configuration(proxyBeanMethods = false)
     @AutoConfigurationPackage
+    @ComponentScan(basePackageClasses = RequestTimingDataSourceConfiguration.class, useDefaultFilters = false,
+            includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE,
+                    classes = RequestTimingDataSourceConfiguration.class))
     static class JpaConfiguration {
     }
 }

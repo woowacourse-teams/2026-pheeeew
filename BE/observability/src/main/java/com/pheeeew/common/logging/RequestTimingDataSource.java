@@ -46,7 +46,7 @@ public final class RequestTimingDataSource extends DelegatingDataSource {
         } finally {
             try {
                 // 풀 대기 외에 내부 검증 등도 포함한 획득 호출 시간이며, 연결 점유 시간은 아니다.
-                RequestTiming.record(acquired ? PheeeewRequestTimingStage.DB_CONNECTION_ACQUIRE_SUCCESS : PheeeewRequestTimingStage.DB_CONNECTION_ACQUIRE_FAILED,
+                RequestTiming.record(acquired ? DataSourceTimingStage.DB_CONNECTION_ACQUIRE_SUCCESS : DataSourceTimingStage.DB_CONNECTION_ACQUIRE_FAILED,
                         nanoTime.getAsLong() - startedAt);
             } catch (RuntimeException ignored) {
                 // 계측 실패가 원래 연결이나 획득 예외를 바꾸지 않게 한다.

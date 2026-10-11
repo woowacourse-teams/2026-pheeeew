@@ -25,8 +25,11 @@ dependencyManagement {
 
 dependencies {
     api 'org.slf4j:slf4j-api'
+    api 'org.springframework:spring-jdbc'
     compileOnlyApi 'jakarta.servlet:jakarta.servlet-api'
     implementation 'org.springframework:spring-web'
+    implementation 'org.springframework:spring-context'
+    implementation 'com.zaxxer:HikariCP'
 
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'

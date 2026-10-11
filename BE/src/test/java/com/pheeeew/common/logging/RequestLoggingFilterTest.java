@@ -247,7 +247,11 @@ class RequestLoggingFilterTest {
         assertThat(event).containsEntry("event", failed ? "http_request_failed" : "http_request_slow")
                 .containsEntry("correlationId", result.getResponse().getHeader("X-Correlation-ID"));
         Map<?, ?> timings = (Map<?, ?>) event.get("timings");
-        assertThat(timings).hasSize(3);
+        assertThat(timings.keySet().stream().map(Object::toString).toList()).containsExactly(
+                "db_connection_acquire_success", "db_connection_acquire_failed",
+                "regions_intersection", "press_increase", "regions_service");
+        assertTiming(timings.get("db_connection_acquire_success"), 2, 3.0, 2.0);
+        assertTiming(timings.get("db_connection_acquire_failed"), 1, 250.0, 250.0);
         assertTiming(timings.get("regions_intersection"), 2, 4.0, 2.75);
         assertTiming(timings.get("press_increase"), 2, 0.75, 0.5);
         assertTiming(timings.get("regions_service"), 1, 10.0, 10.0);
@@ -472,6 +476,9 @@ class RequestLoggingFilterTest {
             RequestTiming.record(PheeeewRequestTimingStage.PRESS_INCREASE, 500_000);
             RequestTiming.record(PheeeewRequestTimingStage.PRESS_INCREASE, 250_000);
             RequestTiming.record(PheeeewRequestTimingStage.REGIONS_SERVICE, 10_000_000);
+            RequestTiming.record(DataSourceTimingStage.DB_CONNECTION_ACQUIRE_SUCCESS, 1_000_000);
+            RequestTiming.record(DataSourceTimingStage.DB_CONNECTION_ACQUIRE_SUCCESS, 2_000_000);
+            RequestTiming.record(DataSourceTimingStage.DB_CONNECTION_ACQUIRE_FAILED, 250_000_000);
             RequestTiming.record(UnlistedStage.REGIONS_INTERSECTION, 99_000_000);
             RequestTiming.record(UnlistedStage.UNLISTED, 99_000_000);
             if (failed) {

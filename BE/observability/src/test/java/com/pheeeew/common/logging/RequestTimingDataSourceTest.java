@@ -1,7 +1,7 @@
 package com.pheeeew.common.logging;
 
-import static com.pheeeew.common.logging.PheeeewRequestTimingStage.DB_CONNECTION_ACQUIRE_FAILED;
-import static com.pheeeew.common.logging.PheeeewRequestTimingStage.DB_CONNECTION_ACQUIRE_SUCCESS;
+import static com.pheeeew.common.logging.DataSourceTimingStage.DB_CONNECTION_ACQUIRE_FAILED;
+import static com.pheeeew.common.logging.DataSourceTimingStage.DB_CONNECTION_ACQUIRE_SUCCESS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
