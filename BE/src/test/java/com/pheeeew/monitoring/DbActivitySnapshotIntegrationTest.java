@@ -69,6 +69,12 @@ class DbActivitySnapshotIntegrationTest {
                 }
                 // then: SQL 원문 없이 대기 및 blocker 출력 상한을 보존한다.
                 var blocked = rows(sample).stream().filter(row -> "Lock".equals(row.get("wait_event_type"))).findFirst().orElseThrow();
+                assertThat(((Number) sample.get("lock_wait_count")).intValue()).isEqualTo(1);
+                assertThat(((Number) sample.get("active_count")).intValue()).isEqualTo(1);
+                assertThat(((Number) sample.get("idle_in_transaction_count")).intValue()).isEqualTo(6);
+                assertThat(((Number) sample.get("other_wait_count")).intValue()).isEqualTo(6);
+                assertThat(((Number) sample.get("io_wait_count")).intValue()).isZero();
+                assertThat(((Number) sample.get("no_wait_count")).intValue()).isZero();
                 assertThat(((Number) blocked.get("blocker_count")).intValue()).isEqualTo(6);
                 assertThat((List<?>) blocked.get("blocker_pids")).hasSize(5);
                 assertThat(((Number) blocked.get("query_elapsed_ms")).doubleValue()).isGreaterThanOrEqualTo(0);
@@ -100,10 +106,16 @@ class DbActivitySnapshotIntegrationTest {
         assertThat(rows(sample)).hasSize(20);
         assertThat(((Number) sample.get("eligible_count")).intValue()).isEqualTo(21);
         assertThat(((Number) sample.get("omitted_count")).intValue()).isEqualTo(1);
+        assertThat(((Number) sample.get("idle_in_transaction_count")).intValue()).isEqualTo(21);
+        assertThat(((Number) sample.get("other_wait_count")).intValue()).isEqualTo(21);
+        assertThat(((Number) sample.get("active_count")).intValue()).isZero();
         execute(connections.getLast(), "SET track_activities=off");
         sample = snapshot(observer);
         assertThat(sample.get("visibility")).isEqualTo("partial");
         assertThat(((Number) sample.get("disabled_count")).intValue()).isEqualTo(1);
+        assertThat(((Number) sample.get("eligible_count")).intValue()).isEqualTo(20);
+        assertThat(((Number) sample.get("idle_in_transaction_count")).intValue()).isEqualTo(20);
+        assertThat(((Number) sample.get("other_wait_count")).intValue()).isEqualTo(20);
     }
 
     @Test
@@ -118,6 +130,10 @@ class DbActivitySnapshotIntegrationTest {
         assertThat(sample.get("read_all_stats")).isEqualTo(false);
         assertThat(((Number) sample.get("unknown_state_count")).intValue()).isPositive();
         assertThat(rows(sample)).isEmpty();
+        for (String field : List.of("active_count", "idle_in_transaction_count", "lock_wait_count",
+                "io_wait_count", "other_wait_count", "no_wait_count")) {
+            assertThat(((Number) sample.get(field)).intValue()).isZero();
+        }
     }
 
     private Connection connect(boolean isolated) throws Exception {

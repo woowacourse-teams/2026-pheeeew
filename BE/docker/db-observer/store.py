@@ -18,10 +18,11 @@ class Store:
         self.directory, self.clock, self.lock = directory, clock, None
 
     def __enter__(self):
-        self.directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+        self.directory.mkdir(mode=0o750, parents=True, exist_ok=True)
         self.lock = os.open(self.directory / ".lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
         try:
             fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            os.chmod(self.directory, 0o750)
             self.trim(0)
             for path, _, _ in self.files():
                 self.repair_tail(path)
@@ -60,6 +61,7 @@ class Store:
     def repair_tail(self, path: Path) -> None:
         fd = os.open(path, os.O_RDWR | os.O_NOFOLLOW)
         try:
+            os.fchmod(fd, 0o640)  # 기존 0600 표본도 잠금을 얻은 뒤 그룹 읽기로 이행한다.
             size = os.lseek(fd, 0, os.SEEK_END)
             start = max(0, size - MAX_RECORD)
             os.lseek(fd, start, os.SEEK_SET)
@@ -86,8 +88,9 @@ class Store:
         self.trim(len(data))
         path = self.directory / self.clock().astimezone(timezone.utc).strftime(BUCKET)
         # 정리로 현재 버킷이 삭제됐어도 새 파일을 열어 삭제된 inode에 쓰지 않는다.
-        fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW, 0o600)
+        fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_APPEND | os.O_NOFOLLOW, 0o640)
         try:
+            os.fchmod(fd, 0o640)  # 프로세스 umask 077은 비밀번호 경계로 유지한다.
             remaining = memoryview(data)
             while remaining:
                 written = os.write(fd, remaining)

@@ -1,4 +1,18 @@
 services:
+  # 최초 설치/구형 볼륨 이행 때만 별도로 실행한다. DB와 비밀번호에 접근하지 않는다.
+  init-storage:
+    profiles: [setup]
+    build: .
+    user: "0:0"
+    entrypoint: [python3, -c, "import os; os.chown('/data', 10001, 10001); os.chmod('/data', 0o750)"]
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [CHOWN, FOWNER]
+    security_opt: [no-new-privileges:true]
+    volumes:
+      - samples:/data
+
   db-observer:
     build: .
     env_file:
@@ -15,7 +29,7 @@ services:
           create_host_path: false
     networks:
       - database
-    restart: "no"
+    restart: unless-stopped
     stop_grace_period: 6s
     init: true
     read_only: true
@@ -38,3 +52,5 @@ networks:
     name: ${DB_OBSERVER_NETWORK:?Set the existing database network}
 volumes:
   samples:
+    external: true
+    name: ${DB_OBSERVER_VOLUME:?Set the fixed environment-specific sample volume}

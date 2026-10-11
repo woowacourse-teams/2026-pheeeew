@@ -3433,6 +3433,599 @@
         }
       ],
       "id": 127
+    },
+    {
+      "id": 150,
+      "type": "row",
+      "title": "07  DB 내부 대기  /  연결을 얻은 뒤 무엇을 기다리나요?",
+      "collapsed": false,
+      "panels": [],
+      "gridPos": {
+        "x": 0,
+        "y": 141,
+        "w": 24,
+        "h": 1
+      }
+    },
+    {
+      "id": 151,
+      "type": "stat",
+      "title": "DB 표본 수집 상태 · 최근60초",
+      "description": "선택 기간 끝 시점의 최근60초 중 마지막 표본이에요. 성공·전체 가시성, 성공·부분 가시성, 수집 실패를 구분해요. 60초 내 표본이 없으면 미수집/오래됨이며 정상0이 아니에요. 앱이나 DB가 정상이라는 판정은 아니에요. 아래 추이는30초 창이라 먼저 비는 구간이 있어요.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 142,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\", v=\"snapshot.visibility\" | label_format n=`{{if eq .s \"error\"}}0{{else if eq .v \"visible\"}}1{{else}}2{{end}}` | unwrap n | __error__=\"\" [60s]) by (instance)",
+          "legendFormat": "{{instance}}",
+          "queryType": "instant",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "최근 표본 없음",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "수집 실패",
+                  "color": "red"
+                },
+                "1": {
+                  "text": "수집 성공 · 전체 가시성",
+                  "color": "blue"
+                },
+                "2": {
+                  "text": "수집 성공 · 부분 가시성",
+                  "color": "orange"
+                }
+              }
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 152,
+      "type": "stat",
+      "title": "마지막 DB 표본 시각 · 최근24시간",
+      "description": "선택 기간 끝 기준 최근24시간 안에 수신한 마지막 표본의 원래 관측 시각이에요. 현재 수신 시각이 아니며 오래된 시각이 남아 있어도 현재 정상이라는 뜻은 아니에요. 수집 상태와 함께 확인해요.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 142,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | label_format n=`{{ __timestamp__ | unixEpoch }}` | unwrap n | __error__=\"\" [24h]) by (instance) * 1000",
+          "legendFormat": "{{instance}}",
+          "queryType": "instant",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "dateTimeAsIso",
+          "decimals": 0,
+          "noValue": "24시간 내 표본 없음",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 153,
+      "type": "stat",
+      "title": "DB 수집 실패 표본 · 최근5분",
+      "description": "선택 기간 끝 기준 최근5분의 수집 실패 표본 수예요. DB 세션 수, SQL 실패 수, Hikari timeout 수가 아니에요. 최근 표본이 있을 때만 실패 부재를0으로 표시해요. 전송 누락·중복의 영향을 받을 수 있어요.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 142,
+        "w": 8,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "sum by (instance) (count_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\" | s=\"error\" [5m])) or on (instance) (0 * last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\", v=\"snapshot.visibility\" | label_format n=`{{if eq .s \"error\"}}0{{else if eq .v \"visible\"}}1{{else}}2{{end}}` | unwrap n | __error__=\"\" [60s]) by (instance))",
+          "legendFormat": "{{instance}}",
+          "queryType": "instant",
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "최근 표본 없음",
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto"
+      }
+    },
+    {
+      "id": 154,
+      "type": "timeseries",
+      "title": "DB 대기별 세션 수 · 보이는 전체 표본",
+      "description": "상세20개 제한 전의 nonidle 세션 수예요. 최근30초의 최신 표본을 표시하며 최신 수집이 실패하거나 부분 가시성이면 비워요. 빈 값은0이 아니에요. 대기 이벤트 없음은 CPU 병목 확정이 아니고 기타에는 ClientRead 등도 포함돼요.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 146,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json n=\"snapshot.lock_wait_count\", s=\"status\" | s=\"ok\" | unwrap n | __error__=\"\" [30s]) by (instance) and on (instance) (last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\", v=\"snapshot.visibility\" | label_format n=`{{if eq .s \"error\"}}0{{else if eq .v \"visible\"}}1{{else}}2{{end}}` | unwrap n | __error__=\"\" [30s]) by (instance) == 1)",
+          "legendFormat": "Lock 대기 · {{instance}}",
+          "queryType": "range",
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json n=\"snapshot.io_wait_count\", s=\"status\" | s=\"ok\" | unwrap n | __error__=\"\" [30s]) by (instance) and on (instance) (last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\", v=\"snapshot.visibility\" | label_format n=`{{if eq .s \"error\"}}0{{else if eq .v \"visible\"}}1{{else}}2{{end}}` | unwrap n | __error__=\"\" [30s]) by (instance) == 1)",
+          "legendFormat": "I/O 대기 · {{instance}}",
+          "queryType": "range",
+          "editorMode": "code"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json n=\"snapshot.other_wait_count\", s=\"status\" | s=\"ok\" | unwrap n | __error__=\"\" [30s]) by (instance) and on (instance) (last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\", v=\"snapshot.visibility\" | label_format n=`{{if eq .s \"error\"}}0{{else if eq .v \"visible\"}}1{{else}}2{{end}}` | unwrap n | __error__=\"\" [30s]) by (instance) == 1)",
+          "legendFormat": "기타 대기 · {{instance}}",
+          "queryType": "range",
+          "editorMode": "code"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json n=\"snapshot.no_wait_count\", s=\"status\" | s=\"ok\" | unwrap n | __error__=\"\" [30s]) by (instance) and on (instance) (last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\", v=\"snapshot.visibility\" | label_format n=`{{if eq .s \"error\"}}0{{else if eq .v \"visible\"}}1{{else}}2{{end}}` | unwrap n | __error__=\"\" [30s]) by (instance) == 1)",
+          "legendFormat": "대기 이벤트 없음 · {{instance}}",
+          "queryType": "range",
+          "editorMode": "code"
+        }
+      ],
+      "interval": "10s",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "noValue": "표본 없음",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "D"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 155,
+      "type": "timeseries",
+      "title": "DB 세션 상태와 관측 누락",
+      "description": "보이는 active·유휴 트랜잭션 수와 unknown·disabled·상세 생략 수예요. 최근30초 최신 성공 표본이며 partial도 표시해요. 실패 후에는 이전 성공값을 숨겨요. 상태 수는 대기별 분류와 중첩되므로 합산하지 않아요. 생략은 상세20개 상한이며 요약 집계에는 포함돼요.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 146,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json n=\"snapshot.active_count\", s=\"status\" | s=\"ok\" | unwrap n | __error__=\"\" [30s]) by (instance) and on (instance) (last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\", v=\"snapshot.visibility\" | label_format n=`{{if eq .s \"error\"}}0{{else if eq .v \"visible\"}}1{{else}}2{{end}}` | unwrap n | __error__=\"\" [30s]) by (instance) > 0)",
+          "legendFormat": "보이는 active · {{instance}}",
+          "queryType": "range",
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json n=\"snapshot.idle_in_transaction_count\", s=\"status\" | s=\"ok\" | unwrap n | __error__=\"\" [30s]) by (instance) and on (instance) (last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\", v=\"snapshot.visibility\" | label_format n=`{{if eq .s \"error\"}}0{{else if eq .v \"visible\"}}1{{else}}2{{end}}` | unwrap n | __error__=\"\" [30s]) by (instance) > 0)",
+          "legendFormat": "보이는 유휴 트랜잭션 · {{instance}}",
+          "queryType": "range",
+          "editorMode": "code"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json n=\"snapshot.unknown_state_count\", s=\"status\" | s=\"ok\" | unwrap n | __error__=\"\" [30s]) by (instance) and on (instance) (last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\", v=\"snapshot.visibility\" | label_format n=`{{if eq .s \"error\"}}0{{else if eq .v \"visible\"}}1{{else}}2{{end}}` | unwrap n | __error__=\"\" [30s]) by (instance) > 0)",
+          "legendFormat": "상태 알 수 없음 · {{instance}}",
+          "queryType": "range",
+          "editorMode": "code"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json n=\"snapshot.disabled_count\", s=\"status\" | s=\"ok\" | unwrap n | __error__=\"\" [30s]) by (instance) and on (instance) (last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\", v=\"snapshot.visibility\" | label_format n=`{{if eq .s \"error\"}}0{{else if eq .v \"visible\"}}1{{else}}2{{end}}` | unwrap n | __error__=\"\" [30s]) by (instance) > 0)",
+          "legendFormat": "활동 추적 꺼짐 · {{instance}}",
+          "queryType": "range",
+          "editorMode": "code"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json n=\"snapshot.omitted_count\", s=\"status\" | s=\"ok\" | unwrap n | __error__=\"\" [30s]) by (instance) and on (instance) (last_over_time({job=\"pheeeew-db-observer\",environment=\"prod\"} | json s=\"status\", v=\"snapshot.visibility\" | label_format n=`{{if eq .s \"error\"}}0{{else if eq .v \"visible\"}}1{{else}}2{{end}}` | unwrap n | __error__=\"\" [30s]) by (instance) > 0)",
+          "legendFormat": "상세 생략 · {{instance}}",
+          "queryType": "range",
+          "editorMode": "code"
+        }
+      ],
+      "interval": "10s",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "min": 0,
+          "noValue": "표본 없음",
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "stepAfter",
+            "lineWidth": 2,
+            "fillOpacity": 5,
+            "spanNulls": false,
+            "showPoints": "auto",
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "blue"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "purple"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "C"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "D"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "E"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "yellow"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      }
+    },
+    {
+      "id": 156,
+      "type": "logs",
+      "title": "DB 대기 표본 상세 · 성공과 실패",
+      "description": "한 줄은 한 번의 수집 표본이에요. 펼쳐서 PID·backend_start·blocker·경과 시간을 확인해요. PID는 HTTP 요청 ID가 아니며 query/state 경과 시간은 순수 실행/대기 시간이 아니에요. 최대20개 상세와 unknown/disabled/omitted를 함께 확인해요. 짧은 사건은 표본 사이에 지나갈 수 있어요.",
+      "datasource": {
+        "type": "loki",
+        "uid": "${DS_LOKI}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 155,
+        "w": 24,
+        "h": 12
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "${DS_LOKI}"
+          },
+          "expr": "{job=\"pheeeew-db-observer\",environment=\"prod\"}",
+          "legendFormat": "",
+          "queryType": "range",
+          "editorMode": "code",
+          "maxLines": 100
+        }
+      ],
+      "options": {
+        "showTime": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "wrapLogMessage": true,
+        "prettifyLogMessage": true,
+        "enableLogDetails": true,
+        "sortOrder": "Descending",
+        "dedupStrategy": "none"
+      }
     }
   ]
 }
