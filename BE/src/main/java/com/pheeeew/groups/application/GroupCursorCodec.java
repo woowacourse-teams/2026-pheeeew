@@ -13,11 +13,13 @@ import java.util.regex.Pattern;
 public final class GroupCursorCodec {
 
     private static final String EXPLORE_VERSION = "1";
+    private static final String MEMBER_VERSION = "2";
     private static final String FIELD_DELIMITER = "|";
     private static final int FIELD_COUNT = 3;
     private static final int MAX_CURSOR_LENGTH = 128;
     private static final GroupCursor EXPLORE_INITIAL =
             GroupCursor.of(Instant.parse("9999-12-31T23:59:59Z"), Long.MAX_VALUE);
+    private static final GroupCursor MEMBER_INITIAL = GroupCursor.of(Instant.EPOCH, 0L);
 
     private GroupCursorCodec() {
     }
@@ -28,6 +30,14 @@ public final class GroupCursorCodec {
 
     public static String encodeExplore(Instant lastCreatedAt, long lastId) {
         return encode(EXPLORE_VERSION, lastCreatedAt, lastId);
+    }
+
+    public static GroupCursor decodeMembersOrInitial(String encoded) {
+        return decodeOrInitial(encoded, MEMBER_VERSION, MEMBER_INITIAL);
+    }
+
+    public static String encodeMembers(Instant lastCreatedAt, long lastId) {
+        return encode(MEMBER_VERSION, lastCreatedAt, lastId);
     }
 
     private static GroupCursor decodeOrInitial(String encoded, String version, GroupCursor initial) {
