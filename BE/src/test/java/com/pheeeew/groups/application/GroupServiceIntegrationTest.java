@@ -144,6 +144,32 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
+    void 가입_방식을_공개로_만들면_공개로_저장한다() {
+        // given
+        Device 기기 = 기기를_저장한다();
+
+        // when
+        GroupResult 결과 = groupService.save(기기.getPublicId(), "공개모임", null, GroupJoinType.PUBLIC, 스탬프("기본"));
+
+        // then
+        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PUBLIC);
+        assertThat(저장된_가입_방식(결과.publicId())).isEqualTo("PUBLIC");
+    }
+
+    @Test
+    void 가입_방식을_비공개로_만들면_비공개로_저장한다() {
+        // given
+        Device 기기 = 기기를_저장한다();
+
+        // when
+        GroupResult 결과 = groupService.save(기기.getPublicId(), "비공개모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+
+        // then
+        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PRIVATE);
+        assertThat(저장된_가입_방식(결과.publicId())).isEqualTo("PRIVATE");
+    }
+
+    @Test
     void 같은_이름의_그룹은_두_번_만들_수_없다() {
         // given
         groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
@@ -260,6 +286,24 @@ class GroupServiceIntegrationTest {
                                 GroupRole.OWNER, 2L, 내_그룹.stamp()),
                         tuple(참여한_그룹.publicId(), "참여모임", null, 참여한_그룹.inviteCode(),
                                 GroupRole.MEMBER, 3L, 참여한_그룹.stamp())
+                );
+    }
+
+    @Test
+    void 내_그룹_목록은_그룹마다_가입_방식을_그대로_준다() {
+        // given
+        Device 나 = 기기를_저장한다();
+        GroupResult 공개_그룹 = groupService.save(나.getPublicId(), "공개모임", null, GroupJoinType.PUBLIC, 스탬프("기본"));
+        GroupResult 비공개_그룹 = groupService.save(나.getPublicId(), "비공개모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+
+        // when
+        List<GroupResult> 목록 = groupService.findMine(나.getPublicId());
+
+        // then
+        assertThat(목록).extracting(GroupResult::publicId, GroupResult::joinType)
+                .containsExactlyInAnyOrder(
+                        tuple(공개_그룹.publicId(), GroupJoinType.PUBLIC),
+                        tuple(비공개_그룹.publicId(), GroupJoinType.PRIVATE)
                 );
     }
 
@@ -399,6 +443,7 @@ class GroupServiceIntegrationTest {
         assertThat(상세.role()).isEqualTo(GroupViewerRole.NONE);
         assertThat(상세.inviteCode()).isEqualTo(남의_그룹.inviteCode());
         assertThat(상세.name()).isEqualTo("남의모임");
+        assertThat(상세.joinType()).isEqualTo(GroupJoinType.PRIVATE);
     }
 
     @Test
@@ -619,6 +664,13 @@ class GroupServiceIntegrationTest {
         } finally {
             실행기.shutdownNow();
         }
+    }
+
+    private String 저장된_가입_방식(UUID groupPublicId) {
+        return jdbcClient.sql("SELECT join_type FROM groups WHERE public_id = ?")
+                .param(groupPublicId)
+                .query(String.class)
+                .single();
     }
 
     private Device 기기를_저장한다() {
