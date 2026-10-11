@@ -1,6 +1,8 @@
 package com.pheeeew.groups.presentation;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -10,6 +12,8 @@ import com.pheeeew.appversion.infra.metrics.AppVersionMetricsFilter;
 import com.pheeeew.auth.fixture.AccessTokenFixture;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.groups.application.GroupService;
+import com.pheeeew.groups.application.dto.GroupMemberResult;
+import com.pheeeew.groups.application.dto.GroupMemberListResult;
 import com.pheeeew.groups.application.dto.GroupPreviewResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 
@@ -20,6 +24,8 @@ import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.exception.GroupErrorCode;
 import com.pheeeew.groups.exception.GroupException;
+import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -318,6 +324,125 @@ class GroupMemberControllerTest {
 
         // then
         result.expectStatus().isNotFound();
+    }
+
+    @Test
+    void 멤버_목록을_조회하면_닉네임과_역할과_가입_시각을_반환한다() {
+        // given
+        when(groupService.findMembers(eq(그룹_공개_식별자), eq(기기_공개_식별자), any(), anyInt()))
+                .thenReturn(기본_멤버_목록());
+
+        // when
+        RestTestClient.ResponseSpec result = 멤버_목록을_조회한다("");
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.items[0].nickname").isEqualTo("한숨러")
+                .jsonPath("$.items[0].role").isEqualTo("OWNER")
+                .jsonPath("$.items[0].joinedAt").isEqualTo("2026-10-11T09:00:00Z")
+                .jsonPath("$.hasNext").isEqualTo(true)
+                .jsonPath("$.nextCursor").isEqualTo("next-cursor");
+        verify(groupService).findMembers(그룹_공개_식별자, 기기_공개_식별자, null, 20);
+    }
+
+    @Test
+    void 멤버_목록의_커서와_페이지_크기를_서비스에_그대로_전달한다() {
+        // given
+        when(groupService.findMembers(eq(그룹_공개_식별자), eq(기기_공개_식별자), any(), anyInt()))
+                .thenReturn(GroupMemberListResult.of(List.of(), false, null));
+
+        // when
+        멤버_목록을_조회한다("?cursor=opaque-cursor&size=50");
+
+        // then
+        verify(groupService).findMembers(그룹_공개_식별자, 기기_공개_식별자, "opaque-cursor", 50);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "51"})
+    void 멤버_목록의_페이지_크기가_범위를_벗어나면_400이고_서비스를_부르지_않는다(String 페이지_크기) {
+        // when
+        RestTestClient.ResponseSpec result = 멤버_목록을_조회한다("?size=" + 페이지_크기);
+
+        // then
+        result.expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(groupService);
+    }
+
+    @Test
+    void 멤버_목록을_사용할_수_없는_커서로_조회하면_400을_반환한다() {
+        // given
+        when(groupService.findMembers(eq(그룹_공개_식별자), eq(기기_공개_식별자), any(), anyInt()))
+                .thenThrow(new GroupException(GroupErrorCode.GROUP_INVALID_CURSOR));
+
+        // when
+        RestTestClient.ResponseSpec result = 멤버_목록을_조회한다("?cursor=broken");
+
+        // then
+        result.expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("GROUP-010");
+    }
+
+    @Test
+    void 비멤버가_멤버_목록을_조회하면_403을_반환한다() {
+        // given
+        when(groupService.findMembers(eq(그룹_공개_식별자), eq(기기_공개_식별자), any(), anyInt()))
+                .thenThrow(new GroupException(GroupErrorCode.GROUP_MEMBER_ONLY));
+
+        // when
+        RestTestClient.ResponseSpec result = 멤버_목록을_조회한다("");
+
+        // then
+        result.expectStatus().isForbidden()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("GROUP-008");
+    }
+
+    @Test
+    void 없는_그룹의_멤버_목록을_조회하면_404를_반환한다() {
+        // given
+        when(groupService.findMembers(eq(그룹_공개_식별자), eq(기기_공개_식별자), any(), anyInt()))
+                .thenThrow(new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
+
+        // when
+        RestTestClient.ResponseSpec result = 멤버_목록을_조회한다("");
+
+        // then
+        result.expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("GROUP-001");
+    }
+
+    @Test
+    void 멤버_목록의_그룹_식별자가_UUID가_아니면_400이고_서비스를_부르지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = client.get()
+                .uri(GROUPS_URI + "/not-a-uuid/members")
+                .exchange();
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupService);
+    }
+
+    private RestTestClient.ResponseSpec 멤버_목록을_조회한다(String 쿼리) {
+        return client.get()
+                .uri(GROUPS_URI + "/" + 그룹_공개_식별자 + "/members" + 쿼리)
+                .exchange();
+    }
+
+    private GroupMemberListResult 기본_멤버_목록() {
+        return GroupMemberListResult.of(
+                List.of(new GroupMemberResult(
+                        "한숨러", GroupRole.OWNER, Instant.parse("2026-10-11T09:00:00Z"), 1L
+                )),
+                true,
+                "next-cursor"
+        );
     }
 
     private RestTestClient.ResponseSpec 찾는다(String 코드) {

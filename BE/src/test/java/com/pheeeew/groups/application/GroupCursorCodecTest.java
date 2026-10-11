@@ -79,6 +79,63 @@ class GroupCursorCodecTest {
         잘못된_커서임을_검증한다(() -> GroupCursorCodec.decodeExploreOrInitial(커서));
     }
 
+    @Test
+    void 멤버_커서를_왕복하면_가입_시각과_식별자를_복원한다() {
+        // given
+        String 커서 = GroupCursorCodec.encodeMembers(기준_시각, 7L);
+
+        // when
+        GroupCursor 복원 = GroupCursorCodec.decodeMembersOrInitial(커서);
+
+        // then
+        assertThat(복원.lastCreatedAt()).isEqualTo(기준_시각);
+        assertThat(복원.lastId()).isEqualTo(7L);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    void 멤버_커서가_없으면_에포크부터_읽는다(String 커서) {
+        // given / when
+        GroupCursor 복원 = GroupCursorCodec.decodeMembersOrInitial(커서);
+
+        // then
+        assertThat(복원.lastCreatedAt()).isEqualTo(Instant.EPOCH);
+        assertThat(복원.lastId()).isZero();
+    }
+
+    @Test
+    void 탐색_커서를_멤버_목록에_쓰면_거부한다() {
+        // given
+        String 탐색_커서 = GroupCursorCodec.encodeExplore(기준_시각, 42L);
+
+        // when / then
+        잘못된_커서임을_검증한다(() -> GroupCursorCodec.decodeMembersOrInitial(탐색_커서));
+    }
+
+    @Test
+    void 멤버_커서를_탐색_목록에_쓰면_거부한다() {
+        // given
+        String 멤버_커서 = GroupCursorCodec.encodeMembers(기준_시각, 7L);
+
+        // when / then
+        잘못된_커서임을_검증한다(() -> GroupCursorCodec.decodeExploreOrInitial(멤버_커서));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "2|2026-10-11T09:00:00Z",
+            "2|2026-10-11T09:00:00Z|0",
+            "2|2026-13-99|7"
+    })
+    void 사용할_수_없는_내용을_가진_멤버_커서는_거부한다(String 평문) {
+        // given
+        String 커서 = 커서로_감싼다(평문);
+
+        // when / then
+        잘못된_커서임을_검증한다(() -> GroupCursorCodec.decodeMembersOrInitial(커서));
+    }
+
     private String 커서로_감싼다(String 평문) {
         return Base64.getUrlEncoder()
                 .withoutPadding()
