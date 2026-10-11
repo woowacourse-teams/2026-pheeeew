@@ -2685,6 +2685,110 @@
       ]
     },
     {
+      "id": 141,
+      "type": "timeseries",
+      "title": "DB 연결 획득·점유 시간 · 평균",
+      "description": "풀별 획득 시도 시간과 반환된 연결의 점유 시간을 비교해요. Hikari 획득 시간에는 성공과 timeout이 포함되며, 아직 획득 중인 시도·점유 중인 연결은 반영되지 않아요. 표본이 없으면 빈 값이며 0초가 아니에요. 서로 다른 모집단이므로 두 값을 빼거나 요청별 시간으로 해석하지 않아요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 88,
+        "w": 16,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "min": 0,
+          "noValue": "데이터 없음",
+          "custom": {
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "table",
+          "placement": "bottom",
+          "calcs": [
+            "last"
+          ]
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(sum by (instance, pool) (rate(hikaricp_connections_acquire_seconds_sum{job=\"pheeeew-api\",environment=\"prod\"}[$__rate_interval])) / sum by (instance, pool) (rate(hikaricp_connections_acquire_seconds_count{job=\"pheeeew-api\",environment=\"prod\"}[$__rate_interval]))) and (sum by (instance, pool) (rate(hikaricp_connections_acquire_seconds_count{job=\"pheeeew-api\",environment=\"prod\"}[$__rate_interval])) > 0)",
+          "legendFormat": "{{instance}} · {{pool}} · 획득 시도 평균",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        },
+        {
+          "refId": "B",
+          "expr": "(sum by (instance, pool) (rate(hikaricp_connections_usage_seconds_sum{job=\"pheeeew-api\",environment=\"prod\"}[$__rate_interval])) / sum by (instance, pool) (rate(hikaricp_connections_usage_seconds_count{job=\"pheeeew-api\",environment=\"prod\"}[$__rate_interval]))) and (sum by (instance, pool) (rate(hikaricp_connections_usage_seconds_count{job=\"pheeeew-api\",environment=\"prod\"}[$__rate_interval])) > 0)",
+          "legendFormat": "{{instance}} · {{pool}} · 반환된 연결 점유 평균",
+          "range": true,
+          "instant": false,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
+      "id": 142,
+      "type": "stat",
+      "title": "DB 연결 획득 timeout · 선택 기간",
+      "description": "Hikari 연결 획득 timeout 횟수의 increase 추정치예요. HTTP 오류 수·모든 연결 실패 수가 아니에요. 경계 보간으로 소수일 수 있어요. 관측된 증가 없음은 0, 계산할 표본 없음은 데이터 없음이며 일부 기간만 수집돼도 값이 나올 수 있어요.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 88,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0,
+          "noValue": "데이터 없음"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "orientation": "vertical",
+        "textMode": "auto",
+        "colorMode": "none",
+        "graphMode": "none"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (instance, pool) (increase(hikaricp_connections_timeout_total{job=\"pheeeew-api\",environment=\"prod\"}[$__range]))",
+          "legendFormat": "{{instance}} · {{pool}}",
+          "instant": true,
+          "range": false,
+          "interval": "1m"
+        }
+      ]
+    },
+    {
       "id": 128,
       "type": "timeseries",
       "title": "톰캣 스레드 사용 중 / 생성됨 / 최대",
@@ -2695,7 +2799,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 88,
+        "y": 96,
         "w": 12,
         "h": 8
       },
@@ -2799,7 +2903,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 88,
+        "y": 96,
         "w": 12,
         "h": 8
       },
@@ -2875,7 +2979,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 96
+        "y": 104
       },
       "id": 122
     },
@@ -2886,7 +2990,7 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 97,
+        "y": 105,
         "w": 24,
         "h": 3
       },
@@ -2906,7 +3010,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 100,
+        "y": 108,
         "w": 24,
         "h": 11
       },
@@ -2941,7 +3045,7 @@
       "transparent": true,
       "gridPos": {
         "x": 0,
-        "y": 111,
+        "y": 119,
         "w": 24,
         "h": 4
       },
@@ -2959,7 +3063,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 115
+        "y": 123
       },
       "id": 123
     },
@@ -2974,7 +3078,7 @@
       },
       "gridPos": {
         "x": 0,
-        "y": 116,
+        "y": 124,
         "w": 12,
         "h": 8
       },
@@ -3066,7 +3170,7 @@
       },
       "gridPos": {
         "x": 12,
-        "y": 116,
+        "y": 124,
         "w": 12,
         "h": 8
       },
@@ -3142,7 +3246,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 124
+        "y": 132
       },
       "id": 125
     },
@@ -3158,7 +3262,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 125
+        "y": 133
       },
       "fieldConfig": {
         "defaults": {
@@ -3259,7 +3363,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 125
+        "y": 133
       },
       "fieldConfig": {
         "defaults": {
