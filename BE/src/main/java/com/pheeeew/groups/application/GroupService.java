@@ -28,6 +28,7 @@ import com.pheeeew.groups.application.dto.GroupStampItemResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupDailyPress;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupMember;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.GroupStamp;
@@ -72,12 +73,18 @@ public class GroupService {
     private final Clock clock;
 
     @Transactional
-    public GroupResult save(UUID devicePublicId, String name, String description, GroupStampCommand stampCommand) {
+    public GroupResult save(
+            UUID devicePublicId,
+            String name,
+            String description,
+            GroupJoinType joinType,
+            GroupStampCommand stampCommand
+    ) {
         Device device = findDevice(devicePublicId);
         String trimmedName = name.strip();
         requireUnusedName(trimmedName);
 
-        Group group = saveWithUniqueInviteCode(trimmedName, description);
+        Group group = saveWithUniqueInviteCode(trimmedName, description, joinType);
         GroupStamp stamp = groupStampRepository.save(newStamp(group, stampCommand));
         groupMemberRepository.save(GroupMember.builder()
                 .group(group)
@@ -329,12 +336,13 @@ public class GroupService {
         }
     }
 
-    private Group saveWithUniqueInviteCode(String name, String description) {
+    private Group saveWithUniqueInviteCode(String name, String description, GroupJoinType joinType) {
         try {
             return groupRepository.saveAndFlush(Group.builder()
                     .name(name)
                     .description(description)
                     .inviteCode(unusedInviteCode())
+                    .joinType(joinType)
                     .build());
         } catch (DataIntegrityViolationException exception) {
             throw new GroupException(GROUP_NAME_DUPLICATED, exception);

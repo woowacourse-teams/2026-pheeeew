@@ -17,6 +17,7 @@ import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.GroupViewerRole;
 import com.pheeeew.groups.domain.StampFrame;
@@ -77,7 +78,7 @@ class GroupControllerTest {
     void 그룹을_만들면_201과_위치_헤더를_반환한다() {
         // given
         GroupResult 만든_그룹 = 기본_결과();
-        when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq("설명입니다"), any()))
+        when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq("설명입니다"), eq(GroupJoinType.PRIVATE), any()))
                 .thenReturn(만든_그룹);
 
         // when
@@ -88,13 +89,13 @@ class GroupControllerTest {
         // then
         result.expectStatus().isCreated()
                 .expectHeader().location(GROUPS_URI + "/" + 만든_그룹.publicId());
-        verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq("설명입니다"), any());
+        verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq("설명입니다"), eq(GroupJoinType.PRIVATE), any());
     }
 
     @Test
     void 그룹_이름의_앞뒤_공백은_잘려서_전달된다() {
         // given
-        when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), any()))
+        when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), eq(GroupJoinType.PRIVATE), any()))
                 .thenReturn(기본_결과());
 
         // when
@@ -103,7 +104,7 @@ class GroupControllerTest {
                 """.formatted(스탬프_본문()));
 
         // then
-        verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), any());
+        verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), eq(GroupJoinType.PRIVATE), any());
     }
 
     @ParameterizedTest
@@ -419,6 +420,7 @@ class GroupControllerTest {
                 .name("한숨모임")
                 .description("설명입니다")
                 .inviteCode("A1B2C3")
+                .joinType(GroupJoinType.PRIVATE)
                 .build();
 
         return GroupResult.of(

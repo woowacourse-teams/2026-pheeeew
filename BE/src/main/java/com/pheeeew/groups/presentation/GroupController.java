@@ -46,6 +46,7 @@ public class GroupController implements GroupControllerApi {
                 devicePublicId,
                 request.name(),
                 request.description(),
+                request.joinType(),
                 GroupStampCommand.of(stamp.text(), stamp.textColor(), stamp.backgroundColor(), stamp.frame())
         );
 

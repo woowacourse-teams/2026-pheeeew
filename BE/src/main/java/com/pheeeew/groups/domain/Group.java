@@ -3,6 +3,8 @@ package com.pheeeew.groups.domain;
 import com.pheeeew.common.domain.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -24,6 +26,7 @@ public class Group extends BaseEntity {
     private static final int MAX_NAME_LENGTH = 10;
     private static final int MAX_DESCRIPTION_LENGTH = 100;
     private static final int INVITE_CODE_LENGTH = 6;
+    private static final int MAX_JOIN_TYPE_LENGTH = 20;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,15 +44,20 @@ public class Group extends BaseEntity {
     @Column(name = "invite_code", nullable = false, length = INVITE_CODE_LENGTH)
     private String inviteCode;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "join_type", nullable = false, length = MAX_JOIN_TYPE_LENGTH)
+    private GroupJoinType joinType;
+
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
     @Builder
-    private Group(String name, String description, String inviteCode) {
+    private Group(String name, String description, String inviteCode, GroupJoinType joinType) {
         this.publicId = UUID.randomUUID();
         this.name = Objects.requireNonNull(name);
         this.description = description;
         this.inviteCode = Objects.requireNonNull(inviteCode);
+        this.joinType = Objects.requireNonNull(joinType);
     }
 
     public void rename(String name, String description) {
@@ -67,5 +75,9 @@ public class Group extends BaseEntity {
 
     public boolean isDeleted() {
         return deletedAt != null;
+    }
+
+    public boolean isPublic() {
+        return joinType == GroupJoinType.PUBLIC;
     }
 }

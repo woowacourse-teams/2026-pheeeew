@@ -15,6 +15,7 @@ import com.pheeeew.groups.application.dto.GroupResult;
 
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.application.dto.GroupStampResult;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.exception.GroupErrorCode;
@@ -282,6 +283,7 @@ class GroupMemberControllerTest {
                 .name("한숨모임")
                 .description(null)
                 .inviteCode(초대_코드)
+                .joinType(GroupJoinType.PRIVATE)
                 .build();
 
         return GroupResult.of(

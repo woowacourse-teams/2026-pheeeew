@@ -9,6 +9,7 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.groups.application.dto.GroupPreviewResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
@@ -94,7 +95,7 @@ class GroupMembershipIntegrationTest {
     void 삭제된_그룹은_미리_볼_수_없다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프());
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프());
         groupService.delete(그룹.publicId(), 그룹장.getPublicId());
 
         // when
@@ -140,7 +141,7 @@ class GroupMembershipIntegrationTest {
     void 그룹장이_자기_그룹_코드로_요청하면_거절한다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프());
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프());
 
         // when
         Throwable throwable = catchThrowable(() -> groupService.join(그룹장.getPublicId(), 그룹.inviteCode()));
@@ -169,7 +170,7 @@ class GroupMembershipIntegrationTest {
     void 삭제된_그룹의_초대_코드로는_들어갈_수_없다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프());
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프());
         groupService.delete(그룹.publicId(), 그룹장.getPublicId());
 
         // when
@@ -185,7 +186,7 @@ class GroupMembershipIntegrationTest {
     void 재발급하면_이전_초대_코드로는_들어갈_수_없다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프());
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프());
         String 이전_코드 = 그룹.inviteCode();
         String 새_코드 = groupService.reissueInviteCode(그룹.publicId(), 그룹장.getPublicId()).inviteCode();
 
@@ -218,7 +219,7 @@ class GroupMembershipIntegrationTest {
     void 그룹장은_그룹을_나갈_수_없다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프());
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프());
 
         // when
         Throwable throwable = catchThrowable(() -> groupService.leave(그룹.publicId(), 그룹장.getPublicId()));
@@ -323,7 +324,7 @@ class GroupMembershipIntegrationTest {
     }
 
     private GroupResult 그룹을_만든다(String name) {
-        return groupService.save(기기를_저장한다().getPublicId(), name, null, 스탬프());
+        return groupService.save(기기를_저장한다().getPublicId(), name, null, GroupJoinType.PRIVATE, 스탬프());
     }
 
     private Device 기기를_저장한다() {

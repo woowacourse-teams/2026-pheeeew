@@ -77,6 +77,7 @@ class GroupPersistenceIntegrationTest {
         Group 설명이_없는_그룹 = Group.builder()
                 .name("설명없음")
                 .inviteCode(무작위_초대_코드())
+                .joinType(GroupJoinType.PRIVATE)
                 .build();
 
         // when

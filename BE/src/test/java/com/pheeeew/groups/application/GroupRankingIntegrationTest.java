@@ -20,6 +20,7 @@ import com.pheeeew.groups.application.dto.GroupRankingResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
@@ -806,6 +807,7 @@ class GroupRankingIntegrationTest {
                 devicePublicId,
                 name,
                 null,
+                GroupJoinType.PRIVATE,
                 GroupStampCommand.of("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
         );
     }
@@ -815,6 +817,7 @@ class GroupRankingIntegrationTest {
                 기기를_저장한다().getPublicId(),
                 name,
                 null,
+                GroupJoinType.PRIVATE,
                 GroupStampCommand.of("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
         );
     }

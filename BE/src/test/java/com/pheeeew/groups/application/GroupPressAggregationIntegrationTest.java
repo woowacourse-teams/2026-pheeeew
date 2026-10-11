@@ -14,6 +14,7 @@ import com.pheeeew.groups.application.dto.GroupDetailV3Result;
 import com.pheeeew.groups.application.dto.GroupPressRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
@@ -307,6 +308,7 @@ class GroupPressAggregationIntegrationTest {
                 그룹장.getPublicId(),
                 name,
                 null,
+                GroupJoinType.PRIVATE,
                 GroupStampCommand.of("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
         );
     }
