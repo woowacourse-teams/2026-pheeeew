@@ -1,7 +1,9 @@
 package com.pheeeew.groups.presentation;
 
 import com.pheeeew.common.exception.ErrorResponse;
+import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.groups.presentation.dto.GroupJoinRequest;
+import com.pheeeew.groups.presentation.dto.GroupMemberResponse;
 import com.pheeeew.groups.presentation.dto.GroupPreviewResponse;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,13 +13,16 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-@Tag(name = "그룹 참여", description = "그룹에 들어가고 나갑니다.")
+@Tag(name = "그룹 참여", description = "그룹에 들어가고 나가고, 멤버를 봅니다.")
 public interface GroupMemberControllerApi {
 
     @Operation(
@@ -171,6 +176,65 @@ public interface GroupMemberControllerApi {
     ResponseEntity<Void> leave(
             @Parameter(description = "나갈 그룹의 공개 식별자", example = "5f2b1c84-9d0e-4a13-b6c7-2e8f0a4d7b19")
             UUID groupId,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
+
+    @Operation(
+            summary = "그룹 멤버 목록",
+            description = """
+                    그 그룹에 **지금 속해 있는 멤버**를 가입한 순서대로 봅니다.
+
+                    - **그 그룹의 멤버만 볼 수 있습니다.** 가입하지 않았거나 나간 기기는 403 입니다.
+                      그룹 상세(`GET /api/v3/groups/{groupId}`)는 누구나 열 수 있지만 **명단은 닫혀 있습니다.**
+                      닉네임이 개인을 가리킬 수 있어서입니다. 탐색 목록에는 인원수만 나옵니다.
+                    - **나간 멤버는 나오지 않습니다.** 그래서 전체 길이가 상세와 탐색의 `memberCount` 와
+                      정확히 같습니다.
+                    - **먼저 들어온 멤버가 먼저** 나옵니다. 그룹을 만든 사람이 맨 앞입니다.
+                    - `nickname` 은 **항상 값이 있습니다.** 닉네임을 정하지 않은 기기는 `익명` 으로 보냅니다.
+                    - `role` 이 `OWNER` 면 그룹장입니다. 그룹마다 한 명입니다.
+                    - `joinedAt` 은 그 멤버가 들어온 시각입니다.
+                    - 다음 페이지에는 이전 응답의 `nextCursor` 를 `cursor` 로 보냅니다. `size` 는 1 에서 50 이고
+                      생략하면 20 입니다.
+                    - 조회하는 동안 들어온 멤버는 **마지막 페이지에 붙습니다.** 나간 멤버는 그 페이지부터 빠집니다.
+                    - 그룹 탐색(`/explore`)에서 받은 커서는 쓸 수 없습니다.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "멤버 목록과 다음 커서"),
+            @ApiResponse(responseCode = "400", description = "커서를 쓸 수 없거나 size 가 범위를 벗어남",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-010", "message": "그룹 목록 커서를 사용할 수 없습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
+            @ApiResponse(responseCode = "403", description = "그 그룹의 멤버가 아님",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-008", "message": "그룹 멤버만 할 수 있습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-001", "message": "그룹을 찾을 수 없습니다."}
+                                    """)))
+    })
+    CursorResponse<GroupMemberResponse> findMembers(
+            @Parameter(description = "멤버를 볼 그룹의 공개 식별자", example = "5f2b1c84-9d0e-4a13-b6c7-2e8f0a4d7b19")
+            UUID groupId,
+
+            @Parameter(description = "다음 페이지 조회에 사용할 서버 발급 커서. 첫 페이지에서는 생략합니다.",
+                    example = "opaque-cursor")
+            String cursor,
+
+            @Parameter(description = "한 페이지 항목 수. 1 이상 50 이하이며 생략하면 20 입니다.", example = "20")
+            @Min(value = 1, message = "한 페이지 항목 수는 1 이상이어야 합니다.")
+            @Max(value = 50, message = "한 페이지 항목 수는 50 이하여야 합니다.")
+            int size,
+
             @Parameter(hidden = true) UUID devicePublicId
     );
 }
