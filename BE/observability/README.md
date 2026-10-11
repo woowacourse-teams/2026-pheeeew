@@ -14,6 +14,8 @@
 | 모듈 | 요청·예외·예약 작업 오류의 로그 형식 | `RequestLogPolicy`, `RequestLogWriter`, `ExceptionLogFormatter`, `ScheduledTaskErrorHandler` |
 | 모듈 | 도메인 타입에 독립적인 지표 등록·누적 | `EmotionMetrics`, `RegionQueryMetrics`, `DeviceChallengeMetrics`, `EmotionReportMetrics`, `EmotionPressMetrics`, `GroupPressMetrics` |
 | 모듈 | 활동 기록·집계의 실패 카운터 | `DeviceActivityRecordMetrics`, `DeviceActivityAggregationMetrics` |
+| 모듈 | 활동 지표용 불변 스냅샷과 고정 플랫폼 목록 | `DeviceActivityMetricSnapshot` |
+| 모듈 | 활동 DAU·MAU와 집계·수집 시각 Gauge | `DeviceActivityMetrics` |
 | 모듈 | 플랫폼별 앱 버전 조회 성공 카운터 | `AppVersionMetrics` |
 | 모듈 | 기기 인증의 결과 카운터와 고정된 지표 사유 목록 | `AppAttestMetrics`, `AppAttestRejection`, `PlayIntegrityMetrics`, `PlayIntegrityRejection` |
 | 앱 | 허용할 요청 값과 출력할 단계 목록 | `PheeeewRequestLogPolicy`, `PheeeewRequestTimingStage` |
@@ -27,13 +29,18 @@
 모듈은 전달받은 건수·시간을 누적합니다. 개인·그룹 프레스는 앱의 `PressCounts`에서 적용 수·상태 수·
 감정별 제한 초과량·전체 제한 초과량을 꺼내 `EmotionPressMetrics`·`GroupPressMetrics`에 전달합니다. 제한 계산과 기록 시점은
 앱에 남으며, 적용 수가 0이면 빈 요청만 기록하고 제한 초과량은 양수일 때만 기록합니다.
-활동 집계 객체를 받는 `DeviceActivityMetrics`는 아직 앱에 남아 있습니다.
+모듈의 `DeviceActivityMetricSnapshot`은 날짜·시각과 플랫폼별 수치를 불변 목록으로 보관합니다.
+앱의 `DeviceActivityMetricsMapper`는 기존 집계 DTO를 이 타입으로 변환하며 순서·중복·누락과 실제 0을 유지합니다.
+앱 스케줄러는 집계 트랜잭션이 성공한 뒤 변환한 스냅샷을 모듈의 `DeviceActivityMetrics`에 전달합니다.
+Gauge는 단일 `volatile` 참조를 교체하며 각 값을 읽을 때 하나의 스냅샷을 사용합니다. 전체 scrape의 원자성을 보장하지는 않습니다.
+미집계·누락 플랫폼·KST 기준일 불일치는 `NaN`, 정상 집계된 0은 0으로 노출합니다. 갱신 실패 시 마지막 성공 결과와
+시각을 유지하되 KST 날짜가 바뀌면 이전 날짜의 DAU·MAU는 숨기고 두 시각 지표는 유지합니다.
 `AppAttestRejection`·`PlayIntegrityRejection`은 인증 정책이 아닌 지표의 고정된 `reason` 목록입니다. 인증 검증과 거절 판단,
 오류 코드·예외 전파는 앱의 검증기에 남고, 모듈은 앱이 선택한 사유로 카운터만 기록합니다.
 활동 기록기는 실패 카운터만 모듈에 위임합니다. 캐시 획득·해제, 비동기 작업 제출과 실패 후 재시도,
 오류 로그의 민감정보 제외와 60초 제한은 앱의 `DeviceActivityRecorder`가 유지합니다.
 집계 스케줄러는 실패 카운터를 `DeviceActivityAggregationMetrics`에 위임합니다. 초기화 재시도,
-현재 집계 반영 후 과거 집계 처리, 실패 로그와 실행 주기는 앱에 유지합니다. 활동 Gauge는 아직 앱에 있습니다.
+현재 집계 반영 후 과거 집계 처리, 실패 로그와 실행 주기는 앱에 유지합니다.
 앱 버전 조회는 앱의 `AppVersionMetricsFilter`가 경로·HTTP 메서드·응답 상태와 `AppPlatform` 해석을 담당합니다.
 모듈의 `AppVersionMetrics`는 고정된 Android·iOS 기록 메서드만 제공하고 HTTP 요청이나 앱 도메인 타입을 받지 않습니다.
 
@@ -54,8 +61,8 @@
 - 업무 지표 6개와 `DeviceActivityRecordMetrics`, `AppVersionMetrics`, `AppAttestMetrics`, `PlayIntegrityMetrics`는 `@Component`와 `com.pheeeew` 하위 패키지로 앱 스캔에 등록됩니다.
   모듈은 공개 생성자와 `Timer.Sample` 반환 타입에 필요한 `micrometer-core`를 `api`로 제공합니다.
   버전은 앱과 같은 Spring Boot BOM을 따르며 Prometheus exporter 설정은 앱에 둡니다.
-- `DeviceActivityAggregationMetrics`는 스케줄러와 동일하게 `prod` 프로필에서만 스캔 등록됩니다.
-  기본·`dev` 프로필에는 집계 실패 카운터를 새로 노출하지 않습니다.
+- `DeviceActivityAggregationMetrics`와 `DeviceActivityMetrics`는 스케줄러와 동일하게 `prod` 프로필에서만 스캔 등록됩니다.
+  기본·`dev` 프로필에는 집계 실패 카운터와 활동 Gauge를 노출하지 않습니다. Gauge의 `Clock`은 앱에서 제공합니다.
 
 `RequestTiming.begin/restore`와 Filter·Writer 생성자는 모듈 밖에서 호출하는 공개 경계입니다.
 DevTools에서 앱과 라이브러리의 클래스 로더가 갈릴 수 있으므로 같은 패키지라는 이유로 package-private

@@ -4,9 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.pheeeew.activity.application.dto.DeviceActivityCount;
-import com.pheeeew.activity.application.dto.DeviceActivitySnapshot;
-import com.pheeeew.device.domain.DevicePlatform;
+import com.pheeeew.activity.infra.metrics.DeviceActivityMetricSnapshot.Count;
+import com.pheeeew.activity.infra.metrics.DeviceActivityMetricSnapshot.Platform;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.prometheusmetrics.PrometheusConfig;
 import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
@@ -49,6 +48,9 @@ class DeviceActivityMetricsTest {
         assertThat(exported.lines().filter(line -> !line.startsWith("#")).toList())
                 .hasSize(6).allSatisfy(line -> assertThat(line).endsWith(" NaN"));
         assertThat(exported).contains("pheeeew_activity_dau{platform=\"android\"} NaN",
+                "pheeeew_activity_dau{platform=\"ios\"} NaN",
+                "pheeeew_activity_mau{platform=\"android\"} NaN",
+                "pheeeew_activity_mau{platform=\"ios\"} NaN",
                 "pheeeew_activity_last_aggregated_seconds NaN",
                 "pheeeew_activity_collection_started_seconds NaN");
     }
@@ -56,14 +58,14 @@ class DeviceActivityMetricsTest {
     @Test
     void 플랫폼별_최신_수치로_교체하고_정상_집계된_0명은_그대로_노출한다() {
         // given
-        metrics.update(DeviceActivitySnapshot.of(TODAY, NOW.minusSeconds(300), STARTED_AT, List.of(
-                DeviceActivityCount.of(DevicePlatform.ANDROID, 5, 20),
-                DeviceActivityCount.of(DevicePlatform.IOS, 3, 10))));
+        metrics.update(DeviceActivityMetricSnapshot.of(TODAY, NOW.minusSeconds(300), STARTED_AT, List.of(
+                Count.of(Platform.ANDROID, 5, 20),
+                Count.of(Platform.IOS, 3, 10))));
 
         // when
-        metrics.update(DeviceActivitySnapshot.of(TODAY, NOW, STARTED_AT, List.of(
-                DeviceActivityCount.of(DevicePlatform.IOS, 0, 0),
-                DeviceActivityCount.of(DevicePlatform.ANDROID, 2, 8))));
+        metrics.update(DeviceActivityMetricSnapshot.of(TODAY, NOW, STARTED_AT, List.of(
+                Count.of(Platform.IOS, 0, 0),
+                Count.of(Platform.ANDROID, 2, 8))));
 
         // then
         assertThat(활성_기기_수("dau", "android")).isEqualTo(2);
@@ -81,9 +83,9 @@ class DeviceActivityMetricsTest {
     void 갱신이_없으면_성공_시각을_유지하고_KST_자정부터는_이전_활성_수를_숨긴다() {
         // given
         Instant aggregatedAt = NOW.minusSeconds(300);
-        metrics.update(DeviceActivitySnapshot.of(TODAY, aggregatedAt, STARTED_AT, List.of(
-                DeviceActivityCount.of(DevicePlatform.ANDROID, 2, 8),
-                DeviceActivityCount.of(DevicePlatform.IOS, 1, 4))));
+        metrics.update(DeviceActivityMetricSnapshot.of(TODAY, aggregatedAt, STARTED_AT, List.of(
+                Count.of(Platform.ANDROID, 2, 8),
+                Count.of(Platform.IOS, 1, 4))));
 
         // when / then: 새 성공 결과가 없으면 수치와 성공 시각을 유지한다.
         assertThat(활성_기기_수("dau", "android")).isEqualTo(2);
@@ -100,9 +102,9 @@ class DeviceActivityMetricsTest {
         assertThat(시각("collection.started")).isEqualTo(STARTED_AT.getEpochSecond());
 
         // when / then: 새 날짜 집계가 성공하면 다시 수치를 노출한다.
-        metrics.update(DeviceActivitySnapshot.of(TODAY.plusDays(1), midnight, STARTED_AT, List.of(
-                DeviceActivityCount.of(DevicePlatform.ANDROID, 0, 7),
-                DeviceActivityCount.of(DevicePlatform.IOS, 0, 3))));
+        metrics.update(DeviceActivityMetricSnapshot.of(TODAY.plusDays(1), midnight, STARTED_AT, List.of(
+                Count.of(Platform.ANDROID, 0, 7),
+                Count.of(Platform.IOS, 0, 3))));
         assertThat(활성_기기_수("dau", "android")).isZero();
         assertThat(활성_기기_수("mau", "android")).isEqualTo(7);
         assertThat(시각("last.aggregated")).isEqualTo(midnight.getEpochSecond());
@@ -112,13 +114,28 @@ class DeviceActivityMetricsTest {
     @Test
     void 결과에_없는_플랫폼을_0명으로_간주하지_않는다() {
         // given / when
-        metrics.update(DeviceActivitySnapshot.of(TODAY, NOW, STARTED_AT,
-                List.of(DeviceActivityCount.of(DevicePlatform.ANDROID, 1, 2))));
+        metrics.update(DeviceActivityMetricSnapshot.of(TODAY, NOW, STARTED_AT,
+                List.of(Count.of(Platform.ANDROID, 1, 2))));
 
         // then
         assertThat(활성_기기_수("dau", "android")).isOne();
         assertThat(활성_기기_수("dau", "ios")).isNaN();
         assertThat(활성_기기_수("mau", "ios")).isNaN();
+    }
+
+    @Test
+    void 같은_플랫폼이_중복되면_첫_번째_수치를_사용한다() {
+        // given
+        DeviceActivityMetricSnapshot snapshot = DeviceActivityMetricSnapshot.of(TODAY, NOW, STARTED_AT, List.of(
+                Count.of(Platform.ANDROID, 2, 8),
+                Count.of(Platform.ANDROID, 5, 20)));
+
+        // when
+        metrics.update(snapshot);
+
+        // then
+        assertThat(활성_기기_수("dau", "android")).isEqualTo(2);
+        assertThat(활성_기기_수("mau", "android")).isEqualTo(8);
     }
 
     private double 활성_기기_수(String period, String platform) {

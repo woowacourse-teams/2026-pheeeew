@@ -1,8 +1,7 @@
 package com.pheeeew.activity.infra.metrics;
 
-import com.pheeeew.activity.application.dto.DeviceActivityCount;
-import com.pheeeew.activity.application.dto.DeviceActivitySnapshot;
-import com.pheeeew.device.domain.DevicePlatform;
+import com.pheeeew.activity.infra.metrics.DeviceActivityMetricSnapshot.Count;
+import com.pheeeew.activity.infra.metrics.DeviceActivityMetricSnapshot.Platform;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
@@ -22,17 +21,17 @@ public class DeviceActivityMetrics {
 
     private final Clock clock;
     // 스케줄러가 교체한 불변 결과를 지표 수집 스레드에서도 읽을 수 있도록 한다.
-    private volatile DeviceActivitySnapshot snapshot;
+    private volatile DeviceActivityMetricSnapshot snapshot;
 
     public DeviceActivityMetrics(MeterRegistry registry, Clock clock) {
         this.clock = clock;
-        for (DevicePlatform platform : DevicePlatform.values()) {
+        for (Platform platform : Platform.values()) {
             String label = platform.name().toLowerCase(Locale.ROOT);
-            Gauge.builder("pheeeew.activity.dau", this, metrics -> metrics.count(platform, DeviceActivityCount::dau))
+            Gauge.builder("pheeeew.activity.dau", this, metrics -> metrics.count(platform, Count::dau))
                     .description("Distinct active devices on the current KST date; NaN until available")
                     .tag("platform", label)
                     .register(registry);
-            Gauge.builder("pheeeew.activity.mau", this, metrics -> metrics.count(platform, DeviceActivityCount::mau))
+            Gauge.builder("pheeeew.activity.mau", this, metrics -> metrics.count(platform, Count::mau))
                     .description("Distinct active devices over 30 KST dates ending today; NaN until available")
                     .tag("platform", label)
                     .register(registry);
@@ -48,20 +47,20 @@ public class DeviceActivityMetrics {
                 .register(registry);
     }
 
-    public void update(DeviceActivitySnapshot snapshot) {
+    public void update(DeviceActivityMetricSnapshot snapshot) {
         // 실패 시에는 호출하지 않고, 마지막 성공 결과와 시각을 그대로 유지한다.
         this.snapshot = Objects.requireNonNull(snapshot);
     }
 
-    private double count(DevicePlatform platform, ToLongFunction<DeviceActivityCount> value) {
-        DeviceActivitySnapshot current = snapshot;
+    private double count(Platform platform, ToLongFunction<Count> value) {
+        DeviceActivityMetricSnapshot current = snapshot;
         LocalDate today = clock.instant().atZone(ACTIVITY_ZONE).toLocalDate();
         // 미집계와 실제 0명을 구분하고, 자정 이후 전날 집계를 오늘 수치로 노출하지 않는다.
         if (current == null || !current.activityDate().equals(today)) {
             return Double.NaN;
         }
 
-        for (DeviceActivityCount count : current.counts()) {
+        for (Count count : current.counts()) {
             if (count.platform() == platform) {
                 return value.applyAsLong(count);
             }
@@ -70,7 +69,7 @@ public class DeviceActivityMetrics {
     }
 
     private double lastAggregatedAt() {
-        DeviceActivitySnapshot current = snapshot;
+        DeviceActivityMetricSnapshot current = snapshot;
         if (current == null) {
             return Double.NaN;
         }
@@ -78,7 +77,7 @@ public class DeviceActivityMetrics {
     }
 
     private double collectionStartedAt() {
-        DeviceActivitySnapshot current = snapshot;
+        DeviceActivityMetricSnapshot current = snapshot;
         if (current == null) {
             return Double.NaN;
         }

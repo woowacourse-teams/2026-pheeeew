@@ -3,6 +3,7 @@ package com.pheeeew.activity.infra;
 import com.pheeeew.activity.application.DeviceActivityAggregationService;
 import com.pheeeew.activity.infra.metrics.DeviceActivityAggregationMetrics;
 import com.pheeeew.activity.infra.metrics.DeviceActivityMetrics;
+import com.pheeeew.activity.infra.metrics.DeviceActivityMetricsMapper;
 import com.pheeeew.common.logging.ExceptionLogFormatter;
 import java.time.Clock;
 import java.time.Instant;
@@ -48,7 +49,7 @@ public class DeviceActivityAggregationScheduler {
             }
 
             // 서비스 트랜잭션이 성공적으로 끝난 결과만 지표에 반영한다.
-            metrics.update(aggregationService.update());
+            metrics.update(DeviceActivityMetricsMapper.from(aggregationService.update()));
 
             // 밀린 집계가 많아도 한 실행에서는 가장 오래된 미완료 날짜 하루만 처리한다.
             aggregationService.finalizeNextDate();
