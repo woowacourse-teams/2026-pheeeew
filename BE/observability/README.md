@@ -20,6 +20,7 @@
 | 모듈 | 기기 인증의 결과 카운터와 고정된 지표 사유 목록 | `AppAttestMetrics`, `AppAttestRejection`, `PlayIntegrityMetrics`, `PlayIntegrityRejection` |
 | 앱 | 허용할 요청 값과 출력할 단계 목록 | `PheeeewRequestLogPolicy`, `PheeeewRequestTimingStage` |
 | 앱 | 업무 계측 지점과 필터·스케줄러 등록 | `RequestServiceTimingAspect`, 업무별 metrics aspect, `RequestLoggingConfiguration`, `SchedulingConfig` |
+| 앱 | 활동 집계와 지표 입력 변환 | `DeviceActivityAggregationService`, `DeviceActivityAggregationScheduler`, `DeviceActivityMetricsMapper` |
 | 앱·운영 구성 | 프로필, 로그 출력·비동기 큐, 수집·대시보드 | `application*.yml`, `logback-spring.xml`, `docker/alloy/`, 외부 수집기·Grafana |
 
 모듈은 앱의 업무 클래스나 설정을 참조하지 않습니다. `common/logging`이라는 패키지 이름만으로
@@ -43,6 +44,23 @@ Gauge는 단일 `volatile` 참조를 교체하며 각 값을 읽을 때 하나�
 현재 집계 반영 후 과거 집계 처리, 실패 로그와 실행 주기는 앱에 유지합니다.
 앱 버전 조회는 앱의 `AppVersionMetricsFilter`가 경로·HTTP 메서드·응답 상태와 `AppPlatform` 해석을 담당합니다.
 모듈의 `AppVersionMetrics`는 고정된 Android·iOS 기록 메서드만 제공하고 HTTP 요청이나 앱 도메인 타입을 받지 않습니다.
+
+### 앱에 유지하는 관측 코드
+
+직접 Micrometer 지표를 등록하는 업무 지표 클래스 12개는 모두 모듈에 있습니다.
+앱에 남은 관측 코드는 다음과 같이 업무 결과를 해석하고 기록 시점을 결정합니다.
+
+| 앱 코드 | 유지하는 책임 |
+| --- | --- |
+| `EmotionMetricsAspect`, `EmotionPressQueryMetricsAspect`, `RegionQueryMetricsAspect` | Repository·Service 포인트컷, 작업 구분, 반환값 해석, 성공·실패 판단과 모듈 호출 |
+| `EmotionRegionQueryTimingAspect`, `RequestServiceTimingAspect`, `PheeeewRequestTimingStage` | 요청별 업무 단계와 측정 범위 결정 |
+| `AppVersionMetricsFilter`, 활동 기록기·스케줄러·변환기 | HTTP 성공 조건, 플랫폼 해석, 비동기 기록·집계 순서와 앱 DTO 변환 |
+| 업무 서비스·인증 검증기 | 제한·신고·인증 판단과 해당 결과의 기록 시점 |
+
+`EmotionMetricsAspect`와 `EmotionPressQueryMetricsAspect`의 `Timer.Sample`은 모듈이 시작한 측정의 핸들입니다.
+앱은 이 핸들을 다시 모듈에 전달하며 Timer를 직접 등록하지 않습니다. 포인트컷이나 도메인 DTO까지 모듈로
+옮기면 앱 업무 구조를 다시 참조하게 되므로 현재 경계를 유지합니다. HTTP·JVM·Hikari·Spring Data 자동 지표와
+프로필별 exporter·공통 태그·버킷 설정, Alloy 허용 목록은 앱·운영 구성에 남습니다.
 
 ## 등록과 호출
 
@@ -94,6 +112,9 @@ DevTools에서 앱과 라이브러리의 클래스 로더가 갈릴 수 있으�
   둘 다 0으로 사전 등록하며, 캐시 해제 뒤 로그 제한 검사 전에 증가시켜 로그가 생략돼도 실패는 계속 집계합니다.
 - 집계 실패는 라벨 없는 `pheeeew.activity.aggregation.failures`를 0으로 사전 등록합니다.
   초기화·현재 집계·과거 집계 중 예외가 발생하면 기존 catch 지점에서 한 번 증가하고 로그를 남깁니다.
+- 활동 Gauge는 `pheeeew.activity.dau`·`mau`의 `platform=android/ios` 네 시계열과
+  `pheeeew.activity.last.aggregated`·`collection.started`의 두 시계열입니다. 두 시각은 초 단위 Unix timestamp이며
+  Prometheus에서는 `_seconds` 접미사를 유지합니다. 플랫폼이 중복되면 기존처럼 첫 항목의 수치를 사용합니다.
 - 앱 버전 조회는 `pheeeew.app.version.checks`와 `platform=android/ios`를 0으로 사전 등록합니다.
   앱 필터는 컨텍스트 경로를 고려한 `/api/v2/app/version`의 GET 요청이 예외 없이 완료되고 2xx일 때만 기록합니다.
   플랫폼 대소문자 해석과 잘못된 값의 처리도 앱에 유지합니다.
@@ -135,6 +156,7 @@ docker build --platform linux/arm64 -f docker/Dockerfile -t pheeeew-observabilit
 | 모듈의 `EmotionPressMetricsTest`, `GroupPressMetricsTest` | 빈 요청, 적용·상태 수, 두 제한 초과량, 그룹 요청 형식·교착 오류의 누적 계약 |
 | 모듈의 `DeviceActivityRecordMetricsTest`, 앱의 `DeviceActivityRecorderTest` | 실패 라벨·초기값·누적, 비동기 제출·캐시 해제·재시도와 로그 제한 |
 | 모듈의 `DeviceActivityAggregationMetricsTest`, 앱의 스케줄러·집계 서비스 테스트 | 프로필별 지표 노출, 초기화·집계 재시도, 성공 결과 보존과 트랜잭션 경계 |
+| 모듈의 `DeviceActivityMetricSnapshotTest`, `DeviceActivityMetricsTest`, 앱의 `DeviceActivityMetricsMapperTest` | 목록 불변성, 플랫폼·수치·순서·누락 보존, Prometheus 이름·라벨·단위, KST 날짜 경계와 NaN·실제 0 구분 |
 | 모듈의 `AppAttestMetricsTest`, `PlayIntegrityMetricsTest`, 앱의 등록·인증 라우팅 통합 테스트 | 초기값, 기록 시 등록·사유별 누적, UNKNOWN 제한과 기존 인증 흐름 연결 |
 | 업무 서비스·metrics 테스트 | 업무별 계측 단계와 기존 기능의 연결 |
 | 모듈의 `AppVersionMetricsTest`, 앱의 필터·컨트롤러 테스트 | 플랫폼별 초기값·누적, HTTP 성공 조건·예외·플랫폼 해석과 미집계 조건 |
@@ -173,3 +195,44 @@ Prometheus의 HTTP/Hikari 지표를 함께 확인합니다. SQL 실패·잠금 �
 검증 준비 중 추가한 `SPRING_DATASOURCE_HIKARI_CONNECTION_INIT_SQL`은 이미 시작된 풀의 설정 바인딩에
 실패했습니다. 해당 검증용 설정은 제거하고 일회용 DB 역할에 `statement_timeout=5s`를 설정했습니다.
 이 환경변수 경로의 원인이나 변경 전 버전과의 차이는 확정하지 않았으며, 제품 설정을 수정하지 않았습니다.
+
+## 2026-10-12 지표 이동 완료 후 로컬 검증 결과
+
+대상은 코드 커밋 `0cd2a4f1`입니다. 아래 결과는 이전 검증과 별도로 수행했으며 운영 배포·외부 수집기 수신을
+검증한 결과는 아닙니다. 제품 코드와 설정을 변경하지 않고 실행 시 테스트 환경만 주입했습니다.
+
+```sh
+./gradlew test :bootJar :observability:dependencies --configuration runtimeClasspath --no-daemon
+```
+
+- 1분 21초에 성공했습니다. 앱 테스트 2,173개 중 2,171개 통과·2개 건너뜀, 모듈 64개 통과로
+  총 2,235개 통과·2개 건너뜀·실패 및 오류 0개입니다. 모듈 테스트와 `bootJar`는 동일 코드의 직전 결과를
+  재사용하여 `UP-TO-DATE`였습니다. 실제 앱 기동에는 이 실행 JAR를 사용했습니다.
+- 건너뛴 것은 `SGIS_SOURCE_DIRECTORY`가 필요한 전국 경계 검증과 `MONITORING_REPRO_IMPORT_SQL`이 필요한
+  부하 재현 테스트 각 1개입니다. 실제 전국 데이터 적재·부하 실험을 수행한 것은 아닙니다.
+- 중첩 `observability` JAR의 클래스 항목 32개가 각각 한 번만 존재하고 앱 클래스 영역의 복사본은 0개입니다.
+  업무 지표 클래스 12개가 모듈에 있고 앱 DTO·변환기·스케줄러는 앱에 있습니다. 모듈의 프로젝트 타입 import는
+  모두 모듈 내부 타입으로 해석되며, 빌드 및 runtimeClasspath에 앱을 향하는 project 의존이 없습니다.
+
+일회용 PostgreSQL 17/PostGIS 3.5 컨테이너와 메모리에서 생성한 RSA 테스트 키를 사용하여
+`java -jar build/libs/pheeeew-0.0.1-SNAPSHOT.jar`를 `prod`, `dev` 순서로 각각 기동했습니다.
+DB·HTTP는 루프백의 임시 포트를 사용하고 로그도 임시 디렉터리에 저장했습니다. 수집 확인을 위해 실행 인자로만
+`--pheeeew.activity.aggregation-interval=PT2S`를 지정했습니다. 앱 버전 정책 두 행은 일회용 DB에만 넣었습니다.
+
+| 실제 HTTP·Prometheus 검증 | 결과 |
+| --- | --- |
+| 두 프로필의 `/actuator/health`, `/actuator/prometheus` | 모두 HTTP 200 |
+| Android·iOS 앱 버전 조회와 잘못된 플랫폼 조회 | 각각 200·200·400, 두 성공 요청의 추적 ID가 서로 다름 |
+| `pheeeew_app_version_checks_total` | 각 플랫폼이 1씩 증가, 잘못된 플랫폼 요청은 증가시키지 않음 |
+| 기기 challenge 발급 | HTTP 200, `pheeeew_device_challenge_issued_total` 1 증가 |
+| 두 프로필의 업무 지표 | 사전 등록하는 주요 metric family 24개 노출, 활동 기록 실패의 두 reason은 각각 0 |
+| `prod` 활동 지표 | Android·iOS DAU·MAU가 모두 실제 0, 집계·수집 시작 시각은 유한한 Unix timestamp, 집계 실패 0 |
+| `dev` 활동 지표 | DAU·MAU·집계 시각·수집 시작 시각·집계 실패 지표 모두 미노출 |
+| `prod`에서 증명 없는 Android·iOS 등록 요청 | 각각 HTTP 403, Play Integrity·App Attest의 `reason=ATTESTATION_REQUIRED` 카운터가 각각 1로 생성 |
+| 지연 등록하는 인증 지표 | 최초 scrape에서 rejected·verdict 미노출; 거절 요청 뒤 해당 rejected만 생성 |
+| 자동 지표와 공통 태그 | HTTP 요청과 Hikari active/max/acquire/usage 노출, 모든 업무 지표 sample에 `application=pheeeew`와 프로필별 `environment` 유지 |
+
+인증 성공과 Google·Apple·S3 외부 호출은 이 서버 검증에서 실행하지 않았습니다. KST 자정 전후, 미집계·누락의
+`NaN`, 실패 시 마지막 성공 결과 유지, 인증 성공·거절 사유별 누적과 `UNKNOWN` 처리는 자동 테스트로 검증했습니다.
+이번에는 Docker 앱 이미지 빌드, `bootRun`/DevTools, SQL 실패·잠금 지연 주입을 다시 수행하지 않았습니다.
+종료 후 두 서버 프로세스와 일회용 DB를 제거하고 HTTP 포트가 닫힌 것을 확인했습니다. 테스트 키는 파일로 저장하지 않았습니다.
