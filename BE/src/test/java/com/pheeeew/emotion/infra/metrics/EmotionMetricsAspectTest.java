@@ -24,6 +24,7 @@ import com.pheeeew.region.application.RegionClassifier;
 import com.pheeeew.region.domain.repository.RegionRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
+import com.pheeeew.groups.domain.repository.GroupRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -60,6 +61,7 @@ class EmotionMetricsAspectTest {
         context.registerBean(DeviceRepository.class, () -> devices);
         context.registerBean(EmotionEmojiRepository.class, () -> mock(EmotionEmojiRepository.class));
         context.registerBean(GroupStampRepository.class, () -> mock(GroupStampRepository.class));
+        context.registerBean(GroupRepository.class, () -> mock(GroupRepository.class));
         context.registerBean(RegionRepository.class, () -> mock(RegionRepository.class));
         context.registerBean(RegionClassifier.class, () -> mock(RegionClassifier.class));
         context.registerBean(SimpleMeterRegistry.class, () -> registry);
@@ -110,7 +112,7 @@ class EmotionMetricsAspectTest {
                 .thenReturn(items(count));
 
         // when
-        service.findListWithoutBounds(device.getPublicId(), null, null);
+        service.findListWithoutBounds(device.getPublicId(), null, null, null, null, null, null);
 
         // then
         var summary = registry.get("pheeeew.sigh.list.results")
@@ -126,7 +128,7 @@ class EmotionMetricsAspectTest {
         String cursor = EmotionCursorCodec.encode(EmotionCursor.initialWithoutBounds(NOW, null));
 
         // when
-        service.findListWithoutBounds(device.getPublicId(), null, cursor);
+        service.findListWithoutBounds(device.getPublicId(), null, null, null, null, null, cursor);
 
         // then
         var summary = registry.get("pheeeew.sigh.list.results")
@@ -146,7 +148,7 @@ class EmotionMetricsAspectTest {
                 .thenThrow(failure);
 
         // when / then
-        assertThatThrownBy(() -> service.findListWithoutBounds(device.getPublicId(), null, null)).isSameAs(failure);
+        assertThatThrownBy(() -> service.findListWithoutBounds(device.getPublicId(), null, null, null, null, null, null)).isSameAs(failure);
         assertThat(registry.get("pheeeew.sigh.list.query").timer().count()).isOne();
         assertThat(registry.get("pheeeew.sigh.list.results")
                 .tags("page", "first", "has_next", "false").summary().count()).isZero();

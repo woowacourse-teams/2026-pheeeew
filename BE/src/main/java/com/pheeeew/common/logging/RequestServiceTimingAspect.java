@@ -25,14 +25,13 @@ public class RequestServiceTimingAspect {
         this.nanoTime = nanoTime;
     }
 
-    @Around("execution(public * com.pheeeew.emotion.application.query.EmotionQueryService.findRegionMap(..)) || "
-            + "execution(public * com.pheeeew.emotion.application.query.EmotionQueryService.findContentRegionMap(..)) || "
+    @Around("execution(public * com.pheeeew.emotion.application.query.EmotionMapQueryService.findRegionMap(..)) || "
             + "execution(public * com.pheeeew.emotion.application.command.EmotionPressService.press(..)) || "
             + "execution(public * com.pheeeew.emotion.application.query.EmotionPressQueryService.findMyDailyPresses(..)) || "
             + "execution(public * com.pheeeew.emotion.application.query.EmotionPressQueryService.findDailyTotal(..))")
     public Object recordService(ProceedingJoinPoint joinPoint) throws Throwable {
         Stage stage = switch (joinPoint.getSignature().getName()) {
-            case "findRegionMap", "findContentRegionMap" -> Stage.REGIONS_SERVICE;
+            case "findRegionMap" -> Stage.REGIONS_SERVICE;
             case "press" -> Stage.PRESS_SERVICE;
             case "findMyDailyPresses" -> Stage.PRESS_MY_SERVICE;
             case "findDailyTotal" -> Stage.PRESS_TOTAL_SERVICE;

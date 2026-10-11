@@ -5,15 +5,18 @@ import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionsWithinBoundsRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionsWithoutBoundsRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionMapResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionMapRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
 import com.pheeeew.emotion.application.dto.EmotionRegionMapItemView;
 import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.presentation.dto.EmotionUpdateRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV3UpdateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionContentType;
 import com.pheeeew.emotion.application.dto.EmotionPageView;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
+import com.pheeeew.emotion.application.query.EmotionMapQueryService;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.presentation.dto.EmotionDetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateRequest;
@@ -46,6 +49,7 @@ public class EmotionController implements EmotionControllerApi {
 
     private final EmotionCommandService emotionCommandService;
     private final EmotionQueryService emotionQueryService;
+    private final EmotionMapQueryService emotionMapQueryService;
 
     @Override
     @GetMapping("/v1/emotions")
@@ -66,7 +70,8 @@ public class EmotionController implements EmotionControllerApi {
             @ModelAttribute EmotionsWithoutBoundsRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
-        EmotionPageView page = emotionQueryService.findListWithoutBounds(devicePublicId, request.groupId(), request.cursor());
+        EmotionPageView page = emotionQueryService.findListWithoutBounds(devicePublicId, request.groupId(),
+                request.startDate(), request.endDate(), request.contentType(), request.scope(), request.cursor());
 
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(CursorResponse.of(page.items().stream().map(EmotionDetailResponse::from).toList(),
@@ -76,9 +81,10 @@ public class EmotionController implements EmotionControllerApi {
     @Override
     @GetMapping("/v1/emotions/map")
     public ResponseEntity<CursorResponse<EmotionMapResponse>> findMap(
-            @ModelAttribute EmotionsWithinBoundsRequest request, @CurrentDevice UUID devicePublicId
+            @ModelAttribute EmotionsWithinBoundsRequest request,
+            @CurrentDevice UUID devicePublicId
     ) {
-        EmotionMapPageView page = emotionQueryService.findMapWithinBounds(
+        EmotionMapPageView page = emotionMapQueryService.findMapWithinBounds(
                 request.toBounds(), devicePublicId, request.groupId(), request.cursor());
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(CursorResponse.of(page.items().stream().map(EmotionMapResponse::from).toList(),
@@ -91,7 +97,7 @@ public class EmotionController implements EmotionControllerApi {
             @ModelAttribute EmotionRegionMapRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
-        List<EmotionRegionMapItemView> items = emotionQueryService.findContentRegionMap(request.toBounds(), request.level(), request.groupId());
+        List<EmotionRegionMapItemView> items = emotionMapQueryService.findRegionMap(request.toBounds(), request.level(), request.groupId());
         List<EmotionRegionMapResponse> responses = items.stream()
                 .map(EmotionRegionMapResponse::from)
                 .toList();
@@ -104,10 +110,12 @@ public class EmotionController implements EmotionControllerApi {
     @Override
     @GetMapping("/v2/emotions/map")
     public ResponseEntity<CursorResponse<EmotionMapResponse>> findContentMap(
-            @ModelAttribute EmotionsWithinBoundsRequest request, @CurrentDevice UUID devicePublicId
+            @ModelAttribute EmotionMapRequest request,
+            @CurrentDevice UUID devicePublicId
     ) {
-        EmotionMapPageView page = emotionQueryService.findContentMapWithinBounds(
-                request.toBounds(), devicePublicId, request.groupId(), request.cursor());
+        EmotionMapPageView page = emotionMapQueryService.findContentMapWithinBounds(
+                request.toBounds(), devicePublicId, request.groupId(),
+                request.startDate(), request.endDate(), request.contentType(), request.scope(), request.cursor());
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(CursorResponse.of(page.items().stream().map(EmotionMapResponse::from).toList(),
                         page.hasNext(), page.nextCursor()));
@@ -116,7 +124,8 @@ public class EmotionController implements EmotionControllerApi {
     @Override
     @PostMapping("/v2/emotions")
     public ResponseEntity<EmotionCreateResponse> saveV2(
-            @RequestBody EmotionV2CreateRequest request, @CurrentDevice UUID devicePublicId
+            @RequestBody EmotionV2CreateRequest request,
+            @CurrentDevice UUID devicePublicId
     ) {
         EmotionCreateResponse result = EmotionCreateResponse.from(emotionCommandService.save(
                 request.requestId(), request.state(), request.longitude(), request.latitude(), request.rotationDegrees(),
@@ -128,7 +137,8 @@ public class EmotionController implements EmotionControllerApi {
     @Override
     @PostMapping("/v1/emotions")
     public ResponseEntity<EmotionCreateResponse> save(
-            @RequestBody EmotionCreateRequest request, @CurrentDevice UUID devicePublicId
+            @RequestBody EmotionCreateRequest request,
+            @CurrentDevice UUID devicePublicId
     ) {
         EmotionCreateResponse result = EmotionCreateResponse.from(emotionCommandService.save(
                 request.requestId(), request.state(), request.longitude(), request.latitude(), request.rotationDegrees(),
@@ -140,7 +150,8 @@ public class EmotionController implements EmotionControllerApi {
     @Override
     @PostMapping("/v3/emotions")
     public ResponseEntity<EmotionCreateResponse> saveV3(
-            @RequestBody EmotionV3CreateRequest request, @CurrentDevice UUID devicePublicId
+            @RequestBody EmotionV3CreateRequest request,
+            @CurrentDevice UUID devicePublicId
     ) {
         EmotionCreateResponse result = EmotionCreateResponse.from(emotionCommandService.save(
                 request.requestId(), request.state(), request.longitude(), request.latitude(), request.rotationDegrees(),
@@ -167,6 +178,18 @@ public class EmotionController implements EmotionControllerApi {
     public ResponseEntity<Void> update(
             @PathVariable Long emotionId,
             @RequestBody EmotionUpdateRequest request,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        emotionCommandService.update(emotionId, devicePublicId, request.state(), request.memo(), request.audioUploadId(),
+                request.contentType() == EmotionContentType.AUDIO && request.audioUploadId() == null, request.groupId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @PutMapping("/v3/emotions/{emotionId}")
+    public ResponseEntity<Void> updateV3(
+            @PathVariable Long emotionId,
+            @RequestBody EmotionV3UpdateRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
         emotionCommandService.update(emotionId, devicePublicId, request.state(), request.memo(), request.audioUploadId(),
