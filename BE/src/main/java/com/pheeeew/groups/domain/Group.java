@@ -1,6 +1,9 @@
 package com.pheeeew.groups.domain;
 
+import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_INVITE_CODE_REQUIRED;
+
 import com.pheeeew.common.domain.BaseEntity;
+import com.pheeeew.groups.exception.GroupException;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -83,5 +86,11 @@ public class Group extends BaseEntity {
 
     public boolean isPublic() {
         return joinType == GroupJoinType.PUBLIC;
+    }
+
+    public void validateCodeFreeJoin() {
+        if (!isPublic()) {
+            throw new GroupException(GROUP_INVITE_CODE_REQUIRED);
+        }
     }
 }
