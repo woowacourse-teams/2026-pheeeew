@@ -389,3 +389,27 @@ Cloud 대시보드와 로그 전송, 알림 규칙 등록·정상 평가·이메
 - [Grafana 대시보드 가져오기](https://grafana.com/docs/grafana/latest/visualizations/dashboards/build-dashboards/import-dashboards/)
 - [Grafana No Data와 Error 처리](https://grafana.com/docs/grafana/latest/alerting/fundamentals/alert-rule-evaluation/nodata-and-error-states/)
 - [Prometheus histogram_quantile](https://prometheus.io/docs/prometheus/latest/querying/functions/#histogram_quantile)
+
+
+## 독립 DB 대기 표본 구역 (#725)
+
+`pheeeew-dev-v2.json`·`pheeeew-prod-v2.json`의 기존 패널을 보존하고 맨 아래 `07 DB 내부 대기`에6개 패널을 추가했어요. 새 구역은 별도 DB 수집기와 Alloy의 `job=pheeeew-db-observer`가 있어야 표시돼요. JSON 반영만으로 수집기가 설치되거나 Cloud 대시보드가 자동 갱신되지는 않아요.
+
+| 패널 | 표시와 해석 |
+| --- | --- |
+| 수집 상태 · 최근60초 | 마지막 표본의 성공·전체 가시성(파랑), 성공·부분 가시성(주황), 실패(빨강). 표본 부재는 정상0이 아니에요. |
+| 마지막 표본 시각 · 최근24시간 | 마지막으로 수신한 기록의 원래 관측 시각. 현재 정상 여부와 별개예요. |
+| 수집 실패 표본 · 최근5분 | 실패로 기록된 수집 표본 수. DB 실패나 Hikari timeout 횟수가 아니에요. 최근 표본이 있을 때만 실패 부재를0으로 표시해요. |
+| 대기별 세션 수 | 최근30초의 최신 전체 가시성 표본을 Lock/IO/기타/대기 이벤트 없음으로 표시해요. 최신 표본이 실패·partial이면 이전 성공값을 숨겨요. |
+| 세션 상태와 관측 누락 | 보이는 active·유휴 트랜잭션과 unknown·disabled·상세 생략 수. partial도 표시하고 최신 실패 뒤에는 숨겨요. |
+| 표본 상세 | 한 줄은 한 번의 수집이에요. 전체 요약과 최대20개 상세를 구분해요. PID는 HTTP 요청 식별자가 아니에요. |
+
+모든 시간 창은 선택 기간의 끝 시점을 기준으로 해요. 상태는60초, 추이는30초 창이므로 상태가 표시되는 동안에도 추이가 먼저 빌 수 있어요. 표본 주기·파일 발견·전송·대시보드 새로고침 지연이 있으며 짧은 모든 사건을 포착하지는 못해요. `last_over_time`을 instance별로 적용해 이전에 더 컸던 값 대신 최신값을 선택해요. 그래프를 0으로 채우거나 빈 구간을 연결하지 않아요.
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 python3 docker/grafana/verify_db_observer.py
+```
+
+검증기는 실제 JSON의 LogQL을 로컬 Loki3.6.0에 실행해 정상0, 대기 증가·감소, 실패 직후 이전 값 숨김, partial, 회복, stale, 관측 부재, 환경·job 구분을 확인해요. 서버 적용 시에는 [수집기 설치·권한·전송 경계](../db-observer/README.md)와 실제 Cloud 최신 표본 수신을 먼저 확인해요. 기존 Cloud 대시보드의 현재 구성과 비교해 새 구역만 추가하고 화면을 기록해요.
+
+2026-10-11 로컬 검증: 위 검증기의264개 instant 평가와 양쪽 환경 range·logs·배치 검사, 기존 PromQL150개 사례가 통과했어요. Grafana13.2.1에 개발·운영 JSON을 각각 가져온 뒤 다시 읽어53개 패널과 새 패널의 쿼리·표시 옵션이 보존되는 것도 확인했어요. 기존46개 패널과 메타데이터는 변경 전과 같았어요. Cloud 화면·실제 표본 수신 검증은 아직 하지 않았어요.

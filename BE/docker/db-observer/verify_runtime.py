@@ -37,7 +37,7 @@ with tempfile.TemporaryDirectory() as temp:
     password.write_text('database:5432:observer:observer:local-verification-only\n')
     password.chmod(0o600)
     env = os.environ | {'DB_OBSERVER_ENV_FILE': str(env_file), 'DB_OBSERVER_NETWORK': NAME,
-                       'DB_OBSERVER_PASSFILE': str(password)}
+                       'DB_OBSERVER_PASSFILE': str(password), 'DB_OBSERVER_VOLUME': NAME + '-samples'}
     def compose(*args, **kwargs):
         return command('docker', 'compose', '-p', NAME, '-f', str(ROOT / 'compose.yml'),
                        *args, env=env, **kwargs)
@@ -56,16 +56,39 @@ with tempfile.TemporaryDirectory() as temp:
         wait_for(lambda: command('docker', 'exec', '-e', 'PGPASSWORD=local-verification-only', NAME,
                                  'psql', '-h', '127.0.0.1', '-U', 'observer', '-d', 'observer',
                                  '-Atc', 'SELECT postgis_lib_version()', check=False).startswith('3.5'))
-        compose('up', '-d', '--build')
+        command('docker', 'volume', 'create', NAME + '-samples')
+        compose('build')
+        compose('--profile', 'setup', 'run', '--rm', '--no-deps', 'init-storage')
+        compose('up', '-d', 'db-observer')
         container = compose('ps', '-q', 'db-observer')
         def inside(code):
             return command('docker', 'exec', container, 'python3', '-c', code)
-        inside("import os; s=os.stat('/data'); assert s.st_uid == os.getuid() == 10001; assert s.st_mode & 0o777 == 0o700")
+        inside("import os; s=os.stat('/data'); assert s.st_uid == os.getuid() == 10001; assert s.st_mode & 0o777 == 0o750")
         read = "import pathlib; print(''.join(p.read_text() for p in pathlib.Path('/data').glob('sample-*.jsonl')))"
         wait_for(lambda: bool(inside(read)))
         first = json.loads(inside(read).splitlines()[0])
         assert first['status'] == 'ok' and first['snapshot']['visibility'] == 'visible'
         assert first['snapshot']['sessions'] == []
+        assert command('docker', 'inspect', '-f', '{{.HostConfig.RestartPolicy.Name}}', container) == 'unless-stopped'
+        # 실제 Alloy UID/GID 및 보조 그룹으로 읽기만 허용되는지 검증한다.
+        command('docker', 'run', '--rm', '--network', 'none', '--user', '473:473', '--group-add', '10001',
+                '--entrypoint', '/bin/bash', '-v', f'{NAME}-samples:/samples:ro',
+                '-v', f'{password}:/credential:ro', 'grafana/alloy:v1.19.2', '-ec',
+                'cat /samples/sample-*.jsonl >/dev/null; '
+                '! touch /samples/forbidden; ! cat /credential; ! cat /samples/.lock')
+        # 앱에 해당하는 별도 컨테이너를 재생성해도 수집기 ID와 기록이 유지된다.
+        app = NAME + '-app'
+        command('docker', 'run', '-d', '--name', app, '--network', NAME, 'python:3.13-alpine', 'sleep', '60')
+        command('docker', 'rm', '-f', app)
+        command('docker', 'run', '-d', '--name', app, '--network', NAME, 'python:3.13-alpine', 'sleep', '60')
+        before = len(inside(read).splitlines())
+        wait_for(lambda: len(inside(read).splitlines()) > before)
+        assert compose('ps', '-q', 'db-observer') == container
+        # 컨테이너의 child 수집기 프로세스 비정상 종료는 자동 복구한다.
+        command('docker', 'exec', container, 'python3', '-c',
+                "import os; os.kill(int(open('/proc/1/task/1/children').read().split()[0]), 9)", check=False)
+        wait_for(lambda: int(command('docker', 'inspect', '-f', '{{.RestartCount}}', container)) > 0)
+        wait_for(lambda: command('docker', 'exec', container, 'python3', '-c', 'print(1)', check=False) == '1')
         # 실제 DB에서 실행 제한과 read-only를 검증한다. probe는 전용 volume에만 만든다.
         probe = """
 import collect, os, pathlib, time
@@ -96,6 +119,19 @@ finally:
         compose('stop', '-t', '6')
         assert command('docker', 'inspect', '-f', '{{.State.ExitCode}}', container) == '0'
         wait_for(lambda: sql("SELECT count(*) FROM pg_stat_activity WHERE application_name='pheeeew-db-observer'") == '0')
+        # 기존 0700/0600 저장소를 이행하고 완성된 첫 기록을 보존한다.
+        command('docker', 'run', '--rm', '--user', '10001:10001', '-v', f'{NAME}-samples:/data',
+                'python:3.13-alpine', 'python3', '-c',
+                "import pathlib,os; os.chmod('/data',0o700); "
+                "[p.chmod(0o600) for p in pathlib.Path('/data').glob('sample-*.jsonl')]")
+        compose('--profile', 'setup', 'run', '--rm', '--no-deps', 'init-storage')
+        compose('up', '-d', 'db-observer')
+        wait_for(lambda: command('docker', 'exec', container, 'python3', '-c',
+                 "import pathlib; print(all(p.stat().st_mode & 0o777 == 0o640 for p in pathlib.Path('/data').glob('sample-*.jsonl')))", check=False) == 'True')
+        assert json.loads(inside(read).splitlines()[0]) == first
+        compose('stop', '-t', '6', 'db-observer')
+        time.sleep(1)
+        assert command('docker', 'inspect', '-f', '{{.State.Running}}', container) == 'false'
         command('docker', 'run', '--rm', '-v', f'{temp}:/fixture', 'python:3.13-alpine',
                 'chmod', '0644', '/fixture/db.pass')
         rejected = compose('run', '--rm', '--no-deps', 'db-observer', check=False, raw=True)
@@ -103,11 +139,23 @@ finally:
         assert '"reason": "collector_stopped"' in rejected.stderr and 'Traceback' not in rejected.stderr
         missing = compose('run', '--rm', '--no-deps', '-e', 'PGUSER=', 'db-observer', check=False, raw=True)
         assert missing.returncode == 1 and 'configuration_missing' in missing.stderr
+        # 비정상 시작 설정도 재시작하므로 stop 후 수정해야 한다는 운영 계약.
+        original_environment = env_file.read_text()
+        env_file.write_text(original_environment.replace('PGUSER=observer', 'PGUSER='))
+        compose('up', '-d', '--force-recreate', 'db-observer')
+        invalid_container = compose('ps', '-aq', 'db-observer')
+        wait_for(lambda: int(command('docker', 'inspect', '-f', '{{.RestartCount}}', invalid_container)) >= 2)
+        compose('stop', '-t', '6', 'db-observer')
+        assert command('docker', 'inspect', '-f', '{{.State.Running}}', invalid_container) == 'false'
+        env_file.write_text(original_environment)
         logs = compose('logs', '--no-color')
         assert 'local-verification-only' not in logs and 'Traceback' not in logs
         print('PASS: snapshot, active wait, privacy, read-only, timeout, connection failure, lock, '
-              'SIGTERM, disconnect, credential permissions and missing config')
+              'SIGTERM, disconnect, credential permissions, missing config, group read-only sharing, '
+              'legacy migration, independent lifetime and automatic restart')
     finally:
         compose('down', '--volumes', '--remove-orphans', check=False)
+        command('docker', 'rm', '-f', NAME + '-app', check=False)
+        command('docker', 'volume', 'rm', NAME + '-samples', check=False)
         command('docker', 'rm', '-f', '-v', NAME, check=False)
         command('docker', 'network', 'rm', NAME, check=False)
