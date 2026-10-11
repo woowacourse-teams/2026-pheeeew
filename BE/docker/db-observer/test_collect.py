@@ -49,7 +49,8 @@ class CollectorTest(unittest.TestCase):
             with self.subTest(visibility=visibility):
                 sample = EMPTY | {"visibility": visibility}
                 if visibility == "partial":
-                    sample["sessions"] = [ROW]
+                    sample |= {"sessions": [ROW], "session_count": 2, "eligible_count": 1,
+                               "unknown_state_count": 1, "active_count": 1, "no_wait_count": 1}
                 self.fake_psql("assert os.environ['PGCONNECT_TIMEOUT']=='3'\n"
                                "assert 'default_transaction_read_only=on' in os.environ['PGOPTIONS']\n"
                                "assert 'statement_timeout=500' in os.environ['PGOPTIONS']\n"
@@ -78,6 +79,17 @@ class CollectorTest(unittest.TestCase):
                 self.assertNotIn("secret-token", json.dumps(result))
                 self.assertEqual(set(result), {"event", "collected_at", "status", "reason"})
                 self.assert_reaped()
+
+    def test_summary_preserves_full_population_and_rejects_inconsistent_counts(self):
+        sample = EMPTY | {"sessions": [ROW] * 20, "session_count": 23, "eligible_count": 21,
+                          "unknown_state_count": 1, "disabled_count": 1, "visibility": "partial",
+                          "active_count": 21, "no_wait_count": 21, "omitted_count": 1}
+        self.assertTrue(collect.valid_snapshot(sample))
+        for invalid in ({"lock_wait_count": 1}, {"omitted_count": 0}, {"visibility": "visible"},
+                        {"session_count": 21}, {"active_count": 22}, {"io_wait_count": None},
+                        {"other_wait_count": True}, {"sessions": [ROW] * 19}):
+            with self.subTest(invalid=invalid):
+                self.assertFalse(collect.valid_snapshot(sample | invalid))
 
     def test_stop_reaps_running_client_and_does_not_start_when_stopped(self):
         self.fake_psql("time.sleep(5)")

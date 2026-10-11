@@ -15,7 +15,8 @@ PROCESS_TIMEOUT = 4
 MAX_OUTPUT = 32 * 1024
 SQL = Path(__file__).with_name("snapshot.sql")
 FIELDS = set("sampled_at visibility read_all_stats session_count unknown_state_count disabled_count "
-             "eligible_count omitted_count sessions".split())
+             "eligible_count omitted_count active_count idle_in_transaction_count "
+             "lock_wait_count io_wait_count other_wait_count no_wait_count sessions".split())
 SESSION_FIELDS = set("pid backend_start backend_type state wait_event_type wait_event query_elapsed_ms "
                      "transaction_elapsed_ms state_elapsed_ms blocker_pids blocker_count".split())
 
@@ -35,6 +36,14 @@ def valid_snapshot(value: object) -> bool:
             and value["visibility"] in ("visible", "partial")
             and all(type(value[k]) is int and value[k] >= 0 for k in FIELDS if k.endswith("count"))
             and isinstance(value["sessions"], list) and len(value["sessions"]) <= 20):
+        return False
+    eligible = value["eligible_count"]
+    if not (sum(value[k] for k in ("lock_wait_count", "io_wait_count", "other_wait_count", "no_wait_count")) == eligible
+            and value["active_count"] + value["idle_in_transaction_count"] <= eligible
+            and eligible + value["unknown_state_count"] + value["disabled_count"] <= value["session_count"]
+            and value["omitted_count"] == max(eligible - 20, 0)
+            and len(value["sessions"]) == min(eligible, 20)
+            and (value["visibility"] == "partial") == (value["unknown_state_count"] + value["disabled_count"] > 0)):
         return False
     for row in value["sessions"]:
         if not (isinstance(row, dict) and set(row) == SESSION_FIELDS
