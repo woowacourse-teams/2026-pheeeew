@@ -15,6 +15,7 @@
 | 모듈 | 도메인 타입에 독립적인 지표 등록·누적 | `EmotionMetrics`, `RegionQueryMetrics`, `DeviceChallengeMetrics`, `EmotionReportMetrics`, `EmotionPressMetrics`, `GroupPressMetrics` |
 | 모듈 | 활동 기록·집계의 실패 카운터 | `DeviceActivityRecordMetrics`, `DeviceActivityAggregationMetrics` |
 | 모듈 | 플랫폼별 앱 버전 조회 성공 카운터 | `AppVersionMetrics` |
+| 모듈 | 기기 인증의 결과 카운터와 고정된 지표 사유 목록 | `AppAttestMetrics`, `AppAttestRejection`, `PlayIntegrityMetrics`, `PlayIntegrityRejection` |
 | 앱 | 허용할 요청 값과 출력할 단계 목록 | `PheeeewRequestLogPolicy`, `PheeeewRequestTimingStage` |
 | 앱 | 업무 계측 지점과 필터·스케줄러 등록 | `RequestServiceTimingAspect`, 업무별 metrics aspect, `RequestLoggingConfiguration`, `SchedulingConfig` |
 | 앱·운영 구성 | 프로필, 로그 출력·비동기 큐, 수집·대시보드 | `application*.yml`, `logback-spring.xml`, `docker/alloy/`, 외부 수집기·Grafana |
@@ -26,7 +27,9 @@
 모듈은 전달받은 건수·시간을 누적합니다. 개인·그룹 프레스는 앱의 `PressCounts`에서 적용 수·상태 수·
 감정별 제한 초과량·전체 제한 초과량을 꺼내 `EmotionPressMetrics`·`GroupPressMetrics`에 전달합니다. 제한 계산과 기록 시점은
 앱에 남으며, 적용 수가 0이면 빈 요청만 기록하고 제한 초과량은 양수일 때만 기록합니다.
-활동 집계 객체나 인증 거절 사유를 받는 지표는 아직 앱에 남아 있습니다.
+활동 집계 객체를 받는 `DeviceActivityMetrics`는 아직 앱에 남아 있습니다.
+`AppAttestRejection`·`PlayIntegrityRejection`은 인증 정책이 아닌 지표의 고정된 `reason` 목록입니다. 인증 검증과 거절 판단,
+오류 코드·예외 전파는 앱의 검증기에 남고, 모듈은 앱이 선택한 사유로 카운터만 기록합니다.
 활동 기록기는 실패 카운터만 모듈에 위임합니다. 캐시 획득·해제, 비동기 작업 제출과 실패 후 재시도,
 오류 로그의 민감정보 제외와 60초 제한은 앱의 `DeviceActivityRecorder`가 유지합니다.
 집계 스케줄러는 실패 카운터를 `DeviceActivityAggregationMetrics`에 위임합니다. 초기화 재시도,
@@ -48,7 +51,7 @@
   프록시 안쪽에 위치합니다. 연결·예외는 그대로 전달하고 원본 풀의 종료는 Spring에 맡깁니다.
 - 앱의 `SchedulingConfig`는 기존 `ThreadPoolTaskSchedulerCustomizer`에서 모듈의 오류 처리기를 설치합니다.
   작업 오류와 로그 생성 오류를 처리한 뒤 반복 작업의 다음 실행을 막지 않습니다.
-- 업무 지표 6개와 `DeviceActivityRecordMetrics`, `AppVersionMetrics`는 `@Component`와 `com.pheeeew` 하위 패키지로 앱 스캔에 등록됩니다.
+- 업무 지표 6개와 `DeviceActivityRecordMetrics`, `AppVersionMetrics`, `AppAttestMetrics`, `PlayIntegrityMetrics`는 `@Component`와 `com.pheeeew` 하위 패키지로 앱 스캔에 등록됩니다.
   모듈은 공개 생성자와 `Timer.Sample` 반환 타입에 필요한 `micrometer-core`를 `api`로 제공합니다.
   버전은 앱과 같은 Spring Boot BOM을 따르며 Prometheus exporter 설정은 앱에 둡니다.
 - `DeviceActivityAggregationMetrics`는 스케줄러와 동일하게 `prod` 프로필에서만 스캔 등록됩니다.
@@ -87,6 +90,13 @@ DevTools에서 앱과 라이브러리의 클래스 로더가 갈릴 수 있으�
 - 앱 버전 조회는 `pheeeew.app.version.checks`와 `platform=android/ios`를 0으로 사전 등록합니다.
   앱 필터는 컨텍스트 경로를 고려한 `/api/v2/app/version`의 GET 요청이 예외 없이 완료되고 2xx일 때만 기록합니다.
   플랫폼 대소문자 해석과 잘못된 값의 처리도 앱에 유지합니다.
+- App Attest는 `pheeeew.device.appattest.accepted`를 라벨 없이 0으로 등록합니다.
+  `pheeeew.device.appattest.rejected`는 해당 거절을 처음 기록할 때 생성하며, `reason` 값은 기존 15개
+  enum 이름을 대문자 그대로 사용합니다. 사유별 사전 등록이나 새 라벨을 추가하지 않습니다.
+- Play Integrity는 `pheeeew.device.attestation.accepted`·`skipped`를 라벨 없이 0으로 등록합니다.
+  `rejected`·`verdict`는 기록할 때 생성하며, `reason`은 기존 14개 enum 이름을 그대로 사용합니다.
+  `appRecognition`은 기존 네 판정값을 유지하고 그 외 문자열은 `UNKNOWN`으로 묶습니다.
+  `deviceIntegrity`는 `true/false`를 유지합니다. 원본 판정에 따른 인증 허용·거절은 앱에서 결정합니다.
 
 현재 문맥은 동기 Servlet 요청 하나에 대한 기록입니다. 같은 요청의 비동기·병렬 기록이나 MDC 전파를
 지원하는 범용 추적 시스템이 아닙니다. JDBC 실행 추적, 수집기 교체, SQL 최적화·캐시·풀 크기 조정은 이 분리의 범위 밖입니다.
@@ -118,6 +128,7 @@ docker build --platform linux/arm64 -f docker/Dockerfile -t pheeeew-observabilit
 | 모듈의 `EmotionPressMetricsTest`, `GroupPressMetricsTest` | 빈 요청, 적용·상태 수, 두 제한 초과량, 그룹 요청 형식·교착 오류의 누적 계약 |
 | 모듈의 `DeviceActivityRecordMetricsTest`, 앱의 `DeviceActivityRecorderTest` | 실패 라벨·초기값·누적, 비동기 제출·캐시 해제·재시도와 로그 제한 |
 | 모듈의 `DeviceActivityAggregationMetricsTest`, 앱의 스케줄러·집계 서비스 테스트 | 프로필별 지표 노출, 초기화·집계 재시도, 성공 결과 보존과 트랜잭션 경계 |
+| 모듈의 `AppAttestMetricsTest`, `PlayIntegrityMetricsTest`, 앱의 등록·인증 라우팅 통합 테스트 | 초기값, 기록 시 등록·사유별 누적, UNKNOWN 제한과 기존 인증 흐름 연결 |
 | 업무 서비스·metrics 테스트 | 업무별 계측 단계와 기존 기능의 연결 |
 | 모듈의 `AppVersionMetricsTest`, 앱의 필터·컨트롤러 테스트 | 플랫폼별 초기값·누적, HTTP 성공 조건·예외·플랫폼 해석과 미집계 조건 |
 

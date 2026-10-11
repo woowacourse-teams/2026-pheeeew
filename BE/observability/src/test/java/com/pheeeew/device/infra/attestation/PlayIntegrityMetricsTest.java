@@ -3,12 +3,16 @@ package com.pheeeew.device.infra.attestation;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import java.util.List;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 class PlayIntegrityMetricsTest {
 
@@ -16,7 +20,66 @@ class PlayIntegrityMetricsTest {
     private static final String 거절_지표 = "pheeeew.device.attestation.rejected";
 
     private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
-    private final PlayIntegrityMetrics metrics = new PlayIntegrityMetrics(registry);
+    private final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext();
+    private PlayIntegrityMetrics metrics;
+
+    @BeforeEach
+    void setUp() {
+        context.registerBean(MeterRegistry.class, () -> registry);
+        context.scan("com.pheeeew.device.infra.attestation");
+        context.refresh();
+        metrics = context.getBean(PlayIntegrityMetrics.class);
+    }
+
+    @AfterEach
+    void tearDown() {
+        context.close();
+    }
+
+    @Test
+    void 승인과_생략만_영으로_등록하고_라벨_없이_누적한다() {
+        // given
+        var accepted = registry.get("pheeeew.device.attestation.accepted").counter();
+        var skipped = registry.get("pheeeew.device.attestation.skipped").counter();
+        assertThat(accepted.count()).isZero();
+        assertThat(skipped.count()).isZero();
+        assertThat(registry.find(거절_지표).counters()).isEmpty();
+        assertThat(registry.find(판정_지표).counters()).isEmpty();
+
+        // when
+        metrics.recordAccepted();
+        metrics.recordAccepted();
+        metrics.recordSkipped();
+
+        // then
+        assertThat(accepted.count()).isEqualTo(2);
+        assertThat(skipped.count()).isOne();
+        assertThat(accepted.getId().getTags()).isEmpty();
+        assertThat(skipped.getId().getTags()).isEmpty();
+    }
+
+    @Test
+    void 기존_열네_거절_사유를_대문자_reason_라벨로_유지한다() {
+        // given
+        assertThat(PlayIntegrityRejection.values()).extracting(Enum::name).containsExactly(
+                "ATTESTATION_REQUIRED", "CREDENTIALS_MISSING", "MALFORMED_TOKEN", "CHALLENGE_MISSING",
+                "CHALLENGE_UNUSABLE", "CALL_BUDGET_EXHAUSTED", "GOOGLE_QUOTA_EXHAUSTED", "GOOGLE_UNAVAILABLE",
+                "MALFORMED_PAYLOAD", "PACKAGE_MISMATCH", "APP_UNRECOGNIZED", "DEVICE_INTEGRITY_MISSING",
+                "CHALLENGE_MISMATCH", "CHALLENGE_INVALID");
+
+        // when
+        for (PlayIntegrityRejection reason : PlayIntegrityRejection.values()) {
+            metrics.recordRejected(reason);
+        }
+
+        // then
+        assertThat(지표_계열_수(거절_지표)).isEqualTo(14);
+        for (PlayIntegrityRejection reason : PlayIntegrityRejection.values()) {
+            var rejected = registry.get(거절_지표).tag("reason", reason.name()).counter();
+            assertThat(rejected.count()).isOne();
+            assertThat(rejected.getId().getTags()).containsExactly(Tag.of("reason", reason.name()));
+        }
+    }
 
     @Test
     void 판정은_앱_인식_결과와_기기_무결성_포함_여부로_분해된다() {
