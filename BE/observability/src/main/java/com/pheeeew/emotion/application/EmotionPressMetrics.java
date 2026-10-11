@@ -1,6 +1,5 @@
 package com.pheeeew.emotion.application;
 
-import com.pheeeew.emotion.domain.PressCounts;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -55,20 +54,19 @@ public class EmotionPressMetrics {
         }
     }
 
-    public void recordApplied(PressCounts pressCounts) {
-        int appliedTotal = pressCounts.appliedTotal();
+    public void recordApplied(int appliedTotal, int stateCount, int perStateDropped, int totalDropped) {
         if (appliedTotal == 0) {
             emptyRequests.increment();
             return;
         }
 
         applied.record(appliedTotal);
-        states.record(pressCounts.presses().size());
-        if (pressCounts.perStateDropped() > 0) {
-            perStateClamped.record(pressCounts.perStateDropped());
+        states.record(stateCount);
+        if (perStateDropped > 0) {
+            perStateClamped.record(perStateDropped);
         }
-        if (pressCounts.totalDropped() > 0) {
-            totalClamped.record(pressCounts.totalDropped());
+        if (totalDropped > 0) {
+            totalClamped.record(totalDropped);
         }
     }
 

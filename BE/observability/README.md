@@ -3,6 +3,7 @@
 `BE` 루트는 실행 가능한 Spring Boot 앱이고, `observability`는 앱이 사용하는 Java 라이브러리입니다.
 의존 방향은 **앱 → observability**이며 실행 JAR, JVM, 앱 컨테이너는 각각 하나입니다.
 코드 경계를 나눈 것으로, 요청 처리나 DB 작업을 비동기화하거나 성능을 격리한 것은 아닙니다.
+범용 로그·시간 기록뿐 아니라 앱 도메인 타입에 의존하지 않는 Pheeeew 업무 지표도 포함합니다.
 
 ## 책임 경계
 
@@ -11,6 +12,7 @@
 | 모듈 | 동기 Servlet 요청의 문맥과 시간 누적 | `RequestTiming`, `RequestTimingStage`, `RequestLoggingFilter` |
 | 모듈 | 연결 획득 성공·실패 계측과 DataSource 래핑 | `DataSourceTimingStage`, `RequestTimingDataSource`, `RequestTimingDataSourceConfiguration` |
 | 모듈 | 요청·예외·예약 작업 오류의 로그 형식 | `RequestLogPolicy`, `RequestLogWriter`, `ExceptionLogFormatter`, `ScheduledTaskErrorHandler` |
+| 모듈 | 도메인 타입에 독립적인 지표 등록·누적 | `EmotionMetrics`, `RegionQueryMetrics`, `DeviceChallengeMetrics`, `EmotionReportMetrics`, `EmotionPressMetrics`, `GroupPressMetrics` |
 | 앱 | 허용할 요청 값과 출력할 단계 목록 | `PheeeewRequestLogPolicy`, `PheeeewRequestTimingStage` |
 | 앱 | 업무 계측 지점과 필터·스케줄러 등록 | `RequestServiceTimingAspect`, 업무별 metrics aspect, `RequestLoggingConfiguration`, `SchedulingConfig` |
 | 앱·운영 구성 | 프로필, 로그 출력·비동기 큐, 수집·대시보드 | `application*.yml`, `logback-spring.xml`, `docker/alloy/`, 외부 수집기·Grafana |
@@ -18,6 +20,11 @@
 모듈은 앱의 업무 클래스나 설정을 참조하지 않습니다. `common/logging`이라는 패키지 이름만으로
 소속을 판단하지 말고 소스 디렉터리와 위 책임을 함께 확인합니다. 기존 logger 이름과 요청 속성 키를
 유지하기 위해 양쪽의 Java 패키지 `com.pheeeew.common.logging`은 유지했습니다.
+업무 지표도 기존 패키지를 유지합니다. 지표를 기록할 시점은 앱의 서비스·Aspect가 결정하고,
+모듈은 전달받은 건수·시간을 누적합니다. 개인·그룹 프레스는 앱의 `PressCounts`에서 적용 수·상태 수·
+감정별 제한 초과량·전체 제한 초과량을 꺼내 `EmotionPressMetrics`·`GroupPressMetrics`에 전달합니다. 제한 계산과 기록 시점은
+앱에 남으며, 적용 수가 0이면 빈 요청만 기록하고 제한 초과량은 양수일 때만 기록합니다.
+활동 집계 객체나 인증 거절 사유를 받는 지표는 아직 앱에 남아 있습니다.
 
 ## 등록과 호출
 
@@ -33,6 +40,9 @@
   프록시 안쪽에 위치합니다. 연결·예외는 그대로 전달하고 원본 풀의 종료는 Spring에 맡깁니다.
 - 앱의 `SchedulingConfig`는 기존 `ThreadPoolTaskSchedulerCustomizer`에서 모듈의 오류 처리기를 설치합니다.
   작업 오류와 로그 생성 오류를 처리한 뒤 반복 작업의 다음 실행을 막지 않습니다.
+- 업무 지표 6개는 기존 `@Component`와 `com.pheeeew` 하위 패키지를 유지해 앱 스캔으로 등록됩니다.
+  모듈은 공개 생성자와 `Timer.Sample` 반환 타입에 필요한 `micrometer-core`를 `api`로 제공합니다.
+  버전은 앱과 같은 Spring Boot BOM을 따르며 Prometheus exporter 설정은 앱에 둡니다.
 
 `RequestTiming.begin/restore`와 Filter·Writer 생성자는 모듈 밖에서 호출하는 공개 경계입니다.
 DevTools에서 앱과 라이브러리의 클래스 로더가 갈릴 수 있으므로 같은 패키지라는 이유로 package-private
@@ -56,6 +66,10 @@ DevTools에서 앱과 라이브러리의 클래스 로더가 갈릴 수 있으�
   SQL 실행 시간·순수 대기 시간·연결 점유 시간과 다릅니다. `hikaricp_connections_usage_seconds`는 별도 지표입니다.
 - `scheduled_task_failed`, `scheduled_task_log_skipped`와 예약 작업 logger 이름을 유지합니다.
   로그 비동기 큐의 크기·유실·종료 대기 정책과 Alloy 허용 목록은 앱·운영 구성에 그대로 남습니다.
+- 업무 지표의 이름, 설명, 타입, 라벨, 사전 등록 조합과 집계 설정을 유지합니다.
+  `pheeeew.sigh.list.results`의 `page`·`has_next`, `pheeeew.region.query`의 `operation`·`outcome`과
+  그룹 프레스의 `format=counts/state`·`limit=per_state/total`도 유지합니다.
+  지역·개인 프레스 조회의 50ms~300초 진단용 버킷 경계를 바꾸지 않습니다. 새 라벨이나 시계열은 추가하지 않습니다.
 
 현재 문맥은 동기 Servlet 요청 하나에 대한 기록입니다. 같은 요청의 비동기·병렬 기록이나 MDC 전파를
 지원하는 범용 추적 시스템이 아닙니다. JDBC 실행 추적, 수집기 교체, SQL 최적화·캐시·풀 크기 조정은 이 분리의 범위 밖입니다.
@@ -83,6 +97,8 @@ docker build --platform linux/arm64 -f docker/Dockerfile -t pheeeew-observabilit
 | 앱의 `RequestLoggingFilterTest`, `RequestLoggingConfigurationTest` | 앱 정책, 문맥 정리, 클래스 로더 경계, 필터 단일 등록·순서 |
 | 앱의 `RequestTimingDataSourceIntegrationTest` | Flyway/JPA, 트랜잭션, 풀 반환·회복, Hikari 지표, HTTP 로그 연결 |
 | 앱의 `AsyncLoggingConfigurationTest`, `ScheduledTaskErrorHandlerTest` | 비동기 출력 계약, 실제 스케줄러의 실패 후 다음 실행 |
+| 모듈의 `IndependentMetricsTest` | 앱 타입 없이 스캔한 지표의 기존 이름·라벨과 기록 결과 |
+| 모듈의 `EmotionPressMetricsTest`, `GroupPressMetricsTest` | 빈 요청, 적용·상태 수, 두 제한 초과량, 그룹 요청 형식·교착 오류의 누적 계약 |
 | 업무 서비스·metrics 테스트 | 업무별 계측 단계와 기존 기능의 연결 |
 
 실제 기동을 다시 검증할 때는 운영 DB·키 대신 일회용 DB와 생성한 테스트 키를 사용합니다.

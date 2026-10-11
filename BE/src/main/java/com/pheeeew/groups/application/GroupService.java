@@ -164,7 +164,8 @@ public class GroupService {
         LocalDate today = LocalDate.now(clock);
         PressCounts pressCounts = PressCounts.from(command.counts());
         increaseInLockOrder(group.getId(), today, pressCounts);
-        groupPressMetrics.recordApplied(pressCounts);
+        groupPressMetrics.recordApplied(pressCounts.appliedTotal(), pressCounts.presses().size(),
+                pressCounts.perStateDropped(), pressCounts.totalDropped());
 
         return pressesOf(group, today);
     }

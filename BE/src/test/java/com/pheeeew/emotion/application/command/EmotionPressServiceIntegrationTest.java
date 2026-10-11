@@ -323,6 +323,7 @@ class EmotionPressServiceIntegrationTest {
         // given
         Device 기기 = 기기를_저장한다();
         double 기존_자른_양 = 자른_양("total");
+        double 기존_상태_수 = meterRegistry.get("pheeeew.emotion.press.states").summary().totalAmount();
 
         // when
         EmotionPressResult 결과 = 누른다(기기, 순서대로(
@@ -339,6 +340,8 @@ class EmotionPressServiceIntegrationTest {
         assertThat(결과.counts().get(EmotionState.IRRITATED)).isZero();
         assertThat(행_수()).isEqualTo(4);
         assertThat(자른_양("total") - 기존_자른_양).isEqualTo(50);
+        assertThat(meterRegistry.get("pheeeew.emotion.press.states").summary().totalAmount() - 기존_상태_수)
+                .isEqualTo(4);
     }
 
     @Test

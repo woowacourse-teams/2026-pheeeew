@@ -43,7 +43,8 @@ public class EmotionPressService {
         LocalDate today = LocalDate.now(clock);
         PressCounts pressCounts = PressCounts.from(counts);
         increaseInLockOrder(today, deviceId, pressCounts);
-        emotionPressMetrics.recordApplied(pressCounts);
+        emotionPressMetrics.recordApplied(pressCounts.appliedTotal(), pressCounts.presses().size(),
+                pressCounts.perStateDropped(), pressCounts.totalDropped());
 
         return EmotionPressResult.from(pressesOf(today, deviceId));
     }

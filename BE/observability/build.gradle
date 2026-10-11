@@ -25,6 +25,7 @@ dependencyManagement {
 
 dependencies {
     api 'org.slf4j:slf4j-api'
+    api 'io.micrometer:micrometer-core'
     api 'org.springframework:spring-jdbc'
     compileOnlyApi 'jakarta.servlet:jakarta.servlet-api'
     api 'org.springframework:spring-web'
