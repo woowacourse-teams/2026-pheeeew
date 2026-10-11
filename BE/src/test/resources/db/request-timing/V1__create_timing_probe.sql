@@ -1,0 +1,1 @@
+CREATE TABLE timing_probe (id BIGINT PRIMARY KEY);
