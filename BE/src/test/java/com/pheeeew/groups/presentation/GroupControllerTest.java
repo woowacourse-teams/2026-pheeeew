@@ -287,6 +287,50 @@ class GroupControllerTest {
     }
 
     @Test
+    void 가입_방식을_공개로_바꾸면_서비스에_공개로_전달하고_응답에_담는다() {
+        // given
+        when(groupService.changeJoinType(그룹_공개_식별자, 기기_공개_식별자, GroupJoinType.PUBLIC))
+                .thenReturn(공개_결과());
+
+        // when
+        RestTestClient.ResponseSpec result = 가입_방식을_변경한다("""
+                {"joinType": "PUBLIC"}
+                """);
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.joinType").isEqualTo("PUBLIC");
+        verify(groupService).changeJoinType(그룹_공개_식별자, 기기_공개_식별자, GroupJoinType.PUBLIC);
+    }
+
+    @Test
+    void 가입_방식을_보내지_않고_바꾸면_400이고_서비스를_부르지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = 가입_방식을_변경한다("""
+                {}
+                """);
+
+        // then
+        result.expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(groupService);
+    }
+
+    @Test
+    void 없는_가입_방식으로_바꾸면_400이고_서비스를_부르지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = 가입_방식을_변경한다("""
+                {"joinType": "OPEN"}
+                """);
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupService);
+    }
+
+    @Test
     void 상세_조회는_배포본과_같은_열두_필드를_내려준다() {
         // given
         when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세());
@@ -431,6 +475,14 @@ class GroupControllerTest {
                 .exchange();
     }
 
+    private RestTestClient.ResponseSpec 가입_방식을_변경한다(String body) {
+        return client.put()
+                .uri(GROUPS_URI + "/" + 그룹_공개_식별자 + "/join-type")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .exchange();
+    }
+
     private RestTestClient.ResponseSpec 상세를_조회한다() {
         return client.get()
                 .uri(GROUPS_URI + "/" + 그룹_공개_식별자)
@@ -466,11 +518,19 @@ class GroupControllerTest {
     }
 
     private GroupResult 기본_결과() {
+        return 결과(GroupJoinType.PRIVATE);
+    }
+
+    private GroupResult 공개_결과() {
+        return 결과(GroupJoinType.PUBLIC);
+    }
+
+    private GroupResult 결과(GroupJoinType joinType) {
         Group group = Group.builder()
                 .name("한숨모임")
                 .description("설명입니다")
                 .inviteCode("A1B2C3")
-                .joinType(GroupJoinType.PRIVATE)
+                .joinType(joinType)
                 .build();
 
         return GroupResult.of(

@@ -3,6 +3,7 @@ package com.pheeeew.groups.application;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.groups.fixture.GroupFixture.일반_멤버_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.when;
@@ -477,7 +478,7 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
-    void v3_상세를_조회할_수_있어도_비가입자는_그룹을_고치거나_지우거나_코드를_재발급하지_못한다() {
+    void v3_상세를_조회할_수_있어도_비가입자는_그룹을_고치거나_지우거나_코드를_재발급하거나_가입_방식을_바꾸지_못한다() {
         // given
         GroupResult 그룹 = groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         Device 남 = 기기를_저장한다();
@@ -490,11 +491,14 @@ class GroupServiceIntegrationTest {
         Throwable 삭제_예외 = catchThrowable(() -> groupService.delete(그룹.publicId(), 남.getPublicId()));
         Throwable 재발급_예외 =
                 catchThrowable(() -> groupService.reissueInviteCode(그룹.publicId(), 남.getPublicId()));
+        Throwable 가입_방식_예외 = catchThrowable(() -> groupService.changeJoinType(
+                그룹.publicId(), 남.getPublicId(), GroupJoinType.PUBLIC));
 
         // then
         그룹_오류다(수정_예외, GroupErrorCode.GROUP_MEMBER_ONLY);
         그룹_오류다(삭제_예외, GroupErrorCode.GROUP_MEMBER_ONLY);
         그룹_오류다(재발급_예외, GroupErrorCode.GROUP_MEMBER_ONLY);
+        그룹_오류다(가입_방식_예외, GroupErrorCode.GROUP_MEMBER_ONLY);
     }
 
     @Test
@@ -509,6 +513,94 @@ class GroupServiceIntegrationTest {
         Throwable throwable = catchThrowable(() -> groupService.update(
                 그룹.publicId(), 멤버.getPublicId(), "바꾼이름", null, 스탬프("변경")
         ));
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_OWNER_ONLY);
+    }
+
+    @Test
+    void 가입_방식을_비공개에서_공개로_바꾸면_코드_없는_가입이_열린다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        Device 손님 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+        Throwable 전환_전 = catchThrowable(() ->
+                groupService.joinPublicGroup(그룹.publicId(), 손님.getPublicId()));
+
+        // when
+        GroupResult 결과 = groupService.changeJoinType(
+                그룹.publicId(), 그룹장.getPublicId(), GroupJoinType.PUBLIC);
+
+        // then
+        그룹_오류다(전환_전, GroupErrorCode.GROUP_INVITE_CODE_REQUIRED);
+        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PUBLIC);
+        assertThatCode(() -> groupService.joinPublicGroup(그룹.publicId(), 손님.getPublicId()))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 가입_방식을_공개에서_비공개로_바꾸면_코드_없는_가입이_막힌다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        Device 손님 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PUBLIC, 스탬프("기본"));
+
+        // when
+        GroupResult 결과 = groupService.changeJoinType(
+                그룹.publicId(), 그룹장.getPublicId(), GroupJoinType.PRIVATE);
+
+        // then
+        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PRIVATE);
+        그룹_오류다(
+                catchThrowable(() -> groupService.joinPublicGroup(그룹.publicId(), 손님.getPublicId())),
+                GroupErrorCode.GROUP_INVITE_CODE_REQUIRED);
+    }
+
+    @Test
+    void 가입_방식을_바꿔도_초대_코드와_기존_멤버는_그대로다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        Device 멤버 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PUBLIC, 스탬프("기본"));
+        groupService.joinPublicGroup(그룹.publicId(), 멤버.getPublicId());
+        String 전환_전_코드 = 그룹.inviteCode();
+
+        // when
+        GroupResult 결과 = groupService.changeJoinType(
+                그룹.publicId(), 그룹장.getPublicId(), GroupJoinType.PRIVATE);
+
+        // then
+        assertThat(결과.inviteCode()).isEqualTo(전환_전_코드);
+        assertThat(결과.memberCount()).isEqualTo(2);
+        assertThatCode(() -> groupService.joinByInviteCode(기기를_저장한다().getPublicId(), 전환_전_코드))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 가입_방식을_같은_값으로_바꿔도_성공한다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+
+        // when
+        GroupResult 결과 = groupService.changeJoinType(
+                그룹.publicId(), 그룹장.getPublicId(), GroupJoinType.PRIVATE);
+
+        // then
+        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PRIVATE);
+    }
+
+    @Test
+    void 그룹장이_아니면_가입_방식을_바꿀_수_없다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        Device 멤버 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+        멤버로_넣는다(그룹.publicId(), 멤버);
+
+        // when
+        Throwable throwable = catchThrowable(() -> groupService.changeJoinType(
+                그룹.publicId(), 멤버.getPublicId(), GroupJoinType.PUBLIC));
 
         // then
         그룹_오류다(throwable, GroupErrorCode.GROUP_OWNER_ONLY);
