@@ -69,6 +69,10 @@ public class Group extends BaseEntity {
         this.inviteCode = Objects.requireNonNull(inviteCode);
     }
 
+    public void changeJoinType(GroupJoinType joinType) {
+        this.joinType = Objects.requireNonNull(joinType);
+    }
+
     public void delete(Instant deletedAt) {
         this.deletedAt = Objects.requireNonNull(deletedAt);
     }

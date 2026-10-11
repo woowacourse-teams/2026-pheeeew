@@ -9,6 +9,7 @@ import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.presentation.dto.GroupCreateRequest;
 import com.pheeeew.groups.presentation.dto.GroupPressCountResponse;
 import com.pheeeew.groups.presentation.dto.GroupPressRequest;
+import com.pheeeew.groups.presentation.dto.GroupJoinTypeUpdateRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampRequest;
 import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
@@ -137,6 +138,17 @@ public class GroupController implements GroupControllerApi {
             @CurrentDevice UUID devicePublicId
     ) {
         return GroupResponse.from(groupService.reissueInviteCode(groupId, devicePublicId));
+    }
+
+    @Override
+    @PutMapping("/{groupId}/join-type")
+    public GroupResponse changeJoinType(
+            @PathVariable UUID groupId,
+            @RequestBody GroupJoinTypeUpdateRequest request,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        return GroupResponse.from(
+                groupService.changeJoinType(groupId, devicePublicId, request.joinType()));
     }
 
     @Override

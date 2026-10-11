@@ -215,6 +215,15 @@ public class GroupService {
     }
 
     @Transactional
+    public GroupResult changeJoinType(UUID groupPublicId, UUID devicePublicId, GroupJoinType joinType) {
+        Group group = findGroup(groupPublicId);
+        requireOwner(group, devicePublicId);
+        group.changeJoinType(joinType);
+
+        return toResult(group, GroupRole.OWNER);
+    }
+
+    @Transactional
     public GroupResult joinByInviteCode(UUID devicePublicId, String inviteCode) {
         Device device = findDevice(devicePublicId);
         Group group = groupRepository.findByInviteCodeAndDeletedAtIsNull(inviteCode)
