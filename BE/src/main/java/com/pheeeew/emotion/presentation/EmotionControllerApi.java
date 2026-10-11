@@ -8,6 +8,7 @@ import com.pheeeew.emotion.presentation.dto.EmotionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionUpdateRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV3UpdateRequest;
 import com.pheeeew.emotion.domain.EmojiType;
 import com.pheeeew.emotion.presentation.dto.EmotionDetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionCreateRequest;
@@ -361,7 +362,8 @@ public interface EmotionControllerApi {
             @Parameter(hidden = true) UUID devicePublicId
     );
 
-    @Operation(summary = "본인 감정 수정", description = """
+    @Operation(summary = "본인 감정 수정 (구버전 호환)", deprecated = true, description = """
+            기존 클라이언트의 내용 없음 허용 계약을 유지합니다. 새 클라이언트는 PUT /api/v3/emotions/{emotionId}를 사용합니다.
             작성 기기의 감정만 기한 없이 수정합니다. state와 contentType은 필수입니다.
             상태·메모·녹음·그룹 스탬프를 수정하며 위치·각도·작성 시각·등록 당시의 익명 선택은 바뀌지 않습니다.
             기기 닉네임은 PUT /api/v3/devices/me/nickname으로 별도 수정합니다. 수정한 이름은 기존 기명 감정에도 반영됩니다.
@@ -381,6 +383,43 @@ public interface EmotionControllerApi {
     ResponseEntity<Void> update(
             @Min(1) Long emotionId,
             @Valid EmotionUpdateRequest request,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
+
+    @Operation(summary = "본인 감정 수정 v3", description = """
+            ### 수정 조건
+
+            - 작성 기기의 감정만 기한 없이 수정합니다. state와 contentType은 필수이며 contentType은 MEMO 또는 AUDIO입니다.
+            - NONE, 누락·null인 contentType, 유형과 필드가 맞지 않는 조합은 400입니다.
+            - MEMO는 앞뒤 공백 제거 후 비어 있지 않은 memo가 필수이며 최대 200 Unicode codepoint입니다. audioUploadId는 생략하거나 null로 둡니다.
+            - AUDIO는 memo를 생략하거나 null로 둡니다. 새 녹음으로 교체하려면 업로드 완료된 audioUploadId를 전달합니다.
+            - audioUploadId를 생략하거나 null로 전달하면 기존 녹음을 유지합니다. 기존 녹음도 없으면 EMOTION-010과 400을 반환합니다.
+            - 메모와 녹음 간 전환을 지원합니다. 기존 NONE 감정도 수정 결과에는 메모 또는 녹음이 있어야 합니다.
+
+            ### 보존되는 정보와 그룹
+
+            - 위치·각도·작성 시각·등록 당시의 익명 선택은 바뀌지 않습니다.
+            - groupId를 생략하거나 null로 전달하면 그룹 스탬프를 제거합니다. 현재 groupId를 보내면 탈퇴 후에도 기존 선택을 유지합니다.
+            - 새 그룹 선택은 현재 소속된 그룹만 가능합니다. 새 녹음은 작성 기기의 업로드여야 하며 만료·완료·연결 상태를 검증합니다.
+            - 수정에 실패하면 새 녹음 연결도 취소하며 기존 감정 내용을 보존합니다. 수정 완료 후 204를 반환합니다.
+
+            ### 클라이언트 호출 경로
+
+            - 내용 필수 등록은 POST /api/v2/emotions(항상 익명) 또는 POST /api/v3/emotions(익명·기명 선택)을 사용합니다.
+            - 두 등록 경로를 사용하는 새 클라이언트의 수정은 PUT /api/v3/emotions/{emotionId}를 사용합니다.
+            - POST /api/v1/emotions와 PUT /api/v1/emotions/{emotionId}는 내용 없음을 허용하는 구버전 호환 API입니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "수정 완료"),
+            @ApiResponse(responseCode = "400", description = "잘못된 ID·필수값·내용 조합·메모 길이 또는 유지할 기존 녹음이 없음(EMOTION-010)"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
+            @ApiResponse(responseCode = "404", description = "감정이 없거나 본인 글이 아니거나 삭제됨, 또는 사용할 수 없는 그룹·없거나 다른 기기의 업로드"),
+            @ApiResponse(responseCode = "409", description = "녹음 미완료·만료 또는 다른 감정에서 사용한 업로드"),
+            @ApiResponse(responseCode = "503", description = "녹음 업로드를 확인할 수 없음")
+    })
+    ResponseEntity<Void> updateV3(
+            @Min(1) Long emotionId,
+            @Valid EmotionV3UpdateRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 

@@ -89,6 +89,7 @@ class EmotionControllerTest {
     private static final UUID DEVICE_PUBLIC_ID = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
     private static final String EMOJI_URI = "/api/v1/emotions/42/emojis/HEART";
     private static final String EMOTION_URI = "/api/v1/emotions/42";
+    private static final String V3_EMOTION_URI = "/api/v3/emotions/42";
     private static final String REGION_MAP_URI = "/api/v2/emotions/map/regions";
     private static final String REGION_BOUNDS_QUERY = "?minLongitude=127.8&minLatitude=37.2&maxLongitude=128.2&maxLatitude=37.8";
     private static final MediaType GEO_JSON = MediaType.parseMediaType("application/geo+json");
@@ -238,9 +239,10 @@ class EmotionControllerTest {
         verifyNoInteractions(emotionCommandService);
     }
 
-    @Test
-    void 수정_메모가_200자를_초과하면_거부한다() {
-        client.put().uri(EMOTION_URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+    @ParameterizedTest
+    @ValueSource(strings = {EMOTION_URI, V3_EMOTION_URI})
+    void 수정_메모가_200자를_초과하면_거부한다(String uri) {
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body("{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"" + "가".repeat(201) + "\"}")
                 .exchange().expectStatus().isBadRequest();
@@ -268,6 +270,75 @@ class EmotionControllerTest {
         doThrow(new EmotionException(error)).when(emotionCommandService)
                 .update(42L, DEVICE_PUBLIC_ID, EmotionState.ANGRY, null, null, true, null);
         client.put().uri(EMOTION_URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body("{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\"}")
+                .exchange().expectStatus().isEqualTo(error.getStatus().value())
+                .expectBody().jsonPath("$.code").isEqualTo(error.getCode());
+    }
+
+    @ParameterizedTest
+    @MethodSource("v3UpdateContents")
+    void v3_수정은_내용과_그룹을_인증된_기기로_전달한다(String content, String memo, String uploadId, boolean keepAudio) {
+        // given
+        UUID groupId = UUID.randomUUID();
+        String body = "{\"state\":\"ANGRY\",\"groupId\":\"" + groupId + "\"," + content
+                + ",\"anonymous\":false,\"longitude\":0,\"latitude\":0,\"rotationDegrees\":0}";
+
+        // when / then
+        client.put().uri(V3_EMOTION_URI + "?devicePublicId=" + UUID.randomUUID())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer access-token").contentType(MediaType.APPLICATION_JSON)
+                .body(body).exchange().expectStatus().isNoContent().expectBody().isEmpty();
+        verify(emotionCommandService).update(42L, DEVICE_PUBLIC_ID, EmotionState.ANGRY, memo, uploadId, keepAudio, groupId);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{}", "{\"state\":\"ANGRY\"}", "{\"contentType\":\"MEMO\",\"memo\":\"메모\"}",
+            "{\"state\":\"ANGRY\",\"contentType\":null}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"NONE\"}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\"}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":null}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"\"}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"   \"}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"메모\",\"audioUploadId\":\"upload\"}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\",\"memo\":\"메모\"}",
+            "{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\",\"audioUploadId\":\" \"}"
+    })
+    void v3의_잘못된_수정_내용은_서비스_호출_전에_거부한다(String body) {
+        // when / then
+        client.put().uri(V3_EMOTION_URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isBadRequest();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v3/emotions/0", "/api/v3/emotions/-1"})
+    void v3_수정의_감정_ID는_양수여야_한다(String uri) {
+        // when / then
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON).body("{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\"}")
+                .exchange().expectStatus().isBadRequest();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @Test
+    void v3_수정은_기기_인증이_필수다() {
+        // when / then
+        request(HttpMethod.PUT, V3_EMOTION_URI, null).expectStatus().isUnauthorized();
+        request(HttpMethod.PUT, V3_EMOTION_URI, "invalid-token").expectStatus().isUnauthorized();
+        verifyNoInteractions(emotionCommandService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"EMOTION_NOT_VISIBLE", "EMOTION_AUDIO_REQUIRED", "EMOTION_AUDIO_UPLOAD_NOT_FOUND",
+            "EMOTION_AUDIO_UPLOAD_NOT_READY", "EMOTION_AUDIO_UPLOAD_ALREADY_USED", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE"})
+    void v3_수정도_기존_권한과_녹음_실패_코드를_반환한다(String name) {
+        // given
+        EmotionErrorCode error = EmotionErrorCode.valueOf(name);
+        doThrow(new EmotionException(error)).when(emotionCommandService)
+                .update(42L, DEVICE_PUBLIC_ID, EmotionState.ANGRY, null, null, true, null);
+
+        // when / then
+        client.put().uri(V3_EMOTION_URI).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
                 .contentType(MediaType.APPLICATION_JSON).body("{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\"}")
                 .exchange().expectStatus().isEqualTo(error.getStatus().value())
                 .expectBody().jsonPath("$.code").isEqualTo(error.getCode());
@@ -946,6 +1017,15 @@ class EmotionControllerTest {
                 Arguments.of("\"contentType\":\"MEMO\",\"memo\":\"메모\"", "메모", null, false),
                 Arguments.of("\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\"", null, "upload", false),
                 Arguments.of("\"contentType\":\"AUDIO\"", null, null, true)
+        );
+    }
+
+    private static Stream<Arguments> v3UpdateContents() {
+        return Stream.of(
+                Arguments.of("\"contentType\":\"MEMO\",\"memo\":\" 메모 \"", " 메모 ", null, false),
+                Arguments.of("\"contentType\":\"AUDIO\",\"audioUploadId\":\"upload\"", null, "upload", false),
+                Arguments.of("\"contentType\":\"AUDIO\"", null, null, true),
+                Arguments.of("\"contentType\":\"AUDIO\",\"audioUploadId\":null", null, null, true)
         );
     }
 

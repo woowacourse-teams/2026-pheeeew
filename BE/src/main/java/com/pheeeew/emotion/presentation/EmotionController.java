@@ -10,6 +10,7 @@ import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
 import com.pheeeew.emotion.application.dto.EmotionRegionMapItemView;
 import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.presentation.dto.EmotionUpdateRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV3UpdateRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionContentType;
 import com.pheeeew.emotion.application.dto.EmotionPageView;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
@@ -167,6 +168,18 @@ public class EmotionController implements EmotionControllerApi {
     public ResponseEntity<Void> update(
             @PathVariable Long emotionId,
             @RequestBody EmotionUpdateRequest request,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        emotionCommandService.update(emotionId, devicePublicId, request.state(), request.memo(), request.audioUploadId(),
+                request.contentType() == EmotionContentType.AUDIO && request.audioUploadId() == null, request.groupId());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @PutMapping("/v3/emotions/{emotionId}")
+    public ResponseEntity<Void> updateV3(
+            @PathVariable Long emotionId,
+            @RequestBody EmotionV3UpdateRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
         emotionCommandService.update(emotionId, devicePublicId, request.state(), request.memo(), request.audioUploadId(),
