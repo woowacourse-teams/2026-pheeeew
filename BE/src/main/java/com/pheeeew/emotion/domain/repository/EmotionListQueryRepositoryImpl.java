@@ -7,16 +7,25 @@ import static com.pheeeew.report.domain.QEmotionBlock.emotionBlock;
 
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.repository.query.EmotionContentFilter;
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import com.querydsl.core.types.dsl.BooleanExpression;
+import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.JPAExpressions;
+import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.locationtech.jts.geom.Envelope;
+import org.locationtech.jts.geom.Geometry;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.PrecisionModel;
 
 public class EmotionListQueryRepositoryImpl implements EmotionListQueryRepository {
+
+    private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory(new PrecisionModel(), 4326);
 
     private final JPAQueryFactory queryFactory;
 
@@ -33,10 +42,57 @@ public class EmotionListQueryRepositoryImpl implements EmotionListQueryRepositor
             EmotionSearchFilter filter,
             int limit
     ) {
+        return visibleQuery(snapshotAt, lastCreatedAt, lastId, deviceId, filter, true)
+                .limit(limit)
+                .fetch();
+    }
+
+    @Override
+    public List<Emotion> findVisiblePageWithinBounds(
+            EmotionSearchBounds bounds,
+            Instant snapshotAt,
+            Instant lastCreatedAt,
+            long lastId,
+            Long deviceId,
+            UUID groupId,
+            boolean contentOnly,
+            int limit
+    ) {
+        EmotionSearchFilter filter = EmotionSearchFilter.of(null, null, null, null, groupId);
+        return visibleQuery(snapshotAt, lastCreatedAt, lastId, deviceId, filter, contentOnly)
+                .where(withinBounds(bounds))
+                .limit(limit)
+                .fetch();
+    }
+
+    @Override
+    public List<Emotion> findVisiblePageWithinBounds(
+            EmotionSearchBounds bounds,
+            Instant snapshotAt,
+            Instant lastCreatedAt,
+            long lastId,
+            Long deviceId,
+            EmotionSearchFilter filter,
+            int limit
+    ) {
+        return visibleQuery(snapshotAt, lastCreatedAt, lastId, deviceId, filter, true)
+                .where(withinBounds(bounds))
+                .limit(limit)
+                .fetch();
+    }
+
+    private JPAQuery<Emotion> visibleQuery(
+            Instant snapshotAt,
+            Instant lastCreatedAt,
+            long lastId,
+            Long deviceId,
+            EmotionSearchFilter filter,
+            boolean contentOnly
+    ) {
         return queryFactory.selectFrom(emotion)
                 .where(
                         emotion.deletedAt.isNull(),
-                        contentMatches(filter.contentType()),
+                        contentOnly ? contentMatches(filter.contentType()) : null,
                         createdAtOrAfter(filter.startInclusive()),
                         createdBefore(filter.endExclusive()),
                         scopeMatches(filter, deviceId),
@@ -45,9 +101,20 @@ public class EmotionListQueryRepositoryImpl implements EmotionListQueryRepositor
                         emotionNotBlockedBy(deviceId),
                         authorNotBlockedBy(deviceId)
                 )
-                .orderBy(emotion.createdAt.desc(), emotion.id.desc())
-                .limit(limit)
-                .fetch();
+                .orderBy(emotion.createdAt.desc(), emotion.id.desc());
+    }
+
+    private BooleanExpression withinBounds(EmotionSearchBounds bounds) {
+        if (bounds.minLongitude() < bounds.maxLongitude()) {
+            return intersects(bounds.minLongitude(), bounds.maxLongitude(), bounds.minLatitude(), bounds.maxLatitude());
+        }
+        return intersects(bounds.minLongitude(), 180, bounds.minLatitude(), bounds.maxLatitude())
+                .or(intersects(-180, bounds.maxLongitude(), bounds.minLatitude(), bounds.maxLatitude()));
+    }
+
+    private BooleanExpression intersects(double west, double east, double south, double north) {
+        Geometry area = GEOMETRY_FACTORY.toGeometry(new Envelope(west, east, south, north));
+        return Expressions.booleanTemplate("st_intersects({0}, {1}) = true", emotion.location, area);
     }
 
     private BooleanExpression contentMatches(EmotionContentFilter contentType) {

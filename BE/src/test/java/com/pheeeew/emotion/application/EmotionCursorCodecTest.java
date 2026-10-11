@@ -49,6 +49,7 @@ class EmotionCursorCodecTest {
                         + "|2026-09-03T03:00:00.123456Z|2026-09-01T12:00:00.654321Z|42"
         );
         assertThat(decoded).isEqualTo(cursor);
+        assertThat(EmotionCursorCodec.decodeFilteredWithinBounds(encoded)).isEqualTo(cursor);
     }
 
     @Test
@@ -65,6 +66,7 @@ class EmotionCursorCodecTest {
         // then
         assertThat(next.groupId()).isEqualTo(groupId);
         assertThat(EmotionCursorCodec.decodeWithinBounds(EmotionCursorCodec.encode(next))).isEqualTo(next);
+        assertThat(EmotionCursorCodec.decodeFilteredWithinBounds(EmotionCursorCodec.encode(next))).isEqualTo(next);
         assertThat(new String(Base64.getUrlDecoder().decode(EmotionCursorCodec.encode(next)), StandardCharsets.UTF_8))
                 .isEqualTo("2|126.0|37.0|128.0|38.0|2026-09-25T00:00:00Z|2026-09-24T00:00:00Z|42|" + groupId);
     }
@@ -147,6 +149,9 @@ class EmotionCursorCodecTest {
                 .isInstanceOf(EmotionException.class)
                 .extracting(exception -> ((EmotionException) exception).getErrorCode())
                 .isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR);
+        assertThatThrownBy(() -> EmotionCursorCodec.decodeFilteredWithinBounds(withoutBoundsEncoded))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
     }
 
     @ParameterizedTest
@@ -208,6 +213,8 @@ class EmotionCursorCodecTest {
         assertThat(next.lastId()).isEqualTo(42L);
         assertThat(EmotionCursorCodec.decodeFilteredWithoutBounds(EmotionCursorCodec.encode(next))).isEqualTo(next);
         잘못된_커서임을_검증한다(encoded);
+        assertThatThrownBy(() -> EmotionCursorCodec.decodeFilteredWithinBounds(encoded))
+                .isInstanceOf(EmotionException.class);
     }
 
     @ParameterizedTest
@@ -281,13 +288,32 @@ class EmotionCursorCodecTest {
     }
 
     @Test
-    void 기존_지도_커서에는_지원하지_않는_내용_필터를_인코딩하지_않는다() {
+    void 지도_필터_커서는_영역과_조건을_복원하고_다른_조회에_사용할_수_없다() {
         // given
         EmotionCursor cursor = EmotionCursor.initialWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), SNAPSHOT, null)
                 .withFilter(EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.ALL, null));
 
+        // when
+        String encoded = EmotionCursorCodec.encode(cursor.next(LAST_CREATED_AT, 42L));
+        EmotionCursor restored = EmotionCursorCodec.decodeFilteredWithinBounds(encoded);
+
+        // then
+        assertThat(restored).isEqualTo(cursor.next(LAST_CREATED_AT, 42L));
+        assertThat(new String(Base64.getUrlDecoder().decode(encoded), StandardCharsets.UTF_8))
+                .isEqualTo("4|" + SNAPSHOT + "|" + LAST_CREATED_AT + "|42||||MEMO|ALL|126.0|37.0|128.0|38.0");
+        잘못된_커서임을_검증한다(encoded);
+        잘못된_좌표_없는_커서임을_검증한다(encoded);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"126|37|128", "bad|37|128|38", "126|37|126|38", "126|38|128|37", "181|37|128|38"})
+    void 지도_필터_커서의_영역이_잘못되면_거부한다(String bounds) {
+        // given
+        String payload = "4|" + SNAPSHOT + "|" + LAST_CREATED_AT + "|42||||MEMO|ALL|" + bounds;
+        String encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(payload.getBytes(StandardCharsets.UTF_8));
+
         // when / then
-        assertThatThrownBy(() -> EmotionCursorCodec.encode(cursor))
+        assertThatThrownBy(() -> EmotionCursorCodec.decodeFilteredWithinBounds(encoded))
                 .isInstanceOfSatisfying(EmotionException.class,
                         error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
     }

@@ -15,10 +15,12 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.application.AudioUrlIssuer;
 import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
 import com.pheeeew.emotion.application.dto.EmotionDetailView;
+import com.pheeeew.emotion.application.dto.EmotionMapItemView;
 import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.query.EmotionContentFilter;
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchScope;
 import com.pheeeew.emotion.exception.EmotionErrorCode;
 import com.pheeeew.emotion.exception.EmotionException;
@@ -48,13 +50,14 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @PostgisDataJpaTest
-@Import({EmotionQueryService.class, AopAutoConfiguration.class, EmotionMetrics.class,
+@Import({EmotionQueryService.class, EmotionMapQueryService.class, AopAutoConfiguration.class, EmotionMetrics.class,
         EmotionMetricsAspect.class})
 class EmotionListFilterIntegrationTest {
 
     private static final LocalDate DATE = LocalDate.of(2025, 1, 2);
 
     @Autowired private EmotionQueryService queryService;
+    @Autowired private EmotionMapQueryService mapQueryService;
     @Autowired private EmotionRepository emotions;
     @Autowired private DeviceRepository devices;
     @Autowired private EntityManager em;
@@ -101,12 +104,18 @@ class EmotionListFilterIntegrationTest {
 
         // when
         var page = queryService.findListWithoutBounds(viewer.getPublicId(), groupId, DATE, DATE, contentType, scope, null);
+        var map = mapQueryService.findContentMapWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38),
+                viewer.getPublicId(), groupId, DATE, DATE, contentType, scope, null);
 
         // then
         assertThat(page.items()).extracting(EmotionDetailView::id)
                 .containsExactlyElementsOf(Arrays.stream(expected.split(" ")).map(key -> records.get(key).getId()).toList());
         assertThat(page.hasNext()).isFalse();
         assertThat(page.nextCursor()).isNull();
+        assertThat(map.items()).extracting(EmotionMapItemView::id)
+                .containsExactlyElementsOf(page.items().stream().map(EmotionDetailView::id).toList());
+        assertThat(map.hasNext()).isFalse();
+        assertThat(map.nextCursor()).isNull();
     }
 
     @Test
@@ -143,6 +152,39 @@ class EmotionListFilterIntegrationTest {
         assertThat(empty.items()).isEmpty();
         assertThat(empty.hasNext()).isFalse();
         assertThat(empty.nextCursor()).isNull();
+    }
+
+    @Test
+    void 지도_필터를_페이지_제한_전에_적용하고_커서로_이어간다() {
+        // given
+        List<Long> expected = new ArrayList<>();
+        for (int index = 0; index < 201; index++) {
+            expected.add(save(viewer.getId(), null, false, "2025-01-02T01:00:00Z").getId());
+            save(author.getId(), null, false, "2025-01-02T02:00:00Z");
+            save(viewer.getId(), null, true, "2025-01-02T03:00:00Z");
+        }
+        em.clear();
+
+        // when
+        var first = mapQueryService.findContentMapWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38),
+                viewer.getPublicId(), null, DATE, DATE, EmotionContentFilter.MEMO, EmotionSearchScope.MY, null);
+        assertThat(first.items()).hasSize(200);
+        assertThat(first.hasNext()).isTrue();
+        var next = mapQueryService.findContentMapWithinBounds(null, viewer.getPublicId(), null, null, null, null, null, first.nextCursor());
+
+        // then
+        assertThat(Stream.concat(first.items().stream(), next.items().stream()).map(EmotionMapItemView::id).toList())
+                .containsExactlyElementsOf(expected.reversed());
+        assertThat(next.items()).hasSize(1);
+        assertThat(next.hasNext()).isFalse();
+        assertThat(next.nextCursor()).isNull();
+        assertThat(mapQueryService.findContentMapWithinBounds(null, viewer.getPublicId(), null,
+                DATE, DATE, EmotionContentFilter.MEMO, EmotionSearchScope.MY, first.nextCursor())).isEqualTo(next);
+        assertThat(mapQueryService.findContentMapWithinBounds(null, author.getPublicId(), null, null, null, null, null, first.nextCursor()).items()).isEmpty();
+        assertThatThrownBy(() -> mapQueryService.findContentMapWithinBounds(null, viewer.getPublicId(), null,
+                null, null, EmotionContentFilter.ALL, null, first.nextCursor()))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EmotionErrorCode.EMOTION_INVALID_CURSOR));
     }
 
     @Test

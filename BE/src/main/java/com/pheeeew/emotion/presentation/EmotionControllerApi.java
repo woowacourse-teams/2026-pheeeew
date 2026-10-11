@@ -5,6 +5,7 @@ import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionsWithinBoundsRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionsWithoutBoundsRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionMapResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionMapRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapRequest;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionUpdateRequest;
@@ -148,24 +149,47 @@ public interface EmotionControllerApi {
     );
 
     @Operation(summary = "내용 있는 지도 스탬프 조회 v2", description = """
-            메모 또는 녹음이 있는 감정만 조회하며 NONE은 제외합니다. 내용 필터는 페이지 제한 전에 적용합니다.
+            메모 또는 녹음이 있는 감정만 조회하며 NONE은 항상 제외합니다.
             V2·V3 등록을 쓰는 앱은 GET /api/v2/emotions/map을 호출합니다.
             지도 표시에 필요한 감정 ID·좌표·작성 시각·상태·각도·그룹 스탬프만 반환합니다.
             메모·닉네임·이모지 집계·본인 작성 여부·녹음 재생 URL은 포함하지 않습니다. 바텀시트는 감정 목록 API로 조회합니다.
-            첫 페이지에는 minLongitude, minLatitude, maxLongitude, maxLatitude를 전달합니다.
-            groupId를 생략하면 전체를 조회하며 지정하면 해당 그룹만 조회합니다. 그룹 가입 여부로 제한하지 않습니다.
-            다음 페이지에는 반환된 cursor만 전달합니다. 영역이나 그룹을 바꾸면 첫 페이지부터 다시 조회합니다.
-            기간 제한 없이 (createdAt DESC, id DESC) 순으로 최대 200개씩 반환합니다. 총량을 잘라내지 않으며 hasNext가 false일 때까지 이어서 조회합니다.
-            지도에서는 오래된 감정부터 그려 최신 감정이 위에 표시되도록 합니다.
-            최초 조회 이후 작성된 감정은 제외하고 삭제·차단은 매 페이지에 반영합니다.
+
+            ### 조회 조건
+
+            - 첫 페이지에는 minLongitude, minLatitude, maxLongitude, maxLatitude를 모두 전달합니다.
+            - 날짜변경선을 넘는 영역은 minLongitude > maxLongitude로 표현합니다.
+            - startDate·endDate는 0001~9999년의 날짜를 함께 지정합니다. 시작일은 종료일 이하여야 합니다.
+            - 날짜는 KST(Asia/Seoul) 기준이며 시작일과 종료일을 모두 포함합니다. 둘 다 생략하면 전체 기간입니다.
+            - contentType은 ALL, MEMO, AUDIO입니다. 생략하면 ALL이며 MEMO·AUDIO를 함께 조회합니다.
+            - scope=ALL은 전체, GROUP은 특정 그룹, MY는 인증된 기기가 작성한 감정입니다. 클라이언트의 devicePublicId는 무시합니다.
+            - scope를 생략하면 ALL이며 groupId만 지정하면 GROUP입니다. GROUP의 첫 페이지에는 groupId가 필요하고 ALL·MY에는 전달할 수 없습니다.
+            - 그룹 가입 여부로 조회를 제한하지 않습니다. 존재하지 않거나 삭제된 그룹은 매 페이지에서 404 오류를 반환합니다.
+            - 영역·기간·내용·범위 조건을 모두 만족하는 감정에 페이지 제한을 적용합니다.
+
+            ### 페이지 조회
+
+            - (createdAt DESC, id DESC) 순으로 최대 200개씩 반환합니다. 총량을 잘라내지 않습니다.
+            - 다음 페이지에는 nextCursor를 cursor로 전달하며 영역 좌표는 전달하지 않습니다.
+            - 필터를 생략하면 커서에 저장된 값을 복원합니다. 명시한 필터는 커서와 같아야 하며 다르면 400 오류를 반환합니다.
+            - 날짜를 다시 명시할 때는 시작일·종료일을 함께 전달합니다. scope=GROUP만 명시해도 그룹 ID는 커서에서 복원합니다.
+            - 영역이나 필터를 바꾸면 cursor를 빼고 첫 페이지부터 조회합니다. v3 목록 API의 커서는 사용할 수 없습니다.
+            - 최초 조회 이후 작성된 감정은 제외하고 삭제·차단은 매 페이지에 반영합니다.
+            - hasNext가 false이면 마지막 페이지이며 nextCursor는 null입니다. 커서는 해석하거나 수정하지 않고 그대로 사용합니다.
+            - 지도에서는 오래된 감정부터 그려 최신 감정이 위에 표시되도록 합니다.
+
+            ### 요청 예시
+
+            - 본인 메모·기간 필터: GET /api/v2/emotions/map?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6&scope=MY&contentType=MEMO&startDate=2026-10-01&endDate=2026-10-11
+            - 다음 페이지: GET /api/v2/emotions/map?cursor={nextCursor}
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "지도 스탬프와 다음 커서"),
-            @ApiResponse(responseCode = "400", description = "영역 또는 커서가 올바르지 않음"),
-            @ApiResponse(responseCode = "401", description = "인증할 수 없음")
+            @ApiResponse(responseCode = "400", description = "영역·필터·그룹 ID·커서가 올바르지 않거나 명시한 필터가 커서와 다름"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
+            @ApiResponse(responseCode = "404", description = "존재하지 않거나 삭제된 그룹(GROUP-001)")
     })
     ResponseEntity<CursorResponse<EmotionMapResponse>> findContentMap(
-            @Valid @ParameterObject EmotionsWithinBoundsRequest request,
+            @Valid @ParameterObject EmotionMapRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 

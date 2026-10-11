@@ -33,6 +33,8 @@ import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.exception.EmotionException;
+import com.pheeeew.emotion.infra.metrics.EmotionMetrics;
+import com.pheeeew.emotion.infra.metrics.EmotionMetricsAspect;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupMember;
@@ -43,6 +45,7 @@ import com.pheeeew.report.domain.EmotionBlock;
 import com.pheeeew.report.domain.repository.DeviceBlockRepository;
 import com.pheeeew.report.domain.repository.EmotionBlockRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -63,12 +66,14 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 
 @PostgisDataJpaTest
-@Import({EmotionMapQueryService.class, EmotionQueryService.class, EmotionCommandService.class, EmotionContentResolver.class})
+@Import({EmotionMapQueryService.class, EmotionQueryService.class, EmotionCommandService.class, EmotionContentResolver.class,
+        AopAutoConfiguration.class, EmotionMetrics.class, EmotionMetricsAspect.class})
 class EmotionQueryServiceIntegrationTest {
 
     @Autowired
@@ -100,6 +105,9 @@ class EmotionQueryServiceIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private MeterRegistry registry;
 
     private Device viewer;
     private Device author;
@@ -597,6 +605,76 @@ class EmotionQueryServiceIntegrationTest {
         // then
         assertThat(result).extracting(EmotionDetailView::id).containsExactly(west.getId(), east.getId());
         assertThat(emotionMapQueryService.findMapWithinBounds(EmotionSearchBounds.of(170, -10, -170, 10), viewer.getPublicId(), null, null).items()).extracting(EmotionMapItemView::id).containsExactly(west.getId(), east.getId());
+        assertThat(emotionMapQueryService.findContentMapWithinBounds(EmotionSearchBounds.of(170, -10, -170, 10), viewer.getPublicId(), null, null, null, null, null, null).items()).extracting(EmotionMapItemView::id).containsExactly(west.getId(), east.getId());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"126, 37, 128, 38", "170, -10, -170, 10", "180, -10, -180, 10"})
+    void 지도는_일반_영역과_날짜변경선의_경계점을_포함한다(double west, double south, double east, double north) {
+        // given
+        emotion.delete();
+        List<Long> expected = List.of(
+                saveEmotion(null, west, south).getId(),
+                saveEmotion(author.getId(), west, north).getId(),
+                saveEmotion(author.getId(), east, south).getId(),
+                saveEmotion(author.getId(), east, north).getId());
+        saveEmotion(author.getId(), 0, (south + north) / 2);
+        entityManager.flush();
+        entityManager.clear();
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(west, south, east, north);
+
+        // when
+        var page = emotionMapQueryService.findContentMapWithinBounds(bounds, viewer.getPublicId(), null, null, null, null, null, null);
+        var legacy = emotionMapQueryService.findMapWithinBounds(bounds, viewer.getPublicId(), null, null);
+
+        // then
+        assertThat(page.items()).extracting(EmotionMapItemView::id).containsExactlyElementsOf(expected.reversed());
+        assertThat(page.items()).isEqualTo(legacy.items());
+        assertThat(page.hasNext()).isFalse();
+        assertThat(page.nextCursor()).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 지도는_차단_기록이_있어도_작성자_없는_감정을_포함한다(boolean contentOnly) {
+        // given
+        Emotion withoutAuthor = saveEmotion(null, 127, 37.5);
+        Emotion blocked = saveEmotion(author.getId(), 127, 37.5);
+        Device blockedAuthor = deviceRepository.save(기본_기기_빌더().build());
+        Emotion byBlockedAuthor = saveEmotion(blockedAuthor.getId(), 127, 37.5);
+        emotionBlockRepository.save(EmotionBlock.builder().blockerDeviceId(viewer.getId()).emotionId(blocked.getId()).build());
+        deviceBlockRepository.save(DeviceBlock.builder().blockerDeviceId(viewer.getId())
+                .blockedDeviceId(blockedAuthor.getId()).originEmotionId(byBlockedAuthor.getId()).build());
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+        var page = contentOnly
+                ? emotionMapQueryService.findContentMapWithinBounds(bounds, viewer.getPublicId(), null, null, null, null, null, null)
+                : emotionMapQueryService.findMapWithinBounds(bounds, viewer.getPublicId(), null, null);
+
+        // then
+        assertThat(page.items()).extracting(EmotionMapItemView::id)
+                .containsExactly(withoutAuthor.getId(), emotion.getId());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 지도_조회는_버전과_무관하게_쿼리_지표를_한_번_기록한다(boolean contentOnly) {
+        // given
+        var timer = registry.get("pheeeew.sigh.list.query").timer();
+        long before = timer.count();
+        EmotionSearchBounds bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+
+        // when
+        var page = contentOnly
+                ? emotionMapQueryService.findContentMapWithinBounds(bounds, viewer.getPublicId(), null, null, null, null, null, null)
+                : emotionMapQueryService.findMapWithinBounds(bounds, viewer.getPublicId(), null, null);
+
+        // then
+        assertThat(page.items()).extracting(EmotionMapItemView::id).containsExactly(emotion.getId());
+        assertThat(timer.count()).isEqualTo(before + 1);
     }
 
     @ParameterizedTest
@@ -646,8 +724,11 @@ class EmotionQueryServiceIntegrationTest {
         entityManager.persist(audio);
         expected.add(audio.getId());
         // 내용 없는 기록이 최신 200개보다 많아도 첫 페이지를 비우지 않아야 한다.
+        List<Long> withoutContent = new ArrayList<>();
         for (int i = 0; i < 205; i++) {
-            entityManager.persist(기본_한숨_빌더().deviceId(author.getId()).groupStamp(stamp).build());
+            Emotion none = 기본_한숨_빌더().deviceId(author.getId()).groupStamp(stamp).build();
+            entityManager.persist(none);
+            withoutContent.add(none.getId());
         }
         Emotion deleted = 기본_한숨_빌더().memo("삭제").groupStamp(stamp).build();
         deleted.delete();
@@ -672,8 +753,8 @@ class EmotionQueryServiceIntegrationTest {
         var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
 
         // when
-        var first = emotionMapQueryService.findContentMapWithinBounds(bounds, viewer.getPublicId(), group.getPublicId(), null);
-        var second = emotionMapQueryService.findContentMapWithinBounds(null, viewer.getPublicId(), null, first.nextCursor());
+        var first = emotionMapQueryService.findContentMapWithinBounds(bounds, viewer.getPublicId(), group.getPublicId(), null, null, null, null, null);
+        var second = emotionMapQueryService.findContentMapWithinBounds(null, viewer.getPublicId(), null, null, null, null, null, first.nextCursor());
 
         // then
         assertThat(first.items()).hasSize(200);
@@ -686,9 +767,35 @@ class EmotionQueryServiceIntegrationTest {
         assertThat(all).allSatisfy(item -> assertThat(item.groupId()).isEqualTo(group.getPublicId()));
         var legacy = emotionMapQueryService.findMapWithinBounds(bounds, viewer.getPublicId(), group.getPublicId(), null);
         assertThat(legacy.items()).hasSize(200).extracting(EmotionMapItemView::id)
-                .doesNotContainAnyElementsOf(expected);
-        assertThat(emotionMapQueryService.findContentMapWithinBounds(bounds, viewer.getPublicId(), UUID.randomUUID(), null).items())
-                .isEmpty();
+                .containsExactlyElementsOf(withoutContent.reversed().subList(0, 200));
+        var legacyNext = emotionMapQueryService.findMapWithinBounds(null, viewer.getPublicId(), null, legacy.nextCursor());
+        var legacyLast = emotionMapQueryService.findMapWithinBounds(null, viewer.getPublicId(), null, legacyNext.nextCursor());
+        assertThat(legacy.hasNext()).isTrue();
+        assertThat(legacyNext.items()).hasSize(200);
+        assertThat(legacyNext.hasNext()).isTrue();
+        assertThat(legacyLast.items()).hasSize(7);
+        assertThat(legacyLast.hasNext()).isFalse();
+        assertThat(legacyLast.nextCursor()).isNull();
+        assertThat(Stream.of(legacy, legacyNext, legacyLast).flatMap(page -> page.items().stream())
+                .map(EmotionMapItemView::id).toList())
+                .containsExactlyElementsOf(Stream.concat(withoutContent.reversed().stream(), expected.reversed().stream()).toList());
+        assertThat(emotionMapQueryService.findMapWithinBounds(bounds, viewer.getPublicId(), UUID.randomUUID(), null).items()).isEmpty();
+        assertThatThrownBy(() -> emotionMapQueryService.findContentMapWithinBounds(bounds, viewer.getPublicId(), UUID.randomUUID(), null, null, null, null, null))
+                .isInstanceOfSatisfying(GroupException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(GROUP_NOT_FOUND));
+
+        entityManager.find(Group.class, group.getId()).delete(Instant.now());
+        entityManager.flush();
+        entityManager.clear();
+        assertThatThrownBy(() -> emotionMapQueryService.findContentMapWithinBounds(bounds, viewer.getPublicId(), group.getPublicId(), null, null, null, null, null))
+                .isInstanceOfSatisfying(GroupException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(GROUP_NOT_FOUND));
+        assertThatThrownBy(() -> emotionMapQueryService.findContentMapWithinBounds(null, viewer.getPublicId(), null, null, null, null, null, first.nextCursor()))
+                .isInstanceOfSatisfying(GroupException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(GROUP_NOT_FOUND));
+        assertThat(emotionMapQueryService.findMapWithinBounds(bounds, viewer.getPublicId(), group.getPublicId(), null).items())
+                .isEqualTo(legacy.items());
+        assertThat(emotionMapQueryService.findMapWithinBounds(null, viewer.getPublicId(), null, legacy.nextCursor())).isEqualTo(legacyNext);
     }
 
     @Test

@@ -20,10 +20,12 @@ public final class EmotionCursorCodec {
 
     private static final String WITHIN_BOUNDS_VERSION = "1";
     private static final String WITHOUT_BOUNDS_VERSION = "3";
+    private static final String FILTERED_WITHIN_BOUNDS_VERSION = "4";
     private static final String FILTERED_WITHOUT_BOUNDS_VERSION = "5";
     private static final String FIELD_DELIMITER = "|";
     private static final int WITHIN_BOUNDS_FIELD_COUNT = 8;
     private static final int WITHOUT_BOUNDS_FIELD_COUNT = 5;
+    private static final int FILTERED_WITHIN_BOUNDS_FIELD_COUNT = 13;
     private static final int FILTERED_WITHOUT_BOUNDS_FIELD_COUNT = 9;
     private static final int MAX_CURSOR_LENGTH = 2_048;
 
@@ -55,9 +57,6 @@ public final class EmotionCursorCodec {
 
     public static String encode(EmotionCursor cursor) {
         if (!cursor.filter().equals(EmotionSearchFilter.of(null, null, null, null, cursor.groupId()))) {
-            if (cursor.bounds() != null) {
-                throw invalidCursor();
-            }
             return encodeFiltered(cursor);
         }
         EmotionSearchBounds bounds = cursor.bounds();
@@ -94,16 +93,25 @@ public final class EmotionCursorCodec {
                 throw invalidCursor();
             }
 
-            UUID groupId = fields[4].isEmpty() ? null : UUID.fromString(fields[4]);
-            EmotionSearchFilter filter = EmotionSearchFilter.of(
-                    fields[5].isEmpty() ? null : LocalDate.parse(fields[5]),
-                    fields[6].isEmpty() ? null : LocalDate.parse(fields[6]),
-                    EmotionContentFilter.valueOf(fields[7]), EmotionSearchScope.valueOf(fields[8]), groupId);
+            return decodeFiltered(fields, null);
+        } catch (IllegalArgumentException | DateTimeException exception) {
+            throw invalidCursor();
+        }
+    }
 
-            Instant snapshotAt = Instant.parse(fields[1]);
-            Instant lastCreatedAt = Instant.parse(fields[2]);
-            long lastId = Long.parseLong(fields[3]);
-            return EmotionCursor.ofWithoutBounds(snapshotAt, lastCreatedAt, lastId, groupId).withFilter(filter);
+    public static EmotionCursor decodeFilteredWithinBounds(String encoded) {
+        try {
+            String[] fields = decodeFields(encoded);
+            if (!FILTERED_WITHIN_BOUNDS_VERSION.equals(fields[0])) {
+                return decodeWithinBounds(encoded);
+            }
+            if (fields.length != FILTERED_WITHIN_BOUNDS_FIELD_COUNT) {
+                throw invalidCursor();
+            }
+
+            EmotionSearchBounds bounds = EmotionSearchBounds.of(Double.parseDouble(fields[9]),
+                    Double.parseDouble(fields[10]), Double.parseDouble(fields[11]), Double.parseDouble(fields[12]));
+            return decodeFiltered(fields, bounds);
         } catch (IllegalArgumentException | DateTimeException exception) {
             throw invalidCursor();
         }
@@ -111,15 +119,37 @@ public final class EmotionCursorCodec {
 
     private static String encodeFiltered(EmotionCursor cursor) {
         EmotionSearchFilter filter = cursor.filter();
+        EmotionSearchBounds bounds = cursor.bounds();
 
         String payload = String.join(FIELD_DELIMITER,
-                FILTERED_WITHOUT_BOUNDS_VERSION,
+                bounds == null ? FILTERED_WITHOUT_BOUNDS_VERSION : FILTERED_WITHIN_BOUNDS_VERSION,
                 cursor.snapshotAt().toString(), cursor.lastItemCreatedAt().toString(), Long.toString(cursor.lastId()),
                 cursor.groupId() == null ? "" : cursor.groupId().toString(),
                 filter.startDate() == null ? "" : filter.startDate().toString(),
                 filter.endDate() == null ? "" : filter.endDate().toString(), filter.contentType().name(), filter.scope().name());
+        if (bounds != null) {
+            payload += FIELD_DELIMITER + String.join(FIELD_DELIMITER,
+                    Double.toString(bounds.minLongitude()), Double.toString(bounds.minLatitude()),
+                    Double.toString(bounds.maxLongitude()), Double.toString(bounds.maxLatitude()));
+        }
 
         return encodePayload(payload);
+    }
+
+    private static EmotionCursor decodeFiltered(String[] fields, EmotionSearchBounds bounds) {
+        UUID groupId = fields[4].isEmpty() ? null : UUID.fromString(fields[4]);
+        EmotionSearchFilter filter = EmotionSearchFilter.of(
+                fields[5].isEmpty() ? null : LocalDate.parse(fields[5]),
+                fields[6].isEmpty() ? null : LocalDate.parse(fields[6]),
+                EmotionContentFilter.valueOf(fields[7]), EmotionSearchScope.valueOf(fields[8]), groupId);
+
+        Instant snapshotAt = Instant.parse(fields[1]);
+        Instant lastCreatedAt = Instant.parse(fields[2]);
+        long lastId = Long.parseLong(fields[3]);
+        EmotionCursor cursor = bounds == null
+                ? EmotionCursor.ofWithoutBounds(snapshotAt, lastCreatedAt, lastId, groupId)
+                : EmotionCursor.ofWithinBounds(bounds, snapshotAt, lastCreatedAt, lastId, groupId);
+        return cursor.withFilter(filter);
     }
 
     private static EmotionCursor decodeWithoutBounds(String encoded) {

@@ -2,6 +2,7 @@ package com.pheeeew.emotion.application.query;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE;
+import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
@@ -16,16 +17,22 @@ import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.projection.RegionEmotionSummaryProjection;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
+import com.pheeeew.emotion.domain.repository.query.EmotionContentFilter;
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchScope;
 import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
+import com.pheeeew.groups.domain.repository.GroupRepository;
+import com.pheeeew.groups.exception.GroupException;
 import com.pheeeew.region.application.RegionClassifier;
 import com.pheeeew.region.domain.Region;
 import com.pheeeew.region.domain.RegionLevel;
 import com.pheeeew.region.domain.repository.RegionRepository;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +54,7 @@ public class EmotionMapQueryService {
     private final EmotionRepository emotionRepository;
     private final DeviceRepository deviceRepository;
     private final GroupStampRepository groupStampRepository;
+    private final GroupRepository groupRepository;
     private final RegionRepository regionRepository;
     private final RegionClassifier regionClassifier;
 
@@ -65,11 +73,34 @@ public class EmotionMapQueryService {
     }
 
     public EmotionMapPageView findMapWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor) {
-        return findMapWithinBounds(bounds, devicePublicId, groupId, encodedCursor, false);
+        EmotionCursor cursor = encodedCursor == null
+                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
+                : EmotionCursorCodec.decodeWithinBounds(encodedCursor);
+
+        cursor.validateSnapshotAt(Instant.now(clock));
+
+        return findMap(cursor, devicePublicId, false);
     }
 
-    public EmotionMapPageView findContentMapWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor) {
-        return findMapWithinBounds(bounds, devicePublicId, groupId, encodedCursor, true);
+    public EmotionMapPageView findContentMapWithinBounds(
+            EmotionSearchBounds bounds,
+            UUID devicePublicId,
+            UUID groupId,
+            LocalDate startDate,
+            LocalDate endDate,
+            EmotionContentFilter contentType,
+            EmotionSearchScope scope,
+            String encodedCursor
+    ) {
+        EmotionCursor cursor = encodedCursor == null
+                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId).withFilter(
+                        EmotionSearchFilter.of(startDate, endDate, contentType, scope, groupId))
+                : EmotionCursorCodec.decodeFilteredWithinBounds(encodedCursor);
+
+        cursor.validateSnapshotAt(Instant.now(clock));
+        cursor.validateRequestedFilter(startDate, endDate, contentType, scope, groupId);
+
+        return findMap(cursor, devicePublicId, true);
     }
 
     private Map<String, RegionEmotionSummary> findSummariesByRegionCodes(List<String> regionCodes, UUID groupId) {
@@ -87,16 +118,6 @@ public class EmotionMapQueryService {
                 .collect(Collectors.toMap(RegionEmotionSummaryProjection::getRegionCode, RegionEmotionSummary::from));
     }
 
-    private EmotionMapPageView findMapWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor, boolean contentOnly) {
-        EmotionCursor cursor = encodedCursor == null
-                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
-                : EmotionCursorCodec.decodeWithinBounds(encodedCursor);
-
-        cursor.validateSnapshotAt(Instant.now(clock));
-
-        return findMap(cursor, devicePublicId, contentOnly);
-    }
-
     private Instant currentSnapshotAt() {
         return Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
     }
@@ -105,8 +126,16 @@ public class EmotionMapQueryService {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
-        List<Emotion> found = emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), contentOnly, MAP_PAGE_SIZE + 1);
+        if (contentOnly && cursor.groupId() != null
+                && groupRepository.findByPublicIdAndDeletedAtIsNull(cursor.groupId()).isEmpty()) {
+            throw new GroupException(GROUP_NOT_FOUND);
+        }
+
+        List<Emotion> found = contentOnly
+                ? emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
+                        cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.filter(), MAP_PAGE_SIZE + 1)
+                : emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
+                        cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), false, MAP_PAGE_SIZE + 1);
 
         boolean hasNext = found.size() > MAP_PAGE_SIZE;
         List<Emotion> page = hasNext ? found.subList(0, MAP_PAGE_SIZE) : found;
