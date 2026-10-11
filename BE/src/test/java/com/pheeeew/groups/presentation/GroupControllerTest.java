@@ -279,7 +279,8 @@ class GroupControllerTest {
                 .jsonPath("$.weeklyEmotionPressCount").doesNotExist()
                 .jsonPath("$.weeklyEmotionPressRank").doesNotExist()
                 .jsonPath("$.weeklyStampCount").doesNotExist()
-                .jsonPath("$.weeklyStampRank").doesNotExist();
+                .jsonPath("$.weeklyStampRank").doesNotExist()
+                .jsonPath("$.joinType").doesNotExist();
     }
 
     @Test
@@ -403,6 +404,7 @@ class GroupControllerTest {
                         "한숨모임",
                         "설명",
                         "ABCD1234",
+                        GroupJoinType.PRIVATE,
                         GroupRole.OWNER,
                         1,
                         new GroupStampResult("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)

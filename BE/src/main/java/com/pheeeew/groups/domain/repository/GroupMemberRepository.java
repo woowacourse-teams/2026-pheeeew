@@ -18,6 +18,7 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
                    g.name AS name,
                    g.description AS description,
                    g.inviteCode AS inviteCode,
+                   g.joinType AS joinType,
                    member.role AS role,
                    COUNT(activeMember.id) AS memberCount,
                    stamp.text AS stampText,
@@ -31,7 +32,7 @@ public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> 
             WHERE member.device.id = :deviceId
               AND member.leftAt IS NULL
               AND g.deletedAt IS NULL
-            GROUP BY g.publicId, g.name, g.description, g.inviteCode, member.role,
+            GROUP BY g.publicId, g.name, g.description, g.inviteCode, g.joinType, member.role,
                      stamp.text, stamp.textColor, stamp.backgroundColor, stamp.frame,
                      member.createdAt, member.id
             ORDER BY member.createdAt, member.id

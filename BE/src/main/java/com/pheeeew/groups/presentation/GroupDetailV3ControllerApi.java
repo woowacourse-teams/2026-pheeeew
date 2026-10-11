@@ -32,6 +32,9 @@ public interface GroupDetailV3ControllerApi {
                       속하지 않았거나 나갔으면 `NONE` 입니다. 관리 메뉴와 가입 버튼 노출은 이 값으로 판단합니다.
                     - `inviteCode` 는 **역할과 무관하게 모두에게** 내려갑니다. 비가입자도 받습니다.
                       재발급만 그룹장 권한입니다.
+                    - `joinType` 이 `PUBLIC` 이면 `POST /api/v2/groups/{groupId}/members/me` 로 코드 없이 가입하고,
+                      `PRIVATE` 이면 `POST /api/v2/groups/join` 에 `inviteCode` 를 담아 가입합니다.
+                      **노출 범위는 가입 방식과 무관합니다.**
                     - 네 수치는 **모두 이번 주**입니다. 주는 **월요일 00:00 KST** 에 바뀌고,
                       동점은 공동 순위(1, 2, 2, 4)입니다. **순위를 저장해 두지 않고 요청할 때마다 다시 셉니다.**
 
