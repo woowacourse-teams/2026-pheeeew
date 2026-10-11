@@ -311,6 +311,8 @@ jobs:
           ssh -F ~/.ssh/config target 'bash -s' <<'REMOTE'
           set -eu
           cd /opt/pheeeew
+          # 수집기는 별도 배포한다. 미설치 상태에서도 Alloy가 빈 표본 볼륨을 읽도록 준비한다.
+          docker volume create pheeeew-prod_db-observer-samples >/dev/null
           chmod 600 .env.alloy
           docker compose --env-file .env.alloy -f compose.monitoring.yml config --quiet
           docker compose --env-file .env.alloy -f compose.monitoring.yml pull alloy

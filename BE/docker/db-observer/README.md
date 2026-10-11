@@ -52,7 +52,7 @@ docker compose -p pheeeew-db-observer-dev -f docker/db-observer/compose.yml up -
 
 SIGTERM/SIGINT는 수집 중단 신호로 처리하고 직접 실행한 psql을 회수한 뒤 종료한다. 저장·시작 실패는 고정 `collector_stopped` 이벤트를 stderr에 한 번 남기고 exit 1로 종료한다. `restart: unless-stopped`로 비정상 종료와 Docker 재기동에서 복구한다. 수동 `stop`은 유지된다. 잘못된 설정은 재시작을 반복하므로 운영자는 RestartCount·stderr 고정 사유와 마지막 수집 시각을 확인하고 `stop` 후 설정을 고친다. 빈 JSONL은 정상 판정이 아니다. 원인 확인 후 같은 `up -d db-observer`로 재시작하며 external 표본 볼륨은 Compose `down --volumes`로 삭제되지 않는다. `docker volume rm`이나 volume prune은 보관 이력을 삭제할 수 있으므로 수행하지 않는다.
 
-파일은 컨테이너 `/data`의 named volume에만 남는다. Grafana/Loki 전송은 아직 연결하지 않았으며 장애 때 시간대로 찾아 비교하는 로컬 증거다. 예: `docker compose -p pheeeew-db-observer-dev -f docker/db-observer/compose.yml cp db-observer:/data ./observer-evidence`. 수집기 메모리 64MiB·CPU 0.25·PID 16개 제한은 초기 경계이며 실제 서버 수신/운영 영향은 별도 검증한다.
+파일은 컨테이너 `/data`의 named volume에만 남는다. Alloy는 읽기 전용 공유 볼륨의 시간별 표본을 Loki로 전송한다. 수집기만 실행한 상태에서는 로컬 증거이며 Alloy 구성과 Cloud 수신 확인이 별도로 필요하다. 예: `docker compose -p pheeeew-db-observer-dev -f docker/db-observer/compose.yml cp db-observer:/data ./observer-evidence`. 수집기 메모리 64MiB·CPU 0.25·PID 16개 제한은 초기 경계이며 실제 서버 수신/운영 영향은 별도 검증한다.
 
 `python3 docker/db-observer/verify_runtime.py`는 로컬 Docker에 전용 PostgreSQL 17/PostGIS 3.5와 수집기를 생성해 실제 실행·보관·대기 표본·종료를 검증한다. 필요한 이미지를 빌드/다운로드하고 테스트 컨테이너·네트워크·볼륨은 finally에서 제거한다. 개발/운영 서버에는 접속하지 않는다.
 
@@ -68,3 +68,12 @@ SIGTERM/SIGINT는 수집 중단 신호로 처리하고 직접 실행한 psql을 
 운영은 `PGHOST`를 RDS endpoint로, `PGSSLMODE=verify-full`과 `PGSSLROOTCERT`를 검증된 CA 경로로 설정한다. CA 파일은 별도 Compose override의 읽기 전용 bind mount로 수집기에만 제공한다. TLS를 우회하지 않으며 인증·보안그룹·통계 조회 권한은 실제 적용 시 별도로 확인한다. `pg_read_all_stats` 권한을 자동 부여하지 않는다.
 
 요약의 `lock_wait_count`, `io_wait_count`, `other_wait_count`, `no_wait_count`는 **보이는 nonidle 세션**을 20개 제한 전에 분류한다. `active_count`와 `idle_in_transaction_count`는 같은 모집단의 상태 분류로 대기 분류와 중첩된다. partial이면 보이지 않는 세션의 대기는 알 수 없으므로, 0을 전체 DB에 대기가 없다는 뜻으로 읽지 않는다.
+
+
+## Loki 전송의 경계
+
+Alloy는 schema_version=1 표본의 검토한 필드만 전송하며 별도 `job=pheeeew-db-observer`를 쓴다. 성공은 `snapshot.sampled_at`, 실패는 `collected_at`을 Loki 시각으로 사용한다. PID·backend_start·wait event는 본문에만 남는다. Alloy가 직접 보내는 라벨은 job/application/environment/instance 네 개이며, Loki 또는 Cloud가 service_name 등 수신 측 라벨을 보충할 수 있다. 기존 스키마 표본은 전송하지 않으며 로컬 보관 기한 안에서 직접 조사한다.
+
+Alloy의 기존 `alloy-data` 볼륨에 파일별 읽기 위치를 보존한다. 정상 재시작은 이어 읽지만, 위치 파일 손실/손상 시 처음부터 다시 읽어 중복이 생길 수 있다. 초기 연결도 보관 파일의 처음부터 읽는다. 시간별 파일은 최대10초 간격으로 발견한다. 오래된 여러 파일을 동시에 읽으면 Loki의 out-of-order 허용 범위를 벗어난 과거 기록이 거부될 수 있다. 초기 과거 기록 전체 수신을 보장하지 않는다.
+
+파일 읽기 위치는 Loki 수신 확인과 같은 보장이 아니다. 전송 중 Alloy 강제 종료, 재시도 한도 초과, Loki 수용 범위 초과, 23~24시간/32MiB 로컬 보관 상한 초과 시 누락될 수 있다. 수집 파일이 존재하고 Alloy `/ready`가 정상이더라도 최신 표본의 Cloud 수신까지 확인해야 한다. 저장 실패·시작 실패는 stderr에만 남을 수 있으므로 대시보드의 최근 표본 부재와 컨테이너 상태를 함께 본다.

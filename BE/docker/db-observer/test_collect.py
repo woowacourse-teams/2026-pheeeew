@@ -77,7 +77,7 @@ class CollectorTest(unittest.TestCase):
                 result = collect.collect_once(Event())
                 self.assertEqual(result["reason"], reason)
                 self.assertNotIn("secret-token", json.dumps(result))
-                self.assertEqual(set(result), {"event", "collected_at", "status", "reason"})
+                self.assertEqual(set(result), {"schema_version", "event", "collected_at", "status", "reason"})
                 self.assert_reaped()
 
     def test_summary_preserves_full_population_and_rejects_inconsistent_counts(self):

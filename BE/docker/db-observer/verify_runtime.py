@@ -139,6 +139,15 @@ finally:
         assert '"reason": "collector_stopped"' in rejected.stderr and 'Traceback' not in rejected.stderr
         missing = compose('run', '--rm', '--no-deps', '-e', 'PGUSER=', 'db-observer', check=False, raw=True)
         assert missing.returncode == 1 and 'configuration_missing' in missing.stderr
+        # 비정상 시작 설정도 재시작하므로 stop 후 수정해야 한다는 운영 계약.
+        original_environment = env_file.read_text()
+        env_file.write_text(original_environment.replace('PGUSER=observer', 'PGUSER='))
+        compose('up', '-d', '--force-recreate', 'db-observer')
+        invalid_container = compose('ps', '-aq', 'db-observer')
+        wait_for(lambda: int(command('docker', 'inspect', '-f', '{{.RestartCount}}', invalid_container)) >= 2)
+        compose('stop', '-t', '6', 'db-observer')
+        assert command('docker', 'inspect', '-f', '{{.State.Running}}', invalid_container) == 'false'
+        env_file.write_text(original_environment)
         logs = compose('logs', '--no-color')
         assert 'local-verification-only' not in logs and 'Traceback' not in logs
         print('PASS: snapshot, active wait, privacy, read-only, timeout, connection failure, lock, '

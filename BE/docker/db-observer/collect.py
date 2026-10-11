@@ -22,7 +22,7 @@ SESSION_FIELDS = set("pid backend_start backend_type state wait_event_type wait_
 
 
 def event(reason: str | None = None, snapshot: dict | None = None) -> dict:
-    result = {"event": "db_activity_snapshot", "collected_at": datetime.now(timezone.utc).isoformat(),
+    result = {"schema_version": 1, "event": "db_activity_snapshot", "collected_at": datetime.now(timezone.utc).isoformat(),
               "status": "error" if reason else "ok"}
     result.update({"reason": reason} if reason else {"snapshot": snapshot})
     return result
