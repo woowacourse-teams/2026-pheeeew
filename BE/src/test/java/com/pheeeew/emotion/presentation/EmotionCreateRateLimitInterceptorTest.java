@@ -16,6 +16,7 @@ import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
 import com.pheeeew.common.config.ClockConfig;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
+import com.pheeeew.emotion.application.query.EmotionMapQueryService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.exception.EmotionErrorCode;
@@ -73,6 +74,9 @@ class EmotionCreateRateLimitInterceptorTest {
 
     @MockitoBean
     private EmotionQueryService emotionQueryService;
+
+    @MockitoBean
+    private EmotionMapQueryService emotionMapQueryService;
 
     @MockitoBean
     private EmotionMetrics emotionMetrics;

@@ -68,20 +68,30 @@ public interface EmotionControllerApi {
     @Operation(summary = "전체·그룹 감정 목록 조회", description = """
             ### 조회 범위
 
-            - 좌표와 기간 제한 없이 메모 또는 녹음이 있는 감정(contentType=MEMO, AUDIO)을 조회합니다. NONE은 제외합니다.
-            - 첫 페이지에서 groupId를 생략하면 그룹 없는 감정과 모든 그룹의 감정을 함께 조회합니다.
-            - groupId를 지정하면 감정에 연결된 그룹 스탬프를 기준으로 조회합니다. 작성자의 현재 그룹 소속은 조회 조건이 아닙니다.
-            - 조회 기기의 그룹 가입 여부로 제한하지 않습니다. 존재하지 않는 그룹은 빈 목록을 반환합니다.
+            - 좌표 제한 없이 메모 또는 녹음이 있는 감정(contentType=MEMO, AUDIO)을 조회합니다. NONE은 제외합니다.
+            - scope=ALL은 그룹 없는 감정과 모든 그룹의 감정을, GROUP은 지정 그룹을, MY는 인증된 기기가 작성한 감정을 조회합니다.
+            - scope를 생략하면 ALL입니다. 단, 기존 groupId 단독 요청은 GROUP으로 처리합니다.
+            - GROUP의 첫 페이지에는 groupId가 필수이며 ALL·MY에서는 groupId를 전달할 수 없습니다.
+            - GROUP은 감정에 연결된 그룹 스탬프를 기준으로 조회합니다. 작성자의 현재 그룹 소속은 조회 조건이 아닙니다.
+            - 조회 기기의 그룹 가입 여부로 제한하지 않습니다. 존재하지 않거나 삭제된 그룹은 다음 페이지에서도 GROUP-001과 404를 반환합니다.
             - minLongitude, minLatitude, maxLongitude, maxLatitude를 보내더라도 무시하며 조회 범위를 제한하지 않습니다.
+
+            ### 기간·내용 필터
+
+            - startDate와 endDate는 yyyy-MM-dd 형식(0001~9999년)이며 둘 다 생략하면 전체 기간을 조회합니다.
+            - 두 날짜를 함께 지정하고 시작일은 종료일 이하여야 합니다. 하루만 조회할 때는 같은 날짜를 지정합니다.
+            - Asia/Seoul 기준 시작일 00:00 이상, 종료일 다음 날 00:00 미만으로 조회합니다.
+            - contentType은 ALL(기본값), MEMO, AUDIO 중 하나입니다. NONE은 항상 제외합니다.
+            - 기간·내용·조회 범위 필터는 함께 적용할 수 있습니다.
 
             ### 페이지 이동
 
             - 인증된 기기를 기준으로 삭제된 감정, 차단한 감정과 차단한 작성자의 감정을 제외합니다.
             - 생성 시각 내림차순, 같은 시각이면 ID 내림차순으로 최대 50개씩 반환합니다.
             - 다음 페이지에는 이전 응답의 nextCursor를 cursor로 전달합니다. 커서는 해석하거나 수정하지 않고 그대로 사용합니다.
-            - groupId는 생략하거나 커서에 저장된 동일한 그룹 ID를 함께 보낼 수 있습니다.
-            - 다른 그룹 ID를 보내거나 전체 목록 커서에 groupId를 추가하면 400 오류를 반환합니다.
-            - 그룹을 바꾸거나 전체 목록으로 돌아갈 때는 cursor를 빼고 첫 페이지부터 조회합니다.
+            - 필터를 생략하면 커서에 저장된 값을 복원합니다. 명시한 필터는 커서와 같아야 하며 다르면 400 오류를 반환합니다.
+            - 날짜를 다시 명시할 때는 시작일·종료일을 함께 전달합니다. scope=GROUP만 명시해도 그룹 ID는 커서에서 복원합니다.
+            - 필터를 바꿀 때는 cursor를 빼고 첫 페이지부터 조회합니다.
             - 최초 조회 이후 작성된 감정은 후속 페이지에서 제외하고, 삭제·차단은 매 페이지에 반영합니다.
             - hasNext가 false이면 마지막 페이지이며 nextCursor는 null입니다. v1 목록·지도에서 받은 커서는 사용할 수 없습니다.
 
@@ -91,6 +101,7 @@ public interface EmotionControllerApi {
             그룹 ID 예시는 실제 조회할 그룹의 공개 ID로 바꿉니다.
 
             - 전체 첫 페이지: GET /api/v3/emotions
+            - 본인 메모·기간 필터: GET /api/v3/emotions?scope=MY&contentType=MEMO&startDate=2026-10-01&endDate=2026-10-11
             - 그룹 첫 페이지: GET /api/v3/emotions?groupId=11111111-1111-4111-8111-111111111111
             - 전체·그룹 다음 페이지: GET /api/v3/emotions?cursor={nextCursor}
             - 같은 그룹을 명시한 다음 페이지: GET /api/v3/emotions?groupId=11111111-1111-4111-8111-111111111111&cursor={nextCursor}
@@ -105,8 +116,9 @@ public interface EmotionControllerApi {
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "감정 목록과 다음 커서"),
-            @ApiResponse(responseCode = "400", description = "그룹 ID나 커서가 올바르지 않거나 커서의 그룹과 요청 그룹이 다름"),
+            @ApiResponse(responseCode = "400", description = "필터·그룹 ID·커서가 올바르지 않거나 명시한 필터가 커서와 다름"),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
+            @ApiResponse(responseCode = "404", description = "존재하지 않거나 삭제된 그룹(GROUP-001)"),
             @ApiResponse(responseCode = "503", description = "녹음 재생 URL을 발급할 수 없음")
     })
     ResponseEntity<CursorResponse<EmotionDetailResponse>> findListWithoutBounds(

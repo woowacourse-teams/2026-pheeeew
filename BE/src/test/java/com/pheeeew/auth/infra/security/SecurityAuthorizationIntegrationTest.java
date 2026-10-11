@@ -1328,7 +1328,11 @@ class SecurityAuthorizationIntegrationTest {
         assertThat(schemas.path("EmotionCreateRequest").path("properties").has("anonymous")).isFalse();
         assertThat(schemas.path("EmotionV3CreateRequest").path("properties").has("anonymous")).isTrue();
         assertThat(paths.path("/api/v3/emotions").has("get")).isTrue();
-        assertThat(paths.has("/api/v3/emotions/{emotionId}")).isFalse();
+        JsonNode update = paths.path("/api/v3/emotions/{emotionId}").path("put");
+        assertThat(update.path("requestBody").path("content").path("application/json").path("schema").path("$ref").asText())
+                .isEqualTo("#/components/schemas/EmotionV3UpdateRequest");
+        assertThat(update.path("description").asText()).contains("contentType은 MEMO 또는 AUDIO", "NONE");
+        assertThat(update.path("responses").has("204")).isTrue();
     }
 
     @Test
@@ -1348,7 +1352,7 @@ class SecurityAuthorizationIntegrationTest {
         assertThat(v3.path("deprecated").asBoolean()).isFalse();
         assertThat(v3.path("summary").asText()).isEqualTo("전체·그룹 감정 목록 조회");
         assertThat(v3.path("description").asText())
-                .contains("최대 50개", "동일한 그룹 ID", "전체 목록 커서에 groupId를 추가하면 400", "무시", "nextCursor");
+                .contains("최대 50개", "scope=ALL", "GROUP", "MY", "Asia/Seoul", "명시한 필터는 커서와 같아야", "무시", "nextCursor");
         assertThat(v3.path("security").get(0).has("bearerAuth")).isTrue();
         assertThat(map.path("deprecated").asBoolean()).isFalse();
         assertThat(map.path("summary").asText()).isEqualTo("지도 스탬프 조회");
@@ -1359,7 +1363,7 @@ class SecurityAuthorizationIntegrationTest {
             assertThat(parameter.path("in").asText()).isEqualTo("query");
             assertThat(parameter.path("required").asBoolean()).as("v3 query parameter: %s", parameter).isFalse();
         }
-        assertThat(v3Parameters).containsExactlyInAnyOrder("cursor", "groupId");
+        assertThat(v3Parameters).containsExactlyInAnyOrder("cursor", "groupId", "startDate", "endDate", "contentType", "scope");
 
         Set<String> v1Parameters = new HashSet<>();
         for (JsonNode parameter : v1.path("parameters")) {
