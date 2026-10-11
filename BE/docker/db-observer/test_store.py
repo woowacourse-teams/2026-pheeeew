@@ -38,11 +38,27 @@ class StoreTest(unittest.TestCase):
             self.assertTrue(self.bucket(23).exists())
             target.append({'message': '한글'})
             self.assertEqual(json.loads(self.bucket().read_text()), {'message': '한글'})
-            self.assertEqual(self.bucket().stat().st_mode & 0o777, 0o600)
+            self.assertEqual(self.bucket().stat().st_mode & 0o777, 0o640)
             self.now += timedelta(hours=1)
             target.append({'next': True})
             self.assertFalse(self.bucket(24).exists())
         self.assertEqual(unrelated.read_text(), 'preserve')
+
+    def test_private_legacy_samples_become_group_readable_even_with_private_umask(self):
+        self.directory.chmod(0o700)
+        self.bucket().write_text('{}\n')
+        self.bucket().chmod(0o600)
+        previous = os.umask(0o077)
+        try:
+            with self.open() as target:
+                self.assertEqual(self.directory.stat().st_mode & 0o777, 0o750)
+                self.assertEqual(self.bucket().stat().st_mode & 0o777, 0o640)
+                self.assertEqual((self.directory / '.lock').stat().st_mode & 0o777, 0o600)
+                self.now += timedelta(hours=1)
+                target.append({'new': True})
+                self.assertEqual(self.bucket().stat().st_mode & 0o777, 0o640)
+        finally:
+            os.umask(previous)
 
     def test_capacity_evicts_oldest_and_reopens_evicted_current_bucket(self):
         with patch.object(store, 'MAX_BYTES', 12), self.open() as target:
