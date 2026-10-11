@@ -1,0 +1,29 @@
+{
+  "report_generated_at_kst": "2026-10-11T01:29:00.644633+09:00",
+  "source_commit": "13fec77b999326604c5872e0b20191f981dccb89",
+  "source_has_profiling_changes": true,
+  "apk_sha256": "cc2cc18cb6b31c13c39d9cf6c19ee4a4ae298d2008b68f7386437d698511bf27",
+  "device": "Galaxy S23 FE (SM-S711N)",
+  "os": "Android 15",
+  "display_pixels": [
+    1080,
+    2340
+  ],
+  "app_package": "com.pheeeew.mappinprofile",
+  "installed_user_app_version": "2.2.1",
+  "current_source_app_version": "2.1.1",
+  "live_api": "https://api-dev.pheeeew.com",
+  "live_returned_pins": 8,
+  "fixture_transport": "HTTP localhost via adb reverse",
+  "temperature_mid_run_celsius": 31.2,
+  "temperature_end_run_celsius": 33.7,
+  "charging_during_run": true,
+  "measured_trials": 300,
+  "repetitions_per_condition": 30,
+  "api_request_tests": {
+    "tests": 12,
+    "failures": 0,
+    "errors": 0
+  },
+  "iphone": "iPhone 16 Pro: cached pairing present, CoreDevice tunnel unavailable; not measured"
+}
