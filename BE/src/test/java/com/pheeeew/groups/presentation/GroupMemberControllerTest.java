@@ -51,6 +51,7 @@ class GroupMemberControllerTest {
     private static final String 초대_코드 = "A1B2C3";
     private static final UUID 기기_공개_식별자 = UUID.fromString("a8ce0347-6f21-4c62-9a7e-1b30d5e0c9aa");
     private static final UUID 그룹_공개_식별자 = UUID.fromString("5f2b1c84-9d0e-4a13-b6c7-2e8f0a4d7b19");
+    private static final String MEMBERSHIP_URI = GROUPS_URI + "/" + 그룹_공개_식별자 + "/members/me";
 
     private final RestTestClient client;
 
@@ -198,6 +199,79 @@ class GroupMemberControllerTest {
     }
 
     @Test
+    void 공개_그룹에_참여하면_201과_멤버십_위치_헤더를_반환한다() {
+        // given
+        when(groupService.joinPublicGroup(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(공개_그룹_결과());
+
+        // when
+        RestTestClient.ResponseSpec result = 코드_없이_참여한다();
+
+        // then
+        result.expectStatus().isCreated()
+                .expectHeader().location(MEMBERSHIP_URI)
+                .expectBody()
+                .jsonPath("$.joinType").isEqualTo("PUBLIC");
+        verify(groupService).joinPublicGroup(그룹_공개_식별자, 기기_공개_식별자);
+    }
+
+    @Test
+    void 비공개_그룹에_코드_없이_참여하면_409와_초대_코드_필요를_반환한다() {
+        // given
+        when(groupService.joinPublicGroup(그룹_공개_식별자, 기기_공개_식별자))
+                .thenThrow(new GroupException(GroupErrorCode.GROUP_INVITE_CODE_REQUIRED));
+
+        // when
+        RestTestClient.ResponseSpec result = 코드_없이_참여한다();
+
+        // then
+        result.expectStatus().isEqualTo(409)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("GROUP-009");
+    }
+
+    @Test
+    void 이미_속한_공개_그룹에_참여하면_409를_반환한다() {
+        // given
+        when(groupService.joinPublicGroup(그룹_공개_식별자, 기기_공개_식별자))
+                .thenThrow(new GroupException(GroupErrorCode.GROUP_ALREADY_JOINED));
+
+        // when
+        RestTestClient.ResponseSpec result = 코드_없이_참여한다();
+
+        // then
+        result.expectStatus().isEqualTo(409)
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("GROUP-007");
+    }
+
+    @Test
+    void 없는_그룹에_코드_없이_참여하면_404를_반환한다() {
+        // given
+        when(groupService.joinPublicGroup(그룹_공개_식별자, 기기_공개_식별자))
+                .thenThrow(new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
+
+        // when
+        RestTestClient.ResponseSpec result = 코드_없이_참여한다();
+
+        // then
+        result.expectStatus().isNotFound()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("GROUP-001");
+    }
+
+    @Test
+    void 그룹_식별자가_UUID가_아니면_400이고_서비스를_부르지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = client.post()
+                .uri(GROUPS_URI + "/not-a-uuid/members/me")
+                .exchange();
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupService);
+    }
+
+    @Test
     void 그룹을_나가면_204를_반환한다() {
         // when
         RestTestClient.ResponseSpec result = 나간다();
@@ -272,10 +346,32 @@ class GroupMemberControllerTest {
                 .exchange();
     }
 
+    private RestTestClient.ResponseSpec 코드_없이_참여한다() {
+        return client.post()
+                .uri(MEMBERSHIP_URI)
+                .exchange();
+    }
+
     private RestTestClient.ResponseSpec 나간다() {
         return client.delete()
                 .uri(GROUPS_URI + "/" + 그룹_공개_식별자 + "/members/me")
                 .exchange();
+    }
+
+    private GroupResult 공개_그룹_결과() {
+        Group group = Group.builder()
+                .name("공개모임")
+                .description(null)
+                .inviteCode(초대_코드)
+                .joinType(GroupJoinType.PUBLIC)
+                .build();
+
+        return GroupResult.of(
+                group,
+                GroupRole.MEMBER,
+                2,
+                new GroupStampResult("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
+        );
     }
 
     private GroupResult 기본_그룹_결과() {

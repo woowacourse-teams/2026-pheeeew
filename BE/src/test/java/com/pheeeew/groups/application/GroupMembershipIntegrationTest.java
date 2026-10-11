@@ -262,6 +262,169 @@ class GroupMembershipIntegrationTest {
     }
 
     @Test
+    void 공개_그룹에는_초대_코드_없이_들어간다() {
+        // given
+        GroupResult 공개_그룹 = 공개_그룹을_만든다("공개모임");
+        Device 들어올_기기 = 기기를_저장한다();
+
+        // when
+        GroupResult 결과 = groupService.joinPublicGroup(공개_그룹.publicId(), 들어올_기기.getPublicId());
+
+        // then
+        assertThat(결과.publicId()).isEqualTo(공개_그룹.publicId());
+        assertThat(결과.role()).isEqualTo(GroupRole.MEMBER);
+        assertThat(결과.memberCount()).isEqualTo(2);
+        assertThat(활동_멤버_수(공개_그룹.publicId())).isEqualTo(2);
+    }
+
+    @Test
+    void 비공개_그룹에는_초대_코드_없이_들어갈_수_없다() {
+        // given
+        GroupResult 비공개_그룹 = 그룹을_만든다("비공개모임");
+        Device 들어올_기기 = 기기를_저장한다();
+
+        // when
+        Throwable throwable = catchThrowable(
+                () -> groupService.joinPublicGroup(비공개_그룹.publicId(), 들어올_기기.getPublicId())
+        );
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_INVITE_CODE_REQUIRED);
+        assertThat(활동_멤버_수(비공개_그룹.publicId())).isOne();
+    }
+
+    @Test
+    void 비공개_그룹에_이미_속해_있어도_코드_없는_가입은_비공개_거부다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 비공개_그룹 =
+                groupService.save(그룹장.getPublicId(), "비공개모임", null, GroupJoinType.PRIVATE, 스탬프());
+
+        // when
+        Throwable throwable = catchThrowable(
+                () -> groupService.joinPublicGroup(비공개_그룹.publicId(), 그룹장.getPublicId())
+        );
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_INVITE_CODE_REQUIRED);
+        assertThat(멤버_행_수(비공개_그룹.publicId())).isOne();
+    }
+
+    @Test
+    void 이미_속한_공개_그룹에_코드_없이_다시_요청하면_거절한다() {
+        // given
+        GroupResult 공개_그룹 = 공개_그룹을_만든다("공개모임");
+        Device 들어올_기기 = 기기를_저장한다();
+        groupService.joinPublicGroup(공개_그룹.publicId(), 들어올_기기.getPublicId());
+
+        // when
+        Throwable throwable = catchThrowable(
+                () -> groupService.joinPublicGroup(공개_그룹.publicId(), 들어올_기기.getPublicId())
+        );
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_ALREADY_JOINED);
+        assertThat(멤버_행_수(공개_그룹.publicId())).isEqualTo(2);
+    }
+
+    @Test
+    void 삭제된_공개_그룹에는_코드_없이_들어갈_수_없다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 공개_그룹 =
+                groupService.save(그룹장.getPublicId(), "공개모임", null, GroupJoinType.PUBLIC, 스탬프());
+        groupService.delete(공개_그룹.publicId(), 그룹장.getPublicId());
+
+        // when
+        Throwable throwable = catchThrowable(
+                () -> groupService.joinPublicGroup(공개_그룹.publicId(), 기기를_저장한다().getPublicId())
+        );
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_NOT_FOUND);
+    }
+
+    @Test
+    void 없는_그룹_식별자로는_코드_없이_들어갈_수_없다() {
+        // given
+        Device 들어올_기기 = 기기를_저장한다();
+
+        // when
+        Throwable throwable = catchThrowable(
+                () -> groupService.joinPublicGroup(UUID.randomUUID(), 들어올_기기.getPublicId())
+        );
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_NOT_FOUND);
+    }
+
+    @Test
+    void 공개_그룹도_초대_코드로_들어갈_수_있다() {
+        // given
+        GroupResult 공개_그룹 = 공개_그룹을_만든다("공개모임");
+        Device 들어올_기기 = 기기를_저장한다();
+
+        // when
+        GroupResult 결과 = groupService.joinByInviteCode(들어올_기기.getPublicId(), 공개_그룹.inviteCode());
+
+        // then
+        assertThat(결과.role()).isEqualTo(GroupRole.MEMBER);
+        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PUBLIC);
+        assertThat(활동_멤버_수(공개_그룹.publicId())).isEqualTo(2);
+    }
+
+    @Test
+    void 초대_코드로는_그_코드의_그룹에만_들어간다() {
+        // given
+        GroupResult 공개_그룹 = 공개_그룹을_만든다("공개모임");
+        GroupResult 비공개_그룹 = 그룹을_만든다("비공개모임");
+        Device 들어올_기기 = 기기를_저장한다();
+
+        // when
+        GroupResult 결과 = groupService.joinByInviteCode(들어올_기기.getPublicId(), 비공개_그룹.inviteCode());
+
+        // then
+        assertThat(결과.publicId()).isEqualTo(비공개_그룹.publicId());
+        assertThat(활동_멤버_수(비공개_그룹.publicId())).isEqualTo(2);
+        assertThat(활동_멤버_수(공개_그룹.publicId())).isOne();
+        assertThat(groupService.findMine(들어올_기기.getPublicId()))
+                .extracting(GroupResult::publicId)
+                .containsExactly(비공개_그룹.publicId());
+    }
+
+    @Test
+    void 공개_그룹에_동시에_여러_번_참여해도_멤버는_하나만_생긴다() throws Exception {
+        // given
+        GroupResult 공개_그룹 = 공개_그룹을_만든다("공개모임");
+        Device 기기 = 기기를_저장한다();
+
+        // when
+        List<Boolean> 성공_여부들 = 동시에_공개_그룹에_참여한다(공개_그룹.publicId(), 기기.getPublicId());
+
+        // then
+        assertThat(성공_여부들).hasSize(동시_요청_수);
+        assertThat(성공_여부들).filteredOn(성공 -> 성공).hasSize(1);
+        assertThat(활동_멤버_수(공개_그룹.publicId())).isEqualTo(2);
+    }
+
+    @Test
+    void 나갔던_공개_그룹에_코드_없이_다시_들어올_수_있다() {
+        // given
+        GroupResult 공개_그룹 = 공개_그룹을_만든다("공개모임");
+        Device 기기 = 기기를_저장한다();
+        groupService.joinPublicGroup(공개_그룹.publicId(), 기기.getPublicId());
+        groupService.leave(공개_그룹.publicId(), 기기.getPublicId());
+
+        // when
+        GroupResult 결과 = groupService.joinPublicGroup(공개_그룹.publicId(), 기기.getPublicId());
+
+        // then
+        assertThat(결과.memberCount()).isEqualTo(2);
+        assertThat(멤버_행_수(공개_그룹.publicId())).isEqualTo(3);
+        assertThat(활동_멤버_수(공개_그룹.publicId())).isEqualTo(2);
+    }
+
+    @Test
     void 속하지_않은_그룹에서는_나갈_수_없다() {
         // given
         GroupResult 그룹 = 그룹을_만든다("한숨모임");
@@ -290,6 +453,22 @@ class GroupMembershipIntegrationTest {
     }
 
     private List<Boolean> 동시에_참여한다(UUID devicePublicId, String inviteCode) throws Exception {
+        return 동시에_실행한다(() -> {
+            groupService.joinByInviteCode(devicePublicId, inviteCode);
+
+            return true;
+        });
+    }
+
+    private List<Boolean> 동시에_공개_그룹에_참여한다(UUID groupPublicId, UUID devicePublicId) throws Exception {
+        return 동시에_실행한다(() -> {
+            groupService.joinPublicGroup(groupPublicId, devicePublicId);
+
+            return true;
+        });
+    }
+
+    private List<Boolean> 동시에_실행한다(Callable<Boolean> 작업) throws Exception {
         CountDownLatch 준비 = new CountDownLatch(동시_요청_수);
         CountDownLatch 출발 = new CountDownLatch(1);
         ExecutorService 실행기 = Executors.newFixedThreadPool(동시_요청_수);
@@ -300,9 +479,7 @@ class GroupMembershipIntegrationTest {
                     준비.countDown();
                     출발.await(5, TimeUnit.SECONDS);
                     try {
-                        groupService.joinByInviteCode(devicePublicId, inviteCode);
-
-                        return true;
+                        return 작업.call();
                     } catch (GroupException exception) {
                         return false;
                     }
@@ -325,6 +502,10 @@ class GroupMembershipIntegrationTest {
 
     private GroupResult 그룹을_만든다(String name) {
         return groupService.save(기기를_저장한다().getPublicId(), name, null, GroupJoinType.PRIVATE, 스탬프());
+    }
+
+    private GroupResult 공개_그룹을_만든다(String name) {
+        return groupService.save(기기를_저장한다().getPublicId(), name, null, GroupJoinType.PUBLIC, 스탬프());
     }
 
     private Device 기기를_저장한다() {
