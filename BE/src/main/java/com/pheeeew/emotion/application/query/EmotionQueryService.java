@@ -165,6 +165,7 @@ public class EmotionQueryService {
         if (cursor.bounds() == null) {
             validateGroup(cursor.groupId());
         }
+
         int pageSize = cursor.bounds() == null ? WITHOUT_BOUNDS_PAGE_SIZE : WITHIN_BOUNDS_PAGE_SIZE;
         List<Emotion> found = findListEmotions(cursor, deviceId, pageSize + 1);
 
@@ -172,10 +173,14 @@ public class EmotionQueryService {
         List<Emotion> page = hasNext ? found.subList(0, pageSize) : found;
 
         List<EmotionDetailView> items = toListItems(page, deviceId);
-        String nextCursor = hasNext ? EmotionCursorCodec.encode(cursor.next(
-                page.getLast().getCreatedAt(), page.getLast().getId())) : null;
+        if (!hasNext) {
+            return EmotionPageView.of(items, false, null);
+        }
 
-        return EmotionPageView.of(items, hasNext, nextCursor);
+        String nextCursor = EmotionCursorCodec.encode(cursor.next(
+                page.getLast().getCreatedAt(), page.getLast().getId()));
+
+        return EmotionPageView.of(items, true, nextCursor);
     }
 
     private void validateGroup(UUID groupId) {
@@ -216,12 +221,14 @@ public class EmotionQueryService {
             counts.put(emotion.getId(), emptyEmojis());
         }
 
-        if (!page.isEmpty()) {
-            for (var count : emotionEmojiRepository.findCountsForPage(page.stream().map(Emotion::getId).toList(), deviceId)) {
-                EmojiType type = EmojiType.valueOf(count.getEmojiType());
-                counts.get(count.getEmotionId()).put(type,
-                        EmotionEmojiResult.of(type, count.getSelectionCount(), count.getSelected()));
-            }
+        if (page.isEmpty()) {
+            return counts;
+        }
+
+        for (var count : emotionEmojiRepository.findCountsForPage(page.stream().map(Emotion::getId).toList(), deviceId)) {
+            EmojiType type = EmojiType.valueOf(count.getEmojiType());
+            counts.get(count.getEmotionId()).put(type,
+                    EmotionEmojiResult.of(type, count.getSelectionCount(), count.getSelected()));
         }
 
         return counts;
@@ -231,9 +238,12 @@ public class EmotionQueryService {
         List<Long> stampIds = page.stream().map(Emotion::getGroupStamp).filter(Objects::nonNull)
                 .map(GroupStamp::getId).distinct().toList();
 
-        return stampIds.isEmpty() ? Map.of()
-                : groupStampRepository.findAllWithGroupByIdIn(stampIds).stream()
-                        .collect(Collectors.toMap(GroupStamp::getId, GroupStampResult::from));
+        if (stampIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return groupStampRepository.findAllWithGroupByIdIn(stampIds).stream()
+                .collect(Collectors.toMap(GroupStamp::getId, GroupStampResult::from));
     }
 
     private EnumMap<EmojiType, EmotionEmojiResult> emptyEmojis() {

@@ -131,30 +131,49 @@ public class EmotionMapQueryService {
             throw new GroupException(GROUP_NOT_FOUND);
         }
 
-        List<Emotion> found = contentOnly
-                ? emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                        cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.filter(), MAP_PAGE_SIZE + 1)
-                : emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                        cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), false, MAP_PAGE_SIZE + 1);
+        List<Emotion> found = findMapEmotions(cursor, deviceId, contentOnly);
 
         boolean hasNext = found.size() > MAP_PAGE_SIZE;
         List<Emotion> page = hasNext ? found.subList(0, MAP_PAGE_SIZE) : found;
 
         Map<Long, GroupStampResult> stamps = findStamps(page);
-        List<EmotionMapItemView> items = page.stream().map(emotion -> EmotionMapItemView.of(emotion,
-                emotion.getGroupStamp() == null ? null : stamps.get(emotion.getGroupStamp().getId()))).toList();
-        String nextCursor = hasNext ? EmotionCursorCodec.encode(cursor.next(
-                page.getLast().getCreatedAt(), page.getLast().getId())) : null;
+        List<EmotionMapItemView> items = page.stream().map(emotion -> {
+            GroupStampResult stamp = emotion.getGroupStamp() == null
+                    ? null
+                    : stamps.get(emotion.getGroupStamp().getId());
 
-        return EmotionMapPageView.of(items, hasNext, nextCursor);
+            return EmotionMapItemView.of(emotion, stamp);
+        }).toList();
+
+        if (!hasNext) {
+            return EmotionMapPageView.of(items, false, null);
+        }
+
+        String nextCursor = EmotionCursorCodec.encode(cursor.next(
+                page.getLast().getCreatedAt(), page.getLast().getId()));
+
+        return EmotionMapPageView.of(items, true, nextCursor);
+    }
+
+    private List<Emotion> findMapEmotions(EmotionCursor cursor, Long deviceId, boolean contentOnly) {
+        if (contentOnly) {
+            return emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
+                    cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.filter(), MAP_PAGE_SIZE + 1);
+        }
+
+        return emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
+                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), false, MAP_PAGE_SIZE + 1);
     }
 
     private Map<Long, GroupStampResult> findStamps(List<Emotion> page) {
         List<Long> stampIds = page.stream().map(Emotion::getGroupStamp).filter(Objects::nonNull)
                 .map(GroupStamp::getId).distinct().toList();
 
-        return stampIds.isEmpty() ? Map.of()
-                : groupStampRepository.findAllWithGroupByIdIn(stampIds).stream()
-                        .collect(Collectors.toMap(GroupStamp::getId, GroupStampResult::from));
+        if (stampIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return groupStampRepository.findAllWithGroupByIdIn(stampIds).stream()
+                .collect(Collectors.toMap(GroupStamp::getId, GroupStampResult::from));
     }
 }
