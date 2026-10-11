@@ -2,9 +2,8 @@ package com.pheeeew.activity.infra;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.pheeeew.activity.application.DeviceDailyActivityService;
+import com.pheeeew.activity.infra.metrics.DeviceActivityRecordMetrics;
 import com.pheeeew.common.logging.ExceptionLogFormatter;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
@@ -22,8 +21,7 @@ public class DeviceActivityRecorder {
     private final DeviceDailyActivityService activityService;
     private final Executor executor;
     private final Clock clock;
-    private final Counter saveFailures;
-    private final Counter rejectedTasks;
+    private final DeviceActivityRecordMetrics metrics;
     private final DeviceActivityCache activityCache = new DeviceActivityCache(10_000, Caffeine.newBuilder());
     private final ExceptionLogFormatter exceptionLogFormatter = new ExceptionLogFormatter();
     private final AtomicReference<Instant> nextLogAt = new AtomicReference<>(Instant.MIN);
@@ -31,14 +29,13 @@ public class DeviceActivityRecorder {
     public DeviceActivityRecorder(
             DeviceDailyActivityService activityService,
             @Qualifier("deviceActivityExecutor") Executor executor,
-            MeterRegistry registry,
+            DeviceActivityRecordMetrics metrics,
             Clock clock
     ) {
         this.activityService = activityService;
         this.executor = executor;
         this.clock = clock;
-        this.saveFailures = registry.counter("pheeeew.activity.record.failures", "reason", "save_failed");
-        this.rejectedTasks = registry.counter("pheeeew.activity.record.failures", "reason", "queue_rejected");
+        this.metrics = metrics;
     }
 
     public void record(UUID devicePublicId, Instant occurredAt) {
@@ -52,17 +49,18 @@ public class DeviceActivityRecorder {
                     activityService.save(devicePublicId, occurredAt);
                 } catch (RuntimeException failure) {
                     activityCache.release(marker);
-                    recordFailure(saveFailures, "save_failed", failure);
+                    metrics.recordSaveFailure();
+                    logFailure("save_failed", failure);
                 }
             });
         } catch (RejectedExecutionException failure) {
             activityCache.release(marker);
-            recordFailure(rejectedTasks, "queue_rejected", failure);
+            metrics.recordQueueRejection();
+            logFailure("queue_rejected", failure);
         }
     }
 
-    private void recordFailure(Counter counter, String reason, RuntimeException failure) {
-        counter.increment();
+    private void logFailure(String reason, RuntimeException failure) {
         Instant now = clock.instant();
         Instant next = nextLogAt.get();
         if (now.isBefore(next) || !nextLogAt.compareAndSet(next, now.plusSeconds(60))) {

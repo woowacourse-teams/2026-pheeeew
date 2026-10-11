@@ -13,6 +13,7 @@
 | 모듈 | 연결 획득 성공·실패 계측과 DataSource 래핑 | `DataSourceTimingStage`, `RequestTimingDataSource`, `RequestTimingDataSourceConfiguration` |
 | 모듈 | 요청·예외·예약 작업 오류의 로그 형식 | `RequestLogPolicy`, `RequestLogWriter`, `ExceptionLogFormatter`, `ScheduledTaskErrorHandler` |
 | 모듈 | 도메인 타입에 독립적인 지표 등록·누적 | `EmotionMetrics`, `RegionQueryMetrics`, `DeviceChallengeMetrics`, `EmotionReportMetrics`, `EmotionPressMetrics`, `GroupPressMetrics` |
+| 모듈 | 활동 기록·집계의 실패 카운터 | `DeviceActivityRecordMetrics`, `DeviceActivityAggregationMetrics` |
 | 앱 | 허용할 요청 값과 출력할 단계 목록 | `PheeeewRequestLogPolicy`, `PheeeewRequestTimingStage` |
 | 앱 | 업무 계측 지점과 필터·스케줄러 등록 | `RequestServiceTimingAspect`, 업무별 metrics aspect, `RequestLoggingConfiguration`, `SchedulingConfig` |
 | 앱·운영 구성 | 프로필, 로그 출력·비동기 큐, 수집·대시보드 | `application*.yml`, `logback-spring.xml`, `docker/alloy/`, 외부 수집기·Grafana |
@@ -25,6 +26,10 @@
 감정별 제한 초과량·전체 제한 초과량을 꺼내 `EmotionPressMetrics`·`GroupPressMetrics`에 전달합니다. 제한 계산과 기록 시점은
 앱에 남으며, 적용 수가 0이면 빈 요청만 기록하고 제한 초과량은 양수일 때만 기록합니다.
 활동 집계 객체나 인증 거절 사유를 받는 지표는 아직 앱에 남아 있습니다.
+활동 기록기는 실패 카운터만 모듈에 위임합니다. 캐시 획득·해제, 비동기 작업 제출과 실패 후 재시도,
+오류 로그의 민감정보 제외와 60초 제한은 앱의 `DeviceActivityRecorder`가 유지합니다.
+집계 스케줄러는 실패 카운터를 `DeviceActivityAggregationMetrics`에 위임합니다. 초기화 재시도,
+현재 집계 반영 후 과거 집계 처리, 실패 로그와 실행 주기는 앱에 유지합니다. 활동 Gauge는 아직 앱에 있습니다.
 
 ## 등록과 호출
 
@@ -40,9 +45,11 @@
   프록시 안쪽에 위치합니다. 연결·예외는 그대로 전달하고 원본 풀의 종료는 Spring에 맡깁니다.
 - 앱의 `SchedulingConfig`는 기존 `ThreadPoolTaskSchedulerCustomizer`에서 모듈의 오류 처리기를 설치합니다.
   작업 오류와 로그 생성 오류를 처리한 뒤 반복 작업의 다음 실행을 막지 않습니다.
-- 업무 지표 6개는 기존 `@Component`와 `com.pheeeew` 하위 패키지를 유지해 앱 스캔으로 등록됩니다.
+- 업무 지표 6개와 `DeviceActivityRecordMetrics`는 `@Component`와 `com.pheeeew` 하위 패키지로 앱 스캔에 등록됩니다.
   모듈은 공개 생성자와 `Timer.Sample` 반환 타입에 필요한 `micrometer-core`를 `api`로 제공합니다.
   버전은 앱과 같은 Spring Boot BOM을 따르며 Prometheus exporter 설정은 앱에 둡니다.
+- `DeviceActivityAggregationMetrics`는 스케줄러와 동일하게 `prod` 프로필에서만 스캔 등록됩니다.
+  기본·`dev` 프로필에는 집계 실패 카운터를 새로 노출하지 않습니다.
 
 `RequestTiming.begin/restore`와 Filter·Writer 생성자는 모듈 밖에서 호출하는 공개 경계입니다.
 DevTools에서 앱과 라이브러리의 클래스 로더가 갈릴 수 있으므로 같은 패키지라는 이유로 package-private
@@ -70,6 +77,10 @@ DevTools에서 앱과 라이브러리의 클래스 로더가 갈릴 수 있으�
   `pheeeew.sigh.list.results`의 `page`·`has_next`, `pheeeew.region.query`의 `operation`·`outcome`과
   그룹 프레스의 `format=counts/state`·`limit=per_state/total`도 유지합니다.
   지역·개인 프레스 조회의 50ms~300초 진단용 버킷 경계를 바꾸지 않습니다. 새 라벨이나 시계열은 추가하지 않습니다.
+- 활동 기록 실패는 `pheeeew.activity.record.failures`의 `reason=save_failed/queue_rejected` 두 카운터입니다.
+  둘 다 0으로 사전 등록하며, 캐시 해제 뒤 로그 제한 검사 전에 증가시켜 로그가 생략돼도 실패는 계속 집계합니다.
+- 집계 실패는 라벨 없는 `pheeeew.activity.aggregation.failures`를 0으로 사전 등록합니다.
+  초기화·현재 집계·과거 집계 중 예외가 발생하면 기존 catch 지점에서 한 번 증가하고 로그를 남깁니다.
 
 현재 문맥은 동기 Servlet 요청 하나에 대한 기록입니다. 같은 요청의 비동기·병렬 기록이나 MDC 전파를
 지원하는 범용 추적 시스템이 아닙니다. JDBC 실행 추적, 수집기 교체, SQL 최적화·캐시·풀 크기 조정은 이 분리의 범위 밖입니다.
@@ -99,6 +110,8 @@ docker build --platform linux/arm64 -f docker/Dockerfile -t pheeeew-observabilit
 | 앱의 `AsyncLoggingConfigurationTest`, `ScheduledTaskErrorHandlerTest` | 비동기 출력 계약, 실제 스케줄러의 실패 후 다음 실행 |
 | 모듈의 `IndependentMetricsTest` | 앱 타입 없이 스캔한 지표의 기존 이름·라벨과 기록 결과 |
 | 모듈의 `EmotionPressMetricsTest`, `GroupPressMetricsTest` | 빈 요청, 적용·상태 수, 두 제한 초과량, 그룹 요청 형식·교착 오류의 누적 계약 |
+| 모듈의 `DeviceActivityRecordMetricsTest`, 앱의 `DeviceActivityRecorderTest` | 실패 라벨·초기값·누적, 비동기 제출·캐시 해제·재시도와 로그 제한 |
+| 모듈의 `DeviceActivityAggregationMetricsTest`, 앱의 스케줄러·집계 서비스 테스트 | 프로필별 지표 노출, 초기화·집계 재시도, 성공 결과 보존과 트랜잭션 경계 |
 | 업무 서비스·metrics 테스트 | 업무별 계측 단계와 기존 기능의 연결 |
 
 실제 기동을 다시 검증할 때는 운영 DB·키 대신 일회용 DB와 생성한 테스트 키를 사용합니다.

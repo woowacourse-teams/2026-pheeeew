@@ -18,6 +18,7 @@ import ch.qos.logback.core.read.ListAppender;
 import com.pheeeew.activity.application.DeviceActivityAggregationService;
 import com.pheeeew.activity.application.dto.DeviceActivityCount;
 import com.pheeeew.activity.application.dto.DeviceActivitySnapshot;
+import com.pheeeew.activity.infra.metrics.DeviceActivityAggregationMetrics;
 import com.pheeeew.activity.infra.metrics.DeviceActivityMetrics;
 import com.pheeeew.device.domain.DevicePlatform;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -46,7 +47,8 @@ class DeviceActivityAggregationSchedulerTest {
     void setUp() {
         when(clock.instant()).thenReturn(STARTED_AT);
         metrics = new DeviceActivityMetrics(registry, clock);
-        scheduler = new DeviceActivityAggregationScheduler(service, metrics, registry, clock);
+        scheduler = new DeviceActivityAggregationScheduler(
+                service, metrics, new DeviceActivityAggregationMetrics(registry), clock);
         logs.start();
         logger.addAppender(logs);
     }
@@ -172,7 +174,8 @@ class DeviceActivityAggregationSchedulerTest {
         scheduler.update();
         Instant restartedAt = STARTED_AT.plusSeconds(30);
         when(clock.instant()).thenReturn(restartedAt);
-        var restartedScheduler = new DeviceActivityAggregationScheduler(service, metrics, registry, clock);
+        var restartedScheduler = new DeviceActivityAggregationScheduler(
+                service, metrics, new DeviceActivityAggregationMetrics(registry), clock);
 
         // when
         restartedScheduler.update();
