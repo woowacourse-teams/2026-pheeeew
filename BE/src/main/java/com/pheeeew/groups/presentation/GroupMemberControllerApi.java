@@ -16,7 +16,7 @@ import java.util.UUID;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 
-@Tag(name = "그룹 참여", description = "초대 코드로 그룹에 들어가고 나갑니다.")
+@Tag(name = "그룹 참여", description = "그룹에 들어가고 나갑니다.")
 public interface GroupMemberControllerApi {
 
     @Operation(
@@ -50,6 +50,10 @@ public interface GroupMemberControllerApi {
                     초대 코드를 **본문에 담아** 보냅니다. 경로에 넣지 않는 이유는 접근 로그와 브라우저 기록에
                     그룹 입장 열쇠가 남기 때문입니다.
 
+                    - **가입 방식과 무관하게 쓸 수 있습니다.** 비공개 그룹은 이 경로가 유일한 입구이고,
+                      공개 그룹도 코드로 들어올 수 있습니다. 공개 그룹에 코드 없이 들어가려면
+                      `POST /api/v2/groups/{groupId}/members/me` 를 씁니다.
+
                     - **이미 속한 그룹이면 409** 입니다. 그룹장이 자기 그룹 코드로 요청해도 마찬가지입니다.
                       클라이언트가 재시도하거나 더블 탭했을 때도 409 가 오므로, 이 코드를 "이미 들어가 있음" 으로
                       처리해야 합니다.
@@ -76,7 +80,7 @@ public interface GroupMemberControllerApi {
                                     {"code": "GROUP-007", "message": "이미 속해 있는 그룹입니다."}
                                     """)))
     })
-    ResponseEntity<GroupResponse> join(
+    ResponseEntity<GroupResponse> joinByInviteCode(
             GroupJoinRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );

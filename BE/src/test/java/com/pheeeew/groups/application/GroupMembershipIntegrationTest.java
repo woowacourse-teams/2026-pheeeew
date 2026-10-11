@@ -70,7 +70,7 @@ class GroupMembershipIntegrationTest {
     void 초대_코드로_들어가기_전에_그룹을_미리_본다() {
         // given
         GroupResult 그룹 = 그룹을_만든다("한숨모임");
-        groupService.join(기기를_저장한다().getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(기기를_저장한다().getPublicId(), 그룹.inviteCode());
 
         // when
         GroupPreviewResult 미리보기 = groupService.findByInviteCode(그룹.inviteCode());
@@ -112,7 +112,7 @@ class GroupMembershipIntegrationTest {
         Device 들어올_기기 = 기기를_저장한다();
 
         // when
-        GroupResult 결과 = groupService.join(들어올_기기.getPublicId(), 그룹.inviteCode());
+        GroupResult 결과 = groupService.joinByInviteCode(들어올_기기.getPublicId(), 그룹.inviteCode());
 
         // then
         assertThat(결과.name()).isEqualTo("한숨모임");
@@ -125,11 +125,11 @@ class GroupMembershipIntegrationTest {
         // given
         GroupResult 그룹 = 그룹을_만든다("한숨모임");
         Device 들어올_기기 = 기기를_저장한다();
-        groupService.join(들어올_기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(들어올_기기.getPublicId(), 그룹.inviteCode());
 
         // when
         Throwable throwable = catchThrowable(
-                () -> groupService.join(들어올_기기.getPublicId(), 그룹.inviteCode())
+                () -> groupService.joinByInviteCode(들어올_기기.getPublicId(), 그룹.inviteCode())
         );
 
         // then
@@ -144,7 +144,7 @@ class GroupMembershipIntegrationTest {
         GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프());
 
         // when
-        Throwable throwable = catchThrowable(() -> groupService.join(그룹장.getPublicId(), 그룹.inviteCode()));
+        Throwable throwable = catchThrowable(() -> groupService.joinByInviteCode(그룹장.getPublicId(), 그룹.inviteCode()));
 
         // then
         그룹_오류다(throwable, GroupErrorCode.GROUP_ALREADY_JOINED);
@@ -159,7 +159,7 @@ class GroupMembershipIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(
-                () -> groupService.join(들어올_기기.getPublicId(), "ZZZZZZ")
+                () -> groupService.joinByInviteCode(들어올_기기.getPublicId(), "ZZZZZZ")
         );
 
         // then
@@ -175,7 +175,7 @@ class GroupMembershipIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(
-                () -> groupService.join(기기를_저장한다().getPublicId(), 그룹.inviteCode())
+                () -> groupService.joinByInviteCode(기기를_저장한다().getPublicId(), 그룹.inviteCode())
         );
 
         // then
@@ -192,12 +192,12 @@ class GroupMembershipIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(
-                () -> groupService.join(기기를_저장한다().getPublicId(), 이전_코드)
+                () -> groupService.joinByInviteCode(기기를_저장한다().getPublicId(), 이전_코드)
         );
 
         // then
         그룹_오류다(throwable, GroupErrorCode.GROUP_NOT_FOUND);
-        assertThat(groupService.join(기기를_저장한다().getPublicId(), 새_코드).memberCount()).isEqualTo(2);
+        assertThat(groupService.joinByInviteCode(기기를_저장한다().getPublicId(), 새_코드).memberCount()).isEqualTo(2);
     }
 
     @Test
@@ -205,7 +205,7 @@ class GroupMembershipIntegrationTest {
         // given
         GroupResult 그룹 = 그룹을_만든다("한숨모임");
         Device 들어온_기기 = 기기를_저장한다();
-        groupService.join(들어온_기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(들어온_기기.getPublicId(), 그룹.inviteCode());
 
         // when
         groupService.leave(그룹.publicId(), 들어온_기기.getPublicId());
@@ -234,11 +234,11 @@ class GroupMembershipIntegrationTest {
         // given
         GroupResult 그룹 = 그룹을_만든다("한숨모임");
         Device 기기 = 기기를_저장한다();
-        groupService.join(기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(기기.getPublicId(), 그룹.inviteCode());
         groupService.leave(그룹.publicId(), 기기.getPublicId());
 
         // when
-        GroupResult 결과 = groupService.join(기기.getPublicId(), 그룹.inviteCode());
+        GroupResult 결과 = groupService.joinByInviteCode(기기.getPublicId(), 그룹.inviteCode());
 
         // then
         assertThat(결과.memberCount()).isEqualTo(2);
@@ -279,7 +279,7 @@ class GroupMembershipIntegrationTest {
         // given
         GroupResult 그룹 = 그룹을_만든다("한숨모임");
         Device 기기 = 기기를_저장한다();
-        groupService.join(기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(기기.getPublicId(), 그룹.inviteCode());
 
         // when
         groupService.leave(그룹.publicId(), 기기.getPublicId());
@@ -300,7 +300,7 @@ class GroupMembershipIntegrationTest {
                     준비.countDown();
                     출발.await(5, TimeUnit.SECONDS);
                     try {
-                        groupService.join(devicePublicId, inviteCode);
+                        groupService.joinByInviteCode(devicePublicId, inviteCode);
 
                         return true;
                     } catch (GroupException exception) {

@@ -117,7 +117,7 @@ class GroupMemberControllerTest {
     void 처음_참여하면_201과_위치_헤더를_반환한다() {
         // given
         GroupResult 참여한_그룹 = 기본_그룹_결과();
-        when(groupService.join(기기_공개_식별자, 초대_코드)).thenReturn(참여한_그룹);
+        when(groupService.joinByInviteCode(기기_공개_식별자, 초대_코드)).thenReturn(참여한_그룹);
 
         // when
         RestTestClient.ResponseSpec result = 참여한다(초대_코드);
@@ -125,13 +125,13 @@ class GroupMemberControllerTest {
         // then
         result.expectStatus().isCreated()
                 .expectHeader().location(GROUPS_URI + "/" + 참여한_그룹.publicId());
-        verify(groupService).join(기기_공개_식별자, 초대_코드);
+        verify(groupService).joinByInviteCode(기기_공개_식별자, 초대_코드);
     }
 
     @Test
     void 이미_속해_있으면_409를_반환한다() {
         // given
-        when(groupService.join(기기_공개_식별자, 초대_코드))
+        when(groupService.joinByInviteCode(기기_공개_식별자, 초대_코드))
                 .thenThrow(new GroupException(GroupErrorCode.GROUP_ALREADY_JOINED));
 
         // when
@@ -150,13 +150,13 @@ class GroupMemberControllerTest {
     })
     void 초대_코드를_대문자로_맞추고_혼동되는_글자를_바꾼다(String 보낸_코드, String 서비스가_받는_코드) {
         // given
-        when(groupService.join(기기_공개_식별자, 서비스가_받는_코드)).thenReturn(기본_그룹_결과());
+        when(groupService.joinByInviteCode(기기_공개_식별자, 서비스가_받는_코드)).thenReturn(기본_그룹_결과());
 
         // when
         참여한다(보낸_코드);
 
         // then
-        verify(groupService).join(기기_공개_식별자, 서비스가_받는_코드);
+        verify(groupService).joinByInviteCode(기기_공개_식별자, 서비스가_받는_코드);
     }
 
     @ParameterizedTest
@@ -187,7 +187,7 @@ class GroupMemberControllerTest {
     @Test
     void 없는_초대_코드면_404를_반환한다() {
         // given
-        when(groupService.join(기기_공개_식별자, 초대_코드))
+        when(groupService.joinByInviteCode(기기_공개_식별자, 초대_코드))
                 .thenThrow(new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
 
         // when

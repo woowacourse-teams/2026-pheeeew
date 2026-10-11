@@ -214,7 +214,7 @@ public class GroupService {
     }
 
     @Transactional
-    public GroupResult join(UUID devicePublicId, String inviteCode) {
+    public GroupResult joinByInviteCode(UUID devicePublicId, String inviteCode) {
         Device device = findDevice(devicePublicId);
         Group group = groupRepository.findByInviteCodeAndDeletedAtIsNull(inviteCode)
                 .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));

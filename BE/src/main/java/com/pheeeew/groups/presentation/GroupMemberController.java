@@ -40,11 +40,11 @@ public class GroupMemberController implements GroupMemberControllerApi {
 
     @Override
     @PostMapping("/join")
-    public ResponseEntity<GroupResponse> join(
+    public ResponseEntity<GroupResponse> joinByInviteCode(
             @Valid @RequestBody GroupJoinRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
-        GroupResult result = groupService.join(devicePublicId, request.inviteCode());
+        GroupResult result = groupService.joinByInviteCode(devicePublicId, request.inviteCode());
         GroupResponse body = GroupResponse.from(result);
 
         return ResponseEntity.created(URI.create("/api/v2/groups/" + body.groupId())).body(body);
