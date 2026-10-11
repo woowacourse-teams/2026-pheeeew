@@ -1,0 +1,40 @@
+services:
+  db-observer:
+    build: .
+    env_file:
+      - ${DB_OBSERVER_ENV_FILE:?Set an absolute path to the observer environment file}
+    environment:
+      PGPASSFILE: /run/secrets/db.pass
+    volumes:
+      - samples:/data
+      - type: bind
+        source: ${DB_OBSERVER_PASSFILE:?Set an absolute path to the UID 10001 mode 0600 pgpass file}
+        target: /run/secrets/db.pass
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      - database
+    restart: "no"
+    stop_grace_period: 6s
+    init: true
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 64m
+    cpus: 0.25
+    pids_limit: 16
+    logging:
+      driver: json-file
+      options:
+        max-size: "1m"
+        max-file: "2"
+
+networks:
+  database:
+    external: true
+    name: ${DB_OBSERVER_NETWORK:?Set the existing database network}
+volumes:
+  samples:
