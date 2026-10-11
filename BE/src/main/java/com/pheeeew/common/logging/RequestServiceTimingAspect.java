@@ -1,6 +1,5 @@
 package com.pheeeew.common.logging;
 
-import com.pheeeew.common.logging.RequestTiming.Stage;
 import java.util.function.LongSupplier;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -30,11 +29,11 @@ public class RequestServiceTimingAspect {
             + "execution(public * com.pheeeew.emotion.application.query.EmotionPressQueryService.findMyDailyPresses(..)) || "
             + "execution(public * com.pheeeew.emotion.application.query.EmotionPressQueryService.findDailyTotal(..))")
     public Object recordService(ProceedingJoinPoint joinPoint) throws Throwable {
-        Stage stage = switch (joinPoint.getSignature().getName()) {
-            case "findRegionMap" -> Stage.REGIONS_SERVICE;
-            case "press" -> Stage.PRESS_SERVICE;
-            case "findMyDailyPresses" -> Stage.PRESS_MY_SERVICE;
-            case "findDailyTotal" -> Stage.PRESS_TOTAL_SERVICE;
+        PheeeewRequestTimingStage stage = switch (joinPoint.getSignature().getName()) {
+            case "findRegionMap" -> PheeeewRequestTimingStage.REGIONS_SERVICE;
+            case "press" -> PheeeewRequestTimingStage.PRESS_SERVICE;
+            case "findMyDailyPresses" -> PheeeewRequestTimingStage.PRESS_MY_SERVICE;
+            case "findDailyTotal" -> PheeeewRequestTimingStage.PRESS_TOTAL_SERVICE;
             default -> throw new IllegalStateException("계측 대상이 아닌 서비스 메서드입니다.");
         };
         long startedAt = nanoTime.getAsLong();

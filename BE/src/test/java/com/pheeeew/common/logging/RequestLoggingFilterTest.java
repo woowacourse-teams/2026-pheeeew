@@ -14,6 +14,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.common.exception.PheeeewException;
+import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -93,6 +94,39 @@ class RequestLoggingFilterTest {
     }
 
     @Test
+    void 다른_클래스_로더의_필터도_공통_요청_문맥을_기록하고_복원한다() throws Exception {
+        // given: DevTools처럼 앱 필터와 라이브러리가 서로 다른 로더에 놓인다.
+        var loader = new ClassLoader(RequestTiming.class.getClassLoader()) {
+            Class<?> defineFilter(byte[] bytes) {
+                return defineClass(RequestLoggingFilter.class.getName(), bytes, 0, bytes.length);
+            }
+        };
+        Filter separateFilter;
+        try (var source = RequestLoggingFilter.class.getResourceAsStream("RequestLoggingFilter.class")) {
+            separateFilter = (Filter) loader.defineFilter(source.readAllBytes()).getConstructor().newInstance();
+        }
+        var request = new MockHttpServletRequest();
+        Object previous = new Object();
+        request.setAttribute(RequestTiming.class.getName(), previous);
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+
+        try {
+            // when
+            separateFilter.doFilter(request, new MockHttpServletResponse(), (req, res) -> {
+                RequestTiming.record(PheeeewRequestTimingStage.PRESS_INCREASE, 10);
+                assertThat(RequestTiming.snapshot(request)).containsExactlyEntriesOf(Map.of(
+                        PheeeewRequestTimingStage.PRESS_INCREASE, RequestTiming.Measurement.of(1, 10, 10)));
+            });
+
+            // then
+            assertThat(separateFilter.getClass().getClassLoader()).isNotSameAs(RequestTiming.class.getClassLoader());
+            assertThat(request.getAttribute(RequestTiming.class.getName())).isSameAs(previous);
+        } finally {
+            RequestContextHolder.resetRequestAttributes();
+        }
+    }
+
+    @Test
     void 정상_요청은_로그_없이_새_추적번호를_응답하고_기존_MDC를_복원한다() throws Exception {
         // given
         MDC.put("correlationId", "outer-context");
@@ -109,10 +143,10 @@ class RequestLoggingFilterTest {
         assertThat(second.getResponse().getHeader("X-Correlation-ID")).isNotEqualTo(id);
         assertThat(MDC.get("correlationId")).isEqualTo("outer-context");
         assertThat(output).isEmpty();
-        assertThat(first.getRequest().getAttribute(RequestTiming.ATTRIBUTE)).isNull();
-        assertThat(second.getRequest().getAttribute(RequestTiming.ATTRIBUTE)).isNull();
+        assertThat(first.getRequest().getAttribute(RequestTiming.class.getName())).isNull();
+        assertThat(second.getRequest().getAttribute(RequestTiming.class.getName())).isNull();
         assertThat(controller.timings).hasSize(2).allSatisfy(snapshot -> assertThat(snapshot)
-                .containsExactlyEntriesOf(Map.of(RequestTiming.Stage.PRESS_INCREASE, RequestTiming.Measurement.of(1, 10, 10))));
+                .containsExactlyEntriesOf(Map.of(PheeeewRequestTimingStage.PRESS_INCREASE, RequestTiming.Measurement.of(1, 10, 10))));
     }
 
     @Test
@@ -163,9 +197,9 @@ class RequestLoggingFilterTest {
         assertThat(output).hasSize(1);
         assertThat(output.getFirst()).contains("COMMON-002", "PheeeewException", "service-cause")
                 .doesNotContain("invalid-cause");
-        assertThat(failed.getRequest().getAttribute(RequestTiming.ATTRIBUTE)).isNull();
+        assertThat(failed.getRequest().getAttribute(RequestTiming.class.getName())).isNull();
         assertThat(controller.timings).singleElement().satisfies(snapshot -> assertThat(snapshot)
-                .containsEntry(RequestTiming.Stage.PRESS_INCREASE, RequestTiming.Measurement.of(1, 10, 10)));
+                .containsEntry(PheeeewRequestTimingStage.PRESS_INCREASE, RequestTiming.Measurement.of(1, 10, 10)));
     }
 
     @Test
@@ -201,7 +235,7 @@ class RequestLoggingFilterTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void 느린_요청과_서버_오류에_측정한_단계만_호출_수와_밀리초로_출력한다(boolean failed) throws Exception {
+    void 느린_요청과_서버_오류에_측정한_허용_단계만_호출_수와_밀리초로_출력한다(boolean failed) throws Exception {
         // given
         durationNanos = 1_000_000_000;
         // when
@@ -217,7 +251,7 @@ class RequestLoggingFilterTest {
         assertTiming(timings.get("regions_intersection"), 2, 4.0, 2.75);
         assertTiming(timings.get("press_increase"), 2, 0.75, 0.5);
         assertTiming(timings.get("regions_service"), 1, 10.0, 10.0);
-        assertThat(result.getRequest().getAttribute(RequestTiming.ATTRIBUTE)).isNull();
+        assertThat(result.getRequest().getAttribute(RequestTiming.class.getName())).isNull();
     }
 
     @Test
@@ -232,7 +266,7 @@ class RequestLoggingFilterTest {
         assertThatThrownBy(() -> filter.doFilter(request, response, (req, res) -> {
             RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
             try {
-                RequestTiming.record(RequestTiming.Stage.PRESS_INCREASE, 1_500_000);
+                RequestTiming.record(PheeeewRequestTimingStage.PRESS_INCREASE, 1_500_000);
             } finally {
                 RequestContextHolder.resetRequestAttributes();
             }
@@ -243,7 +277,7 @@ class RequestLoggingFilterTest {
         assertThat(output.getFirst()).contains("UNMAPPED", "OTHER", "IOException", "unhandled-failure", "unhandled-cause")
                 .doesNotContain("PRIVATE-METHOD", "private-path", "sqlState");
         assertThat(MDC.get("correlationId")).isNull();
-        assertThat(request.getAttribute(RequestTiming.ATTRIBUTE)).isNull();
+        assertThat(request.getAttribute(RequestTiming.class.getName())).isNull();
         Map<?, ?> timings = (Map<?, ?>) JsonParserFactory.getJsonParser().parseMap(output.getFirst()).get("timings");
         assertTiming(timings.get("press_increase"), 1, 1.5, 1.5);
     }
@@ -378,11 +412,11 @@ class RequestLoggingFilterTest {
         // given
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/test");
         Object previous = new Object();
-        request.setAttribute(RequestTiming.ATTRIBUTE, previous);
+        request.setAttribute(RequestTiming.class.getName(), previous);
         MDC.put("correlationId", "outer");
         IOException failure = new IOException("failure");
         FilterChain chain = (req, res) -> {
-            assertThat(req.getAttribute(RequestTiming.ATTRIBUTE)).isInstanceOf(RequestTiming.class).isNotSameAs(previous);
+            assertThat(req.getAttribute(RequestTiming.class.getName())).isInstanceOf(RequestTiming.class).isNotSameAs(previous);
             if (failed) {
                 throw failure;
             }
@@ -393,7 +427,7 @@ class RequestLoggingFilterTest {
         } else {
             filter.doFilter(request, new MockHttpServletResponse(), chain);
         }
-        assertThat(request.getAttribute(RequestTiming.ATTRIBUTE)).isSameAs(previous);
+        assertThat(request.getAttribute(RequestTiming.class.getName())).isSameAs(previous);
         assertThat(MDC.get("correlationId")).isEqualTo("outer");
     }
 
@@ -409,7 +443,7 @@ class RequestLoggingFilterTest {
     static class TestController {
 
         private Exception failure;
-        private final List<Map<RequestTiming.Stage, RequestTiming.Measurement>> timings = new ArrayList<>();
+        private final List<Map<RequestTimingStage, RequestTiming.Measurement>> timings = new ArrayList<>();
 
         @GetMapping("/test/ok")
         String ok(HttpServletRequest request) {
@@ -433,11 +467,13 @@ class RequestLoggingFilterTest {
 
         @GetMapping("/test/timings/{failed}")
         void timed(@PathVariable boolean failed) {
-            RequestTiming.record(RequestTiming.Stage.REGIONS_INTERSECTION, 1_250_000);
-            RequestTiming.record(RequestTiming.Stage.REGIONS_INTERSECTION, 2_750_000);
-            RequestTiming.record(RequestTiming.Stage.PRESS_INCREASE, 500_000);
-            RequestTiming.record(RequestTiming.Stage.PRESS_INCREASE, 250_000);
-            RequestTiming.record(RequestTiming.Stage.REGIONS_SERVICE, 10_000_000);
+            RequestTiming.record(PheeeewRequestTimingStage.REGIONS_INTERSECTION, 1_250_000);
+            RequestTiming.record(PheeeewRequestTimingStage.REGIONS_INTERSECTION, 2_750_000);
+            RequestTiming.record(PheeeewRequestTimingStage.PRESS_INCREASE, 500_000);
+            RequestTiming.record(PheeeewRequestTimingStage.PRESS_INCREASE, 250_000);
+            RequestTiming.record(PheeeewRequestTimingStage.REGIONS_SERVICE, 10_000_000);
+            RequestTiming.record(UnlistedStage.REGIONS_INTERSECTION, 99_000_000);
+            RequestTiming.record(UnlistedStage.UNLISTED, 99_000_000);
             if (failed) {
                 throw new PheeeewException(INTERNAL_SERVER_ERROR, new IllegalStateException("timed failure"));
             }
@@ -465,9 +501,14 @@ class RequestLoggingFilterTest {
         }
 
         private void captureTiming(HttpServletRequest request) {
-            RequestTiming.record(RequestTiming.Stage.PRESS_INCREASE, 10);
+            RequestTiming.record(PheeeewRequestTimingStage.PRESS_INCREASE, 10);
             timings.add(RequestTiming.snapshot(request));
         }
+    }
+
+    private enum UnlistedStage implements RequestTimingStage {
+        REGIONS_INTERSECTION,
+        UNLISTED
     }
 
     static class MessageFailingException extends RuntimeException {

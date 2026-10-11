@@ -123,7 +123,7 @@ class AsyncLoggingConfigurationTest {
         request.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, request.getRequestURI());
         RequestTiming.begin(request);
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
-        RequestTiming.record(RequestTiming.Stage.REGIONS_INTERSECTION, 20_000_000);
+        RequestTiming.record(PheeeewRequestTimingStage.REGIONS_INTERSECTION, 20_000_000);
         Logger writer = (Logger) LoggerFactory.getLogger(RequestLogWriter.class);
         boolean additive = writer.isAdditive();
         writer.setAdditive(false);

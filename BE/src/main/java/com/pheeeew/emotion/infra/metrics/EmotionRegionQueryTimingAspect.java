@@ -1,7 +1,7 @@
 package com.pheeeew.emotion.infra.metrics;
 
+import com.pheeeew.common.logging.PheeeewRequestTimingStage;
 import com.pheeeew.common.logging.RequestTiming;
-import com.pheeeew.common.logging.RequestTiming.Stage;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -20,7 +20,7 @@ public class EmotionRegionQueryTimingAspect {
         } finally {
             try {
                 // JDBC 통신·결과 매핑 등을 포함한 Repository 호출 시간이며 순수 SQL 실행 시간은 아니다.
-                RequestTiming.record(Stage.REGIONS_SUMMARY, System.nanoTime() - startedAt);
+                RequestTiming.record(PheeeewRequestTimingStage.REGIONS_SUMMARY, System.nanoTime() - startedAt);
             } catch (RuntimeException ignored) {
                 // 요청별 기록 실패가 조회 결과나 원래 예외를 바꾸지 않게 한다.
             }

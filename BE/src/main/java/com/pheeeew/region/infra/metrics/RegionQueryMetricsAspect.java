@@ -1,7 +1,7 @@
 package com.pheeeew.region.infra.metrics;
 
+import com.pheeeew.common.logging.PheeeewRequestTimingStage;
 import com.pheeeew.common.logging.RequestTiming;
-import com.pheeeew.common.logging.RequestTiming.Stage;
 import com.pheeeew.region.infra.metrics.RegionQueryMetrics.Operation;
 import java.util.function.LongSupplier;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -60,12 +60,12 @@ public class RegionQueryMetricsAspect {
         }
     }
 
-    private Stage requestStage(Operation operation) {
+    private PheeeewRequestTimingStage requestStage(Operation operation) {
         return switch (operation) {
-            case INTERSECTING_REGIONS -> Stage.REGIONS_INTERSECTION;
-            case BOUNDARIES_VERIFIED -> Stage.REGIONS_BOUNDARIES;
-            case AGGREGATION_READY -> Stage.REGIONS_AGGREGATION_READY;
-            case EMD_CODE -> Stage.REGION_EMD_CODE;
+            case INTERSECTING_REGIONS -> PheeeewRequestTimingStage.REGIONS_INTERSECTION;
+            case BOUNDARIES_VERIFIED -> PheeeewRequestTimingStage.REGIONS_BOUNDARIES;
+            case AGGREGATION_READY -> PheeeewRequestTimingStage.REGIONS_AGGREGATION_READY;
+            case EMD_CODE -> PheeeewRequestTimingStage.REGION_EMD_CODE;
         };
     }
 }

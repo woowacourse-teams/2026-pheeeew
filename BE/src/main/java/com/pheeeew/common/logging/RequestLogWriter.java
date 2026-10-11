@@ -79,12 +79,12 @@ public class RequestLogWriter {
     }
 
     private void addTimings(LoggingEventBuilder event, HttpServletRequest request) {
-        Map<RequestTiming.Stage, RequestTiming.Measurement> snapshot = RequestTiming.snapshot(request);
+        Map<RequestTimingStage, RequestTiming.Measurement> snapshot = RequestTiming.snapshot(request);
         if (snapshot.isEmpty()) {
             return;
         }
         Map<String, Map<String, Number>> timings = new LinkedHashMap<>();
-        for (RequestTiming.Stage stage : RequestTiming.Stage.values()) {
+        for (PheeeewRequestTimingStage stage : PheeeewRequestTimingStage.values()) {
             RequestTiming.Measurement measured = snapshot.get(stage);
             if (measured != null) {
                 timings.put(stage.name().toLowerCase(Locale.ROOT), Map.of(

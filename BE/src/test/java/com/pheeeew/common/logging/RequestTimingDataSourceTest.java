@@ -1,7 +1,7 @@
 package com.pheeeew.common.logging;
 
-import static com.pheeeew.common.logging.RequestTiming.Stage.DB_CONNECTION_ACQUIRE_FAILED;
-import static com.pheeeew.common.logging.RequestTiming.Stage.DB_CONNECTION_ACQUIRE_SUCCESS;
+import static com.pheeeew.common.logging.PheeeewRequestTimingStage.DB_CONNECTION_ACQUIRE_FAILED;
+import static com.pheeeew.common.logging.PheeeewRequestTimingStage.DB_CONNECTION_ACQUIRE_SUCCESS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
@@ -95,7 +95,7 @@ class RequestTimingDataSourceTest {
         // given
         var request = mock(MockHttpServletRequest.class);
         if (timingFailure.equals("RECORD")) {
-            when(request.getAttribute(RequestTiming.ATTRIBUTE)).thenThrow(new IllegalStateException("record failure"));
+            when(request.getAttribute(RequestTiming.class.getName())).thenThrow(new IllegalStateException("record failure"));
         }
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
         var target = mock(DataSource.class);

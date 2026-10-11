@@ -25,9 +25,14 @@ dependencyManagement {
 
 dependencies {
     api 'org.slf4j:slf4j-api'
+    compileOnlyApi 'jakarta.servlet:jakarta.servlet-api'
+    implementation 'org.springframework:spring-web'
 
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.springframework:spring-test'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
