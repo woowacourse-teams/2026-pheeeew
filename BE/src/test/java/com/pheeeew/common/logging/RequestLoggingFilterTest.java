@@ -4,6 +4,8 @@ import static com.pheeeew.common.exception.CommonErrorCode.INTERNAL_SERVER_ERROR
 import static com.pheeeew.common.exception.CommonErrorCode.INVALID_REQUEST;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -14,7 +16,6 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AppenderBase;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.common.exception.PheeeewException;
-import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
@@ -58,7 +59,8 @@ class RequestLoggingFilterTest {
     private final StructuredLogEncoder encoder = new StructuredLogEncoder();
     private final AtomicLong ticks = new AtomicLong();
     private long durationNanos;
-    private final RequestLoggingFilter filter = new RequestLoggingFilter(() -> ticks.getAndAdd(durationNanos));
+    private final RequestLoggingFilter filter = new RequestLoggingFilter(
+            new RequestLogWriter(new PheeeewRequestLogPolicy()), () -> ticks.getAndAdd(durationNanos));
     private final TestController controller = new TestController();
     private AppenderBase<ILoggingEvent> appender;
     private MockMvc client;
@@ -94,33 +96,44 @@ class RequestLoggingFilterTest {
     }
 
     @Test
-    void 다른_클래스_로더의_필터도_공통_요청_문맥을_기록하고_복원한다() throws Exception {
-        // given: DevTools처럼 앱 필터와 라이브러리가 서로 다른 로더에 놓인다.
-        var loader = new ClassLoader(RequestTiming.class.getClassLoader()) {
-            Class<?> defineFilter(byte[] bytes) {
-                return defineClass(RequestLoggingFilter.class.getName(), bytes, 0, bytes.length);
+    void 다른_클래스_로더의_앱_정책으로도_공통_필터가_기록하고_문맥을_복원한다() throws Exception {
+        // given: DevTools처럼 앱 정책과 라이브러리가 서로 다른 로더에 놓인다.
+        var loader = new ClassLoader(RequestLogPolicy.class.getClassLoader()) {
+            Class<?> definePolicy(byte[] bytes) {
+                return defineClass(PheeeewRequestLogPolicy.class.getName(), bytes, 0, bytes.length);
             }
         };
-        Filter separateFilter;
-        try (var source = RequestLoggingFilter.class.getResourceAsStream("RequestLoggingFilter.class")) {
-            separateFilter = (Filter) loader.defineFilter(source.readAllBytes()).getConstructor().newInstance();
+        RequestLogPolicy separatePolicy;
+        try (var source = PheeeewRequestLogPolicy.class.getResourceAsStream("PheeeewRequestLogPolicy.class")) {
+            separatePolicy = (RequestLogPolicy) loader.definePolicy(source.readAllBytes()).getConstructor().newInstance();
         }
+        var configuredFilter = new RequestLoggingFilter(new RequestLogWriter(separatePolicy));
         var request = new MockHttpServletRequest();
+        request.setQueryString("groupId=7&latitude=37.1234567");
+        var response = new MockHttpServletResponse();
+        response.setStatus(500);
         Object previous = new Object();
         request.setAttribute(RequestTiming.class.getName(), previous);
+        MDC.put("correlationId", "outer-context");
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
 
         try {
             // when
-            separateFilter.doFilter(request, new MockHttpServletResponse(), (req, res) -> {
+            configuredFilter.doFilter(request, response, (req, res) -> {
                 RequestTiming.record(PheeeewRequestTimingStage.PRESS_INCREASE, 10);
                 assertThat(RequestTiming.snapshot(request)).containsExactlyEntriesOf(Map.of(
                         PheeeewRequestTimingStage.PRESS_INCREASE, RequestTiming.Measurement.of(1, 10, 10)));
             });
 
             // then
-            assertThat(separateFilter.getClass().getClassLoader()).isNotSameAs(RequestTiming.class.getClassLoader());
+            assertThat(separatePolicy.getClass().getClassLoader()).isNotSameAs(RequestLogWriter.class.getClassLoader());
             assertThat(request.getAttribute(RequestTiming.class.getName())).isSameAs(previous);
+            assertThat(MDC.get("correlationId")).isEqualTo("outer-context");
+            assertThat(output).hasSize(1);
+            assertThat(JsonParserFactory.getJsonParser().parseMap(output.getFirst()))
+                    .containsEntry("event", "http_request_failed")
+                    .containsEntry("params", Map.of("groupId", "7"));
+            assertThat(output.getFirst()).contains("press_increase").doesNotContain("37.1234567");
         } finally {
             RequestContextHolder.resetRequestAttributes();
         }
@@ -294,7 +307,9 @@ class RequestLoggingFilterTest {
 
         // when
         client.perform(post("/test/values/" + groupId + "/HEART/PATH-INVITE-CODE")
-                        .queryParam("weeksAgo", "1")
+                        .queryParam("groupId", "QUERY-GROUP")
+                        .queryParam("emojiType", "QUERY-EMOJI")
+                        .queryParam("weeksAgo", "1", "2")
                         .queryParam("blockId", "7")
                         .queryParam("latitude", "37.1234567")
                         .queryParam("cursor", "CURSOR-QUERY")
@@ -311,7 +326,7 @@ class RequestLoggingFilterTest {
         assertThat(JsonParserFactory.getJsonParser().parseMap(output.getFirst())).containsEntry("params",
                 Map.of("groupId", groupId, "emojiType", "HEART", "weeksAgo", "1", "blockId", "7"));
         assertThat(output.getFirst()).doesNotContain("PATH-INVITE-CODE", "37.1234567", "CURSOR-QUERY", "INVITE-QUERY",
-                "MEMO-QUERY", "REFRESH-QUERY", requestId, "BODY-STATE", "MEMO-BODY");
+                "MEMO-QUERY", "REFRESH-QUERY", requestId, "BODY-STATE", "MEMO-BODY", "QUERY-GROUP", "QUERY-EMOJI");
     }
 
     @Test
@@ -433,6 +448,42 @@ class RequestLoggingFilterTest {
         }
         assertThat(request.getAttribute(RequestTiming.class.getName())).isSameAs(previous);
         assertThat(MDC.get("correlationId")).isEqualTo("outer");
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 앱_정책이_실패하면_응답을_유지하고_예외_메시지_없는_건너뜀_경고만_남긴다(boolean valuesFailure) {
+        // given
+        var request = new MockHttpServletRequest("GET", "/private-path");
+        var response = new MockHttpServletResponse();
+        response.setStatus(valuesFailure ? 500 : 200);
+        var policy = mock(RequestLogPolicy.class);
+        var failure = new IllegalStateException("policy-secret");
+        if (valuesFailure) {
+            when(policy.requestValues(request)).thenThrow(failure);
+        } else {
+            when(policy.timingStages()).thenThrow(failure);
+        }
+        Object previousTiming = RequestTiming.begin(request);
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
+        try {
+            RequestTiming.record(PheeeewRequestTimingStage.PRESS_INCREASE, 10);
+
+            // when
+            new RequestLogWriter(policy).write(request, response, 1200, null);
+
+            // then
+            assertThat(response.getStatus()).isEqualTo(valuesFailure ? 500 : 200);
+            assertThat(output).hasSize(1);
+            assertThat(JsonParserFactory.getJsonParser().parseMap(output.getFirst()))
+                    .containsEntry("event", "http_request_log_skipped")
+                    .containsEntry("skippedBy", "java.lang.IllegalStateException")
+                    .containsEntry("level", "WARN");
+            assertThat(output.getFirst()).doesNotContain("policy-secret", "private-path", "http_request_failed", "http_request_slow");
+        } finally {
+            RequestTiming.restore(request, previousTiming);
+            RequestContextHolder.resetRequestAttributes();
+        }
     }
 
     private void assertTiming(Object value, long count, double totalMs, double maxMs) {

@@ -9,7 +9,7 @@ import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층�
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.pheeeew.common.logging.RequestLoggingFilter;
+import com.pheeeew.common.logging.RequestLoggingConfiguration;
 import com.pheeeew.common.logging.RequestServiceTimingAspect;
 import com.pheeeew.common.logging.PheeeewRequestTimingStage;
 import com.pheeeew.common.logging.RequestTiming;
@@ -432,7 +432,7 @@ class EmotionRegionCountIntegrationTest {
     private Map<RequestTimingStage, Measurement> inRequest(Runnable operation) throws Exception {
         var request = new MockHttpServletRequest();
         var snapshot = new AtomicReference<Map<RequestTimingStage, Measurement>>();
-        new RequestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
+        new RequestLoggingConfiguration().requestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
             RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
             try {
                 operation.run();

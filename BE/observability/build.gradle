@@ -27,7 +27,8 @@ dependencies {
     api 'org.slf4j:slf4j-api'
     api 'org.springframework:spring-jdbc'
     compileOnlyApi 'jakarta.servlet:jakarta.servlet-api'
-    implementation 'org.springframework:spring-web'
+    api 'org.springframework:spring-web'
+    implementation 'org.springframework:spring-webmvc'
     implementation 'org.springframework:spring-context'
     implementation 'com.zaxxer:HikariCP'
 

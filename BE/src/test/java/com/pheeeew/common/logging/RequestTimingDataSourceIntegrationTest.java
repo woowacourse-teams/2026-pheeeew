@@ -134,7 +134,8 @@ class RequestTimingDataSourceIntegrationTest {
             // given: 실제 지연 대신 필터의 시계만 진행시켜 로그 출력 경계를 검증한다.
             var source = context.getBean(DataSource.class);
             var clock = new java.util.concurrent.atomic.AtomicLong();
-            var filter = new RequestLoggingFilter(() -> clock.getAndAdd(2_000_000_000L));
+            var filter = new RequestLoggingFilter(
+                    new RequestLogWriter(new PheeeewRequestLogPolicy()), () -> clock.getAndAdd(2_000_000_000L));
             var request = new MockHttpServletRequest("GET", "/probe");
             var capture = StructuredLogCapture.attach(RequestLogWriter.class);
             try {

@@ -1,11 +1,13 @@
 package com.pheeeew.common.logging;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.spi.LoggingEventBuilder;
 import org.springframework.util.ErrorHandler;
 
-@Slf4j
 public class ScheduledTaskErrorHandler implements ErrorHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(ScheduledTaskErrorHandler.class);
 
     private static final String EVENT_SCHEDULED_TASK_FAILED = "scheduled_task_failed";
     private static final String EVENT_SCHEDULED_TASK_LOG_SKIPPED = "scheduled_task_log_skipped";

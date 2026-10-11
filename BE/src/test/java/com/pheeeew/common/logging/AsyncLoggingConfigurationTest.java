@@ -129,7 +129,7 @@ class AsyncLoggingConfigurationTest {
         writer.setAdditive(false);
         writer.addAppender(async);
         try {
-            new RequestLogWriter().write(request, new MockHttpServletResponse(), 1200, null);
+            new RequestLogWriter(new PheeeewRequestLogPolicy()).write(request, new MockHttpServletResponse(), 1200, null);
         } finally {
             writer.detachAppender(async);
             writer.setAdditive(additive);

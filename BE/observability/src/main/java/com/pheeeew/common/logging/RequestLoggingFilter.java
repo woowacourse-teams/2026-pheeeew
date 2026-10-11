@@ -11,23 +11,22 @@ import java.util.function.LongSupplier;
 import org.slf4j.MDC;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 @Order(Ordered.HIGHEST_PRECEDENCE + 10)
-@Component
 public class RequestLoggingFilter extends OncePerRequestFilter {
 
     private static final String CORRELATION_ID = "correlationId";
 
-    private final RequestLogWriter logWriter = new RequestLogWriter();
+    private final RequestLogWriter logWriter;
     private final LongSupplier nanoTime;
 
-    public RequestLoggingFilter() {
-        this(System::nanoTime);
+    public RequestLoggingFilter(RequestLogWriter logWriter) {
+        this(logWriter, System::nanoTime);
     }
 
-    RequestLoggingFilter(LongSupplier nanoTime) {
+    public RequestLoggingFilter(RequestLogWriter logWriter, LongSupplier nanoTime) {
+        this.logWriter = logWriter;
         this.nanoTime = nanoTime;
     }
 

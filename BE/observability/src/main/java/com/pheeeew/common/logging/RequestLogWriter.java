@@ -2,19 +2,18 @@ package com.pheeeew.common.logging;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Stream;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.spi.LoggingEventBuilder;
 import org.springframework.http.HttpMethod;
 import org.springframework.web.servlet.HandlerMapping;
 
-@Slf4j
 public class RequestLogWriter {
+
+    private static final Logger log = LoggerFactory.getLogger(RequestLogWriter.class);
 
     public static final String FAILURE_ATTRIBUTE = RequestLogWriter.class.getName() + ".failure";
     public static final String ERROR_CODE_ATTRIBUTE = RequestLogWriter.class.getName() + ".errorCode";
@@ -24,10 +23,13 @@ public class RequestLogWriter {
     private static final String EVENT_REQUEST_LOG_SKIPPED = "http_request_log_skipped";
     private static final String UNMAPPED_ROUTE = "UNMAPPED";
     private static final String OTHER_METHOD = "OTHER";
-    private static final List<RequestTimingStage> TIMING_STAGES = Stream.<RequestTimingStage>concat(
-            Arrays.stream(DataSourceTimingStage.values()), Arrays.stream(PheeeewRequestTimingStage.values())).toList();
 
     private final ExceptionLogFormatter exceptionLogFormatter = new ExceptionLogFormatter();
+    private final RequestLogPolicy policy;
+
+    public RequestLogWriter(RequestLogPolicy policy) {
+        this.policy = policy;
+    }
 
     public void write(
             HttpServletRequest request,
@@ -56,7 +58,7 @@ public class RequestLogWriter {
     }
 
     private void logServerError(HttpServletRequest request, int status, long durationMillis, Throwable failure) {
-        Map<String, String> params = RequestLogValues.from(request);
+        Map<String, String> params = policy.requestValues(request);
         LoggingEventBuilder event = createRequestEvent(log.atError(), request, status, durationMillis)
                 .addKeyValue("event", EVENT_REQUEST_FAILED)
                 .addKeyValue("errorCode", request.getAttribute(ERROR_CODE_ATTRIBUTE));
@@ -89,7 +91,7 @@ public class RequestLogWriter {
             return;
         }
         Map<String, Map<String, Number>> timings = new LinkedHashMap<>();
-        for (RequestTimingStage stage : TIMING_STAGES) {
+        for (RequestTimingStage stage : policy.timingStages()) {
             RequestTiming.Measurement measured = snapshot.get(stage);
             if (measured != null) {
                 timings.put(stage.name().toLowerCase(Locale.ROOT), Map.of(
