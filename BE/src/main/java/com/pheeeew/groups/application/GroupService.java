@@ -2,6 +2,7 @@ package com.pheeeew.groups.application;
 
 import static com.pheeeew.device.exception.DeviceErrorCode.DEVICE_NOT_FOUND;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_ALREADY_JOINED;
+import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_INVITE_CODE_REQUIRED;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_INVITE_CODE_UNAVAILABLE;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_MEMBER_ONLY;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_MEMBER_REMAINS;
@@ -218,6 +219,27 @@ public class GroupService {
         Device device = findDevice(devicePublicId);
         Group group = groupRepository.findByInviteCodeAndDeletedAtIsNull(inviteCode)
                 .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));
+
+        try {
+            groupMemberRepository.saveAndFlush(GroupMember.builder()
+                    .group(group)
+                    .device(device)
+                    .role(GroupRole.MEMBER)
+                    .build());
+        } catch (DataIntegrityViolationException exception) {
+            throw new GroupException(GROUP_ALREADY_JOINED, exception);
+        }
+
+        return toResult(group, GroupRole.MEMBER);
+    }
+
+    @Transactional
+    public GroupResult joinPublicGroup(UUID groupPublicId, UUID devicePublicId) {
+        Group group = findGroup(groupPublicId);
+        Device device = findDevice(devicePublicId);
+        if (!group.isPublic()) {
+            throw new GroupException(GROUP_INVITE_CODE_REQUIRED);
+        }
 
         try {
             groupMemberRepository.saveAndFlush(GroupMember.builder()

@@ -86,6 +86,55 @@ public interface GroupMemberControllerApi {
     );
 
     @Operation(
+            summary = "공개 그룹에 코드 없이 참여",
+            description = """
+                    **가입 방식이 `PUBLIC` 인 그룹에만** 쓸 수 있습니다. 초대 코드를 받지 않으며 요청 본문이 없습니다.
+
+                    - **비공개 그룹이면 409 `GROUP-009`** 입니다. 이때는 `POST /api/v2/groups/join` 에
+                      초대 코드를 담아 보냅니다. 가입 방식은 `GET /api/v3/groups/{groupId}` 의 `joinType` 으로 확인합니다.
+                    - **이미 속한 그룹이면 409 `GROUP-007`** 입니다. 재시도나 더블 탭도 같습니다.
+                      **비공개 그룹에 이미 속해 있어도 `GROUP-009`** 가 먼저입니다 — 이 경로의 선행 조건이
+                      그룹의 가입 방식이기 때문입니다.
+                    - 없는 그룹이나 삭제된 그룹이면 404 입니다.
+                    - 나갔던 공개 그룹에 다시 들어갈 수 있습니다. **예전에 그 그룹에 쓴 기록은 그대로 내 기록**입니다.
+                    - 가입 가능한 그룹 수에 제한이 없습니다.
+                    - `Location` 은 만들어진 멤버십(`/api/v2/groups/{groupId}/members/me`)을 가리킵니다.
+                      같은 경로에 `DELETE` 를 보내면 나갑니다.
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "참여 성공"),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-001", "message": "그룹을 찾을 수 없습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "409", description = "비공개 그룹이거나 이미 속해 있음",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "비공개 그룹", value = """
+                                            {"code": "GROUP-009", "message": "비공개 그룹은 초대 코드로만 가입할 수 있습니다."}
+                                            """),
+                                    @ExampleObject(name = "이미 속해 있음", value = """
+                                            {"code": "GROUP-007", "message": "이미 속해 있는 그룹입니다."}
+                                            """)
+                            }))
+    })
+    ResponseEntity<GroupResponse> joinPublicGroup(
+            @Parameter(description = "가입할 그룹의 공개 식별자", example = "5f2b1c84-9d0e-4a13-b6c7-2e8f0a4d7b19")
+            UUID groupId,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
+
+    @Operation(
             summary = "그룹 나가기",
             description = """
                     요청한 기기를 그룹에서 뺍니다.

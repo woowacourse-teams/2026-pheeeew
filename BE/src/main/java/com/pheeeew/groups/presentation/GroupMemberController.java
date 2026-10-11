@@ -51,6 +51,17 @@ public class GroupMemberController implements GroupMemberControllerApi {
     }
 
     @Override
+    @PostMapping("/{groupId}/members/me")
+    public ResponseEntity<GroupResponse> joinPublicGroup(
+            @PathVariable UUID groupId,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        GroupResponse body = GroupResponse.from(groupService.joinPublicGroup(groupId, devicePublicId));
+
+        return ResponseEntity.created(URI.create("/api/v2/groups/" + groupId + "/members/me")).body(body);
+    }
+
+    @Override
     @DeleteMapping("/{groupId}/members/me")
     public ResponseEntity<Void> leave(
             @PathVariable UUID groupId,
