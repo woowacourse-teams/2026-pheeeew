@@ -3,6 +3,7 @@ package com.pheeeew.groups.application;
 import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
 import static com.pheeeew.groups.fixture.GroupFixture.일반_멤버_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.when;
@@ -16,6 +17,7 @@ import com.pheeeew.groups.application.dto.GroupDetailV3Result;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.domain.Group;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.GroupViewerRole;
 import com.pheeeew.groups.domain.StampFrame;
@@ -102,7 +104,7 @@ class GroupServiceIntegrationTest {
         Device 기기 = 기기를_저장한다();
 
         // when
-        GroupResult 결과 = groupService.save(기기.getPublicId(), "한숨모임", "설명입니다", 스탬프("기본"));
+        GroupResult 결과 = groupService.save(기기.getPublicId(), "한숨모임", "설명입니다", GroupJoinType.PRIVATE, 스탬프("기본"));
 
         // then
         assertThat(결과.name()).isEqualTo("한숨모임");
@@ -119,7 +121,7 @@ class GroupServiceIntegrationTest {
         Device 기기 = 기기를_저장한다();
 
         // when
-        String 초대_코드 = groupService.save(기기.getPublicId(), "한숨모임", null, 스탬프("기본")).inviteCode();
+        String 초대_코드 = groupService.save(기기.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본")).inviteCode();
 
         // then
         assertThat(초대_코드).hasSize(6);
@@ -136,20 +138,46 @@ class GroupServiceIntegrationTest {
         Device 기기 = 기기를_저장한다();
 
         // when
-        GroupResult 결과 = groupService.save(기기.getPublicId(), "  한숨모임  ", null, 스탬프("기본"));
+        GroupResult 결과 = groupService.save(기기.getPublicId(), "  한숨모임  ", null, GroupJoinType.PRIVATE, 스탬프("기본"));
 
         // then
         assertThat(결과.name()).isEqualTo("한숨모임");
     }
 
     @Test
+    void 가입_방식을_공개로_만들면_공개로_저장한다() {
+        // given
+        Device 기기 = 기기를_저장한다();
+
+        // when
+        GroupResult 결과 = groupService.save(기기.getPublicId(), "공개모임", null, GroupJoinType.PUBLIC, 스탬프("기본"));
+
+        // then
+        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PUBLIC);
+        assertThat(저장된_가입_방식(결과.publicId())).isEqualTo("PUBLIC");
+    }
+
+    @Test
+    void 가입_방식을_비공개로_만들면_비공개로_저장한다() {
+        // given
+        Device 기기 = 기기를_저장한다();
+
+        // when
+        GroupResult 결과 = groupService.save(기기.getPublicId(), "비공개모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+
+        // then
+        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PRIVATE);
+        assertThat(저장된_가입_방식(결과.publicId())).isEqualTo("PRIVATE");
+    }
+
+    @Test
     void 같은_이름의_그룹은_두_번_만들_수_없다() {
         // given
-        groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, 스탬프("기본"));
+        groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
 
         // when
         Throwable throwable = catchThrowable(
-                () -> groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, 스탬프("기본"))
+                () -> groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"))
         );
 
         // then
@@ -160,7 +188,7 @@ class GroupServiceIntegrationTest {
     void 같은_이름으로_동시에_만들면_하나만_성공한다() throws Exception {
         // when
         List<Boolean> 성공_여부들 = 동시에_실행한다(() -> {
-            groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, 스탬프("기본"));
+            groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
 
             return true;
         });
@@ -175,8 +203,8 @@ class GroupServiceIntegrationTest {
         // given
         Device 첫_그룹장 = 기기를_저장한다();
         Device 둘째_그룹장 = 기기를_저장한다();
-        GroupResult 첫_그룹 = groupService.save(첫_그룹장.getPublicId(), "첫모임", null, 스탬프("기본"));
-        GroupResult 둘째_그룹 = groupService.save(둘째_그룹장.getPublicId(), "둘째모임", null, 스탬프("기본"));
+        GroupResult 첫_그룹 = groupService.save(첫_그룹장.getPublicId(), "첫모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+        GroupResult 둘째_그룹 = groupService.save(둘째_그룹장.getPublicId(), "둘째모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
 
         // when
         List<Boolean> 성공_여부들 = 동시에_바꾼다(
@@ -195,11 +223,11 @@ class GroupServiceIntegrationTest {
     void 삭제한_그룹의_이름은_다시_쓸_수_있다() {
         // given
         Device 기기 = 기기를_저장한다();
-        GroupResult 먼저_만든_그룹 = groupService.save(기기.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupResult 먼저_만든_그룹 = groupService.save(기기.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         groupService.delete(먼저_만든_그룹.publicId(), 기기.getPublicId());
 
         // when
-        GroupResult 다시_만든_그룹 = groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupResult 다시_만든_그룹 = groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
 
         // then
         assertThat(다시_만든_그룹.name()).isEqualTo("한숨모임");
@@ -210,8 +238,8 @@ class GroupServiceIntegrationTest {
     void 내_그룹_목록에는_속한_그룹만_나온다() {
         // given
         Device 나 = 기기를_저장한다();
-        groupService.save(나.getPublicId(), "내모임", null, 스탬프("기본"));
-        groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, 스탬프("기본"));
+        groupService.save(나.getPublicId(), "내모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+        groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
 
         // when
         List<GroupResult> 목록 = groupService.findMine(나.getPublicId());
@@ -225,8 +253,8 @@ class GroupServiceIntegrationTest {
     void 나간_그룹과_삭제한_그룹은_목록에서_빠진다() {
         // given
         Device 나 = 기기를_저장한다();
-        GroupResult 나갈_그룹 = groupService.save(나.getPublicId(), "나갈모임", null, 스탬프("기본"));
-        GroupResult 삭제할_그룹 = groupService.save(나.getPublicId(), "삭제할모임", null, 스탬프("기본"));
+        GroupResult 나갈_그룹 = groupService.save(나.getPublicId(), "나갈모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+        GroupResult 삭제할_그룹 = groupService.save(나.getPublicId(), "삭제할모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         나간다(나갈_그룹.publicId(), 나.getId());
         groupService.delete(삭제할_그룹.publicId(), 나.getPublicId());
 
@@ -240,11 +268,11 @@ class GroupServiceIntegrationTest {
         Device 나 = 기기를_저장한다();
         Device 다른_기기 = 기기를_저장한다();
         Device 세번째_기기 = 기기를_저장한다();
-        GroupResult 내_그룹 = groupService.save(나.getPublicId(), "내모임", "내 설명", 스탬프("내것"));
+        GroupResult 내_그룹 = groupService.save(나.getPublicId(), "내모임", "내 설명", GroupJoinType.PRIVATE, 스탬프("내것"));
         멤버로_넣는다(내_그룹.publicId(), 다른_기기);
         멤버로_넣는다(내_그룹.publicId(), 세번째_기기);
         나간다(내_그룹.publicId(), 세번째_기기.getId());
-        GroupResult 참여한_그룹 = groupService.save(다른_기기.getPublicId(), "참여모임", null, 스탬프("참여"));
+        GroupResult 참여한_그룹 = groupService.save(다른_기기.getPublicId(), "참여모임", null, GroupJoinType.PRIVATE, 스탬프("참여"));
         멤버로_넣는다(참여한_그룹.publicId(), 나);
         멤버로_넣는다(참여한_그룹.publicId(), 세번째_기기);
 
@@ -263,11 +291,29 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
+    void 내_그룹_목록은_그룹마다_가입_방식을_그대로_준다() {
+        // given
+        Device 나 = 기기를_저장한다();
+        GroupResult 공개_그룹 = groupService.save(나.getPublicId(), "공개모임", null, GroupJoinType.PUBLIC, 스탬프("기본"));
+        GroupResult 비공개_그룹 = groupService.save(나.getPublicId(), "비공개모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+
+        // when
+        List<GroupResult> 목록 = groupService.findMine(나.getPublicId());
+
+        // then
+        assertThat(목록).extracting(GroupResult::publicId, GroupResult::joinType)
+                .containsExactlyInAnyOrder(
+                        tuple(공개_그룹.publicId(), GroupJoinType.PUBLIC),
+                        tuple(비공개_그룹.publicId(), GroupJoinType.PRIVATE)
+                );
+    }
+
+    @Test
     void 그룹_생성_순서가_아닌_가입_시각_순서로_목록을_반환한다() {
         // given
         Device 나 = 기기를_저장한다();
-        GroupResult 늦게_가입한_그룹 = groupService.save(나.getPublicId(), "늦은가입", null, 스탬프("기본"));
-        GroupResult 먼저_가입한_그룹 = groupService.save(나.getPublicId(), "먼저가입", null, 스탬프("기본"));
+        GroupResult 늦게_가입한_그룹 = groupService.save(나.getPublicId(), "늦은가입", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+        GroupResult 먼저_가입한_그룹 = groupService.save(나.getPublicId(), "먼저가입", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         jdbcClient.sql("""
                         UPDATE group_members
                         SET created_at = CASE WHEN group_id = (SELECT id FROM groups WHERE public_id = ?)
@@ -304,7 +350,7 @@ class GroupServiceIntegrationTest {
     void 스탬프가_누락된_그룹은_목록에서_제외하지_않고_기존_오류를_반환한다() {
         // given
         Device 나 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(나.getPublicId(), "내모임", null, 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(나.getPublicId(), "내모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         jdbcClient.sql("DELETE FROM group_stamps WHERE group_id = (SELECT id FROM groups WHERE public_id = ?)")
                 .param(그룹.publicId())
                 .update();
@@ -322,7 +368,7 @@ class GroupServiceIntegrationTest {
         // given
         Device 나 = 기기를_저장한다();
         for (int index = 0; index < 그룹_수; index++) {
-            groupService.save(나.getPublicId(), "모임" + index, null, 스탬프("기본"));
+            groupService.save(나.getPublicId(), "모임" + index, null, GroupJoinType.PRIVATE, 스탬프("기본"));
         }
         Statistics 통계 = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
         boolean 기존_통계_설정 = 통계.isStatisticsEnabled();
@@ -346,7 +392,7 @@ class GroupServiceIntegrationTest {
     void 상세_조회는_그룹_정보와_인원수를_함께_준다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", "설명", 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", "설명", GroupJoinType.PRIVATE, 스탬프("기본"));
         멤버로_넣는다(그룹.publicId(), 기기를_저장한다());
 
         // when
@@ -367,7 +413,7 @@ class GroupServiceIntegrationTest {
         Device 멤버 = 기기를_저장한다();
         Device 남 = 기기를_저장한다();
         Device 나간_기기 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         멤버로_넣는다(그룹.publicId(), 멤버);
         멤버로_넣는다(그룹.publicId(), 나간_기기);
         나간다(그룹.publicId(), 나간_기기.getId());
@@ -388,7 +434,7 @@ class GroupServiceIntegrationTest {
     @Test
     void v3_상세는_비가입자도_조회할_수_있고_초대_코드를_받는다() {
         // given
-        GroupResult 남의_그룹 = groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, 스탬프("기본"));
+        GroupResult 남의_그룹 = groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         Device 남 = 기기를_저장한다();
 
         // when
@@ -398,12 +444,13 @@ class GroupServiceIntegrationTest {
         assertThat(상세.role()).isEqualTo(GroupViewerRole.NONE);
         assertThat(상세.inviteCode()).isEqualTo(남의_그룹.inviteCode());
         assertThat(상세.name()).isEqualTo("남의모임");
+        assertThat(상세.joinType()).isEqualTo(GroupJoinType.PRIVATE);
     }
 
     @Test
     void v2_상세는_비가입자에게_내주지_않는다() {
         // given
-        GroupResult 남의_그룹 = groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, 스탬프("기본"));
+        GroupResult 남의_그룹 = groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         Device 남 = 기기를_저장한다();
 
         // when
@@ -417,7 +464,7 @@ class GroupServiceIntegrationTest {
     void 삭제한_그룹은_가입하지_않은_기기에게도_상세를_내주지_않는다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         Device 남 = 기기를_저장한다();
         groupService.delete(그룹.publicId(), 그룹장.getPublicId());
 
@@ -431,9 +478,9 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
-    void v3_상세를_조회할_수_있어도_비가입자는_그룹을_고치거나_지우거나_코드를_재발급하지_못한다() {
+    void v3_상세를_조회할_수_있어도_비가입자는_그룹을_고치거나_지우거나_코드를_재발급하거나_가입_방식을_바꾸지_못한다() {
         // given
-        GroupResult 그룹 = groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(기기를_저장한다().getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         Device 남 = 기기를_저장한다();
         groupService.findDetailV3(그룹.publicId(), 남.getPublicId());
 
@@ -444,11 +491,14 @@ class GroupServiceIntegrationTest {
         Throwable 삭제_예외 = catchThrowable(() -> groupService.delete(그룹.publicId(), 남.getPublicId()));
         Throwable 재발급_예외 =
                 catchThrowable(() -> groupService.reissueInviteCode(그룹.publicId(), 남.getPublicId()));
+        Throwable 가입_방식_예외 = catchThrowable(() -> groupService.changeJoinType(
+                그룹.publicId(), 남.getPublicId(), GroupJoinType.PUBLIC));
 
         // then
         그룹_오류다(수정_예외, GroupErrorCode.GROUP_MEMBER_ONLY);
         그룹_오류다(삭제_예외, GroupErrorCode.GROUP_MEMBER_ONLY);
         그룹_오류다(재발급_예외, GroupErrorCode.GROUP_MEMBER_ONLY);
+        그룹_오류다(가입_방식_예외, GroupErrorCode.GROUP_MEMBER_ONLY);
     }
 
     @Test
@@ -456,7 +506,7 @@ class GroupServiceIntegrationTest {
         // given
         Device 그룹장 = 기기를_저장한다();
         Device 멤버 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         멤버로_넣는다(그룹.publicId(), 멤버);
 
         // when
@@ -469,10 +519,98 @@ class GroupServiceIntegrationTest {
     }
 
     @Test
+    void 가입_방식을_비공개에서_공개로_바꾸면_코드_없는_가입이_열린다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        Device 손님 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+        Throwable 전환_전 = catchThrowable(() ->
+                groupService.joinPublicGroup(그룹.publicId(), 손님.getPublicId()));
+
+        // when
+        GroupResult 결과 = groupService.changeJoinType(
+                그룹.publicId(), 그룹장.getPublicId(), GroupJoinType.PUBLIC);
+
+        // then
+        그룹_오류다(전환_전, GroupErrorCode.GROUP_INVITE_CODE_REQUIRED);
+        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PUBLIC);
+        assertThatCode(() -> groupService.joinPublicGroup(그룹.publicId(), 손님.getPublicId()))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 가입_방식을_공개에서_비공개로_바꾸면_코드_없는_가입이_막힌다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        Device 손님 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PUBLIC, 스탬프("기본"));
+
+        // when
+        GroupResult 결과 = groupService.changeJoinType(
+                그룹.publicId(), 그룹장.getPublicId(), GroupJoinType.PRIVATE);
+
+        // then
+        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PRIVATE);
+        그룹_오류다(
+                catchThrowable(() -> groupService.joinPublicGroup(그룹.publicId(), 손님.getPublicId())),
+                GroupErrorCode.GROUP_INVITE_CODE_REQUIRED);
+    }
+
+    @Test
+    void 가입_방식을_바꿔도_초대_코드와_기존_멤버는_그대로다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        Device 멤버 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PUBLIC, 스탬프("기본"));
+        groupService.joinPublicGroup(그룹.publicId(), 멤버.getPublicId());
+        String 전환_전_코드 = 그룹.inviteCode();
+
+        // when
+        GroupResult 결과 = groupService.changeJoinType(
+                그룹.publicId(), 그룹장.getPublicId(), GroupJoinType.PRIVATE);
+
+        // then
+        assertThat(결과.inviteCode()).isEqualTo(전환_전_코드);
+        assertThat(결과.memberCount()).isEqualTo(2);
+        assertThatCode(() -> groupService.joinByInviteCode(기기를_저장한다().getPublicId(), 전환_전_코드))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void 가입_방식을_같은_값으로_바꿔도_성공한다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+
+        // when
+        GroupResult 결과 = groupService.changeJoinType(
+                그룹.publicId(), 그룹장.getPublicId(), GroupJoinType.PRIVATE);
+
+        // then
+        assertThat(결과.joinType()).isEqualTo(GroupJoinType.PRIVATE);
+    }
+
+    @Test
+    void 그룹장이_아니면_가입_방식을_바꿀_수_없다() {
+        // given
+        Device 그룹장 = 기기를_저장한다();
+        Device 멤버 = 기기를_저장한다();
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+        멤버로_넣는다(그룹.publicId(), 멤버);
+
+        // when
+        Throwable throwable = catchThrowable(() -> groupService.changeJoinType(
+                그룹.publicId(), 멤버.getPublicId(), GroupJoinType.PUBLIC));
+
+        // then
+        그룹_오류다(throwable, GroupErrorCode.GROUP_OWNER_ONLY);
+    }
+
+    @Test
     void 이름과_설명과_스탬프를_함께_바꾼다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
 
         // when
         GroupResult 결과 = groupService.update(
@@ -490,7 +628,7 @@ class GroupServiceIntegrationTest {
     void 이름을_그대로_두고_바꾸면_중복으로_걸리지_않는다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
 
         // when
         GroupResult 결과 = groupService.update(
@@ -506,8 +644,8 @@ class GroupServiceIntegrationTest {
     void 남이_쓰는_이름으로는_바꿀_수_없다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "내모임", null, 스탬프("기본"));
-        groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "내모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
+        groupService.save(기기를_저장한다().getPublicId(), "남의모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
 
         // when
         Throwable throwable = catchThrowable(() -> groupService.update(
@@ -522,7 +660,7 @@ class GroupServiceIntegrationTest {
     void 초대_코드를_재발급하면_이전_코드는_무효가_된다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         String 이전_코드 = 그룹.inviteCode();
 
         // when
@@ -539,7 +677,7 @@ class GroupServiceIntegrationTest {
     void 다른_멤버가_남아_있으면_그룹을_삭제할_수_없다() {
         // given
         Device 그룹장 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         멤버로_넣는다(그룹.publicId(), 기기를_저장한다());
 
         // when
@@ -554,7 +692,7 @@ class GroupServiceIntegrationTest {
         // given
         Device 그룹장 = 기기를_저장한다();
         Device 멤버 = 기기를_저장한다();
-        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, 스탬프("기본"));
+        GroupResult 그룹 = groupService.save(그룹장.getPublicId(), "한숨모임", null, GroupJoinType.PRIVATE, 스탬프("기본"));
         멤버로_넣는다(그룹.publicId(), 멤버);
         나간다(그룹.publicId(), 멤버.getId());
 
@@ -618,6 +756,13 @@ class GroupServiceIntegrationTest {
         } finally {
             실행기.shutdownNow();
         }
+    }
+
+    private String 저장된_가입_방식(UUID groupPublicId) {
+        return jdbcClient.sql("SELECT join_type FROM groups WHERE public_id = ?")
+                .param(groupPublicId)
+                .query(String.class)
+                .single();
     }
 
     private Device 기기를_저장한다() {

@@ -14,6 +14,7 @@ import com.pheeeew.groups.application.dto.GroupDetailV3Result;
 import com.pheeeew.groups.application.dto.GroupPressRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
@@ -88,7 +89,7 @@ class GroupPressAggregationIntegrationTest {
         Device 기기 = 기기를_저장한다();
         GroupResult 내_그룹 = 그룹을_만든다("내모임", 기기);
         GroupResult 옆_그룹 = 그룹을_만든다("옆모임", 기기를_저장한다());
-        groupService.join(기기.getPublicId(), 옆_그룹.inviteCode());
+        groupService.joinByInviteCode(기기.getPublicId(), 옆_그룹.inviteCode());
         눌린_것으로_둔다(기기, 이번_주_월요일(), EmotionState.ANGRY, 5);
 
         // when
@@ -108,8 +109,8 @@ class GroupPressAggregationIntegrationTest {
         Device 멤버 = 기기를_저장한다();
         Device 다른_멤버 = 기기를_저장한다();
         GroupResult 그룹 = 그룹을_만든다("한숨모임", 그룹장);
-        groupService.join(멤버.getPublicId(), 그룹.inviteCode());
-        groupService.join(다른_멤버.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(멤버.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(다른_멤버.getPublicId(), 그룹.inviteCode());
         눌린_것으로_둔다(그룹장, 이번_주_월요일(), EmotionState.ANGRY, 3);
         눌린_것으로_둔다(멤버, 이번_주_월요일(), EmotionState.ANGRY, 3);
         눌린_것으로_둔다(다른_멤버, 이번_주_월요일().plusDays(2), EmotionState.EXHAUSTED, 4);
@@ -128,7 +129,7 @@ class GroupPressAggregationIntegrationTest {
         Device 그룹장 = 기기를_저장한다();
         Device 떠날_기기 = 기기를_저장한다();
         GroupResult 그룹 = 그룹을_만든다("한숨모임", 그룹장);
-        groupService.join(떠날_기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(떠날_기기.getPublicId(), 그룹.inviteCode());
         눌린_것으로_둔다(그룹장, 이번_주_월요일(), EmotionState.ANGRY, 2);
         눌린_것으로_둔다(떠날_기기, 이번_주_월요일(), EmotionState.ANGRY, 4);
         long 탈퇴_전 = 상세(그룹, 그룹장).weeklyEmotionPressCount();
@@ -147,9 +148,9 @@ class GroupPressAggregationIntegrationTest {
         Device 그룹장 = 기기를_저장한다();
         Device 재가입_기기 = 기기를_저장한다();
         GroupResult 그룹 = 그룹을_만든다("한숨모임", 그룹장);
-        groupService.join(재가입_기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(재가입_기기.getPublicId(), 그룹.inviteCode());
         groupService.leave(그룹.publicId(), 재가입_기기.getPublicId());
-        groupService.join(재가입_기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(재가입_기기.getPublicId(), 그룹.inviteCode());
         눌린_것으로_둔다(재가입_기기, 이번_주_월요일(), EmotionState.ANGRY, 5);
 
         // when
@@ -170,7 +171,7 @@ class GroupPressAggregationIntegrationTest {
         long 가입_전 = 상세(그룹, 그룹장).weeklyEmotionPressCount();
 
         // when
-        groupService.join(늦게_온_기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(늦게_온_기기.getPublicId(), 그룹.inviteCode());
 
         // then
         assertThat(가입_전).isZero();
@@ -307,6 +308,7 @@ class GroupPressAggregationIntegrationTest {
                 그룹장.getPublicId(),
                 name,
                 null,
+                GroupJoinType.PRIVATE,
                 GroupStampCommand.of("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
         );
     }

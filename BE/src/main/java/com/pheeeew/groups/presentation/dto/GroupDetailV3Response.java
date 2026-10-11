@@ -1,6 +1,7 @@
 package com.pheeeew.groups.presentation.dto;
 
 import com.pheeeew.groups.application.dto.GroupDetailV3Result;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupViewerRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.UUID;
@@ -14,6 +15,13 @@ public record GroupDetailV3Response(
         String description,
         @Schema(description = "가입 여부와 무관하게 모두에게 내려갑니다.", example = "ABCD12")
         String inviteCode,
+        @Schema(
+                description = "가입 방식. PUBLIC 이면 POST /api/v2/groups/{groupId}/members/me 로 코드 없이 가입하고, "
+                        + "PRIVATE 이면 POST /api/v2/groups/join 에 inviteCode 를 담아 가입합니다. "
+                        + "노출 범위는 가입 방식과 무관합니다 — 비공개 그룹도 목록과 랭킹에 나오고 이 상세를 볼 수 있습니다.",
+                example = "PUBLIC"
+        )
+        GroupJoinType joinType,
         @Schema(
                 description = "요청한 기기와 그룹의 관계입니다. OWNER, MEMBER, 속하지 않았거나 나갔으면 NONE 입니다.",
                 example = "NONE"
@@ -55,6 +63,7 @@ public record GroupDetailV3Response(
                 result.name(),
                 result.description(),
                 result.inviteCode(),
+                result.joinType(),
                 result.role(),
                 result.memberCount(),
                 GroupStampResponse.from(result.stamp()),

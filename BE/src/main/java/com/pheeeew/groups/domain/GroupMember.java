@@ -1,6 +1,9 @@
 package com.pheeeew.groups.domain;
 
+import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_OWNER_ONLY;
+
 import com.pheeeew.common.domain.BaseEntity;
+import com.pheeeew.groups.exception.GroupException;
 import com.pheeeew.device.domain.Device;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -52,6 +55,12 @@ public class GroupMember extends BaseEntity {
         this.group = Objects.requireNonNull(group);
         this.device = Objects.requireNonNull(device);
         this.role = Objects.requireNonNull(role);
+    }
+
+    public void validateOwner() {
+        if (!isOwner()) {
+            throw new GroupException(GROUP_OWNER_ONLY);
+        }
     }
 
     public boolean isOwner() {
