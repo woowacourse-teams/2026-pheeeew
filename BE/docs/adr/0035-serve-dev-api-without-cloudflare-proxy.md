@@ -17,7 +17,7 @@ Proposed (2026-10-12)
 
 ## Decision
 
-개발 서버의 API 주소는 Cloudflare 프록시를 끄고 nginx가 Let's Encrypt 인증서로 직접 받아요. 스웨거는 프록시와 Access를 유지하는 문서용 주소 `docs-dev.pheeeew.com` 으로 옮기고 API 주소에서는 막아요. 요청자 주소는 연결 주소를 쓰고 Cloudflare 대역에서 온 연결만 `CF-Connecting-IP` 를 믿어요.
+개발 서버의 API 주소는 Cloudflare 프록시를 끄고 nginx가 Let's Encrypt 인증서로 직접 받아요. 스웨거는 프록시와 Access를 유지하는 문서용 주소 `docs-dev.pheeeew.com` 으로 옮기고 API 주소에서는 막아요. API 주소의 요청자 주소는 연결 주소만 쓰고, Cloudflare의 클라이언트 인증서를 확인하는 문서용 주소에서만 `CF-Connecting-IP` 를 믿어요.
 
 ## Alternatives
 
@@ -33,11 +33,12 @@ Proposed (2026-10-12)
 - (-) 개발 서버의 IP가 공개되고 Cloudflare의 공격 방어와 봇 차단을 쓰지 못해요.
 - (-) 인증서를 90일마다 갱신해야 해요. 갱신이 실패하면 앱의 모든 요청이 실패해요.
 - (-) Cloudflare 주소 대역이 바뀌면 nginx의 목록을 손으로 고쳐야 해요. 고치지 않으면 문서용 주소로 온 요청의 요청자 주소가 Cloudflare 주소로 잡혀요.
+- (-) API 주소의 프록시를 다시 켜면 요청 제한이 Cloudflare 거점의 주소로 세어져요. Cloudflare 대역이라는 이유만으로 헤더를 믿으면 Workers로 헤더를 꾸며 제한을 우회할 수 있어 API 주소에서는 믿지 않기로 했어요.
 - (=) DNS 편집 권한을 가진 Cloudflare API 토큰이 서버에 남아요. 문서용 주소와 Access 설정이 하나씩 늘어요.
 - 재검토: 전환 뒤 응답 시간 차이가 작거나, 직접 받은 뒤 공격이나 비정상 요청이 늘거나, 운영 서버 적용을 정할 때 다시 판단해요.
 
 ## Compliance
 
-- 임시 컨테이너에서 직접 연결의 요청자 주소, 위조한 `CF-Connecting-IP` 무시, Cloudflare 대역의 헤더 신뢰, API 주소의 스웨거 404, 문서용 주소의 Cloudflare 인증서 요구, 헤더 위조로 요청 제한을 우회하지 못하는 것을 확인했어요. 임시 인증서와 흉내 낸 앱으로 한 확인이에요.
+- 임시 컨테이너에서 직접 연결의 요청자 주소, API 주소에서 위조한 `CF-Connecting-IP` 무시(직접 연결과 Cloudflare 대역 모두), 문서용 주소의 헤더 신뢰, API 주소의 스웨거 404, 문서용 주소의 Cloudflare 인증서 요구, 헤더 위조로 요청 제한을 우회하지 못하는 것을 확인했어요. 임시 인증서와 흉내 낸 앱으로 한 확인이에요.
 - 실제 Cloudflare와 실제 인증서에서의 동작, 전환 전후 응답 시간은 배포 뒤에 확인해요.
 - 발급, 갱신, 전환, 되돌리기 절차는 [nginx 안내](../../docker/nginx/README.md)에서 관리해요.
