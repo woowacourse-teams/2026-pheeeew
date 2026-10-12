@@ -1,5 +1,6 @@
 package com.pheeeew.groups.presentation.dto;
 
+import com.pheeeew.groups.domain.GroupJoinType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -23,6 +24,14 @@ public record GroupCreateRequest(
         @Size(max = 100, message = "그룹 설명은 100자 이하여야 합니다.")
         String description,
 
+        @Schema(
+                description = "가입 방식. PUBLIC 이면 초대 코드 없이 누구나 가입할 수 있고, "
+                        + "PRIVATE 이면 그 그룹의 초대 코드로만 가입할 수 있습니다. "
+                        + "생략하거나 null 이면 PRIVATE 로 저장합니다. 공개 그룹을 만들려면 반드시 보냅니다.",
+                nullable = true, example = "PRIVATE"
+        )
+        GroupJoinType joinType,
+
         @Schema(description = "그룹 스탬프. 네 값을 모두 보내야 하며 일부만 바꿀 수 없습니다.")
         @Valid
         @NotNull(message = "스탬프는 필수입니다.")
@@ -31,5 +40,6 @@ public record GroupCreateRequest(
     public GroupCreateRequest {
         name = name == null ? null : name.strip();
         description = description == null || description.isBlank() ? null : description.strip();
+        joinType = joinType == null ? GroupJoinType.PRIVATE : joinType;
     }
 }

@@ -1,6 +1,7 @@
 package com.pheeeew.groups.application.dto;
 
 import com.pheeeew.groups.domain.Group;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.repository.projection.GroupListProjection;
 import java.util.UUID;
@@ -10,6 +11,7 @@ public record GroupResult(
         String name,
         String description,
         String inviteCode,
+        GroupJoinType joinType,
         GroupRole role,
         long memberCount,
         GroupStampResult stamp
@@ -21,6 +23,7 @@ public record GroupResult(
                 projection.getName(),
                 projection.getDescription(),
                 projection.getInviteCode(),
+                projection.getJoinType(),
                 projection.getRole(),
                 projection.getMemberCount(),
                 GroupStampResult.of(
@@ -38,6 +41,7 @@ public record GroupResult(
                 group.getName(),
                 group.getDescription(),
                 group.getInviteCode(),
+                group.getJoinType(),
                 role,
                 memberCount,
                 stamp

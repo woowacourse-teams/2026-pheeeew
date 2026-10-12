@@ -5,6 +5,7 @@ import com.pheeeew.groups.presentation.dto.GroupCreateRequest;
 import com.pheeeew.groups.presentation.dto.GroupDetailResponse;
 import com.pheeeew.groups.presentation.dto.GroupPressCountResponse;
 import com.pheeeew.groups.presentation.dto.GroupPressRequest;
+import com.pheeeew.groups.presentation.dto.GroupJoinTypeUpdateRequest;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
 import com.pheeeew.groups.presentation.dto.GroupStampItemResponse;
 import com.pheeeew.groups.presentation.dto.GroupUpdateRequest;
@@ -41,6 +42,11 @@ public interface GroupControllerApi {
                     - **초대 코드는 서버가 만듭니다.** 요청에 담지 않습니다.
                       혼동되는 글자(`I`, `L`, `O`, `U`)를 뺀 6자리입니다.
                     - 그룹장은 **생성자로 고정**되며 위임할 수 없습니다. 인원 제한은 없습니다.
+                    - **가입 방식을 함께 보냅니다.** `PUBLIC` 이면 초대 코드 없이 누구나 들어올 수 있고,
+                      `PRIVATE` 이면 초대 코드를 아는 사람만 들어올 수 있습니다.
+                      **생략하면 `PRIVATE` 로 저장합니다** — 공개 그룹을 만들려면 반드시 보냅니다.
+                      공개, 비공개는 가입 방식만 가릅니다. 어느 쪽이든 목록과 랭킹에 나오고 상세를 볼 수 있습니다.
+                    - 만든 뒤에는 `PUT /api/v2/groups/{groupId}/join-type` 으로 그룹장이 바꿀 수 있습니다.
                     """
     )
     @ApiResponses({
@@ -319,6 +325,59 @@ public interface GroupControllerApi {
     })
     GroupResponse reissueInviteCode(
             UUID groupId,
+            @Parameter(hidden = true) UUID devicePublicId
+    );
+
+    @Operation(
+            summary = "그룹 가입 방식 변경",
+            description = """
+                    **그룹장만** 공개, 비공개를 바꿀 수 있습니다. `joinType` 은 생략할 수 없습니다.
+
+                    - `PUBLIC` 으로 바꾸면 `POST /api/v2/groups/{groupId}/members/me` 로 초대 코드 없이 가입할 수 있습니다.
+                    - `PRIVATE` 으로 바꾸면 그 경로가 409 가 되고, 초대 코드 가입만 남습니다.
+                    - **초대 코드는 그대로 둡니다.** 가입 방식만 바뀌며 코드는 어느 쪽에서도 계속 유효합니다.
+                      공개로 열려 있던 동안 코드가 퍼졌을 수 있으므로, 필요하면
+                      `POST /api/v2/groups/{groupId}/invite-code` 로 따로 재발급합니다.
+                    - **기존 멤버는 그대로 남습니다.** 비공개로 바꿔도 이미 가입한 멤버를 빼지 않습니다.
+                    - 같은 값으로 바꾸는 것도 성공입니다.
+                    """,
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "변경 성공"),
+            @ApiResponse(responseCode = "400", description = "가입 방식이 없거나 다루지 않는 값",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "COMMON-001", "message": "요청 값이 올바르지 않습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "401", description = "인증할 수 없거나 등록되지 않은 기기",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "DEVICE-004", "message": "인증 정보를 사용할 수 없습니다."}
+                                    """))),
+            @ApiResponse(responseCode = "403", description = "그룹장이 아니거나 멤버가 아님",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "그룹장 아님", value = """
+                                            {"code": "GROUP-003", "message": "그룹장만 할 수 있습니다."}
+                                            """),
+                                    @ExampleObject(name = "멤버 아님", value = """
+                                            {"code": "GROUP-008", "message": "그룹 멤버만 할 수 있습니다."}
+                                            """)
+                            })),
+            @ApiResponse(responseCode = "404", description = "없는 그룹이거나 삭제된 그룹",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {"code": "GROUP-001", "message": "그룹을 찾을 수 없습니다."}
+                                    """)))
+    })
+    GroupResponse changeJoinType(
+            UUID groupId,
+            @Valid GroupJoinTypeUpdateRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 

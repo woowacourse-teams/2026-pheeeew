@@ -16,7 +16,9 @@ public enum GroupErrorCode implements ErrorCode {
     GROUP_INVITE_CODE_UNAVAILABLE("GROUP-005", "초대 코드를 발급하지 못했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
     GROUP_OWNER_CANNOT_LEAVE("GROUP-006", "그룹장은 그룹을 나갈 수 없습니다.", HttpStatus.CONFLICT),
     GROUP_ALREADY_JOINED("GROUP-007", "이미 속해 있는 그룹입니다.", HttpStatus.CONFLICT),
-    GROUP_MEMBER_ONLY("GROUP-008", "그룹 멤버만 할 수 있습니다.", HttpStatus.FORBIDDEN);
+    GROUP_MEMBER_ONLY("GROUP-008", "그룹 멤버만 할 수 있습니다.", HttpStatus.FORBIDDEN),
+    GROUP_INVITE_CODE_REQUIRED("GROUP-009", "비공개 그룹은 초대 코드로만 가입할 수 있습니다.", HttpStatus.CONFLICT),
+    GROUP_INVALID_CURSOR("GROUP-010", "그룹 목록 커서를 사용할 수 없습니다.", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;

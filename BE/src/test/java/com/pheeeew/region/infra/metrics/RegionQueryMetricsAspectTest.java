@@ -7,10 +7,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.pheeeew.common.logging.RequestLoggingFilter;
+import com.pheeeew.common.logging.RequestLoggingConfiguration;
+import com.pheeeew.common.logging.PheeeewRequestTimingStage;
 import com.pheeeew.common.logging.RequestTiming;
 import com.pheeeew.common.logging.RequestTiming.Measurement;
-import com.pheeeew.common.logging.RequestTiming.Stage;
+import com.pheeeew.common.logging.RequestTimingStage;
 import com.pheeeew.region.infra.metrics.RegionQueryMetrics.Operation;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
@@ -53,7 +54,7 @@ class RegionQueryMetricsAspectTest {
             "findEmdCode,emd_code,REGION_EMD_CODE,true", "findEmdCode,emd_code,REGION_EMD_CODE,false"
     })
     void 작업별_성공과_실패를_구분하고_분_단위_지연을_기록한다(
-            String methodName, String operation, Stage stage, boolean succeeded
+            String methodName, String operation, PheeeewRequestTimingStage stage, boolean succeeded
     ) throws Throwable {
         // given
         AtomicLong nanoTime = new AtomicLong();
@@ -116,14 +117,14 @@ class RegionQueryMetricsAspectTest {
                 assertThatThrownBy(() -> aspect.recordQuery(joinPoint)).isSameAs(original);
             }
         });
-        assertThat(timings).containsExactlyEntriesOf(Map.of(Stage.REGIONS_INTERSECTION, Measurement.of(1, 0, 0)));
+        assertThat(timings).containsExactlyEntriesOf(Map.of(PheeeewRequestTimingStage.REGIONS_INTERSECTION, Measurement.of(1, 0, 0)));
         verify(metrics).recordQuery(Operation.INTERSECTING_REGIONS, 0, succeeded);
     }
 
-    private Map<Stage, Measurement> inRequest(ThrowingCallable operation) throws Exception {
+    private Map<RequestTimingStage, Measurement> inRequest(ThrowingCallable operation) throws Exception {
         var request = new MockHttpServletRequest();
-        var snapshot = new AtomicReference<Map<Stage, Measurement>>();
-        new RequestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
+        var snapshot = new AtomicReference<Map<RequestTimingStage, Measurement>>();
+        new RequestLoggingConfiguration().requestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
             RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
             try {
                 operation.call();

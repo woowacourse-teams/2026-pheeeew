@@ -8,15 +8,17 @@ import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_MEMBER_REMAINS;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NAME_DUPLICATED;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_OWNER_CANNOT_LEAVE;
-import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_OWNER_ONLY;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.PressCounts;
+import com.pheeeew.groups.application.dto.GroupCursor;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
 import com.pheeeew.groups.application.dto.GroupDetailV3Result;
+import com.pheeeew.groups.application.dto.GroupMemberResult;
+import com.pheeeew.groups.application.dto.GroupMemberListResult;
 import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupPressRankingItem;
@@ -28,6 +30,7 @@ import com.pheeeew.groups.application.dto.GroupStampItemResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
 import com.pheeeew.groups.domain.GroupDailyPress;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupMember;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.GroupStamp;
@@ -37,6 +40,7 @@ import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.domain.repository.projection.GroupListProjection;
+import com.pheeeew.groups.domain.repository.projection.GroupMemberProjection;
 import com.pheeeew.groups.domain.repository.projection.GroupPressSumProjection;
 import com.pheeeew.groups.exception.GroupException;
 import java.sql.SQLException;
@@ -72,12 +76,18 @@ public class GroupService {
     private final Clock clock;
 
     @Transactional
-    public GroupResult save(UUID devicePublicId, String name, String description, GroupStampCommand stampCommand) {
+    public GroupResult save(
+            UUID devicePublicId,
+            String name,
+            String description,
+            GroupJoinType joinType,
+            GroupStampCommand stampCommand
+    ) {
         Device device = findDevice(devicePublicId);
         String trimmedName = name.strip();
         requireUnusedName(trimmedName);
 
-        Group group = saveWithUniqueInviteCode(trimmedName, description);
+        Group group = saveWithUniqueInviteCode(trimmedName, description, joinType);
         GroupStamp stamp = groupStampRepository.save(newStamp(group, stampCommand));
         groupMemberRepository.save(GroupMember.builder()
                 .group(group)
@@ -158,7 +168,8 @@ public class GroupService {
         LocalDate today = LocalDate.now(clock);
         PressCounts pressCounts = PressCounts.from(command.counts());
         increaseInLockOrder(group.getId(), today, pressCounts);
-        groupPressMetrics.recordApplied(pressCounts);
+        groupPressMetrics.recordApplied(pressCounts.appliedTotal(), pressCounts.presses().size(),
+                pressCounts.perStateDropped(), pressCounts.totalDropped());
 
         return pressesOf(group, today);
     }
@@ -168,6 +179,30 @@ public class GroupService {
         Group group = findGroup(groupPublicId);
         requireMember(group, devicePublicId);
         return weeklyPressesOf(group, weeksAgo);
+    }
+
+    public GroupMemberListResult findMembers(UUID groupPublicId, UUID devicePublicId, String encodedCursor, int size) {
+        Group group = findGroup(groupPublicId);
+        requireMember(group, devicePublicId);
+        GroupCursor cursor = GroupCursorCodec.decodeMembersOrInitial(encodedCursor);
+
+        List<GroupMemberProjection> projections = groupMemberRepository.findMemberPage(
+                group.getId(),
+                cursor.lastCreatedAt(),
+                cursor.lastId(),
+                size + 1
+        );
+
+        boolean hasNext = projections.size() > size;
+        if (hasNext) {
+            projections = projections.subList(0, size);
+        }
+
+        List<GroupMemberResult> items = projections.stream()
+                .map(GroupMemberResult::from)
+                .toList();
+
+        return GroupMemberListResult.of(items, hasNext, memberNextCursor(items, hasNext));
     }
 
     @Transactional
@@ -207,10 +242,38 @@ public class GroupService {
     }
 
     @Transactional
-    public GroupResult join(UUID devicePublicId, String inviteCode) {
+    public GroupResult changeJoinType(UUID groupPublicId, UUID devicePublicId, GroupJoinType joinType) {
+        Group group = findGroup(groupPublicId);
+        requireOwner(group, devicePublicId);
+        group.changeJoinType(joinType);
+
+        return toResult(group, GroupRole.OWNER);
+    }
+
+    @Transactional
+    public GroupResult joinByInviteCode(UUID devicePublicId, String inviteCode) {
         Device device = findDevice(devicePublicId);
         Group group = groupRepository.findByInviteCodeAndDeletedAtIsNull(inviteCode)
                 .orElseThrow(() -> new GroupException(GROUP_NOT_FOUND));
+
+        try {
+            groupMemberRepository.saveAndFlush(GroupMember.builder()
+                    .group(group)
+                    .device(device)
+                    .role(GroupRole.MEMBER)
+                    .build());
+        } catch (DataIntegrityViolationException exception) {
+            throw new GroupException(GROUP_ALREADY_JOINED, exception);
+        }
+
+        return toResult(group, GroupRole.MEMBER);
+    }
+
+    @Transactional
+    public GroupResult joinPublicGroup(UUID groupPublicId, UUID devicePublicId) {
+        Group group = findGroup(groupPublicId);
+        Device device = findDevice(devicePublicId);
+        group.validateCodeFreeJoin();
 
         try {
             groupMemberRepository.saveAndFlush(GroupMember.builder()
@@ -329,12 +392,13 @@ public class GroupService {
         }
     }
 
-    private Group saveWithUniqueInviteCode(String name, String description) {
+    private Group saveWithUniqueInviteCode(String name, String description, GroupJoinType joinType) {
         try {
             return groupRepository.saveAndFlush(Group.builder()
                     .name(name)
                     .description(description)
                     .inviteCode(unusedInviteCode())
+                    .joinType(joinType)
                     .build());
         } catch (DataIntegrityViolationException exception) {
             throw new GroupException(GROUP_NAME_DUPLICATED, exception);
@@ -384,9 +448,7 @@ public class GroupService {
     }
 
     private void requireOwner(Group group, UUID devicePublicId) {
-        if (!requireMember(group, devicePublicId).isOwner()) {
-            throw new GroupException(GROUP_OWNER_ONLY);
-        }
+        requireMember(group, devicePublicId).validateOwner();
     }
 
     private GroupStamp findStamp(Group group) {
@@ -401,5 +463,14 @@ public class GroupService {
                 groupMemberRepository.countByGroupIdAndLeftAtIsNull(group.getId()),
                 GroupStampResult.from(findStamp(group))
         );
+    }
+
+    private String memberNextCursor(List<GroupMemberResult> items, boolean hasNext) {
+        if (!hasNext) {
+            return null;
+        }
+        GroupMemberResult last = items.getLast();
+
+        return GroupCursorCodec.encodeMembers(last.joinedAt(), last.id());
     }
 }

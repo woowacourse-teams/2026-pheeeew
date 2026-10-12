@@ -66,6 +66,7 @@ class GroupPersistenceIntegrationTest {
         assertThat(읽은_그룹.getName()).isEqualTo("한숨모임");
         assertThat(읽은_그룹.getDescription()).isEqualTo("테스트 그룹입니다.");
         assertThat(읽은_그룹.getInviteCode()).hasSize(6);
+        assertThat(읽은_그룹.getJoinType()).isEqualTo(GroupJoinType.PRIVATE);
         assertThat(읽은_그룹.getDeletedAt()).isNull();
         assertThat(읽은_그룹.getCreatedAt()).isNotNull();
         assertThat(읽은_그룹.getUpdatedAt()).isNotNull();
@@ -77,6 +78,7 @@ class GroupPersistenceIntegrationTest {
         Group 설명이_없는_그룹 = Group.builder()
                 .name("설명없음")
                 .inviteCode(무작위_초대_코드())
+                .joinType(GroupJoinType.PRIVATE)
                 .build();
 
         // when
@@ -84,6 +86,26 @@ class GroupPersistenceIntegrationTest {
 
         // then
         assertThat(저장한_그룹.getDescription()).isNull();
+    }
+
+    @Test
+    void 가입_방식을_넣지_않고_저장하면_비공개가_된다() {
+        // given
+        UUID 공개_식별자 = UUID.randomUUID();
+
+        // when
+        jdbcClient.sql("""
+                        INSERT INTO groups (public_id, name, invite_code, created_at, updated_at)
+                        VALUES (?, ?, ?, NOW(), NOW())
+                        """)
+                .param(공개_식별자)
+                .param("구버전모임")
+                .param(무작위_초대_코드())
+                .update();
+
+        // then
+        Group 읽은_그룹 = groupRepository.findByPublicIdAndDeletedAtIsNull(공개_식별자).orElseThrow();
+        assertThat(읽은_그룹.getJoinType()).isEqualTo(GroupJoinType.PRIVATE);
     }
 
     @Test

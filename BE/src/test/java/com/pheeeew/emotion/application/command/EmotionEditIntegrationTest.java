@@ -83,11 +83,12 @@ class EmotionEditIntegrationTest {
 
     @ParameterizedTest
     @MethodSource("contentTransitions")
-    void 오래된_본인_감정도_모든_내용_유형으로_변경하고_위치와_각도는_유지한다(String before, String after) {
+    void 오래된_본인_감정도_모든_내용_유형으로_변경하고_위치와_각도는_유지한다(String before, String after, boolean anonymous) {
         // given
         Emotion original = save(before);
         Instant createdAt = Instant.parse("2020-01-01T00:00:00Z");
-        jdbc.sql("UPDATE emotions SET created_at = :at, nickname = :nickname WHERE id = :id")
+        jdbc.sql("UPDATE emotions SET created_at = :at, nickname = :nickname, anonymous = :anonymous WHERE id = :id")
+                .param("anonymous", anonymous)
                 .param("nickname", "기존 랜덤 닉네임")
                 .param("at", java.sql.Timestamp.from(createdAt)).param("id", original.getId()).update();
         em.clear();
@@ -113,6 +114,7 @@ class EmotionEditIntegrationTest {
         assertThat(jdbc.sql("SELECT nickname FROM emotions WHERE id = :id")
                 .param("id", original.getId()).query(String.class).single()).isEqualTo("기존 랜덤 닉네임");
         assertThat(loaded.getRequestId()).isEqualTo(original.getRequestId());
+        assertThat(loaded.isAnonymous()).isEqualTo(anonymous);
         assertThat(loaded.getRegionCode()).isEqualTo(original.getRegionCode()).isNotNull();
         assertThat(loaded.getRegionClassifiedAt()).isEqualTo(regionClassifiedAt).isNotNull();
         assertThat(loaded.getCreatedAt()).isEqualTo(createdAt);
@@ -236,6 +238,7 @@ class EmotionEditIntegrationTest {
 
     private static Stream<Arguments> contentTransitions() {
         return Stream.of("NONE", "MEMO", "AUDIO").flatMap(before ->
-                Stream.of("NONE", "MEMO", "AUDIO").map(after -> Arguments.of(before, after)));
+                Stream.of("NONE", "MEMO", "AUDIO").flatMap(after ->
+                        Stream.of(true, false).map(anonymous -> Arguments.of(before, after, anonymous))));
     }
 }

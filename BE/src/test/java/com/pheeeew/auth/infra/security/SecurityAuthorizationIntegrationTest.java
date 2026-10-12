@@ -1328,11 +1328,15 @@ class SecurityAuthorizationIntegrationTest {
         assertThat(schemas.path("EmotionCreateRequest").path("properties").has("anonymous")).isFalse();
         assertThat(schemas.path("EmotionV3CreateRequest").path("properties").has("anonymous")).isTrue();
         assertThat(paths.path("/api/v3/emotions").has("get")).isTrue();
-        assertThat(paths.has("/api/v3/emotions/{emotionId}")).isFalse();
+        JsonNode update = paths.path("/api/v3/emotions/{emotionId}").path("put");
+        assertThat(update.path("requestBody").path("content").path("application/json").path("schema").path("$ref").asText())
+                .isEqualTo("#/components/schemas/EmotionV3UpdateRequest");
+        assertThat(update.path("description").asText()).contains("contentType은 MEMO 또는 AUDIO", "NONE");
+        assertThat(update.path("responses").has("204")).isTrue();
     }
 
     @Test
-    void 감정_목록_API_문서는_v1_호환과_v3_조회_조건을_구분하고_지도는_유지한다() throws JsonProcessingException {
+    void 감정_조회_API_문서는_구버전_호환과_목록_지도_필터를_구분한다() throws JsonProcessingException {
         // given / when
         String body = client.get().uri("/v3/api-docs").exchange().expectStatus().isOk()
                 .expectBody(String.class).returnResult().getResponseBody();
@@ -1340,6 +1344,7 @@ class SecurityAuthorizationIntegrationTest {
         JsonNode v1 = paths.path("/api/v1/emotions").path("get");
         JsonNode v3 = paths.path("/api/v3/emotions").path("get");
         JsonNode map = paths.path("/api/v1/emotions/map").path("get");
+        JsonNode contentMap = paths.path("/api/v2/emotions/map").path("get");
 
         // then
         assertThat(v1.path("deprecated").asBoolean()).isTrue();
@@ -1348,7 +1353,7 @@ class SecurityAuthorizationIntegrationTest {
         assertThat(v3.path("deprecated").asBoolean()).isFalse();
         assertThat(v3.path("summary").asText()).isEqualTo("전체·그룹 감정 목록 조회");
         assertThat(v3.path("description").asText())
-                .contains("최대 50개", "동일한 그룹 ID", "전체 목록 커서에 groupId를 추가하면 400", "무시", "nextCursor");
+                .contains("최대 50개", "scope=ALL", "GROUP", "MY", "Asia/Seoul", "명시한 필터는 커서와 같아야", "무시", "nextCursor");
         assertThat(v3.path("security").get(0).has("bearerAuth")).isTrue();
         assertThat(map.path("deprecated").asBoolean()).isFalse();
         assertThat(map.path("summary").asText()).isEqualTo("지도 스탬프 조회");
@@ -1359,7 +1364,7 @@ class SecurityAuthorizationIntegrationTest {
             assertThat(parameter.path("in").asText()).isEqualTo("query");
             assertThat(parameter.path("required").asBoolean()).as("v3 query parameter: %s", parameter).isFalse();
         }
-        assertThat(v3Parameters).containsExactlyInAnyOrder("cursor", "groupId");
+        assertThat(v3Parameters).containsExactlyInAnyOrder("cursor", "groupId", "startDate", "endDate", "contentType", "scope");
 
         Set<String> v1Parameters = new HashSet<>();
         for (JsonNode parameter : v1.path("parameters")) {
@@ -1367,6 +1372,29 @@ class SecurityAuthorizationIntegrationTest {
         }
         assertThat(v1Parameters).containsExactlyInAnyOrder(
                 "minLongitude", "minLatitude", "maxLongitude", "maxLatitude", "cursor", "groupId");
+        Set<String> mapParameters = new HashSet<>();
+        for (JsonNode parameter : map.path("parameters")) {
+            mapParameters.add(parameter.path("name").asText());
+        }
+        assertThat(mapParameters).containsExactlyInAnyOrderElementsOf(v1Parameters);
+
+        Set<String> contentMapParameters = new HashSet<>();
+        for (JsonNode parameter : contentMap.path("parameters")) {
+            contentMapParameters.add(parameter.path("name").asText());
+            assertThat(parameter.path("in").asText()).isEqualTo("query");
+            assertThat(parameter.path("required").asBoolean()).as("v2 map query parameter: %s", parameter).isFalse();
+        }
+        assertThat(contentMapParameters).containsExactlyInAnyOrder(
+                "minLongitude", "minLatitude", "maxLongitude", "maxLatitude", "cursor", "groupId",
+                "startDate", "endDate", "contentType", "scope");
+        assertThat(contentMap.path("description").asText())
+                .contains("최대 200개", "scope=ALL", "GROUP", "MY", "Asia/Seoul", "명시한 필터는 커서와 같아야", "영역 좌표는 전달하지 않습니다");
+        assertThat(contentMap.path("responses").has("400")).isTrue();
+        assertThat(contentMap.path("responses").has("404")).isTrue();
+        assertThat(contentMap.path("security").get(0).has("bearerAuth")).isTrue();
+        assertThat(contentMap.path("responses").path("200").path("content").findPath("$ref").asText())
+                .isNotBlank().isEqualTo(map.path("responses").path("200").path("content").findPath("$ref").asText());
+
         JsonNode v1Content = v1.path("responses").path("200").path("content");
         JsonNode v3Content = v3.path("responses").path("200").path("content");
         assertThat(v3Content.findPath("$ref").asText()).isNotBlank()

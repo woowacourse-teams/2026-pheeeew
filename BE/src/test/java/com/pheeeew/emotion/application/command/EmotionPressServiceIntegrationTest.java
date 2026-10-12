@@ -6,11 +6,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.mockito.Mockito.when;
 
-import com.pheeeew.common.logging.RequestLoggingFilter;
+import com.pheeeew.common.logging.RequestLoggingConfiguration;
 import com.pheeeew.common.logging.RequestServiceTimingAspect;
+import com.pheeeew.common.logging.PheeeewRequestTimingStage;
 import com.pheeeew.common.logging.RequestTiming;
 import com.pheeeew.common.logging.RequestTiming.Measurement;
-import com.pheeeew.common.logging.RequestTiming.Stage;
+import com.pheeeew.common.logging.RequestTimingStage;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceErrorCode;
@@ -124,7 +125,7 @@ class EmotionPressServiceIntegrationTest {
     @CsvSource({"increase,PRESS_INCREASE,PRESS_SERVICE", "my_daily,PRESS_MY_DAILY,PRESS_MY_SERVICE",
             "daily_total,PRESS_DAILY_TOTAL,PRESS_TOTAL_SERVICE"})
     void 프레스_SQL_장애를_작업별_실패로_기록하고_예외를_유지한다(
-            String operation, Stage stage, Stage serviceStage
+            String operation, PheeeewRequestTimingStage stage, PheeeewRequestTimingStage serviceStage
     ) throws Exception {
         // given: 실제 서비스 트랜잭션이 실패 후 롤백되도록 테이블 이름으로 장애를 만든다.
         Device 기기 = 기기를_저장한다();
@@ -166,24 +167,24 @@ class EmotionPressServiceIntegrationTest {
         var total = inRequest(() -> assertThat(emotionPressQueryService.findDailyTotal(0).total()).isEqualTo(5));
 
         // then: 저장 요청의 응답 조회만 함께 기록하고, 다음 요청의 조회는 섞지 않는다.
-        assertThat(writes).containsOnlyKeys(Stage.PRESS_SERVICE, Stage.PRESS_INCREASE, Stage.PRESS_MY_DAILY);
-        assertThat(writes.get(Stage.PRESS_SERVICE).count()).isEqualTo(1);
-        assertThat(writes.get(Stage.PRESS_INCREASE).count()).isEqualTo(5);
-        assertThat(writes.get(Stage.PRESS_INCREASE).totalNanos())
-                .isGreaterThanOrEqualTo(writes.get(Stage.PRESS_INCREASE).maxNanos());
-        assertThat(writes.get(Stage.PRESS_MY_DAILY).count()).isEqualTo(1);
-        assertThat(mine).containsOnlyKeys(Stage.PRESS_MY_SERVICE, Stage.PRESS_MY_DAILY);
-        assertThat(mine.get(Stage.PRESS_MY_SERVICE).count()).isEqualTo(1);
-        assertThat(mine.get(Stage.PRESS_MY_DAILY).count()).isEqualTo(1);
-        assertThat(total).containsOnlyKeys(Stage.PRESS_TOTAL_SERVICE, Stage.PRESS_DAILY_TOTAL);
-        assertThat(total.get(Stage.PRESS_TOTAL_SERVICE).count()).isEqualTo(1);
-        assertThat(total.get(Stage.PRESS_DAILY_TOTAL).count()).isEqualTo(1);
+        assertThat(writes).containsOnlyKeys(PheeeewRequestTimingStage.PRESS_SERVICE, PheeeewRequestTimingStage.PRESS_INCREASE, PheeeewRequestTimingStage.PRESS_MY_DAILY);
+        assertThat(writes.get(PheeeewRequestTimingStage.PRESS_SERVICE).count()).isEqualTo(1);
+        assertThat(writes.get(PheeeewRequestTimingStage.PRESS_INCREASE).count()).isEqualTo(5);
+        assertThat(writes.get(PheeeewRequestTimingStage.PRESS_INCREASE).totalNanos())
+                .isGreaterThanOrEqualTo(writes.get(PheeeewRequestTimingStage.PRESS_INCREASE).maxNanos());
+        assertThat(writes.get(PheeeewRequestTimingStage.PRESS_MY_DAILY).count()).isEqualTo(1);
+        assertThat(mine).containsOnlyKeys(PheeeewRequestTimingStage.PRESS_MY_SERVICE, PheeeewRequestTimingStage.PRESS_MY_DAILY);
+        assertThat(mine.get(PheeeewRequestTimingStage.PRESS_MY_SERVICE).count()).isEqualTo(1);
+        assertThat(mine.get(PheeeewRequestTimingStage.PRESS_MY_DAILY).count()).isEqualTo(1);
+        assertThat(total).containsOnlyKeys(PheeeewRequestTimingStage.PRESS_TOTAL_SERVICE, PheeeewRequestTimingStage.PRESS_DAILY_TOTAL);
+        assertThat(total.get(PheeeewRequestTimingStage.PRESS_TOTAL_SERVICE).count()).isEqualTo(1);
+        assertThat(total.get(PheeeewRequestTimingStage.PRESS_DAILY_TOTAL).count()).isEqualTo(1);
     }
 
-    private Map<Stage, Measurement> inRequest(Runnable operation) throws Exception {
+    private Map<RequestTimingStage, Measurement> inRequest(Runnable operation) throws Exception {
         var request = new MockHttpServletRequest();
-        var snapshot = new AtomicReference<Map<Stage, Measurement>>();
-        new RequestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
+        var snapshot = new AtomicReference<Map<RequestTimingStage, Measurement>>();
+        new RequestLoggingConfiguration().requestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
             RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
             try {
                 operation.run();
@@ -322,6 +323,7 @@ class EmotionPressServiceIntegrationTest {
         // given
         Device 기기 = 기기를_저장한다();
         double 기존_자른_양 = 자른_양("total");
+        double 기존_상태_수 = meterRegistry.get("pheeeew.emotion.press.states").summary().totalAmount();
 
         // when
         EmotionPressResult 결과 = 누른다(기기, 순서대로(
@@ -338,6 +340,8 @@ class EmotionPressServiceIntegrationTest {
         assertThat(결과.counts().get(EmotionState.IRRITATED)).isZero();
         assertThat(행_수()).isEqualTo(4);
         assertThat(자른_양("total") - 기존_자른_양).isEqualTo(50);
+        assertThat(meterRegistry.get("pheeeew.emotion.press.states").summary().totalAmount() - 기존_상태_수)
+                .isEqualTo(4);
     }
 
     @Test

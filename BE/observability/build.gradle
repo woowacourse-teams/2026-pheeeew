@@ -1,0 +1,47 @@
+plugins {
+    id 'java-library'
+    id 'io.spring.dependency-management'
+}
+
+group = rootProject.group
+version = rootProject.version
+description = 'Pheeeew common observability'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES
+    }
+}
+
+dependencies {
+    api 'org.slf4j:slf4j-api'
+    api 'io.micrometer:micrometer-core'
+    api 'org.springframework:spring-jdbc'
+    compileOnlyApi 'jakarta.servlet:jakarta.servlet-api'
+    api 'org.springframework:spring-web'
+    implementation 'org.springframework:spring-webmvc'
+    implementation 'org.springframework:spring-context'
+    implementation 'com.zaxxer:HikariCP'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.assertj:assertj-core'
+    testImplementation 'org.springframework:spring-test'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'io.micrometer:micrometer-registry-prometheus'
+    testImplementation 'jakarta.servlet:jakarta.servlet-api'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}

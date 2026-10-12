@@ -8,7 +8,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.pheeeew.common.logging.RequestTiming.Measurement;
-import com.pheeeew.common.logging.RequestTiming.Stage;
 import com.pheeeew.emotion.application.command.EmotionPressService;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
@@ -65,7 +64,7 @@ class RequestServiceTimingAspectTest {
 
             // then: begin=10, body=20, commit=30, rollback=40. 일반 예외의 커밋 실패에는 롤백도 포함한다.
             assertThat(RequestTiming.snapshot(request)).containsExactlyEntriesOf(
-                    Map.of(Stage.PRESS_SERVICE, Measurement.of(1, expected, expected)));
+                    Map.of(PheeeewRequestTimingStage.PRESS_SERVICE, Measurement.of(1, expected, expected)));
             if (scenario == Scenario.BEGIN_FAILURE) {
                 verify(target, never()).press(null, Map.of());
             }

@@ -44,13 +44,15 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 @PostgisDataJpaTest
-@Import(EmotionQueryService.class)
+@Import({EmotionMapQueryService.class, EmotionQueryService.class})
 class EmotionAudioPlaybackIntegrationTest {
 
     private static final String OBJECT_KEY = "recordings/private-voice.m4a";
 
     @Autowired
     private EmotionQueryService queryService;
+    @Autowired
+    private EmotionMapQueryService mapQueryService;
     @Autowired
     private EmotionRepository emotionRepository;
     @Autowired
@@ -112,7 +114,7 @@ class EmotionAudioPlaybackIntegrationTest {
         when(issuer.issuePlayback(OBJECT_KEY)).thenReturn(first, second);
 
         // when / then
-        var page = withoutBounds ? queryService.findListWithoutBounds(viewer.getPublicId(), null, null)
+        var page = withoutBounds ? queryService.findListWithoutBounds(viewer.getPublicId(), null, null, null, null, null, null)
                 : queryService.findListWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), viewer.getPublicId(), null, null);
         assertThat(page.items()).filteredOn(item -> item.id().equals(emotion.getId()))
                 .singleElement().satisfies(item -> {
@@ -125,7 +127,7 @@ class EmotionAudioPlaybackIntegrationTest {
                     assertThat(item.hasAudio()).isFalse();
                     assertThat(item.audio()).isNull();
                 });
-        var refreshed = withoutBounds ? queryService.findListWithoutBounds(viewer.getPublicId(), null, null)
+        var refreshed = withoutBounds ? queryService.findListWithoutBounds(viewer.getPublicId(), null, null, null, null, null, null)
                 : queryService.findListWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), viewer.getPublicId(), null, null);
         assertThat(refreshed.items()).filteredOn(item -> item.id().equals(emotion.getId()))
                 .singleElement().satisfies(item -> assertThat(item.audio()).isEqualTo(second));
@@ -185,7 +187,7 @@ class EmotionAudioPlaybackIntegrationTest {
         // when
         var first = queryService.findListWithinBounds(bounds, viewer.getPublicId(), null, null);
         var second = queryService.findListWithinBounds(null, viewer.getPublicId(), null, first.nextCursor());
-        var map = queryService.findMapWithinBounds(bounds, viewer.getPublicId(), null, null);
+        var map = mapQueryService.findMapWithinBounds(bounds, viewer.getPublicId(), null, null);
 
         // then
         assertThat(first.items()).hasSize(20).allSatisfy(item -> assertThat(item.memo()).isEqualTo("메모"));
@@ -213,7 +215,7 @@ class EmotionAudioPlaybackIntegrationTest {
 
         // when
         var list = queryService.findListWithinBounds(bounds, viewer.getPublicId(), null, null);
-        var map = queryService.findMapWithinBounds(bounds, viewer.getPublicId(), null, null);
+        var map = mapQueryService.findMapWithinBounds(bounds, viewer.getPublicId(), null, null);
 
         // then
         assertThat(list.items()).isEmpty();
@@ -294,8 +296,8 @@ class EmotionAudioPlaybackIntegrationTest {
         var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
 
         // when
-        var first = queryService.findMapWithinBounds(bounds, viewer.getPublicId(), null, null);
-        var second = queryService.findMapWithinBounds(null, viewer.getPublicId(), null, first.nextCursor());
+        var first = mapQueryService.findMapWithinBounds(bounds, viewer.getPublicId(), null, null);
+        var second = mapQueryService.findMapWithinBounds(null, viewer.getPublicId(), null, first.nextCursor());
 
         // then
         assertThat(first.items()).hasSize(200);

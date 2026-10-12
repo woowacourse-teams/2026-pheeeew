@@ -17,6 +17,7 @@ import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampResult;
 import com.pheeeew.groups.domain.Group;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.GroupViewerRole;
 import com.pheeeew.groups.domain.StampFrame;
@@ -77,7 +78,7 @@ class GroupControllerTest {
     void 그룹을_만들면_201과_위치_헤더를_반환한다() {
         // given
         GroupResult 만든_그룹 = 기본_결과();
-        when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq("설명입니다"), any()))
+        when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq("설명입니다"), eq(GroupJoinType.PRIVATE), any()))
                 .thenReturn(만든_그룹);
 
         // when
@@ -88,13 +89,13 @@ class GroupControllerTest {
         // then
         result.expectStatus().isCreated()
                 .expectHeader().location(GROUPS_URI + "/" + 만든_그룹.publicId());
-        verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq("설명입니다"), any());
+        verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq("설명입니다"), eq(GroupJoinType.PRIVATE), any());
     }
 
     @Test
     void 그룹_이름의_앞뒤_공백은_잘려서_전달된다() {
         // given
-        when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), any()))
+        when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), eq(GroupJoinType.PRIVATE), any()))
                 .thenReturn(기본_결과());
 
         // when
@@ -103,7 +104,55 @@ class GroupControllerTest {
                 """.formatted(스탬프_본문()));
 
         // then
-        verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), any());
+        verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), eq(GroupJoinType.PRIVATE), any());
+    }
+
+    @Test
+    void 가입_방식을_공개로_보내면_서비스에_공개로_전달한다() {
+        // given
+        when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), eq(GroupJoinType.PUBLIC), any()))
+                .thenReturn(기본_결과());
+
+        // when
+        RestTestClient.ResponseSpec result = 생성한다("""
+                {"name": "한숨모임", "joinType": "PUBLIC", %s}
+                """.formatted(스탬프_본문()));
+
+        // then
+        result.expectStatus().isCreated();
+        verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), eq(GroupJoinType.PUBLIC), any());
+    }
+
+    @Test
+    void 가입_방식을_보내지_않으면_서비스에_비공개로_전달하고_응답에_담는다() {
+        // given
+        when(groupService.save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), eq(GroupJoinType.PRIVATE), any()))
+                .thenReturn(기본_결과());
+
+        // when
+        RestTestClient.ResponseSpec result = 생성한다("""
+                {"name": "한숨모임", %s}
+                """.formatted(스탬프_본문()));
+
+        // then
+        result.expectStatus().isCreated()
+                .expectBody()
+                .jsonPath("$.joinType").isEqualTo("PRIVATE");
+        verify(groupService).save(eq(기기_공개_식별자), eq("한숨모임"), eq(null), eq(GroupJoinType.PRIVATE), any());
+    }
+
+    @Test
+    void 없는_가입_방식을_보내면_400이고_서비스를_부르지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = 생성한다("""
+                {"name": "한숨모임", "joinType": "SECRET", %s}
+                """.formatted(스탬프_본문()));
+
+        // then
+        result.expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(groupService);
     }
 
     @ParameterizedTest
@@ -238,6 +287,50 @@ class GroupControllerTest {
     }
 
     @Test
+    void 가입_방식을_공개로_바꾸면_서비스에_공개로_전달하고_응답에_담는다() {
+        // given
+        when(groupService.changeJoinType(그룹_공개_식별자, 기기_공개_식별자, GroupJoinType.PUBLIC))
+                .thenReturn(공개_결과());
+
+        // when
+        RestTestClient.ResponseSpec result = 가입_방식을_변경한다("""
+                {"joinType": "PUBLIC"}
+                """);
+
+        // then
+        result.expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.joinType").isEqualTo("PUBLIC");
+        verify(groupService).changeJoinType(그룹_공개_식별자, 기기_공개_식별자, GroupJoinType.PUBLIC);
+    }
+
+    @Test
+    void 가입_방식을_보내지_않고_바꾸면_400이고_서비스를_부르지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = 가입_방식을_변경한다("""
+                {}
+                """);
+
+        // then
+        result.expectStatus().isBadRequest()
+                .expectBody()
+                .jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(groupService);
+    }
+
+    @Test
+    void 없는_가입_방식으로_바꾸면_400이고_서비스를_부르지_않는다() {
+        // when
+        RestTestClient.ResponseSpec result = 가입_방식을_변경한다("""
+                {"joinType": "OPEN"}
+                """);
+
+        // then
+        result.expectStatus().isBadRequest();
+        verifyNoInteractions(groupService);
+    }
+
+    @Test
     void 상세_조회는_배포본과_같은_열두_필드를_내려준다() {
         // given
         when(groupService.findOne(그룹_공개_식별자, 기기_공개_식별자)).thenReturn(기본_상세());
@@ -278,7 +371,8 @@ class GroupControllerTest {
                 .jsonPath("$.weeklyEmotionPressCount").doesNotExist()
                 .jsonPath("$.weeklyEmotionPressRank").doesNotExist()
                 .jsonPath("$.weeklyStampCount").doesNotExist()
-                .jsonPath("$.weeklyStampRank").doesNotExist();
+                .jsonPath("$.weeklyStampRank").doesNotExist()
+                .jsonPath("$.joinType").doesNotExist();
     }
 
     @Test
@@ -381,6 +475,14 @@ class GroupControllerTest {
                 .exchange();
     }
 
+    private RestTestClient.ResponseSpec 가입_방식을_변경한다(String body) {
+        return client.put()
+                .uri(GROUPS_URI + "/" + 그룹_공개_식별자 + "/join-type")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .exchange();
+    }
+
     private RestTestClient.ResponseSpec 상세를_조회한다() {
         return client.get()
                 .uri(GROUPS_URI + "/" + 그룹_공개_식별자)
@@ -402,6 +504,7 @@ class GroupControllerTest {
                         "한숨모임",
                         "설명",
                         "ABCD1234",
+                        GroupJoinType.PRIVATE,
                         GroupRole.OWNER,
                         1,
                         new GroupStampResult("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
@@ -415,10 +518,19 @@ class GroupControllerTest {
     }
 
     private GroupResult 기본_결과() {
+        return 결과(GroupJoinType.PRIVATE);
+    }
+
+    private GroupResult 공개_결과() {
+        return 결과(GroupJoinType.PUBLIC);
+    }
+
+    private GroupResult 결과(GroupJoinType joinType) {
         Group group = Group.builder()
                 .name("한숨모임")
                 .description("설명입니다")
                 .inviteCode("A1B2C3")
+                .joinType(joinType)
                 .build();
 
         return GroupResult.of(

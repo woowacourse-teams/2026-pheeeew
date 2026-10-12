@@ -1,6 +1,7 @@
 package com.pheeeew.groups.application.dto;
 
 import com.pheeeew.groups.domain.Group;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupViewerRole;
 import java.util.UUID;
 
@@ -9,6 +10,7 @@ public record GroupDetailV3Result(
         String name,
         String description,
         String inviteCode,
+        GroupJoinType joinType,
         GroupViewerRole role,
         long memberCount,
         GroupStampResult stamp,
@@ -29,6 +31,7 @@ public record GroupDetailV3Result(
                 group.getName(),
                 group.getDescription(),
                 group.getInviteCode(),
+                group.getJoinType(),
                 role,
                 memberCount,
                 stamp,
