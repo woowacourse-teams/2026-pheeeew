@@ -119,6 +119,7 @@ Accepted (YYYY-MM-DD)
 | [0032](0032-keep-deployed-group-contract-and-split-detail-to-v3.md) | 배포된 그룹 계약 유지와 v3 분리 | 배포본 계약을 그대로 복원하고 새 상세를 `/api/v3` 로 갈라요. 전환이 끝나면 v2 상세를 지워요 |
 | [0033](0033-distinguish-group-join-type.md) | 그룹 가입 방식 구분 | 공개, 비공개로 가입 방식만 가르고 생략과 기존 행은 비공개로 읽어요 |
 | [0034](0034-change-group-join-type-without-reissuing-invite-code.md) | 가입 방식 전환 | 그룹장만 전용 경로로 바꾸고 초대 코드와 기존 멤버는 그대로 둬요 |
+| [0035](0035-serve-dev-api-without-cloudflare-proxy.md) | 개발 서버 API의 직접 연결 | Proposed: Cloudflare 프록시를 끄고 nginx가 공인 인증서로 직접 받아요. 스웨거는 Access 뒤의 문서용 주소로 옮겨요 |
 
 ## AI 사용
 
