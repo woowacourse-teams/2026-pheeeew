@@ -94,7 +94,7 @@ def verify_logs(config):
     entries.append("malformed fixture-999")
 
     # 실제 필터를 그대로 사용하고 전송 대상만 컨테이너 표준 출력으로 바꾼다.
-    pipeline = config.split('loki.process "http_requests" {', 1)[1].split('// 독립 수집기의 시간별 표본.', 1)[0]
+    pipeline = config.split('loki.process "http_requests" {', 1)[1].split('loki.write "grafana" {', 1)[0]
     pipeline = 'loki.process "http_requests" {' + pipeline.replace(
         "loki.write.grafana.receiver", "loki.echo.accepted.receiver")
     fixture_config = '''logging {
@@ -143,15 +143,15 @@ loki.echo "accepted" {}
 def verify_labels(name, config, environment):
     for key, value in (("environment", environment), ("instance", f"pheeeew-{environment}")):
         found = re.findall(rf'{key}\s*=\s*"([^"]+)"', config)
-        if found != [value, value, value]:
-            raise AssertionError(f"{name}: {key} 라벨이 수집·앱 로그·DB 표본 모두 {value} 여야 합니다. 실제 {found}")
+        if found != [value, value]:
+            raise AssertionError(f"{name}: {key} 라벨이 앱 지표·로그 모두 {value} 여야 합니다. 실제 {found}")
     print(f"{name}: 환경 라벨 검증 통과 ({environment})")
 
 
 def verify_same_filters(configs):
     def parts(config):
         return (re.search(r'regex\s*=\s*"([^"]+)"', config).group(1),
-                config.split('loki.process "http_requests" {', 1)[1].split('// 독립 수집기의 시간별 표본.', 1)[0])
+                config.split('loki.process "http_requests" {', 1)[1].split('loki.write "grafana" {', 1)[0])
 
     unique = {parts(config) for config in configs.values()}
     if len(unique) != 1:
