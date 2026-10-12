@@ -75,4 +75,29 @@ public class DeviceDailyPressRepository {
                         row.getString("nickname"), row.getLong("press_count"), row.getBoolean("mine")))
                 .list();
     }
+
+    public List<DeviceWeeklyPressSum> findDevicePressSumsByState(
+            LocalDate startDate,
+            LocalDate endDate,
+            EmotionState state,
+            UUID devicePublicId
+    ) {
+        return jdbc.sql("""
+                SELECT COALESCE(device.nickname, '익명') AS nickname,
+                       SUM(press.press_count) AS press_count,
+                       device.public_id = :devicePublicId AS mine
+                FROM device_daily_presses press
+                JOIN devices device ON device.id = press.device_id
+                WHERE press.press_date >= :startDate
+                  AND press.press_date < :endDate
+                  AND press.state = :state
+                GROUP BY press.device_id, device.nickname, device.public_id
+                ORDER BY SUM(press.press_count) DESC, COALESCE(device.nickname, '익명'), press.device_id
+                """).param("startDate", startDate).param("endDate", endDate)
+                .param("state", state.name())
+                .param("devicePublicId", devicePublicId)
+                .query((row, index) -> DeviceWeeklyPressSum.of(
+                        row.getString("nickname"), row.getLong("press_count"), row.getBoolean("mine")))
+                .list();
+    }
 }

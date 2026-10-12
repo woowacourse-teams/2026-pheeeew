@@ -3,6 +3,8 @@ package com.pheeeew.emotion.application.query;
 import com.pheeeew.common.application.Ranking;
 import com.pheeeew.emotion.application.dto.EmotionPressRankingItem;
 import com.pheeeew.emotion.application.dto.EmotionPressRankingResult;
+import com.pheeeew.emotion.application.dto.EmotionStatePressRankingResult;
+import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.DeviceDailyPressRepository;
 import com.pheeeew.emotion.domain.repository.projection.DeviceWeeklyPressSum;
 import com.pheeeew.groups.application.RankingWeek;
@@ -31,6 +33,21 @@ public class EmotionPressRankingService {
                 Ranking.rank(sums, DeviceWeeklyPressSum::pressCount, EmotionPressRankingItem::of);
 
         return EmotionPressRankingResult.of(weeksAgo, week.startAt(), week.endAt(), top(ranked), findMine(ranked));
+    }
+
+    public EmotionStatePressRankingResult findPressRankingByState(
+            UUID devicePublicId,
+            EmotionState state,
+            int weeksAgo
+    ) {
+        RankingWeek week = RankingWeek.of(clock.instant(), weeksAgo);
+        List<DeviceWeeklyPressSum> sums = deviceDailyPressRepository.findDevicePressSumsByState(
+                week.startDate(), week.endDate(), state, devicePublicId);
+        List<EmotionPressRankingItem> ranked =
+                Ranking.rank(sums, DeviceWeeklyPressSum::pressCount, EmotionPressRankingItem::of);
+
+        return EmotionStatePressRankingResult.of(
+                state, weeksAgo, week.startAt(), week.endAt(), top(ranked), findMine(ranked));
     }
 
     private List<EmotionPressRankingItem> top(List<EmotionPressRankingItem> ranked) {

@@ -41,7 +41,9 @@ public record EmotionPressRankingResponse(
             )
             String nickname,
             @Schema(
-                    description = "그 주에 누른 개인 감정 프레스의 합. 감정을 구분하지 않은 전체 합계입니다.",
+                    description = "그 주에 누른 개인 감정 프레스의 합. 어느 감정을 세는지는 엔드포인트마다 다릅니다. "
+                            + "/press-rankings 는 감정을 구분하지 않은 전체 합계, "
+                            + "/press-rankings/states/{state} 는 그 감정만의 합계입니다.",
                     example = "412"
             )
             long pressCount
