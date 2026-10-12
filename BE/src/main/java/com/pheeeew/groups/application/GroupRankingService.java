@@ -1,5 +1,6 @@
 package com.pheeeew.groups.application;
 
+import com.pheeeew.common.application.Ranking;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupPressRankingItem;
 import com.pheeeew.groups.application.dto.GroupPressRankingResult;
@@ -13,7 +14,6 @@ import com.pheeeew.groups.domain.repository.GroupPressRankingRepository;
 import com.pheeeew.groups.domain.repository.GroupRankingRepository;
 import com.pheeeew.groups.domain.repository.projection.GroupScoreProjection;
 import java.time.Clock;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -145,18 +145,6 @@ public class GroupRankingService {
             List<GroupScoreProjection> scores,
             BiFunction<Integer, GroupScoreProjection, T> toItem
     ) {
-        List<T> items = new ArrayList<>(scores.size());
-        int rank = 0;
-        long previousScore = Long.MIN_VALUE;
-        for (int index = 0; index < scores.size(); index++) {
-            GroupScoreProjection score = scores.get(index);
-            if (score.getScore() != previousScore) {
-                rank = index + 1;
-                previousScore = score.getScore();
-            }
-            items.add(toItem.apply(rank, score));
-        }
-
-        return items;
+        return Ranking.rank(scores, GroupScoreProjection::getScore, toItem);
     }
 }
