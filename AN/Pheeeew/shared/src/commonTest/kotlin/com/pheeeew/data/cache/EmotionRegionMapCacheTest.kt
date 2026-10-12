@@ -14,11 +14,12 @@ class EmotionRegionMapCacheTest {
     private val regions = listOf(EmotionRegion("a", "서울", 127.5, 37.8, 3, null))
 
     @Test
-    fun `동일 영역 계층 그룹만 재사용하고 화면 밖 표시점도 보관한다`() {
+    fun `조회 범위 안의 화면은 같은 계층 그룹의 전체 요약을 재사용한다`() {
         val cache = EmotionRegionMapCache()
         cache.put(bounds, EmotionRegionLevel.SIDO, null, regions)
         assertEquals(regions, cache.snapshot(bounds, EmotionRegionLevel.SIDO, null))
-        assertNull(cache.snapshot(bounds.copy(maxLongitude = 127.0), EmotionRegionLevel.SIDO, null))
+        assertEquals(regions, cache.snapshot(bounds.copy(maxLongitude = 127.0), EmotionRegionLevel.SIDO, null))
+        assertNull(cache.snapshot(bounds.copy(maxLongitude = 127.2), EmotionRegionLevel.SIDO, null))
         assertNull(cache.snapshot(bounds, EmotionRegionLevel.SIGUNGU, null))
         assertNull(cache.snapshot(bounds, EmotionRegionLevel.SIDO, "group"))
     }
@@ -37,12 +38,38 @@ class EmotionRegionMapCacheTest {
     @Test
     fun `최근 사용한 4개 영역만 유지한다`() {
         val cache = EmotionRegionMapCache()
-        val areas = (0..4).map { bounds.copy(minLongitude = 126.0 + it * 0.01) }
+        val areas = (0..4).map { bounds.copy(minLongitude = 120.0 + it, maxLongitude = 120.2 + it) }
         areas.take(4).forEach { cache.put(it, EmotionRegionLevel.SIDO, null, regions) }
         cache.snapshot(areas[0], EmotionRegionLevel.SIDO, null)
         cache.put(areas[4], EmotionRegionLevel.SIDO, null, regions)
         assertNull(cache.snapshot(areas[1], EmotionRegionLevel.SIDO, null))
         assertEquals(regions, cache.snapshot(areas[0], EmotionRegionLevel.SIDO, null))
+    }
+
+    @Test
+    fun `다른 계층의 조회가 기존 계층 캐시를 밀어내지 않는다`() {
+        val cache = EmotionRegionMapCache()
+        cache.put(bounds, EmotionRegionLevel.SIDO, null, regions)
+        (0..5).forEach { offset ->
+            cache.put(bounds.copy(minLongitude = 126.0 + offset * 0.01), EmotionRegionLevel.SIGUNGU, null, regions)
+        }
+        assertEquals(regions, cache.snapshot(bounds, EmotionRegionLevel.SIDO, null))
+    }
+
+    @Test
+    fun `부분적으로 겹치는 영역을 완전한 캐시로 사용하지 않는다`() {
+        val cache = EmotionRegionMapCache()
+        cache.put(bounds, EmotionRegionLevel.SIDO, null, regions)
+        assertNull(cache.snapshot(bounds.copy(minLongitude = 126.8), EmotionRegionLevel.SIDO, null))
+    }
+
+    @Test
+    fun `날짜 변경선을 가로지르는 조회 범위도 포함 여부를 확인한다`() {
+        val cache = EmotionRegionMapCache()
+        cache.put(EmotionMapBounds(170.0, -20.0, -170.0, 20.0), EmotionRegionLevel.SIDO, null, regions)
+        assertEquals(regions, cache.snapshot(EmotionMapBounds(175.0, -10.0, -175.0, 10.0), EmotionRegionLevel.SIDO, null))
+        assertEquals(regions, cache.snapshot(EmotionMapBounds(-179.0, -10.0, -175.0, 10.0), EmotionRegionLevel.SIDO, null))
+        assertNull(cache.snapshot(EmotionMapBounds(-10.0, -10.0, 10.0, 10.0), EmotionRegionLevel.SIDO, null))
     }
 
     @Test

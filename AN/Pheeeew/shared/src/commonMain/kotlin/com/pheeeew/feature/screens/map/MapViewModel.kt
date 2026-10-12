@@ -15,6 +15,8 @@ import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.domain.model.emotion.EmotionRegion
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.domain.model.emotion.EmotionRegionResult
+import com.pheeeew.domain.model.emotion.coversRegionViewport
+import com.pheeeew.domain.model.emotion.expandedForRegionQuery
 import com.pheeeew.domain.usecase.FindEmotionMapPageUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase
 import com.pheeeew.domain.usecase.FindEmotionRegionSnapshotUseCase
@@ -281,9 +283,10 @@ class MapViewModel(
             onViewportChanged(viewport.bounds)
             return
         }
-        val query = viewport.bounds to level
-        if (!forceRegionRefresh && query == activeRegionQuery &&
-            (regionJob?.isActive == true || _uiModel.value.regionClustersError == null)
+        val query = viewport.bounds.expandedForRegionQuery(level) to level
+        val activeQuery = activeRegionQuery
+        if (!forceRegionRefresh && regionJob?.isActive == true &&
+            activeQuery != null && activeQuery.second == level && activeQuery.first.coversRegionViewport(viewport.bounds)
         ) {
             return
         }

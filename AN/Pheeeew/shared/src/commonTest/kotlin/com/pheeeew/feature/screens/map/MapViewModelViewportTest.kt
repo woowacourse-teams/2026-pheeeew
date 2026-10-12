@@ -44,6 +44,32 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelViewportTest {
     @Test
+    fun `진행 중인 지역 조회 범위 안에서 화면이 이동하면 요청을 다시 시작하지 않는다`() = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        try {
+            var calls = 0
+            val response = CompletableDeferred<EmotionRegionResult>()
+            val pins = QueuedEmotionMapRepository()
+            val viewModel = MapViewModel(
+                noLocationRefreshUseCase(), FindEmotionMapPageUseCase(pins), FindEmotionMapSnapshotUseCase(pins),
+                findRegions = FindEmotionRegionsUseCase(regionRepository { _, _, _ -> calls++; response.await() }),
+            )
+            viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 11.0))
+            advanceTimeBy(700)
+            runCurrent()
+            viewModel.onViewportChanged(EmotionMapViewport(bounds(127.01, 37.51), 11.0))
+            advanceTimeBy(700)
+            runCurrent()
+            assertEquals(1, calls)
+            response.complete(EmotionRegionResult.Success(listOf(EmotionRegion("a", "지역", 127.0, 37.5, 3, null))))
+            runCurrent()
+            assertEquals(listOf("a"), viewModel.uiModel.value.regionClusters.map { it.id })
+        } finally {
+            Dispatchers.resetMain()
+        }
+    }
+
+    @Test
     fun `넓어진 조회 범위의 주변 핀도 표시하되 보관 상한은 실제 화면 기준으로 적용한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))

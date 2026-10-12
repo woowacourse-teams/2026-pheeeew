@@ -8,6 +8,7 @@ import com.pheeeew.domain.model.emotion.EmotionRegion
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.domain.model.emotion.EmotionRegionResult
 import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.model.emotion.expandedForRegionQuery
 import com.pheeeew.domain.repository.EmotionRegionMapRepository
 import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.JsonArray
@@ -38,13 +39,15 @@ class EmotionRegionMapRepositoryImpl(
     ): EmotionRegionResult {
         if (forceRefresh) {
             cacheGeneration++
-            cache.invalidate(level, groupId)
+            // A newly registered emotion changes both administrative levels.
+            cache.invalidateGroup(groupId)
         } else {
             findSnapshot(bounds, level, groupId)?.let { return EmotionRegionResult.Success(it) }
         }
         val generation = cacheGeneration
+        val queryBounds = bounds.expandedForRegionQuery(level)
         return try {
-            when (val result = api.findRegions(bounds, level, groupId)) {
+            when (val result = api.findRegions(queryBounds, level, groupId)) {
                 is ApiResult.Failure -> {
                     EmotionRegionResult.Failure
                 }
@@ -54,7 +57,7 @@ class EmotionRegionMapRepositoryImpl(
                     if (result.value.isNotEmpty() && regions.isEmpty()) {
                         EmotionRegionResult.Failure
                     } else {
-                        if (generation == cacheGeneration) cache.put(bounds, level, groupId, regions)
+                        if (generation == cacheGeneration) cache.put(queryBounds, level, groupId, regions)
                         EmotionRegionResult.Success(regions)
                     }
                 }
