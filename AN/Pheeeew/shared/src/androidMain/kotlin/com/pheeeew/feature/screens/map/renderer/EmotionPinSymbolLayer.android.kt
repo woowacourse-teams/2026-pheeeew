@@ -117,7 +117,8 @@ internal class EmotionPinSymbolLayer {
         lastInputPins = pins
         lastRenderedPins = renderedPins
         this.focusedId = focusedId
-        val sourceChanged = imageChanged || renderSignature != lastRenderSignature
+        // Image registration updates the style; only changed drawable pins require a source update.
+        val sourceChanged = renderSignature != lastRenderSignature
         if (!sourceChanged) {
             lastTopPriority = renderedPins.size
             applyDynamicProperties(style, lastTopPriority)

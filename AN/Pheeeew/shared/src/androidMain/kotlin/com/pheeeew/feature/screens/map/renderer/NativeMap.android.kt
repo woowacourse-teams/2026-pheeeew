@@ -49,6 +49,7 @@ import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.TransitionOptions
 import kotlin.math.PI
 import kotlin.math.hypot
 import kotlin.math.roundToInt
@@ -505,6 +506,8 @@ private class AndroidFoundationMapHost(
 
     private fun installLoadedStyle(loadedStyle: Style) {
         style = loadedStyle
+        // Keep symbols opaque when viewport and GeoJSON updates recalculate placement.
+        loadedStyle.setTransition(TransitionOptions(0L, 0L, false))
         AndroidMapAppearance.apply(loadedStyle)
         emotionPinSymbolLayer.install(loadedStyle)
         regionClusterSymbolLayer.install(loadedStyle)
