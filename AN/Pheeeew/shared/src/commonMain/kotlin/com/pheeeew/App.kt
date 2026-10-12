@@ -293,7 +293,14 @@ private fun AppContent(
                     stamp = groupOptions.firstOrNull { group -> group.id == recordUiModel.selectedGroupId }?.stamp,
                 )
             }
-    val nativeMapSymbolImages = rememberEmotionPinSymbolImages(mapUiModel.emotionPins + listOfNotNull(previewPin))
+    val pinImageModels = remember(mapUiModel.emotionPins, previewPin) {
+        mapUiModel.emotionPins + listOfNotNull(previewPin)
+    }
+    val nativeMapSymbolImages = rememberEmotionPinSymbolImages(pinImageModels)
+    val visibleEmotionPins =
+        remember(mapUiModel.emotionPins, mapUiModel.hiddenEmotionIds) {
+            mapUiModel.emotionPins.filterNot { it.id in mapUiModel.hiddenEmotionIds }
+        }
     val regionImages = rememberRegionClusterSymbolImages(mapUiModel.regionClusters)
     val regionRenderState = rememberRegionClusterRenderState(mapUiModel.regionClusters, regionImages)
     val nativeMapState =
@@ -308,7 +315,7 @@ private fun AppContent(
             pressedEmotionId = pressedPinId,
             pressedEmotionScale = pinPressScale.value,
             emotionContentLoad = mapUiModel.emotionContentLoad.takeIf { mapContentActive },
-            emotionPins = mapUiModel.emotionPins.filterNot { it.id in mapUiModel.hiddenEmotionIds },
+            emotionPins = visibleEmotionPins,
         )
 
     LaunchedEffect(appVersionApi, appVersion, versionCheckAttempt) {

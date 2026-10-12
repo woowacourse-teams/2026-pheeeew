@@ -50,6 +50,29 @@ internal actual fun NativeMap(
     val currentOnMemoryPressure by rememberUpdatedState(onMemoryPressure)
     val currentOnRecordViewportChanged by rememberUpdatedState(onRecordViewportChanged)
     val currentOnViewportChanged by rememberUpdatedState(onViewportChanged)
+    val emotionPinCoordinates =
+        remember(state.emotionPins) {
+            state.emotionPins.map {
+                FoundationIosEmotionPinCoordinateUiModel(
+                    id = it.id,
+                    latitude = it.latitude,
+                    longitude = it.longitude,
+                    imageKey = it.symbolImageKey(),
+                    rotationDegrees = it.rotationDegrees,
+                )
+            }
+        }
+    val regionClusterCoordinates =
+        remember(state.regionClusters) {
+            state.regionClusters.map {
+                FoundationIosRegionClusterCoordinateUiModel(it.id, it.latitude, it.longitude, it.symbolImageKey())
+            }
+        }
+    val allSymbolImages = remember(state.emotionPinSymbolImages, state.regionClusterSymbolImages) {
+        (state.emotionPinSymbolImages + state.regionClusterSymbolImages).distinctBy { it.key }.map {
+            FoundationIosMapSymbolImageUiModel(it.key, it.width, it.height, it.rgba)
+        }
+    }
     val eventSink =
         remember {
             object : FoundationIosMapEventSink {
@@ -100,7 +123,14 @@ internal actual fun NativeMap(
         update = { mapView ->
             FoundationIosMapBridge.updateMapView(
                 mapView = mapView,
-                state = state.toFoundationIosRenderUiModel(isVisible, savedCamera),
+                state =
+                    state.toFoundationIosRenderUiModel(
+                        isVisible = isVisible,
+                        savedCamera = savedCamera,
+                        emotionPinCoordinates = emotionPinCoordinates,
+                        regionClusterCoordinates = regionClusterCoordinates,
+                        symbolImages = allSymbolImages,
+                    ),
             )
         },
         onRelease = FoundationIosMapBridge::releaseMapView,
@@ -115,6 +145,9 @@ internal actual fun NativeMap(
 private fun MapUiModel.toFoundationIosRenderUiModel(
     isVisible: Boolean,
     savedCamera: MapCameraSnapshotUiModel?,
+    emotionPinCoordinates: List<FoundationIosEmotionPinCoordinateUiModel>,
+    regionClusterCoordinates: List<FoundationIosRegionClusterCoordinateUiModel>,
+    symbolImages: List<FoundationIosMapSymbolImageUiModel>,
 ): FoundationIosMapRenderUiModel {
     val currentLocation = (locationState as? LocationState.Available)?.location
     val latitude = currentLocation?.latitude ?: FALLBACK_LATITUDE
@@ -150,23 +183,8 @@ private fun MapUiModel.toFoundationIosRenderUiModel(
         pressedEmotionId = pressedEmotionId,
         pressedEmotionScale = pressedEmotionScale,
         focusedEmotionId = focusedEmotionId,
-        emotionPinCoordinates =
-            emotionPins.map {
-                FoundationIosEmotionPinCoordinateUiModel(
-                    id = it.id,
-                    latitude = it.latitude,
-                    longitude = it.longitude,
-                    imageKey = it.symbolImageKey(),
-                    rotationDegrees = it.rotationDegrees,
-                )
-            },
-        regionClusterCoordinates =
-            regionClusters.map {
-                FoundationIosRegionClusterCoordinateUiModel(it.id, it.latitude, it.longitude, it.symbolImageKey())
-            },
-        emotionPinSymbolImages =
-            (emotionPinSymbolImages + regionClusterSymbolImages).distinctBy { it.key }.map {
-                FoundationIosMapSymbolImageUiModel(it.key, it.width, it.height, it.rgba)
-            },
+        emotionPinCoordinates = emotionPinCoordinates,
+        regionClusterCoordinates = regionClusterCoordinates,
+        emotionPinSymbolImages = symbolImages,
     )
 }
