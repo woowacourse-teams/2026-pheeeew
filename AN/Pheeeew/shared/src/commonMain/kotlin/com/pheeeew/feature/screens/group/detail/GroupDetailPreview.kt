@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import com.pheeeew.feature.screens.group.preview.HomeFixtures
 
@@ -166,7 +167,8 @@ internal fun previewGroupDetailUiModel(role: GroupRole): GroupDetailUiModel =
                 description = "그룹 설명 문구를 여기에 넣을겁니다....\n그룹설명설명설명입니다다다다다이",
             ),
         role = role,
-        inviteCode = "H1Y226",
+        inviteCode = if (role == GroupRole.NONE) null else "H1Y226",
+        joinType = GroupJoinType.PRIVATE,
         weeklyStampCount = 42,
         weeklyStampRank = 3,
         weeklyEmotionPressCount = 318,

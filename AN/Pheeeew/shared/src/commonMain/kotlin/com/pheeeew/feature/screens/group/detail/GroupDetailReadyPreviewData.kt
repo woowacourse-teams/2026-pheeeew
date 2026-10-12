@@ -9,6 +9,7 @@ import com.pheeeew.feature.screens.group.detail.model.GroupMoodContentUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedLoadState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedUiState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodPostUiModel
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.preview.HomeFixtures
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_emotion_angry
@@ -20,6 +21,8 @@ internal fun previewGroupDetailReadyUiModel(role: GroupRole = GroupRole.MEMBER):
     return GroupDetailReadyUiModel(
         name = "우테코 8기 히유",
         role = role,
+        joinType = GroupJoinType.PRIVATE,
+        inviteCode = if (role == GroupRole.NONE) null else "H1Y226",
         description = "그룹 설명 문구를 여기에 넣을겁니다....\n그룹설명설명설명입니다다다다다이",
         memberCount = 14,
         stamp = baseStamp.copy(label = "히유", shape = StampShapeId.ROUNDED_RECTANGLE, fillArgb = 0xFFF4FF9FL),

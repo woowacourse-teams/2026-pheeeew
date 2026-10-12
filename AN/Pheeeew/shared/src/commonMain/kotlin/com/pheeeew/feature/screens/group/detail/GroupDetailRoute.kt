@@ -142,7 +142,7 @@ fun GroupDetailRoute(
                     val current = viewModel.uiState.value
                     val detail = current.detail
                     if (detail != null && detail.role != GroupRole.NONE &&
-                        current.overlay == GroupDetailOverlay.InviteCode
+                        current.overlay == GroupDetailOverlay.InviteCode && detail.inviteCode != null
                     ) {
                         val message = GroupInviteLinkCodec.createShareMessage(detail.group.name, detail.inviteCode)
                         if (message == null || !shareLauncher.shareText(message)) {
