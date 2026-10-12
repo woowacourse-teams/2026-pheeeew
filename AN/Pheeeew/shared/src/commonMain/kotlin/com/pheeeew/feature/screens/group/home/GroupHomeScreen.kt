@@ -22,6 +22,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
@@ -169,7 +171,7 @@ private fun GroupHomeTabs(
     onTabSelected: (GroupHomeTab) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).selectableGroup(),
         verticalAlignment = Alignment.Bottom,
     ) {
         GroupHomeTab.entries.forEach { tab ->
@@ -187,7 +189,11 @@ private fun GroupHomeTabs(
                     Modifier
                         .weight(1f)
                         .height(48.dp)
-                        .clickable(role = Role.Tab, onClick = { onTabSelected(tab) }),
+                        .selectable(
+                            selected = selected,
+                            role = Role.Tab,
+                            onClick = { onTabSelected(tab) },
+                        ),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Bottom,
             ) {

@@ -2,7 +2,6 @@ package com.pheeeew.feature.screens.group.home.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
 
 /** A group the current user has already joined. */
@@ -14,7 +13,7 @@ fun GroupListItem(
 ) {
     GroupCatalogCard(
         group = group,
-        joinType = group.joinType,
+        joinType = null,
         isJoined = true,
         onClick = onClick,
         modifier = modifier,

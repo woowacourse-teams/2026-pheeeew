@@ -46,7 +46,7 @@ import pheeeew.shared.generated.resources.group_home_public
 @Composable
 fun GroupCatalogCard(
     group: GroupSummaryUiModel,
-    joinType: GroupJoinType,
+    joinType: GroupJoinType?,
     isJoined: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -109,18 +109,20 @@ fun GroupCatalogCard(
                         fontSize = 10.sp,
                         maxLines = 1,
                     )
-                    CatalogBadge(
-                        text =
-                            stringResource(
-                                if (joinType == GroupJoinType.PUBLIC) {
-                                    Res.string.group_home_public
-                                } else {
-                                    Res.string.group_home_private
-                                },
-                            ),
-                        background = Color(0xFFF0F2EF),
-                        textColor = AppColors.RankingSecondaryContent,
-                    )
+                    if (joinType != null) {
+                        CatalogBadge(
+                            text =
+                                stringResource(
+                                    if (joinType == GroupJoinType.PUBLIC) {
+                                        Res.string.group_home_public
+                                    } else {
+                                        Res.string.group_home_private
+                                    },
+                                ),
+                            background = Color(0xFFF0F2EF),
+                            textColor = AppColors.RankingSecondaryContent,
+                        )
+                    }
                     if (isJoined) {
                         CatalogBadge(
                             text = stringResource(Res.string.group_home_joined),
