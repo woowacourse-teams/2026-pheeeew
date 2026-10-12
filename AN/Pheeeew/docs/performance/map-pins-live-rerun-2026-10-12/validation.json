@@ -1,0 +1,9 @@
+{
+  "trials": 30,
+  "success": 30,
+  "received_count": 8,
+  "visible_count": 8,
+  "pages": 1,
+  "http_attempts": 1,
+  "time_sums_verified": true
+}

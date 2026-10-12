@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-12",
+  "measurement_local_time": "14:55-14:58 KST",
+  "device": {
+    "model": "Samsung Galaxy S23 FE (SM-S711N)",
+    "android": "15"
+  },
+  "network": "Wi-Fi",
+  "api_base_url": "https://api-dev.pheeeew.com",
+  "api_path": "/api/v1/emotions/map",
+  "group_id": null,
+  "query_bounds": {
+    "min_longitude": 124.0,
+    "min_latitude": 33.0,
+    "max_longitude": 132.0,
+    "max_latitude": 39.0
+  },
+  "camera": {
+    "center_latitude": 36.0,
+    "center_longitude": 128.0,
+    "zoom": 5.0,
+    "actual_viewport_bounds": {
+      "min_longitude": 123.78125004125394,
+      "min_latitude": 28.2702706157919,
+      "max_longitude": 132.21874995872997,
+      "max_latitude": 43.040583313993466
+    },
+    "contains_query_bounds": true
+  },
+  "rendering": {
+    "individual_pins_added_to_native_map": 3926,
+    "completion_probe": "MapLibre queryRenderedFeatures; cumulative feature IDs checked on completed native frames",
+    "product_region_summary_clusters_bypassed_for_profile": true
+  },
+  "build": "mapPinBenchmarkTarget assembleDebug; no minification",
+  "page_size": 200,
+  "warmups": 3,
+  "measured_repetitions": 30
+}

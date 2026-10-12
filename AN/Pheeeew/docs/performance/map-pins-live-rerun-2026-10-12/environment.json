@@ -1,0 +1,44 @@
+{
+  "measured_on": "2026-10-12",
+  "timezone": "Asia/Seoul",
+  "base_commit": "6de928001316470d5408d7c2b5b0bec743aa440f",
+  "api": "https://api-dev.pheeeew.com",
+  "endpoint": "/api/v1/emotions/map",
+  "device": "SM-S711N",
+  "os": "Android 15",
+  "serial": "R5CX11AKCYJ",
+  "apk_sha256": "0eadf7d41a5e060a2e1bffba955f6ce3581ee9e5bb59da50f8af8c3cd100a9be",
+  "patch_sha256": "9d4d2c0493b448eab0f2a7445669aa4b6f13d32fbe3a5d93c6a37cd519e4f2ad",
+  "repetitions": 30,
+  "warmups": 3,
+  "selected_viewport": {
+    "kind": "viewport_selected",
+    "count": 8,
+    "min_longitude": 127.09583339197923,
+    "min_latitude": 37.38312429924282,
+    "max_longitude": 127.11231288400757,
+    "max_latitude": 37.41149034148752,
+    "latitude": 37.3973086623786,
+    "longitude": 127.10407313796357,
+    "zoom": 14,
+    "pin_ids": [
+      399425,
+      399424,
+      399422,
+      399418,
+      399417,
+      399415,
+      506,
+      476
+    ]
+  },
+  "temperature_near_start_celsius": 30.4,
+  "power_near_start": "AC powered, battery 100%",
+  "original_viewport": "Not recorded in original experiment; new viewport selected for exactly 8 pins",
+  "selection": "25 preparation probes around a region returning 11 pins, then verified using actual native viewport; excluded from timing",
+  "installed_app": "Standalone com.pheeeew.mappinprofile",
+  "build": "release, no minification",
+  "network_transports": [
+    "WIFI"
+  ]
+}

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560">
+<rect width="100%" height="100%" fill="white"/>
+<style>text{font-family:Arial,sans-serif;fill:#222}.grid{stroke:#ddd;stroke-width:1}.axis{stroke:#333;stroke-width:1.5}</style>
+<text x="95" y="28" font-size="20" font-weight="bold">전국 지도 핀 누적 응답 / 렌더링 (중앙값)</text>
+<line class="grid" x1="95" y1="475.0" x2="965" y2="475.0"/>
+<text x="83" y="480.0" font-size="13" text-anchor="end">0</text>
+<line class="grid" x1="95" y1="375.0" x2="965" y2="375.0"/>
+<text x="83" y="380.0" font-size="13" text-anchor="end">1,000</text>
+<line class="grid" x1="95" y1="275.0" x2="965" y2="275.0"/>
+<text x="83" y="280.0" font-size="13" text-anchor="end">2,000</text>
+<line class="grid" x1="95" y1="175.0" x2="965" y2="175.0"/>
+<text x="83" y="180.0" font-size="13" text-anchor="end">3,000</text>
+<line class="grid" x1="95" y1="75.0" x2="965" y2="75.0"/>
+<text x="83" y="80.0" font-size="13" text-anchor="end">4,000</text>
+<line class="grid" x1="95.0" y1="55" x2="95.0" y2="475"/>
+<text x="95.0" y="499" font-size="13" text-anchor="middle">0</text>
+<line class="grid" x1="240.0" y1="55" x2="240.0" y2="475"/>
+<text x="240.0" y="499" font-size="13" text-anchor="middle">1,000</text>
+<line class="grid" x1="385.0" y1="55" x2="385.0" y2="475"/>
+<text x="385.0" y="499" font-size="13" text-anchor="middle">2,000</text>
+<line class="grid" x1="530.0" y1="55" x2="530.0" y2="475"/>
+<text x="530.0" y="499" font-size="13" text-anchor="middle">3,000</text>
+<line class="grid" x1="675.0" y1="55" x2="675.0" y2="475"/>
+<text x="675.0" y="499" font-size="13" text-anchor="middle">4,000</text>
+<line class="grid" x1="820.0" y1="55" x2="820.0" y2="475"/>
+<text x="820.0" y="499" font-size="13" text-anchor="middle">5,000</text>
+<line class="grid" x1="965.0" y1="55" x2="965.0" y2="475"/>
+<text x="965.0" y="499" font-size="13" text-anchor="middle">6,000</text>
+<line class="axis" x1="95" y1="55" x2="95" y2="475"/>
+<line class="axis" x1="95" y1="475" x2="965" y2="475"/>
+<polyline points="95.0,475.0 119.2,455.0 139.6,435.0 155.7,415.0 172.3,395.0 185.7,375.0 199.0,355.0 217.9,335.0 232.2,315.0 249.4,295.0 260.7,275.0 281.5,255.0 295.7,235.0 318.9,215.0 340.8,195.0 354.5,175.0 377.6,155.0 399.1,135.0 420.4,115.0 446.6,95.0 474.3,82.4" fill="none" stroke="#2878c8" stroke-width="3"/>
+<polyline points="95.0,475.0 185.5,455.0 698.6,435.0 745.5,415.0 754.3,395.0 754.3,375.0 754.3,355.0 754.3,335.0 754.3,315.0 754.3,295.0 754.3,275.0 754.3,255.0 754.3,235.0 754.3,215.0 754.3,195.0 754.3,175.0 754.3,155.0 754.3,135.0 754.3,115.0 754.3,95.0 754.3,82.4" fill="none" stroke="#e4772e" stroke-width="3"/>
+<text x="530.0" y="535" font-size="15" text-anchor="middle">첫 요청 후 경과 시간 (ms)</text>
+<text transform="translate(25 265.0) rotate(-90)" font-size="15" text-anchor="middle">누적 핀 개수</text>
+<line x1="690" y1="42" x2="724" y2="42" stroke="#2878c8" stroke-width="3"/><text x="733" y="47" font-size="13">응답 완료</text>
+<line x1="815" y1="42" x2="849" y2="42" stroke="#e4772e" stroke-width="3"/><text x="858" y="47" font-size="13">렌더 프레임 확인</text>
+</svg>

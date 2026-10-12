@@ -1,0 +1,118 @@
+diff --git a/AN/Pheeeew/mapPinBenchmarkTarget/src/main/AndroidManifest.xml b/AN/Pheeeew/mapPinBenchmarkTarget/src/main/AndroidManifest.xml
+index 9a94fbe2..ab0147ee 100644
+--- a/AN/Pheeeew/mapPinBenchmarkTarget/src/main/AndroidManifest.xml
++++ b/AN/Pheeeew/mapPinBenchmarkTarget/src/main/AndroidManifest.xml
+@@ -7,7 +7,7 @@
+         android:networkSecurityConfig="@xml/network_security_config"
+         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+         <profileable android:shell="true" />
+-        <activity android:name=".MapPinBenchmarkActivity" android:exported="true">
++        <activity android:name=".MapPinBenchmarkActivity" android:exported="true" android:screenOrientation="portrait" android:configChanges="orientation|screenSize|keyboardHidden|uiMode">
+             <intent-filter>
+                 <action android:name="android.intent.action.MAIN" />
+                 <category android:name="android.intent.category.LAUNCHER" />
+diff --git a/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/profile/MapPinProfileScreen.kt b/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/profile/MapPinProfileScreen.kt
+index 69c8a0c4..36b9e678 100644
+--- a/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/profile/MapPinProfileScreen.kt
++++ b/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/profile/MapPinProfileScreen.kt
+@@ -87,7 +87,7 @@ fun MapPinProfileScreen(
+         driver.emit("metadata", mapOf(
+             "device" to Build.MODEL, "os" to Build.VERSION.RELEASE,
+             "build" to "release-no-minification", "repetitions" to repetitions,
+-            "fixture_transport" to "HTTP over adb reverse", "icon_variants" to 5,
++            "live_api" to "https://api-dev.pheeeew.com", "target_count" to 8,
+             "frame_probe" to "queryRenderedFeatures on native frame completion",
+         ))
+         withTimeout(60_000) { while (viewport == null) delay(100) }
+@@ -149,6 +149,7 @@ fun MapPinProfileScreen(
+                     check(!result.page.hasNext || (!cursor.isNullOrBlank() && cursors.add(cursor))) { "Invalid cursor" }
+                     check(run.pages.size <= 50) { "Page limit exceeded" }
+                 } while (result.page.hasNext)
++                check(pins.size == 8 && run.pages.last().expected.size == 8) { "Pin count changed: ${pins.size}" }
+                 run.downloadingFinished = true
+                 withTimeout(15_000) { run.completed.await() }
+                 driver.finish(run, "success")
+@@ -164,19 +165,52 @@ fun MapPinProfileScreen(
+         }
+
+         // These warmups prepare map tiles and all five native icon textures.
+-        repeat(3) { trial("fixture_local", 50, -it - 1, true) }
++
+         if (runLive) {
+             status = "Preparing development API session"
+             dependencies.session.prepare()
+-            // Discover a populated area without including this preparation in the timings.
+             val discovery = repository.findPage(EmotionMapBounds(124.0, 33.0, 132.0, 39.0), null, null, true)
+-            val pin = (discovery as? EmotionMapPageResult.Success)?.page?.pins?.firstOrNull()
+-            if (pin != null) {
+-                state = state.copy(cameraCommand = MapCameraCommandUiModel(
+-                    id = 1L, action = MapCameraActionUiModel.MoveToCoordinate,
+-                    latitude = pin.latitude, longitude = pin.longitude, value = 14.0,
+-                ))
+-                delay(2_500)
++            val discoveryPins = (discovery as? EmotionMapPageResult.Success)?.page?.pins.orEmpty()
++            val initial = viewport!!.bounds
++            val halfLongitude = (initial.maxLongitude - initial.minLongitude) / 2
++            val halfLatitude = (initial.maxLatitude - initial.minLatitude) / 2
++            val anchor = 37.3993086623786 to 127.10607313796356
++            val offsets = listOf(0.0, 0.002, -0.002, 0.004, -0.004, 0.006, -0.006, 0.008, -0.008, 0.010, -0.010)
++            val candidates = offsets.flatMap { latitudeOffset -> offsets.map { longitudeOffset ->
++                (anchor.first + latitudeOffset) to (anchor.second + longitudeOffset)
++            } } + discoveryPins.map { it.latitude to it.longitude }
++            var selected = false
++            for ((candidateIndex, point) in candidates.distinct().take(150).withIndex()) {
++                status = "Selecting 8-pin viewport ${candidateIndex + 1}"
++                val searchBounds = EmotionMapBounds(point.second - halfLongitude, point.first - halfLatitude,
++                    point.second + halfLongitude, point.first + halfLatitude)
++                val probe = repository.findPage(searchBounds, null, null, true)
++                val page = (probe as? EmotionMapPageResult.Success)?.page
++                driver.emit("viewport_probe", mapOf("index" to candidateIndex + 1, "count" to page?.pins?.size,
++                    "has_next" to page?.hasNext, "latitude" to point.first, "longitude" to point.second))
++                if (page != null && !page.hasNext && page.pins.size == 8 && page.invalidItemCount == 0) {
++                    state = state.copy(cameraCommand = MapCameraCommandUiModel(
++                        id = candidateIndex + 1L, action = MapCameraActionUiModel.MoveToCoordinate,
++                        latitude = point.first, longitude = point.second, value = 14.0,
++                    ))
++                    delay(2_500)
++                    val bounds = viewport!!.bounds
++                    val verified = repository.findPage(bounds, null, null, true)
++                    val verifiedPage = (verified as? EmotionMapPageResult.Success)?.page
++                    if (verifiedPage == null || verifiedPage.hasNext || verifiedPage.pins.size != 8) continue
++                    driver.emit("viewport_selected", mapOf("count" to 8,
++                        "min_longitude" to bounds.minLongitude, "min_latitude" to bounds.minLatitude,
++                        "max_longitude" to bounds.maxLongitude, "max_latitude" to bounds.maxLatitude,
++                        "latitude" to point.first, "longitude" to point.second, "zoom" to 14,
++                        "pin_ids" to JsonArray(verifiedPage.pins.map { JsonPrimitive(it.id) })))
++                    selected = true
++                    break
++                }
++            }
++            if (!selected) {
++                driver.emit("selection_failed", mapOf("candidates" to candidates.size))
++                status = "No 8-pin viewport found"
++                return@LaunchedEffect
+             }
+             repeat(3) { trial("live_dev", null, -it - 1, true) }
+             repeat(repetitions) {
+@@ -184,20 +218,8 @@ fun MapPinProfileScreen(
+                 trial("live_dev", null, it + 1, false)
+             }
+         }
+-        state = state.copy(cameraCommand = MapCameraCommandUiModel(
+-            id = 2L, action = MapCameraActionUiModel.MoveToCoordinate,
+-            latitude = camera.latitude, longitude = camera.longitude, value = camera.zoom,
+-        ))
+-        delay(2_500)
+-        val cases = (1..repetitions).flatMap { iteration ->
+-            listOf(0, 50, 100, 199, 200, 201, 400, 800, 1600).map { it to iteration }
+-        }.shuffled(Random(20261011))
+-        cases.forEachIndexed { offset, (count, iteration) ->
+-            status = "Fixture $count pins · ${offset + 1}/${cases.size}"
+-            trial("fixture_local", count, iteration, false)
+-        }
+         status = "Complete · results saved"
+-        driver.emit("complete", mapOf("trials" to cases.size + if (runLive) repetitions else 0))
++        driver.emit("complete", mapOf("trials" to repetitions))
+     }
+
+     AppTheme {
