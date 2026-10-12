@@ -1,0 +1,7 @@
+10-12 12:10:11.797  5365  5365 I DeviceSession: env=dev version=map-profile-1.0 mode=platform_only stage=AUTHENTICATED_REQUEST outcome=SUCCEEDED status=200 serverCode=null sdkCode=null failure=null exceptionType=null
+10-12 12:10:11.872  5365  5365 I DeviceSession: env=dev version=map-profile-1.0 mode=platform_only stage=AUTHENTICATED_REQUEST outcome=SUCCEEDED status=200 serverCode=null sdkCode=null failure=null exceptionType=null
+10-12 12:10:11.894  5365  5365 I DeviceSession: env=dev version=map-profile-1.0 mode=platform_only stage=AUTHENTICATED_REQUEST outcome=SUCCEEDED status=200 serverCode=null sdkCode=null failure=null exceptionType=null
+10-12 12:10:11.922  5365  5365 I DeviceSession: env=dev version=map-profile-1.0 mode=platform_only stage=AUTHENTICATED_REQUEST outcome=SUCCEEDED status=200 serverCode=null sdkCode=null failure=null exceptionType=null
+10-12 12:10:11.999  5365  5365 I DeviceSession: env=dev version=map-profile-1.0 mode=platform_only stage=AUTHENTICATED_REQUEST outcome=SUCCEEDED status=200 serverCode=null sdkCode=null failure=null exceptionType=null
+10-12 12:10:27.020  5365  5365 I DeviceSession: env=dev version=map-profile-1.0 mode=platform_only stage=AUTHENTICATED_REQUEST outcome=FAILED status=null serverCode=null sdkCode=null failure=null exceptionType=null
+10-12 12:10:27.023  5365  5365 I MapPinProfile: backend_local-1600-14 failed pages=5 pins=1000 total_ms=null

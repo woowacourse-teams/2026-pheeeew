@@ -1,0 +1,85 @@
+{
+  "measured_on": "2026-10-12",
+  "timezone": "Asia/Seoul",
+  "backend_commit": "356c40ab638aeb7b5b35927a905dbeda9a40e50d",
+  "backend_branch": "origin/be/dev",
+  "client_base_commit": "6de928001316470d5408d7c2b5b0bec743aa440f",
+  "client_patch_sha256": "f04d642fb44f1ed502cc836ebea895eedbc8c4264ac7b7d956ceb70f6bb0fa0f",
+  "apk_sha256": "6db7c5d3a09e2132a809bb4b436d70f1ac48005406cde5bc19451790f3af6be5",
+  "backend_image": "pheeeew-pin-perf:356c40ab",
+  "backend_image_id": "sha256:96c744cc368eb894f12f1689b826c1bbda0360a4c12c1275600fcc548cf22f43",
+  "profile": "local",
+  "endpoint": "/api/v1/emotions/map",
+  "base_url": "http://127.0.0.1:18080",
+  "transport": "USB adb reverse",
+  "database": "PostgreSQL 17.11 / PostGIS 3.5",
+  "database_isolation": "Dedicated Docker Compose project and volume",
+  "docker_version": "29.7.2",
+  "docker_architecture": "aarch64",
+  "docker_cpu_count": 15,
+  "docker_memory_bytes": 8318844928,
+  "host_model": "Mac17,9",
+  "host_memory_bytes": 25769803776,
+  "device_model": "SM-S711N",
+  "android_version": "15",
+  "serial": "R5CX11AKCYJ",
+  "battery_at_during_run": {
+    "percent": 100,
+    "usb_powered": true,
+    "temperature_celsius": 36.6,
+    "thermal_status": 0
+  },
+  "counts": [
+    0,
+    50,
+    100,
+    199,
+    200,
+    201,
+    400,
+    800,
+    1600
+  ],
+  "repetitions": 30,
+  "warmups": 3,
+  "shuffle_seed": 20261011,
+  "page_size": 200,
+  "zoom": 14,
+  "camera": {
+    "latitude": 37.440923,
+    "longitude": 127.147538
+  },
+  "icon_variants": 5,
+  "control_channel": "ADB file handshake before each trial, outside timing",
+  "seeding": "DELETE + INSERT synthetic grid + ANALYZE before each trial; no concurrent map request",
+  "region_seed": "3 synthetic regions to satisfy actual FK constraints",
+  "attestation": "Local profile skip-verification",
+  "resource_limits": "Docker VM limits; no explicit app/DB per-container limits",
+  "segments": [
+    {
+      "measured_trials": 95,
+      "apk_sha256": "524b92af1d48319b0614bc89afe9d6dbecb7f15e97a6d487aed2fd217beb5b75"
+    },
+    {
+      "measured_trials": 137,
+      "apk_sha256": "966a969fb79760fab25dde607aa9e01436383441031affe16aae8902c5edd829"
+    },
+    {
+      "measured_trials": 38,
+      "apk_sha256": "6db7c5d3a09e2132a809bb4b436d70f1ac48005406cde5bc19451790f3af6be5"
+    }
+  ],
+  "resume_note": "Renderer, API, timing hooks and trial order unchanged across segments; APK changes only preparation, completed-run preservation and portrait configuration. Failed trials are preserved without retry. 3 warmups per start.",
+  "excluded_attempt": "First attempt: 201 successful trials excluded due to preparation file race; raw record retained separately.",
+  "battery_near_end": {
+    "percent": 100,
+    "temperature_celsius": 35.7,
+    "usb_powered": true
+  },
+  "warmups_per_segment": 3,
+  "warmups_total": 9,
+  "outcomes": {
+    "success": 269,
+    "failed": 1
+  }
+}

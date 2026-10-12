@@ -1,0 +1,218 @@
+diff --git a/AN/Pheeeew/mapPinBenchmarkTarget/src/main/AndroidManifest.xml b/AN/Pheeeew/mapPinBenchmarkTarget/src/main/AndroidManifest.xml
+index 9a94fbe2..ab0147ee 100644
+--- a/AN/Pheeeew/mapPinBenchmarkTarget/src/main/AndroidManifest.xml
++++ b/AN/Pheeeew/mapPinBenchmarkTarget/src/main/AndroidManifest.xml
+@@ -7,7 +7,7 @@
+         android:networkSecurityConfig="@xml/network_security_config"
+         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+         <profileable android:shell="true" />
+-        <activity android:name=".MapPinBenchmarkActivity" android:exported="true">
++        <activity android:name=".MapPinBenchmarkActivity" android:exported="true" android:screenOrientation="portrait" android:configChanges="orientation|screenSize|keyboardHidden|uiMode">
+             <intent-filter>
+                 <action android:name="android.intent.action.MAIN" />
+                 <category android:name="android.intent.category.LAUNCHER" />
+diff --git a/AN/Pheeeew/mapPinBenchmarkTarget/src/main/kotlin/com/pheeeew/mappinprofile/MapPinBenchmarkActivity.kt b/AN/Pheeeew/mapPinBenchmarkTarget/src/main/kotlin/com/pheeeew/mappinprofile/MapPinBenchmarkActivity.kt
+index 5c1fc6bb..80b8df1e 100644
+--- a/AN/Pheeeew/mapPinBenchmarkTarget/src/main/kotlin/com/pheeeew/mappinprofile/MapPinBenchmarkActivity.kt
++++ b/AN/Pheeeew/mapPinBenchmarkTarget/src/main/kotlin/com/pheeeew/mappinprofile/MapPinBenchmarkActivity.kt
+@@ -6,17 +6,26 @@ import androidx.activity.ComponentActivity
+ import androidx.activity.compose.setContent
+ import com.pheeeew.feature.screens.map.profile.MapPinProfileScreen
+ import java.io.File
++import org.json.JSONObject
+ 
+ class MapPinBenchmarkActivity : ComponentActivity() {
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+         val output = File(getExternalFilesDir(null), "map-pin-profile.jsonl")
+-        output.writeText("")
++        if (intent.getBooleanExtra("reset", false) && savedInstanceState == null) output.writeText("")
++        intent.removeExtra("reset")
++        val completed = if (output.exists()) output.readLines().mapNotNull { line ->
++            runCatching { JSONObject(line) }.getOrNull()?.takeIf {
++                it.optString("kind") == "run" && !it.optBoolean("warmup")
++            }?.optString("run_id")
++        }.toSet() else emptySet()
+         setContent {
+             MapPinProfileScreen(
+                 repetitions = intent.getIntExtra("repetitions", 30),
+-                runLive = intent.getBooleanExtra("live", true),
++                runLive = true,
++                localCount = intent.getIntExtra("count", 50),
++                completedRunIds = completed,
+                 record = { output.appendText(it + "\n") },
+             )
+         }
+diff --git a/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/data/local/device/AndroidDeviceCredentialStorage.kt b/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/data/local/device/AndroidDeviceCredentialStorage.kt
+index ac626402..1587a6ea 100644
+--- a/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/data/local/device/AndroidDeviceCredentialStorage.kt
++++ b/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/data/local/device/AndroidDeviceCredentialStorage.kt
+@@ -23,7 +23,7 @@ class AndroidDeviceCredentialStorage(
+     private var writeFailed = false
+ 
+     init {
+-        require(environment in setOf("dev", "prod"))
++        require(environment in setOf("dev", "prod", "local-pin-perf-606"))
+     }
+ 
+     override suspend fun read(): CredentialRead =
+diff --git a/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/profile/MapPinProfileScreen.kt b/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/profile/MapPinProfileScreen.kt
+index 69c8a0c4..a13d6cd4 100644
+--- a/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/profile/MapPinProfileScreen.kt
++++ b/AN/Pheeeew/shared/src/androidMain/kotlin/com/pheeeew/feature/screens/map/profile/MapPinProfileScreen.kt
+@@ -53,6 +53,7 @@ import kotlinx.serialization.json.buildJsonObject
+ import kotlinx.serialization.json.put
+ import java.net.HttpURLConnection
+ import java.net.URL
++import java.io.File
+ import kotlin.math.ceil
+ import kotlin.random.Random
+ import kotlin.time.Instant
+@@ -62,13 +63,15 @@ import kotlin.time.Instant
+ fun MapPinProfileScreen(
+     repetitions: Int,
+     runLive: Boolean,
++    localCount: Int,
++    completedRunIds: Set<String>,
+     record: (String) -> Unit,
+ ) {
+     val context = LocalContext.current
+     val dependencies = remember {
+         AndroidApiDependencies.get(
+             context,
+-            DeviceSessionBuildConfig(true, "dev", "https://api-dev.pheeeew.com", "platform_only", "map-profile-1.0"),
++            DeviceSessionBuildConfig(true, "dev", "http://127.0.0.1:18080", "platform_only", "map-profile-1.0"),
+             "com.pheeeew.mappinprofile",
+             87715710427L,
+         )
+@@ -87,13 +90,19 @@ fun MapPinProfileScreen(
+         driver.emit("metadata", mapOf(
+             "device" to Build.MODEL, "os" to Build.VERSION.RELEASE,
+             "build" to "release-no-minification", "repetitions" to repetitions,
+-            "fixture_transport" to "HTTP over adb reverse", "icon_variants" to 5,
++            "backend_transport" to "Spring Boot + PostGIS over adb reverse", "backend_commit" to "356c40ab", "target_count" to localCount, "icon_variants" to 5,
+             "frame_probe" to "queryRenderedFeatures on native frame completion",
+         ))
+         withTimeout(60_000) { while (viewport == null) delay(100) }
+         delay(2_000)
+ 
+         suspend fun trial(source: String, count: Int?, index: Int, warmup: Boolean) {
++            if (localCount < 0) {
++                val ticket = "$count-$index-$warmup"
++                driver.emit("prepare", mapOf("ticket" to ticket, "target_count" to count, "iteration" to index))
++                val ready = File(context.getExternalFilesDir(null), "backend-ready.txt")
++                withTimeout(300_000) { while (runCatching { ready.readText().trim() }.getOrNull() != ticket) delay(100) }
++            }
+             val run = ProfileRun("$source-${count ?: "viewport"}-$index", source, count, index, warmup)
+             driver.active = null
+             driver.emptyFrame = CompletableDeferred()
+@@ -109,7 +118,7 @@ fun MapPinProfileScreen(
+                 do {
+                     val pageTrace = ProfileRequest(run.pages.size + 1)
+                     driver.request = pageTrace
+-                    val result = if (source == "live_dev") {
++                    val result = if (source == "backend_local") {
+                         repository.findPage(bounds, null, cursor, forceRefresh = cursor == null)
+                     } else {
+                         val bytes = withContext(Dispatchers.IO) {
+@@ -149,6 +158,7 @@ fun MapPinProfileScreen(
+                     check(!result.page.hasNext || (!cursor.isNullOrBlank() && cursors.add(cursor))) { "Invalid cursor" }
+                     check(run.pages.size <= 50) { "Page limit exceeded" }
+                 } while (result.page.hasNext)
++                check(pins.size == count) { "Expected $count pins but received ${pins.size}" }
+                 run.downloadingFinished = true
+                 withTimeout(15_000) { run.completed.await() }
+                 driver.finish(run, "success")
+@@ -163,41 +173,20 @@ fun MapPinProfileScreen(
+             delay(100)
+         }
+ 
+-        // These warmups prepare map tiles and all five native icon textures.
+-        repeat(3) { trial("fixture_local", 50, -it - 1, true) }
+-        if (runLive) {
+-            status = "Preparing development API session"
+-            dependencies.session.prepare()
+-            // Discover a populated area without including this preparation in the timings.
+-            val discovery = repository.findPage(EmotionMapBounds(124.0, 33.0, 132.0, 39.0), null, null, true)
+-            val pin = (discovery as? EmotionMapPageResult.Success)?.page?.pins?.firstOrNull()
+-            if (pin != null) {
+-                state = state.copy(cameraCommand = MapCameraCommandUiModel(
+-                    id = 1L, action = MapCameraActionUiModel.MoveToCoordinate,
+-                    latitude = pin.latitude, longitude = pin.longitude, value = 14.0,
+-                ))
+-                delay(2_500)
+-            }
+-            repeat(3) { trial("live_dev", null, -it - 1, true) }
+-            repeat(repetitions) {
+-                status = "Live dev API ${it + 1}/$repetitions"
+-                trial("live_dev", null, it + 1, false)
+-            }
+-        }
+-        state = state.copy(cameraCommand = MapCameraCommandUiModel(
+-            id = 2L, action = MapCameraActionUiModel.MoveToCoordinate,
+-            latitude = camera.latitude, longitude = camera.longitude, value = camera.zoom,
+-        ))
+-        delay(2_500)
+-        val cases = (1..repetitions).flatMap { iteration ->
+-            listOf(0, 50, 100, 199, 200, 201, 400, 800, 1600).map { it to iteration }
+-        }.shuffled(Random(20261011))
+-        cases.forEachIndexed { offset, (count, iteration) ->
+-            status = "Fixture $count pins · ${offset + 1}/${cases.size}"
+-            trial("fixture_local", count, iteration, false)
++        status = "Preparing local backend session"
++        dependencies.session.prepare()
++        repeat(3) { trial("backend_local", if (localCount < 0) 50 else localCount, -it - 1, true) }
++        val cases = if (localCount < 0) {
++            (1..repetitions).flatMap { iteration ->
++                listOf(0, 50, 100, 199, 200, 201, 400, 800, 1600).map { it to iteration }
++            }.shuffled(Random(20261011))
++        } else (1..repetitions).map { localCount to it }
++        cases.filter { (count, iteration) -> "backend_local-$count-$iteration" !in completedRunIds }.forEachIndexed { offset, (count, iteration) ->
++            status = "Local backend $count pins · ${offset + 1}/${cases.size}"
++            trial("backend_local", count, iteration, false)
+         }
+         status = "Complete · results saved"
+-        driver.emit("complete", mapOf("trials" to cases.size + if (runLive) repetitions else 0))
++        driver.emit("complete", mapOf("trials" to cases.size))
+     }
+ 
+     AppTheme {
+diff --git a/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/di/ApiDependencies.kt b/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/di/ApiDependencies.kt
+index d7bef10f..2330656e 100644
+--- a/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/di/ApiDependencies.kt
++++ b/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/di/ApiDependencies.kt
+@@ -140,6 +140,7 @@ class ApiDependencies private constructor(
+ /** Storage partition is selected from the same configuration as the request destination. */
+ fun ApiConfig.deviceStorageEnvironment(): String =
+     when (baseUrl.trimEnd('/')) {
++        "http://127.0.0.1:18080" -> "local-pin-perf-606"
+         "https://api-dev.pheeeew.com" -> "dev"
+         "https://api.pheeeew.com" -> "prod"
+         else -> error("Configure a credential partition for this API environment")
+diff --git a/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/di/device/DeviceSessionBuildConfig.kt b/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/di/device/DeviceSessionBuildConfig.kt
+index 70af1554..accf15b8 100644
+--- a/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/di/device/DeviceSessionBuildConfig.kt
++++ b/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/di/device/DeviceSessionBuildConfig.kt
+@@ -14,7 +14,7 @@ data class DeviceSessionBuildConfig(
+ ) {
+     init {
+         require(environment == if (isDebug) "dev" else "prod") { "Device environment does not match build type" }
+-        require(baseUrl == if (isDebug) DEV_URL else PROD_URL) { "Device API URL does not match build type" }
++        require((isDebug && baseUrl == "http://127.0.0.1:18080") || baseUrl == if (isDebug) DEV_URL else PROD_URL) { "Device API URL does not match build type" }
+         require(attestationMode in setOf("platform_only", "required")) { "Unknown device attestation mode" }
+         require(isDebug || attestationMode == "required") { "Release requires device attestation" }
+         require(version.matches(Regex("[A-Za-z0-9._+-]{1,64}"))) { "Invalid app version" }
+diff --git a/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/network/ApiConfig.kt b/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/network/ApiConfig.kt
+index b08f8d83..42d92f03 100644
+--- a/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/network/ApiConfig.kt
++++ b/AN/Pheeeew/shared/src/commonMain/kotlin/com/pheeeew/core/network/ApiConfig.kt
+@@ -6,7 +6,7 @@ data class ApiConfig(
+     val timeouts: NetworkTimeouts = NetworkTimeouts(),
+ ) {
+     init {
+-        require(baseUrl.startsWith("https://")) { "API base URL은 HTTPS를 사용해야 합니다." }
++        require(baseUrl == "http://127.0.0.1:18080" || baseUrl.startsWith("https://")) { "API base URL은 HTTPS를 사용해야 합니다." }
+         require(baseUrl.substringAfter("https://").isNotBlank()) { "API base URL이 비어 있습니다." }
+     }
+ }

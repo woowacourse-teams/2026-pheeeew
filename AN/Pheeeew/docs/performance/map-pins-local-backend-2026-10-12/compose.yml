@@ -1,0 +1,38 @@
+name: pheeeew-pin-perf-606
+services:
+  db:
+    image: imresamu/postgis:17-3.5-alpine
+    environment:
+      POSTGRES_DB: pinperf
+      POSTGRES_USER: pinperf
+      POSTGRES_PASSWORD: pinperf-local-only
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U pinperf -d pinperf"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - pinperf-data:/var/lib/postgresql/data
+  app:
+    image: pheeeew-pin-perf:356c40ab
+    build:
+      context: ${BACKEND_ROOT:?Set BACKEND_ROOT to the latest backend BE directory}
+      dockerfile: docker/Dockerfile
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/pinperf
+      SPRING_DATASOURCE_USERNAME: pinperf
+      SPRING_DATASOURCE_PASSWORD: pinperf-local-only
+      JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64}
+      JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64}
+      PLAY_INTEGRITY_SKIP_VERIFICATION: "true"
+      S3_BUCKET: pheeeew-pin-perf-local
+      S3_KEY_PREFIX: local/
+      S3_REGION: ap-northeast-2
+    ports:
+      - "127.0.0.1:18080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  pinperf-data:
