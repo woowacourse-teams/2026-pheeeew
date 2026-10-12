@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
-import com.pheeeew.feature.monitoring.product.ProductOperation
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
@@ -23,6 +22,7 @@ import com.pheeeew.domain.usecase.FindEmotionRegionsUseCase
 import com.pheeeew.domain.usecase.RefreshLocationUseCase
 import com.pheeeew.feature.monitoring.product.MonitoredLocationPermission
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
+import com.pheeeew.feature.monitoring.product.ProductOperation
 import com.pheeeew.feature.screens.map.monitoring.ContentLoad
 import com.pheeeew.feature.screens.map.monitoring.ContentMonitoring
 import com.pheeeew.feature.screens.map.nearby.NEARBY_COLLAPSED_MAP_HEIGHT_FRACTION
@@ -134,6 +134,7 @@ class MapViewModel(
                 emotionPins =
                     pinUiModelCache.orderedModels(uiModel.value.emotionPins.filterNot { it.id == pin.id } + pin),
             )
+        (requestedBounds ?: displayedBounds)?.let(::trimRetainedPins)
         refreshEmotionPins()
     }
 
@@ -232,6 +233,7 @@ class MapViewModel(
         val generation = ++queryGeneration
         pinSnapshotPublisher.begin(generation)
         exploration.supersede()
+        trimRetainedPins(bounds)
         publishSnapshot(bounds, generation)
         viewportJob?.cancel()
         pendingEmotionMapRequest = null
@@ -239,7 +241,9 @@ class MapViewModel(
             viewModelScope.launch {
                 delay(VIEWPORT_DEBOUNCE_MILLIS)
                 if (generation == queryGeneration) {
-                    enqueueEmotionMapRequest(EmotionMapRequest(bounds, generation, bypassCache = needsFreshEmotionPins))
+                    enqueueEmotionMapRequest(
+                        EmotionMapRequest(bounds, generation, bypassCache = needsFreshEmotionPins),
+                    )
                 }
             }
     }
@@ -486,17 +490,23 @@ class MapViewModel(
                                 page.pins.forEach { locallyRegisteredPins.remove(it.id) }
                                 val isComplete = !page.hasNext
                                 val pinsForDisplay =
-                                    if (isComplete) {
-                                        pins.filterValues { request.bounds.contains(it) }
-                                    } else {
-                                        LinkedHashMap(displayedPins).apply { putAll(pins) }
+                                    LinkedHashMap(displayedPins).apply {
+                                        // Only a complete response can remove deleted pins in its queried area.
+                                        // Pins outside it remain available for small camera round trips.
+                                        if (isComplete) entries.removeAll { request.bounds.contains(it.value) }
+                                        putAll(pins.filterValues { request.bounds.contains(it) })
                                     }
                                 observation.ready(origin)
                                 val snapshot =
                                     EmotionPinSnapshot(
                                         generation = request.generation,
                                         pins = pinsForDisplay.values.toList(),
-                                        kind = if (cursor != null) "pagination" else if (request.bypassCache) "refresh" else "viewport",
+                                        kind =
+                                            when {
+                                                cursor != null -> "pagination"
+                                                request.bypassCache -> "refresh"
+                                                else -> "viewport"
+                                            },
                                         origin = origin,
                                         observation = observation,
                                     )
@@ -627,19 +637,31 @@ class MapViewModel(
                     localPins = locallyRegisteredPins.values,
                     hiddenIds = _uiModel.value.hiddenEmotionIds,
                     contains = { true },
-                    containsLocal = { bounds.contains(it) },
+                    containsLocal = { true },
                 )
             }
-        _uiModel.value = _uiModel.value.copy(emotionPins = pins, emotionContentLoad = contentLoad)
+        val retained = if (bounds == null) pins else retainEmotionPins(pins, bounds)
+        pruneRetainedPinData(retained)
+        _uiModel.value =
+            _uiModel.value.copy(
+                emotionPins = retained.takeUnless { it == _uiModel.value.emotionPins } ?: _uiModel.value.emotionPins,
+                emotionContentLoad = contentLoad,
+            )
     }
 
-    private fun EmotionMapBounds.contains(pin: EmotionPinUiModel): Boolean =
-        pin.latitude in minLatitude..maxLatitude &&
-            if (minLongitude <= maxLongitude) {
-                pin.longitude in minLongitude..maxLongitude
-            } else {
-                pin.longitude >= minLongitude || pin.longitude <= maxLongitude
-            }
+    private fun trimRetainedPins(bounds: EmotionMapBounds) {
+        val previous = _uiModel.value.emotionPins
+        val retained = retainEmotionPins(previous, bounds)
+        if (retained == previous) return
+        pruneRetainedPinData(retained)
+        _uiModel.value = _uiModel.value.copy(emotionPins = retained)
+    }
+
+    private fun pruneRetainedPinData(pins: List<EmotionPinUiModel>) {
+        val ids = pins.mapTo(mutableSetOf(), EmotionPinUiModel::id)
+        displayedPins.keys.retainAll(ids)
+        locallyRegisteredPins.keys.retainAll(ids)
+    }
 
     private fun EmotionMapBounds.contains(pin: EmotionMapPin): Boolean =
         pin.latitude in minLatitude..maxLatitude &&
