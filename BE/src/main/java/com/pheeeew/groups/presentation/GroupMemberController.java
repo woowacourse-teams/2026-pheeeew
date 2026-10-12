@@ -1,14 +1,17 @@
 package com.pheeeew.groups.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
+import com.pheeeew.common.presentation.dto.CursorResponse;
 import com.pheeeew.groups.application.GroupService;
+import com.pheeeew.groups.application.dto.GroupMemberListResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.InviteCodeGenerator;
 import com.pheeeew.groups.presentation.dto.GroupJoinRequest;
+import com.pheeeew.groups.presentation.dto.GroupMemberResponse;
 import com.pheeeew.groups.presentation.dto.GroupPreviewResponse;
 import com.pheeeew.groups.presentation.dto.GroupResponse;
-import jakarta.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -41,7 +44,7 @@ public class GroupMemberController implements GroupMemberControllerApi {
     @Override
     @PostMapping("/join")
     public ResponseEntity<GroupResponse> joinByInviteCode(
-            @Valid @RequestBody GroupJoinRequest request,
+            @RequestBody GroupJoinRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
         GroupResult result = groupService.joinByInviteCode(devicePublicId, request.inviteCode());
@@ -70,5 +73,22 @@ public class GroupMemberController implements GroupMemberControllerApi {
         groupService.leave(groupId, devicePublicId);
 
         return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    @GetMapping("/{groupId}/members")
+    public CursorResponse<GroupMemberResponse> findMembers(
+            @PathVariable UUID groupId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(defaultValue = "20") int size,
+            @CurrentDevice UUID devicePublicId
+    ) {
+        GroupMemberListResult result = groupService.findMembers(groupId, devicePublicId, cursor, size);
+
+        List<GroupMemberResponse> items = result.items().stream()
+                .map(GroupMemberResponse::from)
+                .toList();
+
+        return CursorResponse.of(items, result.hasNext(), result.nextCursor());
     }
 }

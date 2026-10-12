@@ -14,8 +14,11 @@ import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.PressCounts;
+import com.pheeeew.groups.application.dto.GroupCursor;
 import com.pheeeew.groups.application.dto.GroupDetailResult;
 import com.pheeeew.groups.application.dto.GroupDetailV3Result;
+import com.pheeeew.groups.application.dto.GroupMemberResult;
+import com.pheeeew.groups.application.dto.GroupMemberListResult;
 import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupPressCountResult;
 import com.pheeeew.groups.application.dto.GroupPressRankingItem;
@@ -37,6 +40,7 @@ import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.domain.repository.projection.GroupListProjection;
+import com.pheeeew.groups.domain.repository.projection.GroupMemberProjection;
 import com.pheeeew.groups.domain.repository.projection.GroupPressSumProjection;
 import com.pheeeew.groups.exception.GroupException;
 import java.sql.SQLException;
@@ -175,6 +179,30 @@ public class GroupService {
         Group group = findGroup(groupPublicId);
         requireMember(group, devicePublicId);
         return weeklyPressesOf(group, weeksAgo);
+    }
+
+    public GroupMemberListResult findMembers(UUID groupPublicId, UUID devicePublicId, String encodedCursor, int size) {
+        Group group = findGroup(groupPublicId);
+        requireMember(group, devicePublicId);
+        GroupCursor cursor = GroupCursorCodec.decodeMembersOrInitial(encodedCursor);
+
+        List<GroupMemberProjection> projections = groupMemberRepository.findMemberPage(
+                group.getId(),
+                cursor.lastCreatedAt(),
+                cursor.lastId(),
+                size + 1
+        );
+
+        boolean hasNext = projections.size() > size;
+        if (hasNext) {
+            projections = projections.subList(0, size);
+        }
+
+        List<GroupMemberResult> items = projections.stream()
+                .map(GroupMemberResult::from)
+                .toList();
+
+        return GroupMemberListResult.of(items, hasNext, memberNextCursor(items, hasNext));
     }
 
     @Transactional
@@ -435,5 +463,14 @@ public class GroupService {
                 groupMemberRepository.countByGroupIdAndLeftAtIsNull(group.getId()),
                 GroupStampResult.from(findStamp(group))
         );
+    }
+
+    private String memberNextCursor(List<GroupMemberResult> items, boolean hasNext) {
+        if (!hasNext) {
+            return null;
+        }
+        GroupMemberResult last = items.getLast();
+
+        return GroupCursorCodec.encodeMembers(last.joinedAt(), last.id());
     }
 }
