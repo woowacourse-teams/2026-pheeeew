@@ -9,11 +9,12 @@ import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층�
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.pheeeew.common.logging.RequestLoggingFilter;
+import com.pheeeew.common.logging.RequestLoggingConfiguration;
 import com.pheeeew.common.logging.RequestServiceTimingAspect;
+import com.pheeeew.common.logging.PheeeewRequestTimingStage;
 import com.pheeeew.common.logging.RequestTiming;
 import com.pheeeew.common.logging.RequestTiming.Measurement;
-import com.pheeeew.common.logging.RequestTiming.Stage;
+import com.pheeeew.common.logging.RequestTimingStage;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.emotion.application.dto.RegionEmotionSummary;
 import com.pheeeew.emotion.domain.Audio;
@@ -375,9 +376,9 @@ class EmotionRegionCountIntegrationTest {
         // when / then
         var timings = inRequest(() ->
                 assertThatThrownBy(() -> counts(RegionLevel.EMD, null)).isInstanceOf(DataAccessException.class));
-        assertThat(timings).containsOnlyKeys(Stage.REGIONS_SERVICE, Stage.REGIONS_BOUNDARIES,
-                Stage.REGIONS_INTERSECTION, Stage.REGIONS_AGGREGATION_READY);
-        assertThat(timings.get(Stage.REGIONS_AGGREGATION_READY).count()).isEqualTo(1);
+        assertThat(timings).containsOnlyKeys(PheeeewRequestTimingStage.REGIONS_SERVICE, PheeeewRequestTimingStage.REGIONS_BOUNDARIES,
+                PheeeewRequestTimingStage.REGIONS_INTERSECTION, PheeeewRequestTimingStage.REGIONS_AGGREGATION_READY);
+        assertThat(timings.get(PheeeewRequestTimingStage.REGIONS_AGGREGATION_READY).count()).isEqualTo(1);
         assertThat(집계_준비_조회_수("error")).isEqualTo(errorCount + 1);
     }
 
@@ -389,10 +390,10 @@ class EmotionRegionCountIntegrationTest {
         // when / then
         var timings = inRequest(() ->
                 assertThatThrownBy(() -> counts(RegionLevel.EMD, null)).isInstanceOf(DataAccessException.class));
-        assertThat(timings).containsOnlyKeys(Stage.REGIONS_SERVICE, Stage.REGIONS_BOUNDARIES,
-                Stage.REGIONS_INTERSECTION, Stage.REGIONS_AGGREGATION_READY, Stage.REGIONS_SUMMARY);
-        assertThat(timings.get(Stage.REGIONS_SUMMARY).count()).isEqualTo(1);
-        assertThat(timings.get(Stage.REGIONS_SUMMARY).totalNanos()).isGreaterThanOrEqualTo(0);
+        assertThat(timings).containsOnlyKeys(PheeeewRequestTimingStage.REGIONS_SERVICE, PheeeewRequestTimingStage.REGIONS_BOUNDARIES,
+                PheeeewRequestTimingStage.REGIONS_INTERSECTION, PheeeewRequestTimingStage.REGIONS_AGGREGATION_READY, PheeeewRequestTimingStage.REGIONS_SUMMARY);
+        assertThat(timings.get(PheeeewRequestTimingStage.REGIONS_SUMMARY).count()).isEqualTo(1);
+        assertThat(timings.get(PheeeewRequestTimingStage.REGIONS_SUMMARY).totalNanos()).isGreaterThanOrEqualTo(0);
     }
 
     @ParameterizedTest
@@ -417,10 +418,10 @@ class EmotionRegionCountIntegrationTest {
 
         // then: 조회 생략을 0초짜리 집계 호출로 기록하지 않는다.
         var expected = intersects
-                ? List.of(Stage.REGIONS_SERVICE, Stage.REGIONS_BOUNDARIES, Stage.REGIONS_INTERSECTION,
-                        Stage.REGIONS_AGGREGATION_READY, Stage.REGIONS_SUMMARY)
-                : List.of(Stage.REGIONS_SERVICE, Stage.REGIONS_BOUNDARIES,
-                        Stage.REGIONS_INTERSECTION, Stage.REGIONS_AGGREGATION_READY);
+                ? List.of(PheeeewRequestTimingStage.REGIONS_SERVICE, PheeeewRequestTimingStage.REGIONS_BOUNDARIES, PheeeewRequestTimingStage.REGIONS_INTERSECTION,
+                        PheeeewRequestTimingStage.REGIONS_AGGREGATION_READY, PheeeewRequestTimingStage.REGIONS_SUMMARY)
+                : List.of(PheeeewRequestTimingStage.REGIONS_SERVICE, PheeeewRequestTimingStage.REGIONS_BOUNDARIES,
+                        PheeeewRequestTimingStage.REGIONS_INTERSECTION, PheeeewRequestTimingStage.REGIONS_AGGREGATION_READY);
         assertThat(timings).containsOnlyKeys(expected);
         assertThat(timings.values()).allSatisfy(value -> {
             assertThat(value.count()).isEqualTo(1);
@@ -428,10 +429,10 @@ class EmotionRegionCountIntegrationTest {
         });
     }
 
-    private Map<Stage, Measurement> inRequest(Runnable operation) throws Exception {
+    private Map<RequestTimingStage, Measurement> inRequest(Runnable operation) throws Exception {
         var request = new MockHttpServletRequest();
-        var snapshot = new AtomicReference<Map<Stage, Measurement>>();
-        new RequestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
+        var snapshot = new AtomicReference<Map<RequestTimingStage, Measurement>>();
+        new RequestLoggingConfiguration().requestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
             RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
             try {
                 operation.run();

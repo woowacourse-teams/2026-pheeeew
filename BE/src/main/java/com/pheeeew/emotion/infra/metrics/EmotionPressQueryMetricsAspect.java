@@ -1,7 +1,7 @@
 package com.pheeeew.emotion.infra.metrics;
 
+import com.pheeeew.common.logging.PheeeewRequestTimingStage;
 import com.pheeeew.common.logging.RequestTiming;
-import com.pheeeew.common.logging.RequestTiming.Stage;
 import com.pheeeew.emotion.application.EmotionPressMetrics;
 import com.pheeeew.emotion.application.EmotionPressMetrics.QueryOperation;
 import io.micrometer.core.instrument.Timer;
@@ -61,11 +61,11 @@ public class EmotionPressQueryMetricsAspect {
         }
     }
 
-    private Stage requestStage(QueryOperation operation) {
+    private PheeeewRequestTimingStage requestStage(QueryOperation operation) {
         return switch (operation) {
-            case INCREASE -> Stage.PRESS_INCREASE;
-            case MY_DAILY -> Stage.PRESS_MY_DAILY;
-            case DAILY_TOTAL -> Stage.PRESS_DAILY_TOTAL;
+            case INCREASE -> PheeeewRequestTimingStage.PRESS_INCREASE;
+            case MY_DAILY -> PheeeewRequestTimingStage.PRESS_MY_DAILY;
+            case DAILY_TOTAL -> PheeeewRequestTimingStage.PRESS_DAILY_TOTAL;
         };
     }
 }

@@ -123,13 +123,13 @@ class AsyncLoggingConfigurationTest {
         request.setAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE, request.getRequestURI());
         RequestTiming.begin(request);
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
-        RequestTiming.record(RequestTiming.Stage.REGIONS_INTERSECTION, 20_000_000);
+        RequestTiming.record(PheeeewRequestTimingStage.REGIONS_INTERSECTION, 20_000_000);
         Logger writer = (Logger) LoggerFactory.getLogger(RequestLogWriter.class);
         boolean additive = writer.isAdditive();
         writer.setAdditive(false);
         writer.addAppender(async);
         try {
-            new RequestLogWriter().write(request, new MockHttpServletResponse(), 1200, null);
+            new RequestLogWriter(new PheeeewRequestLogPolicy()).write(request, new MockHttpServletResponse(), 1200, null);
         } finally {
             writer.detachAppender(async);
             writer.setAdditive(additive);

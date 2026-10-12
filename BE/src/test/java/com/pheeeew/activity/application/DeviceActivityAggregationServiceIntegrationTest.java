@@ -13,6 +13,7 @@ import com.pheeeew.activity.domain.repository.DeviceActivityAggregationStateRepo
 import com.pheeeew.activity.domain.repository.DeviceActivitySummaryRepository;
 import com.pheeeew.activity.domain.repository.DeviceDailyActivityRepository;
 import com.pheeeew.activity.infra.DeviceActivityAggregationScheduler;
+import com.pheeeew.activity.infra.metrics.DeviceActivityAggregationMetrics;
 import com.pheeeew.activity.infra.metrics.DeviceActivityMetrics;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.DevicePlatform;
@@ -316,7 +317,8 @@ class DeviceActivityAggregationServiceIntegrationTest {
         var registry = new SimpleMeterRegistry();
         try {
             var metrics = new DeviceActivityMetrics(registry, clock);
-            var scheduler = new DeviceActivityAggregationScheduler(service, metrics, registry, clock);
+            var scheduler = new DeviceActivityAggregationScheduler(
+                    service, metrics, new DeviceActivityAggregationMetrics(registry), clock);
             jdbcClient.sql("""
                     ALTER TABLE device_activity_aggregation_states ADD CONSTRAINT ck_test_scheduler_finalize_failure
                     CHECK (last_finalized_date IS NULL)

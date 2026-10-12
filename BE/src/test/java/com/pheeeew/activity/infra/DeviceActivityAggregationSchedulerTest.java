@@ -18,7 +18,9 @@ import ch.qos.logback.core.read.ListAppender;
 import com.pheeeew.activity.application.DeviceActivityAggregationService;
 import com.pheeeew.activity.application.dto.DeviceActivityCount;
 import com.pheeeew.activity.application.dto.DeviceActivitySnapshot;
+import com.pheeeew.activity.infra.metrics.DeviceActivityAggregationMetrics;
 import com.pheeeew.activity.infra.metrics.DeviceActivityMetrics;
+import com.pheeeew.activity.infra.metrics.DeviceActivityMetricsMapper;
 import com.pheeeew.device.domain.DevicePlatform;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
@@ -46,7 +48,8 @@ class DeviceActivityAggregationSchedulerTest {
     void setUp() {
         when(clock.instant()).thenReturn(STARTED_AT);
         metrics = new DeviceActivityMetrics(registry, clock);
-        scheduler = new DeviceActivityAggregationScheduler(service, metrics, registry, clock);
+        scheduler = new DeviceActivityAggregationScheduler(
+                service, metrics, new DeviceActivityAggregationMetrics(registry), clock);
         logs.start();
         logger.addAppender(logs);
     }
@@ -103,7 +106,7 @@ class DeviceActivityAggregationSchedulerTest {
         Instant earlier = STARTED_AT;
         Instant retriedAt = STARTED_AT.plusSeconds(30);
         when(clock.instant()).thenReturn(retriedAt);
-        metrics.update(집계_결과(earlier, 2));
+        metrics.update(DeviceActivityMetricsMapper.from(집계_결과(earlier, 2)));
         when(service.update()).thenThrow(new IllegalStateException("query failed"))
                 .thenReturn(집계_결과(retriedAt, 3));
 
@@ -125,9 +128,15 @@ class DeviceActivityAggregationSchedulerTest {
     @Test
     void 오늘_지표를_반영한_뒤_미완료_날짜는_한_번만_처리한다() {
         // given
-        when(service.update()).thenReturn(집계_결과(STARTED_AT, 2));
+        when(service.update()).thenReturn(DeviceActivitySnapshot.of(
+                STARTED_AT.atZone(ZoneId.of("Asia/Seoul")).toLocalDate(), STARTED_AT, STARTED_AT, List.of(
+                        DeviceActivityCount.of(DevicePlatform.IOS, 3, 9),
+                        DeviceActivityCount.of(DevicePlatform.ANDROID, 2, 8))));
         doAnswer(invocation -> {
             assertThat(활성_기기_수()).isEqualTo(2);
+            assertThat(registry.get("pheeeew.activity.mau").tag("platform", "android").gauge().value()).isEqualTo(8);
+            assertThat(registry.get("pheeeew.activity.dau").tag("platform", "ios").gauge().value()).isEqualTo(3);
+            assertThat(registry.get("pheeeew.activity.mau").tag("platform", "ios").gauge().value()).isEqualTo(9);
             assertThat(마지막_집계_시각()).isEqualTo(STARTED_AT.getEpochSecond());
             return true;
         }).when(service).finalizeNextDate();
@@ -172,7 +181,8 @@ class DeviceActivityAggregationSchedulerTest {
         scheduler.update();
         Instant restartedAt = STARTED_AT.plusSeconds(30);
         when(clock.instant()).thenReturn(restartedAt);
-        var restartedScheduler = new DeviceActivityAggregationScheduler(service, metrics, registry, clock);
+        var restartedScheduler = new DeviceActivityAggregationScheduler(
+                service, metrics, new DeviceActivityAggregationMetrics(registry), clock);
 
         // when
         restartedScheduler.update();

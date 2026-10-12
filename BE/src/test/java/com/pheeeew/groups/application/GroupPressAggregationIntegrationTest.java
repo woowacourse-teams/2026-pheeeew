@@ -11,6 +11,7 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupDetailV3Result;
+import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupPressRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
@@ -20,11 +21,13 @@ import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,6 +67,9 @@ class GroupPressAggregationIntegrationTest {
 
     @Autowired
     private JdbcClient jdbcClient;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
@@ -297,6 +303,39 @@ class GroupPressAggregationIntegrationTest {
         assertThat(상세.weeklyEmotionPressRank()).isNull();
         assertThat(프레스_랭킹(그룹장)).extracting(GroupPressRankingItem::name, GroupPressRankingItem::score)
                 .containsExactly(tuple("한숨모임", 77L));
+    }
+
+    @Test
+    void 그룹_프레스의_적용량과_상태수와_두_제한_초과량을_지표에_전달한다() {
+        // given
+        Device 기기 = 기기를_저장한다();
+        GroupResult 그룹 = 그룹을_만든다("한숨모임", 기기);
+        var applied = meterRegistry.get("pheeeew.group.press.applied").summary();
+        var states = meterRegistry.get("pheeeew.group.press.states").summary();
+        var perState = meterRegistry.get("pheeeew.group.press.clamped").tag("limit", "per_state").summary();
+        var total = meterRegistry.get("pheeeew.group.press.clamped").tag("limit", "total").summary();
+        var bundled = meterRegistry.get("pheeeew.group.press.requests").tag("format", "counts").counter();
+        double 기존_적용량 = applied.totalAmount();
+        double 기존_상태수 = states.totalAmount();
+        double 기존_감정별_초과량 = perState.totalAmount();
+        double 기존_전체_초과량 = total.totalAmount();
+        double 기존_묶음_요청수 = bundled.count();
+        GroupPressCommand command = GroupPressCommand.of(Map.of(
+                EmotionState.ANGRY, 45, EmotionState.DISCOURAGED, 30, EmotionState.EXHAUSTED, 30,
+                EmotionState.FRUSTRATED, 30, EmotionState.IRRITATED, 30), true);
+
+        // when
+        var result = groupService.press(그룹.publicId(), 기기.getPublicId(), command);
+
+        // then
+        assertThat(result.total()).isEqualTo(100);
+        assertThat(result.counts().get(EmotionState.FRUSTRATED)).isEqualTo(10);
+        assertThat(result.counts().get(EmotionState.IRRITATED)).isZero();
+        assertThat(applied.totalAmount() - 기존_적용량).isEqualTo(100);
+        assertThat(states.totalAmount() - 기존_상태수).isEqualTo(4);
+        assertThat(perState.totalAmount() - 기존_감정별_초과량).isEqualTo(15);
+        assertThat(total.totalAmount() - 기존_전체_초과량).isEqualTo(50);
+        assertThat(bundled.count() - 기존_묶음_요청수).isOne();
     }
 
     private Device 기기를_저장한다() {
