@@ -7,6 +7,8 @@ import com.pheeeew.feature.screens.group.create.GroupCreateErrorReporter
 import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
 import com.pheeeew.feature.screens.group.detail.GroupDetailDependencies
 import com.pheeeew.feature.screens.group.home.GroupListSource
+import com.pheeeew.feature.screens.group.home.explore.GroupExploreSource
+import com.pheeeew.feature.screens.group.home.explore.InMemoryGroupExploreSource
 import com.pheeeew.feature.screens.group.join.GroupJoinDependencies
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import kotlinx.coroutines.flow.Flow
@@ -24,6 +26,8 @@ data class GroupDependencies(
     val membershipChanges: Flow<Long> = emptyFlow(),
     val invalidateSharedMembership: () -> Unit = {},
     val createSessionStore: GroupCreateSessionStore = EmptyGroupCreateSessionStore,
+    /** Demo-only source until the group catalog API is available. */
+    val exploreSource: GroupExploreSource = InMemoryGroupExploreSource(),
 )
 
 /** Builds feature adapters once from the app-owned authenticated client. */
@@ -54,6 +58,7 @@ fun createGroupDependencies(
 
     return GroupDependencies(
         groupListSource = groupListSource,
+        exploreSource = InMemoryGroupExploreSource(),
         createActions = createActions,
         createErrorReporter = { error -> reportUnexpected(error) },
         operationKeyAllocator = operationKeyAllocator,

@@ -162,6 +162,7 @@ private fun rememberGroupHomeViewModel(
         GroupHomeViewModel(
             groupListSource = dependencies.groupListSource,
             groupJoinDependencies = dependencies.join,
+            groupExploreSource = dependencies.exploreSource,
             membershipChanges = dependencies.membershipChanges,
             invalidateSharedMembership = dependencies.invalidateSharedMembership,
         )
