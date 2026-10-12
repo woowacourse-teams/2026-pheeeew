@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.group.create
 
 import com.pheeeew.feature.component.stamp.StampShapeId
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
@@ -61,6 +62,7 @@ data class PersistedGroupCreateDraft(
     val stampShape: String = "CIRCLE",
     val stampFillArgb: Long = 0xFFA7DCCFL,
     val stampTextArgb: Long = 0xFF000000L,
+    val joinType: GroupJoinType = GroupJoinType.PRIVATE,
 )
 
 @Serializable

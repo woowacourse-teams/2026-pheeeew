@@ -13,6 +13,7 @@ import com.pheeeew.feature.screens.group.create.model.StampColorSelection
 import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
 import com.pheeeew.feature.screens.group.create.model.StampTextColorOption
 import com.pheeeew.feature.screens.group.model.GroupId
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import kotlinx.coroutines.CancellationException
@@ -62,6 +63,10 @@ class GroupCreateViewModel(
             transform = { draft -> draft.copy(description = formRules.limitDescription(value)) },
             clearError = { errors -> errors.copy(description = null) },
         )
+    }
+
+    fun onJoinTypeChanged(joinType: GroupJoinType) {
+        updateDraft { draft -> draft.copy(joinType = joinType) }
     }
 
     fun onStampLabelChanged(value: String) {
@@ -169,7 +174,8 @@ class GroupCreateViewModel(
         val current = _uiState.value
         val failed = current.submission as? GroupCreateSubmissionState.Failed ?: return
         if (pendingOperation != null || failed.reason == GroupCreateFailure.OutcomeUnknown ||
-            failed.reason == GroupCreateFailure.RateLimited
+            failed.reason == GroupCreateFailure.RateLimited ||
+            failed.reason == GroupCreateFailure.JoinTypeUnavailable
         ) {
             return
         }
@@ -372,6 +378,13 @@ class GroupCreateViewModel(
                     CreateGroupResult.RateLimited -> {
                         pendingOperation = null
                         state.copy(submission = GroupCreateSubmissionState.Failed(GroupCreateFailure.RateLimited))
+                    }
+
+                    CreateGroupResult.JoinTypeUnavailable -> {
+                        pendingOperation = null
+                        state.copy(
+                            submission = GroupCreateSubmissionState.Failed(GroupCreateFailure.JoinTypeUnavailable),
+                        )
                     }
 
                     CreateGroupResult.Unavailable -> {
@@ -805,6 +818,7 @@ private fun GroupCreateDraft.toPersistedDraft() =
         stampShape = stamp.shape.name,
         stampFillArgb = stamp.fillArgb,
         stampTextArgb = stamp.textArgb,
+        joinType = joinType,
     )
 
 private fun PersistedGroupCreateDraft.toDraft() =
@@ -818,6 +832,7 @@ private fun PersistedGroupCreateDraft.toDraft() =
                 fillArgb = stampFillArgb,
                 textArgb = stampTextArgb,
             ),
+        joinType = joinType,
     )
 
 private fun PersistedGroupCreateOperation.toOperationKey() =

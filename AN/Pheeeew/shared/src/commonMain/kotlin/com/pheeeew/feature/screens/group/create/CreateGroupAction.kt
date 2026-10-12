@@ -2,12 +2,14 @@ package com.pheeeew.feature.screens.group.create
 
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.group.model.GroupId
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 
 /** 생성 화면의 초안을 공급 경계에 전달하는 값 객체입니다. */
 data class GroupCreateDraft(
     val name: String,
     val description: String,
     val stamp: StampAppearanceUiModel,
+    val joinType: GroupJoinType = GroupJoinType.PRIVATE,
 )
 
 /** 그룹 생성 시나리오를 수행하는 Feature 내부 경계입니다. 서버 DTO를 노출하지 않습니다. */
@@ -31,6 +33,9 @@ sealed interface CreateGroupResult {
     data object InvalidInput : CreateGroupResult
 
     data object RateLimited : CreateGroupResult
+
+    /** The current create API cannot save the selected join type yet. */
+    data object JoinTypeUnavailable : CreateGroupResult
 
     data object Unavailable : CreateGroupResult
 
