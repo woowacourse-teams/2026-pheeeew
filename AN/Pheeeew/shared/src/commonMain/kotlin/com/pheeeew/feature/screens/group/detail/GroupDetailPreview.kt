@@ -6,6 +6,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import com.pheeeew.feature.screens.group.preview.HomeFixtures
 
@@ -21,10 +22,28 @@ private fun GroupDetailOwnerPreview() {
     GroupDetailPreviewFrame(previewGroupDetailUiModel(GroupRole.OWNER))
 }
 
+@Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 · 비공개 그룹 멤버")
+@Composable
+private fun GroupDetailPrivateMemberPreview() {
+    GroupDetailPreviewFrame(previewGroupDetailUiModel(GroupRole.MEMBER))
+}
+
 @Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 · 미가입")
 @Composable
 private fun GroupDetailGuestPreview() {
     GroupDetailPreviewFrame(previewGroupDetailUiModel(GroupRole.NONE))
+}
+
+@Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 · 공개 그룹 참여")
+@Composable
+private fun GroupDetailPublicGuestPreview() {
+    GroupDetailPreviewFrame(previewGroupDetailUiModel(GroupRole.NONE).copy(joinType = GroupJoinType.PUBLIC))
+}
+
+@Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 · 공개 그룹 멤버")
+@Composable
+private fun GroupDetailPublicMemberPreview() {
+    GroupDetailPreviewFrame(previewGroupDetailUiModel(GroupRole.MEMBER).copy(joinType = GroupJoinType.PUBLIC))
 }
 
 @Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 · 순위 없음")
@@ -122,7 +141,11 @@ private fun GroupDetailLeaveOutcomeUnknownPreview() {
 @Composable
 private fun GroupDetailPreviewFrame(
     detail: GroupDetailUiModel = previewGroupDetailUiModel(GroupRole.MEMBER),
-    state: GroupDetailUiState = GroupDetailUiState(content = GroupDetailContent.Ready(detail)),
+    state: GroupDetailUiState =
+        GroupDetailUiState(
+            content = GroupDetailContent.Ready(detail),
+            moodFeed = previewGroupDetailReadyUiModel(detail.role).feed,
+        ),
     overlay: GroupDetailOverlay = GroupDetailOverlay.None,
 ) {
     GroupDetailScreen(
@@ -140,6 +163,7 @@ internal fun previewActions() =
         onRetry = {},
         onMoreClick = {},
         onInviteClick = {},
+        onJoinClick = {},
         onCopyCodeClick = {},
         onShareInviteClick = {},
         onDismissOverlay = {},
@@ -166,7 +190,8 @@ internal fun previewGroupDetailUiModel(role: GroupRole): GroupDetailUiModel =
                 description = "그룹 설명 문구를 여기에 넣을겁니다....\n그룹설명설명설명입니다다다다다이",
             ),
         role = role,
-        inviteCode = "H1Y226",
+        inviteCode = if (role == GroupRole.NONE) null else "H1Y226",
+        joinType = GroupJoinType.PRIVATE,
         weeklyStampCount = 42,
         weeklyStampRank = 3,
         weeklyEmotionPressCount = 318,

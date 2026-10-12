@@ -78,35 +78,37 @@ internal fun EmotionActionsMenu(
                 }
                 Spacer(Modifier.height(8.dp))
             }
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .shadow(5.dp, cardShape)
-                    .clip(cardShape)
-                    .background(Color.White)
-                    .padding(horizontal = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                EmotionReactionType.entries.forEach { type ->
-                    val selected = reactions.any { it.first == type && it.second }
-                    val actionLabel = if (selected) "공감 완료" else "공감"
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .height(44.dp)
-                            .clip(CircleShape)
-                            .clickable(
-                                enabled = !busy && onReact != null,
-                                role = Role.Button,
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = ripple(bounded = false, radius = 22.dp),
-                            ) {
-                                onDismiss()
-                                if (!selected) onReact?.invoke(type)
-                            }.semantics { contentDescription = "${type.label} $actionLabel" },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(type.glyph, fontSize = 18.sp)
+            if (onReact != null) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .shadow(5.dp, cardShape)
+                        .clip(cardShape)
+                        .background(Color.White)
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    EmotionReactionType.entries.forEach { type ->
+                        val selected = reactions.any { it.first == type && it.second }
+                        val actionLabel = if (selected) "공감 완료" else "공감"
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                                .clip(CircleShape)
+                                .clickable(
+                                    enabled = !busy,
+                                    role = Role.Button,
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = ripple(bounded = false, radius = 22.dp),
+                                ) {
+                                    onDismiss()
+                                    if (!selected) onReact(type)
+                                }.semantics { contentDescription = "${type.label} $actionLabel" },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(type.glyph, fontSize = 18.sp)
+                        }
                     }
                 }
             }

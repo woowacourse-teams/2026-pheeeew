@@ -151,6 +151,8 @@ fun GroupDetailScreen(
                                     detail = content.detail.toReadyUiModel(uiState.moodFeed),
                                     hasRefreshError = uiState.hasRefreshError,
                                     onInviteClick = actions.onInviteClick,
+                                    onJoinClick = actions.onJoinClick,
+                                    joinState = uiState.join,
                                     onRetry = actions.onRetry,
                                     onReactionClick = actions.onMoodReactionClick,
                                     onAudioClick = actions.onMoodAudioClick,
@@ -201,9 +203,10 @@ fun GroupDetailScreen(
     when (uiState.overlay) {
         GroupDetailOverlay.InviteCode -> {
             val detail = uiState.detail
-            if (detail != null && detail.role != GroupRole.NONE) {
+            val code = detail?.inviteCode
+            if (detail != null && detail.role != GroupRole.NONE && code != null) {
                 InviteCodeDialog(
-                    code = detail.inviteCode,
+                    code = code,
                     onShare = actions.onShareInviteClick,
                     onDismiss = actions.onDismissOverlay,
                 )
