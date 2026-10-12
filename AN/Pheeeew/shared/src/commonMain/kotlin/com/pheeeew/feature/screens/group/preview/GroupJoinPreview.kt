@@ -1,9 +1,15 @@
-package com.pheeeew.feature.screens.group.join
+package com.pheeeew.feature.screens.group.preview
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
+import com.pheeeew.feature.screens.group.join.GroupJoinFailure
+import com.pheeeew.feature.screens.group.join.GroupJoinRateLimit
+import com.pheeeew.feature.screens.group.join.GroupJoinRateLimitOperation
+import com.pheeeew.feature.screens.group.join.GroupJoinSheet
+import com.pheeeew.feature.screens.group.join.GroupJoinSubmissionState
+import com.pheeeew.feature.screens.group.join.GroupJoinUiState
+import com.pheeeew.feature.screens.group.join.GroupLookupState
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
-import com.pheeeew.feature.screens.group.preview.HomeFixtures
 
 @Preview(name = "그룹 참여 - 코드 입력")
 @Composable

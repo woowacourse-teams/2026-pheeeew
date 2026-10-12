@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.group.create
+package com.pheeeew.feature.screens.group.preview
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -6,10 +6,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
+import com.pheeeew.feature.screens.group.create.ColorConversion
+import com.pheeeew.feature.screens.group.create.GroupCreateScreen
+import com.pheeeew.feature.screens.group.create.GroupCreateUiState
+import com.pheeeew.feature.screens.group.create.GroupFormRules
 import com.pheeeew.feature.screens.group.create.model.StampColorSelection
 import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
 import com.pheeeew.feature.screens.group.model.GroupJoinType
-import com.pheeeew.feature.screens.group.preview.CreateFixtures
 
 @Preview(name = "그룹 생성 · 입력")
 @Composable

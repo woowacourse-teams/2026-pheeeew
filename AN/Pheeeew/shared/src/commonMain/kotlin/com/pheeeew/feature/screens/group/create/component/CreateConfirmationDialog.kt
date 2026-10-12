@@ -107,7 +107,7 @@ internal fun CreateConfirmationDialog(
 }
 
 @Composable
-private fun CreateConfirmationCard(
+internal fun CreateConfirmationCard(
     title: String,
     groupName: String,
     stampLabel: String,
@@ -358,45 +358,5 @@ private fun DialogSecondaryAction(
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
         )
-    }
-}
-
-@Preview(name = "그룹 생성 확인 - 기본", widthDp = 360, heightDp = 640)
-@Composable
-private fun CreateConfirmationCardPreview() {
-    CreateConfirmationPreviewFrame(groupName = "우리 동네", stampLabel = "히유")
-}
-
-@Preview(name = "그룹 생성 확인 - 좁은 화면과 긴 그룹명", widthDp = 320, heightDp = 640)
-@Composable
-private fun CreateConfirmationCardNarrowPreview() {
-    CreateConfirmationPreviewFrame(groupName = "가나다라마바사아자차", stampLabel = "가나다라")
-}
-
-@Preview(name = "그룹 생성 확인 - 큰 글씨", widthDp = 320, heightDp = 480, fontScale = 1.5f)
-@Composable
-private fun CreateConfirmationCardLargeFontPreview() {
-    CreateConfirmationPreviewFrame(groupName = "가나다라마바사아자차", stampLabel = "가나다라")
-}
-
-@Composable
-private fun CreateConfirmationPreviewFrame(
-    groupName: String,
-    stampLabel: String,
-) {
-    AppTheme {
-        Box(
-            modifier = Modifier.fillMaxSize().background(AppColors.GroupBackground).padding(24.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            CreateConfirmationCard(
-                title = stringResource(Res.string.group_create_confirm_title),
-                groupName = groupName,
-                stampLabel = stampLabel,
-                joinType = GroupJoinType.PRIVATE,
-                onDismiss = {},
-                onConfirm = {},
-            )
-        }
     }
 }

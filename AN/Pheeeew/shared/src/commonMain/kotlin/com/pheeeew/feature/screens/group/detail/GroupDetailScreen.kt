@@ -237,22 +237,6 @@ fun GroupDetailScreen(
     }
 }
 
-@Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 화면")
-@Composable
-private fun GroupDetailScreenPreview() {
-    GroupDetailScreen(
-        uiState =
-            GroupDetailUiState(
-                content =
-                    GroupDetailContent.Ready(
-                        previewGroupDetailUiModel(GroupRole.MEMBER),
-                    ),
-            ),
-        actions = previewActions(),
-        modifier = Modifier.fillMaxSize(),
-    )
-}
-
 @Composable
 private fun GroupDetailTopBar(
     title: String,
