@@ -82,6 +82,7 @@ fun GroupDetailProfileViewController() =
                         onRetry = {},
                         onMoreClick = {},
                         onInviteClick = {},
+                        onJoinClick = {},
                         onCopyCodeClick = {},
                         onShareInviteClick = {},
                         onDismissOverlay = {},
