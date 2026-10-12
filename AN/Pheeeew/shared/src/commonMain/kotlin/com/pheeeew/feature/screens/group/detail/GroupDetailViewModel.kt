@@ -60,7 +60,6 @@ class GroupDetailViewModel(
 
     init {
         loadDetail()
-        loadInitialMoodFeed()
     }
 
     override fun onCleared() {
@@ -101,7 +100,7 @@ class GroupDetailViewModel(
         ) {
             return
         }
-        refreshMoodFeed()
+        if (state.detail != null) refreshMoodFeed()
         if (loadJob?.isActive == true) {
             if (showRefreshIndicator && state.detail != null) {
                 _uiState.update { current ->
@@ -150,6 +149,7 @@ class GroupDetailViewModel(
         emotionId: String,
         type: EmotionReactionType,
     ) {
+        if (_uiState.value.detail?.role == GroupRole.NONE) return
         val id = emotionId.toLongOrNull() ?: return
         val post = findMoodPost(emotionId) ?: return
         if (post.isReactionBusy) return
@@ -271,6 +271,7 @@ class GroupDetailViewModel(
     }
 
     private fun loadInitialMoodFeed(isRetrying: Boolean = false) {
+        if (moodFeedJob?.isActive == true) return
         val requestId = beginMoodFeedRequest()
         moodFeedNextCursor = null
         _uiState.update {
@@ -853,6 +854,9 @@ class GroupDetailViewModel(
                                 )
                             }
                         }
+                    }
+                    if (loadedDetail != null && _uiState.value.moodFeed == GroupMoodFeedUiState.Loading) {
+                        loadInitialMoodFeed()
                     }
                 } finally {
                     if (requestId == loadGeneration) {

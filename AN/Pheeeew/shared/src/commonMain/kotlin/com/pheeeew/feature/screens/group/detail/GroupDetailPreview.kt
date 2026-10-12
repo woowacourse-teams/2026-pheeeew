@@ -141,7 +141,11 @@ private fun GroupDetailLeaveOutcomeUnknownPreview() {
 @Composable
 private fun GroupDetailPreviewFrame(
     detail: GroupDetailUiModel = previewGroupDetailUiModel(GroupRole.MEMBER),
-    state: GroupDetailUiState = GroupDetailUiState(content = GroupDetailContent.Ready(detail)),
+    state: GroupDetailUiState =
+        GroupDetailUiState(
+            content = GroupDetailContent.Ready(detail),
+            moodFeed = previewGroupDetailReadyUiModel(detail.role).feed,
+        ),
     overlay: GroupDetailOverlay = GroupDetailOverlay.None,
 ) {
     GroupDetailScreen(

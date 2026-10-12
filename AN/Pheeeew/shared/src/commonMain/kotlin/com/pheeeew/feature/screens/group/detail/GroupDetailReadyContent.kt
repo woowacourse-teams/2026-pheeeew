@@ -73,6 +73,8 @@ internal fun GroupDetailReadyContent(
     onFeedLoadMore: (() -> Unit)?,
 ) {
     val feed = detail.feed
+    val canReact = detail.role != GroupRole.NONE
+    val canOpenActionsMenu = canReact || onBlockClick != null || onReportClick != null
     val availableFeed = feed as? GroupMoodFeedUiState.Available
     val feedPosts = availableFeed?.posts.orEmpty()
     val loadState = availableFeed?.loadState
@@ -235,9 +237,19 @@ internal fun GroupDetailReadyContent(
                         audioLoading = post.isAudioLoading,
                         focused = false,
                         onOpenOnMap = null,
-                        onOpenMenu = { mode -> openMenu = post.id to mode },
+                        onOpenMenu =
+                            if (canOpenActionsMenu) {
+                                { mode -> openMenu = post.id to mode }
+                            } else {
+                                null
+                            },
                         onDismissMenu = { if (openMenu?.first == post.id) openMenu = null },
-                        onReact = onReactionClick?.let { callback -> { type -> callback(post.id, type) } },
+                        onReact =
+                            if (canReact) {
+                                onReactionClick?.let { callback -> { type -> callback(post.id, type) } }
+                            } else {
+                                null
+                            },
                         onBlock = onBlockClick?.let { callback -> { callback(post.id) } },
                         onReport = onReportClick?.let { callback -> { callback(post.id) } },
                         onPlay = onAudioClick?.let { callback -> { callback(post.id) } },

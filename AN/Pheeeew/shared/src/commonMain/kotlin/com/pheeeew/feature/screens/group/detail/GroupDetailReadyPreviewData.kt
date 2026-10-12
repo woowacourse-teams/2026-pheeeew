@@ -32,7 +32,10 @@ internal fun previewGroupDetailReadyUiModel(role: GroupRole = GroupRole.MEMBER):
         weeklyEmotionPressRank = 5,
         feed =
             GroupMoodFeedUiState.Available(
-                posts = previewGroupMoodPosts(),
+                posts =
+                    previewGroupMoodPosts().map { post ->
+                        post.copy(isMine = role != GroupRole.NONE && post.isMine)
+                    },
                 hasMore = false,
                 loadState = GroupMoodFeedLoadState.Idle,
             ),

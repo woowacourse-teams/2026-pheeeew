@@ -48,7 +48,11 @@ internal fun EmotionReactionRow(
 ) {
     val addReactionDescription = stringResource(Res.string.emotion_chat_add_reaction)
     val visibleReactions = reactions.filter { it.count > 0 || it.selected }
-    val showAddReaction = EmotionReactionType.entries.any { type -> visibleReactions.none { it.type == type } }
+    val showAddReaction =
+        onReact != null &&
+            EmotionReactionType.entries.any { type ->
+                visibleReactions.none { it.type == type }
+            }
     val reactionMenuMode = menuMode?.takeIf { it == EmotionActionsMenuMode.Reactions }
     FlowRow(
         Modifier.fillMaxWidth().padding(horizontal = 8.dp),

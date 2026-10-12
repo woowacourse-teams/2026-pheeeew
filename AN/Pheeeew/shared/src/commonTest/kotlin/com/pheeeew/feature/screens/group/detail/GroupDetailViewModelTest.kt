@@ -36,6 +36,7 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupDetailViewModelTest {
+    @Test
     fun `public guest join displays pending API notice without changing membership`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -61,6 +62,7 @@ class GroupDetailViewModelTest {
             }
         }
 
+    @Test
     fun `private guest cannot start direct join from group detail`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -77,6 +79,41 @@ class GroupDetailViewModelTest {
                 val loadedDetail = requireNotNull(viewModel.uiState.value.detail)
                 assertEquals(GroupRole.NONE, loadedDetail.role)
                 assertEquals(7L, loadedDetail.group.memberCount)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `private guest can view and refresh the mood feed`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var feedRequests = 0
+                val repository =
+                    object : EmotionRepository by TestEmotionRepository {
+                        override suspend fun feedPage(
+                            groupId: String,
+                            cursor: String?,
+                        ): EmotionResult<EmotionPage> {
+                            feedRequests++
+                            return EmotionResult.Success(EmotionPage(emptyList(), null))
+                        }
+                    }
+                val viewModel =
+                    createViewModel(
+                        source = { GroupDetailLoadResult.Loaded(detail(GroupRole.NONE)) },
+                        emotionRepository = repository,
+                    )
+                runCurrent()
+                assertEquals(1, feedRequests)
+                assertIs<GroupMoodFeedUiState.Available>(viewModel.uiState.value.moodFeed)
+
+                viewModel.onRefresh()
+                runCurrent()
+
+                assertEquals(2, feedRequests)
+                assertIs<GroupMoodFeedUiState.Available>(viewModel.uiState.value.moodFeed)
             } finally {
                 Dispatchers.resetMain()
             }
