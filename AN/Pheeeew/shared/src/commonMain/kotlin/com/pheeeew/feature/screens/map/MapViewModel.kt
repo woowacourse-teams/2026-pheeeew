@@ -173,7 +173,12 @@ class MapViewModel(
     fun focusOnRegionCluster(id: String) {
         val region = _uiModel.value.regionClusters.firstOrNull { it.id == id } ?: return
         val displayedLevel = _uiModel.value.displayedRegionLevel ?: return
-        val zoom = MapZoomPolicy.focusZoomForRegion(displayedLevel)
+        focusOnRegionCluster(region, displayedLevel)
+    }
+
+    /** A previous render snapshot remains clickable while replacement images are prepared. */
+    fun focusOnRegionCluster(region: RegionClusterUiModel, level: EmotionRegionLevel) {
+        val zoom = MapZoomPolicy.focusZoomForRegion(level)
         sendCameraCommand(
             action = MapCameraActionUiModel.MoveToCoordinate,
             latitude = region.latitude,
@@ -275,8 +280,6 @@ class MapViewModel(
             activeRegionQuery = null
             _uiModel.value =
                 _uiModel.value.copy(
-                    regionClusters = emptyList(),
-                    displayedRegionLevel = null,
                     regionClustersError = null,
                     isLoadingRegionClusters = false,
                 )
@@ -302,7 +305,7 @@ class MapViewModel(
         val cached = if (forceRegionRefresh) null else findRegionSnapshot?.invoke(viewport.bounds, level)
         _uiModel.value =
             _uiModel.value.copy(
-                emotionPins = emptyList(),
+                emotionPins = if (cached != null) emptyList() else _uiModel.value.emotionPins,
                 regionClusters = cached?.toClusterUiModels() ?: _uiModel.value.regionClusters,
                 displayedRegionLevel = if (cached != null) level else _uiModel.value.displayedRegionLevel,
                 isLoadingEmotionPins = false,
@@ -323,6 +326,7 @@ class MapViewModel(
                     when (result) {
                         is EmotionRegionResult.Success -> {
                             _uiModel.value.copy(
+                                emotionPins = emptyList(),
                                 regionClusters = result.regions.toClusterUiModels(),
                                 displayedRegionLevel = level,
                                 isLoadingRegionClusters = false,
@@ -605,6 +609,8 @@ class MapViewModel(
         generation: Long = queryGeneration,
     ) {
         val snapshotPins = findEmotionMapSnapshot(bounds)?.pins ?: return
+        // An empty partial cache does not prove that the target pin query is empty.
+        if (_uiModel.value.displayedRegionLevel != null && snapshotPins.isEmpty()) return
         val pins =
             LinkedHashMap(displayedPins).apply {
                 snapshotPins.forEach { put(it.id, it) }
@@ -651,6 +657,8 @@ class MapViewModel(
         _uiModel.value =
             _uiModel.value.copy(
                 emotionPins = retained.takeUnless { it == _uiModel.value.emotionPins } ?: _uiModel.value.emotionPins,
+                regionClusters = emptyList(),
+                displayedRegionLevel = null,
                 emotionContentLoad = contentLoad,
             )
     }

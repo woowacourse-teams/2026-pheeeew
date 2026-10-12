@@ -553,6 +553,10 @@ private class AndroidFoundationMapHost(
         recordRangeLayer.update(style, state.recordOrigin.takeIf { state.isRecordLocationPicking })
         var pinSourceUpdated = false
         style?.let { loadedStyle ->
+            // Prepare the incoming layer before removing features from the outgoing layer.
+            if (state.displayedRegionLevel != null) {
+                regionClusterSymbolLayer.update(loadedStyle, state.regionClusters, state.regionClusterSymbolImages)
+            }
             pinSourceUpdated =
                 emotionPinSymbolLayer.update(
                     style = loadedStyle,
@@ -563,7 +567,9 @@ private class AndroidFoundationMapHost(
                     focusedId = state.focusedEmotionId,
                 )
             emotionPinSymbolLayer.updatePress(loadedStyle, state.pressedEmotionId, state.pressedEmotionScale)
-            regionClusterSymbolLayer.update(loadedStyle, state.regionClusters, state.regionClusterSymbolImages)
+            if (state.displayedRegionLevel == null) {
+                regionClusterSymbolLayer.update(loadedStyle, state.regionClusters, state.regionClusterSymbolImages)
+            }
             recordStampLayer.update(loadedStyle, state.recordPreviewPin, state.recordPreviewScale)
         }
         val loadId = state.emotionContentLoad?.loadId
