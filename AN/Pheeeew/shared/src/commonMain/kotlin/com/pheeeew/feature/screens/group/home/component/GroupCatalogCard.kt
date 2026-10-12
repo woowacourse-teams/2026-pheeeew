@@ -57,7 +57,7 @@ fun GroupCatalogCard(
         modifier =
             modifier
                 .fillMaxWidth()
-                .height(116.dp)
+                .height(96.dp)
                 .drawBehind {
                     val shadowOffset = 3.dp.toPx()
                     drawRoundRect(
@@ -72,7 +72,7 @@ fun GroupCatalogCard(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(113.dp)
+                    .height(93.dp)
                     .raisedPressEffect(interactionSource)
                     .clip(shape)
                     .background(Color.White)
@@ -95,13 +95,6 @@ fun GroupCatalogCard(
                     color = AppColors.RankingContent,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = group.description.orEmpty(),
-                    color = AppColors.RankingSecondaryContent,
-                    fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )

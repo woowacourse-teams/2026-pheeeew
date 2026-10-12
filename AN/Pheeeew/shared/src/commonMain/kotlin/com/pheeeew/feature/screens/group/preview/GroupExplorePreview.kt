@@ -75,7 +75,7 @@ private fun GroupExploreLoadMoreFailedPreview() {
     GroupExplorePreviewFrame(uiState = HomeFixtures.exploreLoadMoreFailedState)
 }
 
-@Preview(name = "전체 그룹 - 긴 이름과 설명", widthDp = 360, heightDp = 800)
+@Preview(name = "전체 그룹 - 긴 그룹 이름 말줄임", widthDp = 360, heightDp = 800)
 @Composable
 private fun GroupExploreLongContentPreview() {
     GroupExplorePreviewFrame(uiState = HomeFixtures.exploreLongContentState)
