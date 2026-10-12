@@ -68,11 +68,12 @@ internal actual fun NativeMap(
                 FoundationIosRegionClusterCoordinateUiModel(it.id, it.latitude, it.longitude, it.symbolImageKey())
             }
         }
-    val allSymbolImages = remember(state.emotionPinSymbolImages, state.regionClusterSymbolImages) {
-        (state.emotionPinSymbolImages + state.regionClusterSymbolImages).distinctBy { it.key }.map {
-            FoundationIosMapSymbolImageUiModel(it.key, it.width, it.height, it.rgba)
+    val allSymbolImages =
+        remember(state.emotionPinSymbolImages, state.regionClusterSymbolImages) {
+            (state.emotionPinSymbolImages + state.regionClusterSymbolImages).distinctBy { it.key }.map {
+                FoundationIosMapSymbolImageUiModel(it.key, it.width, it.height, it.rgba)
+            }
         }
-    }
     val eventSink =
         remember {
             object : FoundationIosMapEventSink {

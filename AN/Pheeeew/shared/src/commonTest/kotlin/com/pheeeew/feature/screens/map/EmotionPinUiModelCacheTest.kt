@@ -34,7 +34,13 @@ class EmotionPinUiModelCacheTest {
             )
         val first = cache.orderedPins(pins, emptyList(), emptySet(), { true }, { true })
 
-        cache.orderedPins(listOf(pin(4, createdAt = "2026-09-01T00:00:00Z")), emptyList(), emptySet(), { true }, { true })
+        cache.orderedPins(
+            listOf(pin(4, createdAt = "2026-09-01T00:00:00Z")),
+            emptyList(),
+            emptySet(),
+            { true },
+            { true },
+        )
 
         assertEquals(listOf(1L, 2L, 3L), first.map(EmotionPinUiModel::id))
         assertEquals(listOf(1L, 2L, 3L), first.map(EmotionPinUiModel::id))

@@ -37,9 +37,10 @@ internal class EmotionRegionMapCache(
     ): List<EmotionRegion>? {
         evictExpired()
         // Keep the complete summary: a display point need not lie inside its region's viewport.
-        val key = entries.keys.lastOrNull {
-            it.level == level && it.groupId == groupId && it.bounds.coversRegionViewport(bounds)
-        } ?: return null
+        val key =
+            entries.keys.lastOrNull {
+                it.level == level && it.groupId == groupId && it.bounds.coversRegionViewport(bounds)
+            } ?: return null
         val entry = entries.remove(key) ?: return null
         entries[key] = entry
         return entry.regions

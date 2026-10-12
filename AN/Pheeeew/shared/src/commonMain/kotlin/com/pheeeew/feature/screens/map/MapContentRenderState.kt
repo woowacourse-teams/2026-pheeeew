@@ -24,7 +24,11 @@ internal fun resolveMapContentRenderState(
     val pins = if (regionMode) emptyList() else pending.pins.filterNot { it.id in hiddenIds }
     val regions = if (regionMode) pending.regions else emptyList()
     val pinImages = (displayed.pinImages + pending.pinImages).filter { it.hasVisiblePixels }.associateBy { it.key }
-    val regionImages = (displayed.regionImages + pending.regionImages).filter { it.hasVisiblePixels }.associateBy { it.key }
+    val regionImages =
+        (displayed.regionImages + pending.regionImages)
+            .filter {
+                it.hasVisiblePixels
+            }.associateBy { it.key }
     if (pins.any { it.symbolImageKey() !in pinImages } || regions.any { it.symbolImageKey() !in regionImages }) {
         // IDs can change entirely between SIDO and SIGUNGU: retain the whole outgoing snapshot.
         return displayed.copy(pins = displayed.pins.filterNot { it.id in hiddenIds })

@@ -4,9 +4,9 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay as coroutineDelay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay as coroutineDelay
 
 /** Coalesces map snapshots while leaving page requests free to continue. */
 internal class MapPinSnapshotPublisher<T>(
@@ -182,7 +182,9 @@ internal class MapPinSnapshotPublisher<T>(
         val job =
             scope.launch(start = CoroutineStart.LAZY) {
                 try {
-                    while (currentCoroutineContext().isActive && active && generation == scheduledGeneration && morePagesExpected) {
+                    while (currentCoroutineContext().isActive && active && generation == scheduledGeneration &&
+                        morePagesExpected
+                    ) {
                         wait(intervalMillis)
                         if (!active || generation != scheduledGeneration) break
                         pendingSnapshot?.let {

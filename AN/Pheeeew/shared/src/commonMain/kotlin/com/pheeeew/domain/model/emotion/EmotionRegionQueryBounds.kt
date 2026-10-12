@@ -5,12 +5,20 @@ import kotlin.math.floor
 
 /** Query a padded, stable area so nearby viewports can share an administrative summary. */
 internal fun EmotionMapBounds.expandedForRegionQuery(level: EmotionRegionLevel): EmotionMapBounds {
-    val grid = when (level) {
-        EmotionRegionLevel.SIDO -> 1.0
-        EmotionRegionLevel.SIGUNGU -> 0.125
-    }
+    val grid =
+        when (level) {
+            EmotionRegionLevel.SIDO -> 1.0
+            EmotionRegionLevel.SIGUNGU -> 0.125
+        }
     val latitudePadding = (maxLatitude - minLatitude) * 0.25
-    val longitudeSpan = if (minLongitude <= maxLongitude) maxLongitude - minLongitude else 360.0 - minLongitude + maxLongitude
+    val longitudeSpan =
+        if (minLongitude <=
+            maxLongitude
+        ) {
+            maxLongitude - minLongitude
+        } else {
+            360.0 - minLongitude + maxLongitude
+        }
     val west = floor((minLongitude - longitudeSpan * 0.25) / grid) * grid
     val east = ceil((minLongitude + longitudeSpan * 1.25) / grid) * grid
     val coversWorld = east - west >= 360.0
@@ -32,7 +40,10 @@ internal fun EmotionMapBounds.coversRegionViewport(viewport: EmotionMapBounds): 
         }
 
 private fun EmotionMapBounds.regionLongitudeIntervals(): List<ClosedFloatingPointRange<Double>> =
-    if (minLongitude <= maxLongitude) listOf(minLongitude..maxLongitude)
-    else listOf(minLongitude..180.0, -180.0..maxLongitude)
+    if (minLongitude <= maxLongitude) {
+        listOf(minLongitude..maxLongitude)
+    } else {
+        listOf(minLongitude..180.0, -180.0..maxLongitude)
+    }
 
 private fun wrapRegionLongitude(value: Double): Double = ((value + 180.0) % 360.0 + 360.0) % 360.0 - 180.0

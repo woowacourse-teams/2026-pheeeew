@@ -21,12 +21,13 @@ class EmotionRegionQueryBoundsTest {
 
     @Test
     fun `극지방과 날짜 변경선에서도 유효한 조회 범위를 만든다`() {
-        val areas = listOf(
-            EmotionMapBounds(179.0, -10.0, -179.0, 10.0),
-            EmotionMapBounds(-180.0, 89.8, -179.9, 90.0),
-            EmotionMapBounds(179.9, -90.0, 180.0, -89.8),
-            EmotionMapBounds(-170.0, -80.0, 170.0, 80.0),
-        )
+        val areas =
+            listOf(
+                EmotionMapBounds(179.0, -10.0, -179.0, 10.0),
+                EmotionMapBounds(-180.0, 89.8, -179.9, 90.0),
+                EmotionMapBounds(179.9, -90.0, 180.0, -89.8),
+                EmotionMapBounds(-170.0, -80.0, 170.0, 80.0),
+            )
         EmotionRegionLevel.entries.forEach { level ->
             areas.forEach { area ->
                 val query = area.expandedForRegionQuery(level)

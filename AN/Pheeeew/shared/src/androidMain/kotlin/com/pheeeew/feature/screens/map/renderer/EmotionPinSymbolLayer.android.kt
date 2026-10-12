@@ -284,5 +284,4 @@ internal class EmotionPinSymbolLayer {
         val pressedScale: Float,
         val topPriority: Int,
     )
-
 }

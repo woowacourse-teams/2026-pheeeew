@@ -177,7 +177,10 @@ class MapViewModel(
     }
 
     /** A previous render snapshot remains clickable while replacement images are prepared. */
-    fun focusOnRegionCluster(region: RegionClusterUiModel, level: EmotionRegionLevel) {
+    fun focusOnRegionCluster(
+        region: RegionClusterUiModel,
+        level: EmotionRegionLevel,
+    ) {
         val zoom = MapZoomPolicy.focusZoomForRegion(level)
         sendCameraCommand(
             action = MapCameraActionUiModel.MoveToCoordinate,
@@ -289,7 +292,8 @@ class MapViewModel(
         val query = viewport.bounds.expandedForRegionQuery(level) to level
         val activeQuery = activeRegionQuery
         if (!forceRegionRefresh && regionJob?.isActive == true &&
-            activeQuery != null && activeQuery.second == level && activeQuery.first.coversRegionViewport(viewport.bounds)
+            activeQuery != null && activeQuery.second == level &&
+            activeQuery.first.coversRegionViewport(viewport.bounds)
         ) {
             return
         }

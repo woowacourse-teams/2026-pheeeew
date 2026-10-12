@@ -67,8 +67,14 @@ class EmotionRegionMapCacheTest {
     fun `날짜 변경선을 가로지르는 조회 범위도 포함 여부를 확인한다`() {
         val cache = EmotionRegionMapCache()
         cache.put(EmotionMapBounds(170.0, -20.0, -170.0, 20.0), EmotionRegionLevel.SIDO, null, regions)
-        assertEquals(regions, cache.snapshot(EmotionMapBounds(175.0, -10.0, -175.0, 10.0), EmotionRegionLevel.SIDO, null))
-        assertEquals(regions, cache.snapshot(EmotionMapBounds(-179.0, -10.0, -175.0, 10.0), EmotionRegionLevel.SIDO, null))
+        assertEquals(
+            regions,
+            cache.snapshot(EmotionMapBounds(175.0, -10.0, -175.0, 10.0), EmotionRegionLevel.SIDO, null),
+        )
+        assertEquals(
+            regions,
+            cache.snapshot(EmotionMapBounds(-179.0, -10.0, -175.0, 10.0), EmotionRegionLevel.SIDO, null),
+        )
         assertNull(cache.snapshot(EmotionMapBounds(-10.0, -10.0, 10.0, 10.0), EmotionRegionLevel.SIDO, null))
     }
 
