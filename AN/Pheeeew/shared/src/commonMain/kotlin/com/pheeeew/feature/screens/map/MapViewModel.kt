@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
+import com.pheeeew.feature.monitoring.product.ProductOperation
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
@@ -33,7 +34,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlin.time.Instant
+import kotlin.time.TimeSource
 
 class MapViewModel(
     private val refreshLocation: RefreshLocationUseCase,
@@ -42,16 +43,30 @@ class MapViewModel(
     monitoring: Monitoring = NoOpMonitoring,
     private val findRegions: FindEmotionRegionsUseCase? = null,
     private val findRegionSnapshot: FindEmotionRegionSnapshotUseCase? = null,
+    private val pinSnapshotIntervalMillis: Long = MapPinSnapshotPublisher.DEFAULT_INTERVAL_MILLIS,
+    private val pinSnapshotDelay: suspend (Long) -> Unit = { delay(it) },
 ) : ViewModel() {
     private val _uiModel = MutableStateFlow(MapUiModel())
     val uiModel: StateFlow<MapUiModel> = _uiModel.asStateFlow()
 
     private val telemetry = ProductMonitoring(monitoring, "map")
-    private var mapLoad: com.pheeeew.feature.monitoring.product.ProductOperation? = null
+    private val pinUiModelCache = EmotionPinUiModelCache()
+    private val pinSnapshotPublisher =
+        MapPinSnapshotPublisher(
+            scope = viewModelScope,
+            intervalMillis = pinSnapshotIntervalMillis,
+            wait = pinSnapshotDelay,
+            sameSnapshot = { first, second -> first.pins == second.pins },
+            publish = ::publishEmotionPinSnapshot,
+            discard = { it.observation?.hidden() },
+        )
+    private var mapLoad: ProductOperation? = null
     val exploration = ContentMonitoring(monitoring, viewModelScope, "map")
 
     fun contentVisibility(visible: Boolean) {
-        if (exploration.visibility(visible) && _uiModel.value.emotionContentLoad != null) {
+        val visibilityChanged = exploration.visibility(visible)
+        if (!visible) pinSnapshotPublisher.setActive(false)
+        if (visibilityChanged && visible && _uiModel.value.emotionContentLoad != null) {
             val load =
                 exploration
                     .load(
@@ -61,9 +76,11 @@ class MapViewModel(
                     ).also { it.ready() }
             _uiModel.value = _uiModel.value.copy(emotionContentLoad = load)
         }
+        if (visible) pinSnapshotPublisher.setActive(true)
     }
 
     override fun onCleared() {
+        pinSnapshotPublisher.cancel()
         exploration.close()
         super.onCleared()
     }
@@ -115,8 +132,7 @@ class MapViewModel(
         _uiModel.value =
             _uiModel.value.copy(
                 emotionPins =
-                    (uiModel.value.emotionPins.filterNot { it.id == pin.id } + pin)
-                        .sortedWith(compareBy<EmotionPinUiModel> { Instant.parse(it.createdAt) }.thenBy { it.id }),
+                    pinUiModelCache.orderedModels(uiModel.value.emotionPins.filterNot { it.id == pin.id } + pin),
             )
         refreshEmotionPins()
     }
@@ -213,9 +229,10 @@ class MapViewModel(
         retryCursor = null
         partialPageBounds = null
         partialPagePins.clear()
-        exploration.supersede()
-        publishSnapshot(bounds)
         val generation = ++queryGeneration
+        pinSnapshotPublisher.begin(generation)
+        exploration.supersede()
+        publishSnapshot(bounds, generation)
         viewportJob?.cancel()
         pendingEmotionMapRequest = null
         viewportJob =
@@ -243,6 +260,7 @@ class MapViewModel(
             regionJob?.cancel()
             if (activeRegionQuery != null) {
                 ++queryGeneration
+                pinSnapshotPublisher.begin(queryGeneration)
                 displayedBounds = null
             }
             activeRegionQuery = null
@@ -264,9 +282,11 @@ class MapViewModel(
         }
         activeRegionQuery = query
         val generation = ++queryGeneration
+        pinSnapshotPublisher.begin(generation)
         viewportJob?.cancel()
         emotionMapJob?.cancel()
         regionJob?.cancel()
+        exploration.supersede()
         pendingEmotionMapRequest = null
         requestedBounds = null
         val cached = if (forceRegionRefresh) null else findRegionSnapshot?.invoke(viewport.bounds, level)
@@ -336,6 +356,7 @@ class MapViewModel(
         needsFreshEmotionPins = true
         val bounds = requestedBounds ?: displayedBounds ?: return
         val generation = ++queryGeneration
+        pinSnapshotPublisher.begin(generation)
         viewportJob?.cancel()
         pendingEmotionMapRequest = null
         enqueueEmotionMapRequest(EmotionMapRequest(bounds, generation, bypassCache = true))
@@ -349,6 +370,7 @@ class MapViewModel(
         }
         val bounds = displayedBounds ?: requestedBounds ?: return
         val generation = ++queryGeneration
+        pinSnapshotPublisher.begin(generation)
         viewportJob?.cancel()
         pendingEmotionMapRequest = null
         enqueueEmotionMapRequest(
@@ -373,6 +395,7 @@ class MapViewModel(
     }
 
     private fun loadEmotionPins(request: EmotionMapRequest) {
+        pinSnapshotPublisher.begin(request.generation)
         val requestId = ++activeEmotionMapRequestId
         val job =
             viewModelScope.launch(start = CoroutineStart.LAZY) {
@@ -393,6 +416,7 @@ class MapViewModel(
                 cursor?.let(usedCursors::add)
                 var firstPage = request.startCursor == null
                 var invalidCount = if (firstPage) 0 else _uiModel.value.invalidEmotionPinCount
+                var pageIndex = 0
                 var observation: ContentLoad? = null
                 try {
                     while (true) {
@@ -407,6 +431,8 @@ class MapViewModel(
                                     "viewport"
                                 },
                             )
+                        pageIndex++
+                        val requestMark = TimeSource.Monotonic.markNow()
                         when (
                             val result =
                                 findEmotionMapPage(
@@ -428,6 +454,7 @@ class MapViewModel(
                                             hasPartialEmotionPins = !firstPage,
                                             emotionPinsError = "감정 핀을 불러오지 못했어요",
                                         )
+                                    pinSnapshotPublisher.flush(request.generation)
                                 }
                                 return@launch
                             }
@@ -435,20 +462,26 @@ class MapViewModel(
                             is EmotionMapPageResult.Success -> {
                                 val page = result.page
                                 val origin = if (result.fromCache) "cache" else "network"
+                                exploration.mapPinPageReceived(
+                                    pageIndex = pageIndex,
+                                    pinCount = page.pins.size,
+                                    invalidPinCount = page.invalidItemCount,
+                                    hasNext = page.hasNext,
+                                    dataOrigin = origin,
+                                    requestDurationMillis = requestMark.elapsedNow().inWholeMilliseconds,
+                                )
                                 invalidCount += page.invalidItemCount
                                 if (request.generation != queryGeneration) {
-                                    observation.hidden()
                                     observation.ready(origin)
+                                    observation.hidden()
                                     if (!_uiModel.value.isRecordLocationPicking) {
-                                        requestedBounds?.let(::publishSnapshot)
+                                        requestedBounds?.let { publishSnapshot(it, queryGeneration) }
                                     }
                                     return@launch
                                 }
                                 page.pins.forEach { pins[it.id] = it }
                                 partialPageBounds = request.bounds
                                 partialPagePins = LinkedHashMap(pins)
-                                _uiModel.value.emotionContentLoad?.hidden()
-                                val displayLoad = exploration.display(observation, origin)
                                 displayedBounds = request.bounds
                                 page.pins.forEach { locallyRegisteredPins.remove(it.id) }
                                 val isComplete = !page.hasNext
@@ -458,12 +491,17 @@ class MapViewModel(
                                     } else {
                                         LinkedHashMap(displayedPins).apply { putAll(pins) }
                                     }
-                                displayedPins = LinkedHashMap(pinsForDisplay)
-                                val ordered = pinsForDisplay.values.toOrderedUiPins(request.bounds)
+                                observation.ready(origin)
+                                val snapshot =
+                                    EmotionPinSnapshot(
+                                        generation = request.generation,
+                                        pins = pinsForDisplay.values.toList(),
+                                        kind = if (cursor != null) "pagination" else if (request.bypassCache) "refresh" else "viewport",
+                                        origin = origin,
+                                        observation = observation,
+                                    )
                                 _uiModel.value =
                                     _uiModel.value.copy(
-                                        emotionPins = ordered,
-                                        emotionContentLoad = displayLoad,
                                         isLoadingEmotionPins = false,
                                         isLoadingMoreEmotionPins = page.hasNext,
                                         hasPartialEmotionPins = false,
@@ -476,8 +514,20 @@ class MapViewModel(
                                     retryCursor = null
                                     partialPageBounds = null
                                     partialPagePins.clear()
+                                    _uiModel.value =
+                                        _uiModel.value.copy(
+                                            isLoadingMoreEmotionPins = false,
+                                            hasPartialEmotionPins = false,
+                                        )
+                                    pinSnapshotPublisher.finish(request.generation, snapshot)
                                     break
                                 }
+                                pinSnapshotPublisher.offer(
+                                    forGeneration = request.generation,
+                                    snapshot = snapshot,
+                                    hasVisiblePins = page.pins.isNotEmpty(),
+                                    hasNextPage = true,
+                                )
                                 val nextCursor = page.nextCursor
                                 if (nextCursor.isNullOrBlank() || !usedCursors.add(nextCursor)) {
                                     retryCursor = null
@@ -487,6 +537,7 @@ class MapViewModel(
                                             hasPartialEmotionPins = true,
                                             emotionPinsError = "감정 핀 목록을 완전히 불러오지 못했어요",
                                         )
+                                    pinSnapshotPublisher.flush(request.generation)
                                     return@launch
                                 }
                                 cursor = nextCursor
@@ -510,6 +561,7 @@ class MapViewModel(
                                 hasPartialEmotionPins = !firstPage,
                                 emotionPinsError = "감정 핀을 불러오지 못했어요",
                             )
+                        pinSnapshotPublisher.flush(request.generation)
                     }
                 } finally {
                     if (request.generation == queryGeneration && !_uiModel.value.hasPartialEmotionPins) {
@@ -532,26 +584,54 @@ class MapViewModel(
         job.start()
     }
 
-    private fun publishSnapshot(bounds: EmotionMapBounds) {
+    private fun publishSnapshot(
+        bounds: EmotionMapBounds,
+        generation: Long = queryGeneration,
+    ) {
         val snapshotPins = findEmotionMapSnapshot(bounds)?.pins ?: return
-        displayedPins =
+        val pins =
             LinkedHashMap(displayedPins).apply {
                 snapshotPins.forEach { put(it.id, it) }
             }
-        _uiModel.value.emotionContentLoad?.hidden()
-        val load = exploration.load("cache", "cache").also { it.ready() }
-        _uiModel.value =
-            _uiModel.value.copy(
-                emotionPins = displayedPins.values.toOrderedUiPins(bounds),
-                emotionContentLoad = load,
+        val published =
+            EmotionPinSnapshot(
+                generation = generation,
+                pins = pins.values.toList(),
+                kind = "cache",
+                origin = "cache",
+                observation = null,
             )
+        pinSnapshotPublisher.seed(generation, published)
+        publishEmotionPinSnapshot(published)
     }
 
-    private fun Collection<EmotionMapPin>.toOrderedUiPins(bounds: EmotionMapBounds): List<EmotionPinUiModel> =
-        (map { it.toUiModel() } + locallyRegisteredPins.values.filter { bounds.contains(it) })
-            .distinctBy { it.id }
-            .filterNot { it.id in _uiModel.value.hiddenEmotionIds }
-            .sortedWith(compareBy<EmotionPinUiModel> { Instant.parse(it.createdAt) }.thenBy { it.id })
+    private fun publishEmotionPinSnapshot(snapshot: EmotionPinSnapshot) {
+        if (snapshot.generation != queryGeneration) {
+            snapshot.observation?.hidden()
+            return
+        }
+        displayedPins = snapshot.pins.associateByTo(linkedMapOf(), EmotionMapPin::id)
+        _uiModel.value.emotionContentLoad?.hidden()
+        val contentLoad =
+            snapshot.observation?.let { exploration.display(it, snapshot.origin) }
+                ?: exploration.load(snapshot.kind, snapshot.origin).also { it.ready() }
+        val bounds = requestedBounds ?: displayedBounds
+        val pins =
+            if (bounds == null) {
+                pinUiModelCache.orderedModels(
+                    snapshot.pins.map(pinUiModelCache::toUiModel) + locallyRegisteredPins.values,
+                )
+            } else {
+                pinUiModelCache.orderedPins(
+                    pins = snapshot.pins,
+                    localPins = locallyRegisteredPins.values,
+                    hiddenIds = _uiModel.value.hiddenEmotionIds,
+                    contains = { true },
+                    containsLocal = { bounds.contains(it) },
+                )
+            }
+        _uiModel.value = _uiModel.value.copy(emotionPins = pins, emotionContentLoad = contentLoad)
+    }
 
     private fun EmotionMapBounds.contains(pin: EmotionPinUiModel): Boolean =
         pin.latitude in minLatitude..maxLatitude &&
@@ -707,4 +787,12 @@ private data class EmotionMapRequest(
     val startCursor: String? = null,
     val existingPins: LinkedHashMap<Long, EmotionMapPin> = linkedMapOf(),
     val bypassCache: Boolean = false,
+)
+
+private data class EmotionPinSnapshot(
+    val generation: Long,
+    val pins: List<EmotionMapPin>,
+    val kind: String,
+    val origin: String,
+    val observation: ContentLoad?,
 )

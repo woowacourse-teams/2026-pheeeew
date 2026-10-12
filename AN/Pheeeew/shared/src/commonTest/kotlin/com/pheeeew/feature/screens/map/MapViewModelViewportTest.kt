@@ -43,6 +43,55 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelViewportTest {
     @Test
+    fun `페이지 요청은 화면 발행 간격을 기다리지 않고 중간 핀은 최신 페이지로 묶는다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val firstPage = CompletableDeferred<EmotionMapPageResult>()
+                val secondPage = CompletableDeferred<EmotionMapPageResult>()
+                val thirdPage = CompletableDeferred<EmotionMapPageResult>()
+                val repository = QueuedEmotionMapRepository(firstPage, secondPage, thirdPage)
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                        pinSnapshotIntervalMillis = 300,
+                    )
+                val area = bounds(127.0, 37.5)
+
+                viewModel.onViewportChanged(area)
+                advanceTimeBy(700)
+                runCurrent()
+                firstPage.complete(page(listOf(pin(1, 127.01, 37.51)), hasNext = true))
+                runCurrent()
+
+                assertEquals(listOf(1L), viewModel.pinIds())
+                assertEquals(2, repository.requestedBounds.size)
+
+                secondPage.complete(
+                    page(listOf(pin(2, 127.02, 37.52)), hasNext = true, nextCursor = "cursor-2"),
+                )
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
+                assertEquals(3, repository.requestedBounds.size)
+
+                advanceTimeBy(300)
+                runCurrent()
+                assertEquals(listOf(1L, 2L), viewModel.pinIds())
+
+                thirdPage.complete(page(listOf(pin(3, 127.03, 37.53))))
+                runCurrent()
+                assertEquals(listOf(1L, 2L, 3L), viewModel.pinIds())
+                advanceTimeBy(600)
+                runCurrent()
+                assertEquals(listOf(1L, 2L, 3L), viewModel.pinIds())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `지도 핀이 다른 영역으로 교체되어도 목록 좌표로 반복 이동한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -984,7 +1033,8 @@ class MapViewModelViewportTest {
     private fun page(
         pins: List<EmotionMapPin>,
         hasNext: Boolean = false,
-    ) = EmotionMapPageResult.Success(EmotionMapPage(pins, hasNext, if (hasNext) "next" else null, 0))
+        nextCursor: String? = if (hasNext) "next" else null,
+    ) = EmotionMapPageResult.Success(EmotionMapPage(pins, hasNext, nextCursor, 0))
 
     private fun pin(
         id: Long,
