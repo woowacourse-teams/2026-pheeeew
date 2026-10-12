@@ -108,6 +108,7 @@ class MapViewModel(
     private var activeEmotionMapRequestId = 0L
     private var pendingEmotionMapRequest: EmotionMapRequest? = null
     private var needsFreshEmotionPins = false
+    private var pinViewportBounds: EmotionMapBounds? = null
     private var requestedBounds: EmotionMapBounds? = null
     private var displayedBounds: EmotionMapBounds? = null
     private var retryCursor: String? = null
@@ -134,7 +135,7 @@ class MapViewModel(
                 emotionPins =
                     pinUiModelCache.orderedModels(uiModel.value.emotionPins.filterNot { it.id == pin.id } + pin),
             )
-        (requestedBounds ?: displayedBounds)?.let(::trimRetainedPins)
+        (pinViewportBounds ?: requestedBounds ?: displayedBounds)?.let(::trimRetainedPins)
         refreshEmotionPins()
     }
 
@@ -224,17 +225,19 @@ class MapViewModel(
 
     fun onViewportChanged(bounds: EmotionMapBounds) {
         if (!bounds.isValid()) return
-        if (bounds == requestedBounds && (viewportJob?.isActive == true || emotionMapJob?.isActive == true)) return
-        if (bounds == displayedBounds && emotionMapJob?.isActive != true) return
-        requestedBounds = bounds
+        pinViewportBounds = bounds
+        trimRetainedPins(bounds)
+        val queryBounds = bounds.expandedForPinQuery()
+        if (queryBounds == requestedBounds && (viewportJob?.isActive == true || emotionMapJob?.isActive == true)) return
+        if (queryBounds == displayedBounds && emotionMapJob?.isActive != true) return
+        requestedBounds = queryBounds
         retryCursor = null
         partialPageBounds = null
         partialPagePins.clear()
         val generation = ++queryGeneration
         pinSnapshotPublisher.begin(generation)
         exploration.supersede()
-        trimRetainedPins(bounds)
-        publishSnapshot(bounds, generation)
+        publishSnapshot(queryBounds, generation)
         viewportJob?.cancel()
         pendingEmotionMapRequest = null
         viewportJob =
@@ -242,7 +245,7 @@ class MapViewModel(
                 delay(VIEWPORT_DEBOUNCE_MILLIS)
                 if (generation == queryGeneration) {
                     enqueueEmotionMapRequest(
-                        EmotionMapRequest(bounds, generation, bypassCache = needsFreshEmotionPins),
+                        EmotionMapRequest(queryBounds, generation, bypassCache = needsFreshEmotionPins),
                     )
                 }
             }
@@ -625,7 +628,7 @@ class MapViewModel(
         val contentLoad =
             snapshot.observation?.let { exploration.display(it, snapshot.origin) }
                 ?: exploration.load(snapshot.kind, snapshot.origin).also { it.ready() }
-        val bounds = requestedBounds ?: displayedBounds
+        val bounds = pinViewportBounds ?: requestedBounds ?: displayedBounds
         val pins =
             if (bounds == null) {
                 pinUiModelCache.orderedModels(

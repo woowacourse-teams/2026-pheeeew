@@ -44,6 +44,46 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelViewportTest {
     @Test
+    fun `넓어진 조회 범위의 주변 핀도 표시하되 보관 상한은 실제 화면 기준으로 적용한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val surrounding = (1L..1_001L).map { pin(it, 127.115, 37.55) }
+                val visible = pin(2_000, 127.05, 37.55)
+                val repository =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(page(surrounding + visible)),
+                        CompletableDeferred(page(surrounding + visible)),
+                    )
+                val vm =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                vm.onViewportChanged(bounds(127.0, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+
+                val query = repository.requestedBounds.single()!!
+                assertEquals(126.975, query.minLongitude, 0.000001)
+                assertEquals(127.125, query.maxLongitude, 0.000001)
+                assertEquals(37.475, query.minLatitude, 0.000001)
+                assertEquals(37.625, query.maxLatitude, 0.000001)
+                assertEquals(MAXIMUM_RETAINED_EMOTION_PINS, vm.uiModel.value.emotionPins.size)
+                assertTrue(visible.id in vm.pinIds())
+                assertEquals(999, vm.pinIds().count { it != visible.id })
+
+                vm.refreshEmotionPins()
+                runCurrent()
+                assertEquals(query, repository.requestedBounds.last())
+                assertEquals(null, vm.uiModel.value.emotionPinsError)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `캐시가 없어도 작은 왕복 이동 후 동일한 핀 목록을 유지한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -278,7 +318,7 @@ class MapViewModelViewportTest {
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(
-                    listOf<EmotionMapBounds?>(firstBounds, movedBounds),
+                    listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), movedBounds.expandedForPinQuery()),
                     repository.requestedBounds,
                 )
                 movedResponse.complete(page(listOf(pin(2, 128.02, 37.55))))
@@ -362,7 +402,7 @@ class MapViewModelViewportTest {
 
                 assertEquals(listOf(2L), viewModel.pinIds())
                 assertEquals(
-                    listOf<EmotionMapBounds?>(firstBounds, latestBounds),
+                    listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), latestBounds.expandedForPinQuery()),
                     repository.requestedBounds,
                 )
                 assertEquals(1, repository.maximumConcurrentRequests)
@@ -380,9 +420,9 @@ class MapViewModelViewportTest {
                 runCurrent()
                 assertEquals(
                     listOf<EmotionMapBounds?>(
-                        firstBounds,
-                        latestBounds,
-                        firstBounds,
+                        firstBounds.expandedForPinQuery(),
+                        latestBounds.expandedForPinQuery(),
+                        firstBounds.expandedForPinQuery(),
                     ),
                     repository.requestedBounds,
                 )
@@ -430,9 +470,9 @@ class MapViewModelViewportTest {
                 runCurrent()
                 assertEquals(
                     listOf<EmotionMapBounds?>(
-                        firstBounds,
-                        latestBounds,
-                        firstBounds,
+                        firstBounds.expandedForPinQuery(),
+                        latestBounds.expandedForPinQuery(),
+                        firstBounds.expandedForPinQuery(),
                     ),
                     repository.requestedBounds,
                 )
@@ -470,24 +510,24 @@ class MapViewModelViewportTest {
 
                 advanceTimeBy(1)
                 runCurrent()
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds), repository.requestedBounds)
+                assertEquals(listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery()), repository.requestedBounds)
 
                 viewModel.onViewportChanged(skippedBounds)
                 runCurrent()
                 advanceTimeBy(700)
                 runCurrent()
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds), repository.requestedBounds)
+                assertEquals(listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery()), repository.requestedBounds)
 
                 viewModel.onViewportChanged(latestBounds)
                 runCurrent()
                 advanceTimeBy(700)
                 runCurrent()
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds), repository.requestedBounds)
+                assertEquals(listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery()), repository.requestedBounds)
 
                 firstResponse.complete(emptyPage())
                 runCurrent()
                 assertEquals(
-                    listOf<EmotionMapBounds?>(firstBounds, latestBounds),
+                    listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), latestBounds.expandedForPinQuery()),
                     repository.requestedBounds,
                 )
                 assertEquals(1, repository.maximumConcurrentRequests)
@@ -501,7 +541,7 @@ class MapViewModelViewportTest {
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(
-                    listOf<EmotionMapBounds?>(firstBounds, latestBounds),
+                    listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), latestBounds.expandedForPinQuery()),
                     repository.requestedBounds,
                 )
             } finally {
