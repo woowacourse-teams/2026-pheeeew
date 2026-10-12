@@ -243,6 +243,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
                 return
             }
         }
+        // Keep symbols opaque when camera and source updates recalculate placement.
+        style.performsPlacementTransitions = false
         FoundationMapStyle.applyMutedPalette(to: style)
         styleIsReady = true
         emotionPinSource = installEmotionPinLayer(on: style)
