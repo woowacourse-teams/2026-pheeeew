@@ -5,10 +5,13 @@ import org.maplibre.android.maps.Style
 import org.maplibre.android.style.layers.BackgroundLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory.backgroundColor
 import org.maplibre.android.style.layers.PropertyFactory.fillColor
 import org.maplibre.android.style.layers.PropertyFactory.fillOutlineColor
 import org.maplibre.android.style.layers.PropertyFactory.lineColor
+import org.maplibre.android.style.layers.PropertyFactory.visibility
+import org.maplibre.android.style.layers.SymbolLayer
 
 internal object AndroidMapAppearance {
     private val background = Color.parseColor("#F7F7F4")
@@ -25,6 +28,13 @@ internal object AndroidMapAppearance {
         style.layers.forEach { layer ->
             val layerId = layer.id.lowercase()
             when (layer) {
+                is SymbolLayer -> {
+                    // Keep geographic labels while hiding POIs, airport labels, and road names/shields.
+                    if (layer.sourceLayer.orEmpty().lowercase() in hiddenSymbolSourceLayers) {
+                        layer.setProperties(visibility(Property.NONE))
+                    }
+                }
+
                 is BackgroundLayer -> {
                     if (layerId == "background") layer.setProperties(backgroundColor(background))
                 }
@@ -84,4 +94,5 @@ internal object AndroidMapAppearance {
         }
 
     private val majorRoadKeywords = listOf("motorway", "trunk", "primary", "secondary", "tertiary")
+    private val hiddenSymbolSourceLayers = setOf("poi", "aerodrome_label", "transportation_name")
 }
