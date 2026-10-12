@@ -43,6 +43,7 @@ import com.pheeeew.feature.screens.group.create.model.StampColorSelection
 import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
 import com.pheeeew.feature.screens.group.create.model.StampTextColorOption
 import com.pheeeew.feature.screens.group.model.GroupId
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -64,6 +65,7 @@ fun GroupCreateScreen(
     onBack: () -> Unit,
     onNameChanged: (String) -> Unit,
     onDescriptionChanged: (String) -> Unit,
+    onJoinTypeChanged: (GroupJoinType) -> Unit,
     onStampLabelChanged: (String) -> Unit,
     onStampShapeChanged: (StampShapeId) -> Unit,
     onStampTextColorChanged: (StampTextColorOption) -> Unit,
@@ -176,6 +178,7 @@ fun GroupCreateScreen(
             enabled = enabled,
             onNameChanged = onNameChanged,
             onDescriptionChanged = onDescriptionChanged,
+            onJoinTypeChanged = onJoinTypeChanged,
             onStampLabelChanged = onStampLabelChanged,
             onStampShapeChanged = {
                 dismissKeyboard()

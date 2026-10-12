@@ -37,6 +37,7 @@ class GroupDetailBenchmarkActivity : ComponentActivity() {
                             onMoreClick = {},
                             onInviteClick = {},
                             onCopyCodeClick = {},
+                            onShareInviteClick = {},
                             onDismissOverlay = {},
                             onLeaveMenuClick = {},
                             onConfirmLeave = {},

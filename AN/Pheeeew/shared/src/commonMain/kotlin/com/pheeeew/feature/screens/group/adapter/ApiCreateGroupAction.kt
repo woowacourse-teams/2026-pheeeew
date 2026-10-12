@@ -15,11 +15,14 @@ import com.pheeeew.feature.screens.group.create.GroupCreateDraft
 import com.pheeeew.feature.screens.group.home.GroupListResult
 import com.pheeeew.feature.screens.group.home.GroupListSource
 import com.pheeeew.feature.screens.group.model.GroupId
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 
 class ApiCreateGroupAction(
     private val repository: GroupCreateRepository,
 ) : CreateGroupAction {
     override suspend fun create(draft: GroupCreateDraft): CreateGroupResult {
+        if (draft.joinType != GroupJoinType.PRIVATE) return CreateGroupResult.JoinTypeUnavailable
+
         val textColor = StampColor.fromArgb(draft.stamp.textArgb) ?: return CreateGroupResult.Unavailable
         val backgroundColor = StampColor.fromArgb(draft.stamp.fillArgb) ?: return CreateGroupResult.Unavailable
         val command =

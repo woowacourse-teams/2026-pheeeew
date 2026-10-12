@@ -5,6 +5,7 @@ import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
 import com.pheeeew.feature.screens.group.create.model.StampTextColorOption
 import com.pheeeew.feature.screens.group.model.GroupId
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 
 internal val DEFAULT_GROUP_CREATE_DRAFT =
@@ -18,6 +19,7 @@ internal val DEFAULT_GROUP_CREATE_DRAFT =
                 fillArgb = 0xFFA7DCCFL,
                 textArgb = StampTextColorOption.BLACK.argb,
             ),
+        joinType = GroupJoinType.PRIVATE,
     )
 
 /** 그룹 생성 화면의 단일 상태 스냅샷입니다. */
@@ -78,5 +80,6 @@ enum class GroupCreateFailure {
     Unavailable,
     InvalidInput,
     RateLimited,
+    JoinTypeUnavailable,
     OutcomeUnknown,
 }
