@@ -160,16 +160,10 @@ python3 docker/alloy/verify.py
 - [Alloy loki.process](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.process/)
 - [Docker Compose 환경 파일 문법](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
 
+## 수집 범위와 기존 DB 수집기 정리
 
-## 독립 DB 표본 연결 (#725)
+Alloy는 앱의 Prometheus 지표와 검토된 앱 로그만 전송해요. DB에 직접 연결하는 별도 수집기, 표본 볼륨, 전용 Loki 파이프라인은 운영 복잡도를 줄이기 위해 제거했어요. 기존 앱 지표 허용 목록과 로그 필터, 전송 대상, Alloy 위치 저장소는 유지해요.
 
-앱 로그와 별도로 `job=pheeeew-db-observer`의 시간별 JSONL을 읽어요. 개발·운영 Compose는 환경별 external 표본 볼륨을 읽기 전용으로 마운트하고 그룹10001만 추가해요. 수집기 설치 전에는 빈 볼륨이어도 Alloy가 기동하며, 앱 CD는 `docker volume create`로 저장소만 준비해요. 수집기는 [별도 설치 절차](../db-observer/README.md)에 따라 한 번 설치하고 계속 실행해요.
+이 변경을 배포해도 별도 Compose로 실행한 기존 `db-observer` 컨테이너는 자동으로 중지되지 않아요. 서버 반영 시 개발·운영 각각의 실행 여부를 확인하고, 실행 중이라면 해당 수집기만 중지·제거해야 해요. 사용하지 않는 전용 표본 볼륨과 접속 파일은 보관 필요 여부와 다른 사용처를 확인한 뒤 별도로 정리해요. 앱 로그 볼륨과 Alloy 저장소는 정리 대상이 아니에요.
 
-```bash
-# 수동으로 Alloy를 최초 기동한다면 환경에 맞는 이름 하나만 먼저 준비해요.
-docker volume create pheeeew-dev_db-observer-samples
-# 운영은 pheeeew-prod_db-observer-samples
-PYTHONDONTWRITEBYTECODE=1 python3 docker/alloy/verify_observer.py
-```
-
-별도 검증기는 로컬 Alloy/Loki에서 허용 필드·라벨·관측 시각, 새 시간별 파일 발견, 위치를 보존한 재시작, 짧은 전송 장애 후 회복을 확인해요. 실제 Cloud 인증·보관/순서 제한과 서버 자원 영향은 배포 뒤 확인할 대상이에요. 파일 위치 저장은 수신 ACK 보장이 아니며, 강제 종료·장시간 전송 실패에는 손실 또는 중복이 가능해요. [파일 보관과 전송 경계](../db-observer/README.md#loki-전송의-경계)를 함께 읽어요.
+Grafana Cloud에 이미 적용한 DB 전용 패널은 [대시보드 정리 안내](../grafana/README.md#기존-db-표본-대시보드-정리)를 따라 별도로 제거해요.

@@ -4,7 +4,6 @@ services:
   alloy:
     image: grafana/alloy:v1.19.2
     user: "473:473"
-    group_add: ["10001"]
     container_name: pheeeew-prod-alloy
     restart: unless-stopped
     command:
@@ -24,12 +23,6 @@ services:
       - ./alloy/config.alloy:/etc/alloy/config.alloy:ro
       - app-logs:/var/log/pheeeew:ro
       - alloy-data:/var/lib/alloy/data
-      - type: volume
-        source: db-observer-samples
-        target: /var/log/db-observer
-        read_only: true
-        volume:
-          nocopy: true
     networks:
       - app
     healthcheck:
@@ -64,6 +57,3 @@ volumes:
     external: true
     name: pheeeew-prod_app-logs
   alloy-data:
-  db-observer-samples:
-    external: true
-    name: pheeeew-prod_db-observer-samples
