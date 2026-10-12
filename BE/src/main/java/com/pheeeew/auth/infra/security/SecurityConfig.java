@@ -43,6 +43,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v2/emotions/presses").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v2/emotions/presses/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v2/emotions/presses/total").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v2/emotions/press-rankings").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/audio-uploads").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/emotions/*").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/emotions/*", "/api/v3/emotions/*").authenticated()
