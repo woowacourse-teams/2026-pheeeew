@@ -1,11 +1,12 @@
-package com.pheeeew.feature.screens.group.home
+package com.pheeeew.feature.screens.group.preview
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.feature.screens.group.preview.HomeFixtures
+import com.pheeeew.feature.screens.group.home.GroupHomeScreen
+import com.pheeeew.feature.screens.group.home.GroupHomeUiState
 
 @Preview(name = "내 그룹 - 불러오는 중", widthDp = 360, heightDp = 800)
 @Composable

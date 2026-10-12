@@ -1,14 +1,18 @@
-package com.pheeeew.feature.screens.group.detail
+package com.pheeeew.feature.screens.group.preview
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.pheeeew.domain.model.group.GroupRole
+import com.pheeeew.feature.screens.group.detail.GroupDetailActions
+import com.pheeeew.feature.screens.group.detail.GroupDetailContent
+import com.pheeeew.feature.screens.group.detail.GroupDetailOverlay
+import com.pheeeew.feature.screens.group.detail.GroupDetailScreen
+import com.pheeeew.feature.screens.group.detail.GroupDetailUiState
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
-import com.pheeeew.feature.screens.group.preview.HomeFixtures
 
 @Preview(widthDp = 402, heightDp = 874, name = "그룹 상세")
 @Composable

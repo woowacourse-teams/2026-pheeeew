@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.group.detail
+package com.pheeeew.feature.screens.group.preview
 
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.ReactionCount
@@ -10,7 +10,6 @@ import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedLoadState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedUiState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodPostUiModel
 import com.pheeeew.feature.screens.group.model.GroupJoinType
-import com.pheeeew.feature.screens.group.preview.HomeFixtures
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_emotion_angry
 import pheeeew.shared.generated.resources.ic_emotion_discouraged

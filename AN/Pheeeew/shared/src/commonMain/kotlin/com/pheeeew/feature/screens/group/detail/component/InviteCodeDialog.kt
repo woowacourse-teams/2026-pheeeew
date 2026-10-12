@@ -142,15 +142,3 @@ internal fun InviteCodeDialog(
         }
     }
 }
-
-@Preview(name = "초대코드 공유", widthDp = 402, heightDp = 815, showBackground = true)
-@Composable
-private fun InviteCodeDialogPreview() {
-    AppTheme {
-        InviteCodeDialog(
-            code = "H1Y226",
-            onShare = {},
-            onDismiss = {},
-        )
-    }
-}
