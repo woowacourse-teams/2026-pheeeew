@@ -14,6 +14,7 @@ import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedLoadState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedUiState
 import com.pheeeew.feature.screens.group.model.GroupId
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
 import kotlinx.coroutines.CancellationException
@@ -35,6 +36,52 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupDetailViewModelTest {
+    fun `public guest join displays pending API notice without changing membership`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val viewModel =
+                    createViewModel(
+                        source = {
+                            GroupDetailLoadResult.Loaded(
+                                detail(GroupRole.NONE).copy(joinType = GroupJoinType.PUBLIC),
+                            )
+                        },
+                    )
+                runCurrent()
+
+                viewModel.onJoinClick()
+
+                val loadedDetail = requireNotNull(viewModel.uiState.value.detail)
+                assertEquals(GroupRole.NONE, loadedDetail.role)
+                assertEquals(7L, loadedDetail.group.memberCount)
+                assertEquals(GroupDetailJoinFailure.ApiIntegrationPending, viewModel.uiState.value.join.failure)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    fun `private guest cannot start direct join from group detail`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val viewModel =
+                    createViewModel(
+                        source = { GroupDetailLoadResult.Loaded(detail(GroupRole.NONE)) },
+                    )
+                runCurrent()
+
+                viewModel.onJoinClick()
+                assertEquals(GroupDetailOverlay.None, viewModel.uiState.value.overlay)
+                assertNull(viewModel.uiState.value.join.failure)
+                val loadedDetail = requireNotNull(viewModel.uiState.value.detail)
+                assertEquals(GroupRole.NONE, loadedDetail.role)
+                assertEquals(7L, loadedDetail.group.memberCount)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     @Test
     fun `invite share failure dismisses member popup and displays notice`() =
         runTest {

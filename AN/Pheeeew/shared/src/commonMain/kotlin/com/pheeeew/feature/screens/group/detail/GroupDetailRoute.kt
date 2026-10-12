@@ -134,6 +134,7 @@ fun GroupDetailRoute(
                     if (viewModel.onBackRequested()) currentOnBack()
                 },
                 onReturnHome = { currentOnReturnHome() },
+                onJoinClick = viewModel::onJoinClick,
                 onRetry = viewModel::onRetry,
                 onMoreClick = viewModel::onMoreClick,
                 onInviteClick = viewModel::onInviteClick,

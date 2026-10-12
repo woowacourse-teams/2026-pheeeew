@@ -151,6 +151,8 @@ fun GroupDetailScreen(
                                     detail = content.detail.toReadyUiModel(uiState.moodFeed),
                                     hasRefreshError = uiState.hasRefreshError,
                                     onInviteClick = actions.onInviteClick,
+                                    onJoinClick = actions.onJoinClick,
+                                    joinState = uiState.join,
                                     onRetry = actions.onRetry,
                                     onReactionClick = actions.onMoodReactionClick,
                                     onAudioClick = actions.onMoodAudioClick,

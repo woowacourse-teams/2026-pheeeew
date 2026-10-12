@@ -14,6 +14,7 @@ data class GroupDetailUiState(
     val notice: GroupDetailNotice? = null,
     val groupName: String? = null,
     val membershipEvent: GroupDetailMembershipEvent? = null,
+    val join: GroupDetailJoinUiState = GroupDetailJoinUiState(),
     val moodFeed: GroupMoodFeedUiState = GroupMoodFeedUiState.Loading,
 ) {
     val detail: GroupDetailUiModel?
@@ -105,3 +106,11 @@ data class GroupDetailMembershipEvent(
     val operationKey: GroupOperationKey,
     val reason: GroupDetailAccessLoss,
 )
+
+data class GroupDetailJoinUiState(
+    val failure: GroupDetailJoinFailure? = null,
+)
+
+enum class GroupDetailJoinFailure {
+    ApiIntegrationPending,
+}

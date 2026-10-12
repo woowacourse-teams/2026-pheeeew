@@ -22,10 +22,28 @@ private fun GroupDetailOwnerPreview() {
     GroupDetailPreviewFrame(previewGroupDetailUiModel(GroupRole.OWNER))
 }
 
+@Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 · 비공개 그룹 멤버")
+@Composable
+private fun GroupDetailPrivateMemberPreview() {
+    GroupDetailPreviewFrame(previewGroupDetailUiModel(GroupRole.MEMBER))
+}
+
 @Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 · 미가입")
 @Composable
 private fun GroupDetailGuestPreview() {
     GroupDetailPreviewFrame(previewGroupDetailUiModel(GroupRole.NONE))
+}
+
+@Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 · 공개 그룹 참여")
+@Composable
+private fun GroupDetailPublicGuestPreview() {
+    GroupDetailPreviewFrame(previewGroupDetailUiModel(GroupRole.NONE).copy(joinType = GroupJoinType.PUBLIC))
+}
+
+@Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 · 공개 그룹 멤버")
+@Composable
+private fun GroupDetailPublicMemberPreview() {
+    GroupDetailPreviewFrame(previewGroupDetailUiModel(GroupRole.MEMBER).copy(joinType = GroupJoinType.PUBLIC))
 }
 
 @Preview(widthDp = 402, heightDp = 874, name = "그룹 상세 · 순위 없음")
@@ -141,6 +159,7 @@ internal fun previewActions() =
         onRetry = {},
         onMoreClick = {},
         onInviteClick = {},
+        onJoinClick = {},
         onCopyCodeClick = {},
         onShareInviteClick = {},
         onDismissOverlay = {},

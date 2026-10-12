@@ -34,16 +34,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.component.emotion.EmotionActionsMenuMode
 import com.pheeeew.feature.component.emotion.EmotionChatContentUiModel
 import com.pheeeew.feature.component.emotion.EmotionChatItem
 import com.pheeeew.feature.component.emotion.EmotionChatItemUiModel
 import com.pheeeew.feature.component.emotion.EmotionListLoadError
+import com.pheeeew.feature.screens.group.detail.GroupDetailJoinUiState
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailReadyUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodContentUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedLoadState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedUiState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodPostUiModel
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -60,6 +63,8 @@ internal fun GroupDetailReadyContent(
     hasRefreshError: Boolean,
     onRetry: () -> Unit,
     onInviteClick: () -> Unit,
+    onJoinClick: () -> Unit,
+    joinState: GroupDetailJoinUiState,
     onReactionClick: ((String, EmotionReactionType) -> Unit)?,
     onAudioClick: ((String) -> Unit)?,
     onBlockClick: ((String) -> Unit)?,
@@ -139,10 +144,21 @@ internal fun GroupDetailReadyContent(
             }
         }
         item(key = "profile-and-statistics") {
-            GroupProfile(detail, onInviteClick = onInviteClick)
-            Spacer(Modifier.height(18.dp))
+            GroupProfile(
+                group = detail,
+                onInviteClick = onInviteClick,
+                joinState = joinState,
+                onJoinClick = onJoinClick,
+            )
+            if (detail.role == GroupRole.NONE && detail.joinType == GroupJoinType.PRIVATE) {
+                Spacer(Modifier.height(18.dp))
+                GroupDetailPrivateJoinNotice()
+                Spacer(Modifier.height(24.dp))
+            } else {
+                Spacer(Modifier.height(18.dp))
+            }
             GroupStatistics(detail)
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(24.dp))
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -282,6 +298,8 @@ private fun GroupDetailReadyContentPreview() {
         hasRefreshError = false,
         onRetry = {},
         onInviteClick = {},
+        onJoinClick = {},
+        joinState = GroupDetailJoinUiState(),
         onReactionClick = null,
         onAudioClick = null,
         onBlockClick = null,
@@ -299,6 +317,8 @@ private fun GroupDetailReadyContentFeedErrorPreview() {
         hasRefreshError = false,
         onRetry = {},
         onInviteClick = {},
+        onJoinClick = {},
+        joinState = GroupDetailJoinUiState(),
         onReactionClick = null,
         onAudioClick = null,
         onBlockClick = null,
@@ -316,6 +336,8 @@ private fun GroupMoodFeedLoadingPreview() {
         hasRefreshError = false,
         onRetry = {},
         onInviteClick = {},
+        onJoinClick = {},
+        joinState = GroupDetailJoinUiState(),
         onReactionClick = null,
         onAudioClick = null,
         onBlockClick = null,
@@ -333,6 +355,8 @@ private fun GroupMoodFeedErrorPreview() {
         hasRefreshError = false,
         onRetry = {},
         onInviteClick = {},
+        onJoinClick = {},
+        joinState = GroupDetailJoinUiState(),
         onReactionClick = null,
         onAudioClick = null,
         onBlockClick = null,
@@ -350,6 +374,8 @@ private fun GroupMoodFeedRetryingPreview() {
         hasRefreshError = false,
         onRetry = {},
         onInviteClick = {},
+        onJoinClick = {},
+        joinState = GroupDetailJoinUiState(),
         onReactionClick = null,
         onAudioClick = null,
         onBlockClick = null,
@@ -375,6 +401,8 @@ private fun GroupMoodFeedRefreshErrorPreview() {
         hasRefreshError = false,
         onRetry = {},
         onInviteClick = {},
+        onJoinClick = {},
+        joinState = GroupDetailJoinUiState(),
         onReactionClick = null,
         onAudioClick = null,
         onBlockClick = null,
@@ -400,6 +428,8 @@ private fun GroupMoodFeedRefreshingPreview() {
         hasRefreshError = false,
         onRetry = {},
         onInviteClick = {},
+        onJoinClick = {},
+        joinState = GroupDetailJoinUiState(),
         onReactionClick = null,
         onAudioClick = null,
         onBlockClick = null,
@@ -425,6 +455,8 @@ private fun GroupMoodFeedLoadMoreErrorPreview() {
         hasRefreshError = false,
         onRetry = {},
         onInviteClick = {},
+        onJoinClick = {},
+        joinState = GroupDetailJoinUiState(),
         onReactionClick = null,
         onAudioClick = null,
         onBlockClick = null,
@@ -450,6 +482,8 @@ private fun GroupMoodFeedLoadingMorePreview() {
         hasRefreshError = false,
         onRetry = {},
         onInviteClick = {},
+        onJoinClick = {},
+        joinState = GroupDetailJoinUiState(),
         onReactionClick = null,
         onAudioClick = null,
         onBlockClick = null,
@@ -498,6 +532,8 @@ private fun GroupMoodFeedEmptyPreview() {
         hasRefreshError = false,
         onRetry = {},
         onInviteClick = {},
+        onJoinClick = {},
+        joinState = GroupDetailJoinUiState(),
         onReactionClick = null,
         onAudioClick = null,
         onBlockClick = null,

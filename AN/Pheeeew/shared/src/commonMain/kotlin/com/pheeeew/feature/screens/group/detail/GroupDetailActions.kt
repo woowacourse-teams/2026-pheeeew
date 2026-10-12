@@ -9,6 +9,7 @@ data class GroupDetailActions(
     val onRetry: () -> Unit,
     val onMoreClick: () -> Unit,
     val onInviteClick: () -> Unit,
+    val onJoinClick: () -> Unit,
     val onCopyCodeClick: () -> Unit,
     val onShareInviteClick: () -> Unit,
     val onDismissOverlay: () -> Unit,

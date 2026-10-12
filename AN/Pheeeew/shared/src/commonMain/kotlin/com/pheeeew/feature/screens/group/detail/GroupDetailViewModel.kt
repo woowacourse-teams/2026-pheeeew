@@ -15,6 +15,7 @@ import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedLoadState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedUiState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodPostUiModel
 import com.pheeeew.feature.screens.group.model.GroupId
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -469,6 +470,26 @@ class GroupDetailViewModel(
         }
     }
 
+    fun onJoinClick() {
+        val current = _uiState.value
+        val detail = current.detail ?: return
+        if (detail.role != GroupRole.NONE || detail.joinType != GroupJoinType.PUBLIC ||
+            current.overlay != GroupDetailOverlay.None
+        ) {
+            return
+        }
+        _uiState.update { state ->
+            if (state.detail?.role == GroupRole.NONE &&
+                state.detail?.joinType == GroupJoinType.PUBLIC &&
+                state.overlay == GroupDetailOverlay.None
+            ) {
+                state.copy(join = state.join.copy(failure = GroupDetailJoinFailure.ApiIntegrationPending))
+            } else {
+                state
+            }
+        }
+    }
+
     fun onLeaveMenuClick() {
         val initial = _uiState.value
         if (initial.detail?.role == GroupRole.NONE || initial.overlay != GroupDetailOverlay.Menu) return
@@ -771,7 +792,10 @@ class GroupDetailViewModel(
 
                                                 detail.role == GroupRole.NONE &&
                                                     state.overlay in
-                                                    setOf(GroupDetailOverlay.Menu, GroupDetailOverlay.InviteCode) -> {
+                                                    setOf(
+                                                        GroupDetailOverlay.Menu,
+                                                        GroupDetailOverlay.InviteCode,
+                                                    ) -> {
                                                     GroupDetailOverlay.None
                                                 }
 
