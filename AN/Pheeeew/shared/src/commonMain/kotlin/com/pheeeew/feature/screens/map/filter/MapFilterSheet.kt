@@ -23,9 +23,12 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalRippleConfiguration
+import androidx.compose.material3.RippleConfiguration
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,6 +40,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -136,15 +140,23 @@ internal fun MapFilterContent(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(text = "필터", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-        Text(
-            text = "초기화",
-            fontSize = 12.sp,
-            color = AppColors.TextSecondary,
-            modifier =
+        // AppNavigableBottomSheet disables ripples; restore the default for this action only.
+        CompositionLocalProvider(LocalRippleConfiguration provides RippleConfiguration()) {
+            Box(
                 Modifier
-                    .clickable(enabled = !state.applying, onClick = onReset)
-                    .padding(start = 8.dp, top = 4.dp, bottom = 4.dp),
-        )
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(enabled = !state.applying, role = Role.Button, onClick = onReset)
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "초기화",
+                    fontSize = 12.sp,
+                    color = AppColors.TextSecondary,
+                )
+            }
+        }
     }
     Box(Modifier.fillMaxWidth().height(1.dp).background(AppColors.BorderLight))
     Spacer(Modifier.height(20.dp))
