@@ -83,6 +83,34 @@ class ApiCreateGroupActionTest {
             )
         }
 
+    @Test
+    fun `both selected admission policies reach repository without blocking public creation`() =
+        runTest {
+            com.pheeeew.feature.screens.group.model.GroupJoinType.entries.forEach { type ->
+                var captured: GroupCreateCommand? = null
+                val action =
+                    ApiCreateGroupAction(
+                        GroupCreateRepository { command ->
+                            captured = command
+                            GroupCreateRepositoryResult.Created(
+                                DomainGroupId.parse("10000000-0000-0000-0000-000000000001")!!,
+                            )
+                        },
+                    )
+                val result =
+                    action.create(
+                        GroupCreateDraft(
+                            name = "모임",
+                            description = "",
+                            joinType = type,
+                            stamp = StampAppearanceUiModel("기록", StampShapeId.CIRCLE, 0xFFFFFFFF, 0xFF000000),
+                        ),
+                    )
+                assertEquals(type.name, assertNotNull(captured).joinType.name)
+                kotlin.test.assertIs<CreateGroupResult.Created>(result)
+            }
+        }
+
     private fun summary(
         id: String,
         name: String,

@@ -35,7 +35,7 @@ class GroupCreateRepositoryImplTest {
                             assertEquals("Bearer access-token", request.headers[HttpHeaders.Authorization])
                             val body = request.body.toByteArray().decodeToString()
                             assertEquals(
-                                """{"name":"기록모임","description":null,"stamp":{"text":"오늘","textColor":"#11223380","backgroundColor":"#AABBCC","frame":"VOUCHER"}}""",
+                                """{"name":"기록모임","description":null,"stamp":{"text":"오늘","textColor":"#11223380","backgroundColor":"#AABBCC","frame":"VOUCHER"},"joinType":"PRIVATE"}""",
                                 body,
                             )
                             respond(
@@ -85,6 +85,42 @@ class GroupCreateRepositoryImplTest {
             )
         }
 
+    @Test
+    fun `actual request always includes selected public or private admission policy`() =
+        runTest {
+            com.pheeeew.domain.model.group.GroupJoinType.entries.forEach { type ->
+                val client =
+                    createApiClient(
+                        engine =
+                            MockEngine { request ->
+                                val body =
+                                    kotlinx.serialization.json.Json.parseToJsonElement(
+                                        request.body.toByteArray().decodeToString(),
+                                    )
+                                val fields = body as kotlinx.serialization.json.JsonObject
+                                assertEquals(kotlinx.serialization.json.JsonPrimitive(type.name), fields["joinType"])
+                                assertEquals(kotlinx.serialization.json.JsonNull, fields["description"])
+                                respond(
+                                    """{"groupId":"10000000-0000-0000-0000-000000000001"}""",
+                                    status = HttpStatusCode.Created,
+                                    headers = jsonHeaders(),
+                                )
+                            },
+                        config = ApiConfig("https://api.example.test"),
+                        accessTokenProvider = { AccessToken("access-token") },
+                    )
+                try {
+                    val result =
+                        GroupCreateRepositoryImpl(
+                            GroupCreateApi(client.requests),
+                        ).create(command().copy(joinType = type))
+                    kotlin.test.assertIs<GroupCreateRepositoryResult.Created>(result)
+                } finally {
+                    client.close()
+                }
+            }
+        }
+
     private suspend fun resultFor(
         status: HttpStatusCode,
         body: String = "{}",
@@ -105,6 +141,7 @@ class GroupCreateRepositoryImplTest {
     private fun command() =
         GroupCreateCommand(
             name = "기록모임",
+            joinType = com.pheeeew.domain.model.group.GroupJoinType.PRIVATE,
             description = null,
             stamp =
                 GroupStamp(
