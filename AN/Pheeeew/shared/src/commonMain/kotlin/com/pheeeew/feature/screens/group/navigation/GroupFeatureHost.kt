@@ -147,6 +147,7 @@ fun GroupFeatureHost(
                 },
                 onMoodBlockClick = null,
                 onMoodReportClick = null,
+                onJoined = onMembershipChanged,
                 onMembersClick = {
                     if (navController.currentBackStackEntry == entry) {
                         navController.navigate(GroupMembersDestination(groupId.value)) {

@@ -16,6 +16,8 @@ import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.monitoring.product.rememberObservedEmotionPlayer
 import com.pheeeew.feature.screens.group.join.GroupInviteLinkCodec
+import com.pheeeew.feature.screens.group.join.GroupJoinSheet
+import com.pheeeew.feature.screens.group.join.GroupJoinSubmissionState
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -44,9 +46,39 @@ fun GroupDetailRoute(
     onMoodBlockClick: ((String) -> Unit)?,
     onMoodReportClick: ((String) -> Unit)?,
     onMembersClick: (() -> Unit)? = null,
+    onJoined: () -> Unit = {},
 ) {
     ProductScreen(viewModel.telemetry, isCurrentDestination)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val codeState by viewModel.codeJoinUiState.collectAsStateWithLifecycle()
+    val codeVisible by viewModel.isCodeJoinVisible.collectAsStateWithLifecycle()
+    val currentOnJoined by rememberUpdatedState(onJoined)
+    LaunchedEffect(isCurrentDestination, uiState.joinConfirmed) {
+        if (isCurrentDestination) {
+            uiState.joinConfirmed?.let { key ->
+                currentOnJoined()
+                viewModel.acknowledgeJoinConfirmed(key)
+            }
+        }
+    }
+    LaunchedEffect(isCurrentDestination, codeState.submission) {
+        if (isCurrentDestination) {
+            (codeState.submission as? GroupJoinSubmissionState.Succeeded)?.let {
+                viewModel.onCodeJoinSucceeded(it.groupId, it.operationKey)
+            }
+        }
+    }
+    if (codeVisible) {
+        GroupJoinSheet(
+            uiState = codeState,
+            onCodeChanged = viewModel::onJoinCodeChanged,
+            onSearchClick = viewModel::onJoinCodeSearch,
+            onJoinClick = viewModel::onJoinCodeSubmit,
+            onDismiss = viewModel::onCloseCodeJoin,
+            targetGroupName = uiState.detail?.group?.name,
+            onVerifyMembership = viewModel::onVerifyCodeMembership,
+        )
+    }
     val shareLauncher = rememberSystemTextShareLauncher()
     val lifecycleOwner = LocalLifecycleOwner.current
     val audioPlayer = rememberObservedEmotionPlayer(viewModel.telemetry) { "group_detail" }

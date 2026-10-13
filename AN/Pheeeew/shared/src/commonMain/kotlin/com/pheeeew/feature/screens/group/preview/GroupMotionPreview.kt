@@ -144,7 +144,7 @@ private fun GroupMembershipMotionPreview() {
                 },
                 joinState =
                     GroupDetailJoinUiState(
-                        if (failure) GroupDetailJoinFailure.ApiIntegrationPending else null,
+                        if (failure) GroupDetailJoinFailure.Unavailable else null,
                         phase,
                     ),
             )
