@@ -45,7 +45,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
@@ -69,6 +68,7 @@ import pheeeew.shared.generated.resources.bottom_navigation_ranking_press
 import pheeeew.shared.generated.resources.bottom_navigation_stamp
 import pheeeew.shared.generated.resources.hiyu_nav_face
 import pheeeew.shared.generated.resources.hiyu_nav_ticket
+import pheeeew.shared.generated.resources.nav_press
 
 private val NavigationInk = Color(0xFF202323)
 internal val AppBottomNavigationBarHeight = 55.dp
@@ -456,7 +456,7 @@ private fun DestinationIconView(
     pressScale: Float,
 ) {
     if (icon == DestinationIcon.Press) {
-        PressHandNavigationIcon(pressScale = icon.visualScale * pressScale)
+        PressNavigationIcon(pressScale = icon.visualScale * pressScale)
         return
     }
     Canvas(
@@ -549,45 +549,16 @@ private fun DestinationIconView(
 }
 
 @Composable
-private fun PressHandNavigationIcon(pressScale: Float) {
-    val paths =
-        remember {
-            listOf(
-                PathParser()
-                    .parsePathString(
-                        "M6 14V6a2 2 0 0 1 4 0V4a2 2 0 0 1 4 0v2a2 2 0 0 1 4 0v2a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15Z",
-                    ).toPath(),
-                PathParser()
-                    .parsePathString("M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2")
-                    .toPath(),
-                PathParser()
-                    .parsePathString("M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2")
-                    .toPath(),
-                PathParser()
-                    .parsePathString("M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8")
-                    .toPath(),
-                PathParser()
-                    .parsePathString(
-                        "M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15",
-                    ).toPath(),
-            )
-        }
-    Canvas(
-        Modifier
-            .size(20.dp)
-            .graphicsLayer {
+private fun PressNavigationIcon(pressScale: Float) {
+    Image(
+        painter = painterResource(Res.drawable.nav_press),
+        contentDescription = null,
+        modifier =
+            Modifier.size(20.dp).graphicsLayer {
                 scaleX = pressScale
                 scaleY = pressScale
             },
-    ) {
-        scale(size.width / 24f, size.height / 24f, pivot = Offset.Zero) {
-            drawPath(paths[0], Color.White)
-            val stroke = Stroke(width = 2f, cap = StrokeCap.Round, join = StrokeJoin.Round)
-            for (index in 1..4) {
-                drawPath(paths[index], NavigationInk, style = stroke)
-            }
-        }
-    }
+    )
 }
 
 @Preview
@@ -613,6 +584,15 @@ private fun AppBottomNavigationBarPreview2() {
 private fun AppBottomNavigationBarGroupPreview() {
     AppBottomNavigationBar(
         selectedDestination = AppDestination.Group,
+        onDestinationSelected = {},
+    )
+}
+
+@Preview(name = "프레스 아이콘 · 선택 상태")
+@Composable
+private fun AppBottomNavigationBarPressPreview() {
+    AppBottomNavigationBar(
+        selectedDestination = AppDestination.Press,
         onDestinationSelected = {},
     )
 }
