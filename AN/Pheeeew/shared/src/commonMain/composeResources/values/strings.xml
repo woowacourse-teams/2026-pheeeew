@@ -443,4 +443,6 @@
     <string name="emotion_emoji_angry_1">🤬</string>
     <string name="emotion_emoji_angry_2">💢</string>
     <string name="emotion_emoji_angry_3">😡</string>
+    <string name="group_home_actions_open">그룹 만들기 및 코드 참여 메뉴 열기</string>
+    <string name="group_home_actions_close">그룹 메뉴 닫기</string>
 </resources>
