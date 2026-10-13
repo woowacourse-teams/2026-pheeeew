@@ -57,7 +57,7 @@ object GroupResponseMapper {
             frame = frame.name,
         )
 
-    private fun GroupStampResponseDto.toDomain(): GroupStamp =
+    internal fun GroupStampResponseDto.toDomain(): GroupStamp =
         GroupStamp(
             text = text,
             textColor = StampColor.parseServerValue(textColor) ?: throw GroupContractException("stamp.textColor"),
@@ -69,12 +69,12 @@ object GroupResponseMapper {
                     ?: throw GroupContractException("stamp.frame"),
         )
 
-    private fun parseId(value: String): GroupId = GroupId.parse(value) ?: throw GroupContractException("groupId")
+    internal fun parseId(value: String): GroupId = GroupId.parse(value) ?: throw GroupContractException("groupId")
 
-    private fun parseName(value: String): String =
+    internal fun parseName(value: String): String =
         value.takeIf(String::isNotEmpty) ?: throw GroupContractException("name")
 
-    private fun parseMemberCount(value: Long): Long =
+    internal fun parseMemberCount(value: Long): Long =
         value.takeIf { it >= 0L } ?: throw GroupContractException("memberCount")
 
     private fun parseRole(value: String): GroupRole =
