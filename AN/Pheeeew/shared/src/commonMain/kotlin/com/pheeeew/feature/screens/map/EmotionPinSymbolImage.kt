@@ -55,24 +55,24 @@ data class EmotionPinSymbolImage(
 )
 
 @Composable
-internal fun rememberEmotionPinSymbolImages(pins: List<EmotionPinUiModel>): List<EmotionPinSymbolImage> {
+internal fun rememberEmotionPinSymbolImages(pins: List<EmotionPinUiModel>): MapSymbolImages {
     val appearances = remember(pins) { pins.distinctBy(EmotionPinUiModel::symbolImageKey) }
-    val captured = remember { mutableStateMapOf<String, EmotionPinSymbolImage>() }
+    val captured = remember { mutableStateMapOf<String, EmotionPinSymbolImage?>() }
     val desiredKeys = remember(appearances) { appearances.mapTo(mutableSetOf(), EmotionPinUiModel::symbolImageKey) }
     LaunchedEffect(desiredKeys) { captured.keys.retainAll(desiredKeys) }
     appearances.forEach { pin ->
         key(pin.symbolImageKey()) {
-            RasterizePinSymbol(pin) { captured[it.key] = it }
+            RasterizePinSymbol(pin) { captured[pin.symbolImageKey()] = it }
         }
     }
-    return appearances.mapNotNull { captured[it.symbolImageKey()] }
+    return captured.symbolImagesFor(desiredKeys)
 }
 
 /** Draws resources directly, independent of AndroidView occlusion and on-screen draw callbacks. */
 @Composable
 private fun RasterizePinSymbol(
     pin: EmotionPinUiModel,
-    onRasterized: (EmotionPinSymbolImage) -> Unit,
+    onRasterized: (EmotionPinSymbolImage?) -> Unit,
 ) {
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
@@ -201,6 +201,7 @@ private fun RasterizePinSymbol(
             delay(SYMBOL_RESOURCE_RETRY_MILLIS)
             withFrameNanos { }
         }
+        onRasterized(null)
     }
 }
 
@@ -239,7 +240,7 @@ private fun EmotionPinSymbolImagePreview() {
                 stamp = null,
             ),
         )
-    val image = rememberEmotionPinSymbolImages(pins).firstOrNull()
+    val image = rememberEmotionPinSymbolImages(pins).images.firstOrNull()
     CanvasComposable(
         Modifier.size(80.dp),
     ) {

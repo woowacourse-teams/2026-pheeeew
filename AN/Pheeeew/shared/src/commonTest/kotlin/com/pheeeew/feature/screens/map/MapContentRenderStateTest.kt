@@ -88,6 +88,110 @@ class MapContentRenderStateTest {
         assertEquals(displayed, resolve(pending, displayed))
     }
 
+    @Test
+    fun `실패한 이미지 키를 공유하는 핀만 제외하고 나머지 새 핀을 반영한다`() {
+        val old = pin(1)
+        val displayed = MapContentRenderState(pins = listOf(old), pinImages = listOf(image(old.symbolImageKey())))
+        val ready = pin(2).copy(emotion = EmotionTypeUiModel.IRRITATED)
+        val failed = pin(3).copy(emotion = EmotionTypeUiModel.FRUSTRATED)
+        val pending =
+            MapContentRenderState(
+                pins = listOf(ready, failed, failed.copy(id = 4)),
+                pinImages = listOf(image(ready.symbolImageKey())),
+                failedPinImageKeys = setOf(failed.symbolImageKey()),
+            )
+        val result = resolve(pending, displayed)
+        assertEquals(listOf(ready), result.pins)
+        assertEquals(pending.pinImages, result.pinImages)
+    }
+
+    @Test
+    fun `실패한 클러스터를 제외하고 새 표시 레벨로 전환한다`() {
+        val old = pin(1)
+        val displayed = MapContentRenderState(pins = listOf(old), pinImages = listOf(image(old.symbolImageKey())))
+        val ready = region("ready")
+        val failed = region("failed")
+        val pending =
+            MapContentRenderState(
+                regions = listOf(ready, failed),
+                regionLevel = EmotionRegionLevel.SIGUNGU,
+                regionImages = listOf(image(ready.symbolImageKey())),
+                failedRegionImageKeys = setOf(failed.symbolImageKey()),
+            )
+        val result = resolve(pending, displayed)
+        assertEquals(emptyList(), result.pins)
+        assertEquals(listOf(ready), result.regions)
+        assertEquals(EmotionRegionLevel.SIGUNGU, result.regionLevel)
+        assertEquals(pending.regionImages, result.regionImages)
+    }
+
+    @Test
+    fun `최종 실패 외에 아직 준비 중인 이미지가 있으면 기존 화면을 유지한다`() {
+        val old = pin(1)
+        val displayed = MapContentRenderState(pins = listOf(old), pinImages = listOf(image(old.symbolImageKey())))
+        val failed = region("failed")
+        val pending =
+            MapContentRenderState(
+                regions = listOf(failed, region("waiting")),
+                regionLevel = EmotionRegionLevel.SIDO,
+                failedRegionImageKeys = setOf(failed.symbolImageKey()),
+            )
+        assertEquals(displayed, resolve(pending, displayed))
+        assertEquals(emptyList(), resolveMapContentRenderState(pending, displayed, setOf(old.id)).pins)
+    }
+
+    @Test
+    fun `모든 클러스터 이미지가 실패해도 기존 핀을 남기지 않는다`() {
+        val old = pin(1)
+        val displayed = MapContentRenderState(pins = listOf(old), pinImages = listOf(image(old.symbolImageKey())))
+        val failed = region("failed")
+        val pending =
+            MapContentRenderState(
+                regions = listOf(failed),
+                regionLevel = EmotionRegionLevel.SIDO,
+                failedRegionImageKeys = setOf(failed.symbolImageKey()),
+            )
+        val result = resolve(pending, displayed)
+        assertEquals(emptyList(), result.pins)
+        assertEquals(emptyList(), result.regions)
+        assertEquals(EmotionRegionLevel.SIDO, result.regionLevel)
+    }
+
+    @Test
+    fun `클러스터에서 핀으로 전환할 때 모든 핀 이미지가 실패해도 이전 클러스터를 제거한다`() {
+        val old = region("old")
+        val displayed =
+            MapContentRenderState(
+                regions = listOf(old),
+                regionLevel = EmotionRegionLevel.SIDO,
+                regionImages = listOf(image(old.symbolImageKey())),
+            )
+        val failed = pin(1)
+        val pending =
+            MapContentRenderState(
+                pins = listOf(failed),
+                failedPinImageKeys = setOf(failed.symbolImageKey()),
+            )
+        val result = resolve(pending, displayed)
+        assertEquals(emptyList(), result.pins)
+        assertEquals(emptyList(), result.regions)
+        assertEquals(null, result.regionLevel)
+    }
+
+    @Test
+    fun `실패 기록이 있어도 사용할 수 있는 이미지가 있으면 핀을 유지한다`() {
+        val pin = pin(1)
+        val displayed = MapContentRenderState(pins = listOf(pin), pinImages = listOf(image(pin.symbolImageKey())))
+        val pending =
+            MapContentRenderState(
+                pins = listOf(pin.copy(id = 2)),
+                failedPinImageKeys = setOf(pin.symbolImageKey()),
+            )
+        assertEquals(pending.pins, resolve(pending, displayed).pins)
+        val regenerated = pending.copy(pinImages = displayed.pinImages, failedPinImageKeys = emptySet())
+        assertEquals(regenerated, resolve(regenerated, MapContentRenderState()))
+    }
+
     private fun resolve(
         pending: MapContentRenderState,
         displayed: MapContentRenderState,

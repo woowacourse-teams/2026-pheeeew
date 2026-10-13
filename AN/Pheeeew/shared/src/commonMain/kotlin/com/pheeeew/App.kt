@@ -312,8 +312,10 @@ private fun AppContent(
                     pins = visibleEmotionPins,
                     regions = mapUiModel.regionClusters,
                     regionLevel = mapUiModel.displayedRegionLevel,
-                    pinImages = nativeMapSymbolImages,
-                    regionImages = regionImages,
+                    pinImages = nativeMapSymbolImages.images,
+                    regionImages = regionImages.images,
+                    failedPinImageKeys = nativeMapSymbolImages.failedKeys,
+                    failedRegionImageKeys = regionImages.failedKeys,
                     contentLoad = mapUiModel.emotionContentLoad,
                 ),
             hiddenIds = mapUiModel.hiddenEmotionIds,
@@ -325,7 +327,7 @@ private fun AppContent(
             recordPreviewScale = previewScale,
             emotionPinSymbolImages =
                 contentRenderState.pinImages +
-                    nativeMapSymbolImages.filter { it.key == previewPin?.symbolImageKey() },
+                    nativeMapSymbolImages.images.filter { it.key == previewPin?.symbolImageKey() },
             regionClusters = contentRenderState.regions.takeUnless { mapUiModel.isRecordLocationPicking }.orEmpty(),
             displayedRegionLevel = contentRenderState.regionLevel,
             regionClusterSymbolImages = contentRenderState.regionImages,

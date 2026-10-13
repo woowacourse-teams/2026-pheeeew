@@ -13,6 +13,8 @@ internal data class MapContentRenderState(
     val pinImages: List<EmotionPinSymbolImage> = emptyList(),
     val regionImages: List<EmotionPinSymbolImage> = emptyList(),
     val contentLoad: ContentLoad? = null,
+    val failedPinImageKeys: Set<String> = emptySet(),
+    val failedRegionImageKeys: Set<String> = emptySet(),
 )
 
 internal fun resolveMapContentRenderState(
@@ -29,15 +31,32 @@ internal fun resolveMapContentRenderState(
             .filter {
                 it.hasVisiblePixels
             }.associateBy { it.key }
-    if (pins.any { it.symbolImageKey() !in pinImages } || regions.any { it.symbolImageKey() !in regionImages }) {
+    val drawablePins =
+        pins.filterNot {
+            it.symbolImageKey() !in pinImages &&
+                it.symbolImageKey() in pending.failedPinImageKeys
+        }
+    val drawableRegions =
+        regions.filterNot {
+            it.symbolImageKey() !in regionImages &&
+                it.symbolImageKey() in pending.failedRegionImageKeys
+        }
+    if (drawablePins.any { it.symbolImageKey() !in pinImages } ||
+        drawableRegions.any { it.symbolImageKey() !in regionImages }
+    ) {
         // IDs can change entirely between SIDO and SIGUNGU: retain the whole outgoing snapshot.
         return displayed.copy(pins = displayed.pins.filterNot { it.id in hiddenIds })
     }
     return pending.copy(
-        pins = pins,
-        regions = regions.sortedBy { it.id },
-        pinImages = pins.map(EmotionPinUiModel::symbolImageKey).distinct().mapNotNull(pinImages::get),
-        regionImages = regions.map(RegionClusterUiModel::symbolImageKey).distinct().mapNotNull(regionImages::get),
+        pins = drawablePins,
+        regions = drawableRegions.sortedBy { it.id },
+        pinImages = drawablePins.map(EmotionPinUiModel::symbolImageKey).distinct().mapNotNull(pinImages::get),
+        regionImages =
+            drawableRegions
+                .map(
+                    RegionClusterUiModel::symbolImageKey,
+                ).distinct()
+                .mapNotNull(regionImages::get),
         contentLoad = pending.contentLoad.takeUnless { regionMode },
     )
 }
