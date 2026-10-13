@@ -5,6 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.utils.withMinimumLoadingTime
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.resultLabel
+import com.pheeeew.feature.screens.group.home.explore.GroupExploreSource
+import com.pheeeew.feature.screens.group.home.explore.GroupExploreStateHolder
+import com.pheeeew.feature.screens.group.home.explore.InMemoryGroupExploreSource
 import com.pheeeew.feature.screens.group.join.GroupJoinDependencies
 import com.pheeeew.feature.screens.group.join.GroupJoinFailure
 import com.pheeeew.feature.screens.group.join.GroupJoinStateHolder
@@ -26,10 +29,15 @@ class GroupHomeViewModel(
     groupJoinDependencies: GroupJoinDependencies,
     membershipChanges: Flow<Long> = kotlinx.coroutines.flow.emptyFlow(),
     private val invalidateSharedMembership: () -> Unit = {},
+    groupExploreSource: GroupExploreSource = InMemoryGroupExploreSource(),
 ) : ViewModel() {
     val telemetry = ProductMonitoring(groupJoinDependencies.monitoring, "group_home")
     private val _uiState = MutableStateFlow(GroupHomeUiState())
     val uiState = _uiState.asStateFlow()
+    private val _selectedTab = MutableStateFlow(GroupHomeTab.MyGroups)
+    val selectedTab = _selectedTab.asStateFlow()
+    private val groupExploreStateHolder = GroupExploreStateHolder(viewModelScope, groupExploreSource)
+    val exploreUiState = groupExploreStateHolder.uiState
     private val _isJoinSheetVisible = MutableStateFlow(false)
     val isJoinSheetVisible = _isJoinSheetVisible.asStateFlow()
     private val groupJoinStateHolder = GroupJoinStateHolder(viewModelScope, groupJoinDependencies)
@@ -50,9 +58,34 @@ class GroupHomeViewModel(
         loadGroups()
     }
 
+    fun selectTab(tab: GroupHomeTab) {
+        if (_selectedTab.value == tab) return
+        _selectedTab.value = tab
+        if (tab == GroupHomeTab.Explore) groupExploreStateHolder.ensureLoaded()
+    }
+
+    fun onExploreQueryChanged(query: String) {
+        groupExploreStateHolder.onQueryChanged(query)
+    }
+
+    fun onExploreSearchSubmitted() {
+        groupExploreStateHolder.onSearchSubmitted()
+    }
+
+    fun loadMoreExploreGroups() {
+        groupExploreStateHolder.loadNextPage()
+    }
+
+    fun retryExploreGroups() {
+        groupExploreStateHolder.retry()
+    }
+
     /** 첫 조회 실패 또는 목록 새로고침 실패에서 다시 요청합니다. */
     fun onRetry() {
-        refresh()
+        when (_selectedTab.value) {
+            GroupHomeTab.MyGroups -> refresh()
+            GroupHomeTab.Explore -> groupExploreStateHolder.retry()
+        }
     }
 
     fun openJoinSheet() {

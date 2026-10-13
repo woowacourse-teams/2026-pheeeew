@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.group.detail.model
 
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 
 sealed interface GroupMoodFeedUiState {
     data object Loading : GroupMoodFeedUiState
@@ -36,6 +37,8 @@ sealed interface GroupMoodFeedLoadState {
 data class GroupDetailReadyUiModel(
     val name: String,
     val role: GroupRole,
+    val joinType: GroupJoinType,
+    val inviteCode: String?,
     val description: String?,
     val memberCount: Long,
     val stamp: StampAppearanceUiModel,
@@ -50,6 +53,8 @@ fun GroupDetailUiModel.toReadyUiModel(feed: GroupMoodFeedUiState): GroupDetailRe
     GroupDetailReadyUiModel(
         name = group.name,
         role = role,
+        joinType = joinType,
+        inviteCode = inviteCode,
         description = group.description,
         memberCount = group.memberCount,
         stamp = group.stamp,

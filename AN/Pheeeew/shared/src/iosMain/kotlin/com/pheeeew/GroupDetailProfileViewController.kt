@@ -17,7 +17,7 @@ import com.pheeeew.feature.screens.group.detail.GroupDetailActions
 import com.pheeeew.feature.screens.group.detail.GroupDetailContent
 import com.pheeeew.feature.screens.group.detail.GroupDetailScreen
 import com.pheeeew.feature.screens.group.detail.GroupDetailUiState
-import com.pheeeew.feature.screens.group.detail.previewGroupDetailUiModel
+import com.pheeeew.feature.screens.group.preview.previewGroupDetailUiModel
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.delay
 import platform.Foundation.NSNotificationCenter
@@ -81,7 +81,9 @@ fun GroupDetailProfileViewController() =
                         onReturnHome = {},
                         onRetry = {},
                         onMoreClick = {},
+                        onJoinClick = {},
                         onInviteClick = {},
+                        onJoinClick = {},
                         onCopyCodeClick = {},
                         onShareInviteClick = {},
                         onDismissOverlay = {},

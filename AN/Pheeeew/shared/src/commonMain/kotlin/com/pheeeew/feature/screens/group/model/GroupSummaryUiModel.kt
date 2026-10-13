@@ -9,6 +9,8 @@ data class GroupSummaryUiModel(
     val weeklyStampCount: Long?,
     val stamp: StampAppearanceUiModel,
     val description: String? = null,
+    /** Existing API responses do not include join type; legacy groups default to invite-only display. */
+    val joinType: GroupJoinType = GroupJoinType.PRIVATE,
 ) {
     init {
         require(memberCount >= 0) { "멤버 수는 음수일 수 없습니다." }

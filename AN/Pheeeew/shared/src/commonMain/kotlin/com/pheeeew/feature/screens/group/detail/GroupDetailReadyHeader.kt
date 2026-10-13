@@ -2,6 +2,7 @@ package com.pheeeew.feature.screens.group.detail
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,13 +11,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
@@ -24,14 +29,25 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.component.stamp.GroupStamp
+import com.pheeeew.feature.screens.group.detail.GroupDetailJoinUiState
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailReadyUiModel
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_detail_invite_code
+import pheeeew.shared.generated.resources.group_detail_join
+import pheeeew.shared.generated.resources.group_detail_join_failure_api_pending
+import pheeeew.shared.generated.resources.group_detail_join_type_private
+import pheeeew.shared.generated.resources.group_detail_join_type_public
+import pheeeew.shared.generated.resources.group_detail_joined
 import pheeeew.shared.generated.resources.group_detail_member_count
+import pheeeew.shared.generated.resources.group_detail_private_join_description
+import pheeeew.shared.generated.resources.group_detail_private_join_title
 import pheeeew.shared.generated.resources.group_detail_rank_empty
 import pheeeew.shared.generated.resources.group_detail_rank_number
 
@@ -39,6 +55,8 @@ import pheeeew.shared.generated.resources.group_detail_rank_number
 internal fun GroupProfile(
     group: GroupDetailReadyUiModel,
     onInviteClick: () -> Unit,
+    joinState: GroupDetailJoinUiState = GroupDetailJoinUiState(),
+    onJoinClick: () -> Unit = {},
 ) {
     Column(Modifier.fillMaxWidth().padding(top = 20.dp)) {
         Row(
@@ -51,7 +69,7 @@ internal fun GroupProfile(
                 color = AppColors.GroupInk,
                 fontSize = 12.sp,
             )
-            if (group.role != GroupRole.NONE) {
+            if (group.role != GroupRole.NONE && group.inviteCode != null) {
                 Box(
                     Modifier
                         .background(Color(0xFFF0F1ED), CircleShape)
@@ -67,7 +85,20 @@ internal fun GroupProfile(
                 }
             }
         }
-        Spacer(Modifier.height(12.dp))
+        if (group.role != GroupRole.NONE) {
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = stringResource(Res.string.group_detail_joined),
+                modifier = Modifier.fillMaxWidth(),
+                color = AppColors.TextSecondary,
+                textAlign = TextAlign.Center,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(8.dp))
+        } else {
+            Spacer(Modifier.height(12.dp))
+        }
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             GroupStamp(appearance = group.stamp, size = 84.dp)
         }
@@ -78,6 +109,117 @@ internal fun GroupProfile(
             color = AppColors.TextSecondary,
             textAlign = TextAlign.Center,
             fontSize = 14.sp,
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            GroupVisibilityLabel(group.joinType)
+            if (group.role == GroupRole.NONE && group.joinType == GroupJoinType.PUBLIC) {
+                GroupDetailJoinCallToAction(onClick = onJoinClick)
+            }
+        }
+        if (
+            group.role == GroupRole.NONE &&
+            group.joinType == GroupJoinType.PUBLIC &&
+            joinState.failure != null
+        ) {
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text =
+                    stringResource(
+                        when (joinState.failure) {
+                            GroupDetailJoinFailure.ApiIntegrationPending -> {
+                                Res.string.group_detail_join_failure_api_pending
+                            }
+                        },
+                    ),
+                modifier = Modifier.fillMaxWidth(),
+                color = AppColors.TextSecondary,
+                fontSize = 12.sp,
+                textAlign = TextAlign.End,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GroupVisibilityLabel(joinType: GroupJoinType) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+        Box(
+            Modifier
+                .size(6.dp)
+                .background(
+                    if (joinType == GroupJoinType.PUBLIC) AppColors.RankingAccent else AppColors.TextSecondary,
+                    CircleShape,
+                ),
+        )
+        Text(
+            text =
+                stringResource(
+                    if (joinType == GroupJoinType.PUBLIC) {
+                        Res.string.group_detail_join_type_public
+                    } else {
+                        Res.string.group_detail_join_type_private
+                    },
+                ),
+            color = AppColors.TextSecondary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
+internal fun GroupDetailJoinCallToAction(onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(
+        modifier =
+            Modifier
+                .height(36.dp)
+                .raisedButtonBorder(CircleShape, interactionSource)
+                .clip(CircleShape)
+                .background(AppColors.Primary)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    role = Role.Button,
+                    onClick = onClick,
+                ).padding(horizontal = 14.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = stringResource(Res.string.group_detail_join),
+            color = AppColors.TextPrimary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            fontFamily = notoSansKrFontFamily(),
+        )
+    }
+}
+
+@Composable
+internal fun GroupDetailPrivateJoinNotice() {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(AppColors.RankingSurface, RoundedCornerShape(14.dp))
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = stringResource(Res.string.group_detail_private_join_title),
+            color = AppColors.GroupInk,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            text = stringResource(Res.string.group_detail_private_join_description),
+            color = AppColors.TextSecondary,
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
         )
     }
 }
@@ -143,42 +285,3 @@ private fun Statistic(
 private val Rule = Color(0xFFDFE2D9)
 
 private fun formatCount(count: Long): String = count.toString()
-
-@Preview(widthDp = 402, name = "그룹 상세 · 헤더", showBackground = true)
-@Composable
-private fun GroupDetailHeaderPreview() {
-    val group = previewGroupDetailReadyUiModel()
-    Column(Modifier.padding(horizontal = 24.dp)) {
-        GroupProfile(group, onInviteClick = {})
-        Spacer(Modifier.height(18.dp))
-        GroupStatistics(group)
-    }
-}
-
-@Preview(widthDp = 402, name = "그룹 상세 · 미가입 헤더", showBackground = true)
-@Composable
-private fun GroupDetailGuestHeaderPreview() {
-    val group = previewGroupDetailReadyUiModel(GroupRole.NONE)
-    Column(Modifier.padding(horizontal = 24.dp)) {
-        GroupProfile(group, onInviteClick = {})
-        Spacer(Modifier.height(18.dp))
-        GroupStatistics(group)
-    }
-}
-
-@Preview(widthDp = 402, name = "그룹 상세 · 순위 미집계", showBackground = true)
-@Composable
-private fun GroupDetailUnrankedHeaderPreview() {
-    val group =
-        previewGroupDetailReadyUiModel().copy(
-            weeklyStampCount = 0,
-            weeklyStampRank = null,
-            weeklyEmotionPressCount = 0,
-            weeklyEmotionPressRank = null,
-        )
-    Column(Modifier.padding(horizontal = 24.dp)) {
-        GroupProfile(group, onInviteClick = {})
-        Spacer(Modifier.height(18.dp))
-        GroupStatistics(group)
-    }
-}

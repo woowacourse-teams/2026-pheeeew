@@ -107,8 +107,10 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         guard state.isVisible, styleIsReady else { return }
         FoundationCurrentLocationLayer.update(currentLocation: state.currentLocation, source: currentLocationSource)
         recordRangeLayer.update(state: state)
+        registerSymbolImages(state)
+        if !state.regionClusterCoordinates.isEmpty { updateRegionClusters(state) }
         let pinSourceUpdated = updateEmotionPins(state)
-        updateRegionClusters(state)
+        if state.regionClusterCoordinates.isEmpty { updateRegionClusters(state) }
         updateEmotionPinPress(state)
         applyInitialCameraIfNeeded(state)
         if !applyRecordCamera(state) { applyCameraCommandIfNeeded(state) }
@@ -244,6 +246,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
                 return
             }
         }
+        // Keep symbols opaque when camera and source updates recalculate placement.
+        style.performsPlacementTransitions = false
         FoundationMapStyle.applyMutedPalette(to: style)
         styleIsReady = true
         emotionPinSource = installEmotionPinLayer(on: style)
@@ -268,7 +272,9 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             )
             applyInitialCameraIfNeeded(pendingState)
             if !applyRecordCamera(pendingState) { applyCameraCommandIfNeeded(pendingState) }
+            registerSymbolImages(pendingState)
             _ = updateEmotionPins(pendingState)
+            updateRegionClusters(pendingState)
             updateEmotionPinPress(pendingState)
             publishViewportIfReady()
         }
@@ -485,15 +491,19 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         return source
     }
 
-    @discardableResult
-    private func updateEmotionPins(_ state: FoundationIosMapRenderUiModel) -> Bool {
-        guard let style = mapView.style, let emotionPinSource else { return false }
-        lastEmotionPinMonitoringLoadId = state.monitoringLoadId
+    private func registerSymbolImages(_ state: FoundationIosMapRenderUiModel) {
+        guard let style = mapView.style else { return }
         for image in state.emotionPinSymbolImages where !lastEmotionPinImageKeys.contains(image.key) {
             guard let uiImage = image.toUIImage(scale: mapView.window?.screen.scale ?? UIScreen.main.scale) else { continue }
             style.setImage(uiImage, forName: image.key)
             lastEmotionPinImageKeys.insert(image.key)
         }
+    }
+
+    @discardableResult
+    private func updateEmotionPins(_ state: FoundationIosMapRenderUiModel) -> Bool {
+        guard let style = mapView.style, let emotionPinSource else { return false }
+        lastEmotionPinMonitoringLoadId = state.monitoringLoadId
         recordStampLayer.update(state.recordPreviewPin, scale: state.recordPreviewScale, style: style)
 
         // Rasterization completes after pin data arrives. Publish only drawable features,

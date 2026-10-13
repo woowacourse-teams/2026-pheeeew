@@ -28,6 +28,8 @@ fun GroupHomeRoute(
 ) {
     ProductScreen(viewModel.telemetry, isCurrentDestination)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val selectedTab by viewModel.selectedTab.collectAsStateWithLifecycle()
+    val exploreUiState by viewModel.exploreUiState.collectAsStateWithLifecycle()
     val joinUiState by viewModel.joinUiState.collectAsStateWithLifecycle()
     val isJoinSheetVisible by viewModel.isJoinSheetVisible.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -51,6 +53,13 @@ fun GroupHomeRoute(
         onJoinClick = viewModel::openJoinSheet,
         onGroupClick = onGroupClick,
         onRetry = viewModel::onRetry,
+        selectedTab = selectedTab,
+        exploreUiState = exploreUiState,
+        onTabSelected = viewModel::selectTab,
+        onExploreQueryChanged = viewModel::onExploreQueryChanged,
+        onExploreSearchSubmitted = viewModel::onExploreSearchSubmitted,
+        onLoadMoreExploreGroups = viewModel::loadMoreExploreGroups,
+        onRetryExploreGroups = viewModel::retryExploreGroups,
         modifier = modifier,
     )
 

@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.group.adapter
 
 import com.pheeeew.domain.model.group.GroupDetail
+import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.domain.repository.group.GroupDetailLookupResult
 import com.pheeeew.domain.repository.group.GroupDetailRepository
 import com.pheeeew.domain.repository.group.GroupLeaveResult
@@ -50,7 +51,7 @@ private fun GroupDetail.toUiModel() =
     GroupDetailUiModel(
         group = group.toSummaryUiModel(),
         role = group.role,
-        inviteCode = group.inviteCode,
+        inviteCode = group.inviteCode.takeIf { group.role != GroupRole.NONE },
         weeklyStampCount = weeklyStampCount,
         weeklyStampRank = weeklyStampRank,
         weeklyEmotionPressCount = weeklyEmotionPressCount,

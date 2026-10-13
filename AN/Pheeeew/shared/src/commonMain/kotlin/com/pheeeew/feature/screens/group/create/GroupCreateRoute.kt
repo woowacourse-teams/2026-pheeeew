@@ -58,6 +58,7 @@ fun GroupCreateRoute(
         },
         onNameChanged = viewModel::onNameChanged,
         onDescriptionChanged = viewModel::onDescriptionChanged,
+        onJoinTypeChanged = viewModel::onJoinTypeChanged,
         onStampLabelChanged = viewModel::onStampLabelChanged,
         onStampShapeChanged = viewModel::onStampShapeChanged,
         onStampTextColorChanged = viewModel::onStampTextColorChanged,

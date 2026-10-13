@@ -1,4 +1,4 @@
-package com.pheeeew.feature.screens.group.create
+package com.pheeeew.feature.screens.group.preview
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -6,9 +6,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
+import com.pheeeew.feature.screens.group.create.ColorConversion
+import com.pheeeew.feature.screens.group.create.GroupCreateScreen
+import com.pheeeew.feature.screens.group.create.GroupCreateUiState
+import com.pheeeew.feature.screens.group.create.GroupFormRules
 import com.pheeeew.feature.screens.group.create.model.StampColorSelection
 import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
-import com.pheeeew.feature.screens.group.preview.CreateFixtures
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 
 @Preview(name = "그룹 생성 · 입력")
 @Composable
@@ -16,6 +20,7 @@ private fun GroupCreateFormPreview() {
     var uiState by remember { mutableStateOf(GroupCreateUiState()) }
     GroupCreatePreviewFrame(
         uiState = uiState,
+        onJoinTypeChanged = { joinType -> uiState = uiState.copy(draft = uiState.draft.copy(joinType = joinType)) },
         onOpenColorSheet = {
             val selection = ColorConversion.toSelection(uiState.draft.stamp.fillArgb)
             uiState = uiState.copy(colorSheet = StampColorSheetState.Editing(selection))
@@ -46,6 +51,12 @@ private fun GroupCreateFormPreview() {
 @Composable
 private fun GroupCreateFilledPreview() {
     GroupCreatePreviewFrame(uiState = CreateFixtures.filled)
+}
+
+@Preview(name = "그룹 생성 · 공개 가입 방식")
+@Composable
+private fun GroupCreatePublicJoinTypePreview() {
+    GroupCreatePreviewFrame(uiState = CreateFixtures.publicJoinType)
 }
 
 @Preview(name = "그룹 생성 · 그룹명 중복")
@@ -93,6 +104,7 @@ private fun GroupCreateUnknownOutcomePreview() {
 @Composable
 private fun GroupCreatePreviewFrame(
     uiState: GroupCreateUiState,
+    onJoinTypeChanged: (GroupJoinType) -> Unit = {},
     onOpenColorSheet: () -> Unit = {},
     onColorSelectionChanged: (StampColorSelection) -> Unit = {},
     onCloseColorSheet: () -> Unit = {},
@@ -104,6 +116,7 @@ private fun GroupCreatePreviewFrame(
         onBack = {},
         onNameChanged = {},
         onDescriptionChanged = {},
+        onJoinTypeChanged = onJoinTypeChanged,
         onStampLabelChanged = {},
         onStampShapeChanged = {},
         onStampTextColorChanged = {},

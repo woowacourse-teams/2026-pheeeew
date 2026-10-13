@@ -34,16 +34,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.component.emotion.EmotionActionsMenuMode
 import com.pheeeew.feature.component.emotion.EmotionChatContentUiModel
 import com.pheeeew.feature.component.emotion.EmotionChatItem
 import com.pheeeew.feature.component.emotion.EmotionChatItemUiModel
 import com.pheeeew.feature.component.emotion.EmotionListLoadError
+import com.pheeeew.feature.screens.group.detail.GroupDetailJoinUiState
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailReadyUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodContentUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedLoadState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedUiState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodPostUiModel
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -60,6 +63,8 @@ internal fun GroupDetailReadyContent(
     hasRefreshError: Boolean,
     onRetry: () -> Unit,
     onInviteClick: () -> Unit,
+    onJoinClick: () -> Unit,
+    joinState: GroupDetailJoinUiState,
     onReactionClick: ((String, EmotionReactionType) -> Unit)?,
     onAudioClick: ((String) -> Unit)?,
     onBlockClick: ((String) -> Unit)?,
@@ -68,6 +73,8 @@ internal fun GroupDetailReadyContent(
     onFeedLoadMore: (() -> Unit)?,
 ) {
     val feed = detail.feed
+    val canReact = detail.role != GroupRole.NONE
+    val canOpenActionsMenu = canReact || onBlockClick != null || onReportClick != null
     val availableFeed = feed as? GroupMoodFeedUiState.Available
     val feedPosts = availableFeed?.posts.orEmpty()
     val loadState = availableFeed?.loadState
@@ -139,10 +146,21 @@ internal fun GroupDetailReadyContent(
             }
         }
         item(key = "profile-and-statistics") {
-            GroupProfile(detail, onInviteClick = onInviteClick)
-            Spacer(Modifier.height(18.dp))
+            GroupProfile(
+                group = detail,
+                onInviteClick = onInviteClick,
+                joinState = joinState,
+                onJoinClick = onJoinClick,
+            )
+            if (detail.role == GroupRole.NONE && detail.joinType == GroupJoinType.PRIVATE) {
+                Spacer(Modifier.height(18.dp))
+                GroupDetailPrivateJoinNotice()
+                Spacer(Modifier.height(24.dp))
+            } else {
+                Spacer(Modifier.height(18.dp))
+            }
             GroupStatistics(detail)
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(24.dp))
             Row(
                 Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -219,9 +237,19 @@ internal fun GroupDetailReadyContent(
                         audioLoading = post.isAudioLoading,
                         focused = false,
                         onOpenOnMap = null,
-                        onOpenMenu = { mode -> openMenu = post.id to mode },
+                        onOpenMenu =
+                            if (canOpenActionsMenu) {
+                                { mode -> openMenu = post.id to mode }
+                            } else {
+                                null
+                            },
                         onDismissMenu = { if (openMenu?.first == post.id) openMenu = null },
-                        onReact = onReactionClick?.let { callback -> { type -> callback(post.id, type) } },
+                        onReact =
+                            if (canReact) {
+                                onReactionClick?.let { callback -> { type -> callback(post.id, type) } }
+                            } else {
+                                null
+                            },
                         onBlock = onBlockClick?.let { callback -> { callback(post.id) } },
                         onReport = onReportClick?.let { callback -> { callback(post.id) } },
                         onPlay = onAudioClick?.let { callback -> { callback(post.id) } },
@@ -274,191 +302,6 @@ private fun GroupMoodFeedLoadError(
     }
 }
 
-@Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 본문", showBackground = true)
-@Composable
-private fun GroupDetailReadyContentPreview() {
-    GroupDetailReadyContent(
-        detail = previewGroupDetailReadyUiModel(),
-        hasRefreshError = false,
-        onRetry = {},
-        onInviteClick = {},
-        onReactionClick = null,
-        onAudioClick = null,
-        onBlockClick = null,
-        onReportClick = null,
-        onFeedRetry = {},
-        onFeedLoadMore = null,
-    )
-}
-
-@Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 목록 오류", showBackground = true)
-@Composable
-private fun GroupDetailReadyContentFeedErrorPreview() {
-    GroupDetailReadyContent(
-        detail = previewGroupDetailReadyUiModel().copy(feed = GroupMoodFeedUiState.LoadFailed(isRetrying = false)),
-        hasRefreshError = false,
-        onRetry = {},
-        onInviteClick = {},
-        onReactionClick = null,
-        onAudioClick = null,
-        onBlockClick = null,
-        onReportClick = null,
-        onFeedRetry = {},
-        onFeedLoadMore = null,
-    )
-}
-
-@Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 목록 로딩", showBackground = true)
-@Composable
-private fun GroupMoodFeedLoadingPreview() {
-    GroupDetailReadyContent(
-        detail = previewGroupDetailReadyUiModel().copy(feed = GroupMoodFeedUiState.Loading),
-        hasRefreshError = false,
-        onRetry = {},
-        onInviteClick = {},
-        onReactionClick = null,
-        onAudioClick = null,
-        onBlockClick = null,
-        onReportClick = null,
-        onFeedRetry = {},
-        onFeedLoadMore = {},
-    )
-}
-
-@Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 목록 조회 실패", showBackground = true)
-@Composable
-private fun GroupMoodFeedErrorPreview() {
-    GroupDetailReadyContent(
-        detail = previewGroupDetailReadyUiModel().copy(feed = GroupMoodFeedUiState.LoadFailed(isRetrying = false)),
-        hasRefreshError = false,
-        onRetry = {},
-        onInviteClick = {},
-        onReactionClick = null,
-        onAudioClick = null,
-        onBlockClick = null,
-        onReportClick = null,
-        onFeedRetry = {},
-        onFeedLoadMore = {},
-    )
-}
-
-@Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 목록 재시도 중", showBackground = true)
-@Composable
-private fun GroupMoodFeedRetryingPreview() {
-    GroupDetailReadyContent(
-        detail = previewGroupDetailReadyUiModel().copy(feed = GroupMoodFeedUiState.LoadFailed(isRetrying = true)),
-        hasRefreshError = false,
-        onRetry = {},
-        onInviteClick = {},
-        onReactionClick = null,
-        onAudioClick = null,
-        onBlockClick = null,
-        onReportClick = null,
-        onFeedRetry = {},
-        onFeedLoadMore = {},
-    )
-}
-
-@Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 새로고침 실패", showBackground = true)
-@Composable
-private fun GroupMoodFeedRefreshErrorPreview() {
-    GroupDetailReadyContent(
-        detail =
-            previewGroupDetailReadyUiModel().copy(
-                feed =
-                    GroupMoodFeedUiState.Available(
-                        posts = previewGroupMoodPosts(),
-                        hasMore = true,
-                        loadState = GroupMoodFeedLoadState.RefreshFailed(isRetrying = false),
-                    ),
-            ),
-        hasRefreshError = false,
-        onRetry = {},
-        onInviteClick = {},
-        onReactionClick = null,
-        onAudioClick = null,
-        onBlockClick = null,
-        onReportClick = null,
-        onFeedRetry = {},
-        onFeedLoadMore = {},
-    )
-}
-
-@Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 새로고침 중", showBackground = true)
-@Composable
-private fun GroupMoodFeedRefreshingPreview() {
-    GroupDetailReadyContent(
-        detail =
-            previewGroupDetailReadyUiModel().copy(
-                feed =
-                    GroupMoodFeedUiState.Available(
-                        posts = previewGroupMoodPosts(),
-                        hasMore = true,
-                        loadState = GroupMoodFeedLoadState.Refreshing,
-                    ),
-            ),
-        hasRefreshError = false,
-        onRetry = {},
-        onInviteClick = {},
-        onReactionClick = null,
-        onAudioClick = null,
-        onBlockClick = null,
-        onReportClick = null,
-        onFeedRetry = {},
-        onFeedLoadMore = {},
-    )
-}
-
-@Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 추가 조회 실패", showBackground = true)
-@Composable
-private fun GroupMoodFeedLoadMoreErrorPreview() {
-    GroupDetailReadyContent(
-        detail =
-            previewGroupDetailReadyUiModel().copy(
-                feed =
-                    GroupMoodFeedUiState.Available(
-                        posts = previewGroupMoodPosts(),
-                        hasMore = true,
-                        loadState = GroupMoodFeedLoadState.LoadMoreFailed(isRetrying = false),
-                    ),
-            ),
-        hasRefreshError = false,
-        onRetry = {},
-        onInviteClick = {},
-        onReactionClick = null,
-        onAudioClick = null,
-        onBlockClick = null,
-        onReportClick = null,
-        onFeedRetry = {},
-        onFeedLoadMore = {},
-    )
-}
-
-@Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 추가 조회 중", showBackground = true)
-@Composable
-private fun GroupMoodFeedLoadingMorePreview() {
-    GroupDetailReadyContent(
-        detail =
-            previewGroupDetailReadyUiModel().copy(
-                feed =
-                    GroupMoodFeedUiState.Available(
-                        posts = previewGroupMoodPosts(),
-                        hasMore = true,
-                        loadState = GroupMoodFeedLoadState.LoadingMore,
-                    ),
-            ),
-        hasRefreshError = false,
-        onRetry = {},
-        onInviteClick = {},
-        onReactionClick = null,
-        onAudioClick = null,
-        onBlockClick = null,
-        onReportClick = null,
-        onFeedRetry = {},
-        onFeedLoadMore = {},
-    )
-}
-
 private const val LOAD_MORE_PREFETCH_ITEMS = 3
 
 private fun GroupMoodPostUiModel.toEmotionChatItemUiModel() =
@@ -481,28 +324,3 @@ private fun GroupMoodPostUiModel.toEmotionChatItemUiModel() =
         reactions = reactions,
         stamp = stamp,
     )
-
-@Preview(widthDp = 402, heightDp = 815, name = "그룹 상세 · 빈 목록", showBackground = true)
-@Composable
-private fun GroupMoodFeedEmptyPreview() {
-    GroupDetailReadyContent(
-        detail =
-            previewGroupDetailReadyUiModel().copy(
-                feed =
-                    GroupMoodFeedUiState.Available(
-                        posts = emptyList(),
-                        hasMore = false,
-                        loadState = GroupMoodFeedLoadState.Idle,
-                    ),
-            ),
-        hasRefreshError = false,
-        onRetry = {},
-        onInviteClick = {},
-        onReactionClick = null,
-        onAudioClick = null,
-        onBlockClick = null,
-        onReportClick = null,
-        onFeedRetry = {},
-        onFeedLoadMore = null,
-    )
-}

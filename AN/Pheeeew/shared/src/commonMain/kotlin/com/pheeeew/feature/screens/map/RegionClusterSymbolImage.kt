@@ -54,23 +54,23 @@ private const val LABEL_PADDING_DP = 8f
 private const val ICON_RIGHT_PADDING_DP = 8f
 
 @Composable
-internal fun rememberRegionClusterSymbolImages(regions: List<RegionClusterUiModel>): List<EmotionPinSymbolImage> {
+internal fun rememberRegionClusterSymbolImages(regions: List<RegionClusterUiModel>): MapSymbolImages {
     val appearances = remember(regions) { regions.distinctBy(RegionClusterUiModel::symbolImageKey) }
-    val captured = remember { mutableStateMapOf<String, EmotionPinSymbolImage>() }
+    val captured = remember { mutableStateMapOf<String, EmotionPinSymbolImage?>() }
     val desiredKeys = remember(appearances) { appearances.mapTo(mutableSetOf(), RegionClusterUiModel::symbolImageKey) }
     LaunchedEffect(desiredKeys) { captured.keys.retainAll(desiredKeys) }
     appearances.forEach { region ->
         key(region.symbolImageKey()) {
-            RasterizeRegionCluster(region) { captured[it.key] = it }
+            RasterizeRegionCluster(region) { captured[region.symbolImageKey()] = it }
         }
     }
-    return appearances.mapNotNull { captured[it.symbolImageKey()] }
+    return captured.symbolImagesFor(desiredKeys)
 }
 
 @Composable
 private fun RasterizeRegionCluster(
     region: RegionClusterUiModel,
-    onRasterized: (EmotionPinSymbolImage) -> Unit,
+    onRasterized: (EmotionPinSymbolImage?) -> Unit,
 ) {
     val density = LocalDensity.current
     val layoutDirection = LocalLayoutDirection.current
@@ -88,7 +88,7 @@ private fun RasterizeRegionCluster(
                 )
                 bitmap.toEmotionPinSymbolImage(region.symbolImageKey(), (density.density * 160).roundToInt())
             }
-        if (image.hasVisiblePixels) onRasterized(image)
+        onRasterized(image.takeIf { it.hasVisiblePixels })
     }
 }
 

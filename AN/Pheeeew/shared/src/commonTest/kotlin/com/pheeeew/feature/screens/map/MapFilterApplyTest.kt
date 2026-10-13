@@ -6,9 +6,11 @@ import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapPage
 import com.pheeeew.domain.model.emotion.EmotionMapPageResult
+import com.pheeeew.domain.model.emotion.EmotionMapPin
 import com.pheeeew.domain.model.emotion.EmotionMapSnapshot
 import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionSearchFilter
+import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.MapFilterScope
 import com.pheeeew.domain.model.emotion.MapFilterSettings
 import com.pheeeew.domain.repository.EmotionMapRepository
@@ -27,6 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -158,12 +161,92 @@ class MapFilterApplyTest {
             }
         }
 
+    @Test
+    fun `필터 적용은 대기 중인 이전 핀 발행을 취소하고 확장 영역의 새 핀만 표시한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val pending = CompletableDeferred<EmotionMapPageResult>()
+                val requestedBounds = mutableListOf<EmotionMapBounds?>()
+                val map =
+                    FilteredMapRepository(
+                        load = { bounds, filter, cursor ->
+                            requestedBounds += bounds
+                            if (filter.scope == MapFilterScope.MY) {
+                                page(pin(3))
+                            } else {
+                                when (cursor) {
+                                    null -> page(pin(1), nextCursor = "second")
+                                    "second" -> page(pin(2), nextCursor = "third")
+                                    else -> pending.await()
+                                }
+                            }
+                        },
+                    )
+                val vm = viewModel(SettingsRepository(), ListRefresher(visible = false), map)
+                runCurrent()
+                vm.onViewportChanged(BOUNDS)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(listOf(1L), vm.pinIds())
+
+                vm.openFilter()
+                vm.selectFilterScope(FilterScope.Mine)
+                vm.applyFilter()
+                runCurrent()
+                assertEquals(BOUNDS.expandedForPinQuery(), requestedBounds.last())
+                assertEquals(listOf(3L), vm.pinIds())
+                advanceUntilIdle()
+                assertEquals(listOf(3L), vm.pinIds())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `필터 적용 뒤 화면 이동은 현재 필터의 캐시를 발행한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val snapshotFilters = mutableListOf<EmotionSearchFilter>()
+                val map =
+                    FilteredMapRepository(
+                        load = { _, filter, _ -> page(pin(if (filter.scope == MapFilterScope.MY) 2 else 1)) },
+                        snapshot = { _, filter ->
+                            snapshotFilters += filter
+                            if (filter.scope == MapFilterScope.MY) {
+                                EmotionMapSnapshot(listOf(pin(3).copy(longitude = 127.15)))
+                            } else {
+                                null
+                            }
+                        },
+                    )
+                val vm = viewModel(SettingsRepository(), ListRefresher(visible = false), map)
+                runCurrent()
+                vm.onViewportChanged(BOUNDS)
+                advanceUntilIdle()
+                vm.openFilter()
+                vm.selectFilterScope(FilterScope.Mine)
+                vm.applyFilter()
+                advanceUntilIdle()
+
+                vm.onViewportChanged(BOUNDS.copy(minLongitude = 127.0, maxLongitude = 127.2))
+                assertEquals(MapFilterScope.MY, snapshotFilters.last().scope)
+                assertTrue(3L in vm.pinIds())
+                assertFalse(1L in vm.pinIds())
+                advanceUntilIdle()
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun viewModel(
         settings: SettingsRepository,
         list: ListRefresher,
+        mapOverride: EmotionMapRepository? = null,
     ): MapViewModel {
         val map =
-            object : EmotionMapRepository {
+            mapOverride ?: object : EmotionMapRepository {
                 override suspend fun findPage(
                     bounds: EmotionMapBounds?,
                     groupId: String?,
@@ -196,6 +279,44 @@ class MapFilterApplyTest {
             filterListRefresher = list,
         )
     }
+
+    private class FilteredMapRepository(
+        private val load: suspend (EmotionMapBounds?, EmotionSearchFilter, String?) -> EmotionMapPageResult,
+        private val snapshot: (EmotionMapBounds, EmotionSearchFilter) -> EmotionMapSnapshot? = { _, _ -> null },
+    ) : EmotionMapRepository {
+        override suspend fun findPage(
+            bounds: EmotionMapBounds?,
+            groupId: String?,
+            cursor: String?,
+            forceRefresh: Boolean,
+        ): EmotionMapPageResult = error("Filtered queries must include the applied settings")
+
+        override suspend fun findFilteredPage(
+            bounds: EmotionMapBounds?,
+            filter: EmotionSearchFilter,
+            cursor: String?,
+            forceRefresh: Boolean,
+        ) = load(bounds, filter, cursor)
+
+        override fun findSnapshot(
+            bounds: EmotionMapBounds,
+            groupId: String?,
+        ): EmotionMapSnapshot? = error("Filtered snapshots must include the applied settings")
+
+        override fun findFilteredSnapshot(
+            bounds: EmotionMapBounds,
+            filter: EmotionSearchFilter,
+        ) = snapshot(bounds, filter)
+    }
+
+    private fun MapViewModel.pinIds() = uiModel.value.emotionPins.map { it.id }
+
+    private fun pin(id: Long) = EmotionMapPin(id, 127.0, 37.55, "2026-10-13T00:00:00Z", EmotionState.ANGRY, 0.0, null)
+
+    private fun page(
+        pin: EmotionMapPin,
+        nextCursor: String? = null,
+    ) = EmotionMapPageResult.Success(EmotionMapPage(listOf(pin), nextCursor != null, nextCursor, 0))
 
     private class SettingsRepository : MapFilterSettingsRepository {
         var saved: MapFilterSettings? = null

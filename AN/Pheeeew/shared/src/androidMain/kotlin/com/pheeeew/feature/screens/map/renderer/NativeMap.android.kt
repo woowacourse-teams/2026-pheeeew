@@ -49,6 +49,7 @@ import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.TransitionOptions
 import kotlin.math.PI
 import kotlin.math.hypot
 import kotlin.math.roundToInt
@@ -505,6 +506,8 @@ private class AndroidFoundationMapHost(
 
     private fun installLoadedStyle(loadedStyle: Style) {
         style = loadedStyle
+        // Keep symbols opaque when viewport and GeoJSON updates recalculate placement.
+        loadedStyle.setTransition(TransitionOptions(0L, 0L, false))
         AndroidMapAppearance.apply(loadedStyle)
         emotionPinSymbolLayer.install(loadedStyle)
         regionClusterSymbolLayer.install(loadedStyle)
@@ -550,6 +553,10 @@ private class AndroidFoundationMapHost(
         recordRangeLayer.update(style, state.recordOrigin.takeIf { state.isRecordLocationPicking })
         var pinSourceUpdated = false
         style?.let { loadedStyle ->
+            // Prepare the incoming layer before removing features from the outgoing layer.
+            if (state.displayedRegionLevel != null) {
+                regionClusterSymbolLayer.update(loadedStyle, state.regionClusters, state.regionClusterSymbolImages)
+            }
             pinSourceUpdated =
                 emotionPinSymbolLayer.update(
                     style = loadedStyle,
@@ -560,7 +567,9 @@ private class AndroidFoundationMapHost(
                     focusedId = state.focusedEmotionId,
                 )
             emotionPinSymbolLayer.updatePress(loadedStyle, state.pressedEmotionId, state.pressedEmotionScale)
-            regionClusterSymbolLayer.update(loadedStyle, state.regionClusters, state.regionClusterSymbolImages)
+            if (state.displayedRegionLevel == null) {
+                regionClusterSymbolLayer.update(loadedStyle, state.regionClusters, state.regionClusterSymbolImages)
+            }
             recordStampLayer.update(loadedStyle, state.recordPreviewPin, state.recordPreviewScale)
         }
         val loadId = state.emotionContentLoad?.loadId

@@ -56,13 +56,5 @@ internal fun GroupMoodFeedLoadingSpinner(
     }
 }
 
-@Preview(name = "그룹 감정 목록 · 로딩", widthDp = 360, heightDp = 180, showBackground = true)
-@Composable
-private fun GroupMoodFeedLoadingPreview() {
-    AppTheme {
-        GroupMoodFeedLoadingSpinner(Modifier.fillMaxSize(), indicatorSize = 32.dp)
-    }
-}
-
 private const val LOADING_INDICATOR_DELAY_MILLIS = 150L
 private val MINIMUM_LOADING_INDICATOR_DURATION = 300.milliseconds

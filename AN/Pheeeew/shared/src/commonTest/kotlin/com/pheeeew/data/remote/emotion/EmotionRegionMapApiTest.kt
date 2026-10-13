@@ -20,6 +20,52 @@ import kotlin.test.assertIs
 
 class EmotionRegionMapApiTest {
     @Test
+    fun `확대와 작은 이동 및 계층 왕복은 조회 영역 캐시를 재사용한다`() =
+        runTest {
+            var calls = 0
+            val client =
+                createApiClient(
+                    engine =
+                        MockEngine {
+                            calls++
+                            respond(
+                                """[{"type":"Feature","id":"a","geometry":{"type":"Point","coordinates":[128,38]},"properties":{"name":"지역","count":3}}]""",
+                                headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                            )
+                        },
+                    config = ApiConfig("https://api-dev.pheeeew.com"),
+                    accessTokenProvider = AccessTokenProvider { AccessToken("test-token") },
+                )
+            try {
+                val repository = EmotionRegionMapRepositoryImpl(EmotionRegionMapApi(client.requests))
+                val area = EmotionMapBounds(126.9, 37.5, 127.1, 37.6)
+                val moved = EmotionMapBounds(126.95, 37.52, 127.15, 37.62)
+                val zoomed = EmotionMapBounds(127.0, 37.53, 127.05, 37.57)
+                val initial = repository.findRegions(area, EmotionRegionLevel.SIGUNGU)
+                assertEquals(initial, repository.findRegions(moved, EmotionRegionLevel.SIGUNGU))
+                assertEquals(initial, repository.findRegions(zoomed, EmotionRegionLevel.SIGUNGU))
+                assertEquals(1, calls)
+                // Display points outside the viewport are deliberately retained.
+                assertEquals(128.0, repository.findSnapshot(zoomed, EmotionRegionLevel.SIGUNGU)?.single()?.longitude)
+                repository.findRegions(area, EmotionRegionLevel.SIDO)
+                assertEquals(2, calls)
+                repository.findRegions(area, EmotionRegionLevel.SIGUNGU)
+                assertEquals(2, calls)
+                repository.findRegions(EmotionMapBounds(129.0, 35.0, 129.2, 35.1), EmotionRegionLevel.SIGUNGU)
+                assertEquals(3, calls)
+                repository.findRegions(area, EmotionRegionLevel.SIGUNGU)
+                assertEquals(3, calls)
+                repository.findRegions(area, EmotionRegionLevel.SIGUNGU, forceRefresh = true)
+                repository.findRegions(area, EmotionRegionLevel.SIDO)
+                assertEquals(5, calls)
+                repository.findRegions(area, EmotionRegionLevel.SIGUNGU, groupId = "group")
+                assertEquals(6, calls)
+            } finally {
+                client.close()
+            }
+        }
+
+    @Test
     fun `재방문은 요청을 생략하고 새로고침의 빈 결과도 캐시에 반영한다`() =
         runTest {
             var calls = 0
@@ -71,10 +117,10 @@ class EmotionRegionMapApiTest {
                     engine =
                         MockEngine { request ->
                             assertEquals("/api/v2/emotions/map/regions", request.url.encodedPath)
-                            assertEquals("126.9", request.url.parameters["minLongitude"])
-                            assertEquals("37.5", request.url.parameters["minLatitude"])
-                            assertEquals("127.1", request.url.parameters["maxLongitude"])
-                            assertEquals("37.6", request.url.parameters["maxLatitude"])
+                            assertEquals("126.75", request.url.parameters["minLongitude"])
+                            assertEquals("37.375", request.url.parameters["minLatitude"])
+                            assertEquals("127.25", request.url.parameters["maxLongitude"])
+                            assertEquals("37.625", request.url.parameters["maxLatitude"])
                             assertEquals("SIGUNGU", request.url.parameters["level"])
                             respond(
                                 """[

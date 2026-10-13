@@ -76,6 +76,7 @@ internal fun GroupCreateOverlays(
                 isSubmitting = false,
                 groupName = uiState.draft.name,
                 stampLabel = uiState.draft.stamp.label,
+                joinType = uiState.draft.joinType,
                 onDismiss = onCancelConfirmation,
                 onConfirm = onConfirmCreate,
             )
@@ -86,6 +87,7 @@ internal fun GroupCreateOverlays(
                 isSubmitting = true,
                 groupName = uiState.draft.name,
                 stampLabel = uiState.draft.stamp.label,
+                joinType = uiState.draft.joinType,
                 onDismiss = {},
                 onConfirm = {},
             )
@@ -108,6 +110,7 @@ internal fun GroupCreateOverlays(
                 GroupCreateFailure.Unavailable,
                 GroupCreateFailure.InvalidInput,
                 GroupCreateFailure.RateLimited,
+                GroupCreateFailure.JoinTypeUnavailable,
                 -> {
                     CreateFailureDialog(
                         failure = submission.reason,
