@@ -10,8 +10,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -22,17 +25,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -80,9 +78,9 @@ fun MapOverlay(
     showNavigationButtons: Boolean = true,
     nearbyMapControlHeight: Dp = 0.dp,
 ) {
-    val density = LocalDensity.current
-    var promptHeight by remember { mutableStateOf(0.dp) }
     val promptBottomPadding = 190.dp + MAP_BOTTOM_BAR_LIFT
+    val locationBottomPadding =
+        MAP_CONTROL_BOTTOM_SPACE + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     val promptTranslationY by
         animateFloatAsState(
             targetValue = if (isEmotionSelectorExpanded) -90f else 0f,
@@ -111,7 +109,6 @@ fun MapOverlay(
                     Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = promptBottomPadding)
-                        .onSizeChanged { promptHeight = with(density) { it.height.toDp() } }
                         .graphicsLayer { translationY = promptTranslationY.dp.toPx() },
             )
 
@@ -125,7 +122,7 @@ fun MapOverlay(
                         Modifier.align(Alignment.BottomEnd).padding(
                             bottom =
                                 maxOf(
-                                    promptBottomPadding + promptHeight + 16.dp,
+                                    locationBottomPadding,
                                     nearbyMapControlHeight,
                                 ),
                         ),
