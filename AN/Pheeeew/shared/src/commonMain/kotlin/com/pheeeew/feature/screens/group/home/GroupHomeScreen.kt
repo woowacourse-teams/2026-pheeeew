@@ -51,6 +51,7 @@ import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
+import com.pheeeew.feature.screens.group.component.GroupListSkeleton
 import com.pheeeew.feature.screens.group.home.component.GroupCatalogCard
 import com.pheeeew.feature.screens.group.home.component.GroupHomeFloatingActions
 import com.pheeeew.feature.screens.group.home.component.GroupHomeSwipePager
@@ -217,7 +218,7 @@ private fun MyGroupsList(
         when (val content = uiState.content) {
             GroupHomeContent.Loading -> {
                 item(key = "my-groups:loading") {
-                    LoadingContent(modifier = Modifier.fillMaxWidth().height(220.dp))
+                    GroupListSkeleton(modifier = Modifier.padding(horizontal = 24.dp))
                 }
             }
 
@@ -334,7 +335,7 @@ private fun ExploreGroupsList(
             GroupExploreContent.Loading,
             -> {
                 item(key = "explore:loading") {
-                    LoadingContent(modifier = Modifier.fillMaxWidth().height(170.dp))
+                    GroupListSkeleton(modifier = Modifier.padding(horizontal = 24.dp))
                 }
             }
 

@@ -49,6 +49,7 @@ import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.domain.model.group.GroupRole
+import com.pheeeew.feature.screens.group.component.GroupListSkeleton
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -58,7 +59,6 @@ import pheeeew.shared.generated.resources.group_members_empty_body
 import pheeeew.shared.generated.resources.group_members_empty_title
 import pheeeew.shared.generated.resources.group_members_forbidden_body
 import pheeeew.shared.generated.resources.group_members_forbidden_title
-import pheeeew.shared.generated.resources.group_members_loading
 import pheeeew.shared.generated.resources.group_members_loading_more
 import pheeeew.shared.generated.resources.group_members_next_page_error
 import pheeeew.shared.generated.resources.group_members_not_found_body
@@ -94,19 +94,10 @@ fun GroupMembersScreen(
         )
         when (val content = uiState.content) {
             GroupMembersContent.Loading -> {
-                Column(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    CircularLoadingIndicator(color = AppColors.GroupInk)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = stringResource(Res.string.group_members_loading),
-                        color = AppColors.TextSecondary,
-                        fontSize = 13.sp,
-                    )
-                }
+                GroupListSkeleton(
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 22.dp),
+                    memberRows = true,
+                )
             }
 
             GroupMembersContent.Empty -> {
