@@ -200,11 +200,15 @@ public interface EmotionControllerApi {
             SIGUNGU는 SGIS 시군구 계층입니다. 구가 있는 수원·성남·용인 등은 시 전체 대신 각 구를 반환합니다.
 
             화면과 경계가 교차하는 지역을 선택하며 경계선 접촉도 포함합니다.
-            개수와 대표 감정은 화면이 아닌 선택한 지역 전체의 기간 하한 없는 누적 기록에서 계산합니다.
+            개수와 대표 감정은 화면이 아닌 선택한 지역 전체에서 필터를 만족하는 기록에서 계산합니다.
             MEMO, AUDIO만 포함하며 NONE과 삭제·서비스 전체 비노출 기록은 제외합니다.
-            개수와 대표 감정은 모두 같은 내용 필터를 적용합니다.
+            startDate와 endDate는 함께 지정하며 KST 기준 양 끝 날짜를 포함합니다. 생략하면 전체 기간입니다.
+            contentType은 ALL(기본값), MEMO, AUDIO이며 ALL도 NONE을 제외합니다.
+            scope는 ALL, GROUP, MY입니다. 생략하면 groupId가 있으면 GROUP, 없으면 ALL입니다.
+            MY는 인증된 기기가 작성한 기록입니다. GROUP은 groupId가 필수이고 ALL·MY에는 groupId를 전달할 수 없습니다.
+            날짜·내용·범위는 AND로 적용하며 개수와 대표 감정은 동일한 대상에서 계산합니다.
             개인 감정 차단과 작성자 차단은 요약에 적용하지 않습니다. 기존 개별 조회의 차단 정책은 유지합니다.
-            groupId를 생략하면 그룹 없는 감정까지 전체 조회하고 지정하면 해당 그룹만 집계합니다. 그룹 가입 여부로 제한하지 않습니다.
+            그룹 가입 여부로 제한하지 않으며 존재하지 않거나 삭제된 그룹은 GROUP-001과 404를 반환합니다.
 
             지역 코드순으로 모든 결과를 최상위 JSON 배열로 한 번에 반환합니다. 페이지네이션 필드는 없습니다.
             0개 지역은 생략하며 결과가 없으면 빈 배열을 반환합니다.
@@ -214,20 +218,22 @@ public interface EmotionControllerApi {
             NULL 상태도 총 개수에 포함하며 모든 대상의 상태가 NULL이면 대표 감정은 null입니다.
 
             최신 성공 응답이 현재 요청의 완전한 결과입니다. 이전 결과와 단순 병합하지 않습니다.
-            level·groupId·화면이 바뀐 요청과 늦게 도착한 이전 응답을 구분합니다.
+            level·필터·화면이 바뀐 요청과 늦게 도착한 이전 응답을 구분합니다.
             지역 요약 준비가 완료되지 않으면 빈 결과 대신 EMOTION-013과 503을 반환합니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "행정구역별 누적 감정 요약"),
-            @ApiResponse(responseCode = "400", description = "필수 영역·계층이 누락됐거나 영역·계층·그룹 ID가 올바르지 않음",
+            @ApiResponse(responseCode = "400", description = "필수 영역·계층이 누락됐거나 영역·계층·필터·그룹 ID가 올바르지 않음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "존재하지 않거나 삭제된 그룹(GROUP-001)",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "503", description = "지역 요약 준비가 완료되지 않음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     ResponseEntity<List<EmotionRegionMapResponse>> findRegionMap(
-            @Valid EmotionRegionMapRequest request,
+            @Valid @ParameterObject EmotionRegionMapRequest request,
             @Parameter(hidden = true) UUID devicePublicId
     );
 
