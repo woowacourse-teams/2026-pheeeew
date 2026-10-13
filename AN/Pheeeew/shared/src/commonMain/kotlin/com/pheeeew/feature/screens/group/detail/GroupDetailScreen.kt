@@ -226,6 +226,7 @@ fun GroupDetailScreen(
         -> {
             LeaveGroupDialog(
                 overlay = uiState.overlay,
+                joinType = uiState.detail?.joinType ?: com.pheeeew.feature.screens.group.model.GroupJoinType.PRIVATE,
                 onDismiss = actions.onDismissOverlay,
                 onConfirm = actions.onConfirmLeave,
                 onRetry = actions.onRetryLeave,
