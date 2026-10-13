@@ -6,6 +6,7 @@ import com.pheeeew.feature.screens.group.home.explore.GroupExploreItemUiModel
 import com.pheeeew.feature.screens.group.home.explore.GroupExplorePage
 import com.pheeeew.feature.screens.group.home.explore.GroupExplorePageResult
 import com.pheeeew.feature.screens.group.home.explore.GroupExploreSource
+import com.pheeeew.feature.screens.group.home.explore.normalizeGroupExploreKeyword
 import com.pheeeew.feature.screens.group.mapper.toAppearanceUiModel
 import com.pheeeew.feature.screens.group.mapper.toUiJoinType
 import com.pheeeew.feature.screens.group.model.GroupId
@@ -17,8 +18,12 @@ class ApiGroupExploreSource(
     override suspend fun loadPage(
         keyword: String?,
         cursor: String?,
-    ): GroupExplorePageResult =
-        when (val result = repository.loadPage(keyword, cursor)) {
+    ): GroupExplorePageResult {
+        val normalizedKeyword = normalizeGroupExploreKeyword(keyword.orEmpty())
+        if (normalizedKeyword != null && normalizedKeyword.length > MAX_GROUP_NAME_LENGTH) {
+            return GroupExplorePageResult.Success(GroupExplorePage(emptyList(), null))
+        }
+        return when (val result = repository.loadPage(normalizedKeyword, cursor)) {
             is GroupExploreResult.Loaded -> {
                 GroupExplorePageResult.Success(
                     GroupExplorePage(
@@ -52,4 +57,9 @@ class ApiGroupExploreSource(
                 GroupExplorePageResult.Unavailable
             }
         }
+    }
+
+    private companion object {
+        const val MAX_GROUP_NAME_LENGTH = 10
+    }
 }
