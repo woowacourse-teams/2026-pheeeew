@@ -445,6 +445,13 @@
     <string name="emotion_emoji_angry_3">😡</string>
     <string name="group_home_actions_open">그룹 만들기 및 코드 참여 메뉴 열기</string>
     <string name="group_home_actions_close">그룹 메뉴 닫기</string>
+    <string name="group_explore_clear_query">검색어 지우기</string>
     <string name="group_detail_join_processing">참여 중…</string>
     <string name="group_detail_join_completed">참여 완료</string>
+    <string name="group_search_open">그룹 검색 열기</string>
+    <string name="group_search_close">그룹 검색 닫기</string>
+    <string name="group_search_recent">최근 검색</string>
+    <string name="group_search_summary">‘%1$s’ 검색 결과</string>
+    <string name="group_search_reset">해제</string>
+    <string name="group_search_clear">지우기</string>
 </resources>

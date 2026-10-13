@@ -26,6 +26,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -50,6 +53,8 @@ fun GroupCatalogCard(
     isJoined: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    highlightQuery: String = "",
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(16.dp)
@@ -78,6 +83,7 @@ fun GroupCatalogCard(
                     .background(Color.White)
                     .border(width = AppBorders.Standard, color = AppColors.GroupInk, shape = shape)
                     .clickable(
+                        enabled = enabled,
                         interactionSource = interactionSource,
                         indication = null,
                         role = Role.Button,
@@ -91,10 +97,10 @@ fun GroupCatalogCard(
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 Text(
-                    text = group.name,
+                    text = highlightGroupName(group.name, highlightQuery),
                     color = AppColors.RankingContent,
                     fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = if (highlightQuery.isBlank()) FontWeight.Bold else FontWeight.Medium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -154,3 +160,19 @@ private fun CatalogBadge(
         Text(text = text, color = textColor, fontSize = 10.sp, maxLines = 1)
     }
 }
+
+private fun highlightGroupName(
+    name: String,
+    query: String,
+): AnnotatedString =
+    buildAnnotatedString {
+        append(name)
+        val keyword = query.trim()
+        if (keyword.isNotEmpty()) {
+            var start = name.indexOf(keyword, ignoreCase = true)
+            while (start >= 0) {
+                addStyle(SpanStyle(fontWeight = FontWeight.Bold), start, start + keyword.length)
+                start = name.indexOf(keyword, start + keyword.length, ignoreCase = true)
+            }
+        }
+    }

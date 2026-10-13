@@ -60,6 +60,10 @@ fun GroupHomeSwipePager(
     selectedTab: GroupHomeTab,
     onTabSelected: (GroupHomeTab) -> Unit,
     modifier: Modifier = Modifier,
+    isSearchOpen: Boolean = false,
+    headerContent: @Composable (@Composable () -> Unit) -> Unit = { tabs ->
+        Box(Modifier.padding(horizontal = 24.dp)) { tabs() }
+    },
     pageContent: @Composable (GroupHomeTab) -> Unit,
 ) {
     val tabs = remember { GroupHomeTab.entries }
@@ -80,13 +84,16 @@ fun GroupHomeSwipePager(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        GroupHomeAnimatedTabs(
-            tabs = tabs,
-            pagerState = pagerState,
-            onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
-        )
+        headerContent {
+            GroupHomeAnimatedTabs(
+                tabs = tabs,
+                pagerState = pagerState,
+                onTabClick = { page -> scope.launch { pagerState.animateScrollToPage(page) } },
+            )
+        }
         HorizontalPager(
             state = pagerState,
+            userScrollEnabled = !isSearchOpen,
             modifier = Modifier.weight(1f).fillMaxWidth(),
             key = { page -> tabs[page].name },
         ) { page ->
@@ -122,7 +129,7 @@ private fun GroupHomeAnimatedTabs(
     val selectedIndex = pagePosition.roundToInt()
 
     BoxWithConstraints(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
         val tabWidth = maxWidth / tabs.size
         val lowerPage = floor(pagePosition).toInt().coerceIn(0, tabs.lastIndex)
