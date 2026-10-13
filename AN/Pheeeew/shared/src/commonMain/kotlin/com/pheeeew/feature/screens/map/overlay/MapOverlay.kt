@@ -14,11 +14,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -99,8 +96,8 @@ fun MapOverlay(
         onEmotionSelectorToggle()
     }
     val promptBottomPadding = 190.dp + MAP_BOTTOM_BAR_LIFT
-    val locationBottomPadding =
-        MAP_CONTROL_BOTTOM_SPACE + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // The 112.dp bubble starts at 140.dp inside its 260.dp cluster, leaving 8.dp below it.
+    val locationBottomPadding = MAP_CONTROL_BOTTOM_SPACE + 8.dp
     val promptTranslationY by
         animateFloatAsState(
             targetValue = if (isEmotionSelectorExpanded) -90f else 0f,
