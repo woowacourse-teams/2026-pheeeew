@@ -1,9 +1,16 @@
 package com.pheeeew
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -30,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
@@ -250,6 +259,8 @@ private fun AppContent(
             )
         }
     val nearbyState by nearbyViewModel.state.collectAsState()
+    var mapPageOffset by remember { mutableStateOf(0f) }
+    var isMapCameraMoving by remember { mutableStateOf(false) }
     var nearbyMapControlHeight by remember { mutableStateOf(0.dp) }
     LaunchedEffect(nearbyState.visible, mapViewModel) {
         if (!nearbyState.visible) mapViewModel.clearFocusedEmotion()
@@ -385,6 +396,7 @@ private fun AppContent(
                     if (recordViewport.value != viewport) recordViewport.value = viewport
                 },
                 onViewportChanged = mapViewModel::onViewportChanged,
+                onCameraMovingChanged = { isMapCameraMoving = it },
                 onEmotionPinClick = { id ->
                     highlightedEmotion = null
                     highlightedPinPosition.value = null
@@ -409,7 +421,7 @@ private fun AppContent(
                 onMapBackgroundClick = { if (nearbyState.visible) nearbyViewModel.dismiss() },
                 onHighlightedPinPositionChanged = { highlightedPinPosition.value = it },
                 onContentPresented = mapViewModel::contentPresented,
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().graphicsLayer { translationX = mapPageOffset * size.width },
             )
         }
 
@@ -543,8 +555,14 @@ private fun AppContent(
         var isGroupDetailVisible by remember { mutableStateOf(false) }
         var isGroupCreateVisible by remember { mutableStateOf(false) }
         var refreshGroup by remember { mutableStateOf<(() -> Unit)?>(null) }
-        var refreshRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
+        var refreshStampRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
+        var refreshPressRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
         var rankingDestination by remember { mutableStateOf(RankingBottomNavigationDestination.Stamp) }
+        val refreshRanking =
+            when (rankingDestination) {
+                RankingBottomNavigationDestination.Stamp -> refreshStampRanking
+                RankingBottomNavigationDestination.Press -> refreshPressRanking
+            }
         var previousMainDestination by remember { mutableStateOf(AppDestination.Map) }
         LaunchedEffect(selectedDestination) {
             if (selectedDestination != AppDestination.Ranking) {
@@ -565,21 +583,17 @@ private fun AppContent(
                 modifier = Modifier.fillMaxSize(),
             ) {
                 composable<MapRootDestination>(
-                    enterTransition = {
-                        if (initialState.destination.hasRoute<RankingRootDestination>()) {
-                            slideInHorizontally(tween(300)) { -it }
-                        } else {
-                            null
-                        }
-                    },
-                    exitTransition = {
-                        if (targetState.destination.hasRoute<RankingRootDestination>()) {
-                            slideOutHorizontally(tween(300)) { -it }
-                        } else {
-                            null
-                        }
-                    },
+                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
                 ) {
+                    // Keep the persistent native map in step with its Compose overlay.
+                    val pageOffset by transition.animateFloat(
+                        transitionSpec = { tween(300) },
+                        label = "nativeMapPageOffset",
+                    ) { state -> if (state == EnterExitState.Visible) 0f else -1f }
+                    SideEffect { mapPageOffset = pageOffset }
                     Box(modifier = Modifier.fillMaxSize()) {
                         MapScreen(
                             viewModel = mapViewModel,
@@ -596,6 +610,7 @@ private fun AppContent(
                                     !isSettingsVisible && reportTarget == null,
                             onListClick = nearbyViewModel::toggle,
                             nearbyMapControlHeight = nearbyMapControlHeight,
+                            isMapCameraMoving = isMapCameraMoving,
                             onSettingClick = { isSettingsVisible = true },
                             onEmotionBubbleClick = {},
                             locationPermissionController = locationDependencies.permissionController,
@@ -656,20 +671,10 @@ private fun AppContent(
                 }
 
                 composable<GroupRootDestination>(
-                    enterTransition = {
-                        if (initialState.destination.hasRoute<RankingRootDestination>()) {
-                            slideInHorizontally(tween(300)) { -it }
-                        } else {
-                            null
-                        }
-                    },
-                    exitTransition = {
-                        if (targetState.destination.hasRoute<RankingRootDestination>()) {
-                            slideOutHorizontally(tween(300)) { -it }
-                        } else {
-                            null
-                        }
-                    },
+                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
                 ) {
                     CompositionLocalProvider(
                         LocalProductMonitoringVisible provides
@@ -688,7 +693,12 @@ private fun AppContent(
                     }
                 }
 
-                composable<PressRootDestination> {
+                composable<PressRootDestination>(
+                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                ) {
                     PressRoute(
                         repository = apiDependencies.appSession.pressRepository,
                         modifier = Modifier.fillMaxSize(),
@@ -696,24 +706,10 @@ private fun AppContent(
                 }
 
                 composable<RankingRootDestination>(
-                    enterTransition = {
-                        if (initialState.destination.hasRoute<GroupRootDestination>() ||
-                            initialState.destination.hasRoute<MapRootDestination>()
-                        ) {
-                            slideInHorizontally(tween(300)) { it }
-                        } else {
-                            null
-                        }
-                    },
-                    exitTransition = {
-                        if (targetState.destination.hasRoute<GroupRootDestination>() ||
-                            targetState.destination.hasRoute<MapRootDestination>()
-                        ) {
-                            slideOutHorizontally(tween(300)) { it }
-                        } else {
-                            null
-                        }
-                    },
+                    enterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    exitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
+                    popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
+                    popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
                 ) { entry ->
                     val openGroupDetail: (String) -> Unit = { groupId ->
                         if (navController.currentBackStackEntry == entry) {
@@ -722,24 +718,46 @@ private fun AppContent(
                             }
                         }
                     }
-                    CompositionLocalProvider(
-                        LocalProductMonitoringVisible provides
-                            (!isSettingsVisible && reportTarget == null),
-                    ) {
-                        if (rankingDestination == RankingBottomNavigationDestination.Stamp) {
-                            WeeklyRankingRoute(
-                                apiClient = apiDependencies.client,
-                                onGroupClick = openGroupDetail,
-                                modifier = Modifier.fillMaxSize(),
-                                onRefreshActionChanged = { refreshRanking = it },
-                            )
-                        } else {
-                            PressRankingRoute(
-                                apiClient = apiDependencies.client,
-                                onGroupClick = openGroupDetail,
-                                modifier = Modifier.fillMaxSize(),
-                                onRefreshActionChanged = { refreshRanking = it },
-                            )
+                    AnimatedContent(
+                        targetState = rankingDestination,
+                        modifier = Modifier.fillMaxSize(),
+                        transitionSpec = {
+                            val direction =
+                                if (targetState == RankingBottomNavigationDestination.Press) {
+                                    AnimatedContentTransitionScope.SlideDirection.Left
+                                } else {
+                                    AnimatedContentTransitionScope.SlideDirection.Right
+                                }
+                            (
+                                slideIntoContainer(direction, tween(300)) togetherWith
+                                    slideOutOfContainer(direction, tween(300))
+                            ).using(null)
+                        },
+                        label = "rankingTabTransition",
+                    ) { destination ->
+                        CompositionLocalProvider(
+                            LocalProductMonitoringVisible provides
+                                (destination == rankingDestination && !isSettingsVisible && reportTarget == null),
+                        ) {
+                            when (destination) {
+                                RankingBottomNavigationDestination.Stamp -> {
+                                    WeeklyRankingRoute(
+                                        apiClient = apiDependencies.client,
+                                        onGroupClick = openGroupDetail,
+                                        modifier = Modifier.fillMaxSize(),
+                                        onRefreshActionChanged = { refreshStampRanking = it },
+                                    )
+                                }
+
+                                RankingBottomNavigationDestination.Press -> {
+                                    PressRankingRoute(
+                                        apiClient = apiDependencies.client,
+                                        onGroupClick = openGroupDetail,
+                                        modifier = Modifier.fillMaxSize(),
+                                        onRefreshActionChanged = { refreshPressRanking = it },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -913,3 +931,32 @@ private fun RequiredUpdateDialog(
 
 private const val VERSION_CHECK_TIMEOUT_MILLIS = 10_000L
 private const val MAP_INACTIVE_RELEASE_DELAY_MILLIS = 30_000L
+
+private fun androidx.navigation.NavDestination.rootTabIndex(): Int? =
+    when {
+        hasRoute<MapRootDestination>() -> 0
+        hasRoute<PressRootDestination>() -> 1
+        hasRoute<GroupRootDestination>() -> 2
+        hasRoute<RankingRootDestination>() -> 3
+        else -> null
+    }
+
+private fun rootTabEnterTransition(
+    from: androidx.navigation.NavDestination,
+    to: androidx.navigation.NavDestination,
+): EnterTransition? {
+    val fromIndex = from.rootTabIndex() ?: return null
+    val toIndex = to.rootTabIndex() ?: return null
+    if (fromIndex == toIndex) return EnterTransition.None
+    return slideInHorizontally(tween(300)) { width -> if (toIndex > fromIndex) width else -width }
+}
+
+private fun rootTabExitTransition(
+    from: androidx.navigation.NavDestination,
+    to: androidx.navigation.NavDestination,
+): ExitTransition? {
+    val fromIndex = from.rootTabIndex() ?: return null
+    val toIndex = to.rootTabIndex() ?: return null
+    if (fromIndex == toIndex) return ExitTransition.None
+    return slideOutHorizontally(tween(300)) { width -> if (toIndex > fromIndex) -width else width }
+}

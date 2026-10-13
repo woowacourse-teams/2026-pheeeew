@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.map.renderer
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -32,6 +33,7 @@ internal actual fun NativeMap(
     onMapRecovered: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapViewport) -> Unit,
+    onCameraMovingChanged: (Boolean) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
     onRegionClusterClick: (String) -> Unit,
     onMapBackgroundClick: () -> Unit,
@@ -39,6 +41,11 @@ internal actual fun NativeMap(
     onContentPresented: (String, List<String>) -> Unit,
     modifier: Modifier,
 ) {
+    val currentOnCameraMovingChanged by rememberUpdatedState(onCameraMovingChanged)
+    DisposableEffect(isVisible, isMounted) {
+        if (!isVisible || !isMounted) currentOnCameraMovingChanged(false)
+        onDispose { currentOnCameraMovingChanged(false) }
+    }
     val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
     val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
@@ -77,6 +84,8 @@ internal actual fun NativeMap(
     val eventSink =
         remember {
             object : FoundationIosMapEventSink {
+                override fun onCameraMovingChanged(isMoving: Boolean) = currentOnCameraMovingChanged(isMoving)
+
                 override fun onCameraSaved(camera: MapCameraSnapshotUiModel) = currentOnCameraSaved(camera)
 
                 override fun onHighlightedPinPositionChanged(position: HighlightedPinPosition?) {

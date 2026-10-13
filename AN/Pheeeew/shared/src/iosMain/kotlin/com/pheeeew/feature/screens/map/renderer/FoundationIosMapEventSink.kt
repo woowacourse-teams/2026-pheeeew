@@ -5,6 +5,8 @@ import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 
 interface FoundationIosMapEventSink {
+    fun onCameraMovingChanged(isMoving: Boolean)
+
     fun onCameraSaved(camera: MapCameraSnapshotUiModel)
 
     fun onHighlightedPinPositionChanged(position: HighlightedPinPosition?)

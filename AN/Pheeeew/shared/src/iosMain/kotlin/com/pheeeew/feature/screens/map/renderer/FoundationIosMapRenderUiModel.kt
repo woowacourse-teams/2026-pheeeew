@@ -1,5 +1,11 @@
 package com.pheeeew.feature.screens.map.renderer
 
+import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.cinterop.addressOf
+import kotlinx.cinterop.usePinned
+import platform.Foundation.NSData
+import platform.Foundation.create
+
 data class FoundationIosMapRenderUiModel(
     val isVisible: Boolean,
     val restoredCamera: MapCameraSnapshotUiModel?,
@@ -40,7 +46,16 @@ data class FoundationIosMapSymbolImageUiModel(
     val width: Int,
     val height: Int,
     val rgba: ByteArray,
-)
+) {
+    /** Copy while pinned: the returned data owns its bytes after Kotlin unpins the array. */
+    @OptIn(ExperimentalForeignApi::class)
+    fun copyRgbaData(): NSData =
+        if (rgba.isEmpty()) {
+            NSData()
+        } else {
+            rgba.usePinned { NSData.create(bytes = it.addressOf(0), length = rgba.size.toULong()) }
+        }
+}
 
 data class FoundationIosRegionClusterCoordinateUiModel(
     val id: String,

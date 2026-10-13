@@ -20,6 +20,13 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private var lastRegionClusterCoordinates: [FoundationIosRegionClusterCoordinateUiModel]?
     private let recordStampLayer = FoundationRecordStampLayer()
     private let recordRangeLayer = FoundationRecordRangeLayer()
+    // Reuse converted icons across pin/cluster round trips; cost is bounded to 8 MiB.
+    private let symbolImageCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.totalCostLimit = 8 * 1024 * 1024
+        cache.countLimit = 128
+        return cache
+    }()
     private var lastEmotionPinImageKeys = Set<String>()
     private var lastEmotionPinCoordinates: [FoundationIosEmotionPinCoordinateUiModel]?
     private var lastEmotionPinMonitoringLoadId: String?
@@ -66,7 +73,9 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            guard let self, self.pendingState?.isVisible == false else { return }
+            guard let self else { return }
+            self.symbolImageCache.removeAllObjects()
+            guard self.pendingState?.isVisible == false else { return }
             self.eventSink.onMemoryPressure()
         }
     }
@@ -136,6 +145,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         emotionPinSource = nil
         regionClusterSource = nil
         lastRegionClusterCoordinates = nil
+        symbolImageCache.removeAllObjects()
         lastEmotionPinImageKeys.removeAll()
         lastEmotionPinCoordinates = nil
         lastEmotionPinMonitoringLoadId = nil
@@ -297,7 +307,12 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         publishViewportIfReady()
     }
 
+    func mapView(_ mapView: MLNMapView, regionWillChangeAnimated animated: Bool) {
+        eventSink.onCameraMovingChanged(isMoving: true)
+    }
+
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
+        eventSink.onCameraMovingChanged(isMoving: false)
         publishRecordViewport()
         publishViewportIfReady()
     }
@@ -494,7 +509,16 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private func registerSymbolImages(_ state: FoundationIosMapRenderUiModel) {
         guard let style = mapView.style else { return }
         for image in state.emotionPinSymbolImages where !lastEmotionPinImageKeys.contains(image.key) {
-            guard let uiImage = image.toUIImage(scale: mapView.window?.screen.scale ?? UIScreen.main.scale) else { continue }
+            let scale = mapView.window?.screen.scale ?? UIScreen.main.scale
+            let cacheKey = "\(image.key)@\(scale)" as NSString
+            let uiImage: UIImage
+            if let cached = symbolImageCache.object(forKey: cacheKey) {
+                uiImage = cached
+            } else {
+                guard let converted = image.toUIImage(scale: scale) else { continue }
+                uiImage = converted
+                symbolImageCache.setObject(converted, forKey: cacheKey, cost: Int(image.width) * Int(image.height) * 4)
+            }
             style.setImage(uiImage, forName: image.key)
             lastEmotionPinImageKeys.insert(image.key)
         }
@@ -655,12 +679,9 @@ private extension FoundationIosMapSymbolImageUiModel {
         let byteCount = imageWidth * imageHeight * 4
         guard imageWidth > 0, imageHeight > 0, rgba.size == Int32(byteCount) else { return nil }
 
-        var pixelBytes = Data(count: byteCount)
+        var pixelBytes = doCopyRgbaData() as Data
         pixelBytes.withUnsafeMutableBytes { buffer in
             guard let baseAddress = buffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
-            for index in 0..<byteCount {
-                baseAddress[index] = UInt8(bitPattern: rgba.get(index: Int32(index)))
-            }
             for index in stride(from: 0, to: byteCount, by: 4) {
                 let alpha = UInt16(baseAddress[index + 3])
                 baseAddress[index] = UInt8((UInt16(baseAddress[index]) * alpha + 127) / 255)

@@ -77,6 +77,7 @@ internal actual fun NativeMap(
     onMapRecovered: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapViewport) -> Unit,
+    onCameraMovingChanged: (Boolean) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
     onRegionClusterClick: (String) -> Unit,
     onMapBackgroundClick: () -> Unit,
@@ -89,6 +90,11 @@ internal actual fun NativeMap(
     val density = LocalDensity.current
     val statusBarInset = WindowInsets.statusBars.getTop(density)
     val navigationBarInset = WindowInsets.navigationBars.getBottom(density)
+    val currentOnCameraMovingChanged by rememberUpdatedState(onCameraMovingChanged)
+    DisposableEffect(isVisible, isMounted) {
+        if (!isVisible || !isMounted) currentOnCameraMovingChanged(false)
+        onDispose { currentOnCameraMovingChanged(false) }
+    }
     val currentIsVisible by rememberUpdatedState(isVisible)
     val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
@@ -121,6 +127,7 @@ internal actual fun NativeMap(
                         onMapRecovered = currentOnMapRecovered,
                         onRecordViewportChanged = onRecordViewportChanged,
                         onViewportChanged = onViewportChanged,
+                        onCameraMovingChanged = { currentOnCameraMovingChanged(it) },
                         onEmotionPinClick = { currentOnEmotionPinClick(it) },
                         onRegionClusterClick = { currentOnRegionClusterClick(it) },
                         onMapBackgroundClick = { currentOnMapBackgroundClick() },
@@ -180,6 +187,7 @@ private class AndroidFoundationMapHost(
     private val onMapRecovered: () -> Unit,
     private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     private val onViewportChanged: (EmotionMapViewport) -> Unit,
+    private val onCameraMovingChanged: (Boolean) -> Unit,
     private val onEmotionPinClick: (Long) -> Unit,
     private val onRegionClusterClick: (String) -> Unit,
     private val onMapBackgroundClick: () -> Unit,
@@ -307,6 +315,7 @@ private class AndroidFoundationMapHost(
             applyCompassMargins()
             applyAttributionMargins()
             readyMap.addOnCameraMoveStartedListener { reason ->
+                onCameraMovingChanged(true)
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE && didSetInitialCamera) {
                     initialCameraUsedFallback = false
                 }
@@ -317,6 +326,7 @@ private class AndroidFoundationMapHost(
                 publishRecordViewport()
             }
             readyMap.addOnCameraIdleListener {
+                onCameraMovingChanged(false)
                 saveCamera()
                 publishRecordViewport()
                 publishViewport()

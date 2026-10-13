@@ -1,7 +1,11 @@
 package com.pheeeew.feature.screens.map.overlay
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,11 +14,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -24,7 +25,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -77,10 +81,23 @@ fun MapOverlay(
     modifier: Modifier = Modifier,
     showNavigationButtons: Boolean = true,
     nearbyMapControlHeight: Dp = 0.dp,
+    isMapCameraMoving: Boolean = false,
 ) {
+    val scope = rememberCoroutineScope()
+    val promptVisibility = remember(scope) { MapPromptVisibilityState(scope) }
+    LaunchedEffect(isMapCameraMoving) {
+        promptVisibility.onCameraMovingChanged(isMapCameraMoving)
+    }
+    LaunchedEffect(isEmotionSelectorExpanded) {
+        if (isEmotionSelectorExpanded) promptVisibility.reset()
+    }
+    val toggleEmotionSelector = {
+        promptVisibility.reset()
+        onEmotionSelectorToggle()
+    }
     val promptBottomPadding = 190.dp + MAP_BOTTOM_BAR_LIFT
-    val locationBottomPadding =
-        MAP_CONTROL_BOTTOM_SPACE + WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // The 112.dp bubble starts at 140.dp inside its 260.dp cluster, leaving 8.dp below it.
+    val locationBottomPadding = MAP_CONTROL_BOTTOM_SPACE + 8.dp
     val promptTranslationY by
         animateFloatAsState(
             targetValue = if (isEmotionSelectorExpanded) -90f else 0f,
@@ -103,14 +120,21 @@ fun MapOverlay(
                     .statusBarsPadding()
                     .padding(16.dp),
         ) {
-            EmotionPromptLabel(
-                isExpanded = isEmotionSelectorExpanded,
+            AnimatedVisibility(
+                visible = isEmotionSelectorExpanded || (!isMapCameraMoving && !promptVisibility.isHidden),
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(250)),
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
                         .padding(bottom = promptBottomPadding)
                         .graphicsLayer { translationY = promptTranslationY.dp.toPx() },
-            )
+                label = "emotionPromptVisibility",
+            ) {
+                EmotionPromptLabel(
+                    isExpanded = isEmotionSelectorExpanded,
+                )
+            }
 
             if (!isMapError && !isEmotionSelectorExpanded) {
                 MapControlButton(
@@ -204,7 +228,7 @@ fun MapOverlay(
                             interactionSource = null,
                             indication = null,
                             onClickLabel = "감정 선택 닫기",
-                            onClick = onEmotionSelectorToggle,
+                            onClick = toggleEmotionSelector,
                         ),
             )
         }
@@ -219,7 +243,7 @@ fun MapOverlay(
             ) {
                 EmotionBubbleCluster(
                     isExpanded = isEmotionSelectorExpanded,
-                    onToggle = onEmotionSelectorToggle,
+                    onToggle = toggleEmotionSelector,
                     onEmotionClick = onEmotionBubbleClick,
                     modifier =
                         Modifier

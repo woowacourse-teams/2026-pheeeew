@@ -103,6 +103,7 @@ fun MapScreen(
     onDismissDetailError: () -> Unit = {},
     monitoringVisible: Boolean = true,
     nearbyMapControlHeight: Dp = 0.dp,
+    isMapCameraMoving: Boolean = false,
 ) {
     LaunchedEffect(viewModel) {
         viewModel.start()
@@ -339,6 +340,7 @@ fun MapScreen(
             onSettingClick = onSettingClick,
             onFilterClick = viewModel::openFilter,
             nearbyMapControlHeight = nearbyMapControlHeight,
+            isMapCameraMoving = isMapCameraMoving,
             onEmotionSelectorToggle = viewModel::onEmotionSelectorToggle,
             onEmotionBubbleClick = { emotion ->
                 if (!isRequestingBubblePermission) {
@@ -573,6 +575,7 @@ internal fun MapScreenContent(
     onRecordPreviewScaleChanged: (Float) -> Unit = {},
     feedbackContent: @Composable () -> Unit = {},
     nearbyMapControlHeight: Dp = 0.dp,
+    isMapCameraMoving: Boolean = false,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         mapContent(
@@ -587,6 +590,7 @@ internal fun MapScreenContent(
                 onSettingClick = onSettingClick,
                 onFilterClick = onFilterClick,
                 nearbyMapControlHeight = nearbyMapControlHeight,
+                isMapCameraMoving = isMapCameraMoving,
                 isEmotionSelectorExpanded = uiModel.isEmotionSelectorExpanded,
                 onEmotionSelectorToggle = onEmotionSelectorToggle,
                 onEmotionBubbleClick = onEmotionBubbleClick,
