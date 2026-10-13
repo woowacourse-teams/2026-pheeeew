@@ -3,11 +3,52 @@ package com.pheeeew.data.cache
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionRegion
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
+import com.pheeeew.domain.model.emotion.MapFilterContent
+import com.pheeeew.domain.model.emotion.MapFilterPeriod
+import com.pheeeew.domain.model.emotion.MapFilterScope
+import com.pheeeew.domain.model.emotion.MapFilterSettings
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class EmotionRegionMapCacheTest {
+    @Test
+    fun `날짜 내용 범위 그룹이 다른 요약은 섞이지 않고 새로고침은 모든 필터를 무효화한다`() {
+        val cache = EmotionRegionMapCache(maxRegions = 8)
+        val filters =
+            listOf(
+                MapFilterSettings(),
+                MapFilterSettings(period = MapFilterPeriod.ALL),
+                MapFilterSettings(content = MapFilterContent.MEMO),
+                MapFilterSettings(content = MapFilterContent.AUDIO),
+                MapFilterSettings(scope = MapFilterScope.MY),
+                MapFilterSettings(scope = MapFilterScope.GROUP, groupId = "a"),
+                MapFilterSettings(scope = MapFilterScope.GROUP, groupId = "b"),
+            ).map { it.toSearchFilter() }
+        filters.forEachIndexed { index, filter ->
+            assertNull(cache.snapshot(bounds, EmotionRegionLevel.SIDO, filter.groupId, filter))
+            cache.put(
+                bounds,
+                EmotionRegionLevel.SIDO,
+                filter.groupId,
+                regions.map { it.copy(count = index + 1L) },
+                filter,
+            )
+        }
+        filters.forEachIndexed { index, filter ->
+            assertEquals(
+                index + 1L,
+                cache.snapshot(bounds, EmotionRegionLevel.SIDO, filter.groupId, filter)?.single()?.count,
+            )
+        }
+        cache.invalidateGroup(null)
+        filters.filter { it.groupId == null }.forEach { filter ->
+            assertNull(cache.snapshot(bounds, EmotionRegionLevel.SIDO, null, filter))
+        }
+        assertEquals(6L, cache.snapshot(bounds, EmotionRegionLevel.SIDO, "a", filters[5])?.single()?.count)
+        assertEquals(7L, cache.snapshot(bounds, EmotionRegionLevel.SIDO, "b", filters[6])?.single()?.count)
+    }
+
     private val bounds = EmotionMapBounds(126.9, 37.5, 127.1, 37.6)
 
     // The server may return display points outside the viewport.

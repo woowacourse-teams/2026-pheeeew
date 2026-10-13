@@ -3,6 +3,7 @@ package com.pheeeew.domain.usecase
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.domain.model.emotion.EmotionRegionResult
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.repository.EmotionRegionMapRepository
 
 class FindEmotionRegionsUseCase(
@@ -13,8 +14,9 @@ class FindEmotionRegionsUseCase(
         level: EmotionRegionLevel,
         groupId: String? = null,
         forceRefresh: Boolean = false,
+        filter: EmotionSearchFilter? = null,
     ): EmotionRegionResult {
         if (!bounds.isValid()) return EmotionRegionResult.Failure
-        return repository.findRegions(bounds, level, groupId, forceRefresh)
+        return repository.findRegions(bounds, level, groupId, forceRefresh, filter)
     }
 }

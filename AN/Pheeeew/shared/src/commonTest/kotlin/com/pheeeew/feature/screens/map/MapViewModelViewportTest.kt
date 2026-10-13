@@ -16,6 +16,7 @@ import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.domain.model.emotion.EmotionRegion
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.domain.model.emotion.EmotionRegionResult
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.MapFilterPeriod
 import com.pheeeew.domain.model.emotion.MapFilterSettings
@@ -1272,6 +1273,7 @@ class MapViewModelViewportTest {
 
     private fun regionRepository(
         snapshot: (EmotionMapBounds, EmotionRegionLevel) -> List<EmotionRegion>? = { _, _ -> null },
+        onFilter: (EmotionSearchFilter?) -> Unit = {},
         find: suspend (EmotionMapBounds, EmotionRegionLevel, Boolean) -> EmotionRegionResult,
     ): EmotionRegionMapRepository =
         object : EmotionRegionMapRepository {
@@ -1280,12 +1282,17 @@ class MapViewModelViewportTest {
                 level: EmotionRegionLevel,
                 groupId: String?,
                 forceRefresh: Boolean,
-            ) = find(bounds, level, forceRefresh)
+                filter: EmotionSearchFilter?,
+            ): EmotionRegionResult {
+                onFilter(filter)
+                return find(bounds, level, forceRefresh)
+            }
 
             override fun findSnapshot(
                 bounds: EmotionMapBounds,
                 level: EmotionRegionLevel,
                 groupId: String?,
+                filter: EmotionSearchFilter?,
             ) = snapshot(bounds, level)
         }
 

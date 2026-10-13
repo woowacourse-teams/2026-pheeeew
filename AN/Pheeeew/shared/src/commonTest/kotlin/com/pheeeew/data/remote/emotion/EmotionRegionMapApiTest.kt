@@ -9,6 +9,11 @@ import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.domain.model.emotion.EmotionRegionResult
 import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.model.emotion.MapFilterContent
+import com.pheeeew.domain.model.emotion.MapFilterPeriod
+import com.pheeeew.domain.model.emotion.MapFilterScope
+import com.pheeeew.domain.model.emotion.MapFilterSettings
+import com.pheeeew.domain.model.emotion.SearchDate
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
@@ -19,6 +24,89 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class EmotionRegionMapApiTest {
+    @Test
+    fun `필터를 집계 요청에 전달하고 다른 필터의 캐시를 재사용하지 않는다`() =
+        runTest {
+            val today = SearchDate(2026, 10, 13)
+            val filters =
+                listOf(
+                    MapFilterSettings().toSearchFilter(today),
+                    MapFilterSettings(period = MapFilterPeriod.ALL).toSearchFilter(today),
+                    MapFilterSettings(scope = MapFilterScope.MY, content = MapFilterContent.MEMO).toSearchFilter(today),
+                    MapFilterSettings(
+                        scope = MapFilterScope.GROUP,
+                        groupId = "group",
+                        content = MapFilterContent.AUDIO,
+                    ).toSearchFilter(today),
+                )
+            val expectedQueries =
+                listOf(
+                    mapOf(
+                        "startDate" to "2026-09-13",
+                        "endDate" to "2026-10-13",
+                        "contentType" to "ALL",
+                        "scope" to "ALL",
+                    ),
+                    mapOf("contentType" to "ALL", "scope" to "ALL"),
+                    mapOf(
+                        "startDate" to "2026-09-13",
+                        "endDate" to "2026-10-13",
+                        "contentType" to "MEMO",
+                        "scope" to "MY",
+                    ),
+                    mapOf(
+                        "startDate" to "2026-09-13",
+                        "endDate" to "2026-10-13",
+                        "contentType" to "AUDIO",
+                        "scope" to "GROUP",
+                        "groupId" to "group",
+                    ),
+                )
+            var calls = 0
+            val client =
+                createApiClient(
+                    engine =
+                        MockEngine { request ->
+                            val expected = expectedQueries[calls++]
+                            assertEquals(
+                                expected,
+                                request.url.parameters
+                                    .entries()
+                                    .filter {
+                                        it.key in
+                                            setOf(
+                                                "startDate",
+                                                "endDate",
+                                                "contentType",
+                                                "scope",
+                                                "groupId",
+                                            )
+                                    }.associate { it.key to it.value.single() },
+                            )
+                            respond("[]", headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                        },
+                    config = ApiConfig("https://api-dev.pheeeew.com"),
+                    accessTokenProvider = AccessTokenProvider { AccessToken("test-token") },
+                )
+            try {
+                val repository = EmotionRegionMapRepositoryImpl(EmotionRegionMapApi(client.requests))
+                val area = EmotionMapBounds(126.9, 37.5, 127.1, 37.6)
+                filters.forEach { filter ->
+                    assertIs<EmotionRegionResult.Success>(
+                        repository.findRegions(area, EmotionRegionLevel.SIDO, filter = filter),
+                    )
+                }
+                filters.forEach { filter ->
+                    assertIs<EmotionRegionResult.Success>(
+                        repository.findRegions(area, EmotionRegionLevel.SIDO, filter = filter),
+                    )
+                }
+                assertEquals(4, calls)
+            } finally {
+                client.close()
+            }
+        }
+
     @Test
     fun `확대와 작은 이동 및 계층 왕복은 조회 영역 캐시를 재사용한다`() =
         runTest {
