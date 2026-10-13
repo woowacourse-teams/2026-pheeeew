@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -101,6 +102,7 @@ fun MapScreen(
     onRetryDetail: () -> Unit = {},
     onDismissDetailError: () -> Unit = {},
     monitoringVisible: Boolean = true,
+    nearbyMapControlHeight: Dp = 0.dp,
 ) {
     LaunchedEffect(viewModel) {
         viewModel.start()
@@ -336,6 +338,7 @@ fun MapScreen(
             onListClick = onListClick,
             onSettingClick = onSettingClick,
             onFilterClick = viewModel::openFilter,
+            nearbyMapControlHeight = nearbyMapControlHeight,
             onEmotionSelectorToggle = viewModel::onEmotionSelectorToggle,
             onEmotionBubbleClick = { emotion ->
                 if (!isRequestingBubblePermission) {
@@ -569,6 +572,7 @@ internal fun MapScreenContent(
     onRecordCoordinateSelected: (Double, Double) -> Unit = { _, _ -> },
     onRecordPreviewScaleChanged: (Float) -> Unit = {},
     feedbackContent: @Composable () -> Unit = {},
+    nearbyMapControlHeight: Dp = 0.dp,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         mapContent(
@@ -582,6 +586,7 @@ internal fun MapScreenContent(
                 onListClick = onListClick,
                 onSettingClick = onSettingClick,
                 onFilterClick = onFilterClick,
+                nearbyMapControlHeight = nearbyMapControlHeight,
                 isEmotionSelectorExpanded = uiModel.isEmotionSelectorExpanded,
                 onEmotionSelectorToggle = onEmotionSelectorToggle,
                 onEmotionBubbleClick = onEmotionBubbleClick,

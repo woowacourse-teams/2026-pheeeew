@@ -26,6 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -38,8 +39,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.theme.AppTheme
@@ -54,14 +58,25 @@ internal fun NearbySheetLayout(
     onExpandedChange: (Boolean) -> Unit,
     onDismiss: () -> Unit,
     onInteraction: () -> Unit = {},
+    onMapControlHeightChanged: (Dp) -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+    var bottomInRootPx by remember { mutableFloatStateOf(0f) }
+    val latestOnMapControlHeightChanged by rememberUpdatedState(onMapControlHeightChanged)
+    Box(
+        Modifier.fillMaxSize().onGloballyPositioned {
+            bottomInRootPx = it.positionInRoot().y + it.size.height
+        },
+        contentAlignment = Alignment.BottomCenter,
+    ) {
         AnimatedVisibility(
             visible = visible,
             enter = slideInVertically(tween(260)) { it },
             exit = slideOutVertically(tween(220)) { it },
         ) {
+            DisposableEffect(Unit) {
+                onDispose { latestOnMapControlHeightChanged(0.dp) }
+            }
             BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
                 val density = LocalDensity.current
                 val availableHeightPx = constraints.maxHeight.toFloat()
@@ -131,7 +146,13 @@ internal fun NearbySheetLayout(
                         Modifier
                             .fillMaxWidth()
                             .height(with(density) { (availableHeightPx - offset).coerceAtLeast(0f).toDp() })
-                            .pointerInput(Unit) {
+                            .onGloballyPositioned {
+                                val visibleHeightPx = bottomInRootPx - it.positionInRoot().y
+                                val maxControlHeightPx = availableHeightPx - middleOffset
+                                latestOnMapControlHeightChanged(
+                                    with(density) { visibleHeightPx.coerceIn(0f, maxControlHeightPx).toDp() },
+                                )
+                            }.pointerInput(Unit) {
                                 awaitEachGesture {
                                     val down =
                                         awaitFirstDown(

@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -74,6 +75,7 @@ fun NearbyEmotionSheet(
     monitoringVisible: Boolean = true,
     onSheetInteraction: () -> Unit = {},
     focusedEmotionId: Long? = null,
+    onMapControlHeightChanged: (Dp) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     var expanded by remember(state.visible) { mutableStateOf(false) }
@@ -201,6 +203,7 @@ fun NearbyEmotionSheet(
         onExpandedChange = { expanded = it },
         onDismiss = viewModel::dismiss,
         onInteraction = onSheetInteraction,
+        onMapControlHeightChanged = onMapControlHeightChanged,
     ) {
         NearbySheetHeader(
             loading = state.loading,

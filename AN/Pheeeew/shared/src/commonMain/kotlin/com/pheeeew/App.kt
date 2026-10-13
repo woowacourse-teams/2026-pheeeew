@@ -248,6 +248,7 @@ private fun AppContent(
             )
         }
     val nearbyState by nearbyViewModel.state.collectAsState()
+    var nearbyMapControlHeight by remember { mutableStateOf(0.dp) }
     LaunchedEffect(nearbyState.visible, mapViewModel) {
         if (!nearbyState.visible) mapViewModel.clearFocusedEmotion()
     }
@@ -563,6 +564,7 @@ private fun AppContent(
                                 !nearbyState.visible && detailState == EmotionDetailLoadUiModel.Closed &&
                                     !isSettingsVisible && reportTarget == null,
                             onListClick = nearbyViewModel::toggle,
+                            nearbyMapControlHeight = nearbyMapControlHeight,
                             onSettingClick = { isSettingsVisible = true },
                             onEmotionBubbleClick = {},
                             locationPermissionController = locationDependencies.permissionController,
@@ -585,6 +587,7 @@ private fun AppContent(
                             onOpenEmotionOnMap = mapViewModel::focusOnEmotion,
                             onSheetInteraction = mapViewModel::clearFocusedEmotion,
                             focusedEmotionId = mapUiModel.focusedEmotionId,
+                            onMapControlHeightChanged = { nearbyMapControlHeight = it },
                             blockUser = moderation.block,
                             onReportEmotion = { id, stamp ->
                                 nearbyState.items.firstOrNull { it.id == id && !it.isMine }?.let {
