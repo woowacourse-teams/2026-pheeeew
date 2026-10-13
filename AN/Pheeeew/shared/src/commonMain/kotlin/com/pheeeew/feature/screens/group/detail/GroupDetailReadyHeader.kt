@@ -4,7 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,13 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,9 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.group.detail.GroupDetailJoinUiState
@@ -43,11 +38,9 @@ import com.pheeeew.feature.screens.group.detail.model.GroupDetailReadyUiModel
 import com.pheeeew.feature.screens.group.model.GroupJoinType
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.group_detail_code_entry
 import pheeeew.shared.generated.resources.group_detail_invite_code
 import pheeeew.shared.generated.resources.group_detail_join
 import pheeeew.shared.generated.resources.group_detail_join_became_private
-import pheeeew.shared.generated.resources.group_detail_join_check_failed
 import pheeeew.shared.generated.resources.group_detail_join_checking
 import pheeeew.shared.generated.resources.group_detail_join_completed
 import pheeeew.shared.generated.resources.group_detail_join_not_confirmed
@@ -108,61 +101,11 @@ internal fun GroupProfile(
                 }
             }
             if (group.role != GroupRole.NONE && group.inviteCode != null) {
-                Box(
-                    Modifier
-                        .background(Color(0xFFF0F1ED), CircleShape)
-                        .clickable(role = Role.Button, onClick = onInviteClick)
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                ) {
-                    Text(
-                        stringResource(Res.string.group_detail_invite_code),
-                        color = AppColors.GroupInk,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            }
-        }
-        AnimatedVisibility(visible = group.role != GroupRole.NONE) {
-            Column {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = stringResource(Res.string.group_detail_joined),
-                    modifier = Modifier.fillMaxWidth(),
-                    color = AppColors.TextSecondary,
-                    textAlign = TextAlign.Center,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold,
+                GroupDetailActionChip(
+                    text = stringResource(Res.string.group_detail_invite_code),
+                    onClick = onInviteClick,
                 )
-                Spacer(Modifier.height(8.dp))
-            }
-        }
-        if (group.role == GroupRole.NONE) Spacer(Modifier.height(12.dp))
-        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-            GroupStamp(appearance = group.stamp, size = 84.dp)
-        }
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = group.description.orEmpty(),
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 60.dp),
-            color = AppColors.TextSecondary,
-            textAlign = TextAlign.Center,
-            fontSize = 14.sp,
-        )
-        Spacer(Modifier.height(16.dp))
-        Row(
-            Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            GroupVisibilityLabel(group.joinType)
-            AnimatedVisibility(
-                visible =
-                    group.role == GroupRole.NONE && (
-                        group.joinType == GroupJoinType.PUBLIC ||
-                            joinState.phase == GroupDetailJoinPhase.VerificationRequired
-                    ),
-            ) {
+            } else if (group.role == GroupRole.NONE) {
                 GroupDetailJoinCallToAction(onClick = onJoinClick, phase = joinState.phase)
             }
         }
@@ -205,6 +148,40 @@ internal fun GroupProfile(
                 )
             }
         }
+        AnimatedVisibility(visible = group.role != GroupRole.NONE) {
+            Column {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = stringResource(Res.string.group_detail_joined),
+                    modifier = Modifier.fillMaxWidth(),
+                    color = AppColors.TextSecondary,
+                    textAlign = TextAlign.Center,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+        if (group.role == GroupRole.NONE) Spacer(Modifier.height(12.dp))
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            GroupStamp(appearance = group.stamp, size = 84.dp)
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = group.description.orEmpty(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 60.dp),
+            color = AppColors.TextSecondary,
+            textAlign = TextAlign.Center,
+            fontSize = 14.sp,
+        )
+        Spacer(Modifier.height(16.dp))
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            GroupVisibilityLabel(group.joinType)
+        }
     }
 }
 
@@ -239,70 +216,51 @@ private fun GroupVisibilityLabel(joinType: GroupJoinType) {
 internal fun GroupDetailJoinCallToAction(
     onClick: () -> Unit,
     phase: GroupDetailJoinPhase = GroupDetailJoinPhase.Idle,
-    codeEntry: Boolean = false,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
+    val text =
+        stringResource(
+            when (phase) {
+                GroupDetailJoinPhase.Idle -> Res.string.group_detail_join
+                GroupDetailJoinPhase.Submitting -> Res.string.group_detail_join_processing
+                GroupDetailJoinPhase.Checking -> Res.string.group_detail_join_checking
+                GroupDetailJoinPhase.VerificationRequired -> Res.string.group_join_verify_membership
+                GroupDetailJoinPhase.Completed -> Res.string.group_detail_join_completed
+            },
+        )
+    GroupDetailActionChip(
+        text = text,
+        onClick = onClick,
+        enabled = phase == GroupDetailJoinPhase.Idle || phase == GroupDetailJoinPhase.VerificationRequired,
+    )
+}
+
+@Composable
+private fun GroupDetailActionChip(
+    text: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
     Box(
-        modifier =
-            Modifier
-                .height(36.dp)
-                .widthIn(min = 90.dp)
-                .raisedButtonBorder(CircleShape, interactionSource)
-                .clip(CircleShape)
-                .background(AppColors.Primary)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    role = Role.Button,
-                    enabled = phase == GroupDetailJoinPhase.Idle || phase == GroupDetailJoinPhase.VerificationRequired,
-                    onClick = onClick,
-                ).padding(horizontal = 14.dp),
+        Modifier
+            .clip(CircleShape)
+            .background(Color(0xFFF0F1ED))
+            .clickable(role = Role.Button, enabled = enabled, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Crossfade(phase) { currentPhase ->
+        Crossfade(text) { label ->
             Text(
-                text =
-                    stringResource(
-                        when (currentPhase) {
-                            GroupDetailJoinPhase.Idle -> {
-                                if (codeEntry) {
-                                    Res.string.group_detail_code_entry
-                                } else {
-                                    Res.string.group_detail_join
-                                }
-                            }
-
-                            GroupDetailJoinPhase.Submitting -> {
-                                Res.string.group_detail_join_processing
-                            }
-
-                            GroupDetailJoinPhase.Checking -> {
-                                Res.string.group_detail_join_checking
-                            }
-
-                            GroupDetailJoinPhase.VerificationRequired -> {
-                                Res.string.group_join_verify_membership
-                            }
-
-                            GroupDetailJoinPhase.Completed -> {
-                                Res.string.group_detail_join_completed
-                            }
-                        },
-                    ),
-                color = AppColors.TextPrimary,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                fontFamily = notoSansKrFontFamily(),
+                text = label,
+                color = AppColors.GroupInk,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
             )
         }
     }
 }
 
 @Composable
-internal fun GroupDetailPrivateJoinNotice(
-    onJoinClick: () -> Unit,
-    phase: GroupDetailJoinPhase,
-) {
+internal fun GroupDetailPrivateJoinNotice() {
     Column(
         Modifier
             .fillMaxWidth()
@@ -322,7 +280,6 @@ internal fun GroupDetailPrivateJoinNotice(
             fontSize = 12.sp,
             lineHeight = 18.sp,
         )
-        GroupDetailJoinCallToAction(onClick = onJoinClick, phase = phase, codeEntry = true)
     }
 }
 

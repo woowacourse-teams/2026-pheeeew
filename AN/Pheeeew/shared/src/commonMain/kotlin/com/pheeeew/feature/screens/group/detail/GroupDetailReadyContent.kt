@@ -158,7 +158,7 @@ internal fun GroupDetailReadyContent(
                 joinState.phase != GroupDetailJoinPhase.VerificationRequired
             ) {
                 Spacer(Modifier.height(18.dp))
-                GroupDetailPrivateJoinNotice(onJoinClick = onJoinClick, phase = joinState.phase)
+                GroupDetailPrivateJoinNotice()
                 Spacer(Modifier.height(24.dp))
             } else {
                 Spacer(Modifier.height(18.dp))
