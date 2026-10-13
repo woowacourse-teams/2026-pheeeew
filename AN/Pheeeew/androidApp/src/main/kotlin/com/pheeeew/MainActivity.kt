@@ -10,7 +10,7 @@ import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.permission.AndroidAppSettingsLauncher
 import com.pheeeew.data.local.group.AndroidGroupCreateSessionStore
 import com.pheeeew.data.local.group.AndroidLastRecordedGroupRepository
-import com.pheeeew.data.local.mapfilter.AndroidMapFilterSettings
+import com.pheeeew.data.local.mapfilter.SessionMapFilterSettings
 import com.pheeeew.data.location.platform.android.LocationDependenciesHolder
 import com.pheeeew.data.location.platform.android.createAndroidLocationDependencies
 import com.pheeeew.data.remote.version.AppVersionApi
@@ -62,7 +62,7 @@ class MainActivity : ComponentActivity() {
                 permissionSettingsLauncher = appSettingsLauncher,
                 appSettingsLauncher = appSettingsLauncher,
                 apiDependencies = apiDependencies,
-                mapFilterSettingsRepository = AndroidMapFilterSettings.repository(applicationContext),
+                mapFilterSettingsRepository = SessionMapFilterSettings.repository,
             )
         }
     }

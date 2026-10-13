@@ -21,7 +21,6 @@ kotlin = "2.4.10"
 material3 = "1.11.0-alpha07"
 ktor = "3.5.2"
 coroutines = "1.10.2"
-datastore = "1.2.1"
 ktlintGradle = "14.2.0"
 maplibre = "13.6.0"
 play-services-location = "21.3.0"
@@ -63,8 +62,6 @@ ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
-androidx-datastore-core = { module = "androidx.datastore:datastore-core", version.ref = "datastore" }
-androidx-datastore-preferences-core = { module = "androidx.datastore:datastore-preferences-core", version.ref = "datastore" }
 maplibre-android = { module = "org.maplibre.gl:android-sdk-opengl", version.ref = "maplibre" }
 play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "play-services-location" }
 play-integrity = { module = "com.google.android.play:integrity", version.ref = "play-integrity" }
