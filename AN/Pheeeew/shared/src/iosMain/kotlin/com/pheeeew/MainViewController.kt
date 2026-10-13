@@ -6,6 +6,7 @@ import com.pheeeew.core.di.IosApiDependencies
 import com.pheeeew.core.permission.IosAppSettingsLauncher
 import com.pheeeew.data.local.group.IosGroupCreateSessionStore
 import com.pheeeew.data.local.group.IosLastRecordedGroupRepository
+import com.pheeeew.data.local.mapfilter.SessionMapFilterSettings
 import com.pheeeew.data.location.platform.ios.createIosLocationDependencies
 import com.pheeeew.data.remote.version.AppVersionApi
 import com.pheeeew.feature.screens.onboarding.WELCOME_ONBOARDING_COMPLETED_KEY
@@ -31,6 +32,7 @@ fun MainViewController() =
                     IosGroupCreateSessionStore(NSUserDefaults.standardUserDefaults)
                 },
             apiDependencies = apiDependencies,
+            mapFilterSettingsRepository = SessionMapFilterSettings.repository,
             appVersion = NSBundle.mainBundle.infoDictionary?.get("CFBundleShortVersionString") as? String ?: "-",
             appVersionApi = appVersionApi,
             permissionSettingsLauncher = appSettingsLauncher,

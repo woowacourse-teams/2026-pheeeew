@@ -17,9 +17,12 @@ import com.pheeeew.domain.model.emotion.EmotionRegion
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.domain.model.emotion.EmotionRegionResult
 import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.model.emotion.MapFilterPeriod
+import com.pheeeew.domain.model.emotion.MapFilterSettings
 import com.pheeeew.domain.repository.EmotionMapRepository
 import com.pheeeew.domain.repository.EmotionRegionMapRepository
 import com.pheeeew.domain.repository.LocationRepository
+import com.pheeeew.domain.repository.MapFilterSettingsRepository
 import com.pheeeew.domain.usecase.FindEmotionMapPageUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase
 import com.pheeeew.domain.usecase.FindEmotionRegionSnapshotUseCase
@@ -62,6 +65,7 @@ class MapViewModelViewportTest {
                         noLocationRefreshUseCase(),
                         FindEmotionMapPageUseCase(pins),
                         FindEmotionMapSnapshotUseCase(pins),
+                        filterSettingsRepository = allPeriodSettingsRepository(),
                         findRegions =
                             FindEmotionRegionsUseCase(
                                 regionRepository {
@@ -126,6 +130,7 @@ class MapViewModelViewportTest {
                         noLocationRefreshUseCase(),
                         FindEmotionMapPageUseCase(pins),
                         FindEmotionMapSnapshotUseCase(pins),
+                        filterSettingsRepository = allPeriodSettingsRepository(),
                         findRegions =
                             FindEmotionRegionsUseCase(
                                 regionRepository { _, _, _ ->
@@ -990,6 +995,7 @@ class MapViewModelViewportTest {
                         noLocationRefreshUseCase(),
                         FindEmotionMapPageUseCase(pinRepository),
                         FindEmotionMapSnapshotUseCase(pinRepository),
+                        filterSettingsRepository = allPeriodSettingsRepository(),
                         findRegions =
                             FindEmotionRegionsUseCase(
                                 regionRepository { _, level, _ ->
@@ -1058,6 +1064,7 @@ class MapViewModelViewportTest {
                         noLocationRefreshUseCase(),
                         FindEmotionMapPageUseCase(repository),
                         FindEmotionMapSnapshotUseCase(repository),
+                        filterSettingsRepository = allPeriodSettingsRepository(),
                         findRegions =
                             FindEmotionRegionsUseCase(
                                 regionRepository {
@@ -1136,9 +1143,11 @@ class MapViewModelViewportTest {
                         noLocationRefreshUseCase(),
                         FindEmotionMapPageUseCase(repository),
                         FindEmotionMapSnapshotUseCase(repository),
+                        filterSettingsRepository = allPeriodSettingsRepository(),
                         findRegions = FindEmotionRegionsUseCase(regionsRepository),
                         findRegionSnapshot = FindEmotionRegionSnapshotUseCase(regionsRepository),
                     )
+                runCurrent()
                 viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
                 assertEquals(
                     3L,
@@ -1202,6 +1211,7 @@ class MapViewModelViewportTest {
                         noLocationRefreshUseCase(),
                         FindEmotionMapPageUseCase(pins),
                         FindEmotionMapSnapshotUseCase(pins),
+                        filterSettingsRepository = allPeriodSettingsRepository(),
                         findRegions =
                             FindEmotionRegionsUseCase(
                                 regionRepository {
@@ -1251,6 +1261,13 @@ class MapViewModelViewportTest {
             } finally {
                 Dispatchers.resetMain()
             }
+        }
+
+    private fun allPeriodSettingsRepository(): MapFilterSettingsRepository =
+        object : MapFilterSettingsRepository {
+            override suspend fun read() = MapFilterSettings(period = MapFilterPeriod.ALL)
+
+            override suspend fun save(settings: MapFilterSettings) = Unit
         }
 
     private fun regionRepository(

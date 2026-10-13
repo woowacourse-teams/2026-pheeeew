@@ -9,7 +9,10 @@ import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.model.emotion.MapFilterContent
+import com.pheeeew.domain.model.emotion.MapFilterScope
 import com.pheeeew.domain.repository.emotion.EmotionResult
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -24,6 +27,56 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class EmotionRepositoryTest {
+    @Test
+    fun `필터 목록은 v3에서 좌표 없이 조회하고 다음 페이지는 커서만 전달한다`() =
+        runTest {
+            for (scope in MapFilterScope.entries) {
+                for (content in MapFilterContent.entries) {
+                    val filter =
+                        EmotionSearchFilter(
+                            startDate = "2026-10-01",
+                            endDate = "2026-10-11",
+                            content = content,
+                            scope = scope,
+                            groupId = "11111111-1111-4111-8111-111111111111".takeIf { scope == MapFilterScope.GROUP },
+                        )
+                    var count = 0
+                    val client =
+                        createApiClient(
+                            MockEngine { request ->
+                                assertEquals("/api/v3/emotions", request.url.encodedPath)
+                                assertEquals("Bearer token", request.headers[HttpHeaders.Authorization])
+                                val expected =
+                                    if (count++ == 0) {
+                                        buildMap {
+                                            put("startDate", "2026-10-01")
+                                            put("endDate", "2026-10-11")
+                                            put("contentType", content.name)
+                                            put("scope", scope.name)
+                                            filter.groupId?.let { put("groupId", it) }
+                                        }
+                                    } else {
+                                        mapOf("cursor" to "opaque+/=cursor")
+                                    }
+                                assertEquals(expected.keys, request.url.parameters.names())
+                                expected.forEach { (key, value) -> assertEquals(value, request.url.parameters[key]) }
+                                respond(EMPTY_PAGE, headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                            },
+                            ApiConfig("https://api.example.test"),
+                            { AccessToken("token") },
+                        )
+                    try {
+                        val repository = EmotionRepositoryImpl(EmotionApi(client.requests))
+                        assertIs<EmotionResult.Success<*>>(repository.filteredFirstPage(filter))
+                        assertIs<EmotionResult.Success<*>>(repository.nextFilteredPage("opaque+/=cursor"))
+                        assertEquals(2, count)
+                    } finally {
+                        client.close()
+                    }
+                }
+            }
+        }
+
     @Test
     fun `전체는 bounds만 다음 페이지는 cursor만 보내며 인증과 isMine을 보존한다`() =
         runTest {

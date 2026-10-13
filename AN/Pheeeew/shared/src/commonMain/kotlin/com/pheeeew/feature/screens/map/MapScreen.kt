@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -37,6 +38,7 @@ import com.pheeeew.core.permission.LocationPermissionController
 import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.feature.screens.map.detail.EmotionDetailLoadUiModel
+import com.pheeeew.feature.screens.map.filter.MapFilterSheet
 import com.pheeeew.feature.screens.map.overlay.MapFeedbackOverlay
 import com.pheeeew.feature.screens.map.overlay.MapOverlay
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
@@ -100,6 +102,7 @@ fun MapScreen(
     onRetryDetail: () -> Unit = {},
     onDismissDetailError: () -> Unit = {},
     monitoringVisible: Boolean = true,
+    nearbyMapControlHeight: Dp = 0.dp,
 ) {
     LaunchedEffect(viewModel) {
         viewModel.start()
@@ -334,6 +337,8 @@ fun MapScreen(
             },
             onListClick = onListClick,
             onSettingClick = onSettingClick,
+            onFilterClick = viewModel::openFilter,
+            nearbyMapControlHeight = nearbyMapControlHeight,
             onEmotionSelectorToggle = viewModel::onEmotionSelectorToggle,
             onEmotionBubbleClick = { emotion ->
                 if (!isRequestingBubblePermission) {
@@ -444,6 +449,7 @@ fun MapScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
+        if (recordUiModel.step == RecordFlowStepUiModel.Closed) MapFilterLayer(viewModel)
     }
     if (showDiscardDialog) {
         ConfirmDialog(
@@ -516,6 +522,26 @@ fun MapScreen(
 }
 
 @Composable
+private fun MapFilterLayer(viewModel: MapViewModel) {
+    val state by viewModel.filterUiModel.collectAsState()
+    if (!state.visible) return
+    MapFilterSheet(
+        state = state,
+        onDismiss = viewModel::dismissFilter,
+        onReset = viewModel::resetFilter,
+        onPeriod = viewModel::selectFilterPeriod,
+        onContent = viewModel::selectFilterContent,
+        onScope = viewModel::selectFilterScope,
+        onOpenDate = viewModel::openFilterDate,
+        onConfirmDate = viewModel::confirmFilterDate,
+        onOpenGroups = viewModel::openFilterGroups,
+        onToggleGroup = viewModel::toggleFilterGroup,
+        onClosePage = viewModel::closeFilterPage,
+        onApply = viewModel::applyFilter,
+    )
+}
+
+@Composable
 internal fun MapScreenContent(
     uiModel: MapUiModel,
     recordUiModel: RecordBottomSheetUiModel,
@@ -523,6 +549,7 @@ internal fun MapScreenContent(
     mapContent: @Composable (MapUiModel, Modifier) -> Unit,
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
+    onFilterClick: () -> Unit,
     onEmotionSelectorToggle: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
     onMyLocationClick: () -> Unit,
@@ -545,6 +572,7 @@ internal fun MapScreenContent(
     onRecordCoordinateSelected: (Double, Double) -> Unit = { _, _ -> },
     onRecordPreviewScaleChanged: (Float) -> Unit = {},
     feedbackContent: @Composable () -> Unit = {},
+    nearbyMapControlHeight: Dp = 0.dp,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         mapContent(
@@ -557,6 +585,8 @@ internal fun MapScreenContent(
                 showNavigationButtons = recordUiModel.step == RecordFlowStepUiModel.Closed,
                 onListClick = onListClick,
                 onSettingClick = onSettingClick,
+                onFilterClick = onFilterClick,
+                nearbyMapControlHeight = nearbyMapControlHeight,
                 isEmotionSelectorExpanded = uiModel.isEmotionSelectorExpanded,
                 onEmotionSelectorToggle = onEmotionSelectorToggle,
                 onEmotionBubbleClick = onEmotionBubbleClick,
@@ -652,6 +682,7 @@ private fun MapScreenContentPreview() {
         mapContent = { _, modifier -> Box(modifier.background(Color(0xFFECEAE5))) },
         onListClick = {},
         onSettingClick = {},
+        onFilterClick = {},
         onEmotionSelectorToggle = {},
         onEmotionBubbleClick = {},
         onMyLocationClick = {},

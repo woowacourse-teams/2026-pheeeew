@@ -4,6 +4,7 @@ import com.pheeeew.domain.model.emotion.Emotion
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 
 sealed interface EmotionResult<out T> {
     data class Success<T>(
@@ -23,7 +24,12 @@ interface EmotionRepository {
         groupId: String?,
     ): EmotionResult<EmotionPage>
 
+    suspend fun filteredFirstPage(filter: EmotionSearchFilter): EmotionResult<EmotionPage> =
+        firstPage(EmotionBounds(-180.0, -90.0, 180.0, 90.0), filter.groupId)
+
     suspend fun nextPage(cursor: String): EmotionResult<EmotionPage>
+
+    suspend fun nextFilteredPage(cursor: String): EmotionResult<EmotionPage> = nextPage(cursor)
 
     suspend fun feedPage(
         groupId: String,

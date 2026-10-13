@@ -15,8 +15,18 @@ import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.domain.model.emotion.EmotionRegion
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.domain.model.emotion.EmotionRegionResult
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
+import com.pheeeew.domain.model.emotion.MapFilterContent
+import com.pheeeew.domain.model.emotion.MapFilterPeriod
+import com.pheeeew.domain.model.emotion.MapFilterScope
+import com.pheeeew.domain.model.emotion.MapFilterSettings
+import com.pheeeew.domain.model.emotion.SearchDate
 import com.pheeeew.domain.model.emotion.coversRegionViewport
 import com.pheeeew.domain.model.emotion.expandedForRegionQuery
+import com.pheeeew.domain.repository.MapFilterSettingsRepository
+import com.pheeeew.domain.repository.emotion.EmotionResult
+import com.pheeeew.domain.repository.group.GroupStampListLoadResult
+import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.domain.usecase.FindEmotionMapPageUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase
 import com.pheeeew.domain.usecase.FindEmotionRegionSnapshotUseCase
@@ -25,13 +35,23 @@ import com.pheeeew.domain.usecase.RefreshLocationUseCase
 import com.pheeeew.feature.monitoring.product.MonitoredLocationPermission
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.ProductOperation
+import com.pheeeew.feature.screens.map.filter.FilterContent
+import com.pheeeew.feature.screens.map.filter.FilterDate
+import com.pheeeew.feature.screens.map.filter.FilterPage
+import com.pheeeew.feature.screens.map.filter.FilterPeriod
+import com.pheeeew.feature.screens.map.filter.FilterScope
+import com.pheeeew.feature.screens.map.filter.MapFilterListRefresher
+import com.pheeeew.feature.screens.map.filter.MapFilterUiModel
 import com.pheeeew.feature.screens.map.monitoring.ContentLoad
 import com.pheeeew.feature.screens.map.monitoring.ContentMonitoring
 import com.pheeeew.feature.screens.map.nearby.NEARBY_COLLAPSED_MAP_HEIGHT_FRACTION
+import com.pheeeew.feature.screens.map.record.group.toSelectorUiModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -45,11 +65,326 @@ class MapViewModel(
     monitoring: Monitoring = NoOpMonitoring,
     private val findRegions: FindEmotionRegionsUseCase? = null,
     private val findRegionSnapshot: FindEmotionRegionSnapshotUseCase? = null,
+    private val groupStampListRepository: GroupStampListRepository? = null,
+    private val filterSettingsRepository: MapFilterSettingsRepository? = null,
+    private val filterListRefresher: MapFilterListRefresher? = null,
     private val pinSnapshotIntervalMillis: Long = MapPinSnapshotPublisher.DEFAULT_INTERVAL_MILLIS,
     private val pinSnapshotDelay: suspend (Long) -> Unit = { delay(it) },
 ) : ViewModel() {
     private val _uiModel = MutableStateFlow(MapUiModel())
     val uiModel: StateFlow<MapUiModel> = _uiModel.asStateFlow()
+    private val _filterUiModel = MutableStateFlow(MapFilterUiModel())
+    val filterUiModel: StateFlow<MapFilterUiModel> = _filterUiModel.asStateFlow()
+    private var appliedFilterSettings = MapFilterSettings.DEFAULT
+    private var filterSettingsLoaded = filterSettingsRepository == null
+    private var filterApplyJob: Job? = null
+
+    init {
+        filterSettingsRepository?.let { repository ->
+            viewModelScope.launch {
+                val settings =
+                    try {
+                        repository.read()
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (_: Exception) {
+                        MapFilterSettings.DEFAULT
+                    }
+                appliedFilterSettings = settings
+                filterListRefresher?.setAppliedSettings(settings)
+                _filterUiModel.value = settings.toUiModel(_filterUiModel.value)
+                filterSettingsLoaded = true
+                latestViewport?.let { updateViewport(it, forceRegionRefresh = false) }
+                    ?: requestedBounds?.let(::onViewportChanged)
+            }
+        }
+    }
+
+    fun openFilter() {
+        _filterUiModel.value = _filterUiModel.value.copy(visible = true, page = FilterPage.Filters)
+        if (_filterUiModel.value.scope == FilterScope.Groups && _filterUiModel.value.groups.isEmpty()) {
+            loadFilterGroups()
+        }
+    }
+
+    fun dismissFilter() {
+        val wasApplying = _filterUiModel.value.applying
+        filterApplyJob?.cancel()
+        filterApplyJob = null
+        _filterUiModel.value =
+            appliedFilterSettings.toUiModel(_filterUiModel.value).copy(
+                visible = false,
+                page = FilterPage.Filters,
+                applying = false,
+                applyError = null,
+            )
+        if (wasApplying) {
+            latestViewport?.let { updateViewport(it, forceRegionRefresh = true) }
+                ?: requestedBounds?.let(::onViewportChanged)
+        }
+    }
+
+    fun resetFilter() {
+        _filterUiModel.value = MapFilterUiModel(visible = true, groups = _filterUiModel.value.groups)
+    }
+
+    fun selectFilterPeriod(period: FilterPeriod) {
+        _filterUiModel.value = _filterUiModel.value.copy(period = period, applyError = null)
+    }
+
+    fun selectFilterContent(content: FilterContent) {
+        _filterUiModel.value = _filterUiModel.value.copy(content = content, applyError = null)
+    }
+
+    fun selectFilterScope(scope: FilterScope) {
+        _filterUiModel.value = _filterUiModel.value.copy(scope = scope, applyError = null)
+        if (scope == FilterScope.Groups) openFilterGroups()
+    }
+
+    fun openFilterDate(start: Boolean) {
+        _filterUiModel.value =
+            _filterUiModel.value.copy(
+                page = if (start) FilterPage.StartDate else FilterPage.EndDate,
+                applyError = null,
+            )
+    }
+
+    fun confirmFilterDate(date: FilterDate) {
+        val state = _filterUiModel.value
+        _filterUiModel.value =
+            if (state.page == FilterPage.StartDate) {
+                state.copy(
+                    startDate = date,
+                    endDate = state.endDate?.takeIf { it >= date },
+                    page = FilterPage.Filters,
+                    applyError = null,
+                )
+            } else {
+                state.copy(
+                    endDate = date,
+                    startDate = state.startDate?.takeIf { it <= date },
+                    page = FilterPage.Filters,
+                    applyError = null,
+                )
+            }
+    }
+
+    fun openFilterGroups() {
+        _filterUiModel.value = _filterUiModel.value.copy(page = FilterPage.Groups)
+        loadFilterGroups()
+    }
+
+    private fun loadFilterGroups() {
+        val repository = groupStampListRepository ?: return
+        _filterUiModel.value = _filterUiModel.value.copy(loadingGroups = true, groupLoadFailed = false)
+        viewModelScope.launch {
+            val result =
+                try {
+                    repository.findMyStamps()
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    GroupStampListLoadResult.Unavailable
+                }
+            val current = _filterUiModel.value
+            _filterUiModel.value =
+                when (result) {
+                    is GroupStampListLoadResult.Loaded -> {
+                        current.copy(
+                            groups = result.groups.map { it.toSelectorUiModel() },
+                            selectedGroupIds =
+                                current.selectedGroupIds.intersect(
+                                    result.groups.map { it.id.value }.toSet(),
+                                ),
+                            loadingGroups = false,
+                        )
+                    }
+
+                    GroupStampListLoadResult.Unavailable -> {
+                        current.copy(loadingGroups = false, groupLoadFailed = true)
+                    }
+                }
+        }
+    }
+
+    fun toggleFilterGroup(id: String) {
+        val state = _filterUiModel.value
+        if (state.groups.none { it.id == id }) return
+        _filterUiModel.value = state.copy(selectedGroupIds = setOf(id), applyError = null)
+    }
+
+    fun closeFilterPage() {
+        _filterUiModel.value = _filterUiModel.value.copy(page = FilterPage.Filters)
+    }
+
+    fun applyFilter() {
+        if (_filterUiModel.value.applying) return
+        val candidate = _filterUiModel.value.toSettingsOrNull()
+        if (candidate == null) {
+            _filterUiModel.value =
+                _filterUiModel.value.copy(
+                    applyError = "기간과 조회 범위에 필요한 값을 모두 선택해 주세요",
+                )
+            return
+        }
+        val bounds =
+            (latestViewport?.bounds ?: pinViewportBounds)?.expandedForPinQuery() ?: requestedBounds ?: displayedBounds
+        if (bounds == null) {
+            _filterUiModel.value =
+                _filterUiModel.value.copy(applyError = "지도 영역을 확인하고 다시 시도해 주세요")
+            return
+        }
+        filterApplyJob?.cancel()
+        _filterUiModel.value = _filterUiModel.value.copy(applying = true, applyError = null)
+        filterApplyJob =
+            viewModelScope.launch {
+                val previousGeneration = queryGeneration
+                queryGeneration++
+                pinSnapshotPublisher.begin(queryGeneration)
+                viewportJob?.cancel()
+                emotionMapJob?.cancel()
+                regionJob?.cancel()
+                pendingEmotionMapRequest = null
+                activeRegionQuery = null
+                val searchFilter = candidate.toSearchFilter()
+                try {
+                    val pins = loadFilteredPins(bounds, searchFilter)
+                    if (pins == null) {
+                        resumeAppliedMapAfterFilterFailure()
+                        _filterUiModel.value =
+                            _filterUiModel.value.copy(
+                                applying = false,
+                                applyError = "지도 핀을 불러오지 못했어요. 다시 시도해 주세요",
+                            )
+                        return@launch
+                    }
+                    currentCoroutineContext().ensureActive()
+                    val nearby = filterListRefresher?.takeIf { it.isVisible() }
+                    val listPage =
+                        nearby?.loadFirstPage(searchFilter)?.let { result ->
+                            when (result) {
+                                is EmotionResult.Success -> {
+                                    result.value
+                                }
+
+                                is EmotionResult.Failure -> {
+                                    resumeAppliedMapAfterFilterFailure()
+                                    _filterUiModel.value =
+                                        _filterUiModel.value.copy(
+                                            applying = false,
+                                            applyError =
+                                                "감정 목록을 불러오지 못했어요. 다시 시도해 주세요",
+                                        )
+                                    return@launch
+                                }
+                            }
+                        }
+                    currentCoroutineContext().ensureActive()
+                    filterSettingsRepository?.save(candidate)
+                    currentCoroutineContext().ensureActive()
+                    appliedFilterSettings = candidate
+                    needsFreshEmotionPins = false
+                    displayedBounds = bounds
+                    requestedBounds = bounds
+                    pinViewportBounds = latestViewport?.bounds ?: pinViewportBounds ?: bounds
+                    displayedPins = pins
+                    partialPageBounds = null
+                    partialPagePins.clear()
+                    retryCursor = null
+                    locallyRegisteredPins.clear()
+                    _uiModel.value =
+                        _uiModel.value.copy(
+                            regionClusters = emptyList(),
+                            displayedRegionLevel = null,
+                            isLoadingEmotionPins = false,
+                            isLoadingMoreEmotionPins = false,
+                            isLoadingRegionClusters = false,
+                            hasPartialEmotionPins = false,
+                            invalidEmotionPinCount = 0,
+                            emotionPinsError = null,
+                        )
+                    pinSnapshotPublisher.finish(
+                        queryGeneration,
+                        EmotionPinSnapshot(
+                            generation = queryGeneration,
+                            pins = pins.values.toList(),
+                            kind = "refresh",
+                            origin = "network",
+                            observation = null,
+                        ),
+                    )
+                    if (nearby != null && listPage != null) {
+                        nearby.commitFirstPage(candidate, listPage)
+                    } else {
+                        filterListRefresher?.setAppliedSettings(candidate)
+                    }
+                    _filterUiModel.value =
+                        candidate.toUiModel(_filterUiModel.value).copy(
+                            visible = false,
+                            applying = false,
+                            page = FilterPage.Filters,
+                        )
+                    filterApplyJob = null
+                } catch (cancelled: CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    resumeAppliedMapAfterFilterFailure()
+                    if (queryGeneration > previousGeneration && _filterUiModel.value.visible) {
+                        _filterUiModel.value =
+                            _filterUiModel.value.copy(
+                                applying = false,
+                                applyError = "필터를 적용하지 못했어요. 다시 시도해 주세요",
+                            )
+                    }
+                } finally {
+                    if (filterApplyJob === currentCoroutineContext()[Job] &&
+                        _filterUiModel.value.visible && _filterUiModel.value.applying
+                    ) {
+                        _filterUiModel.value = _filterUiModel.value.copy(applying = false)
+                    }
+                }
+            }
+    }
+
+    private fun resumeAppliedMapAfterFilterFailure() {
+        val viewport = latestViewport
+        if (viewport != null && !appliedFilterSettings.requiresFilteredPins() &&
+            MapZoomPolicy.regionLevelForZoom(viewport.zoom) != null && findRegions != null
+        ) {
+            updateViewport(viewport, forceRegionRefresh = true)
+            return
+        }
+        val bounds = requestedBounds ?: displayedBounds ?: viewport?.bounds ?: return
+        needsFreshEmotionPins = true
+        val generation = ++queryGeneration
+        viewportJob?.cancel()
+        pendingEmotionMapRequest = null
+        enqueueEmotionMapRequest(EmotionMapRequest(bounds, generation, bypassCache = true))
+    }
+
+    private suspend fun loadFilteredPins(
+        bounds: EmotionMapBounds,
+        filter: EmotionSearchFilter,
+    ): LinkedHashMap<Long, EmotionMapPin>? {
+        val pins = linkedMapOf<Long, EmotionMapPin>()
+        val usedCursors = mutableSetOf<String>()
+        var cursor: String? = null
+        while (true) {
+            when (val result = findEmotionMapPage.withFilter(bounds, filter, cursor, forceRefresh = cursor == null)) {
+                is EmotionMapPageResult.Failure -> {
+                    return null
+                }
+
+                is EmotionMapPageResult.Success -> {
+                    result.page.pins.forEach { pins[it.id] = it }
+                    if (!result.page.hasNext) return pins
+                    val next = result.page.nextCursor?.takeIf { it.isNotBlank() } ?: return null
+                    if (!usedCursors.add(next)) return null
+                    cursor = next
+                }
+            }
+        }
+    }
 
     private val telemetry = ProductMonitoring(monitoring, "map")
     private val pinUiModelCache = EmotionPinUiModelCache()
@@ -235,6 +570,10 @@ class MapViewModel(
 
     fun onViewportChanged(bounds: EmotionMapBounds) {
         if (!bounds.isValid()) return
+        if (!filterSettingsLoaded) {
+            requestedBounds = bounds
+            return
+        }
         pinViewportBounds = bounds
         trimRetainedPins(bounds)
         val queryBounds = bounds.expandedForPinQuery()
@@ -272,8 +611,9 @@ class MapViewModel(
     ) {
         if (!viewport.isValid() || _uiModel.value.isRecordLocationPicking) return
         latestViewport = viewport
+        if (!filterSettingsLoaded) return
         val level = MapZoomPolicy.regionLevelForZoom(viewport.zoom)
-        if (level == null || findRegions == null) {
+        if (level == null || findRegions == null || appliedFilterSettings.requiresFilteredPins()) {
             regionJob?.cancel()
             if (activeRegionQuery != null) {
                 ++queryGeneration
@@ -366,7 +706,9 @@ class MapViewModel(
         }
 
     fun refreshEmotionPins() {
-        if (latestViewport?.zoom?.let(MapZoomPolicy::regionLevelForZoom) != null && findRegions != null) {
+        if (!appliedFilterSettings.requiresFilteredPins() &&
+            latestViewport?.zoom?.let(MapZoomPolicy::regionLevelForZoom) != null && findRegions != null
+        ) {
             retryRegionClusters()
             return
         }
@@ -434,6 +776,7 @@ class MapViewModel(
                 cursor?.let(usedCursors::add)
                 var firstPage = request.startCursor == null
                 var invalidCount = if (firstPage) 0 else _uiModel.value.invalidEmotionPinCount
+                val searchFilter = appliedFilterSettings.toSearchFilter()
                 var pageIndex = 0
                 var observation: ContentLoad? = null
                 try {
@@ -453,8 +796,9 @@ class MapViewModel(
                         val requestMark = TimeSource.Monotonic.markNow()
                         when (
                             val result =
-                                findEmotionMapPage(
+                                findEmotionMapPage.withFilter(
                                     request.bounds,
+                                    searchFilter,
                                     cursor = cursor,
                                     forceRefresh = request.bypassCache && cursor == null,
                                 )
@@ -612,7 +956,8 @@ class MapViewModel(
         bounds: EmotionMapBounds,
         generation: Long = queryGeneration,
     ) {
-        val snapshotPins = findEmotionMapSnapshot(bounds)?.pins ?: return
+        val snapshotPins =
+            findEmotionMapSnapshot.withFilter(bounds, appliedFilterSettings.toSearchFilter())?.pins ?: return
         // An empty partial cache does not prove that the target pin query is empty.
         if (_uiModel.value.displayedRegionLevel != null && snapshotPins.isEmpty()) return
         val pins =
@@ -799,6 +1144,9 @@ class MapViewModel(
             monitoring: Monitoring = NoOpMonitoring,
             findRegions: FindEmotionRegionsUseCase? = null,
             findRegionSnapshot: FindEmotionRegionSnapshotUseCase? = null,
+            groupStampListRepository: GroupStampListRepository? = null,
+            filterSettingsRepository: MapFilterSettingsRepository? = null,
+            filterListRefresher: MapFilterListRefresher? = null,
         ): MapViewModel =
             MapViewModel(
                 refreshLocation =
@@ -815,10 +1163,80 @@ class MapViewModel(
                 monitoring = monitoring,
                 findRegions = findRegions,
                 findRegionSnapshot = findRegionSnapshot,
+                groupStampListRepository = groupStampListRepository,
+                filterSettingsRepository = filterSettingsRepository,
+                filterListRefresher = filterListRefresher,
             )
 
         private const val VIEWPORT_DEBOUNCE_MILLIS = 700L
     }
+}
+
+private fun MapFilterSettings.requiresFilteredPins(): Boolean {
+    val filter = toSearchFilter()
+    return filter.startDate != null || filter.content != MapFilterContent.ALL || filter.scope != MapFilterScope.ALL
+}
+
+private fun MapFilterSettings.toUiModel(current: MapFilterUiModel): MapFilterUiModel =
+    current.copy(
+        period =
+            when (period) {
+                MapFilterPeriod.TWO_WEEKS -> FilterPeriod.TwoWeeks
+                MapFilterPeriod.ONE_MONTH -> FilterPeriod.OneMonth
+                MapFilterPeriod.ALL -> FilterPeriod.All
+                MapFilterPeriod.CUSTOM -> FilterPeriod.Custom
+            },
+        content =
+            when (content) {
+                MapFilterContent.ALL -> FilterContent.All
+                MapFilterContent.MEMO -> FilterContent.Memo
+                MapFilterContent.AUDIO -> FilterContent.Recording
+            },
+        scope =
+            when (scope) {
+                MapFilterScope.ALL -> FilterScope.All
+                MapFilterScope.MY -> FilterScope.Mine
+                MapFilterScope.GROUP -> FilterScope.Groups
+            },
+        startDate = customStartDate?.let { FilterDate(it.year, it.month, it.day) },
+        endDate = customEndDate?.let { FilterDate(it.year, it.month, it.day) },
+        selectedGroupIds = groupId?.let { setOf(it) } ?: emptySet(),
+        applying = false,
+        applyError = null,
+    )
+
+private fun MapFilterUiModel.toSettingsOrNull(): MapFilterSettings? {
+    val start = startDate?.let { runCatching { SearchDate(it.year, it.month, it.day) }.getOrNull() }
+    val end = endDate?.let { runCatching { SearchDate(it.year, it.month, it.day) }.getOrNull() }
+    if (period == FilterPeriod.Custom && (start == null || end == null || start > end)) return null
+    val selectedGroupId = selectedGroupIds.singleOrNull()
+    if (scope == FilterScope.Groups && selectedGroupId == null) return null
+    return runCatching {
+        MapFilterSettings(
+            period =
+                when (period) {
+                    FilterPeriod.TwoWeeks -> MapFilterPeriod.TWO_WEEKS
+                    FilterPeriod.OneMonth -> MapFilterPeriod.ONE_MONTH
+                    FilterPeriod.All -> MapFilterPeriod.ALL
+                    FilterPeriod.Custom -> MapFilterPeriod.CUSTOM
+                },
+            customStartDate = if (period == FilterPeriod.Custom) start else null,
+            customEndDate = if (period == FilterPeriod.Custom) end else null,
+            content =
+                when (content) {
+                    FilterContent.All -> MapFilterContent.ALL
+                    FilterContent.Memo -> MapFilterContent.MEMO
+                    FilterContent.Recording -> MapFilterContent.AUDIO
+                },
+            scope =
+                when (scope) {
+                    FilterScope.All -> MapFilterScope.ALL
+                    FilterScope.Mine -> MapFilterScope.MY
+                    FilterScope.Groups -> MapFilterScope.GROUP
+                },
+            groupId = selectedGroupId.takeIf { scope == FilterScope.Groups },
+        )
+    }.getOrNull()
 }
 
 private data class EmotionMapRequest(

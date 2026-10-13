@@ -10,17 +10,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -34,29 +30,27 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.core.audio.rememberEmotionAudioPlayer
-import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.navigation.PredictiveBackEffect
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.feature.component.emotion.EmotionActionsMenuMode
 import com.pheeeew.feature.component.emotion.face
-import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.monitoring.product.rememberObservedEmotionPlayer
 import com.pheeeew.feature.monitoring.product.stopForReplacement
 import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
-import com.pheeeew.feature.screens.map.record.group.GroupSelectorContent
-import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
-import com.pheeeew.feature.screens.map.record.group.groupSelectorDialogProperties
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -70,8 +64,6 @@ import pheeeew.shared.generated.resources.emotion_block_action
 import pheeeew.shared.generated.resources.emotion_block_confirm
 import pheeeew.shared.generated.resources.emotion_moderation_hidden_notice
 import pheeeew.shared.generated.resources.ic_refresh
-import pheeeew.shared.generated.resources.nearby_groups_load_error
-import pheeeew.shared.generated.resources.nearby_groups_loading
 import kotlin.time.TimeSource
 import kotlin.time.TimeSource.Monotonic.ValueTimeMark
 
@@ -86,6 +78,7 @@ fun NearbyEmotionSheet(
     monitoringVisible: Boolean = true,
     onSheetInteraction: () -> Unit = {},
     focusedEmotionId: Long? = null,
+    onMapControlHeightChanged: (Dp) -> Unit = {},
 ) {
     val state by viewModel.state.collectAsState()
     var expanded by remember(state.visible) { mutableStateOf(false) }
@@ -101,7 +94,7 @@ fun NearbyEmotionSheet(
     }
     val foreground = rememberMonitoringForeground()
     val contentVisible =
-        monitoringVisible && foreground && state.visible && !state.groupSelectorVisible && state.blockId == null
+        monitoringVisible && foreground && state.visible && state.blockId == null
     DisposableEffect(viewModel, contentVisible) {
         viewModel.contentVisibility(contentVisible)
         onDispose { viewModel.contentVisibility(false) }
@@ -135,7 +128,7 @@ fun NearbyEmotionSheet(
         }
     }
     LaunchedEffect(state.visible, state.revision) { player.stop() }
-    if (state.visible && !state.groupSelectorVisible && state.blockId == null) {
+    if (state.visible && state.blockId == null) {
         PredictiveBackEffect(onProgress = {}, onCompleted = viewModel::dismiss, onCancelled = {})
     }
     val scroll = rememberLazyListState()
@@ -213,15 +206,14 @@ fun NearbyEmotionSheet(
         onExpandedChange = { expanded = it },
         onDismiss = viewModel::dismiss,
         onInteraction = onSheetInteraction,
+        onMapControlHeightChanged = onMapControlHeightChanged,
+        header = {
+            NearbySheetHeader(
+                loading = state.loading,
+                onRefresh = viewModel::refresh,
+            )
+        },
     ) {
-        val group = state.groups.find { it.id == state.groupId } ?: ALL_GROUP_OPTION
-        NearbySheetHeader(
-            group = group,
-            loading = state.loading,
-            onRefresh = viewModel::refreshCurrentViewport,
-            onOpenGroups = viewModel::openGroups,
-        )
-
         state.message?.let { NearbyNotice(it, viewModel::clearMessage) }
         playback.error?.let { NearbyNotice(it, player::stop) }
         if (state.loading) {
@@ -232,7 +224,21 @@ fun NearbyEmotionSheet(
         } else {
             LazyColumn(
                 state = scroll,
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier =
+                    Modifier.fillMaxWidth().weight(1f).drawWithContent {
+                        drawContent()
+                        if (scroll.canScrollBackward) {
+                            val fadeHeight = 24.dp.toPx().coerceAtMost(size.height)
+                            drawRect(
+                                brush =
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color(0xFFFAFAFA), Color(0xFFFAFAFA).copy(alpha = 0f)),
+                                        endY = fadeHeight,
+                                    ),
+                                size = Size(size.width, fadeHeight),
+                            )
+                        }
+                    },
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
@@ -313,40 +319,6 @@ fun NearbyEmotionSheet(
             }
         }
     }
-    if (state.groupSelectorVisible) {
-        AppDialog(
-            onDismissRequest = viewModel::dismissGroups,
-            properties = groupSelectorDialogProperties(),
-        ) {
-            Box(Modifier.fillMaxSize()) {
-                GroupSelectorContent(
-                    isVisible = true,
-                    groups = state.groups,
-                    selectedGroupId = state.pendingGroupId,
-                    dialProgress = state.dialProgress,
-                    onDialProgressChange = viewModel::dial,
-                    onDialProgressSettle = viewModel::dial,
-                    onSelectedGroupChange = viewModel::pendingGroup,
-                    onDismiss = viewModel::dismissGroups,
-                    onComplete = viewModel::completeGroup,
-                )
-                if (state.groupsLoading || state.groupsError) {
-                    Surface(
-                        Modifier.align(Alignment.TopCenter).padding(top = 60.dp),
-                        shape = RoundedCornerShape(16.dp),
-                    ) {
-                        if (state.groupsLoading) {
-                            Text(stringResource(Res.string.nearby_groups_loading), Modifier.padding(16.dp))
-                        } else {
-                            TextButton(
-                                onClick = viewModel::loadGroups,
-                            ) { Text(stringResource(Res.string.nearby_groups_load_error)) }
-                        }
-                    }
-                }
-            }
-        }
-    }
     state.blockId?.let { id ->
         ConfirmDialog(
             title = stringResource(Res.string.emotion_block_confirm),
@@ -356,24 +328,5 @@ fun NearbyEmotionSheet(
             onConfirm = { viewModel.confirmBlock(blockUser) },
             onCancel = { viewModel.requestBlock(null) },
         )
-    }
-}
-
-@Composable
-internal fun SelectorStamp(
-    group: GroupSelectorGroupUiModel,
-    modifier: Modifier = Modifier,
-    size: Int = 48,
-) {
-    if (!group.showStamp) {
-        Box(modifier.size(size.dp), contentAlignment = Alignment.Center) {
-            Text(group.name, color = Color(0xFF252826), fontSize = 16.sp)
-        }
-    } else if (group.stamp != null) {
-        NearbyGroupStamp(group.stamp, size.dp, modifier)
-    } else {
-        Box(modifier.size(size.dp), contentAlignment = Alignment.Center) {
-            Text(group.name, color = Color(0xFF252826), fontSize = 16.sp)
-        }
     }
 }

@@ -40,17 +40,17 @@
 
     <!-- 지도 -->
     <string name="map_open_list">목록 열기</string>
-    <string name="map_nearby_emotions">주변 감정</string>
+    <string name="map_nearby_emotions">감정 목록</string>
     <string name="map_refresh">지도 새로고침</string>
+    <string name="map_filter">지도 필터</string>
     <string name="map_current_location">내 위치로 이동</string>
     <string name="map_settings">설정 버튼</string>
-    <string name="map_refresh_nearby">주변 감정 새로고침</string>
+    <string name="map_refresh_nearby">감정 목록 새로고침</string>
+    <string name="map_refresh_nearby_action">새로고침</string>
 
-    <!-- 주변 감정 및 감정 관리 -->
+    <!-- 감정 목록 및 감정 관리 -->
     <string name="nearby_initial_empty_title">여기에 첫 감정을 남겨볼까요?</string>
     <string name="nearby_confirm">확인</string>
-    <string name="nearby_groups_loading">가입 그룹을 불러오는 중이에요</string>
-    <string name="nearby_groups_load_error">그룹을 불러오지 못했어요 · 다시 시도</string>
     <string name="emotion_block_confirm">해당 사용자를 차단할까요?</string>
     <string name="emotion_delete_confirm">해당 감정을 삭제할까요?</string>
     <string name="emotion_chat_add_reaction">공감 추가</string>
