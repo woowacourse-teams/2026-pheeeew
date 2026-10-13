@@ -27,11 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,7 +53,6 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.feature.component.SoapBubble
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -77,7 +74,6 @@ private val EMOTION_ICON_SIZE = 60.dp
 private val EMOTION_ICON_GAP = 4.dp
 private val BUBBLE_CLUSTER_WIDTH = 340.dp
 private val BUBBLE_EASE_OUT = CubicBezierEasing(0f, 0f, 0.58f, 1f)
-private val EMOTION_EASE_IN_OUT = CubicBezierEasing(0.42f, 0f, 0.58f, 1f)
 private val EMOTION_POSITION_SPRING =
     spring<Float>(
         dampingRatio = EMOTION_SPRING_DAMPING_RATIO,
@@ -314,29 +310,6 @@ private fun EmotionBubble(
             }
         }
     }
-    var floating by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(isExpanded) {
-        if (isExpanded) {
-            floating = 0f
-            return@LaunchedEffect
-        }
-        var startNanos = 0L
-        while (isActive) {
-            withFrameNanos { frameNanos ->
-                if (startNanos == 0L) startNanos = frameNanos
-                val elapsedSeconds = (frameNanos - startNanos).toDouble() / 1_000_000_000.0
-                val phase =
-                    ((elapsedSeconds + emotion.ordinal * 0.79) / (3.2 + emotion.ordinal * 0.29) % 1.0)
-                        .toFloat()
-                floating =
-                    if (phase < 0.5f) {
-                        EMOTION_EASE_IN_OUT.transform(phase * 2f)
-                    } else {
-                        1f - EMOTION_EASE_IN_OUT.transform((phase - 0.5f) * 2f)
-                    }
-            }
-        }
-    }
     val labelAlpha by
         animateFloatAsState(
             targetValue = if (isExpanded) 1f else 0f,
@@ -364,14 +337,12 @@ private fun EmotionBubble(
                     .size(EMOTION_ICON_SIZE)
                     .graphicsLayer {
                         val scaleCompensation = (1f - scale.value) * EMOTION_ICON_SIZE.value / 2f
-                        translationX = -scaleCompensation.dp.toPx() + floating.dp.toPx()
+                        translationX = -scaleCompensation.dp.toPx()
                         translationY =
-                            -scaleCompensation.dp.toPx() -
-                            (5f * floating).dp.toPx() +
-                            faceHoverY.dp.toPx()
+                            -scaleCompensation.dp.toPx() + faceHoverY.dp.toPx()
                         scaleX = scale.value * interactionScale
                         scaleY = scale.value * interactionScale
-                        rotationZ = if (isExpanded) 0f else -3f + floating * 7f
+                        rotationZ = if (isExpanded) 0f else -3f
                     }.clip(CircleShape)
                     .hoverable(interactionSource, enabled = isExpanded)
                     .then(
