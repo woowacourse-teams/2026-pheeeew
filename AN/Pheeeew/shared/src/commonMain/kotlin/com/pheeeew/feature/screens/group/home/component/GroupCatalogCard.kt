@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.group.home.component
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -24,8 +26,11 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -105,7 +110,12 @@ fun GroupCatalogCard(
                     ).padding(horizontal = 16.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            GroupStamp(appearance = group.stamp, size = 44.dp)
+            Box(Modifier.size(44.dp)) {
+                GroupStamp(appearance = group.stamp, size = 44.dp)
+                if (isJoined && showJoinedStatus) {
+                    JoinedStampCheck(Modifier.align(Alignment.BottomEnd).offset(x = 4.dp, y = 4.dp))
+                }
+            }
             Column(
                 Modifier.weight(1f).padding(start = 12.dp, end = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp),
@@ -152,17 +162,6 @@ fun GroupCatalogCard(
                             maxLines = 1,
                         )
                     }
-                    if (isJoined && showJoinedStatus) {
-                        Text("·", color = AppColors.TextSecondary, fontSize = 12.sp)
-                        Text(
-                            text = joined,
-                            color = AppColors.GroupInk,
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                        )
-                    }
                 }
             }
             Text(
@@ -171,6 +170,25 @@ fun GroupCatalogCard(
                 color = AppColors.TextSecondary,
                 fontSize = 20.sp,
             )
+        }
+    }
+}
+
+@Composable
+private fun JoinedStampCheck(modifier: Modifier = Modifier) {
+    val ink = AppColors.GroupInk
+    Box(
+        modifier
+            .size(20.dp)
+            .clearAndSetSemantics {}
+            .background(AppColors.RankingAccent, CircleShape)
+            .border(AppBorders.Standard, ink, CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.size(10.dp)) {
+            val middle = Offset(size.width * .4f, size.height * .75f)
+            drawLine(ink, Offset(size.width * .1f, size.height * .45f), middle, 1.8.dp.toPx(), StrokeCap.Round)
+            drawLine(ink, middle, Offset(size.width * .9f, size.height * .2f), 1.8.dp.toPx(), StrokeCap.Round)
         }
     }
 }
