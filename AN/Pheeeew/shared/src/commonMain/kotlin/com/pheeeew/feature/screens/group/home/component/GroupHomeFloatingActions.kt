@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.group.home.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -26,7 +27,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -47,6 +50,8 @@ import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_home_actions_close
@@ -61,7 +66,11 @@ internal fun GroupHomeFloatingActions(
     modifier: Modifier = Modifier,
     initiallyExpanded: Boolean = false,
 ) {
+    val visibility = remember { MutableTransitionState(initiallyExpanded) }
     var expanded by remember { mutableStateOf(initiallyExpanded) }
+    var selecting by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    visibility.targetState = expanded
     val rotation by animateFloatAsState(
         if (expanded) 135f else 0f,
         tween(600, easing = CubicBezierEasing(.34f, 1.45f, .64f, 1f)),
@@ -105,38 +114,48 @@ internal fun GroupHomeFloatingActions(
             val labels =
                 listOf(stringResource(Res.string.group_home_create), stringResource(Res.string.group_home_join))
             val actions = listOf(onCreateClick, onJoinClick)
-            labels.forEachIndexed { index, text ->
-                AnimatedVisibility(
-                    expanded,
-                    enter =
-                        fadeIn(tween(250, (1 - index) * 45)) +
-                            slideInVertically(
-                                tween(500, (1 - index) * 45, CubicBezierEasing(.34f, 1.45f, .64f, 1f)),
-                            ) { it },
-                    exit = fadeOut(tween(150)) + slideOutVertically(tween(250)) { it },
-                ) {
-                    val interaction = remember { MutableInteractionSource() }
-                    val shape = RoundedCornerShape(16.dp)
-                    Box(
-                        Modifier
-                            .height(48.dp)
-                            .raisedButtonBorder(shape, interactionSource = interaction)
-                            .clip(
-                                shape,
-                            ).background(
-                                AppColors.Surface,
-                            ).clickable(
-                                interactionSource = interaction,
-                                indication = null,
-                                role = Role.Button,
-                                onClick = {
-                                    expanded = false
-                                    actions[index]()
-                                },
-                            ).padding(horizontal = 20.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(text, color = AppColors.GroupInk, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+            AnimatedVisibility(
+                visibleState = visibility,
+                enter = fadeIn(tween(150)),
+                exit = fadeOut(tween(150)),
+            ) {
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                    labels.forEachIndexed { index, text ->
+                        val interaction = remember { MutableInteractionSource() }
+                        val shape = RoundedCornerShape(16.dp)
+                        Box(
+                            Modifier
+                                .animateEnterExit(
+                                    enter =
+                                        fadeIn(tween(250, (1 - index) * 45)) +
+                                            slideInVertically(
+                                                tween(500, (1 - index) * 45, CubicBezierEasing(.34f, 1.45f, .64f, 1f)),
+                                            ) { it },
+                                    exit = fadeOut(tween(150)) + slideOutVertically(tween(250)) { it },
+                                ).height(48.dp)
+                                .raisedButtonBorder(shape, interactionSource = interaction)
+                                .clip(shape)
+                                .background(AppColors.Surface)
+                                .clickable(
+                                    interactionSource = interaction,
+                                    indication = null,
+                                    role = Role.Button,
+                                    enabled = !selecting,
+                                    onClick = {
+                                        selecting = true
+                                        expanded = false
+                                        visibility.targetState = false
+                                        scope.launch {
+                                            snapshotFlow { visibility.isIdle && !visibility.currentState }.first { it }
+                                            selecting = false
+                                            actions[index]()
+                                        }
+                                    },
+                                ).padding(horizontal = 20.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(text, color = AppColors.GroupInk, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                        }
                     }
                 }
             }
