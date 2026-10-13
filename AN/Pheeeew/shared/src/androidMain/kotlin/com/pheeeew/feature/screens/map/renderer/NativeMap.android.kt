@@ -301,7 +301,7 @@ private class AndroidFoundationMapHost(
                 setAttributionTintColor(Color.WHITE)
                 isCompassEnabled = true
                 compassGravity = Gravity.TOP or Gravity.END
-                setCompassFadeFacingNorth(true)
+                setCompassFadeFacingNorth(false)
             }
             applyCompassMargins()
             applyAttributionMargins()

@@ -39,6 +39,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         super.init()
         mapView.delegate = self
         mapView.showsLogoView = false
+        mapView.compassView.compassVisibility = .visible
         mapView.showsAttributionButton = true
         mapView.attributionButtonPosition = .bottomLeft
         mapView.attributionButton.tintColor = .white
