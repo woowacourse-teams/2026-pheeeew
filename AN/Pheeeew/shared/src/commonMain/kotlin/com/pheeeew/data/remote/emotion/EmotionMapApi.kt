@@ -4,6 +4,7 @@ import com.pheeeew.core.network.ApiRequest
 import com.pheeeew.core.network.ApiRequestExecutor
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.RequestKind
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import io.ktor.client.call.body
 import io.ktor.http.HttpMethod
 
@@ -17,6 +18,7 @@ class EmotionMapApi(
         maxLatitude: Double?,
         groupId: String?,
         cursor: String?,
+        filter: EmotionSearchFilter? = null,
     ): ApiResult<EmotionMapPageDto> {
         val query =
             if (cursor != null) {
@@ -27,7 +29,9 @@ class EmotionMapApi(
                     minLatitude?.let { put("minLatitude", it.toString()) }
                     maxLongitude?.let { put("maxLongitude", it.toString()) }
                     maxLatitude?.let { put("maxLatitude", it.toString()) }
-                    groupId?.let { put("groupId", it) }
+                    filter?.let { search ->
+                        putAll(search.toQueryParameters())
+                    } ?: groupId?.let { put("groupId", it) }
                 }
             }
         return requests.execute(
