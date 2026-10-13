@@ -38,12 +38,12 @@ import com.pheeeew.feature.screens.group.model.GroupJoinType
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-@Preview(name = "모션 · 검색 입력과 지우기", widthDp = 360, heightDp = 800)
+@Preview(name = "탭별 검색 · 검색어·최근 검색 독립 유지", widthDp = 360, heightDp = 800)
 @Preview(name = "모션 · 검색 좁은 화면", widthDp = 320, heightDp = 640)
 @Composable
 private fun GroupSearchInteractivePreview() {
     var query by remember { mutableStateOf("") }
-    var tab by remember { mutableStateOf(GroupHomeTab.Explore) }
+    var tab by remember { mutableStateOf(GroupHomeTab.MyGroups) }
     var explore by remember { mutableStateOf(HomeFixtures.exploreState) }
     LaunchedEffect(query) {
         delay(300)

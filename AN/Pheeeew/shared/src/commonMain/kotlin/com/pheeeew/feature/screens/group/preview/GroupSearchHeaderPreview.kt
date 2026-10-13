@@ -56,11 +56,36 @@ private fun SearchHeaderFrame(
     openInitially: Boolean,
     initialQuery: String,
     initialHistory: List<String>,
+    initialTab: GroupHomeTab = GroupHomeTab.Explore,
 ) {
     var open by remember { mutableStateOf(openInitially) }
-    var query by remember { mutableStateOf(initialQuery) }
-    var selectedTab by remember { mutableStateOf(GroupHomeTab.Explore) }
-    var history by remember { mutableStateOf(initialHistory) }
+    var selectedTab by remember { mutableStateOf(initialTab) }
+    var myQuery by remember { mutableStateOf(if (initialTab == GroupHomeTab.MyGroups) initialQuery else "") }
+    var allQuery by remember { mutableStateOf(if (initialTab == GroupHomeTab.Explore) initialQuery else "") }
+    var myHistory by remember {
+        mutableStateOf(
+            if (initialTab ==
+                GroupHomeTab.MyGroups
+            ) {
+                initialHistory
+            } else {
+                emptyList()
+            },
+        )
+    }
+    var allHistory by remember {
+        mutableStateOf(
+            if (initialTab ==
+                GroupHomeTab.Explore
+            ) {
+                initialHistory
+            } else {
+                emptyList()
+            },
+        )
+    }
+    val query = if (selectedTab == GroupHomeTab.MyGroups) myQuery else allQuery
+    val history = if (selectedTab == GroupHomeTab.MyGroups) myHistory else allHistory
     AppTheme {
         GroupHomeSwipePager(
             selectedTab = selectedTab,
@@ -72,15 +97,23 @@ private fun SearchHeaderFrame(
                     isOpen = open,
                     query = query,
                     recentQueries = history,
-                    showSummary = selectedTab == GroupHomeTab.Explore,
+                    showSummary = true,
+                    searchTab = selectedTab,
                     onOpen = {
-                        selectedTab = GroupHomeTab.Explore
                         open = true
                     },
                     onClose = { open = false },
-                    onQueryChanged = { query = it },
+                    onQueryChanged = { if (selectedTab == GroupHomeTab.MyGroups) myQuery = it else allQuery = it },
                     onSubmit = {
-                        if (query.isNotBlank()) history = listOf(query)
+                        if (query.isNotBlank()) {
+                            if (selectedTab ==
+                                GroupHomeTab.MyGroups
+                            ) {
+                                myHistory = listOf(query)
+                            } else {
+                                allHistory = listOf(query)
+                            }
+                        }
                         open = false
                     },
                     tabsContent = tabs,
@@ -95,4 +128,10 @@ private fun SearchHeaderFrame(
             }
         }
     }
+}
+
+@Preview(name = "내 그룹 검색 · 안내와 최근 검색", widthDp = 360, heightDp = 520)
+@Composable
+private fun MyGroupRecentSearchPreview() {
+    SearchHeaderFrame(true, "", listOf("우테코", "월요일"), GroupHomeTab.MyGroups)
 }
