@@ -37,6 +37,7 @@ import com.pheeeew.core.permission.LocationPermissionController
 import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.feature.screens.map.detail.EmotionDetailLoadUiModel
+import com.pheeeew.feature.screens.map.filter.MapFilterSheet
 import com.pheeeew.feature.screens.map.overlay.MapFeedbackOverlay
 import com.pheeeew.feature.screens.map.overlay.MapOverlay
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
@@ -334,6 +335,7 @@ fun MapScreen(
             },
             onListClick = onListClick,
             onSettingClick = onSettingClick,
+            onFilterClick = viewModel::openFilter,
             onEmotionSelectorToggle = viewModel::onEmotionSelectorToggle,
             onEmotionBubbleClick = { emotion ->
                 if (!isRequestingBubblePermission) {
@@ -444,6 +446,7 @@ fun MapScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
+        if (recordUiModel.step == RecordFlowStepUiModel.Closed) MapFilterLayer(viewModel)
     }
     if (showDiscardDialog) {
         ConfirmDialog(
@@ -516,6 +519,26 @@ fun MapScreen(
 }
 
 @Composable
+private fun MapFilterLayer(viewModel: MapViewModel) {
+    val state by viewModel.filterUiModel.collectAsState()
+    if (!state.visible) return
+    MapFilterSheet(
+        state = state,
+        onDismiss = viewModel::dismissFilter,
+        onReset = viewModel::resetFilter,
+        onPeriod = viewModel::selectFilterPeriod,
+        onContent = viewModel::selectFilterContent,
+        onScope = viewModel::selectFilterScope,
+        onOpenDate = viewModel::openFilterDate,
+        onConfirmDate = viewModel::confirmFilterDate,
+        onOpenGroups = viewModel::openFilterGroups,
+        onToggleGroup = viewModel::toggleFilterGroup,
+        onClosePage = viewModel::closeFilterPage,
+        onApply = viewModel::applyFilter,
+    )
+}
+
+@Composable
 internal fun MapScreenContent(
     uiModel: MapUiModel,
     recordUiModel: RecordBottomSheetUiModel,
@@ -523,6 +546,7 @@ internal fun MapScreenContent(
     mapContent: @Composable (MapUiModel, Modifier) -> Unit,
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
+    onFilterClick: () -> Unit,
     onEmotionSelectorToggle: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
     onMyLocationClick: () -> Unit,
@@ -557,6 +581,7 @@ internal fun MapScreenContent(
                 showNavigationButtons = recordUiModel.step == RecordFlowStepUiModel.Closed,
                 onListClick = onListClick,
                 onSettingClick = onSettingClick,
+                onFilterClick = onFilterClick,
                 isEmotionSelectorExpanded = uiModel.isEmotionSelectorExpanded,
                 onEmotionSelectorToggle = onEmotionSelectorToggle,
                 onEmotionBubbleClick = onEmotionBubbleClick,
@@ -652,6 +677,7 @@ private fun MapScreenContentPreview() {
         mapContent = { _, modifier -> Box(modifier.background(Color(0xFFECEAE5))) },
         onListClick = {},
         onSettingClick = {},
+        onFilterClick = {},
         onEmotionSelectorToggle = {},
         onEmotionBubbleClick = {},
         onMyLocationClick = {},

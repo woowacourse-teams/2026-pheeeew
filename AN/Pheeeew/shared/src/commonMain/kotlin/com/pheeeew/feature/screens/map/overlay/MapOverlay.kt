@@ -43,10 +43,12 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_map_filter
 import pheeeew.shared.generated.resources.ic_menu
 import pheeeew.shared.generated.resources.ic_my_location
 import pheeeew.shared.generated.resources.ic_refresh
 import pheeeew.shared.generated.resources.map_current_location
+import pheeeew.shared.generated.resources.map_filter
 import pheeeew.shared.generated.resources.map_nearby_emotions
 import pheeeew.shared.generated.resources.map_open_list
 import pheeeew.shared.generated.resources.map_refresh
@@ -61,6 +63,7 @@ private val MAP_CONTROL_TINT = Color(0xFF2670F8)
 fun MapOverlay(
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
+    onFilterClick: () -> Unit,
     isEmotionSelectorExpanded: Boolean,
     onEmotionSelectorToggle: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
@@ -154,6 +157,12 @@ fun MapOverlay(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     MapControlButton(
+                        icon = Res.drawable.ic_map_filter,
+                        contentDescription = stringResource(Res.string.map_filter),
+                        onClick = onFilterClick,
+                        tint = Color.Unspecified,
+                    )
+                    MapControlButton(
                         icon = Res.drawable.ic_refresh,
                         contentDescription = stringResource(Res.string.map_refresh),
                         onClick = onRefreshClick,
@@ -211,6 +220,7 @@ internal fun MapControlButton(
     onClick: () -> Unit,
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
+    tint: Color = MAP_CONTROL_TINT,
 ) {
     Box(
         modifier =
@@ -226,7 +236,7 @@ internal fun MapControlButton(
             painter = painterResource(icon),
             contentDescription = contentDescription,
             modifier = Modifier.size(24.dp),
-            tint = MAP_CONTROL_TINT,
+            tint = tint,
         )
     }
 }
@@ -270,6 +280,7 @@ private fun MapOverlayPreviewContent(
         MapOverlay(
             onListClick = {},
             onSettingClick = {},
+            onFilterClick = {},
             isEmotionSelectorExpanded = isEmotionSelectorExpanded,
             onEmotionSelectorToggle = {},
             onEmotionBubbleClick = {},

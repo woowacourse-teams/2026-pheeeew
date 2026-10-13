@@ -1,10 +1,5 @@
 package com.pheeeew.feature.screens.map.record
 
-import com.pheeeew.core.di.emotion.createNearbyEmotionViewModel
-import com.pheeeew.core.network.AccessToken
-import com.pheeeew.core.network.ApiConfig
-import com.pheeeew.core.network.createApiClient
-import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionRegistration
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
 import com.pheeeew.domain.model.group.GroupId
@@ -17,11 +12,6 @@ import com.pheeeew.domain.repository.group.GroupStampListLoadResult
 import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
-import io.ktor.client.engine.mock.MockEngine
-import io.ktor.client.engine.mock.respond
-import io.ktor.http.ContentType
-import io.ktor.http.HttpHeaders
-import io.ktor.http.headersOf
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -86,28 +76,11 @@ class GroupMembershipRefreshTest {
         }
 
     @Test
-    fun `nearby and record selectors share membership updates and clear removed selections`() =
+    fun `record selector updates membership and clears a removed selection`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
-            val client =
-                createApiClient(
-                    engine =
-                        MockEngine {
-                            respond(
-                                "{\"items\":[],\"hasNext\":false}",
-                                headers =
-                                    headersOf(
-                                        HttpHeaders.ContentType,
-                                        ContentType.Application.Json.toString(),
-                                    ),
-                            )
-                        },
-                    config = ApiConfig("https://api.example.test"),
-                    accessTokenProvider = { AccessToken("access-token") },
-                )
             try {
                 val groups = MutableGroupStampListRepository()
-                val nearby = createNearbyEmotionViewModel(client, groups)
                 val record =
                     MapRecordViewModel(
                         IsWithinEmotionRecordRadiusUseCase(),
@@ -119,49 +92,23 @@ class GroupMembershipRefreshTest {
                         groupStampListRepository = groups,
                         lastRecordedGroupRepository = InMemoryLastRecordedGroupRepository(),
                     )
-                nearby.onViewportChanged(EmotionBounds(126.0, 37.0, 127.0, 38.0))
-                nearby.open()
-                nearby.openGroups()
                 record.open(EmotionTypeUiModel.FRUSTRATED)
                 advanceUntilIdle()
-                assertEquals(
-                    listOf("all"),
-                    nearby.state.value.groups
-                        .map { it.id },
-                )
                 assertEquals(listOf("none"), record.groupOptions.value.map { it.id })
 
-                // Both visible selectors refresh from the same revision without reopening.
                 groups.currentGroups = listOf(group())
                 groups.invalidate()
                 advanceUntilIdle()
-                assertEquals(
-                    listOf("all", GROUP_ID),
-                    nearby.state.value.groups
-                        .map { it.id },
-                )
                 assertEquals(listOf("none", GROUP_ID), record.groupOptions.value.map { it.id })
 
                 record.onGroupSelectionComplete(record.groupOptions.value.last())
-                nearby.completeGroup(
-                    nearby.state.value.groups
-                        .last(),
-                )
                 groups.currentGroups = emptyList()
                 groups.invalidate()
                 advanceUntilIdle()
-
-                assertEquals("all", nearby.state.value.groupId)
                 assertEquals("none", record.uiModel.value.selectedGroupId)
-                assertEquals(
-                    listOf("all"),
-                    nearby.state.value.groups
-                        .map { it.id },
-                )
                 assertEquals(listOf("none"), record.groupOptions.value.map { it.id })
                 assertEquals(RecordFlowStepUiModel.Input, record.uiModel.value.step)
             } finally {
-                client.close()
                 Dispatchers.resetMain()
             }
         }

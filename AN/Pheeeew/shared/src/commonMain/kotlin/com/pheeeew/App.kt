@@ -75,9 +75,9 @@ import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.data.remote.version.AppVersionApi
 import com.pheeeew.data.remote.version.toPolicy
-import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.domain.model.version.evaluateAppVersion
+import com.pheeeew.domain.repository.MapFilterSettingsRepository
 import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.component.AppBottomNavigationBar
@@ -152,6 +152,7 @@ fun App(
     appVersionApi: AppVersionApi,
     permissionSettingsLauncher: AppSettingsLauncher,
     appSettingsLauncher: AppSettingsLauncher,
+    mapFilterSettingsRepository: MapFilterSettingsRepository,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
 ) {
@@ -165,6 +166,7 @@ fun App(
             appVersionApi = appVersionApi,
             permissionSettingsLauncher = permissionSettingsLauncher,
             appSettingsLauncher = appSettingsLauncher,
+            mapFilterSettingsRepository = mapFilterSettingsRepository,
             hasCompletedOnboarding = hasCompletedOnboarding,
             onOnboardingCompleted = onOnboardingCompleted,
         )
@@ -181,6 +183,7 @@ private fun AppContent(
     appVersionApi: AppVersionApi,
     permissionSettingsLauncher: AppSettingsLauncher,
     appSettingsLauncher: AppSettingsLauncher,
+    mapFilterSettingsRepository: MapFilterSettingsRepository,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
 ) {
@@ -207,6 +210,10 @@ private fun AppContent(
         remember(apiDependencies.client) {
             createEmotionMapDependencies(apiDependencies.client)
         }
+    val groupStampListRepository =
+        remember(apiDependencies.client) { createGroupStampListRepository(apiDependencies.client) }
+    val nearbyViewModel: NearbyEmotionViewModel =
+        viewModel { createNearbyEmotionViewModel(apiDependencies.client) }
     val mapViewModel: MapViewModel =
         viewModel {
             MapViewModel.create(
@@ -216,6 +223,9 @@ private fun AppContent(
                 apiDependencies.client.monitoring,
                 findRegions = emotionMapDependencies.findRegions,
                 findRegionSnapshot = emotionMapDependencies.findRegionSnapshot,
+                groupStampListRepository = groupStampListRepository,
+                filterSettingsRepository = mapFilterSettingsRepository,
+                filterListRefresher = nearbyViewModel,
             )
         }
     LaunchedEffect(mapViewModel) { mapViewModel.onMapRendererAttached() }
@@ -227,8 +237,6 @@ private fun AppContent(
     }
     val registrationRepository =
         remember(apiDependencies.client) { createEmotionRegistrationRepository(apiDependencies.client) }
-    val groupStampListRepository =
-        remember(apiDependencies.client) { createGroupStampListRepository(apiDependencies.client) }
     val mapRecordViewModel: MapRecordViewModel =
         viewModel {
             MapRecordViewModel(
@@ -239,8 +247,6 @@ private fun AppContent(
                 apiDependencies.client.monitoring,
             )
         }
-    val nearbyViewModel: NearbyEmotionViewModel =
-        viewModel { createNearbyEmotionViewModel(apiDependencies.client, groupStampListRepository) }
     val nearbyState by nearbyViewModel.state.collectAsState()
     LaunchedEffect(nearbyState.visible, mapViewModel) {
         if (!nearbyState.visible) mapViewModel.clearFocusedEmotion()
@@ -350,18 +356,7 @@ private fun AppContent(
                     val viewport = RecordMapViewport(centerX, centerY, radius)
                     if (recordViewport.value != viewport) recordViewport.value = viewport
                 },
-                onViewportChanged = { viewport ->
-                    mapViewModel.onViewportChanged(viewport)
-                    val bounds = viewport.bounds
-                    nearbyViewModel.onViewportChanged(
-                        EmotionBounds(
-                            bounds.minLongitude,
-                            bounds.minLatitude,
-                            bounds.maxLongitude,
-                            bounds.maxLatitude,
-                        ),
-                    )
-                },
+                onViewportChanged = mapViewModel::onViewportChanged,
                 onEmotionPinClick = { id ->
                     highlightedEmotion = null
                     highlightedPinPosition.value = null
@@ -653,7 +648,6 @@ private fun AppContent(
                             onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
                             onMembershipChanged = {
                                 groupStampListRepository.invalidate()
-                                nearbyViewModel.onMembershipChanged()
                             },
                             onRefreshActionChanged = { refreshGroup = it },
                         )
@@ -726,7 +720,6 @@ private fun AppContent(
 
                     fun returnToRanking() {
                         groupStampListRepository.invalidate()
-                        nearbyViewModel.onMembershipChanged()
                         navController.popBackStack()
                     }
 

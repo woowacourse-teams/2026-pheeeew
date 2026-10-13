@@ -14,7 +14,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -24,15 +23,13 @@ import pheeeew.shared.generated.resources.map_refresh_nearby
 
 @Composable
 internal fun NearbySheetHeader(
-    group: GroupSelectorGroupUiModel,
     loading: Boolean,
     onRefresh: () -> Unit,
-    onOpenGroups: () -> Unit,
 ) {
     val refreshDescription = stringResource(Res.string.map_refresh_nearby)
     Row(
         Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.End,
         verticalAlignment = Alignment.Top,
     ) {
         Box(
@@ -49,6 +46,5 @@ internal fun NearbySheetHeader(
                 modifier = Modifier.size(20.dp),
             )
         }
-        NearbyGroupFilter(group, onClick = onOpenGroups)
     }
 }

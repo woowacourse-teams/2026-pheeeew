@@ -218,7 +218,6 @@ private fun NearbySheetPreviewContent(
     empty: Boolean = false,
 ) {
     var expanded by remember { mutableStateOf(initialExpanded) }
-    var group by remember { mutableStateOf(ALL_GROUP_OPTION) }
     val emotions = remember { nearbyPreviewItems() }
     AppTheme {
         Box(Modifier.fillMaxSize().background(Color(0xFFE4EBE4))) {
@@ -229,10 +228,8 @@ private fun NearbySheetPreviewContent(
                 onDismiss = {},
             ) {
                 NearbySheetHeader(
-                    group = group,
                     loading = false,
                     onRefresh = {},
-                    onOpenGroups = { group = if (group == ALL_GROUP_OPTION) nearbyPreviewGroup else ALL_GROUP_OPTION },
                 )
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().weight(1f),
