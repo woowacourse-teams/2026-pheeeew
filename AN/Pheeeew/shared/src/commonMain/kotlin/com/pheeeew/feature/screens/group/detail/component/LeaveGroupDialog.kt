@@ -33,6 +33,7 @@ import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.group.detail.GroupDetailOverlay
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_detail_leave_body
@@ -41,6 +42,7 @@ import pheeeew.shared.generated.resources.group_detail_leave_confirm
 import pheeeew.shared.generated.resources.group_detail_leave_error_body
 import pheeeew.shared.generated.resources.group_detail_leave_error_title
 import pheeeew.shared.generated.resources.group_detail_leave_failure_close
+import pheeeew.shared.generated.resources.group_detail_leave_public_body
 import pheeeew.shared.generated.resources.group_detail_leave_retry
 import pheeeew.shared.generated.resources.group_detail_leave_still_member_body
 import pheeeew.shared.generated.resources.group_detail_leave_still_member_title
@@ -56,6 +58,7 @@ import pheeeew.shared.generated.resources.group_detail_owner_leave_title
 @Composable
 internal fun LeaveGroupDialog(
     overlay: GroupDetailOverlay,
+    joinType: GroupJoinType,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
     onRetry: () -> Unit,
@@ -138,7 +141,14 @@ internal fun LeaveGroupDialog(
                     else -> {
                         LeaveDialogContent(
                             title = stringResource(Res.string.group_detail_leave_title),
-                            body = stringResource(Res.string.group_detail_leave_body),
+                            body =
+                                stringResource(
+                                    if (joinType == GroupJoinType.PUBLIC) {
+                                        Res.string.group_detail_leave_public_body
+                                    } else {
+                                        Res.string.group_detail_leave_body
+                                    },
+                                ),
                             primaryText = stringResource(Res.string.group_detail_leave_confirm),
                             secondaryText = stringResource(Res.string.group_detail_leave_cancel),
                             onPrimary = onConfirm,

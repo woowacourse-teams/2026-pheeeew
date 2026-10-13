@@ -145,6 +145,12 @@ private fun GroupDetailLeaveOutcomeUnknownPreview() {
     GroupDetailPreviewFrame(overlay = GroupDetailOverlay.LeaveOutcomeUnknown)
 }
 
+@Preview(name = "상단 참여 칩 · 처리 중", widthDp = 320, heightDp = 800)
+@Composable
+private fun GroupPublicJoinSubmittingChipPreview() {
+    publicJoinStatePreview(GroupDetailJoinPhase.Submitting)
+}
+
 @Preview(name = "공개 참여 · 상태 확인 중", widthDp = 360, heightDp = 800)
 @Composable
 private fun GroupPublicJoinCheckingPreview() {

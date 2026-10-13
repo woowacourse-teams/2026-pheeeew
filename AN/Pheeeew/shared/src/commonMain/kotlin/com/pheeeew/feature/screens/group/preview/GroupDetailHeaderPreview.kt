@@ -91,3 +91,49 @@ private fun GroupDetailUnrankedHeaderPreview() {
         GroupStatistics(group)
     }
 }
+
+@Preview(widthDp = 320, name = "상단 칩 · 공개 비멤버 참여하기", showBackground = true)
+@Composable
+private fun PublicGuestActionChipPreview() {
+    ActionChipHeaderPreview(GroupRole.NONE, com.pheeeew.feature.screens.group.model.GroupJoinType.PUBLIC)
+}
+
+@Preview(widthDp = 320, name = "상단 칩 · 비공개 비멤버 코드 참여", showBackground = true)
+@Composable
+private fun PrivateGuestActionChipPreview() {
+    ActionChipHeaderPreview(GroupRole.NONE, com.pheeeew.feature.screens.group.model.GroupJoinType.PRIVATE)
+}
+
+@Preview(widthDp = 320, name = "상단 칩 · 공개 멤버 초대 코드", showBackground = true)
+@Composable
+private fun PublicMemberActionChipPreview() {
+    ActionChipHeaderPreview(GroupRole.MEMBER, com.pheeeew.feature.screens.group.model.GroupJoinType.PUBLIC)
+}
+
+@Preview(widthDp = 320, name = "상단 칩 · 비공개 멤버 초대 코드", showBackground = true)
+@Composable
+private fun PrivateMemberActionChipPreview() {
+    ActionChipHeaderPreview(GroupRole.MEMBER, com.pheeeew.feature.screens.group.model.GroupJoinType.PRIVATE)
+}
+
+@Preview(widthDp = 320, name = "상단 칩 · 공개 그룹장 초대 코드", showBackground = true)
+@Composable
+private fun PublicOwnerActionChipPreview() {
+    ActionChipHeaderPreview(GroupRole.OWNER, com.pheeeew.feature.screens.group.model.GroupJoinType.PUBLIC)
+}
+
+@Preview(widthDp = 320, name = "상단 칩 · 비공개 그룹장 초대 코드", showBackground = true)
+@Composable
+private fun PrivateOwnerActionChipPreview() {
+    ActionChipHeaderPreview(GroupRole.OWNER, com.pheeeew.feature.screens.group.model.GroupJoinType.PRIVATE)
+}
+
+@Composable
+private fun ActionChipHeaderPreview(
+    role: GroupRole,
+    type: com.pheeeew.feature.screens.group.model.GroupJoinType,
+) {
+    Column(Modifier.padding(horizontal = 24.dp)) {
+        GroupProfile(previewGroupDetailReadyUiModel(role).copy(joinType = type), onInviteClick = {}, onJoinClick = {})
+    }
+}

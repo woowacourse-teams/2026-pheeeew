@@ -124,3 +124,28 @@ private fun GroupExplorePreviewFrame(uiState: GroupExploreUiState) {
         )
     }
 }
+
+@Preview(name = "전체 그룹 · 참여 후 검색 결과 갱신 중", widthDp = 360, heightDp = 920)
+@Composable
+private fun GroupExploreMembershipRefreshingPreview() {
+    val state = HomeFixtures.exploreState
+    val ready = state.content as com.pheeeew.feature.screens.group.home.explore.GroupExploreContent.Ready
+    GroupExplorePreviewFrame(state.copy(query = "산책", content = ready.copy(isRefreshing = true)))
+}
+
+@Preview(name = "전체 그룹 · 참여 후 갱신 실패", widthDp = 320, heightDp = 920)
+@Composable
+private fun GroupExploreMembershipRefreshFailedPreview() {
+    val state = HomeFixtures.exploreState
+    val ready = state.content as com.pheeeew.feature.screens.group.home.explore.GroupExploreContent.Ready
+    GroupExplorePreviewFrame(
+        state.copy(
+            query = "산책",
+            content =
+                ready.copy(
+                    refreshFailed = true,
+                    requiresFirstPageReload = true,
+                ),
+        ),
+    )
+}

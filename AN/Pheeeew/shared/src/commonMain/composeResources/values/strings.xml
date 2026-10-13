@@ -345,7 +345,7 @@
     <string name="group_detail_join">참여하기</string>
     <string name="group_detail_join_failure_api_pending">참여 기능은 API 연동 후 사용할 수 있어요.</string>
     <string name="group_detail_private_join_title">초대가 필요한 그룹이에요</string>
-    <string name="group_detail_private_join_description">그룹 목록에서 초대 코드를 입력해 참여할 수 있어요.</string>
+    <string name="group_detail_private_join_description">상단 참여하기를 눌러 받은 초대 코드를 입력해 주세요.</string>
     <string name="group_detail_emotion_blocked">답답</string>
     <string name="group_detail_emotion_annoyed">짜증</string>
     <string name="group_detail_emotion_tired">지침</string>
@@ -473,4 +473,5 @@
     <string name="group_members_unauthorized_body">멤버 목록을 보려면 인증이 필요해요. 다시 시도해 주세요.</string>
     <string name="group_members_cursor_expired">목록을 다시 불러와야 해요.</string>
     <string name="group_members_reload">목록 다시 불러오기</string>
+    <string name="group_detail_leave_public_body">그룹에서 나가도 전체 그룹에서 다시 참여할 수 있어요.</string>
 </resources>
