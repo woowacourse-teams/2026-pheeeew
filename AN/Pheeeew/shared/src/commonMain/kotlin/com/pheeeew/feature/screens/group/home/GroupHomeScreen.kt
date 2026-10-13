@@ -1,6 +1,6 @@
 package com.pheeeew.feature.screens.group.home
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,42 +24,40 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
-import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
+import com.pheeeew.core.navigation.FlowBackHandler
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
+import com.pheeeew.feature.screens.group.component.GroupListSkeleton
 import com.pheeeew.feature.screens.group.home.component.GroupCatalogCard
+import com.pheeeew.feature.screens.group.home.component.GroupHomeFloatingActions
+import com.pheeeew.feature.screens.group.home.component.GroupHomeSwipePager
 import com.pheeeew.feature.screens.group.home.component.GroupListItem
+import com.pheeeew.feature.screens.group.home.component.GroupSearchHeader
 import com.pheeeew.feature.screens.group.home.explore.GroupExploreContent
 import com.pheeeew.feature.screens.group.home.explore.GroupExploreUiState
 import com.pheeeew.feature.screens.group.model.GroupId
@@ -71,21 +71,16 @@ import pheeeew.shared.generated.resources.group_explore_empty_search
 import pheeeew.shared.generated.resources.group_explore_load_error
 import pheeeew.shared.generated.resources.group_explore_load_more_error
 import pheeeew.shared.generated.resources.group_explore_no_results
-import pheeeew.shared.generated.resources.group_explore_query_hint
 import pheeeew.shared.generated.resources.group_explore_recent_sort
 import pheeeew.shared.generated.resources.group_explore_retry
-import pheeeew.shared.generated.resources.group_explore_title
-import pheeeew.shared.generated.resources.group_home_create
 import pheeeew.shared.generated.resources.group_home_empty_description
 import pheeeew.shared.generated.resources.group_home_empty_illustration
 import pheeeew.shared.generated.resources.group_home_empty_title
 import pheeeew.shared.generated.resources.group_home_group_count
-import pheeeew.shared.generated.resources.group_home_join
 import pheeeew.shared.generated.resources.group_home_joined_groups
 import pheeeew.shared.generated.resources.group_home_loading
-import pheeeew.shared.generated.resources.group_home_my_groups
 import pheeeew.shared.generated.resources.group_home_refresh_error
-import pheeeew.shared.generated.resources.group_home_title
+import pheeeew.shared.generated.resources.group_search_my_no_results
 
 @Composable
 fun GroupHomeScreen(
@@ -102,115 +97,147 @@ fun GroupHomeScreen(
     onExploreSearchSubmitted: () -> Unit = {},
     onLoadMoreExploreGroups: () -> Unit = {},
     onRetryExploreGroups: () -> Unit = {},
+    initialSearchOpen: Boolean = false,
+    initialMyGroupsQuery: String = "",
 ) {
     val myGroupsListState = rememberLazyListState()
     val exploreListState = rememberLazyListState()
+    var searchOpen by rememberSaveable { mutableStateOf(initialSearchOpen) }
+    var myGroupsQuery by rememberSaveable { mutableStateOf(initialMyGroupsQuery) }
+    var myRecentQueries by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var exploreRecentQueries by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val activeQuery = if (selectedTab == GroupHomeTab.MyGroups) myGroupsQuery else exploreUiState.query
+    val activeHistory = if (selectedTab == GroupHomeTab.MyGroups) myRecentQueries else exploreRecentQueries
 
-    Column(
-        modifier =
-            modifier
-                .fillMaxSize()
-                .background(AppColors.GroupBackground)
-                .statusBarsPadding()
-                .navigationBarsPadding(),
-    ) {
-        Box(
-            modifier = Modifier.fillMaxWidth().height(54.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = stringResource(Res.string.group_home_title),
-                color = AppColors.GroupInk,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-        }
-        GroupHomeTabs(selectedTab = selectedTab, onTabSelected = onTabSelected)
+    fun updateActiveQuery(query: String) {
+        if (selectedTab == GroupHomeTab.MyGroups) myGroupsQuery = query else onExploreQueryChanged(query)
+    }
 
-        if (selectedTab == GroupHomeTab.MyGroups) {
-            if (uiState.isRefreshing) {
-                Box(modifier = Modifier.fillMaxWidth().height(28.dp), contentAlignment = Alignment.Center) {
-                    CircularLoadingIndicator(modifier = Modifier.size(19.dp), color = AppColors.Primary)
-                }
-            }
-            MyGroupsList(
-                uiState = uiState,
-                listState = myGroupsListState,
-                onCreateClick = onCreateClick,
-                onJoinClick = onJoinClick,
-                onGroupClick = onGroupClick,
-                onRetry = onRetry,
-                modifier = Modifier.weight(1f),
-            )
-        } else {
-            if ((exploreUiState.content as? GroupExploreContent.Ready)?.isRefreshing == true) {
-                Box(modifier = Modifier.fillMaxWidth().height(28.dp), contentAlignment = Alignment.Center) {
-                    CircularLoadingIndicator(modifier = Modifier.size(19.dp), color = AppColors.Primary)
-                }
-            }
-            ExploreGroupsList(
-                uiState = exploreUiState,
-                listState = exploreListState,
-                onCreateClick = onCreateClick,
-                onJoinClick = onJoinClick,
-                onQueryChanged = onExploreQueryChanged,
-                onSearchSubmitted = onExploreSearchSubmitted,
-                onGroupClick = onGroupClick,
-                onLoadMore = onLoadMoreExploreGroups,
-                onRetry = onRetryExploreGroups,
-                modifier = Modifier.weight(1f),
-            )
+    fun recordSearch() {
+        val keyword = activeQuery.trim()
+        if (keyword.isNotEmpty()) {
+            val history = (listOf(keyword) + activeHistory.filterNot { it.equals(keyword, true) }).take(5)
+            if (selectedTab == GroupHomeTab.MyGroups) myRecentQueries = history else exploreRecentQueries = history
         }
     }
-}
+    val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val focusManager = LocalFocusManager.current
 
-@Composable
-private fun GroupHomeTabs(
-    selectedTab: GroupHomeTab,
-    onTabSelected: (GroupHomeTab) -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).selectableGroup(),
-        verticalAlignment = Alignment.Bottom,
-    ) {
-        GroupHomeTab.entries.forEach { tab ->
-            val selected = tab == selectedTab
-            val text =
-                stringResource(
-                    if (tab == GroupHomeTab.MyGroups) {
-                        Res.string.group_home_my_groups
-                    } else {
-                        Res.string.group_explore_title
-                    },
-                )
-            Column(
-                modifier =
-                    Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .selectable(
-                            selected = selected,
-                            role = Role.Tab,
-                            onClick = { onTabSelected(tab) },
-                        ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Bottom,
-            ) {
-                Text(
-                    text = text,
-                    modifier = Modifier.padding(bottom = 12.dp),
-                    color = if (selected) AppColors.GroupInk else AppColors.RankingSecondaryContent,
-                    fontSize = 14.sp,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                )
-                Spacer(
-                    Modifier
-                        .fillMaxWidth()
-                        .height(if (selected) 3.dp else 1.dp)
-                        .background(if (selected) AppColors.GroupInk else Color(0xFFE5E7E4)),
-                )
+    fun closeSearch() {
+        recordSearch()
+        searchOpen = false
+        focusManager.clearFocus()
+    }
+    FlowBackHandler(searchOpen) { closeSearch() }
+    var previousTab by remember { mutableStateOf(selectedTab) }
+    LaunchedEffect(selectedTab) {
+        if (previousTab != selectedTab) {
+            searchOpen = false
+            focusManager.clearFocus()
+            previousTab = selectedTab
+        }
+    }
+    var previousMyQuery by remember { mutableStateOf(myGroupsQuery) }
+    LaunchedEffect(myGroupsQuery) {
+        if (previousMyQuery != myGroupsQuery) {
+            myGroupsListState.scrollToItem(0)
+            previousMyQuery = myGroupsQuery
+        }
+    }
+
+    Box(modifier.fillMaxSize().navigationBarsPadding()) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .background(AppColors.GroupBackground)
+                    .statusBarsPadding(),
+        ) {
+            GroupHomeSwipePager(
+                selectedTab = selectedTab,
+                onTabSelected = onTabSelected,
+                modifier = Modifier.weight(1f),
+                isSearchOpen = searchOpen,
+                headerContent = { tabs ->
+                    GroupSearchHeader(
+                        isOpen = searchOpen,
+                        query = activeQuery,
+                        recentQueries = activeHistory,
+                        searchTab = selectedTab,
+                        showSummary = true,
+                        onOpen = {
+                            searchOpen = true
+                        },
+                        onClose = { closeSearch() },
+                        onQueryChanged = { updateActiveQuery(it) },
+                        onSubmit = {
+                            if (selectedTab == GroupHomeTab.Explore) onExploreSearchSubmitted()
+                            closeSearch()
+                        },
+                        tabsContent = tabs,
+                    )
+                },
+            ) { tab ->
+                when (tab) {
+                    GroupHomeTab.MyGroups -> {
+                        Column(Modifier.fillMaxSize()) {
+                            if (uiState.isRefreshing) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().height(28.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularLoadingIndicator(modifier = Modifier.size(19.dp), color = AppColors.Primary)
+                                }
+                            }
+                            MyGroupsList(
+                                uiState = uiState,
+                                listState = myGroupsListState,
+                                onGroupClick = { id ->
+                                    closeSearch()
+                                    onGroupClick(id)
+                                },
+                                query = myGroupsQuery,
+                                onClearQuery = { myGroupsQuery = "" },
+                                onRetry = onRetry,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+
+                    GroupHomeTab.Explore -> {
+                        Column(Modifier.fillMaxSize()) {
+                            if ((exploreUiState.content as? GroupExploreContent.Ready)?.isRefreshing == true) {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().height(28.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularLoadingIndicator(modifier = Modifier.size(19.dp), color = AppColors.Primary)
+                                }
+                            }
+                            ExploreGroupsList(
+                                uiState = exploreUiState,
+                                listState = exploreListState,
+                                onQueryChanged = onExploreQueryChanged,
+                                onGroupClick = { id ->
+                                    closeSearch()
+                                    onGroupClick(id)
+                                },
+                                onLoadMore = onLoadMoreExploreGroups,
+                                onRetry = onRetryExploreGroups,
+                                isActive = selectedTab == GroupHomeTab.Explore,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
             }
+        }
+        if (!keyboardVisible && !searchOpen) {
+            GroupHomeFloatingActions(
+                onCreateClick = onCreateClick,
+                onJoinClick = onJoinClick,
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }
@@ -219,21 +246,24 @@ private fun GroupHomeTabs(
 private fun MyGroupsList(
     uiState: GroupHomeUiState,
     listState: LazyListState,
-    onCreateClick: () -> Unit,
-    onJoinClick: () -> Unit,
     onGroupClick: (GroupId) -> Unit,
     onRetry: () -> Unit,
+    query: String,
+    onClearQuery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val keyword = query.trim()
+    val filteredGroups =
+        (uiState.content as? GroupHomeContent.Ready)
+            ?.groups
+            .orEmpty()
+            .filter { it.name.contains(keyword, ignoreCase = true) }
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(top = 16.dp, bottom = AppBottomNavigationBarOverlaySpace),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = AppBottomNavigationBarOverlaySpace + 76.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item(key = "my-groups:actions", contentType = "actions") {
-            GroupHomeActions(onCreateClick = onCreateClick, onJoinClick = onJoinClick)
-        }
         item(key = "my-groups:heading", contentType = "heading") {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 5.dp),
@@ -248,7 +278,7 @@ private fun MyGroupsList(
                 )
                 if (uiState.content is GroupHomeContent.Ready) {
                     Text(
-                        text = stringResource(Res.string.group_home_group_count, uiState.content.groups.size),
+                        text = stringResource(Res.string.group_home_group_count, filteredGroups.size),
                         color = AppColors.RankingSecondaryContent,
                         fontSize = 12.sp,
                     )
@@ -258,7 +288,7 @@ private fun MyGroupsList(
         when (val content = uiState.content) {
             GroupHomeContent.Loading -> {
                 item(key = "my-groups:loading") {
-                    LoadingContent(modifier = Modifier.fillMaxWidth().height(220.dp))
+                    GroupListSkeleton(modifier = Modifier.padding(horizontal = 24.dp))
                 }
             }
 
@@ -284,19 +314,30 @@ private fun MyGroupsList(
                         RefreshErrorBanner(
                             message = stringResource(Res.string.group_home_refresh_error),
                             onRetry = onRetry,
-                            modifier = Modifier.padding(horizontal = 24.dp),
+                            modifier = Modifier.animateItem(placementSpec = null).padding(horizontal = 24.dp),
+                        )
+                    }
+                }
+                if (filteredGroups.isEmpty() && keyword.isNotEmpty()) {
+                    item(key = "my-groups:no-results") {
+                        ExploreMessage(
+                            message = stringResource(Res.string.group_search_my_no_results),
+                            actionLabel = stringResource(Res.string.group_explore_empty_search),
+                            onAction = onClearQuery,
+                            modifier = Modifier.fillMaxWidth().height(220.dp),
                         )
                     }
                 }
                 items(
-                    items = content.groups,
+                    items = filteredGroups,
                     key = { group -> "my-group:${group.id.value}" },
                     contentType = { "group-row" },
                 ) { group ->
                     GroupListItem(
                         group = group,
+                        highlightQuery = query,
                         onClick = { onGroupClick(group.id) },
-                        modifier = Modifier.padding(horizontal = 24.dp),
+                        modifier = Modifier.animateItem(placementSpec = null).padding(horizontal = 24.dp),
                     )
                 }
             }
@@ -308,18 +349,40 @@ private fun MyGroupsList(
 private fun ExploreGroupsList(
     uiState: GroupExploreUiState,
     listState: LazyListState,
-    onCreateClick: () -> Unit,
-    onJoinClick: () -> Unit,
     onQueryChanged: (String) -> Unit,
-    onSearchSubmitted: () -> Unit,
     onGroupClick: (GroupId) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
+    isActive: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val content = uiState.content
+    var lastResults by remember { mutableStateOf<GroupExploreContent.Ready?>(null) }
+    LaunchedEffect(uiState.content) {
+        lastResults =
+            when (val latest = uiState.content) {
+                is GroupExploreContent.Ready -> latest
+                GroupExploreContent.Loading -> lastResults
+                else -> null
+            }
+    }
+    val searching = uiState.content == GroupExploreContent.Loading && lastResults != null
+    val content =
+        if (searching) {
+            lastResults!!.copy(
+                nextCursor = null,
+                isLoadingMore = false,
+                loadMoreFailed = false,
+                refreshFailed = false,
+            )
+        } else {
+            uiState.content
+        }
     val canLoadMore =
-        content is GroupExploreContent.Ready && content.hasNextPage && !content.isLoadingMore && !content.loadMoreFailed
+        isActive &&
+            content is GroupExploreContent.Ready &&
+            content.hasNextPage &&
+            !content.isLoadingMore &&
+            !content.loadMoreFailed
     val currentOnLoadMore by rememberUpdatedState(onLoadMore)
     LaunchedEffect(listState, canLoadMore) {
         if (!canLoadMore) return@LaunchedEffect
@@ -338,20 +401,9 @@ private fun ExploreGroupsList(
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(top = 16.dp, bottom = AppBottomNavigationBarOverlaySpace),
-        verticalArrangement = Arrangement.spacedBy(13.dp),
+        contentPadding = PaddingValues(top = 16.dp, bottom = AppBottomNavigationBarOverlaySpace + 76.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item(key = "explore:actions", contentType = "actions") {
-            GroupHomeActions(onCreateClick = onCreateClick, onJoinClick = onJoinClick)
-        }
-        item(key = "explore:search", contentType = "search") {
-            GroupExploreSearchField(
-                query = uiState.query,
-                onQueryChanged = onQueryChanged,
-                onSearchSubmitted = onSearchSubmitted,
-                modifier = Modifier.padding(horizontal = 24.dp),
-            )
-        }
         item(key = "explore:heading", contentType = "heading") {
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(top = 3.dp, bottom = 2.dp),
@@ -363,11 +415,15 @@ private fun ExploreGroupsList(
                     color = AppColors.RankingSecondaryContent,
                     fontSize = 12.sp,
                 )
-                Text(
-                    text = stringResource(Res.string.group_explore_recent_sort),
-                    color = AppColors.RankingSecondaryContent,
-                    fontSize = 12.sp,
-                )
+                if (searching) {
+                    CircularLoadingIndicator(Modifier.size(16.dp), color = AppColors.TextSecondary)
+                } else {
+                    Text(
+                        text = stringResource(Res.string.group_explore_recent_sort),
+                        color = AppColors.RankingSecondaryContent,
+                        fontSize = 12.sp,
+                    )
+                }
             }
         }
         when (content) {
@@ -375,7 +431,7 @@ private fun ExploreGroupsList(
             GroupExploreContent.Loading,
             -> {
                 item(key = "explore:loading") {
-                    LoadingContent(modifier = Modifier.fillMaxWidth().height(170.dp))
+                    GroupListSkeleton(modifier = Modifier.padding(horizontal = 24.dp))
                 }
             }
 
@@ -416,7 +472,7 @@ private fun ExploreGroupsList(
                         RefreshErrorBanner(
                             message = stringResource(Res.string.group_explore_load_error),
                             onRetry = onRetry,
-                            modifier = Modifier.padding(horizontal = 24.dp),
+                            modifier = Modifier.animateItem(placementSpec = null).padding(horizontal = 24.dp),
                         )
                     }
                 }
@@ -430,12 +486,17 @@ private fun ExploreGroupsList(
                         joinType = item.joinType,
                         isJoined = item.isJoined,
                         onClick = { onGroupClick(item.group.id) },
-                        modifier = Modifier.padding(horizontal = 24.dp),
+                        enabled = !searching,
+                        highlightQuery = if (searching) "" else uiState.query,
+                        modifier = Modifier.animateItem(placementSpec = null).padding(horizontal = 24.dp),
                     )
                 }
                 if (content.isLoadingMore) {
                     item(key = "explore:loading-more") {
-                        Box(modifier = Modifier.fillMaxWidth().height(52.dp), contentAlignment = Alignment.Center) {
+                        Box(
+                            modifier = Modifier.animateItem().fillMaxWidth().height(52.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
                             CircularLoadingIndicator(modifier = Modifier.size(20.dp), color = AppColors.Primary)
                         }
                     }
@@ -445,162 +506,18 @@ private fun ExploreGroupsList(
                             message = stringResource(Res.string.group_explore_load_more_error),
                             actionLabel = stringResource(Res.string.group_explore_retry),
                             onAction = onRetry,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(72.dp),
+                            modifier =
+                                Modifier
+                                    .animateItem()
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp)
+                                    .height(72.dp),
                             compact = true,
                         )
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun GroupExploreSearchField(
-    query: String,
-    onQueryChanged: (String) -> Unit,
-    onSearchSubmitted: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val shape = RoundedCornerShape(13.dp)
-    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
-    Row(
-        modifier =
-            modifier
-                .fillMaxWidth()
-                .height(
-                    48.dp,
-                ).clip(shape)
-                .background(Color(0xFFEEEEEC))
-                .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Canvas(Modifier.size(18.dp)) {
-            val stroke = 1.6.dp.toPx()
-            drawCircle(
-                color = AppColors.GroupInk,
-                radius = size.minDimension * 0.32f,
-                center =
-                    androidx.compose.ui.geometry
-                        .Offset(size.width * 0.42f, size.height * 0.42f),
-                style = Stroke(width = stroke),
-            )
-            drawLine(
-                color = AppColors.GroupInk,
-                start =
-                    androidx.compose.ui.geometry
-                        .Offset(size.width * 0.65f, size.height * 0.65f),
-                end =
-                    androidx.compose.ui.geometry
-                        .Offset(size.width * 0.91f, size.height * 0.91f),
-                strokeWidth = stroke,
-            )
-        }
-        BasicTextField(
-            value = query,
-            onValueChange = onQueryChanged,
-            modifier = Modifier.weight(1f),
-            singleLine = true,
-            textStyle = TextStyle(color = AppColors.GroupInk, fontSize = 14.sp),
-            cursorBrush = SolidColor(AppColors.GroupInk),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions =
-                KeyboardActions(
-                    onSearch = {
-                        keyboardController?.hide()
-                        onSearchSubmitted()
-                    },
-                ),
-            decorationBox = { innerTextField ->
-                Box {
-                    if (query.isEmpty()) {
-                        Text(
-                            text = stringResource(Res.string.group_explore_query_hint),
-                            color = AppColors.RankingSecondaryContent,
-                            fontSize = 14.sp,
-                        )
-                    }
-                    innerTextField()
-                }
-            },
-        )
-        val clearInteractionSource = remember { MutableInteractionSource() }
-        Box(
-            modifier =
-                Modifier
-                    .size(28.dp)
-                    .clickable(
-                        interactionSource = clearInteractionSource,
-                        indication = null,
-                        role = Role.Button,
-                        onClick = { if (query.isNotEmpty()) onQueryChanged("") },
-                    ),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(text = "×", color = AppColors.GroupInk, fontSize = 20.sp, lineHeight = 20.sp)
-        }
-    }
-}
-
-@Composable
-private fun GroupHomeActions(
-    onCreateClick: () -> Unit,
-    onJoinClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        GroupHomeActionButton(
-            text = stringResource(Res.string.group_home_create),
-            isPrimary = true,
-            onClick = onCreateClick,
-            modifier = Modifier.weight(1f),
-        )
-        GroupHomeActionButton(
-            text = stringResource(Res.string.group_home_join),
-            isPrimary = false,
-            onClick = onJoinClick,
-            modifier = Modifier.weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun GroupHomeActionButton(
-    text: String,
-    isPrimary: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(17.dp)
-    val buttonFont = notoSansKrFontFamily()
-    Box(
-        modifier =
-            modifier
-                .height(50.dp)
-                .raisedButtonBorder(shape, interactionSource = interactionSource)
-                .clip(shape)
-                .background(if (isPrimary) AppColors.Primary else Color.White)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    role = Role.Button,
-                    onClick = onClick,
-                ).padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = text,
-            color = if (isPrimary) AppColors.TextPrimary else AppColors.GroupInk,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            fontFamily = buttonFont,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 

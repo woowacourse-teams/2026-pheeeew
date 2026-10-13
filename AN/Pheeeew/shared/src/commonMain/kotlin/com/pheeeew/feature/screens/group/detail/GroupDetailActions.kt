@@ -24,4 +24,5 @@ data class GroupDetailActions(
     val onMoodReportClick: ((String) -> Unit)?,
     val onMoodFeedRetry: (() -> Unit)?,
     val onMoodFeedLoadMore: (() -> Unit)?,
+    val onMembersClick: (() -> Unit)? = null,
 )

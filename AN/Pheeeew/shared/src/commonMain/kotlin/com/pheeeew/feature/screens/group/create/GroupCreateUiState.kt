@@ -19,7 +19,7 @@ internal val DEFAULT_GROUP_CREATE_DRAFT =
                 fillArgb = 0xFFA7DCCFL,
                 textArgb = StampTextColorOption.BLACK.argb,
             ),
-        joinType = GroupJoinType.PRIVATE,
+        joinType = GroupJoinType.PUBLIC,
     )
 
 /** 그룹 생성 화면의 단일 상태 스냅샷입니다. */

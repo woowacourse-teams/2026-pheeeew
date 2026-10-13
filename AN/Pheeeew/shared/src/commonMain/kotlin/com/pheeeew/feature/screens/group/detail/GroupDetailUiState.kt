@@ -109,8 +109,16 @@ data class GroupDetailMembershipEvent(
 
 data class GroupDetailJoinUiState(
     val failure: GroupDetailJoinFailure? = null,
+    val phase: GroupDetailJoinPhase = GroupDetailJoinPhase.Idle,
 )
 
 enum class GroupDetailJoinFailure {
     ApiIntegrationPending,
+}
+
+/** UI-only phases; the API adapter will supply these when direct join is supported. */
+enum class GroupDetailJoinPhase {
+    Idle,
+    Submitting,
+    Completed,
 }

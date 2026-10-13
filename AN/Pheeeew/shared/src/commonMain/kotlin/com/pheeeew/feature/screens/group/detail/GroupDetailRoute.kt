@@ -43,6 +43,7 @@ fun GroupDetailRoute(
     modifier: Modifier = Modifier,
     onMoodBlockClick: ((String) -> Unit)?,
     onMoodReportClick: ((String) -> Unit)?,
+    onMembersClick: (() -> Unit)? = null,
 ) {
     ProductScreen(viewModel.telemetry, isCurrentDestination)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -163,6 +164,7 @@ fun GroupDetailRoute(
                 onMoodReportClick = onMoodReportClick,
                 onMoodFeedRetry = viewModel::onMoodFeedRetry,
                 onMoodFeedLoadMore = viewModel::onMoodFeedLoadMore,
+                onMembersClick = onMembersClick,
             ),
         modifier = modifier,
     )

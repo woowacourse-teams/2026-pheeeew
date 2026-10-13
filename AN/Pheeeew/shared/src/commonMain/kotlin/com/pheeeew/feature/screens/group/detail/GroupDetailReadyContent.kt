@@ -71,6 +71,7 @@ internal fun GroupDetailReadyContent(
     onReportClick: ((String) -> Unit)?,
     onFeedRetry: (() -> Unit)?,
     onFeedLoadMore: (() -> Unit)?,
+    onMembersClick: (() -> Unit)? = null,
 ) {
     val feed = detail.feed
     val canReact = detail.role != GroupRole.NONE
@@ -151,6 +152,7 @@ internal fun GroupDetailReadyContent(
                 onInviteClick = onInviteClick,
                 joinState = joinState,
                 onJoinClick = onJoinClick,
+                onMembersClick = onMembersClick,
             )
             if (detail.role == GroupRole.NONE && detail.joinType == GroupJoinType.PRIVATE) {
                 Spacer(Modifier.height(18.dp))

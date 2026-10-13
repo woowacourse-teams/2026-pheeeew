@@ -26,6 +26,8 @@ import com.pheeeew.feature.screens.group.detail.GroupDetailRoute
 import com.pheeeew.feature.screens.group.detail.GroupDetailViewModel
 import com.pheeeew.feature.screens.group.home.GroupHomeRoute
 import com.pheeeew.feature.screens.group.home.GroupHomeViewModel
+import com.pheeeew.feature.screens.group.members.GroupMembersRoute
+import com.pheeeew.feature.screens.group.members.GroupMembersViewModel
 import com.pheeeew.feature.screens.group.model.GroupId
 
 @Composable
@@ -145,6 +147,29 @@ fun GroupFeatureHost(
                 },
                 onMoodBlockClick = null,
                 onMoodReportClick = null,
+                onMembersClick = {
+                    if (navController.currentBackStackEntry == entry) {
+                        navController.navigate(GroupMembersDestination(groupId.value)) {
+                            launchSingleTop = true
+                        }
+                    }
+                },
+            )
+        }
+
+        composable<GroupMembersDestination> { entry ->
+            val destination = entry.toRoute<GroupMembersDestination>()
+            val groupId = GroupId(destination.groupId)
+            val membersViewModel: GroupMembersViewModel =
+                viewModel(viewModelStoreOwner = entry) {
+                    GroupMembersViewModel(
+                        groupId = groupId,
+                        source = dependencies.membersSource,
+                    )
+                }
+            GroupMembersRoute(
+                viewModel = membersViewModel,
+                onBack = { navController.popBackStackIfCurrent(entry) },
             )
         }
     }

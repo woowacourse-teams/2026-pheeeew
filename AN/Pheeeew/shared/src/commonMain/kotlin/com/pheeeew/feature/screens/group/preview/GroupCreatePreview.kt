@@ -134,3 +134,9 @@ private fun GroupCreatePreviewFrame(
         onApplyColor = onApplyColor,
     )
 }
+
+@Preview(name = "그룹 생성 · 새 초안 기본 공개", widthDp = 360, heightDp = 800)
+@Composable
+private fun GroupCreateDefaultPublicPreview() {
+    GroupCreatePreviewFrame(uiState = GroupCreateUiState())
+}

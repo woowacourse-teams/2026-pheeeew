@@ -1,6 +1,5 @@
 package com.pheeeew.feature.screens.group.detail.component
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -14,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,19 +26,15 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.core.designsystem.theme.AppTheme
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_detail_close
-import pheeeew.shared.generated.resources.group_detail_copy_icon
 import pheeeew.shared.generated.resources.group_detail_invite_copy_hint
 import pheeeew.shared.generated.resources.group_detail_invite_title
 
@@ -48,6 +42,10 @@ import pheeeew.shared.generated.resources.group_detail_invite_title
 internal fun InviteCodeDialog(
     code: String,
     onShare: () -> Unit,
+    onCopy: () -> Unit,
+    copied: Boolean,
+    copySuccessKey: Any? = copied,
+    keepCopySuccessVisible: Boolean = false,
     onDismiss: () -> Unit,
 ) {
     AppDialog(
@@ -108,13 +106,11 @@ internal fun InviteCodeDialog(
                             textAlign = TextAlign.Center,
                         )
                         Spacer(Modifier.width(12.dp))
-                        Image(
-                            painter = painterResource(Res.drawable.group_detail_copy_icon),
-                            contentDescription = null,
-                            modifier =
-                                Modifier
-                                    .size(40.dp)
-                                    .padding(10.dp),
+                        GroupCopyFeedbackButton(
+                            copied = copied,
+                            onCopy = onCopy,
+                            successKey = copySuccessKey,
+                            keepSuccessVisible = keepCopySuccessVisible,
                         )
                     }
                     Spacer(Modifier.height(3.dp))
