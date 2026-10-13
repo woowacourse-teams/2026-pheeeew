@@ -58,6 +58,7 @@ import com.pheeeew.feature.screens.group.join.component.GroupJoinPreviewCard
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.group_detail_join_check_failed
 import pheeeew.shared.generated.resources.group_join_code_count
 import pheeeew.shared.generated.resources.group_join_code_format_hint
 import pheeeew.shared.generated.resources.group_join_code_invalid_characters
@@ -81,6 +82,8 @@ import pheeeew.shared.generated.resources.group_join_not_found
 import pheeeew.shared.generated.resources.group_join_preview_stale
 import pheeeew.shared.generated.resources.group_join_search
 import pheeeew.shared.generated.resources.group_join_searching
+import pheeeew.shared.generated.resources.group_join_target_mismatch
+import pheeeew.shared.generated.resources.group_join_target_title
 import pheeeew.shared.generated.resources.group_join_title
 import pheeeew.shared.generated.resources.group_join_verify_membership
 
@@ -98,6 +101,8 @@ fun GroupJoinSheet(
     onJoinClick: () -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    targetGroupName: String? = null,
+    onVerifyMembership: (() -> Unit)? = null,
 ) {
     val scope = rememberCoroutineScope()
     val latestDismiss by rememberUpdatedState(onDismiss)
@@ -142,7 +147,12 @@ fun GroupJoinSheet(
                     .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
         ) {
             Text(
-                text = stringResource(Res.string.group_join_title),
+                text =
+                    if (targetGroupName == null) {
+                        stringResource(Res.string.group_join_title)
+                    } else {
+                        stringResource(Res.string.group_join_target_title, targetGroupName)
+                    },
                 color = AppColors.GroupInk,
                 fontSize = 21.sp,
                 fontWeight = FontWeight.Bold,
@@ -170,7 +180,9 @@ fun GroupJoinSheet(
                             },
                             JoinInputShape,
                         ),
-                enabled = !uiState.isInteractionLocked && !isDismissing,
+                enabled =
+                    !uiState.isInteractionLocked && !isDismissing &&
+                        !(targetGroupName != null && uiState.needsMembershipVerification),
                 isError = uiState.shouldShowCodeValidationError,
                 placeholder = { Text(stringResource(Res.string.group_join_code_placeholder)) },
                 singleLine = true,
@@ -205,7 +217,11 @@ fun GroupJoinSheet(
             )
 
             CodeInputFeedback(uiState = uiState)
-            LookupMessage(lookup = uiState.lookup)
+            if (uiState.targetMismatch) {
+                Text(stringResource(Res.string.group_join_target_mismatch), color = JoinErrorColor, fontSize = 12.sp)
+            } else {
+                LookupMessage(lookup = uiState.lookup)
+            }
             val hasInlineRateLimitMessage =
                 when (uiState.rateLimit?.operation) {
                     GroupJoinRateLimitOperation.Lookup -> {
@@ -229,7 +245,15 @@ fun GroupJoinSheet(
                     GroupJoinPreviewCard(group = group)
                 }
             }
-            SubmissionMessage(submission = uiState.submission)
+            if (targetGroupName != null && uiState.needsMembershipVerification) {
+                Text(
+                    stringResource(Res.string.group_detail_join_check_failed),
+                    color = JoinErrorColor,
+                    fontSize = 12.sp,
+                )
+            } else {
+                SubmissionMessage(submission = uiState.submission)
+            }
 
             Spacer(Modifier.height(18.dp))
             val joining = uiState.submission is GroupJoinSubmissionState.Submitting
@@ -261,7 +285,7 @@ fun GroupJoinSheet(
                 onClick = {
                     when {
                         needsMembershipVerification -> {
-                            dismissSheet()
+                            if (onVerifyMembership != null) onVerifyMembership() else dismissSheet()
                         }
 
                         showJoinAction -> {

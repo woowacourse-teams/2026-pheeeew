@@ -15,10 +15,11 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 
-/** 홈 ViewModel이 소유하는 코드 조회와 참여 요청의 상태·수명 관리자입니다. */
+/** 코드 조회·참여 상태를 소유하며 상세에서는 대상 그룹을 고정합니다. */
 class GroupJoinStateHolder(
     private val scope: CoroutineScope,
     private val dependencies: GroupJoinDependencies,
+    private val targetGroupId: GroupId? = null,
 ) {
     private val telemetry = ProductMonitoring(dependencies.monitoring, "group_home")
     private val _uiState = MutableStateFlow(GroupJoinUiState())
@@ -36,7 +37,11 @@ class GroupJoinStateHolder(
         if (isOpen) return
         telemetry.emit("group_join_started")
         isOpen = true
-        _uiState.value = GroupJoinUiState(rateLimit = activeRateLimit)
+        _uiState.value =
+            GroupJoinUiState(
+                input = if (targetGroupId != null) _uiState.value.input else "",
+                rateLimit = activeRateLimit,
+            )
     }
 
     /** 처리 중에는 화면 닫기를 거부하고, 조회 중에는 해당 요청도 취소합니다. */
@@ -47,18 +52,27 @@ class GroupJoinStateHolder(
 
         invalidateRequests()
         isOpen = false
-        _uiState.value = GroupJoinUiState(rateLimit = activeRateLimit)
+        _uiState.value =
+            GroupJoinUiState(
+                input = if (targetGroupId != null) _uiState.value.input else "",
+                rateLimit = activeRateLimit,
+            )
         return true
     }
 
     fun onCodeChanged(value: String) {
-        if (!isOpen || _uiState.value.isInteractionLocked) return
+        if (!isOpen || _uiState.value.isInteractionLocked ||
+            (targetGroupId != null && _uiState.value.needsMembershipVerification)
+        ) {
+            return
+        }
 
         invalidateRequests()
         _uiState.update { state ->
             state.copy(
                 input = GroupCodeRules.normalize(value).take(GROUP_INVITATION_CODE_LENGTH),
                 hasAttemptedSearch = false,
+                targetMismatch = false,
                 lookup = GroupLookupState.Idle,
                 submission = GroupJoinSubmissionState.Idle,
             )
@@ -67,7 +81,7 @@ class GroupJoinStateHolder(
 
     fun onSearchClick() {
         val current = _uiState.value
-        if (!isOpen || !current.canSearch) return
+        if (!isOpen || !current.canSearch || (targetGroupId != null && current.needsMembershipVerification)) return
 
         val code =
             when (val validation = GroupCodeRules.validate(current.input)) {
@@ -93,6 +107,7 @@ class GroupJoinStateHolder(
         _uiState.value =
             current.copy(
                 hasAttemptedSearch = true,
+                targetMismatch = false,
                 lookup = GroupLookupState.Loading(requestId, code),
                 submission = GroupJoinSubmissionState.Idle,
             )
@@ -104,13 +119,35 @@ class GroupJoinStateHolder(
 
                 _uiState.update { state ->
                     if (!isActiveLookup(state, requestId, code)) return@update state
+                    val mismatch =
+                        result is GroupLookupResult.Found && targetGroupId != null &&
+                            !result.group.id.value
+                                .equals(targetGroupId.value, ignoreCase = true)
                     state.copy(
+                        targetMismatch = mismatch,
                         lookup =
                             when (result) {
-                                is GroupLookupResult.Found -> GroupLookupState.Found(code, result.group)
-                                GroupLookupResult.NotFound -> GroupLookupState.NotFound(code)
-                                is GroupLookupResult.RateLimited -> GroupLookupState.RateLimited(code)
-                                GroupLookupResult.Unavailable -> GroupLookupState.Failed(code)
+                                is GroupLookupResult.Found -> {
+                                    if (mismatch) {
+                                        GroupLookupState.Failed(
+                                            code,
+                                        )
+                                    } else {
+                                        GroupLookupState.Found(code, result.group)
+                                    }
+                                }
+
+                                GroupLookupResult.NotFound -> {
+                                    GroupLookupState.NotFound(code)
+                                }
+
+                                is GroupLookupResult.RateLimited -> {
+                                    GroupLookupState.RateLimited(code)
+                                }
+
+                                GroupLookupResult.Unavailable -> {
+                                    GroupLookupState.Failed(code)
+                                }
                             },
                     )
                 }
@@ -126,6 +163,12 @@ class GroupJoinStateHolder(
         if (!isOpen || !current.canJoin) return
 
         val found = current.lookup as? GroupLookupState.Found ?: return
+        if (targetGroupId != null &&
+            !found.group.id.value
+                .equals(targetGroupId.value, ignoreCase = true)
+        ) {
+            return
+        }
         val operationKey = dependencies.operationKeyAllocator.next()
         val requestId = nextRequestGeneration()
         _uiState.value =
@@ -198,7 +241,11 @@ class GroupJoinStateHolder(
 
         invalidateRequests()
         isOpen = false
-        _uiState.value = GroupJoinUiState(rateLimit = activeRateLimit)
+        _uiState.value =
+            GroupJoinUiState(
+                input = if (targetGroupId != null) _uiState.value.input else "",
+                rateLimit = activeRateLimit,
+            )
         return true
     }
 
