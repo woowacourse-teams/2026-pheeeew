@@ -617,6 +617,7 @@ class GroupDetailViewModelTest {
                     description = "퇴근하고 한 번씩",
                 ),
             role = role,
+            joinType = com.pheeeew.feature.screens.group.model.GroupJoinType.PRIVATE,
             inviteCode = "ABCD1234",
             weeklyStampCount = 42L,
             weeklyStampRank = 3,

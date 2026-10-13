@@ -11,6 +11,7 @@ import com.pheeeew.feature.screens.group.detail.LeaveGroupAction
 import com.pheeeew.feature.screens.group.detail.LeaveGroupResult
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.mapper.toSummaryUiModel
+import com.pheeeew.feature.screens.group.mapper.toUiJoinType
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.domain.model.group.GroupId as DomainGroupId
 
@@ -51,6 +52,7 @@ private fun GroupDetail.toUiModel() =
     GroupDetailUiModel(
         group = group.toSummaryUiModel(),
         role = group.role,
+        joinType = group.joinType.toUiJoinType(),
         inviteCode = group.inviteCode.takeIf { group.role != GroupRole.NONE },
         weeklyStampCount = weeklyStampCount,
         weeklyStampRank = weeklyStampRank,

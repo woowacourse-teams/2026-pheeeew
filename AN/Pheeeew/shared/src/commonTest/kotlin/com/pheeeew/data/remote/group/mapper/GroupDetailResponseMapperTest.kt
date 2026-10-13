@@ -53,6 +53,22 @@ class GroupDetailResponseMapperTest {
         }
     }
 
+    @Test
+    fun `detail preserves each admission policy and rejects unknown values`() {
+        com.pheeeew.domain.model.group.GroupJoinType.entries.forEach { type ->
+            assertEquals(
+                type,
+                GroupDetailResponseMapper.toDomain(response("NONE").copy(joinType = type.name)).group.joinType,
+            )
+        }
+        assertEquals(
+            "joinType",
+            assertFailsWith<GroupContractException> {
+                GroupDetailResponseMapper.toDomain(response("NONE").copy(joinType = "UNKNOWN"))
+            }.field,
+        )
+    }
+
     private fun response(role: String) =
         GroupDetailResponseDto(
             groupId = GROUP_ID,
@@ -60,6 +76,7 @@ class GroupDetailResponseMapperTest {
             description = "퇴근하고 한 번씩",
             inviteCode = "ABCD1234",
             role = role,
+            joinType = "PRIVATE",
             memberCount = 7L,
             stamp = GroupStampResponseDto("버티자", "#FFFFFF", "#4A90D9", "SCALLOP"),
             weeklyStampCount = 42L,

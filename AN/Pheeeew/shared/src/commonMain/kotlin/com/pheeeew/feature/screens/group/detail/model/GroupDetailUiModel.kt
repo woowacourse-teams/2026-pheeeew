@@ -8,7 +8,7 @@ data class GroupDetailUiModel(
     val group: GroupSummaryUiModel,
     val role: GroupRole,
     val inviteCode: String?,
-    val joinType: GroupJoinType = GroupJoinType.PRIVATE,
+    val joinType: GroupJoinType,
     val weeklyStampCount: Long,
     val weeklyStampRank: Int?,
     val weeklyEmotionPressCount: Long,

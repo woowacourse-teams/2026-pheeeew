@@ -16,6 +16,7 @@ object GroupDetailResponseMapper {
                     description = dto.description,
                     inviteCode = dto.inviteCode,
                     role = dto.role,
+                    joinType = dto.joinType,
                     memberCount = dto.memberCount,
                     stamp = dto.stamp,
                 ),

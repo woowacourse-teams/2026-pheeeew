@@ -235,6 +235,7 @@ class GroupDetailRepositoryImplTest {
           "description":"퇴근하고 한 번씩",
           "inviteCode":"ABCD1234",
           "role":"$role",
+          "joinType":"PUBLIC",
           "memberCount":7,
           "stamp":{"text":"버티자","textColor":"#FFFFFF","backgroundColor":"#4A90D9","frame":"SCALLOP"},
           "weeklyStampCount":$stampCount,

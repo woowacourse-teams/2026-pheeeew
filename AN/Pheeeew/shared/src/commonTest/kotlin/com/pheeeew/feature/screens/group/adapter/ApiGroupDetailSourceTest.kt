@@ -37,11 +37,41 @@ class ApiGroupDetailSourceTest {
             val ready = loaded.toReadyUiModel(feedState)
 
             assertEquals(GroupRole.NONE, ready.role)
+            assertEquals(com.pheeeew.feature.screens.group.model.GroupJoinType.PUBLIC, ready.joinType)
+            assertEquals(null, loaded.inviteCode)
             assertEquals(42L, ready.weeklyStampCount)
             assertEquals(3, ready.weeklyStampRank)
             assertEquals(318L, ready.weeklyEmotionPressCount)
             assertEquals(5, ready.weeklyEmotionPressRank)
             assertEquals(feedState, ready.feed)
+        }
+
+    @Test
+    fun `each role keeps server policy and only members receive invite code in ui`() =
+        runTest {
+            com.pheeeew.feature.screens.group.model.GroupJoinType.entries.forEach { type ->
+                GroupRole.entries.forEach { role ->
+                    val detail =
+                        GroupDetailResponseMapper.toDomain(
+                            response.copy(joinType = type.name, role = role.name),
+                        )
+                    val repository =
+                        object : GroupDetailRepository {
+                            override suspend fun findById(groupId: DomainGroupId) =
+                                GroupDetailLookupResult.Found(detail)
+
+                            override suspend fun leave(groupId: DomainGroupId) = GroupLeaveResult.Left
+                        }
+                    val loaded =
+                        assertIs<GroupDetailLoadResult.Loaded>(
+                            ApiGroupDetailSource(repository).load(GroupId(GROUP_ID)),
+                        ).detail
+                    assertEquals(role, loaded.role)
+                    assertEquals(type, loaded.joinType)
+                    assertEquals(type, loaded.group.joinType)
+                    assertEquals(if (role == GroupRole.NONE) null else response.inviteCode, loaded.inviteCode)
+                }
+            }
         }
 
     private companion object {
@@ -53,6 +83,7 @@ class ApiGroupDetailSourceTest {
                 description = "퇴근하고 한 번씩",
                 inviteCode = "ABCD1234",
                 role = "NONE",
+                joinType = "PUBLIC",
                 memberCount = 7L,
                 stamp = GroupStampResponseDto("버티자", "#FFFFFF", "#4A90D9", "SCALLOP"),
                 weeklyStampCount = 42L,

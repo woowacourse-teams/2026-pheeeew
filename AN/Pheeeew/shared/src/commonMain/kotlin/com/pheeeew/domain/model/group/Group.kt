@@ -6,6 +6,7 @@ data class Group(
     val description: String?,
     val inviteCode: String,
     val role: GroupRole,
+    val joinType: GroupJoinType,
     val memberCount: Long,
     val stamp: GroupStamp,
 ) {
