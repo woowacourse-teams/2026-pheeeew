@@ -58,13 +58,19 @@ public class EmotionMapQueryService {
     private final RegionRepository regionRepository;
     private final RegionClassifier regionClassifier;
 
-    public List<EmotionRegionMapItemView> findRegionMap(EmotionSearchBounds bounds, RegionLevel level, UUID groupId) {
+    public List<EmotionRegionMapItemView> findRegionMap(
+            EmotionSearchBounds bounds, RegionLevel level, UUID devicePublicId, EmotionSearchFilter filter
+    ) {
+        Long deviceId = deviceRepository.findByPublicId(devicePublicId)
+                .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+        validateGroup(filter.groupId());
+
         List<Region> regions = regionClassifier.findIntersectingRegions(bounds, level);
         List<String> regionCodes = regions.stream()
                 .map(Region::code)
                 .toList();
 
-        Map<String, RegionEmotionSummary> summaries = findSummariesByRegionCodes(regionCodes, groupId);
+        Map<String, RegionEmotionSummary> summaries = findSummariesByRegionCodes(regionCodes, filter, deviceId);
 
         return regions.stream()
                 .filter(region -> summaries.containsKey(region.code()))
@@ -103,7 +109,15 @@ public class EmotionMapQueryService {
         return findMap(cursor, devicePublicId, true);
     }
 
-    private Map<String, RegionEmotionSummary> findSummariesByRegionCodes(List<String> regionCodes, UUID groupId) {
+    private void validateGroup(UUID groupId) {
+        if (groupId != null && groupRepository.findByPublicIdAndDeletedAtIsNull(groupId).isEmpty()) {
+            throw new GroupException(GROUP_NOT_FOUND);
+        }
+    }
+
+    private Map<String, RegionEmotionSummary> findSummariesByRegionCodes(
+            List<String> regionCodes, EmotionSearchFilter filter, Long deviceId
+    ) {
         if (!regionRepository.isAggregationReady()) {
             throw new EmotionException(EMOTION_REGION_DATA_UNAVAILABLE);
         }
@@ -114,8 +128,8 @@ public class EmotionMapQueryService {
 
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
 
-        return emotionRepository.findSummariesByRegionCodes(regionCodes, groupId, snapshotAt).stream()
-                .collect(Collectors.toMap(RegionEmotionSummaryProjection::getRegionCode, RegionEmotionSummary::from));
+        return emotionRepository.findSummariesByRegionCodes(regionCodes, filter, deviceId, snapshotAt).stream()
+                .collect(Collectors.toMap(RegionEmotionSummaryProjection::regionCode, RegionEmotionSummary::from));
     }
 
     private Instant currentSnapshotAt() {
@@ -126,9 +140,8 @@ public class EmotionMapQueryService {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
-        if (contentOnly && cursor.groupId() != null
-                && groupRepository.findByPublicIdAndDeletedAtIsNull(cursor.groupId()).isEmpty()) {
-            throw new GroupException(GROUP_NOT_FOUND);
+        if (contentOnly) {
+            validateGroup(cursor.groupId());
         }
 
         List<Emotion> found = findMapEmotions(cursor, deviceId, contentOnly);

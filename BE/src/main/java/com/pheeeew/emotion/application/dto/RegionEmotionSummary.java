@@ -6,7 +6,7 @@ import com.pheeeew.emotion.domain.repository.projection.RegionEmotionSummaryProj
 public record RegionEmotionSummary(long totalCount, EmotionState representativeState) {
 
     public static RegionEmotionSummary from(RegionEmotionSummaryProjection projection) {
-        return of(projection.getTotalCount(), projection.getRepresentativeState());
+        return of(projection.totalCount(), projection.representativeState());
     }
 
     public static RegionEmotionSummary of(long totalCount, EmotionState representativeState) {
