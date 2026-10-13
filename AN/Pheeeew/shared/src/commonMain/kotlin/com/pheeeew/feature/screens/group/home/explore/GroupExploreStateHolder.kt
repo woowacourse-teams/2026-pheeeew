@@ -30,6 +30,7 @@ sealed interface GroupExploreContent {
         val refreshFailed: Boolean = false,
         val isLoadingMore: Boolean = false,
         val loadMoreFailed: Boolean = false,
+        val requiresFirstPageReload: Boolean = false,
     ) : GroupExploreContent {
         init {
             require(items.isNotEmpty()) { "Ready 상태에는 그룹이 한 개 이상 있어야 합니다." }
@@ -81,6 +82,7 @@ class GroupExploreStateHolder(
 
             is GroupExploreContent.Ready -> {
                 when {
+                    content.requiresFirstPageReload -> refresh()
                     content.loadMoreFailed -> loadNextPage()
                     content.refreshFailed -> refresh()
                 }
@@ -111,7 +113,11 @@ class GroupExploreStateHolder(
     fun loadNextPage() {
         val ready = _uiState.value.content as? GroupExploreContent.Ready ?: return
         val cursor = ready.nextCursor ?: return
-        if (ready.isRefreshing || ready.isLoadingMore || nextPageJob?.isActive == true) return
+        if (ready.isRefreshing || ready.isLoadingMore || ready.requiresFirstPageReload ||
+            nextPageJob?.isActive == true
+        ) {
+            return
+        }
         val generation = queryGeneration
         _uiState.update { state ->
             val current = state.content as? GroupExploreContent.Ready ?: return@update state
@@ -145,7 +151,17 @@ class GroupExploreStateHolder(
                             }
                         }
 
-                        GroupExplorePageResult.InvalidCursor,
+                        GroupExplorePageResult.InvalidCursor -> {
+                            state.copy(
+                                content =
+                                    current.copy(
+                                        isLoadingMore = false,
+                                        loadMoreFailed = true,
+                                        requiresFirstPageReload = true,
+                                    ),
+                            )
+                        }
+
                         GroupExplorePageResult.Unavailable -> {
                             state.copy(content = current.copy(isLoadingMore = false, loadMoreFailed = true))
                         }
@@ -202,11 +218,21 @@ class GroupExploreStateHolder(
                         }
 
                         GroupExplorePageResult.InvalidCursor,
-                        GroupExplorePageResult.Unavailable -> {
+                        GroupExplorePageResult.Unavailable,
+                        -> {
                             if (keepSnapshot) {
                                 val current = state.content as? GroupExploreContent.Ready
                                 if (current != null) {
-                                    state.copy(content = current.copy(isRefreshing = false, refreshFailed = true))
+                                    state.copy(
+                                        content =
+                                            current.copy(
+                                                isRefreshing = false,
+                                                refreshFailed = true,
+                                                requiresFirstPageReload =
+                                                    current.requiresFirstPageReload ||
+                                                        result == GroupExplorePageResult.InvalidCursor,
+                                            ),
+                                    )
                                 } else {
                                     state.copy(content = GroupExploreContent.Failed)
                                 }

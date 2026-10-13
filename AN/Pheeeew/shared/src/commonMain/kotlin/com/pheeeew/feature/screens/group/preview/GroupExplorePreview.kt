@@ -81,6 +81,34 @@ private fun GroupExploreLongContentPreview() {
     GroupExplorePreviewFrame(uiState = HomeFixtures.exploreLongContentState)
 }
 
+@Preview(name = "전체 그룹 - 커서 만료", widthDp = 360, heightDp = 920)
+@Composable
+private fun GroupExploreExpiredCursorPreview() {
+    GroupExplorePreviewFrame(cursorRecoveryState())
+}
+
+@Preview(name = "전체 그룹 - 첫 페이지 복구 중", widthDp = 360, heightDp = 920)
+@Composable
+private fun GroupExploreCursorRecoveryPreview() {
+    val state = cursorRecoveryState()
+    val ready = state.content as com.pheeeew.feature.screens.group.home.explore.GroupExploreContent.Ready
+    GroupExplorePreviewFrame(state.copy(content = ready.copy(isRefreshing = true, loadMoreFailed = false)))
+}
+
+@Preview(name = "전체 그룹 - 첫 페이지 복구 실패", widthDp = 320, heightDp = 920)
+@Composable
+private fun GroupExploreCursorRecoveryFailedPreview() {
+    val state = cursorRecoveryState()
+    val ready = state.content as com.pheeeew.feature.screens.group.home.explore.GroupExploreContent.Ready
+    GroupExplorePreviewFrame(state.copy(content = ready.copy(refreshFailed = true, loadMoreFailed = false)))
+}
+
+private fun cursorRecoveryState(): GroupExploreUiState {
+    val state = HomeFixtures.exploreState
+    val ready = state.content as com.pheeeew.feature.screens.group.home.explore.GroupExploreContent.Ready
+    return state.copy(content = ready.copy(loadMoreFailed = true, requiresFirstPageReload = true))
+}
+
 @Composable
 private fun GroupExplorePreviewFrame(uiState: GroupExploreUiState) {
     AppTheme {

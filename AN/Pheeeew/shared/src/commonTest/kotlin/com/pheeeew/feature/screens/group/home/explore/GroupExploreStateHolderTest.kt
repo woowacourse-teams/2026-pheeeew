@@ -73,6 +73,112 @@ class GroupExploreStateHolderTest {
             assertEquals(null, normalizeGroupExploreKeyword("  \n "))
         }
 
+    @Test
+    fun `expired cursor keeps rows and retries first page even after failed recovery`() =
+        runTest {
+            val original = item("old", "이전 목록")
+            val replacement = item("new", "새 목록")
+            val source =
+                QueuedExploreSource(
+                    GroupExplorePageResult.Success(GroupExplorePage(listOf(original), "expired")),
+                    GroupExplorePageResult.InvalidCursor,
+                    GroupExplorePageResult.Unavailable,
+                    GroupExplorePageResult.Success(GroupExplorePage(listOf(replacement), null)),
+                )
+            val holder = GroupExploreStateHolder(this, source)
+            holder.onQueryChanged("산책")
+            advanceTimeBy(300)
+            runCurrent()
+            holder.loadNextPage()
+            runCurrent()
+            val expired = assertIs<GroupExploreContent.Ready>(holder.uiState.value.content)
+            assertEquals(listOf(original), expired.items)
+            assertTrue(expired.requiresFirstPageReload)
+            holder.loadNextPage()
+            assertEquals(2, source.calls.size)
+            holder.retry()
+            runCurrent()
+            val failed = assertIs<GroupExploreContent.Ready>(holder.uiState.value.content)
+            assertEquals(listOf(original), failed.items)
+            assertTrue(failed.requiresFirstPageReload)
+            assertTrue(failed.refreshFailed)
+            holder.retry()
+            runCurrent()
+            val recovered = assertIs<GroupExploreContent.Ready>(holder.uiState.value.content)
+            assertEquals(listOf(replacement), recovered.items)
+            assertEquals(false, recovered.requiresFirstPageReload)
+            holder.loadNextPage()
+            assertEquals(
+                listOf<Pair<String?, String?>>("산책" to null, "산책" to "expired", "산책" to null, "산책" to null),
+                source.calls,
+            )
+        }
+
+    @Test
+    fun `slow previous search cannot overwrite current results`() =
+        runTest {
+            val old = item("old", "old")
+            val latest = item("latest", "latest")
+            val source =
+                object : GroupExploreSource {
+                    override suspend fun loadPage(
+                        keyword: String?,
+                        cursor: String?,
+                    ): GroupExplorePageResult {
+                        if (keyword == "old") {
+                            kotlinx.coroutines.withContext(
+                                kotlinx.coroutines.NonCancellable,
+                            ) { kotlinx.coroutines.delay(1000) }
+                        }
+                        return GroupExplorePageResult.Success(
+                            GroupExplorePage(
+                                listOf(
+                                    if (keyword ==
+                                        "old"
+                                    ) {
+                                        old
+                                    } else {
+                                        latest
+                                    },
+                                ),
+                                null,
+                            ),
+                        )
+                    }
+                }
+            val holder = GroupExploreStateHolder(this, source)
+            holder.onQueryChanged("old")
+            advanceTimeBy(300)
+            runCurrent()
+            holder.onQueryChanged("latest")
+            advanceTimeBy(300)
+            runCurrent()
+            advanceTimeBy(1000)
+            runCurrent()
+            assertEquals(listOf(latest), assertIs<GroupExploreContent.Ready>(holder.uiState.value.content).items)
+        }
+
+    @Test
+    fun `duplicate page requests and groups are suppressed without reordering`() =
+        runTest {
+            val first = item("first", "first")
+            val second = item("second", "second")
+            val source =
+                QueuedExploreSource(
+                    GroupExplorePageResult.Success(GroupExplorePage(listOf(first, first), "next")),
+                    GroupExplorePageResult.Success(GroupExplorePage(listOf(first, second), null)),
+                )
+            val holder = GroupExploreStateHolder(this, source)
+            holder.ensureLoaded()
+            runCurrent()
+            holder.loadNextPage()
+            holder.loadNextPage()
+            runCurrent()
+            assertEquals(listOf(first, second), assertIs<GroupExploreContent.Ready>(holder.uiState.value.content).items)
+            holder.loadNextPage()
+            assertEquals(2, source.calls.size)
+        }
+
     private fun item(
         id: String,
         name: String,
