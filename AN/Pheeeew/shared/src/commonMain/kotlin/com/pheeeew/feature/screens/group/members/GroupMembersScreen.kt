@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.group.members
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -160,48 +161,50 @@ fun GroupMembersScreen(
                     }
                     if (content.hasNextPage) {
                         item(key = "members-next-page") {
-                            when {
-                                content.isLoadingMore -> {
-                                    Row(
-                                        Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                                        horizontalArrangement = Arrangement.Center,
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) {
-                                        CircularLoadingIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            color = AppColors.TextSecondary,
-                                            strokeWidth = 2.dp,
-                                        )
-                                        Text(
-                                            text = stringResource(Res.string.group_members_loading_more),
-                                            modifier = Modifier.padding(start = 10.dp),
-                                            color = AppColors.TextSecondary,
-                                            fontSize = 12.sp,
-                                        )
+                            Column(Modifier.animateItem().fillMaxWidth().animateContentSize()) {
+                                when {
+                                    content.isLoadingMore -> {
+                                        Row(
+                                            Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                            horizontalArrangement = Arrangement.Center,
+                                            verticalAlignment = Alignment.CenterVertically,
+                                        ) {
+                                            CircularLoadingIndicator(
+                                                modifier = Modifier.size(20.dp),
+                                                color = AppColors.TextSecondary,
+                                                strokeWidth = 2.dp,
+                                            )
+                                            Text(
+                                                text = stringResource(Res.string.group_members_loading_more),
+                                                modifier = Modifier.padding(start = 10.dp),
+                                                color = AppColors.TextSecondary,
+                                                fontSize = 12.sp,
+                                            )
+                                        }
                                     }
-                                }
 
-                                content.loadMoreFailed -> {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                                    ) {
-                                        Text(
-                                            text = stringResource(Res.string.group_members_next_page_error),
-                                            color = AppColors.TextSecondary,
-                                            fontSize = 12.sp,
-                                            textAlign = TextAlign.Center,
-                                        )
-                                        MembersActionButton(
-                                            text = stringResource(Res.string.group_members_retry),
-                                            onClick = onRetry,
-                                        )
+                                    content.loadMoreFailed -> {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                                        ) {
+                                            Text(
+                                                text = stringResource(Res.string.group_members_next_page_error),
+                                                color = AppColors.TextSecondary,
+                                                fontSize = 12.sp,
+                                                textAlign = TextAlign.Center,
+                                            )
+                                            MembersActionButton(
+                                                text = stringResource(Res.string.group_members_retry),
+                                                onClick = onRetry,
+                                            )
+                                        }
                                     }
-                                }
 
-                                else -> {
-                                    Spacer(Modifier.height(1.dp))
+                                    else -> {
+                                        Spacer(Modifier.height(1.dp))
+                                    }
                                 }
                             }
                         }

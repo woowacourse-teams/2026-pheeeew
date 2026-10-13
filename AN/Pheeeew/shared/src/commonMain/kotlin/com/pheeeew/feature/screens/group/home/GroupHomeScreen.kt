@@ -256,7 +256,7 @@ private fun MyGroupsList(
                     GroupListItem(
                         group = group,
                         onClick = { onGroupClick(group.id) },
-                        modifier = Modifier.padding(horizontal = 24.dp),
+                        modifier = Modifier.animateItem(placementSpec = null).padding(horizontal = 24.dp),
                     )
                 }
             }
@@ -390,12 +390,12 @@ private fun ExploreGroupsList(
                         joinType = item.joinType,
                         isJoined = item.isJoined,
                         onClick = { onGroupClick(item.group.id) },
-                        modifier = Modifier.padding(horizontal = 24.dp),
+                        modifier = Modifier.animateItem(placementSpec = null).padding(horizontal = 24.dp),
                     )
                 }
                 if (content.isLoadingMore) {
                     item(key = "explore:loading-more") {
-                        Box(modifier = Modifier.fillMaxWidth().height(52.dp), contentAlignment = Alignment.Center) {
+                        Box(modifier = Modifier.animateItem().fillMaxWidth().height(52.dp), contentAlignment = Alignment.Center) {
                             CircularLoadingIndicator(modifier = Modifier.size(20.dp), color = AppColors.Primary)
                         }
                     }
@@ -405,7 +405,12 @@ private fun ExploreGroupsList(
                             message = stringResource(Res.string.group_explore_load_more_error),
                             actionLabel = stringResource(Res.string.group_explore_retry),
                             onAction = onRetry,
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).height(72.dp),
+                            modifier =
+                                Modifier
+                                    .animateItem()
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 24.dp)
+                                    .height(72.dp),
                             compact = true,
                         )
                     }

@@ -1,6 +1,11 @@
 package com.pheeeew.feature.screens.group.preview
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.pheeeew.core.designsystem.theme.AppTheme
@@ -9,6 +14,8 @@ import com.pheeeew.feature.screens.group.members.GroupMemberUiModel
 import com.pheeeew.feature.screens.group.members.GroupMembersContent
 import com.pheeeew.feature.screens.group.members.GroupMembersScreen
 import com.pheeeew.feature.screens.group.members.GroupMembersUiState
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Preview(name = "멤버 · 첫 로딩", widthDp = 360, heightDp = 800)
 @Composable
@@ -113,3 +120,33 @@ private fun previewMembers() =
         GroupMemberUiModel(" ", GroupRole.MEMBER, "2026-09-06T08:00:00Z"),
         GroupMemberUiModel("오늘도 천천히 걷고 감정을 기록하는 긴 닉네임 예시입니다", GroupRole.MEMBER, "2026-09-07T08:00:00Z"),
     )
+
+@Preview(name = "모션 · 멤버 페이지 실패→재시도→완료", widthDp = 360, heightDp = 800)
+@Composable
+private fun MembersRetryMotionPreview() {
+    var content by remember {
+        mutableStateOf(
+            GroupMembersContent.Ready(
+                items = previewMembers().take(4),
+                nextCursor = "demo:4",
+                generation = 1,
+                loadMoreFailed = true,
+            ),
+        )
+    }
+    val scope = rememberCoroutineScope()
+    AppTheme {
+        GroupMembersScreen(
+            uiState = GroupMembersUiState(content),
+            onBack = {},
+            onLoadMore = {},
+            onRetry = {
+                scope.launch {
+                    content = content.copy(isLoadingMore = true, loadMoreFailed = false)
+                    delay(700)
+                    content = content.copy(items = previewMembers(), nextCursor = null, isLoadingMore = false)
+                }
+            },
+        )
+    }
+}
