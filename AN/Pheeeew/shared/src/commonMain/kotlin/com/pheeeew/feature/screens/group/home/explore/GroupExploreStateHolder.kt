@@ -145,6 +145,7 @@ class GroupExploreStateHolder(
                             }
                         }
 
+                        GroupExplorePageResult.InvalidCursor,
                         GroupExplorePageResult.Unavailable -> {
                             state.copy(content = current.copy(isLoadingMore = false, loadMoreFailed = true))
                         }
@@ -200,6 +201,7 @@ class GroupExploreStateHolder(
                             }
                         }
 
+                        GroupExplorePageResult.InvalidCursor,
                         GroupExplorePageResult.Unavailable -> {
                             if (keepSnapshot) {
                                 val current = state.content as? GroupExploreContent.Ready

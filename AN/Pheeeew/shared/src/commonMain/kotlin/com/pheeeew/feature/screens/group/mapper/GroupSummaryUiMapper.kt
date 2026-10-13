@@ -30,7 +30,7 @@ fun GroupPreview.toSummaryUiModel(): GroupSummaryUiModel =
         joinType = null,
     )
 
-private fun GroupStamp.toAppearanceUiModel() =
+internal fun GroupStamp.toAppearanceUiModel() =
     StampAppearanceUiModel(
         label = text,
         shape = frame.toUiShape(),

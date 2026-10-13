@@ -33,10 +33,12 @@ sealed interface GroupExplorePageResult {
         val page: GroupExplorePage,
     ) : GroupExplorePageResult
 
+    data object InvalidCursor : GroupExplorePageResult
+
     data object Unavailable : GroupExplorePageResult
 }
 
-/** In-memory catalog for the screen-only sprint. Replace this provider when the explore API is ready. */
+/** In-memory catalog for previews and API-free demos. Never injected by the application factory. */
 class InMemoryGroupExploreSource(
     private val groups: List<GroupExploreItemUiModel> = demoGroups,
     private val pageSize: Int = DEFAULT_PAGE_SIZE,

@@ -7,7 +7,6 @@ import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.group.home.explore.GroupExploreSource
 import com.pheeeew.feature.screens.group.home.explore.GroupExploreStateHolder
-import com.pheeeew.feature.screens.group.home.explore.InMemoryGroupExploreSource
 import com.pheeeew.feature.screens.group.join.GroupJoinDependencies
 import com.pheeeew.feature.screens.group.join.GroupJoinFailure
 import com.pheeeew.feature.screens.group.join.GroupJoinStateHolder
@@ -29,7 +28,7 @@ class GroupHomeViewModel(
     groupJoinDependencies: GroupJoinDependencies,
     membershipChanges: Flow<Long> = kotlinx.coroutines.flow.emptyFlow(),
     private val invalidateSharedMembership: () -> Unit = {},
-    groupExploreSource: GroupExploreSource = InMemoryGroupExploreSource(),
+    groupExploreSource: GroupExploreSource,
 ) : ViewModel() {
     val telemetry = ProductMonitoring(groupJoinDependencies.monitoring, "group_home")
     private val _uiState = MutableStateFlow(GroupHomeUiState())
