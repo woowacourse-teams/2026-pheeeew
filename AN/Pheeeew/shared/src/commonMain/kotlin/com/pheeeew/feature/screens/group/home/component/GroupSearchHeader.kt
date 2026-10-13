@@ -61,15 +61,19 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
+import com.pheeeew.feature.screens.group.home.GroupHomeTab
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_explore_clear_query
-import pheeeew.shared.generated.resources.group_explore_query_hint
 import pheeeew.shared.generated.resources.group_home_title
+import pheeeew.shared.generated.resources.group_search_all_hint
+import pheeeew.shared.generated.resources.group_search_all_recent
 import pheeeew.shared.generated.resources.group_search_clear
 import pheeeew.shared.generated.resources.group_search_close
+import pheeeew.shared.generated.resources.group_search_my_hint
+import pheeeew.shared.generated.resources.group_search_my_recent
+import pheeeew.shared.generated.resources.group_search_my_summary
 import pheeeew.shared.generated.resources.group_search_open
-import pheeeew.shared.generated.resources.group_search_recent
 import pheeeew.shared.generated.resources.group_search_reset
 import pheeeew.shared.generated.resources.group_search_summary
 
@@ -83,8 +87,12 @@ internal fun GroupSearchHeader(
     onClose: () -> Unit,
     onQueryChanged: (String) -> Unit,
     onSubmit: () -> Unit,
+    searchTab: GroupHomeTab = GroupHomeTab.Explore,
     tabsContent: @Composable () -> Unit,
 ) {
+    val isMyGroups = searchTab == GroupHomeTab.MyGroups
+    val queryHint =
+        stringResource(if (isMyGroups) Res.string.group_search_my_hint else Res.string.group_search_all_hint)
     Column(Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
         AnimatedContent(
             targetState = isOpen,
@@ -96,7 +104,7 @@ internal fun GroupSearchHeader(
             },
         ) { open ->
             if (open) {
-                ExpandedGroupSearch(query, onQueryChanged, onSubmit, onClose)
+                ExpandedGroupSearch(query, onQueryChanged, onSubmit, onClose, queryHint)
             } else {
                 Box(Modifier.fillMaxWidth().height(54.dp)) {
                     Text(
@@ -125,7 +133,13 @@ internal fun GroupSearchHeader(
 
         AnimatedVisibility(visible = isOpen && query.isBlank() && recentQueries.isNotEmpty()) {
             Column(Modifier.padding(top = 16.dp, bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(stringResource(Res.string.group_search_recent), color = AppColors.TextSecondary, fontSize = 12.sp)
+                Text(
+                    stringResource(
+                        if (isMyGroups) Res.string.group_search_my_recent else Res.string.group_search_all_recent,
+                    ),
+                    color = AppColors.TextSecondary,
+                    fontSize = 12.sp,
+                )
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(recentQueries, key = { it }) { keyword ->
                         Box(
@@ -144,7 +158,10 @@ internal fun GroupSearchHeader(
         AnimatedVisibility(visible = !isOpen && showSummary && query.isNotBlank()) {
             Row(Modifier.fillMaxWidth().padding(top = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    stringResource(Res.string.group_search_summary, query.trim()),
+                    stringResource(
+                        if (isMyGroups) Res.string.group_search_my_summary else Res.string.group_search_summary,
+                        query.trim(),
+                    ),
                     Modifier.weight(1f).clickable(role = Role.Button, onClick = onOpen),
                     color = AppColors.TextSecondary,
                     fontSize = 12.sp,
@@ -168,12 +185,13 @@ private fun ExpandedGroupSearch(
     onQueryChanged: (String) -> Unit,
     onSubmit: () -> Unit,
     onClose: () -> Unit,
+    queryHint: String,
 ) {
     val requester = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     var focused by remember { mutableStateOf(false) }
     val border by animateColorAsState(if (focused) AppColors.GroupInk else AppColors.BorderLight)
-    val label = stringResource(Res.string.group_explore_query_hint)
+    val label = queryHint
     val closeLabel = stringResource(Res.string.group_search_close)
     val clearLabel = stringResource(Res.string.group_explore_clear_query)
     val shape = RoundedCornerShape(13.dp)

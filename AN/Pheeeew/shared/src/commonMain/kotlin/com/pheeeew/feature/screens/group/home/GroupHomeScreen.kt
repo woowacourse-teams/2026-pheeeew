@@ -80,6 +80,7 @@ import pheeeew.shared.generated.resources.group_home_group_count
 import pheeeew.shared.generated.resources.group_home_joined_groups
 import pheeeew.shared.generated.resources.group_home_loading
 import pheeeew.shared.generated.resources.group_home_refresh_error
+import pheeeew.shared.generated.resources.group_search_my_no_results
 
 @Composable
 fun GroupHomeScreen(
@@ -97,16 +98,26 @@ fun GroupHomeScreen(
     onLoadMoreExploreGroups: () -> Unit = {},
     onRetryExploreGroups: () -> Unit = {},
     initialSearchOpen: Boolean = false,
+    initialMyGroupsQuery: String = "",
 ) {
     val myGroupsListState = rememberLazyListState()
     val exploreListState = rememberLazyListState()
     var searchOpen by rememberSaveable { mutableStateOf(initialSearchOpen) }
-    var recentQueries by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var myGroupsQuery by rememberSaveable { mutableStateOf(initialMyGroupsQuery) }
+    var myRecentQueries by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    var exploreRecentQueries by rememberSaveable { mutableStateOf(emptyList<String>()) }
+    val activeQuery = if (selectedTab == GroupHomeTab.MyGroups) myGroupsQuery else exploreUiState.query
+    val activeHistory = if (selectedTab == GroupHomeTab.MyGroups) myRecentQueries else exploreRecentQueries
+
+    fun updateActiveQuery(query: String) {
+        if (selectedTab == GroupHomeTab.MyGroups) myGroupsQuery = query else onExploreQueryChanged(query)
+    }
 
     fun recordSearch() {
-        val keyword = exploreUiState.query.trim()
+        val keyword = activeQuery.trim()
         if (keyword.isNotEmpty()) {
-            recentQueries = (listOf(keyword) + recentQueries.filterNot { it.equals(keyword, true) }).take(5)
+            val history = (listOf(keyword) + activeHistory.filterNot { it.equals(keyword, true) }).take(5)
+            if (selectedTab == GroupHomeTab.MyGroups) myRecentQueries = history else exploreRecentQueries = history
         }
     }
     val keyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
@@ -118,10 +129,19 @@ fun GroupHomeScreen(
         focusManager.clearFocus()
     }
     FlowBackHandler(searchOpen) { closeSearch() }
+    var previousTab by remember { mutableStateOf(selectedTab) }
     LaunchedEffect(selectedTab) {
-        if (selectedTab == GroupHomeTab.MyGroups) {
+        if (previousTab != selectedTab) {
             searchOpen = false
             focusManager.clearFocus()
+            previousTab = selectedTab
+        }
+    }
+    var previousMyQuery by remember { mutableStateOf(myGroupsQuery) }
+    LaunchedEffect(myGroupsQuery) {
+        if (previousMyQuery != myGroupsQuery) {
+            myGroupsListState.scrollToItem(0)
+            previousMyQuery = myGroupsQuery
         }
     }
 
@@ -141,17 +161,17 @@ fun GroupHomeScreen(
                 headerContent = { tabs ->
                     GroupSearchHeader(
                         isOpen = searchOpen,
-                        query = exploreUiState.query,
-                        recentQueries = recentQueries,
-                        showSummary = selectedTab == GroupHomeTab.Explore,
+                        query = activeQuery,
+                        recentQueries = activeHistory,
+                        searchTab = selectedTab,
+                        showSummary = true,
                         onOpen = {
-                            onTabSelected(GroupHomeTab.Explore)
                             searchOpen = true
                         },
                         onClose = { closeSearch() },
-                        onQueryChanged = onExploreQueryChanged,
+                        onQueryChanged = { updateActiveQuery(it) },
                         onSubmit = {
-                            onExploreSearchSubmitted()
+                            if (selectedTab == GroupHomeTab.Explore) onExploreSearchSubmitted()
                             closeSearch()
                         },
                         tabsContent = tabs,
@@ -172,7 +192,12 @@ fun GroupHomeScreen(
                             MyGroupsList(
                                 uiState = uiState,
                                 listState = myGroupsListState,
-                                onGroupClick = onGroupClick,
+                                onGroupClick = { id ->
+                                    closeSearch()
+                                    onGroupClick(id)
+                                },
+                                query = myGroupsQuery,
+                                onClearQuery = { myGroupsQuery = "" },
                                 onRetry = onRetry,
                                 modifier = Modifier.weight(1f),
                             )
@@ -223,8 +248,16 @@ private fun MyGroupsList(
     listState: LazyListState,
     onGroupClick: (GroupId) -> Unit,
     onRetry: () -> Unit,
+    query: String,
+    onClearQuery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val keyword = query.trim()
+    val filteredGroups =
+        (uiState.content as? GroupHomeContent.Ready)
+            ?.groups
+            .orEmpty()
+            .filter { it.name.contains(keyword, ignoreCase = true) }
     LazyColumn(
         state = listState,
         modifier = modifier.fillMaxWidth(),
@@ -245,7 +278,7 @@ private fun MyGroupsList(
                 )
                 if (uiState.content is GroupHomeContent.Ready) {
                     Text(
-                        text = stringResource(Res.string.group_home_group_count, uiState.content.groups.size),
+                        text = stringResource(Res.string.group_home_group_count, filteredGroups.size),
                         color = AppColors.RankingSecondaryContent,
                         fontSize = 12.sp,
                     )
@@ -285,13 +318,24 @@ private fun MyGroupsList(
                         )
                     }
                 }
+                if (filteredGroups.isEmpty() && keyword.isNotEmpty()) {
+                    item(key = "my-groups:no-results") {
+                        ExploreMessage(
+                            message = stringResource(Res.string.group_search_my_no_results),
+                            actionLabel = stringResource(Res.string.group_explore_empty_search),
+                            onAction = onClearQuery,
+                            modifier = Modifier.fillMaxWidth().height(220.dp),
+                        )
+                    }
+                }
                 items(
-                    items = content.groups,
+                    items = filteredGroups,
                     key = { group -> "my-group:${group.id.value}" },
                     contentType = { "group-row" },
                 ) { group ->
                     GroupListItem(
                         group = group,
+                        highlightQuery = query,
                         onClick = { onGroupClick(group.id) },
                         modifier = Modifier.animateItem(placementSpec = null).padding(horizontal = 24.dp),
                     )

@@ -10,6 +10,7 @@ fun GroupListItem(
     group: GroupSummaryUiModel,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    highlightQuery: String = "",
 ) {
     GroupCatalogCard(
         group = group,
@@ -17,5 +18,6 @@ fun GroupListItem(
         isJoined = true,
         onClick = onClick,
         modifier = modifier,
+        highlightQuery = highlightQuery,
     )
 }
