@@ -8,7 +8,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-internal const val MAP_PROMPT_RESTORE_DELAY_MILLIS = 3_000L
+internal const val MAP_PROMPT_RESTORE_DELAY_MILLIS = 800L
 
 internal class MapPromptVisibilityState(
     private val scope: CoroutineScope,

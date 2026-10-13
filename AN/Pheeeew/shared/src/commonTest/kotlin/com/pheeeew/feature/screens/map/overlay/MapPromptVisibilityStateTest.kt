@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapPromptVisibilityStateTest {
     @Test
-    fun remainsHiddenWhileMovingAndForThreeSecondsAfterStopping() =
+    fun remainsHiddenWhileMovingAndBrieflyAfterStopping() =
         runTest {
             val state = MapPromptVisibilityState(this)
             assertFalse(state.isHidden)
@@ -19,7 +19,7 @@ class MapPromptVisibilityStateTest {
             advanceTimeBy(10_000)
             assertTrue(state.isHidden)
             state.onCameraMovingChanged(false)
-            advanceTimeBy(2_999)
+            advanceTimeBy(799)
             assertTrue(state.isHidden)
             advanceTimeBy(1)
             runCurrent()
@@ -32,12 +32,12 @@ class MapPromptVisibilityStateTest {
             val state = MapPromptVisibilityState(this)
             state.onCameraMovingChanged(true)
             state.onCameraMovingChanged(false)
-            advanceTimeBy(2_000)
+            advanceTimeBy(400)
             state.onCameraMovingChanged(true)
-            advanceTimeBy(2_000)
+            advanceTimeBy(1_000)
             assertTrue(state.isHidden)
             state.onCameraMovingChanged(false)
-            advanceTimeBy(3_000)
+            advanceTimeBy(800)
             runCurrent()
             assertFalse(state.isHidden)
         }
@@ -48,11 +48,11 @@ class MapPromptVisibilityStateTest {
             val state = MapPromptVisibilityState(this)
             state.onCameraMovingChanged(true)
             state.onCameraMovingChanged(false)
-            advanceTimeBy(1_000)
+            advanceTimeBy(200)
             state.reset()
             assertFalse(state.isHidden)
             state.onCameraMovingChanged(true)
-            advanceTimeBy(3_000)
+            advanceTimeBy(800)
             runCurrent()
             assertTrue(state.isHidden)
             state.reset()
@@ -65,7 +65,7 @@ class MapPromptVisibilityStateTest {
             state.onCameraMovingChanged(true)
             state.reset()
             state.onCameraMovingChanged(false)
-            advanceTimeBy(3_000)
+            advanceTimeBy(800)
             runCurrent()
             assertFalse(state.isHidden)
         }
