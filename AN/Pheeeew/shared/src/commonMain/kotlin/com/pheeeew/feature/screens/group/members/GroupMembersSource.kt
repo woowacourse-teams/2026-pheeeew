@@ -3,7 +3,7 @@ package com.pheeeew.feature.screens.group.members
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.screens.group.model.GroupId
 
-/** Provides one page of the current group's member list. The API adapter is intentionally deferred. */
+/** Provides one page of the current group's member list. The app supplies an authenticated API adapter. */
 interface GroupMembersSource {
     suspend fun loadPage(
         groupId: GroupId,
@@ -39,6 +39,10 @@ sealed interface GroupMembersPageResult {
         val page: GroupMembersPage,
     ) : GroupMembersPageResult
 
+    data object InvalidCursor : GroupMembersPageResult
+
+    data object Unauthorized : GroupMembersPageResult
+
     data object Forbidden : GroupMembersPageResult
 
     data object NotFound : GroupMembersPageResult
@@ -46,7 +50,7 @@ sealed interface GroupMembersPageResult {
     data object Unavailable : GroupMembersPageResult
 }
 
-/** In-memory, API-free data used to exercise member ordering and paging in this sprint. */
+/** In-memory, API-free data used only by previews, development demos and tests. */
 class InMemoryGroupMembersSource(
     private val members: List<GroupMemberUiModel> = demoMembers,
     private val pageSize: Int = DEFAULT_PAGE_SIZE,

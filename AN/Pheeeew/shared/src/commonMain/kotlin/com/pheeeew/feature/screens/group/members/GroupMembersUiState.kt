@@ -11,6 +11,8 @@ sealed interface GroupMembersContent {
 
     data object Failed : GroupMembersContent
 
+    data object Unauthorized : GroupMembersContent
+
     data object Forbidden : GroupMembersContent
 
     data object NotFound : GroupMembersContent
@@ -21,6 +23,8 @@ sealed interface GroupMembersContent {
         val generation: Long,
         val isLoadingMore: Boolean = false,
         val loadMoreFailed: Boolean = false,
+        val needsCursorRecovery: Boolean = false,
+        val isRecovering: Boolean = false,
     ) : GroupMembersContent {
         init {
             require(items.isNotEmpty()) { "Ready 상태에는 멤버가 한 명 이상 있어야 합니다." }

@@ -7,7 +7,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class GroupMembersViewModel(
@@ -16,10 +15,8 @@ class GroupMembersViewModel(
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(GroupMembersUiState())
     val uiState = _uiState.asStateFlow()
-
     private var generation = 0L
-    private var firstPageJob: Job? = null
-    private var nextPageJob: Job? = null
+    private var requestJob: Job? = null
     private val consumedCursors = mutableSetOf<String>()
 
     init {
@@ -27,17 +24,16 @@ class GroupMembersViewModel(
     }
 
     fun retry() {
+        if (requestJob?.isActive == true) return
         when (val content = _uiState.value.content) {
             is GroupMembersContent.Ready -> {
-                if (content.loadMoreFailed) loadNextPage()
+                when {
+                    content.needsCursorRecovery -> loadFirstPage(preserved = content)
+                    content.loadMoreFailed -> loadNextPage()
+                }
             }
 
-            GroupMembersContent.Loading,
-            GroupMembersContent.Empty,
-            GroupMembersContent.Forbidden,
-            GroupMembersContent.NotFound,
-            GroupMembersContent.Failed,
-            -> {
+            else -> {
                 loadFirstPage()
             }
         }
@@ -46,108 +42,126 @@ class GroupMembersViewModel(
     fun loadNextPage() {
         val ready = _uiState.value.content as? GroupMembersContent.Ready ?: return
         val cursor = ready.nextCursor ?: return
-        if (ready.isLoadingMore || nextPageJob?.isActive == true || cursor in consumedCursors) return
-
-        val requestGeneration = generation
-        _uiState.update { state ->
-            val current = state.content as? GroupMembersContent.Ready ?: return@update state
-            state.copy(content = current.copy(isLoadingMore = true, loadMoreFailed = false))
+        if (requestJob?.isActive == true || ready.needsCursorRecovery || ready.isRecovering ||
+            ready.isLoadingMore || cursor in consumedCursors
+        ) {
+            return
         }
-        nextPageJob =
+        val requestGeneration = generation
+        setContent(ready.copy(isLoadingMore = true, loadMoreFailed = false))
+        requestJob =
             viewModelScope.launch {
                 val result = requestPage(cursor)
                 if (requestGeneration != generation) return@launch
-                _uiState.update { state ->
-                    val current = state.content as? GroupMembersContent.Ready ?: return@update state
-                    when (result) {
-                        is GroupMembersPageResult.Success -> {
-                            val nextCursor = result.page.nextCursor
-                            if (nextCursor == cursor || nextCursor in consumedCursors) {
-                                state.copy(content = current.copy(isLoadingMore = false, loadMoreFailed = true))
-                            } else {
-                                consumedCursors += cursor
-                                val appended = current.items + result.page.items
-                                state.copy(
-                                    content =
-                                        if (appended.isEmpty()) {
-                                            GroupMembersContent.Empty
-                                        } else {
-                                            current.copy(
-                                                items = appended,
-                                                nextCursor = nextCursor,
-                                                isLoadingMore = false,
-                                                loadMoreFailed = false,
-                                            )
-                                        },
-                                )
-                            }
+                val current = _uiState.value.content as? GroupMembersContent.Ready ?: return@launch
+                when (result) {
+                    is GroupMembersPageResult.Success -> {
+                        val nextCursor = result.page.nextCursor
+                        if (nextCursor == cursor || nextCursor in consumedCursors ||
+                            (result.page.items.isEmpty() && nextCursor != null)
+                        ) {
+                            setContent(current.copy(isLoadingMore = false, loadMoreFailed = true))
+                        } else {
+                            consumedCursors += cursor
+                            setContent(
+                                current.copy(
+                                    items = current.items + result.page.items,
+                                    nextCursor = nextCursor,
+                                    isLoadingMore = false,
+                                    loadMoreFailed = false,
+                                ),
+                            )
                         }
+                    }
 
-                        GroupMembersPageResult.Forbidden -> {
-                            state.copy(content = GroupMembersContent.Forbidden)
-                        }
+                    GroupMembersPageResult.InvalidCursor -> {
+                        setContent(
+                            current.copy(
+                                nextCursor = null,
+                                isLoadingMore = false,
+                                loadMoreFailed = true,
+                                needsCursorRecovery = true,
+                            ),
+                        )
+                    }
 
-                        GroupMembersPageResult.NotFound -> {
-                            state.copy(content = GroupMembersContent.NotFound)
-                        }
+                    GroupMembersPageResult.Unavailable -> {
+                        setContent(current.copy(isLoadingMore = false, loadMoreFailed = true))
+                    }
 
-                        GroupMembersPageResult.Unavailable -> {
-                            state.copy(content = current.copy(isLoadingMore = false, loadMoreFailed = true))
-                        }
+                    else -> {
+                        setContent(terminalContent(result))
                     }
                 }
             }
     }
 
-    private fun loadFirstPage() {
+    private fun loadFirstPage(preserved: GroupMembersContent.Ready? = null) {
+        if (requestJob?.isActive == true) return
         generation += 1
         val requestGeneration = generation
-        consumedCursors.clear()
-        firstPageJob?.cancel()
-        nextPageJob?.cancel()
-        nextPageJob = null
-        _uiState.value = GroupMembersUiState(GroupMembersContent.Loading)
-        firstPageJob =
+        setContent(preserved?.copy(isRecovering = true, loadMoreFailed = false) ?: GroupMembersContent.Loading)
+        requestJob =
             viewModelScope.launch {
-                val result = requestPage(cursor = null)
+                val result = requestPage(null)
                 if (requestGeneration != generation) return@launch
-                _uiState.value =
-                    GroupMembersUiState(
-                        content =
-                            when (result) {
-                                is GroupMembersPageResult.Success -> {
-                                    val page = result.page
-                                    if (page.items.isEmpty()) {
-                                        GroupMembersContent.Empty
-                                    } else if (page.nextCursor == null) {
-                                        GroupMembersContent.Ready(
-                                            items = page.items,
-                                            nextCursor = null,
-                                            generation = requestGeneration,
-                                        )
-                                    } else {
-                                        GroupMembersContent.Ready(
-                                            items = page.items,
-                                            nextCursor = page.nextCursor,
-                                            generation = requestGeneration,
-                                        )
-                                    }
-                                }
+                when (result) {
+                    is GroupMembersPageResult.Success -> {
+                        val page = result.page
+                        if (page.items.isEmpty() && page.nextCursor != null) {
+                            firstPageFailed(preserved)
+                        } else {
+                            consumedCursors.clear()
+                            setContent(
+                                if (page.items.isEmpty()) {
+                                    GroupMembersContent.Empty
+                                } else {
+                                    GroupMembersContent.Ready(
+                                        items = page.items,
+                                        nextCursor = page.nextCursor,
+                                        generation = requestGeneration,
+                                    )
+                                },
+                            )
+                        }
+                    }
 
-                                GroupMembersPageResult.Forbidden -> {
-                                    GroupMembersContent.Forbidden
-                                }
+                    GroupMembersPageResult.InvalidCursor,
+                    GroupMembersPageResult.Unavailable,
+                    -> {
+                        firstPageFailed(preserved)
+                    }
 
-                                GroupMembersPageResult.NotFound -> {
-                                    GroupMembersContent.NotFound
-                                }
-
-                                GroupMembersPageResult.Unavailable -> {
-                                    GroupMembersContent.Failed
-                                }
-                            },
-                    )
+                    else -> {
+                        consumedCursors.clear()
+                        setContent(terminalContent(result))
+                    }
+                }
             }
+    }
+
+    private fun firstPageFailed(preserved: GroupMembersContent.Ready?) {
+        setContent(
+            preserved?.copy(
+                nextCursor = null,
+                isRecovering = false,
+                isLoadingMore = false,
+                needsCursorRecovery = true,
+                loadMoreFailed = true,
+            ) ?: GroupMembersContent.Failed,
+        )
+    }
+
+    private fun terminalContent(result: GroupMembersPageResult): GroupMembersContent =
+        when (result) {
+            GroupMembersPageResult.Forbidden -> GroupMembersContent.Forbidden
+            GroupMembersPageResult.NotFound -> GroupMembersContent.NotFound
+            GroupMembersPageResult.Unauthorized -> GroupMembersContent.Unauthorized
+            else -> GroupMembersContent.Failed
+        }
+
+    private fun setContent(content: GroupMembersContent) {
+        _uiState.value = GroupMembersUiState(content)
     }
 
     private suspend fun requestPage(cursor: String?): GroupMembersPageResult =
