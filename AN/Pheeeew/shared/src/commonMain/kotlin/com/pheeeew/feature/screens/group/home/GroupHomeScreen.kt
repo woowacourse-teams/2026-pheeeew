@@ -262,7 +262,7 @@ private fun MyGroupsList(
         state = listState,
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(top = 16.dp, bottom = AppBottomNavigationBarOverlaySpace + 76.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item(key = "my-groups:heading", contentType = "heading") {
             Row(
@@ -402,7 +402,7 @@ private fun ExploreGroupsList(
         state = listState,
         modifier = modifier.fillMaxWidth(),
         contentPadding = PaddingValues(top = 16.dp, bottom = AppBottomNavigationBarOverlaySpace + 76.dp),
-        verticalArrangement = Arrangement.spacedBy(13.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item(key = "explore:heading", contentType = "heading") {
             Row(

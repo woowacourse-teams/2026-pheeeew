@@ -16,6 +16,7 @@ fun GroupListItem(
         group = group,
         joinType = null,
         isJoined = true,
+        showJoinedStatus = false,
         onClick = onClick,
         modifier = modifier,
         highlightQuery = highlightQuery,
