@@ -9,6 +9,7 @@ data class GroupDetailResponseDto(
     val description: String?,
     val inviteCode: String,
     val role: String,
+    val joinType: String,
     val memberCount: Long,
     val stamp: GroupStampResponseDto,
     val weeklyStampCount: Long,

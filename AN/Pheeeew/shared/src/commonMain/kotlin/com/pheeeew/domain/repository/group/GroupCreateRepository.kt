@@ -1,12 +1,14 @@
 package com.pheeeew.domain.repository.group
 
 import com.pheeeew.domain.model.group.GroupId
+import com.pheeeew.domain.model.group.GroupJoinType
 import com.pheeeew.domain.model.group.GroupStamp
 
 data class GroupCreateCommand(
     val name: String,
     val description: String?,
     val stamp: GroupStamp,
+    val joinType: GroupJoinType,
 )
 
 fun interface GroupCreateRepository {

@@ -83,7 +83,6 @@ fun GroupDetailProfileViewController() =
                         onMoreClick = {},
                         onJoinClick = {},
                         onInviteClick = {},
-                        onJoinClick = {},
                         onCopyCodeClick = {},
                         onShareInviteClick = {},
                         onDismissOverlay = {},

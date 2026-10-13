@@ -6,6 +6,7 @@ import com.pheeeew.data.remote.group.dto.GroupStampItemResponseDto
 import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
 import com.pheeeew.domain.model.group.Group
 import com.pheeeew.domain.model.group.GroupId
+import com.pheeeew.domain.model.group.GroupJoinType
 import com.pheeeew.domain.model.group.GroupPreview
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.domain.model.group.GroupStamp
@@ -32,6 +33,9 @@ object GroupResponseMapper {
             description = dto.description,
             inviteCode = dto.inviteCode,
             role = parseRole(dto.role),
+            joinType =
+                GroupJoinType.entries.firstOrNull { it.name == dto.joinType }
+                    ?: throw GroupContractException("joinType"),
             memberCount = parseMemberCount(dto.memberCount),
             stamp = dto.stamp.toDomain(),
         )

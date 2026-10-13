@@ -9,6 +9,7 @@ data class GroupCreateRequestDto(
     /** JsonNull is intentional: the create contract asks for an explicit null for an empty description. */
     val description: JsonElement,
     val stamp: GroupStampRequestDto,
+    val joinType: String,
 )
 
 @Serializable

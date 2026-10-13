@@ -101,8 +101,8 @@ class GroupListRepositoryImplTest {
         val groupsJson =
             """
             [
-                {"groupId":"10000000-0000-0000-0000-000000000001","name":"서버 첫째","description":null,"inviteCode":"ABC123","role":"OWNER","memberCount":3000000000,"stamp":{"text":"첫째","textColor":"#112233","backgroundColor":"#445566","frame":"CIRCLE"}},
-                {"groupId":"10000000-0000-0000-0000-000000000002","name":"서버 둘째","description":"두 번째","inviteCode":"DEF456","role":"MEMBER","memberCount":2,"stamp":{"text":"둘째","textColor":"#FFFFFF","backgroundColor":"#01020380","frame":"STUB"}}
+                {"groupId":"10000000-0000-0000-0000-000000000001","name":"서버 첫째","description":null,"inviteCode":"ABC123","role":"OWNER","joinType":"PUBLIC","memberCount":3000000000,"stamp":{"text":"첫째","textColor":"#112233","backgroundColor":"#445566","frame":"CIRCLE"}},
+                {"groupId":"10000000-0000-0000-0000-000000000002","name":"서버 둘째","description":"두 번째","inviteCode":"DEF456","role":"MEMBER","joinType":"PRIVATE","memberCount":2,"stamp":{"text":"둘째","textColor":"#FFFFFF","backgroundColor":"#01020380","frame":"STUB"}}
             ]
             """.trimIndent()
     }
