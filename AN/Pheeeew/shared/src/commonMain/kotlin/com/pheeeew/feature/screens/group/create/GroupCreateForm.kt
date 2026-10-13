@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.group.create
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -171,6 +172,8 @@ private fun GroupJoinTypeOption(
     modifier: Modifier = Modifier,
 ) {
     val shape = RoundedCornerShape(12.dp)
+    val selectedBorder by animateColorAsState(if (selected) AppColors.GroupInk else Color(0xFFD9DEDD))
+    val selectedDot by animateColorAsState(if (selected) AppColors.GroupInk else Color.Transparent)
     Row(
         modifier =
             modifier
@@ -179,7 +182,7 @@ private fun GroupJoinTypeOption(
                 .background(Color(0xFFF8F9F9))
                 .border(
                     width = AppBorders.Standard,
-                    color = if (selected) AppColors.GroupInk else Color(0xFFD9DEDD),
+                    color = selectedBorder,
                     shape = shape,
                 ).selectable(
                     selected = selected,
@@ -200,7 +203,7 @@ private fun GroupJoinTypeOption(
                         shape = CircleShape,
                     ).padding(3.dp)
                     .background(
-                        color = if (selected) AppColors.GroupInk else Color.Transparent,
+                        color = selectedDot,
                         shape = CircleShape,
                     ),
         )

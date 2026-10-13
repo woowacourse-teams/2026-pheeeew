@@ -1,5 +1,8 @@
 package com.pheeeew.feature.screens.group.create.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -58,7 +61,8 @@ internal fun CreateTextField(
             isFocused -> AppColors.GroupInk
             else -> Color(0xFFD9DEDD)
         }
-    Column(modifier = modifier.fillMaxWidth()) {
+    val animatedBorder by animateColorAsState(borderColor)
+    Column(modifier = modifier.fillMaxWidth().animateContentSize()) {
         Text(
             text = label,
             color = AppColors.GroupInk,
@@ -72,7 +76,7 @@ internal fun CreateTextField(
                 Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
-                    .border(AppBorders.Standard, borderColor, RoundedCornerShape(12.dp))
+                    .border(AppBorders.Standard, animatedBorder, RoundedCornerShape(12.dp))
                     .semantics { contentDescription = label },
             interactionSource = interactionSource,
             enabled = enabled,
@@ -105,10 +109,9 @@ internal fun CreateTextField(
             textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
         )
         Row(modifier = Modifier.fillMaxWidth().padding(top = 4.dp)) {
-            if (errorText != null) {
+            AnimatedVisibility(visible = errorText != null, modifier = Modifier.weight(1f)) {
                 Text(
-                    text = errorText,
-                    modifier = Modifier.weight(1f),
+                    text = errorText.orEmpty(),
                     color = Color(0xFFCA4231),
                     fontSize = 11.sp,
                     maxLines = 1,
