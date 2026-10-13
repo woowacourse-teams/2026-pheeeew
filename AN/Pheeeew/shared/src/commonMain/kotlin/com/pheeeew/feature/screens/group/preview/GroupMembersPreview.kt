@@ -150,3 +150,37 @@ private fun MembersRetryMotionPreview() {
         )
     }
 }
+
+@Preview(name = "멤버 · 인증 실패", widthDp = 360, heightDp = 800)
+@Composable
+private fun GroupMembersUnauthorizedPreview() {
+    GroupMembersPreviewFrame(GroupMembersContent.Unauthorized)
+}
+
+@Preview(name = "멤버 · 커서 만료 · 복구 대기 및 실패", widthDp = 360, heightDp = 800)
+@Composable
+private fun GroupMembersCursorExpiredPreview() {
+    GroupMembersPreviewFrame(
+        GroupMembersContent.Ready(
+            items = previewMembers(),
+            nextCursor = null,
+            generation = 1,
+            needsCursorRecovery = true,
+            loadMoreFailed = true,
+        ),
+    )
+}
+
+@Preview(name = "멤버 · 커서 복구 중", widthDp = 360, heightDp = 800)
+@Composable
+private fun GroupMembersCursorRecoveringPreview() {
+    GroupMembersPreviewFrame(
+        GroupMembersContent.Ready(
+            items = previewMembers(),
+            nextCursor = null,
+            generation = 1,
+            needsCursorRecovery = true,
+            isRecovering = true,
+        ),
+    )
+}

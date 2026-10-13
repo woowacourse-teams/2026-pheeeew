@@ -56,6 +56,7 @@ import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_members_accessibility_nickname
 import pheeeew.shared.generated.resources.group_members_accessibility_owner_nickname
+import pheeeew.shared.generated.resources.group_members_cursor_expired
 import pheeeew.shared.generated.resources.group_members_empty_body
 import pheeeew.shared.generated.resources.group_members_empty_title
 import pheeeew.shared.generated.resources.group_members_forbidden_body
@@ -65,9 +66,12 @@ import pheeeew.shared.generated.resources.group_members_next_page_error
 import pheeeew.shared.generated.resources.group_members_not_found_body
 import pheeeew.shared.generated.resources.group_members_not_found_title
 import pheeeew.shared.generated.resources.group_members_owner
+import pheeeew.shared.generated.resources.group_members_reload
 import pheeeew.shared.generated.resources.group_members_retry
 import pheeeew.shared.generated.resources.group_members_return_to_detail
 import pheeeew.shared.generated.resources.group_members_title
+import pheeeew.shared.generated.resources.group_members_unauthorized_body
+import pheeeew.shared.generated.resources.group_members_unauthorized_title
 import pheeeew.shared.generated.resources.group_members_unavailable_body
 import pheeeew.shared.generated.resources.group_members_unavailable_title
 import pheeeew.shared.generated.resources.group_members_view_order
@@ -119,6 +123,15 @@ fun GroupMembersScreen(
                 )
             }
 
+            GroupMembersContent.Unauthorized -> {
+                MembersMessage(
+                    title = stringResource(Res.string.group_members_unauthorized_title),
+                    body = stringResource(Res.string.group_members_unauthorized_body),
+                    action = stringResource(Res.string.group_members_retry),
+                    onAction = onRetry,
+                )
+            }
+
             GroupMembersContent.Forbidden -> {
                 MembersMessage(
                     title = stringResource(Res.string.group_members_forbidden_title),
@@ -159,11 +172,11 @@ fun GroupMembersScreen(
                     ) { _, member ->
                         GroupMemberRow(member)
                     }
-                    if (content.hasNextPage) {
+                    if (content.hasNextPage || content.needsCursorRecovery) {
                         item(key = "members-next-page") {
                             Column(Modifier.animateItem().fillMaxWidth().animateContentSize()) {
                                 when {
-                                    content.isLoadingMore -> {
+                                    content.isLoadingMore || content.isRecovering -> {
                                         Row(
                                             Modifier.fillMaxWidth().padding(vertical = 12.dp),
                                             horizontalArrangement = Arrangement.Center,
@@ -190,13 +203,27 @@ fun GroupMembersScreen(
                                             verticalArrangement = Arrangement.spacedBy(10.dp),
                                         ) {
                                             Text(
-                                                text = stringResource(Res.string.group_members_next_page_error),
+                                                text =
+                                                    stringResource(
+                                                        if (content.needsCursorRecovery) {
+                                                            Res.string.group_members_cursor_expired
+                                                        } else {
+                                                            Res.string.group_members_next_page_error
+                                                        },
+                                                    ),
                                                 color = AppColors.TextSecondary,
                                                 fontSize = 12.sp,
                                                 textAlign = TextAlign.Center,
                                             )
                                             MembersActionButton(
-                                                text = stringResource(Res.string.group_members_retry),
+                                                text =
+                                                    stringResource(
+                                                        if (content.needsCursorRecovery) {
+                                                            Res.string.group_members_reload
+                                                        } else {
+                                                            Res.string.group_members_retry
+                                                        },
+                                                    ),
                                                 onClick = onRetry,
                                             )
                                         }
@@ -216,8 +243,13 @@ fun GroupMembersScreen(
                     content.nextCursor,
                     content.isLoadingMore,
                     content.loadMoreFailed,
+                    content.needsCursorRecovery,
+                    content.isRecovering,
                 ) {
-                    if (!content.hasNextPage || content.isLoadingMore || content.loadMoreFailed) {
+                    if (!content.hasNextPage || content.isLoadingMore || content.loadMoreFailed ||
+                        content.needsCursorRecovery ||
+                        content.isRecovering
+                    ) {
                         return@LaunchedEffect
                     }
                     snapshotFlow {

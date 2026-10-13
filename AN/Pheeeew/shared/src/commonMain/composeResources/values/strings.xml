@@ -469,4 +469,8 @@
     <string name="group_detail_join_check_failed">참여 결과를 확인하지 못했어요. 상태를 다시 확인해 주세요.</string>
     <string name="group_detail_join_checking">상태 확인 중</string>
     <string name="group_detail_code_entry">코드 입력</string>
+    <string name="group_members_unauthorized_title">인증을 확인해 주세요</string>
+    <string name="group_members_unauthorized_body">멤버 목록을 보려면 인증이 필요해요. 다시 시도해 주세요.</string>
+    <string name="group_members_cursor_expired">목록을 다시 불러와야 해요.</string>
+    <string name="group_members_reload">목록 다시 불러오기</string>
 </resources>
