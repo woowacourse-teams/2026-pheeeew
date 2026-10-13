@@ -97,7 +97,14 @@ class GroupExploreStateHolder(
         }
     }
 
-    fun refresh() {
+    /** Refresh only an already opened catalog; its next first load is always server-backed. */
+    fun onMembershipChanged() {
+        if (_uiState.value.content == GroupExploreContent.NotLoaded) return
+        refresh(force = true)
+    }
+
+    fun refresh(force: Boolean = false) {
+        if (!force && firstPageJob?.isActive == true) return
         val content = _uiState.value.content
         if (content is GroupExploreContent.Ready) {
             _uiState.update { state ->
@@ -175,6 +182,8 @@ class GroupExploreStateHolder(
         debounce: Boolean,
         keepSnapshot: Boolean = false,
     ) {
+        val retainedItemCount =
+            (_uiState.value.content as? GroupExploreContent.Ready)?.takeIf { keepSnapshot }?.items?.size ?: 0
         queryGeneration += 1
         val generation = queryGeneration
         activeKeyword = keyword
@@ -199,7 +208,7 @@ class GroupExploreStateHolder(
             scope.launch {
                 if (debounce) delay(debounceMillis)
                 if (generation != queryGeneration) return@launch
-                val result = requestPage(keyword, cursor = null)
+                val result = requestSnapshot(keyword, retainedItemCount, generation)
                 if (generation != queryGeneration) return@launch
                 _uiState.update { state ->
                     when (result) {
@@ -229,8 +238,7 @@ class GroupExploreStateHolder(
                                                 isRefreshing = false,
                                                 refreshFailed = true,
                                                 requiresFirstPageReload =
-                                                    current.requiresFirstPageReload ||
-                                                        result == GroupExplorePageResult.InvalidCursor,
+                                                true,
                                             ),
                                     )
                                 } else {
@@ -243,6 +251,34 @@ class GroupExploreStateHolder(
                     }
                 }
             }
+    }
+
+    /** Rebuild the loaded range from fresh pages before replacing it, preserving the list anchor. */
+    private suspend fun requestSnapshot(
+        keyword: String?,
+        minimumItems: Int,
+        generation: Long,
+    ): GroupExplorePageResult {
+        val first = requestPage(keyword, cursor = null)
+        if (first !is GroupExplorePageResult.Success) return first
+        val items =
+            first.page.items
+                .distinctBy { it.group.id }
+                .toMutableList()
+        var cursor = first.page.nextCursor
+        val visited = mutableSetOf<String>()
+        while (items.size < minimumItems && cursor != null) {
+            if (generation != queryGeneration) throw CancellationException("Superseded catalog snapshot")
+            if (!visited.add(cursor)) return GroupExplorePageResult.InvalidCursor
+            val next = requestPage(keyword, cursor)
+            if (next !is GroupExplorePageResult.Success) return next
+            val merged = (items + next.page.items).distinctBy { it.group.id }
+            if (merged.size == items.size && next.page.nextCursor != null) return GroupExplorePageResult.InvalidCursor
+            items.clear()
+            items.addAll(merged)
+            cursor = next.page.nextCursor
+        }
+        return GroupExplorePageResult.Success(GroupExplorePage(items.toList(), cursor))
     }
 
     private suspend fun requestPage(

@@ -17,6 +17,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
@@ -49,9 +50,9 @@ class GroupHomeViewModel(
 
     init {
         viewModelScope.launch {
-            membershipChanges.drop(1).collect {
+            (if (membershipChanges is StateFlow) membershipChanges.drop(1) else membershipChanges).collect {
                 invalidateMembership()
-                refresh()
+                refreshMyGroups()
             }
         }
         loadGroups()
@@ -82,7 +83,7 @@ class GroupHomeViewModel(
     /** 첫 조회 실패 또는 목록 새로고침 실패에서 다시 요청합니다. */
     fun onRetry() {
         when (_selectedTab.value) {
-            GroupHomeTab.MyGroups -> refresh()
+            GroupHomeTab.MyGroups -> refreshMyGroups()
             GroupHomeTab.Explore -> groupExploreStateHolder.retry()
         }
     }
@@ -139,13 +140,20 @@ class GroupHomeViewModel(
 
     /** 이미 진행 중인 일반 조회가 있으면 중복 요청을 만들지 않습니다. */
     fun refresh() {
+        when (_selectedTab.value) {
+            GroupHomeTab.MyGroups -> refreshMyGroups()
+            GroupHomeTab.Explore -> groupExploreStateHolder.refresh()
+        }
+    }
+
+    private fun refreshMyGroups() {
         if (listJob?.isActive == true) return
         loadGroups()
     }
 
     /** 생성·참여·탈퇴 성공 뒤 홈이 다시 보일 때 변경된 가입 목록을 읽습니다. */
     fun refreshIfDirty() {
-        if (isMembershipDirty) refresh()
+        if (isMembershipDirty) refreshMyGroups()
     }
 
     /** 가입 상태가 바뀌었음을 표시하고 진행 중인 이전 목록 응답을 무효화합니다. */
@@ -153,6 +161,7 @@ class GroupHomeViewModel(
         requestGeneration += 1
         membershipRevision += 1
         isMembershipDirty = true
+        groupExploreStateHolder.onMembershipChanged()
         listJob?.cancel()
         listJob = null
         _uiState.update { state ->
