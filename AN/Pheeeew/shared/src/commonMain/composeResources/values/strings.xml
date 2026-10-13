@@ -460,4 +460,6 @@
     <string name="group_search_all_recent">전체 그룹 최근 검색</string>
     <string name="group_search_my_summary">‘%1$s’ 내 그룹 검색 결과</string>
     <string name="group_search_my_no_results">참여한 그룹 중 검색 결과가 없어요.</string>
+    <string name="group_explore_cursor_expired">목록이 변경되었어요. 처음부터 다시 불러와 주세요.</string>
+    <string name="group_explore_reload">다시 불러오기</string>
 </resources>

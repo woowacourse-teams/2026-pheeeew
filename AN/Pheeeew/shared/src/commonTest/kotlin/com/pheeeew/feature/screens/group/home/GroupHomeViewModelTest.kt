@@ -216,6 +216,9 @@ class GroupHomeViewModelTest {
                     )
                 val viewModel =
                     GroupHomeViewModel(
+                        groupExploreSource =
+                            com.pheeeew.feature.screens.group.home.explore
+                                .InMemoryGroupExploreSource(),
                         groupListSource = source,
                         groupJoinDependencies =
                             GroupJoinDependencies(
@@ -268,6 +271,9 @@ class GroupHomeViewModelTest {
                     )
                 val viewModel =
                     GroupHomeViewModel(
+                        groupExploreSource =
+                            com.pheeeew.feature.screens.group.home.explore
+                                .InMemoryGroupExploreSource(),
                         groupListSource = source,
                         groupJoinDependencies =
                             GroupJoinDependencies(
@@ -302,6 +308,9 @@ class GroupHomeViewModelTest {
 
     private fun createViewModel(source: GroupListSource) =
         GroupHomeViewModel(
+            groupExploreSource =
+                com.pheeeew.feature.screens.group.home.explore
+                    .InMemoryGroupExploreSource(),
             groupListSource = source,
             groupJoinDependencies =
                 GroupJoinDependencies(

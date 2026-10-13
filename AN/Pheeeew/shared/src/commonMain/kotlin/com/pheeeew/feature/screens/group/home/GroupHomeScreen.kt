@@ -66,12 +66,14 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_explore_all_groups
+import pheeeew.shared.generated.resources.group_explore_cursor_expired
 import pheeeew.shared.generated.resources.group_explore_empty
 import pheeeew.shared.generated.resources.group_explore_empty_search
 import pheeeew.shared.generated.resources.group_explore_load_error
 import pheeeew.shared.generated.resources.group_explore_load_more_error
 import pheeeew.shared.generated.resources.group_explore_no_results
 import pheeeew.shared.generated.resources.group_explore_recent_sort
+import pheeeew.shared.generated.resources.group_explore_reload
 import pheeeew.shared.generated.resources.group_explore_retry
 import pheeeew.shared.generated.resources.group_home_empty_description
 import pheeeew.shared.generated.resources.group_home_empty_illustration
@@ -382,7 +384,9 @@ private fun ExploreGroupsList(
             content is GroupExploreContent.Ready &&
             content.hasNextPage &&
             !content.isLoadingMore &&
-            !content.loadMoreFailed
+            !content.isRefreshing &&
+            !content.loadMoreFailed &&
+            !content.requiresFirstPageReload
     val currentOnLoadMore by rememberUpdatedState(onLoadMore)
     LaunchedEffect(listState, canLoadMore) {
         if (!canLoadMore) return@LaunchedEffect
@@ -503,8 +507,22 @@ private fun ExploreGroupsList(
                 } else if (content.loadMoreFailed) {
                     item(key = "explore:load-more-error") {
                         ExploreMessage(
-                            message = stringResource(Res.string.group_explore_load_more_error),
-                            actionLabel = stringResource(Res.string.group_explore_retry),
+                            message =
+                                stringResource(
+                                    if (content.requiresFirstPageReload) {
+                                        Res.string.group_explore_cursor_expired
+                                    } else {
+                                        Res.string.group_explore_load_more_error
+                                    },
+                                ),
+                            actionLabel =
+                                stringResource(
+                                    if (content.requiresFirstPageReload) {
+                                        Res.string.group_explore_reload
+                                    } else {
+                                        Res.string.group_explore_retry
+                                    },
+                                ),
                             onAction = onRetry,
                             modifier =
                                 Modifier

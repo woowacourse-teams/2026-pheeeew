@@ -8,7 +8,6 @@ import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
 import com.pheeeew.feature.screens.group.detail.GroupDetailDependencies
 import com.pheeeew.feature.screens.group.home.GroupListSource
 import com.pheeeew.feature.screens.group.home.explore.GroupExploreSource
-import com.pheeeew.feature.screens.group.home.explore.InMemoryGroupExploreSource
 import com.pheeeew.feature.screens.group.join.GroupJoinDependencies
 import com.pheeeew.feature.screens.group.members.GroupMembersSource
 import com.pheeeew.feature.screens.group.members.InMemoryGroupMembersSource
@@ -28,8 +27,7 @@ data class GroupDependencies(
     val membershipChanges: Flow<Long> = emptyFlow(),
     val invalidateSharedMembership: () -> Unit = {},
     val createSessionStore: GroupCreateSessionStore = EmptyGroupCreateSessionStore,
-    /** Demo-only source until the group catalog API is available. */
-    val exploreSource: GroupExploreSource = InMemoryGroupExploreSource(),
+    val exploreSource: GroupExploreSource,
     /** Demo-only source until the group members API is available. */
     val membersSource: GroupMembersSource = InMemoryGroupMembersSource(),
 )
@@ -62,7 +60,7 @@ fun createGroupDependencies(
 
     return GroupDependencies(
         groupListSource = groupListSource,
-        exploreSource = InMemoryGroupExploreSource(),
+        exploreSource = createGroupExploreSource(apiClient),
         createActions = createActions,
         createErrorReporter = { error -> reportUnexpected(error) },
         operationKeyAllocator = operationKeyAllocator,
