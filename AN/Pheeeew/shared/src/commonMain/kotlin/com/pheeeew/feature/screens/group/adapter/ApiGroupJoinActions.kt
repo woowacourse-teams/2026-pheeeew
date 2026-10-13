@@ -39,10 +39,35 @@ class ApiJoinGroupAction(
     override suspend fun join(
         groupId: GroupId,
         normalizedCode: String,
-    ): GroupJoinResult =
-        when (val result = repository.join(normalizedCode)) {
+    ): GroupJoinResult {
+        when (val lookup = repository.findByInviteCode(normalizedCode)) {
+            is GroupInviteLookupResult.Found -> {
+                if (!lookup.group.id.value
+                        .equals(groupId.value, ignoreCase = true)
+                ) {
+                    return GroupJoinResult.Rejected
+                }
+            }
+
+            GroupInviteLookupResult.NotFound -> {
+                return GroupJoinResult.InviteCodeNotFound
+            }
+
+            is GroupInviteLookupResult.RateLimited -> {
+                return GroupJoinResult.RateLimited(lookup.retryAfterMillis)
+            }
+
+            GroupInviteLookupResult.Unavailable -> {
+                return GroupJoinResult.Unavailable
+            }
+        }
+        return when (val result = repository.join(normalizedCode)) {
             is GroupJoinRepositoryResult.Joined -> {
-                GroupJoinResult.Joined(GroupId(result.groupId.value))
+                if (result.groupId.value.equals(groupId.value, ignoreCase = true)) {
+                    GroupJoinResult.Joined(groupId)
+                } else {
+                    GroupJoinResult.OutcomeUnknown
+                }
             }
 
             GroupJoinRepositoryResult.InviteCodeNotFound -> {
@@ -50,7 +75,7 @@ class ApiJoinGroupAction(
             }
 
             GroupJoinRepositoryResult.AlreadyMember -> {
-                GroupJoinResult.AlreadyMember
+                if (isMember(groupId)) GroupJoinResult.Joined(groupId) else GroupJoinResult.AlreadyMember
             }
 
             is GroupJoinRepositoryResult.RateLimited -> {
@@ -69,6 +94,7 @@ class ApiJoinGroupAction(
                 if (isMember(groupId)) GroupJoinResult.Joined(groupId) else GroupJoinResult.OutcomeUnknown
             }
         }
+    }
 
     private suspend fun isMember(groupId: GroupId): Boolean =
         when (
