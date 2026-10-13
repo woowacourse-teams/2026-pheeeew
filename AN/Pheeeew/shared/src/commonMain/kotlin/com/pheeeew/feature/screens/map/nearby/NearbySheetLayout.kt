@@ -59,6 +59,7 @@ internal fun NearbySheetLayout(
     onDismiss: () -> Unit,
     onInteraction: () -> Unit = {},
     onMapControlHeightChanged: (Dp) -> Unit = {},
+    header: @Composable () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     var bottomInRootPx by remember { mutableFloatStateOf(0f) }
@@ -185,8 +186,8 @@ internal fun NearbySheetLayout(
                             .navigationBarsPadding()
                             .then(if (expanded) Modifier.statusBarsPadding() else Modifier),
                     ) {
-                        SheetDragHandle(
-                            Modifier.height(16.dp).pointerInput(availableHeightPx) {
+                        Column(
+                            Modifier.fillMaxWidth().pointerInput(availableHeightPx) {
                                 detectVerticalDragGestures(
                                     onDragStart = {
                                         dragging = true
@@ -206,7 +207,10 @@ internal fun NearbySheetLayout(
                                     },
                                 )
                             },
-                        )
+                        ) {
+                            SheetDragHandle(Modifier.height(16.dp))
+                            header()
+                        }
                         content()
                     }
                 }
@@ -247,11 +251,13 @@ private fun NearbySheetPreviewContent(
                 expanded = expanded,
                 onExpandedChange = { expanded = it },
                 onDismiss = {},
+                header = {
+                    NearbySheetHeader(
+                        loading = false,
+                        onRefresh = {},
+                    )
+                },
             ) {
-                NearbySheetHeader(
-                    loading = false,
-                    onRefresh = {},
-                )
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().weight(1f),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),

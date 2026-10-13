@@ -5,24 +5,25 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import org.jetbrains.compose.resources.painterResource
+import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppColors
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.ic_refresh
 import pheeeew.shared.generated.resources.map_refresh_nearby
+import pheeeew.shared.generated.resources.map_refresh_nearby_action
 
 @Composable
 internal fun NearbySheetHeader(
@@ -32,22 +33,29 @@ internal fun NearbySheetHeader(
     val refreshDescription = stringResource(Res.string.map_refresh_nearby)
     Row(
         Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
-        horizontalArrangement = Arrangement.End,
-        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        Text(
+            text = "감정 목록",
+            color = AppColors.TextPrimary,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
         Box(
             Modifier
-                .size(48.dp)
+                .height(32.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .semantics { contentDescription = refreshDescription }
-                .clickable(enabled = !loading, role = Role.Button, onClick = onRefresh),
+                .clickable(enabled = !loading, role = Role.Button, onClick = onRefresh)
+                .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                painter = painterResource(Res.drawable.ic_refresh),
-                contentDescription = null,
-                tint = Color(0xFF252826),
-                modifier = Modifier.size(20.dp),
+            Text(
+                text = stringResource(Res.string.map_refresh_nearby_action),
+                color = AppColors.TextSecondary.copy(alpha = if (loading) 0.4f else 1f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Normal,
             )
         }
     }

@@ -30,6 +30,9 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -204,12 +207,13 @@ fun NearbyEmotionSheet(
         onDismiss = viewModel::dismiss,
         onInteraction = onSheetInteraction,
         onMapControlHeightChanged = onMapControlHeightChanged,
+        header = {
+            NearbySheetHeader(
+                loading = state.loading,
+                onRefresh = viewModel::refresh,
+            )
+        },
     ) {
-        NearbySheetHeader(
-            loading = state.loading,
-            onRefresh = viewModel::refresh,
-        )
-
         state.message?.let { NearbyNotice(it, viewModel::clearMessage) }
         playback.error?.let { NearbyNotice(it, player::stop) }
         if (state.loading) {
@@ -220,7 +224,21 @@ fun NearbyEmotionSheet(
         } else {
             LazyColumn(
                 state = scroll,
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier =
+                    Modifier.fillMaxWidth().weight(1f).drawWithContent {
+                        drawContent()
+                        if (scroll.canScrollBackward) {
+                            val fadeHeight = 24.dp.toPx().coerceAtMost(size.height)
+                            drawRect(
+                                brush =
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color(0xFFFAFAFA), Color(0xFFFAFAFA).copy(alpha = 0f)),
+                                        endY = fadeHeight,
+                                    ),
+                                size = Size(size.width, fadeHeight),
+                            )
+                        }
+                    },
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp),
             ) {
