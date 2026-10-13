@@ -1,7 +1,11 @@
 package com.pheeeew.feature.screens.map.overlay
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -119,14 +123,19 @@ fun MapOverlay(
                     .statusBarsPadding()
                     .padding(16.dp),
         ) {
-            if (isEmotionSelectorExpanded || (!isMapCameraMoving && !promptVisibility.isHidden)) {
+            AnimatedVisibility(
+                visible = isEmotionSelectorExpanded || (!isMapCameraMoving && !promptVisibility.isHidden),
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(250)),
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = promptBottomPadding)
+                        .graphicsLayer { translationY = promptTranslationY.dp.toPx() },
+                label = "emotionPromptVisibility",
+            ) {
                 EmotionPromptLabel(
                     isExpanded = isEmotionSelectorExpanded,
-                    modifier =
-                        Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = promptBottomPadding)
-                            .graphicsLayer { translationY = promptTranslationY.dp.toPx() },
                 )
             }
 
