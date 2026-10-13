@@ -7,6 +7,7 @@ import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.domain.repository.emotion.EmotionFailure
 import com.pheeeew.domain.repository.emotion.EmotionResult
+import com.pheeeew.domain.repository.group.GroupPublicJoinResult
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.monitoring.product.resultLabel
@@ -14,6 +15,8 @@ import com.pheeeew.feature.screens.group.detail.model.GroupMoodContentUiModel
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedLoadState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedUiState
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodPostUiModel
+import com.pheeeew.feature.screens.group.join.GroupJoinStateHolder
+import com.pheeeew.feature.screens.group.join.GroupJoinUiState
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
@@ -50,6 +53,17 @@ class GroupDetailViewModel(
     private var loadingIndicatorMinimumJob: Job? = null
     private var loadingIndicatorRequestId: Long? = null
     private var leaveJob: Job? = null
+    private var joinJob: Job? = null
+    private val codeJoinHolder =
+        dependencies.codeJoin?.let {
+            GroupJoinStateHolder(viewModelScope, it, groupId)
+        }
+    val codeJoinUiState =
+        codeJoinHolder?.uiState ?: MutableStateFlow(
+            GroupJoinUiState(),
+        )
+    private val _isCodeJoinVisible = MutableStateFlow(false)
+    val isCodeJoinVisible = _isCodeJoinVisible.asStateFlow()
     private var moodFeedJob: Job? = null
     private var moodFeedGeneration = 0L
     private var moodFeedNextCursor: String? = null
@@ -74,6 +88,10 @@ class GroupDetailViewModel(
             hasResumed = true
             return
         }
+        if (_uiState.value.join.phase == GroupDetailJoinPhase.VerificationRequired) {
+            startJoinVerification(write = false)
+            return
+        }
         if (_uiState.value.overlay == GroupDetailOverlay.Menu ||
             _uiState.value.overlay == GroupDetailOverlay.InviteCode
         ) {
@@ -85,6 +103,11 @@ class GroupDetailViewModel(
 
     fun onRetry() {
         val state = _uiState.value
+        if (joinJob?.isActive == true || _isCodeJoinVisible.value) return
+        if (state.join.phase == GroupDetailJoinPhase.VerificationRequired) {
+            startJoinVerification(write = false)
+            return
+        }
         if (state.overlay != GroupDetailOverlay.None || state.content is GroupDetailContent.MembershipChanged ||
             state.content is GroupDetailContent.NotFound
         ) {
@@ -95,6 +118,11 @@ class GroupDetailViewModel(
 
     fun onRefresh(showRefreshIndicator: Boolean = true) {
         val state = _uiState.value
+        if (joinJob?.isActive == true || _isCodeJoinVisible.value) return
+        if (state.join.phase == GroupDetailJoinPhase.VerificationRequired) {
+            startJoinVerification(write = false)
+            return
+        }
         if (state.overlay != GroupDetailOverlay.None || state.content is GroupDetailContent.MembershipChanged ||
             state.content is GroupDetailContent.NotFound
         ) {
@@ -472,22 +500,185 @@ class GroupDetailViewModel(
     }
 
     fun onJoinClick() {
-        val current = _uiState.value
-        val detail = current.detail ?: return
-        if (detail.role != GroupRole.NONE || detail.joinType != GroupJoinType.PUBLIC ||
-            current.overlay != GroupDetailOverlay.None
+        val state = _uiState.value
+        val detail = state.detail ?: return
+        if (joinJob?.isActive == true || _isCodeJoinVisible.value || detail.role != GroupRole.NONE ||
+            state.overlay != GroupDetailOverlay.None
         ) {
             return
         }
-        _uiState.update { state ->
-            if (state.detail?.role == GroupRole.NONE &&
-                state.detail?.joinType == GroupJoinType.PUBLIC &&
-                state.overlay == GroupDetailOverlay.None
-            ) {
-                state.copy(join = state.join.copy(failure = GroupDetailJoinFailure.ApiIntegrationPending))
-            } else {
-                state
+        if (state.join.phase == GroupDetailJoinPhase.VerificationRequired) {
+            startJoinVerification(write = false)
+        } else if (detail.joinType == GroupJoinType.PRIVATE) {
+            codeJoinHolder?.open() ?: return
+            _isCodeJoinVisible.value = true
+        } else {
+            startJoinVerification(write = true)
+        }
+    }
+
+    fun onJoinCodeChanged(code: String) {
+        codeJoinHolder?.onCodeChanged(code)
+    }
+
+    fun onJoinCodeSearch() {
+        codeJoinHolder?.onSearchClick()
+    }
+
+    fun onJoinCodeSubmit() {
+        codeJoinHolder?.onJoinClick()
+    }
+
+    fun onCloseCodeJoin() {
+        val needsConfirmation = codeJoinHolder?.uiState?.value?.needsMembershipVerification == true
+        if (codeJoinHolder?.close() != false) {
+            _isCodeJoinVisible.value = false
+            if (needsConfirmation) showJoinVerificationFailure()
+        }
+    }
+
+    fun onVerifyCodeMembership() {
+        if (codeJoinHolder?.close() != false) {
+            _isCodeJoinVisible.value = false
+            startJoinVerification(write = false)
+        }
+    }
+
+    fun onCodeJoinSucceeded(
+        id: GroupId,
+        key: GroupOperationKey,
+    ) {
+        if (id != groupId) return
+        if (codeJoinHolder?.consumeAndClose(key) == true) {
+            _isCodeJoinVisible.value = false
+            startJoinVerification(write = false)
+        }
+    }
+
+    fun acknowledgeJoinConfirmed(key: GroupOperationKey) {
+        _uiState.update { if (it.joinConfirmed == key) it.copy(joinConfirmed = null) else it }
+    }
+
+    private fun startJoinVerification(write: Boolean) {
+        if (joinJob?.isActive == true) return
+        val key = dependencies.operationKeyAllocator.next()
+        _uiState.update {
+            it.copy(
+                join =
+                    GroupDetailJoinUiState(
+                        phase = if (write) GroupDetailJoinPhase.Submitting else GroupDetailJoinPhase.Checking,
+                    ),
+            )
+        }
+        joinJob =
+            viewModelScope.launch {
+                // Invalidate any pre-mutation GET so it cannot overwrite the confirmed membership.
+                ++loadGeneration
+                loadJob?.cancelAndJoin()
+                loadingIndicatorDelayJob?.cancel()
+                loadingIndicatorMinimumJob?.cancel()
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        isLoadingIndicatorVisible = false,
+                        refreshStatus = GroupDetailRefreshStatus.Idle,
+                    )
+                }
+                val outcome =
+                    if (write) {
+                        try {
+                            withTimeoutOrNull(dependencies.requestPolicy.timeoutMillis) {
+                                dependencies.publicJoinAction.join(groupId)
+                            } ?: GroupPublicJoinResult.OutcomeUnknown
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (error: Exception) {
+                            dependencies.errorReporter.reportUnexpected(error)
+                            GroupPublicJoinResult.OutcomeUnknown
+                        }
+                    } else {
+                        GroupPublicJoinResult.OutcomeUnknown
+                    }
+                if (outcome == GroupPublicJoinResult.NotFound) {
+                    _uiState.update {
+                        it.copy(
+                            content = GroupDetailContent.NotFound,
+                            join = GroupDetailJoinUiState(),
+                            refreshStatus = GroupDetailRefreshStatus.Idle,
+                        )
+                    }
+                    return@launch
+                }
+                if (outcome == GroupPublicJoinResult.Unavailable) {
+                    _uiState.update {
+                        it.copy(
+                            join = GroupDetailJoinUiState(failure = GroupDetailJoinFailure.Unavailable),
+                        )
+                    }
+                    return@launch
+                }
+                _uiState.update { it.copy(join = it.join.copy(phase = GroupDetailJoinPhase.Checking)) }
+                when (val confirmed = requestDetail()) {
+                    is GroupDetailLoadResult.Loaded -> {
+                        val loaded = confirmed.detail
+                        if (loaded.group.id != groupId) {
+                            showJoinVerificationFailure()
+                        } else {
+                            val member = loaded.role != GroupRole.NONE
+                            _uiState.update {
+                                it.copy(
+                                    content = GroupDetailContent.Ready(loaded),
+                                    groupName = loaded.group.name,
+                                    join =
+                                        GroupDetailJoinUiState(
+                                            phase =
+                                                if (member) {
+                                                    GroupDetailJoinPhase.Completed
+                                                } else {
+                                                    GroupDetailJoinPhase.Idle
+                                                },
+                                            failure =
+                                                if (member) {
+                                                    null
+                                                } else if (loaded.joinType == GroupJoinType.PRIVATE) {
+                                                    GroupDetailJoinFailure.PrivateGroup
+                                                } else {
+                                                    GroupDetailJoinFailure.NotJoined
+                                                },
+                                        ),
+                                    joinConfirmed = if (member) key else null,
+                                )
+                            }
+                            if (member) refreshMoodFeed()
+                        }
+                    }
+
+                    GroupDetailLoadResult.NotFound -> {
+                        _uiState.update {
+                            it.copy(
+                                content = GroupDetailContent.NotFound,
+                                join = GroupDetailJoinUiState(),
+                                refreshStatus = GroupDetailRefreshStatus.Idle,
+                            )
+                        }
+                    }
+
+                    GroupDetailLoadResult.MembershipChanged, GroupDetailLoadResult.Unavailable -> {
+                        showJoinVerificationFailure()
+                    }
+                }
             }
+    }
+
+    private fun showJoinVerificationFailure() {
+        _uiState.update {
+            it.copy(
+                join =
+                    GroupDetailJoinUiState(
+                        failure = GroupDetailJoinFailure.OutcomeUnknown,
+                        phase = GroupDetailJoinPhase.VerificationRequired,
+                    ),
+            )
         }
     }
 
@@ -532,27 +723,31 @@ class GroupDetailViewModel(
 
     /** false면 화면 종료 대신 열린 팝업을 닫거나 제출을 유지합니다. */
     fun onBackRequested(): Boolean =
-        when (_uiState.value.overlay) {
-            GroupDetailOverlay.None -> {
-                true
-            }
+        if (joinJob?.isActive == true || _isCodeJoinVisible.value) {
+            false
+        } else {
+            when (_uiState.value.overlay) {
+                GroupDetailOverlay.None -> {
+                    true
+                }
 
-            GroupDetailOverlay.Menu,
-            GroupDetailOverlay.InviteCode,
-            GroupDetailOverlay.LeaveConfirm,
-            GroupDetailOverlay.LeaveFailed,
-            GroupDetailOverlay.LeaveStillMember,
-            GroupDetailOverlay.OwnerCannotLeave,
-            GroupDetailOverlay.LeaveOutcomeUnknown,
-            -> {
-                onDismissOverlay()
-                false
-            }
+                GroupDetailOverlay.Menu,
+                GroupDetailOverlay.InviteCode,
+                GroupDetailOverlay.LeaveConfirm,
+                GroupDetailOverlay.LeaveFailed,
+                GroupDetailOverlay.LeaveStillMember,
+                GroupDetailOverlay.OwnerCannotLeave,
+                GroupDetailOverlay.LeaveOutcomeUnknown,
+                -> {
+                    onDismissOverlay()
+                    false
+                }
 
-            is GroupDetailOverlay.Leaving,
-            is GroupDetailOverlay.Left,
-            -> {
-                false
+                is GroupDetailOverlay.Leaving,
+                is GroupDetailOverlay.Left,
+                -> {
+                    false
+                }
             }
         }
 

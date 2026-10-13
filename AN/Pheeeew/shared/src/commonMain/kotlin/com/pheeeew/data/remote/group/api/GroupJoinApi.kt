@@ -38,6 +38,18 @@ class GroupJoinApi(
             ),
         ) { response -> response.body<GroupJoinResponseDto>() }
 
+    suspend fun joinPublic(groupId: String): ApiResult<GroupJoinResponseDto> =
+        requests.execute(
+            ApiRequest(
+                method = HttpMethod.Post,
+                path = "/api/v2/groups/$groupId/members/me",
+                kind = RequestKind.WRITE,
+                body = null,
+                replayAfterAuthentication = false,
+                monitoringEndpoint = "group_public_join",
+            ),
+        ) { response -> response.body<GroupJoinResponseDto>() }
+
     private companion object {
         const val SEARCH_PATH = "/api/v2/groups/search"
         const val JOIN_PATH = "/api/v2/groups/join"

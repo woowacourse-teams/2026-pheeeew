@@ -765,6 +765,7 @@ private fun AppContent(
                             isCurrentDestination = currentBackStackEntry == entry,
                             onBack = { navController.popBackStack() },
                             onReturnHome = { returnToRanking() },
+                            onJoined = groupStampListRepository::invalidate,
                             onLeft = { _, _ -> returnToRanking() },
                             onMembershipUnavailable = { _, _, _ -> returnToRanking() },
                             onCopyCode = { code, _ ->

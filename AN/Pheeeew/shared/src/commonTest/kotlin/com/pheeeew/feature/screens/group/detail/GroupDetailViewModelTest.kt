@@ -8,6 +8,7 @@ import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.domain.repository.emotion.EmotionFailure
 import com.pheeeew.domain.repository.emotion.EmotionRepository
 import com.pheeeew.domain.repository.emotion.EmotionResult
+import com.pheeeew.domain.repository.group.GroupPublicJoinResult
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
@@ -37,7 +38,7 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupDetailViewModelTest {
     @Test
-    fun `public guest join displays pending API notice without changing membership`() =
+    fun `unavailable public join leaves membership unchanged`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
@@ -52,11 +53,12 @@ class GroupDetailViewModelTest {
                 runCurrent()
 
                 viewModel.onJoinClick()
+                runCurrent()
 
                 val loadedDetail = requireNotNull(viewModel.uiState.value.detail)
                 assertEquals(GroupRole.NONE, loadedDetail.role)
                 assertEquals(7L, loadedDetail.group.memberCount)
-                assertEquals(GroupDetailJoinFailure.ApiIntegrationPending, viewModel.uiState.value.join.failure)
+                assertEquals(GroupDetailJoinFailure.Unavailable, viewModel.uiState.value.join.failure)
             } finally {
                 Dispatchers.resetMain()
             }
@@ -589,15 +591,245 @@ class GroupDetailViewModelTest {
             }
         }
 
+    @Test
+    fun `public join writes once and completes only after server membership confirmation`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var reads = 0
+                var writes = 0
+                val viewModel =
+                    createViewModel(
+                        source = {
+                            reads += 1
+                            GroupDetailLoadResult.Loaded(
+                                detail(if (reads == 1) GroupRole.NONE else GroupRole.MEMBER)
+                                    .copy(joinType = GroupJoinType.PUBLIC),
+                            )
+                        },
+                        joinAction =
+                            JoinPublicGroupAction {
+                                writes += 1
+                                GroupPublicJoinResult.Joined
+                            },
+                    )
+                runCurrent()
+                viewModel.onJoinClick()
+                viewModel.onJoinClick()
+                runCurrent()
+                assertEquals(1, writes)
+                assertEquals(2, reads)
+                assertEquals(
+                    GroupRole.MEMBER,
+                    viewModel.uiState.value.detail
+                        ?.role,
+                )
+                assertEquals(GroupDetailJoinPhase.Completed, viewModel.uiState.value.join.phase)
+                assertTrue(viewModel.uiState.value.joinConfirmed != null)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `failed confirmation retries only GET and never repeats a membership write`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var reads = 0
+                var writes = 0
+                val viewModel =
+                    createViewModel(
+                        source = {
+                            reads += 1
+                            if (reads == 2) {
+                                GroupDetailLoadResult.Unavailable
+                            } else {
+                                GroupDetailLoadResult.Loaded(
+                                    detail(
+                                        if (reads ==
+                                            1
+                                        ) {
+                                            GroupRole.NONE
+                                        } else {
+                                            GroupRole.MEMBER
+                                        },
+                                    ).copy(joinType = GroupJoinType.PUBLIC),
+                                )
+                            }
+                        },
+                        joinAction =
+                            JoinPublicGroupAction {
+                                writes += 1
+                                GroupPublicJoinResult.OutcomeUnknown
+                            },
+                    )
+                runCurrent()
+                viewModel.onJoinClick()
+                runCurrent()
+                assertEquals(GroupDetailJoinPhase.VerificationRequired, viewModel.uiState.value.join.phase)
+                assertEquals(
+                    GroupRole.NONE,
+                    viewModel.uiState.value.detail
+                        ?.role,
+                )
+                viewModel.onJoinClick()
+                runCurrent()
+                assertEquals(1, writes)
+                assertEquals(3, reads)
+                assertEquals(GroupDetailJoinPhase.Completed, viewModel.uiState.value.join.phase)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `private conflict refreshes policy without fabricating joined membership`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var reads = 0
+                val viewModel =
+                    createViewModel(
+                        source = {
+                            reads += 1
+                            GroupDetailLoadResult.Loaded(
+                                detail(GroupRole.NONE)
+                                    .copy(joinType = if (reads == 1) GroupJoinType.PUBLIC else GroupJoinType.PRIVATE),
+                            )
+                        },
+                        joinAction =
+                            JoinPublicGroupAction {
+                                GroupPublicJoinResult.PrivateGroup
+                            },
+                    )
+                runCurrent()
+                viewModel.onJoinClick()
+                runCurrent()
+                assertEquals(
+                    GroupJoinType.PRIVATE,
+                    viewModel.uiState.value.detail
+                        ?.joinType,
+                )
+                assertEquals(
+                    GroupRole.NONE,
+                    viewModel.uiState.value.detail
+                        ?.role,
+                )
+                assertEquals(GroupDetailJoinFailure.PrivateGroup, viewModel.uiState.value.join.failure)
+                assertNull(viewModel.uiState.value.joinConfirmed)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `already joined and private conflicts both trust confirmed server membership`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                listOf(GroupPublicJoinResult.AlreadyMember, GroupPublicJoinResult.PrivateGroup).forEach { outcome ->
+                    var reads = 0
+                    val viewModel =
+                        createViewModel(
+                            source = {
+                                reads += 1
+                                val server = detail(if (reads == 1) GroupRole.NONE else GroupRole.MEMBER)
+                                GroupDetailLoadResult.Loaded(
+                                    server.copy(
+                                        joinType = if (reads == 1) GroupJoinType.PUBLIC else GroupJoinType.PRIVATE,
+                                        group = server.group.copy(memberCount = if (reads == 1) 7 else 19),
+                                    ),
+                                )
+                            },
+                            joinAction = JoinPublicGroupAction { outcome },
+                        )
+                    runCurrent()
+                    viewModel.onJoinClick()
+                    runCurrent()
+                    assertEquals(
+                        GroupRole.MEMBER,
+                        viewModel.uiState.value.detail
+                            ?.role,
+                    )
+                    assertEquals(
+                        19L,
+                        viewModel.uiState.value.detail
+                            ?.group
+                            ?.memberCount,
+                    )
+                    assertEquals(GroupDetailJoinPhase.Completed, viewModel.uiState.value.join.phase)
+                }
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `closing an uncertain code join requires GET before another membership attempt`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var reads = 0
+                var writes = 0
+                val codeDependencies =
+                    com.pheeeew.feature.screens.group.join.GroupJoinDependencies(
+                        lookupGroupAction = {
+                            com.pheeeew.feature.screens.group.join.GroupLookupResult.Found(
+                                detail(GroupRole.NONE).group,
+                            )
+                        },
+                        joinGroupAction = { _, _ ->
+                            writes += 1
+                            com.pheeeew.feature.screens.group.join.GroupJoinResult.OutcomeUnknown
+                        },
+                        errorReporter = { throw it },
+                        operationKeyAllocator = GroupOperationKeyAllocator("code-detail-test"),
+                    )
+                val viewModel =
+                    createViewModel(
+                        source = {
+                            reads += 1
+                            GroupDetailLoadResult.Loaded(detail(if (reads == 1) GroupRole.NONE else GroupRole.MEMBER))
+                        },
+                        codeJoin = codeDependencies,
+                    )
+                runCurrent()
+                viewModel.onJoinClick()
+                viewModel.onJoinCodeChanged("ABC123")
+                viewModel.onJoinCodeSearch()
+                runCurrent()
+                viewModel.onJoinCodeSubmit()
+                runCurrent()
+                viewModel.onCloseCodeJoin()
+                assertEquals(GroupDetailJoinPhase.VerificationRequired, viewModel.uiState.value.join.phase)
+                assertEquals("ABC123", viewModel.codeJoinUiState.value.input)
+                viewModel.onJoinClick()
+                runCurrent()
+                assertEquals(1, writes)
+                assertEquals(2, reads)
+                assertEquals(GroupDetailJoinPhase.Completed, viewModel.uiState.value.join.phase)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun createViewModel(
         source: suspend () -> GroupDetailLoadResult,
         leave: suspend () -> LeaveGroupResult = { LeaveGroupResult.Unavailable },
         emotionRepository: EmotionRepository = TestEmotionRepository,
+        codeJoin: com.pheeeew.feature.screens.group.join.GroupJoinDependencies? = null,
+        joinAction: JoinPublicGroupAction =
+            JoinPublicGroupAction {
+                GroupPublicJoinResult.Unavailable
+            },
     ) = GroupDetailViewModel(
         groupId = GROUP_ID,
         dependencies =
             GroupDetailDependencies(
                 source = { source() },
+                publicJoinAction = joinAction,
+                codeJoin = codeJoin,
                 emotionRepository = emotionRepository,
                 leaveGroupAction = { leave() },
                 errorReporter = { throw it },

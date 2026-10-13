@@ -5,8 +5,10 @@ import com.pheeeew.data.remote.emotion.EmotionApi
 import com.pheeeew.data.remote.group.api.GroupDetailApi
 import com.pheeeew.data.repository.emotion.EmotionRepositoryImpl
 import com.pheeeew.data.repository.group.GroupDetailRepositoryImpl
+import com.pheeeew.data.repository.group.GroupPublicJoinRepositoryImpl
 import com.pheeeew.feature.screens.group.adapter.ApiGroupDetailSource
 import com.pheeeew.feature.screens.group.adapter.ApiLeaveGroupAction
+import com.pheeeew.feature.screens.group.adapter.ApiPublicGroupJoinAction
 import com.pheeeew.feature.screens.group.detail.GroupDetailDependencies
 import com.pheeeew.feature.screens.group.detail.GroupDetailErrorReporter
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
@@ -19,6 +21,20 @@ fun createGroupDetailDependencies(
     val repository = GroupDetailRepositoryImpl(GroupDetailApi(apiClient.requests))
     return GroupDetailDependencies(
         source = ApiGroupDetailSource(repository),
+        publicJoinAction =
+            ApiPublicGroupJoinAction(
+                GroupPublicJoinRepositoryImpl(
+                    com.pheeeew.data.remote.group.api
+                        .GroupJoinApi(apiClient.requests),
+                ),
+            ),
+        codeJoin =
+            createGroupJoinDependencies(
+                apiClient = apiClient,
+                groupListSource = createGroupListSource(apiClient),
+                errorReporter = { errorReporter.reportUnexpected(it) },
+                operationKeyAllocator = operationKeyAllocator,
+            ),
         emotionRepository = EmotionRepositoryImpl(EmotionApi(apiClient.requests)),
         leaveGroupAction = ApiLeaveGroupAction(repository),
         monitoring = apiClient.monitoring,

@@ -462,4 +462,11 @@
     <string name="group_search_my_no_results">참여한 그룹 중 검색 결과가 없어요.</string>
     <string name="group_explore_cursor_expired">목록이 변경되었어요. 처음부터 다시 불러와 주세요.</string>
     <string name="group_explore_reload">다시 불러오기</string>
+    <string name="group_detail_join_not_confirmed">참여가 확인되지 않았어요. 다시 시도해 주세요.</string>
+    <string name="group_detail_join_became_private">초대 코드가 필요한 그룹이에요.</string>
+    <string name="group_join_target_mismatch">이 그룹의 초대 코드가 아니에요.</string>
+    <string name="group_join_target_title">%1$s 코드로 참여</string>
+    <string name="group_detail_join_check_failed">참여 결과를 확인하지 못했어요. 상태를 다시 확인해 주세요.</string>
+    <string name="group_detail_join_checking">상태 확인 중</string>
+    <string name="group_detail_code_entry">코드 입력</string>
 </resources>

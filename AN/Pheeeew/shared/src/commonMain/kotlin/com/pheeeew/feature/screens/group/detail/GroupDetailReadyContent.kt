@@ -154,9 +154,11 @@ internal fun GroupDetailReadyContent(
                 onJoinClick = onJoinClick,
                 onMembersClick = onMembersClick,
             )
-            if (detail.role == GroupRole.NONE && detail.joinType == GroupJoinType.PRIVATE) {
+            if (detail.role == GroupRole.NONE && detail.joinType == GroupJoinType.PRIVATE &&
+                joinState.phase != GroupDetailJoinPhase.VerificationRequired
+            ) {
                 Spacer(Modifier.height(18.dp))
-                GroupDetailPrivateJoinNotice()
+                GroupDetailPrivateJoinNotice(onJoinClick = onJoinClick, phase = joinState.phase)
                 Spacer(Modifier.height(24.dp))
             } else {
                 Spacer(Modifier.height(18.dp))

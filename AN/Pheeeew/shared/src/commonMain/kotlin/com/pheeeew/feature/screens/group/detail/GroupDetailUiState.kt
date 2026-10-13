@@ -15,6 +15,7 @@ data class GroupDetailUiState(
     val groupName: String? = null,
     val membershipEvent: GroupDetailMembershipEvent? = null,
     val join: GroupDetailJoinUiState = GroupDetailJoinUiState(),
+    val joinConfirmed: GroupOperationKey? = null,
     val moodFeed: GroupMoodFeedUiState = GroupMoodFeedUiState.Loading,
 ) {
     val detail: GroupDetailUiModel?
@@ -113,12 +114,17 @@ data class GroupDetailJoinUiState(
 )
 
 enum class GroupDetailJoinFailure {
-    ApiIntegrationPending,
+    Unavailable,
+    OutcomeUnknown,
+    NotJoined,
+    PrivateGroup,
 }
 
-/** UI-only phases; the API adapter will supply these when direct join is supported. */
+/** Membership writes and server confirmation are separate phases. */
 enum class GroupDetailJoinPhase {
     Idle,
     Submitting,
+    Checking,
+    VerificationRequired,
     Completed,
 }

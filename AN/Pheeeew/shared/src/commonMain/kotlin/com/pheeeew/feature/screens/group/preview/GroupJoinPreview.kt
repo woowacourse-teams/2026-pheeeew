@@ -192,3 +192,35 @@ private fun GroupJoinInvalidCharactersPreview() {
         onDismiss = {},
     )
 }
+
+@Preview(name = "대상 그룹 코드 · 불일치", widthDp = 320)
+@Composable
+private fun GroupJoinTargetMismatchPreview() {
+    GroupJoinSheet(
+        uiState = GroupJoinUiState(input = "ABC123", targetMismatch = true, lookup = GroupLookupState.Failed("ABC123")),
+        onCodeChanged = {},
+        onSearchClick = {},
+        onJoinClick = {},
+        onDismiss = {},
+        targetGroupName = "동네 산책 모임",
+    )
+}
+
+@Preview(name = "대상 그룹 코드 · 결과 재확인", widthDp = 360)
+@Composable
+private fun GroupJoinTargetVerifyPreview() {
+    GroupJoinSheet(
+        uiState =
+            GroupJoinUiState(
+                input = "ABC123",
+                lookup = GroupLookupState.Found("ABC123", HomeFixtures.groups.first()),
+                submission = GroupJoinSubmissionState.Failed(GroupJoinFailure.OutcomeUnknown),
+            ),
+        onCodeChanged = {},
+        onSearchClick = {},
+        onJoinClick = {},
+        onDismiss = {},
+        targetGroupName = "동네 산책 모임",
+        onVerifyMembership = {},
+    )
+}

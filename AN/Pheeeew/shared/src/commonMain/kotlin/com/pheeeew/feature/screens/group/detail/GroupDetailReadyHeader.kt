@@ -43,10 +43,14 @@ import com.pheeeew.feature.screens.group.detail.model.GroupDetailReadyUiModel
 import com.pheeeew.feature.screens.group.model.GroupJoinType
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.group_detail_code_entry
 import pheeeew.shared.generated.resources.group_detail_invite_code
 import pheeeew.shared.generated.resources.group_detail_join
+import pheeeew.shared.generated.resources.group_detail_join_became_private
+import pheeeew.shared.generated.resources.group_detail_join_check_failed
+import pheeeew.shared.generated.resources.group_detail_join_checking
 import pheeeew.shared.generated.resources.group_detail_join_completed
-import pheeeew.shared.generated.resources.group_detail_join_failure_api_pending
+import pheeeew.shared.generated.resources.group_detail_join_not_confirmed
 import pheeeew.shared.generated.resources.group_detail_join_processing
 import pheeeew.shared.generated.resources.group_detail_join_type_private
 import pheeeew.shared.generated.resources.group_detail_join_type_public
@@ -57,6 +61,9 @@ import pheeeew.shared.generated.resources.group_detail_private_join_description
 import pheeeew.shared.generated.resources.group_detail_private_join_title
 import pheeeew.shared.generated.resources.group_detail_rank_empty
 import pheeeew.shared.generated.resources.group_detail_rank_number
+import pheeeew.shared.generated.resources.group_join_failure_outcome_unknown
+import pheeeew.shared.generated.resources.group_join_failure_unavailable
+import pheeeew.shared.generated.resources.group_join_verify_membership
 
 @Composable
 internal fun GroupProfile(
@@ -149,14 +156,19 @@ internal fun GroupProfile(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             GroupVisibilityLabel(group.joinType)
-            AnimatedVisibility(visible = group.role == GroupRole.NONE && group.joinType == GroupJoinType.PUBLIC) {
+            AnimatedVisibility(
+                visible =
+                    group.role == GroupRole.NONE && (
+                        group.joinType == GroupJoinType.PUBLIC ||
+                            joinState.phase == GroupDetailJoinPhase.VerificationRequired
+                    ),
+            ) {
                 GroupDetailJoinCallToAction(onClick = onJoinClick, phase = joinState.phase)
             }
         }
         AnimatedVisibility(
             visible =
                 group.role == GroupRole.NONE &&
-                    group.joinType == GroupJoinType.PUBLIC &&
                     joinState.failure != null,
         ) {
             Column {
@@ -166,11 +178,23 @@ internal fun GroupProfile(
                         stringResource(
                             when (joinState.failure) {
                                 null -> {
-                                    Res.string.group_detail_join_failure_api_pending
+                                    Res.string.group_join_failure_unavailable
                                 }
 
-                                GroupDetailJoinFailure.ApiIntegrationPending -> {
-                                    Res.string.group_detail_join_failure_api_pending
+                                GroupDetailJoinFailure.Unavailable -> {
+                                    Res.string.group_join_failure_unavailable
+                                }
+
+                                GroupDetailJoinFailure.OutcomeUnknown -> {
+                                    Res.string.group_join_failure_outcome_unknown
+                                }
+
+                                GroupDetailJoinFailure.NotJoined -> {
+                                    Res.string.group_detail_join_not_confirmed
+                                }
+
+                                GroupDetailJoinFailure.PrivateGroup -> {
+                                    Res.string.group_detail_join_became_private
                                 }
                             },
                         ),
@@ -215,6 +239,7 @@ private fun GroupVisibilityLabel(joinType: GroupJoinType) {
 internal fun GroupDetailJoinCallToAction(
     onClick: () -> Unit,
     phase: GroupDetailJoinPhase = GroupDetailJoinPhase.Idle,
+    codeEntry: Boolean = false,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Box(
@@ -229,7 +254,7 @@ internal fun GroupDetailJoinCallToAction(
                     interactionSource = interactionSource,
                     indication = null,
                     role = Role.Button,
-                    enabled = phase == GroupDetailJoinPhase.Idle,
+                    enabled = phase == GroupDetailJoinPhase.Idle || phase == GroupDetailJoinPhase.VerificationRequired,
                     onClick = onClick,
                 ).padding(horizontal = 14.dp),
         contentAlignment = Alignment.Center,
@@ -239,9 +264,29 @@ internal fun GroupDetailJoinCallToAction(
                 text =
                     stringResource(
                         when (currentPhase) {
-                            GroupDetailJoinPhase.Idle -> Res.string.group_detail_join
-                            GroupDetailJoinPhase.Submitting -> Res.string.group_detail_join_processing
-                            GroupDetailJoinPhase.Completed -> Res.string.group_detail_join_completed
+                            GroupDetailJoinPhase.Idle -> {
+                                if (codeEntry) {
+                                    Res.string.group_detail_code_entry
+                                } else {
+                                    Res.string.group_detail_join
+                                }
+                            }
+
+                            GroupDetailJoinPhase.Submitting -> {
+                                Res.string.group_detail_join_processing
+                            }
+
+                            GroupDetailJoinPhase.Checking -> {
+                                Res.string.group_detail_join_checking
+                            }
+
+                            GroupDetailJoinPhase.VerificationRequired -> {
+                                Res.string.group_join_verify_membership
+                            }
+
+                            GroupDetailJoinPhase.Completed -> {
+                                Res.string.group_detail_join_completed
+                            }
                         },
                     ),
                 color = AppColors.TextPrimary,
@@ -254,7 +299,10 @@ internal fun GroupDetailJoinCallToAction(
 }
 
 @Composable
-internal fun GroupDetailPrivateJoinNotice() {
+internal fun GroupDetailPrivateJoinNotice(
+    onJoinClick: () -> Unit,
+    phase: GroupDetailJoinPhase,
+) {
     Column(
         Modifier
             .fillMaxWidth()
@@ -274,6 +322,7 @@ internal fun GroupDetailPrivateJoinNotice() {
             fontSize = 12.sp,
             lineHeight = 18.sp,
         )
+        GroupDetailJoinCallToAction(onClick = onJoinClick, phase = phase, codeEntry = true)
     }
 }
 

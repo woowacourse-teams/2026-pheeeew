@@ -7,6 +7,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.screens.group.detail.GroupDetailActions
 import com.pheeeew.feature.screens.group.detail.GroupDetailContent
+import com.pheeeew.feature.screens.group.detail.GroupDetailJoinFailure
+import com.pheeeew.feature.screens.group.detail.GroupDetailJoinPhase
+import com.pheeeew.feature.screens.group.detail.GroupDetailJoinUiState
 import com.pheeeew.feature.screens.group.detail.GroupDetailOverlay
 import com.pheeeew.feature.screens.group.detail.GroupDetailScreen
 import com.pheeeew.feature.screens.group.detail.GroupDetailUiState
@@ -140,6 +143,42 @@ private fun GroupDetailLeaveFailedPreview() {
 @Composable
 private fun GroupDetailLeaveOutcomeUnknownPreview() {
     GroupDetailPreviewFrame(overlay = GroupDetailOverlay.LeaveOutcomeUnknown)
+}
+
+@Preview(name = "공개 참여 · 상태 확인 중", widthDp = 360, heightDp = 800)
+@Composable
+private fun GroupPublicJoinCheckingPreview() {
+    publicJoinStatePreview(GroupDetailJoinPhase.Checking)
+}
+
+@Preview(name = "공개 참여 · 확인 실패", widthDp = 320, heightDp = 800)
+@Composable
+private fun GroupPublicJoinVerificationFailedPreview() {
+    publicJoinStatePreview(GroupDetailJoinPhase.VerificationRequired)
+}
+
+@Composable
+private fun publicJoinStatePreview(phase: GroupDetailJoinPhase) {
+    val detail = previewGroupDetailUiModel(GroupRole.NONE).copy(joinType = GroupJoinType.PUBLIC)
+    GroupDetailPreviewFrame(
+        detail,
+        state =
+            GroupDetailUiState(
+                content = GroupDetailContent.Ready(detail),
+                join =
+                    GroupDetailJoinUiState(
+                        phase = phase,
+                        failure =
+                            if (phase ==
+                                GroupDetailJoinPhase.VerificationRequired
+                            ) {
+                                GroupDetailJoinFailure.OutcomeUnknown
+                            } else {
+                                null
+                            },
+                    ),
+            ),
+    )
 }
 
 @Composable
