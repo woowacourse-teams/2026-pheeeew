@@ -297,7 +297,12 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         publishViewportIfReady()
     }
 
+    func mapView(_ mapView: MLNMapView, regionWillChangeAnimated animated: Bool) {
+        eventSink.onCameraMovingChanged(isMoving: true)
+    }
+
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
+        eventSink.onCameraMovingChanged(isMoving: false)
         publishRecordViewport()
         publishViewportIfReady()
     }

@@ -77,6 +77,7 @@ fun MapOverlay(
     modifier: Modifier = Modifier,
     showNavigationButtons: Boolean = true,
     nearbyMapControlHeight: Dp = 0.dp,
+    isMapCameraMoving: Boolean = false,
 ) {
     val promptBottomPadding = 190.dp + MAP_BOTTOM_BAR_LIFT
     val locationBottomPadding =
@@ -103,14 +104,16 @@ fun MapOverlay(
                     .statusBarsPadding()
                     .padding(16.dp),
         ) {
-            EmotionPromptLabel(
-                isExpanded = isEmotionSelectorExpanded,
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = promptBottomPadding)
-                        .graphicsLayer { translationY = promptTranslationY.dp.toPx() },
-            )
+            if (!isMapCameraMoving) {
+                EmotionPromptLabel(
+                    isExpanded = isEmotionSelectorExpanded,
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = promptBottomPadding)
+                            .graphicsLayer { translationY = promptTranslationY.dp.toPx() },
+                )
+            }
 
             if (!isMapError && !isEmotionSelectorExpanded) {
                 MapControlButton(

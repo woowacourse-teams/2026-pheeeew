@@ -250,6 +250,7 @@ private fun AppContent(
             )
         }
     val nearbyState by nearbyViewModel.state.collectAsState()
+    var isMapCameraMoving by remember { mutableStateOf(false) }
     var nearbyMapControlHeight by remember { mutableStateOf(0.dp) }
     LaunchedEffect(nearbyState.visible, mapViewModel) {
         if (!nearbyState.visible) mapViewModel.clearFocusedEmotion()
@@ -385,6 +386,7 @@ private fun AppContent(
                     if (recordViewport.value != viewport) recordViewport.value = viewport
                 },
                 onViewportChanged = mapViewModel::onViewportChanged,
+                onCameraMovingChanged = { isMapCameraMoving = it },
                 onEmotionPinClick = { id ->
                     highlightedEmotion = null
                     highlightedPinPosition.value = null
@@ -596,6 +598,7 @@ private fun AppContent(
                                     !isSettingsVisible && reportTarget == null,
                             onListClick = nearbyViewModel::toggle,
                             nearbyMapControlHeight = nearbyMapControlHeight,
+                            isMapCameraMoving = isMapCameraMoving,
                             onSettingClick = { isSettingsVisible = true },
                             onEmotionBubbleClick = {},
                             locationPermissionController = locationDependencies.permissionController,
