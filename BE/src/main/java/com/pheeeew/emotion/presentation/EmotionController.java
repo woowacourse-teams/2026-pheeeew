@@ -97,7 +97,8 @@ public class EmotionController implements EmotionControllerApi {
             @ModelAttribute EmotionRegionMapRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
-        List<EmotionRegionMapItemView> items = emotionMapQueryService.findRegionMap(request.toBounds(), request.level(), request.groupId());
+        List<EmotionRegionMapItemView> items = emotionMapQueryService.findRegionMap(
+                request.toBounds(), request.level(), devicePublicId, request.toFilter());
         List<EmotionRegionMapResponse> responses = items.stream()
                 .map(EmotionRegionMapResponse::from)
                 .toList();

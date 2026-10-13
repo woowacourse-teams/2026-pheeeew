@@ -33,6 +33,7 @@ import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.application.dto.EmotionRegionMapItemView;
 import com.pheeeew.emotion.application.dto.RegionEmotionSummary;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
+import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import com.pheeeew.emotion.domain.repository.query.EmotionContentFilter;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchScope;
 import com.pheeeew.emotion.domain.Emotion;
@@ -1052,7 +1053,7 @@ class EmotionControllerTest {
         var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
         var region = Region.of(code, level, "검증용 지역", parentCode, 127, 38);
         var item = EmotionRegionMapItemView.of(region, RegionEmotionSummary.of(3L, EmotionState.ANGRY));
-        when(emotionMapQueryService.findRegionMap(bounds, level, groupId)).thenReturn(List.of(item));
+        when(emotionMapQueryService.findRegionMap(bounds, level, DEVICE_PUBLIC_ID, EmotionSearchFilter.of(null, null, null, null, groupId))).thenReturn(List.of(item));
 
         // when / then
         request(HttpMethod.GET, REGION_MAP_URI + REGION_BOUNDS_QUERY + "&level=" + level + "&groupId=" + groupId,
@@ -1065,7 +1066,7 @@ class EmotionControllerTest {
                          "properties":{"level":"%s","name":"검증용 지역","parentCode":%s,
                          "totalCount":3,"representativeState":"ANGRY"}}]
                         """.formatted(code, level, parentCode == null ? "null" : "\"" + parentCode + "\""), JsonCompareMode.STRICT);
-        verify(emotionMapQueryService).findRegionMap(bounds, level, groupId);
+        verify(emotionMapQueryService).findRegionMap(bounds, level, DEVICE_PUBLIC_ID, EmotionSearchFilter.of(null, null, null, null, groupId));
         org.mockito.Mockito.verifyNoMoreInteractions(emotionQueryService, emotionMapQueryService);
     }
 
@@ -1073,13 +1074,13 @@ class EmotionControllerTest {
     void 지역_요약은_날짜변경선과_그룹_생략을_허용하고_빈_결과도_정상_응답한다() {
         // given
         var bounds = EmotionSearchBounds.of(170, 37, -170, 39);
-        when(emotionMapQueryService.findRegionMap(bounds, RegionLevel.EMD, null)).thenReturn(List.of());
+        when(emotionMapQueryService.findRegionMap(bounds, RegionLevel.EMD, DEVICE_PUBLIC_ID, EmotionSearchFilter.of(null, null, null, null, null))).thenReturn(List.of());
 
         // when / then
         request(HttpMethod.GET, REGION_MAP_URI + "?minLongitude=170&minLatitude=37&maxLongitude=-170&maxLatitude=39&level=EMD",
                 "access-token").expectStatus().isOk()
                 .expectBody().json("[]", JsonCompareMode.STRICT);
-        verify(emotionMapQueryService).findRegionMap(bounds, RegionLevel.EMD, null);
+        verify(emotionMapQueryService).findRegionMap(bounds, RegionLevel.EMD, DEVICE_PUBLIC_ID, EmotionSearchFilter.of(null, null, null, null, null));
     }
 
     @ParameterizedTest
@@ -1105,6 +1106,53 @@ class EmotionControllerTest {
         request(HttpMethod.GET, REGION_MAP_URI + "?" + query, "access-token").expectStatus().isBadRequest()
                 .expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
         verifyNoInteractions(emotionQueryService, emotionMapQueryService);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"ALL,ALL", "MEMO,MY", "AUDIO,GROUP"})
+    void 지역_요약_필터와_인증된_기기를_서비스로_전달한다(EmotionContentFilter contentType, EmotionSearchScope scope) {
+        // given
+        UUID groupId = scope == EmotionSearchScope.GROUP ? UUID.randomUUID() : null;
+        LocalDate date = LocalDate.of(2026, 10, 1);
+        var filter = EmotionSearchFilter.of(date, date, contentType, scope, groupId);
+        var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
+        when(emotionMapQueryService.findRegionMap(bounds, RegionLevel.EMD, DEVICE_PUBLIC_ID, filter)).thenReturn(List.of());
+
+        // when / then: 요청 파라미터의 기기 ID로 인증 기기를 대체할 수 없다.
+        request(HttpMethod.GET, REGION_MAP_URI + REGION_BOUNDS_QUERY + "&level=EMD&startDate=" + date
+                + "&endDate=" + date + "&contentType=" + contentType + "&scope=" + scope
+                + (groupId == null ? "" : "&groupId=" + groupId) + "&devicePublicId=" + UUID.randomUUID(),
+                "access-token").expectStatus().isOk().expectBody().json("[]", JsonCompareMode.STRICT);
+        verify(emotionMapQueryService).findRegionMap(bounds, RegionLevel.EMD, DEVICE_PUBLIC_ID, filter);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "startDate=2026-10-01", "endDate=2026-10-01",
+            "startDate=2026-10-02&endDate=2026-10-01", "startDate=0000-01-01&endDate=2026-10-01",
+            "startDate=2026-10-01&endDate=10000-01-01", "startDate=invalid&endDate=2026-10-01",
+            "contentType=NONE", "scope=INVALID", "scope=GROUP",
+            "scope=MY&groupId=11111111-1111-1111-1111-111111111111",
+            "scope=ALL&groupId=11111111-1111-1111-1111-111111111111"
+    })
+    void 잘못된_지역_필터는_집계_호출_전에_400으로_거부한다(String query) {
+        // when / then
+        request(HttpMethod.GET, REGION_MAP_URI + REGION_BOUNDS_QUERY + "&level=EMD&" + query, "access-token")
+                .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(emotionQueryService, emotionMapQueryService);
+    }
+
+    @Test
+    void 지역_요약의_그룹_없음_오류를_404로_전달한다() {
+        // given
+        UUID groupId = UUID.randomUUID();
+        var filter = EmotionSearchFilter.of(null, null, null, null, groupId);
+        when(emotionMapQueryService.findRegionMap(EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8),
+                RegionLevel.EMD, DEVICE_PUBLIC_ID, filter)).thenThrow(new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
+
+        // when / then
+        request(HttpMethod.GET, REGION_MAP_URI + REGION_BOUNDS_QUERY + "&level=EMD&groupId=" + groupId, "access-token")
+                .expectStatus().isNotFound().expectBody().jsonPath("$.code").isEqualTo("GROUP-001");
     }
 
     @ParameterizedTest
@@ -1136,7 +1184,8 @@ class EmotionControllerTest {
     @Test
     void 지역_요약_준비_오류는_빈_응답_대신_503으로_전달한다() {
         // given
-        when(emotionMapQueryService.findRegionMap(EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8), RegionLevel.EMD, null))
+        when(emotionMapQueryService.findRegionMap(EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8), RegionLevel.EMD, DEVICE_PUBLIC_ID,
+                EmotionSearchFilter.of(null, null, null, null, null)))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE));
 
         // when / then
