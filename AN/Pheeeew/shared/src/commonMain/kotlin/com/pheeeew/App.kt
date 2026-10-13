@@ -1,5 +1,7 @@
 package com.pheeeew
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
@@ -8,6 +10,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -552,8 +555,14 @@ private fun AppContent(
         var isGroupDetailVisible by remember { mutableStateOf(false) }
         var isGroupCreateVisible by remember { mutableStateOf(false) }
         var refreshGroup by remember { mutableStateOf<(() -> Unit)?>(null) }
-        var refreshRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
+        var refreshStampRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
+        var refreshPressRanking by remember { mutableStateOf<(() -> Unit)?>(null) }
         var rankingDestination by remember { mutableStateOf(RankingBottomNavigationDestination.Stamp) }
+        val refreshRanking =
+            when (rankingDestination) {
+                RankingBottomNavigationDestination.Stamp -> refreshStampRanking
+                RankingBottomNavigationDestination.Press -> refreshPressRanking
+            }
         var previousMainDestination by remember { mutableStateOf(AppDestination.Map) }
         LaunchedEffect(selectedDestination) {
             if (selectedDestination != AppDestination.Ranking) {
@@ -709,24 +718,46 @@ private fun AppContent(
                             }
                         }
                     }
-                    CompositionLocalProvider(
-                        LocalProductMonitoringVisible provides
-                            (!isSettingsVisible && reportTarget == null),
-                    ) {
-                        if (rankingDestination == RankingBottomNavigationDestination.Stamp) {
-                            WeeklyRankingRoute(
-                                apiClient = apiDependencies.client,
-                                onGroupClick = openGroupDetail,
-                                modifier = Modifier.fillMaxSize(),
-                                onRefreshActionChanged = { refreshRanking = it },
-                            )
-                        } else {
-                            PressRankingRoute(
-                                apiClient = apiDependencies.client,
-                                onGroupClick = openGroupDetail,
-                                modifier = Modifier.fillMaxSize(),
-                                onRefreshActionChanged = { refreshRanking = it },
-                            )
+                    AnimatedContent(
+                        targetState = rankingDestination,
+                        modifier = Modifier.fillMaxSize(),
+                        transitionSpec = {
+                            val direction =
+                                if (targetState == RankingBottomNavigationDestination.Press) {
+                                    AnimatedContentTransitionScope.SlideDirection.Left
+                                } else {
+                                    AnimatedContentTransitionScope.SlideDirection.Right
+                                }
+                            (
+                                slideIntoContainer(direction, tween(300)) togetherWith
+                                    slideOutOfContainer(direction, tween(300))
+                            ).using(null)
+                        },
+                        label = "rankingTabTransition",
+                    ) { destination ->
+                        CompositionLocalProvider(
+                            LocalProductMonitoringVisible provides
+                                (destination == rankingDestination && !isSettingsVisible && reportTarget == null),
+                        ) {
+                            when (destination) {
+                                RankingBottomNavigationDestination.Stamp -> {
+                                    WeeklyRankingRoute(
+                                        apiClient = apiDependencies.client,
+                                        onGroupClick = openGroupDetail,
+                                        modifier = Modifier.fillMaxSize(),
+                                        onRefreshActionChanged = { refreshStampRanking = it },
+                                    )
+                                }
+
+                                RankingBottomNavigationDestination.Press -> {
+                                    PressRankingRoute(
+                                        apiClient = apiDependencies.client,
+                                        onGroupClick = openGroupDetail,
+                                        modifier = Modifier.fillMaxSize(),
+                                        onRefreshActionChanged = { refreshPressRanking = it },
+                                    )
+                                }
+                            }
                         }
                     }
                 }
