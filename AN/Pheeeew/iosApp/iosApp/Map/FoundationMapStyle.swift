@@ -1,7 +1,7 @@
 import MapLibre
 import UIKit
 
-// Recolors map surfaces while leaving every label and symbol layer untouched.
+// Recolors map surfaces and hides POI and road labels while preserving geographic labels.
 enum FoundationMapStyle {
     static let styleURL = URL(string: "https://tiles.openfreemap.org/styles/liberty")!
     static let initialZoom: Double = 11.0
@@ -21,6 +21,14 @@ enum FoundationMapStyle {
     static func applyMutedPalette(to style: MLNStyle) {
         for styleLayer in style.layers {
             let layerID = styleLayer.identifier.lowercased()
+
+            if let layer = styleLayer as? MLNSymbolStyleLayer {
+                let sourceLayer = (layer.sourceLayerIdentifier ?? "").lowercased()
+                if hiddenSymbolSourceLayers.contains(sourceLayer) {
+                    layer.isVisible = false
+                }
+                continue
+            }
 
             if let layer = styleLayer as? MLNBackgroundStyleLayer, layerID == "background" {
                 layer.backgroundColor = NSExpression(forConstantValue: background)
@@ -71,6 +79,7 @@ enum FoundationMapStyle {
     }
 
     private static let majorRoadKeywords = ["motorway", "trunk", "primary", "secondary", "tertiary"]
+    private static let hiddenSymbolSourceLayers: Set<String> = ["poi", "aerodrome_label", "transportation_name"]
 
     private static func color(hex: String) -> UIColor {
         let value = Int(hex, radix: 16) ?? 0

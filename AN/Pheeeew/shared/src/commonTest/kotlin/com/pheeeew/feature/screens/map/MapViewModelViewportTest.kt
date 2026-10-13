@@ -38,12 +38,303 @@ import kotlinx.coroutines.test.setMain
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelViewportTest {
     @Test
-    fun `지도 핀이 다른 영역으로 교체되어도 목록 좌표로 반복 이동한다`() =
+    fun `핀과 클러스터 전환은 요청 실패 시 기존 데이터를 유지하고 성공 후 교체한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val pinResponse = CompletableDeferred<EmotionMapPageResult>()
+                val pins =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(page(listOf(pin(1, 127.02, 37.55)))),
+                        pinResponse,
+                    )
+                val failedRegion = CompletableDeferred<EmotionRegionResult>()
+                val nextRegion = CompletableDeferred<EmotionRegionResult>()
+                val responses = ArrayDeque(listOf(failedRegion, nextRegion))
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository {
+                                    _,
+                                    _,
+                                    _,
+                                    ->
+                                    responses.removeFirst().await()
+                                },
+                            ),
+                    )
+                val area = bounds(127.0, 37.5)
+                viewModel.onViewportChanged(EmotionMapViewport(area, 12.0))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
+                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
+                failedRegion.complete(EmotionRegionResult.Failure)
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
+                viewModel.retryRegionClusters()
+                advanceTimeBy(700)
+                runCurrent()
+                nextRegion.complete(EmotionRegionResult.Success(listOf(EmotionRegion("a", "지역", 127.0, 37.5, 3, null))))
+                runCurrent()
+                assertEquals(emptyList(), viewModel.pinIds())
+                assertEquals(
+                    listOf("a"),
+                    viewModel.uiModel.value.regionClusters
+                        .map { it.id },
+                )
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(128.0, 37.5), 12.0))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(
+                    listOf("a"),
+                    viewModel.uiModel.value.regionClusters
+                        .map { it.id },
+                )
+                pinResponse.complete(page(listOf(pin(2, 128.02, 37.55))))
+                runCurrent()
+                assertEquals(listOf(1L, 2L), viewModel.pinIds())
+                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `진행 중인 지역 조회 범위 안에서 화면이 이동하면 요청을 다시 시작하지 않는다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var calls = 0
+                val response = CompletableDeferred<EmotionRegionResult>()
+                val pins = QueuedEmotionMapRepository()
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, _, _ ->
+                                    calls++
+                                    response.await()
+                                },
+                            ),
+                    )
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.01, 37.51), 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(1, calls)
+                response.complete(EmotionRegionResult.Success(listOf(EmotionRegion("a", "지역", 127.0, 37.5, 3, null))))
+                runCurrent()
+                assertEquals(
+                    listOf("a"),
+                    viewModel.uiModel.value.regionClusters
+                        .map { it.id },
+                )
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `넓어진 조회 범위의 주변 핀도 표시하되 보관 상한은 실제 화면 기준으로 적용한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val surrounding = (1L..1_001L).map { pin(it, 127.115, 37.55) }
+                val visible = pin(2_000, 127.05, 37.55)
+                val repository =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(page(surrounding + visible)),
+                        CompletableDeferred(page(surrounding + visible)),
+                    )
+                val vm =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                vm.onViewportChanged(bounds(127.0, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+
+                val query = repository.requestedBounds.single()!!
+                assertEquals(126.975, query.minLongitude, 0.000001)
+                assertEquals(127.125, query.maxLongitude, 0.000001)
+                assertEquals(37.475, query.minLatitude, 0.000001)
+                assertEquals(37.625, query.maxLatitude, 0.000001)
+                assertEquals(MAXIMUM_RETAINED_EMOTION_PINS, vm.uiModel.value.emotionPins.size)
+                assertTrue(visible.id in vm.pinIds())
+                assertEquals(999, vm.pinIds().count { it != visible.id })
+
+                vm.refreshEmotionPins()
+                runCurrent()
+                assertEquals(query, repository.requestedBounds.last())
+                assertEquals(null, vm.uiModel.value.emotionPinsError)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `캐시가 없어도 작은 왕복 이동 후 동일한 핀 목록을 유지한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val first = pin(1, 127.02, 37.55)
+                val shared = pin(2, 127.08, 37.55)
+                var requestCount = 0
+                val repository =
+                    object : EmotionMapRepository {
+                        override fun findSnapshot(
+                            bounds: EmotionMapBounds,
+                            groupId: String?,
+                        ): EmotionMapSnapshot? = null
+
+                        override suspend fun findPage(
+                            bounds: EmotionMapBounds?,
+                            groupId: String?,
+                            cursor: String?,
+                            forceRefresh: Boolean,
+                        ): EmotionMapPageResult {
+                            requestCount++
+                            return page(if (requestCount == 2) listOf(shared) else listOf(first, shared))
+                        }
+                    }
+                val vm =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                val originalBounds = bounds(127.0, 37.5)
+                vm.onViewportChanged(originalBounds)
+                advanceTimeBy(700)
+                runCurrent()
+                val originalPins = vm.uiModel.value.emotionPins
+
+                vm.onViewportChanged(bounds(127.05, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+                assertSame(originalPins, vm.uiModel.value.emotionPins)
+
+                vm.onViewportChanged(originalBounds)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(3, requestCount)
+                assertSame(originalPins, vm.uiModel.value.emotionPins)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `화면 핀은 보관 상한을 넘어도 유지하고 이동 후에는 주변 핀부터 정리한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val visiblePins = (1L..1_002L).map { pin(it, 127.02, 37.55) }
+                val nextPin = pin(2_000, 128.02, 37.55)
+                val repository =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(page(visiblePins)),
+                        CompletableDeferred(page(listOf(nextPin))),
+                    )
+                val vm =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                    )
+                val originalBounds = bounds(127.0, 37.5)
+                vm.onViewportChanged(originalBounds)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(1_002, vm.uiModel.value.emotionPins.size)
+
+                vm.onViewportChanged(bounds(128.0, 37.5))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(MAXIMUM_RETAINED_EMOTION_PINS, vm.uiModel.value.emotionPins.size)
+                assertTrue(nextPin.id in vm.pinIds())
+
+                vm.onViewportChanged(originalBounds)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(visiblePins.map { it.id }, vm.pinIds())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `페이지 요청은 화면 발행 간격을 기다리지 않고 중간 핀은 최신 페이지로 묶는다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val firstPage = CompletableDeferred<EmotionMapPageResult>()
+                val secondPage = CompletableDeferred<EmotionMapPageResult>()
+                val thirdPage = CompletableDeferred<EmotionMapPageResult>()
+                val repository = QueuedEmotionMapRepository(firstPage, secondPage, thirdPage)
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                        pinSnapshotIntervalMillis = 300,
+                    )
+                val area = bounds(127.0, 37.5)
+
+                viewModel.onViewportChanged(area)
+                advanceTimeBy(700)
+                runCurrent()
+                firstPage.complete(page(listOf(pin(1, 127.01, 37.51)), hasNext = true))
+                runCurrent()
+
+                assertEquals(listOf(1L), viewModel.pinIds())
+                assertEquals(2, repository.requestedBounds.size)
+
+                secondPage.complete(
+                    page(listOf(pin(2, 127.02, 37.52)), hasNext = true, nextCursor = "cursor-2"),
+                )
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
+                assertEquals(3, repository.requestedBounds.size)
+
+                advanceTimeBy(300)
+                runCurrent()
+                assertEquals(listOf(1L, 2L), viewModel.pinIds())
+
+                thirdPage.complete(page(listOf(pin(3, 127.03, 37.53))))
+                runCurrent()
+                assertEquals(listOf(1L, 2L, 3L), viewModel.pinIds())
+                advanceTimeBy(600)
+                runCurrent()
+                assertEquals(listOf(1L, 2L, 3L), viewModel.pinIds())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `다른 영역으로 이동해도 주변 핀을 유지하고 목록 좌표로 반복 이동한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
@@ -67,9 +358,9 @@ class MapViewModelViewportTest {
                 viewModel.onViewportChanged(bounds(128.0, 37.5))
                 advanceTimeBy(700)
                 runCurrent()
-                assertEquals(listOf(2L), viewModel.pinIds())
+                assertEquals(listOf(1L, 2L), viewModel.pinIds())
                 assertEquals(1L, viewModel.uiModel.value.focusedEmotionId)
-                assertFalse(viewModel.focusOnEmotion(1))
+                assertTrue(viewModel.focusOnEmotion(1))
 
                 val coordinate = GeoCoordinate(37.55, 127.02)
                 assertTrue(viewModel.focusOnEmotion(1, coordinate))
@@ -136,22 +427,25 @@ class MapViewModelViewportTest {
                 viewModel.onViewportChanged(movedBounds)
                 advanceTimeBy(700)
                 runCurrent()
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds, movedBounds), repository.requestedBounds)
+                assertEquals(
+                    listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), movedBounds.expandedForPinQuery()),
+                    repository.requestedBounds,
+                )
                 movedResponse.complete(page(listOf(pin(2, 128.02, 37.55))))
                 runCurrent()
-                assertEquals(listOf(2L), viewModel.pinIds())
+                assertEquals(listOf(1L, 2L), viewModel.pinIds())
 
                 viewModel.refreshEmotionPins()
                 runCurrent()
                 refreshResponse.complete(page(listOf(pin(2, 128.02, 37.55), pin(3, 128.03, 37.55))))
                 runCurrent()
-                assertEquals(listOf(2L, 3L), viewModel.pinIds())
+                assertEquals(listOf(1L, 2L, 3L), viewModel.pinIds())
                 assertEquals(true, viewModel.uiModel.value.isRecordLocationPicking)
                 assertEquals(1, repository.maximumConcurrentRequests)
                 assertEquals(false, viewModel.uiModel.value.isLoadingEmotionPins)
 
                 viewModel.onRecordLocationPickingChanged(false)
-                assertEquals(listOf(2L, 3L), viewModel.pinIds())
+                assertEquals(listOf(1L, 2L, 3L), viewModel.pinIds())
             } finally {
                 Dispatchers.resetMain()
             }
@@ -217,7 +511,10 @@ class MapViewModelViewportTest {
                 runCurrent()
 
                 assertEquals(listOf(2L), viewModel.pinIds())
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds, latestBounds), repository.requestedBounds)
+                assertEquals(
+                    listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), latestBounds.expandedForPinQuery()),
+                    repository.requestedBounds,
+                )
                 assertEquals(1, repository.maximumConcurrentRequests)
 
                 latestResponse.complete(emptyPage())
@@ -232,7 +529,11 @@ class MapViewModelViewportTest {
                 viewModel.refreshEmotionPins()
                 runCurrent()
                 assertEquals(
-                    listOf<EmotionMapBounds?>(firstBounds, latestBounds, firstBounds),
+                    listOf<EmotionMapBounds?>(
+                        firstBounds.expandedForPinQuery(),
+                        latestBounds.expandedForPinQuery(),
+                        firstBounds.expandedForPinQuery(),
+                    ),
                     repository.requestedBounds,
                 )
                 refreshResponse.complete(emptyPage())
@@ -278,7 +579,11 @@ class MapViewModelViewportTest {
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(
-                    listOf<EmotionMapBounds?>(firstBounds, latestBounds, firstBounds),
+                    listOf<EmotionMapBounds?>(
+                        firstBounds.expandedForPinQuery(),
+                        latestBounds.expandedForPinQuery(),
+                        firstBounds.expandedForPinQuery(),
+                    ),
                     repository.requestedBounds,
                 )
                 revisitedResponse.complete(page(listOf(pin(1, 127.02, 37.55), pin(2, 127.03, 37.55))))
@@ -315,23 +620,26 @@ class MapViewModelViewportTest {
 
                 advanceTimeBy(1)
                 runCurrent()
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds), repository.requestedBounds)
+                assertEquals(listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery()), repository.requestedBounds)
 
                 viewModel.onViewportChanged(skippedBounds)
                 runCurrent()
                 advanceTimeBy(700)
                 runCurrent()
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds), repository.requestedBounds)
+                assertEquals(listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery()), repository.requestedBounds)
 
                 viewModel.onViewportChanged(latestBounds)
                 runCurrent()
                 advanceTimeBy(700)
                 runCurrent()
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds), repository.requestedBounds)
+                assertEquals(listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery()), repository.requestedBounds)
 
                 firstResponse.complete(emptyPage())
                 runCurrent()
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds, latestBounds), repository.requestedBounds)
+                assertEquals(
+                    listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), latestBounds.expandedForPinQuery()),
+                    repository.requestedBounds,
+                )
                 assertEquals(1, repository.maximumConcurrentRequests)
 
                 latestResponse.complete(emptyPage())
@@ -342,7 +650,10 @@ class MapViewModelViewportTest {
                 viewModel.onViewportChanged(EmotionMapBounds(127.1, 37.6, 127.2, 37.5))
                 advanceTimeBy(700)
                 runCurrent()
-                assertEquals(listOf<EmotionMapBounds?>(firstBounds, latestBounds), repository.requestedBounds)
+                assertEquals(
+                    listOf<EmotionMapBounds?>(firstBounds.expandedForPinQuery(), latestBounds.expandedForPinQuery()),
+                    repository.requestedBounds,
+                )
             } finally {
                 Dispatchers.resetMain()
             }
@@ -572,7 +883,7 @@ class MapViewModelViewportTest {
         }
 
     @Test
-    fun `새 영역의 여러 페이지를 불러오는 동안 기존 핀을 유지하고 완료 후 현재 영역 핀만 표시한다`() =
+    fun `새 영역의 여러 페이지를 모두 불러와도 주변의 기존 핀을 유지한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
@@ -613,7 +924,7 @@ class MapViewModelViewportTest {
 
                 secondViewportPage.complete(page(listOf(pin(3, 128.03, 37.53))))
                 runCurrent()
-                assertEquals(listOf(2L, 3L), viewModel.pinIds())
+                assertEquals(listOf(1L, 2L, 3L), viewModel.pinIds())
                 assertFalse(viewModel.uiModel.value.isLoadingMoreEmotionPins)
                 assertEquals(false, viewModel.uiModel.value.hasPartialEmotionPins)
             } finally {
@@ -984,7 +1295,8 @@ class MapViewModelViewportTest {
     private fun page(
         pins: List<EmotionMapPin>,
         hasNext: Boolean = false,
-    ) = EmotionMapPageResult.Success(EmotionMapPage(pins, hasNext, if (hasNext) "next" else null, 0))
+        nextCursor: String? = if (hasNext) "next" else null,
+    ) = EmotionMapPageResult.Success(EmotionMapPage(pins, hasNext, nextCursor, 0))
 
     private fun pin(
         id: Long,

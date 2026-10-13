@@ -3,6 +3,7 @@ package com.pheeeew.data.cache
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionRegion
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
+import com.pheeeew.domain.model.emotion.coversRegionViewport
 import kotlin.time.Clock
 
 /** Region membership depends on administrative boundaries, not the returned display points. */
@@ -35,7 +36,11 @@ internal class EmotionRegionMapCache(
         groupId: String?,
     ): List<EmotionRegion>? {
         evictExpired()
-        val key = Key(bounds, level, groupId)
+        // Keep the complete summary: a display point need not lie inside its region's viewport.
+        val key =
+            entries.keys.lastOrNull {
+                it.level == level && it.groupId == groupId && it.bounds.coversRegionViewport(bounds)
+            } ?: return null
         val entry = entries.remove(key) ?: return null
         entries[key] = entry
         return entry.regions
@@ -51,7 +56,10 @@ internal class EmotionRegionMapCache(
         val key = Key(bounds, level, groupId)
         entries.remove(key)
         entries[key] = Entry(regions.toList(), nowMillis())
-        while (entries.size > maxRegions) entries.remove(entries.keys.first())
+        // Zooming between levels must not evict all entries from the other level.
+        while (entries.keys.count { it.level == level } > maxRegions) {
+            entries.remove(entries.keys.first { it.level == level })
+        }
     }
 
     fun invalidate(
@@ -60,6 +68,10 @@ internal class EmotionRegionMapCache(
     ) {
         // Refresh may change totals shared by several cached viewports.
         entries.keys.removeAll { it.level == level && it.groupId == groupId }
+    }
+
+    fun invalidateGroup(groupId: String?) {
+        entries.keys.removeAll { it.groupId == groupId }
     }
 
     private fun evictExpired() {
