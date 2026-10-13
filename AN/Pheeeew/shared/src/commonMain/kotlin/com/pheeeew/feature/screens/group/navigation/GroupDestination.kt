@@ -12,3 +12,8 @@ data object GroupCreateDestination
 data class GroupDetailDestination(
     val groupId: String,
 )
+
+@Serializable
+data class GroupMembersDestination(
+    val groupId: String,
+)

@@ -24,6 +24,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -46,6 +48,7 @@ import pheeeew.shared.generated.resources.group_detail_join_type_private
 import pheeeew.shared.generated.resources.group_detail_join_type_public
 import pheeeew.shared.generated.resources.group_detail_joined
 import pheeeew.shared.generated.resources.group_detail_member_count
+import pheeeew.shared.generated.resources.group_detail_members_open
 import pheeeew.shared.generated.resources.group_detail_private_join_description
 import pheeeew.shared.generated.resources.group_detail_private_join_title
 import pheeeew.shared.generated.resources.group_detail_rank_empty
@@ -57,18 +60,42 @@ internal fun GroupProfile(
     onInviteClick: () -> Unit,
     joinState: GroupDetailJoinUiState = GroupDetailJoinUiState(),
     onJoinClick: () -> Unit = {},
+    onMembersClick: (() -> Unit)? = null,
 ) {
+    val canOpenMembers = group.role != GroupRole.NONE && onMembersClick != null
+    val memberCountDescription =
+        stringResource(Res.string.group_detail_members_open, group.memberCount)
     Column(Modifier.fillMaxWidth().padding(top = 20.dp)) {
         Row(
             Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                stringResource(Res.string.group_detail_member_count, group.memberCount),
-                color = AppColors.GroupInk,
-                fontSize = 12.sp,
-            )
+            Row(
+                modifier =
+                    Modifier
+                        .clip(CircleShape)
+                        .then(
+                            if (canOpenMembers) {
+                                Modifier
+                                    .clickable(role = Role.Button, onClick = { onMembersClick.invoke() })
+                                    .semantics { contentDescription = memberCountDescription }
+                            } else {
+                                Modifier
+                            },
+                        ).padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    stringResource(Res.string.group_detail_member_count, group.memberCount),
+                    color = AppColors.GroupInk,
+                    fontSize = 12.sp,
+                )
+                if (canOpenMembers) {
+                    Text("›", color = AppColors.TextSecondary, fontSize = 16.sp, lineHeight = 16.sp)
+                }
+            }
             if (group.role != GroupRole.NONE && group.inviteCode != null) {
                 Box(
                     Modifier

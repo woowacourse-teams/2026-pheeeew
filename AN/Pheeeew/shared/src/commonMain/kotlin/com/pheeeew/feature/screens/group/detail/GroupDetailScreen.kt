@@ -160,6 +160,7 @@ fun GroupDetailScreen(
                                     onReportClick = actions.onMoodReportClick,
                                     onFeedRetry = actions.onMoodFeedRetry,
                                     onFeedLoadMore = actions.onMoodFeedLoadMore,
+                                    onMembersClick = actions.onMembersClick,
                                 )
                             }
                         }
