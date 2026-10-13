@@ -7,6 +7,7 @@ import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionRegion
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.domain.model.emotion.EmotionRegionResult
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.expandedForRegionQuery
 import com.pheeeew.domain.repository.EmotionRegionMapRepository
@@ -29,25 +30,28 @@ class EmotionRegionMapRepositoryImpl(
         bounds: EmotionMapBounds,
         level: EmotionRegionLevel,
         groupId: String?,
-    ): List<EmotionRegion>? = cache.snapshot(bounds, level, groupId)
+        filter: EmotionSearchFilter?,
+    ): List<EmotionRegion>? = cache.snapshot(bounds, level, if (filter != null) filter.groupId else groupId, filter)
 
     override suspend fun findRegions(
         bounds: EmotionMapBounds,
         level: EmotionRegionLevel,
         groupId: String?,
         forceRefresh: Boolean,
+        filter: EmotionSearchFilter?,
     ): EmotionRegionResult {
+        val queryGroupId = if (filter != null) filter.groupId else groupId
         if (forceRefresh) {
             cacheGeneration++
             // A newly registered emotion changes both administrative levels.
-            cache.invalidateGroup(groupId)
+            cache.invalidateGroup(queryGroupId)
         } else {
-            findSnapshot(bounds, level, groupId)?.let { return EmotionRegionResult.Success(it) }
+            findSnapshot(bounds, level, groupId, filter)?.let { return EmotionRegionResult.Success(it) }
         }
         val generation = cacheGeneration
         val queryBounds = bounds.expandedForRegionQuery(level)
         return try {
-            when (val result = api.findRegions(queryBounds, level, groupId)) {
+            when (val result = api.findRegions(queryBounds, level, groupId, filter)) {
                 is ApiResult.Failure -> {
                     EmotionRegionResult.Failure
                 }
@@ -57,7 +61,9 @@ class EmotionRegionMapRepositoryImpl(
                     if (result.value.isNotEmpty() && regions.isEmpty()) {
                         EmotionRegionResult.Failure
                     } else {
-                        if (generation == cacheGeneration) cache.put(queryBounds, level, groupId, regions)
+                        if (generation == cacheGeneration) {
+                            cache.put(queryBounds, level, queryGroupId, regions, filter)
+                        }
                         EmotionRegionResult.Success(regions)
                     }
                 }

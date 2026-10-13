@@ -6,6 +6,7 @@ import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.RequestKind
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import io.ktor.client.call.body
 import io.ktor.http.HttpMethod
 import kotlinx.serialization.json.JsonArray
@@ -17,6 +18,7 @@ class EmotionRegionMapApi(
         bounds: EmotionMapBounds,
         level: EmotionRegionLevel,
         groupId: String? = null,
+        filter: EmotionSearchFilter? = null,
     ): ApiResult<JsonArray> =
         requests.execute(
             ApiRequest(
@@ -31,7 +33,7 @@ class EmotionRegionMapApi(
                         put("maxLongitude", bounds.maxLongitude.toString())
                         put("maxLatitude", bounds.maxLatitude.toString())
                         put("level", level.name)
-                        groupId?.let { put("groupId", it) }
+                        filter?.let { putAll(it.toQueryParameters()) } ?: groupId?.let { put("groupId", it) }
                     },
             ),
         ) { response -> response.body<JsonArray>() }

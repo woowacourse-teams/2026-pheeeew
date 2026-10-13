@@ -16,8 +16,10 @@ import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.domain.model.emotion.EmotionRegion
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.domain.model.emotion.EmotionRegionResult
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.MapFilterPeriod
+import com.pheeeew.domain.model.emotion.MapFilterScope
 import com.pheeeew.domain.model.emotion.MapFilterSettings
 import com.pheeeew.domain.repository.EmotionMapRepository
 import com.pheeeew.domain.repository.EmotionRegionMapRepository
@@ -28,6 +30,7 @@ import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase
 import com.pheeeew.domain.usecase.FindEmotionRegionSnapshotUseCase
 import com.pheeeew.domain.usecase.FindEmotionRegionsUseCase
 import com.pheeeew.domain.usecase.RefreshLocationUseCase
+import com.pheeeew.feature.screens.map.filter.FilterScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -46,6 +49,52 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelViewportTest {
+    @Test
+    fun `기본 한달 필터와 내 기록 필터 적용 후에도 클러스터를 조회한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val filters = mutableListOf<EmotionSearchFilter?>()
+                val pins = QueuedEmotionMapRepository()
+                val region = EmotionRegion("city", "서울", 127.0, 37.5, 3, null)
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository(onFilter = { filters += it }) { _, _, _ ->
+                                    EmotionRegionResult.Success(listOf(region))
+                                },
+                            ),
+                    )
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(MapFilterSettings.DEFAULT.toSearchFilter(), filters.single())
+                assertEquals(EmotionRegionLevel.SIGUNGU, viewModel.uiModel.value.displayedRegionLevel)
+                viewModel.openFilter()
+                viewModel.selectFilterScope(FilterScope.Mine)
+                viewModel.applyFilter()
+                runCurrent()
+                assertEquals(MapFilterScope.MY, filters.last()?.scope)
+                assertEquals(EmotionRegionLevel.SIGUNGU, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(
+                    listOf("city"),
+                    viewModel.uiModel.value.regionClusters
+                        .map { it.id },
+                )
+                assertFalse(viewModel.filterUiModel.value.visible)
+                assertTrue(
+                    viewModel.uiModel.value.emotionPins
+                        .isEmpty(),
+                )
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     @Test
     fun `핀과 클러스터 전환은 요청 실패 시 기존 데이터를 유지하고 성공 후 교체한다`() =
         runTest {
@@ -1272,6 +1321,7 @@ class MapViewModelViewportTest {
 
     private fun regionRepository(
         snapshot: (EmotionMapBounds, EmotionRegionLevel) -> List<EmotionRegion>? = { _, _ -> null },
+        onFilter: (EmotionSearchFilter?) -> Unit = {},
         find: suspend (EmotionMapBounds, EmotionRegionLevel, Boolean) -> EmotionRegionResult,
     ): EmotionRegionMapRepository =
         object : EmotionRegionMapRepository {
@@ -1280,12 +1330,17 @@ class MapViewModelViewportTest {
                 level: EmotionRegionLevel,
                 groupId: String?,
                 forceRefresh: Boolean,
-            ) = find(bounds, level, forceRefresh)
+                filter: EmotionSearchFilter?,
+            ): EmotionRegionResult {
+                onFilter(filter)
+                return find(bounds, level, forceRefresh)
+            }
 
             override fun findSnapshot(
                 bounds: EmotionMapBounds,
                 level: EmotionRegionLevel,
                 groupId: String?,
+                filter: EmotionSearchFilter?,
             ) = snapshot(bounds, level)
         }
 
