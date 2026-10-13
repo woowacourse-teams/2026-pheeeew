@@ -1,5 +1,6 @@
 package com.pheeeew.feature.screens.group.join
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -222,9 +223,11 @@ fun GroupJoinSheet(
             if (uiState.rateLimit != null && !hasInlineRateLimitMessage) {
                 RateLimitMessage(operation = uiState.rateLimit.operation)
             }
-            uiState.foundGroup?.let { group ->
-                Spacer(Modifier.height(12.dp))
-                GroupJoinPreviewCard(group = group)
+            AnimatedVisibility(visible = uiState.foundGroup != null) {
+                uiState.foundGroup?.let { group ->
+                    Spacer(Modifier.height(12.dp))
+                    GroupJoinPreviewCard(group = group)
+                }
             }
             SubmissionMessage(submission = uiState.submission)
 
@@ -338,9 +341,9 @@ private fun LookupMessage(lookup: GroupLookupState) {
             is GroupLookupState.Loading,
             -> null
         }
-    if (message != null) {
+    AnimatedVisibility(visible = message != null) {
         Text(
-            text = message,
+            text = message.orEmpty(),
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             color = JoinErrorColor,
             fontSize = 12.sp,
@@ -384,9 +387,9 @@ private fun SubmissionMessage(submission: GroupJoinSubmissionState) {
                 null
             }
         }
-    if (message != null) {
+    AnimatedVisibility(visible = message != null) {
         Text(
-            text = message,
+            text = message.orEmpty(),
             modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
             color = JoinErrorColor,
             fontSize = 12.sp,
