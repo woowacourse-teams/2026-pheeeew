@@ -8,16 +8,30 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     let mapView: MLNMapView
     private let eventSink: FoundationIosMapEventSink
     private var pendingState: FoundationIosMapRenderUiModel?
+    private var memoryWarningObserver: NSObjectProtocol?
+    private var preferredFramesPerSecondBeforePause: MLNMapViewPreferredFramesPerSecond?
     private var styleIsReady = false
     private var didSetInitialCamera = false
     private var initialCameraUsedFallback = false
     private var lastAppliedCameraCommandId: Int64 = 0
     private var currentLocationSource: MLNShapeSource?
     private var emotionPinSource: MLNShapeSource?
+    private var regionClusterSource: MLNShapeSource?
+    private var lastRegionClusterCoordinates: [FoundationIosRegionClusterCoordinateUiModel]?
     private let recordStampLayer = FoundationRecordStampLayer()
     private let recordRangeLayer = FoundationRecordRangeLayer()
+    // Reuse converted icons across pin/cluster round trips; cost is bounded to 8 MiB.
+    private let symbolImageCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.totalCostLimit = 8 * 1024 * 1024
+        cache.countLimit = 128
+        return cache
+    }()
     private var lastEmotionPinImageKeys = Set<String>()
     private var lastEmotionPinCoordinates: [FoundationIosEmotionPinCoordinateUiModel]?
+    private var lastEmotionPinMonitoringLoadId: String?
+    private var lastScheduledEmotionPinLoadId: String?
+    private var emotionPinRenderRevision: Int64 = 0
     private var lastPressedEmotionId: Int64?
     private var lastPressedEmotionScale: Float = 1
     private var lastFocusedEmotionId: Int64?
@@ -32,6 +46,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         super.init()
         mapView.delegate = self
         mapView.showsLogoView = false
+        mapView.compassView.compassVisibility = .visible
         mapView.showsAttributionButton = true
         mapView.attributionButtonPosition = .bottomLeft
         mapView.attributionButton.tintColor = .white
@@ -53,6 +68,16 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         mapView.maximumZoomLevel = FoundationMapStyle.maximumZoom
         mapView.allowsScrolling = true
         mapView.allowsZooming = true
+        memoryWarningObserver = NotificationCenter.default.addObserver(
+            forName: UIApplication.didReceiveMemoryWarningNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            self.symbolImageCache.removeAllObjects()
+            guard self.pendingState?.isVisible == false else { return }
+            self.eventSink.onMemoryPressure()
+        }
     }
 
     @objc private func handleMapTap(_ recognizer: UITapGestureRecognizer) {
@@ -62,7 +87,12 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         if let id = features.first?.identifier as? NSNumber {
             eventSink.onEmotionPinClick(id: id.int64Value)
         } else {
-            eventSink.onMapBackgroundClick()
+            let regions = mapView.visibleFeatures(at: point, styleLayerIdentifiers: Set(["foundation-region-cluster-layer"]))
+            if let id = regions.first?.identifier as? String {
+                eventSink.onRegionClusterClick(id: id)
+            } else {
+                eventSink.onMapBackgroundClick()
+            }
         }
     }
 
@@ -72,24 +102,55 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
 
     func update(state: FoundationIosMapRenderUiModel) {
         pendingState = state
-        guard styleIsReady else { return }
+        mapView.isHidden = !state.isVisible
+        mapView.isUserInteractionEnabled = state.isVisible
+        if state.isVisible {
+            if let previousRate = preferredFramesPerSecondBeforePause {
+                mapView.preferredFramesPerSecond = previousRate
+                preferredFramesPerSecondBeforePause = nil
+            }
+        } else if preferredFramesPerSecondBeforePause == nil {
+            preferredFramesPerSecondBeforePause = mapView.preferredFramesPerSecond
+            mapView.preferredFramesPerSecond = MLNMapViewPreferredFramesPerSecond(rawValue: 1)
+        }
+        guard state.isVisible, styleIsReady else { return }
         FoundationCurrentLocationLayer.update(currentLocation: state.currentLocation, source: currentLocationSource)
         recordRangeLayer.update(state: state)
-        updateEmotionPins(state)
+        registerSymbolImages(state)
+        if !state.regionClusterCoordinates.isEmpty { updateRegionClusters(state) }
+        let pinSourceUpdated = updateEmotionPins(state)
+        if state.regionClusterCoordinates.isEmpty { updateRegionClusters(state) }
         updateEmotionPinPress(state)
         applyInitialCameraIfNeeded(state)
         if !applyRecordCamera(state) { applyCameraCommandIfNeeded(state) }
         publishViewportIfReady()
+        if !pinSourceUpdated,
+           let loadId = state.monitoringLoadId,
+           loadId != lastScheduledEmotionPinLoadId {
+            lastScheduledEmotionPinLoadId = loadId
+            DispatchQueue.main.async { [weak self] in self?.publishContentIfReady() }
+        }
     }
 
     func releaseResources() {
+        saveCamera()
+        if let memoryWarningObserver {
+            NotificationCenter.default.removeObserver(memoryWarningObserver)
+            self.memoryWarningObserver = nil
+        }
         mapView.delegate = nil
         pendingState = nil
         styleIsReady = false
         currentLocationSource = nil
         emotionPinSource = nil
+        regionClusterSource = nil
+        lastRegionClusterCoordinates = nil
+        symbolImageCache.removeAllObjects()
         lastEmotionPinImageKeys.removeAll()
         lastEmotionPinCoordinates = nil
+        lastEmotionPinMonitoringLoadId = nil
+        lastScheduledEmotionPinLoadId = nil
+        emotionPinRenderRevision = 0
         lastPressedEmotionId = nil
         lastPressedEmotionScale = 1
     }
@@ -195,14 +256,21 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
                 return
             }
         }
+        // Keep symbols opaque when camera and source updates recalculate placement.
+        style.performsPlacementTransitions = false
         FoundationMapStyle.applyMutedPalette(to: style)
         styleIsReady = true
         emotionPinSource = installEmotionPinLayer(on: style)
+        regionClusterSource = installRegionClusterLayer(on: style)
         recordRangeLayer.install(on: style)
         recordStampLayer.install(on: style)
         currentLocationSource = FoundationCurrentLocationLayer.install(on: style)
         lastEmotionPinImageKeys.removeAll()
         lastEmotionPinCoordinates = nil
+        lastRegionClusterCoordinates = nil
+        lastEmotionPinMonitoringLoadId = nil
+        lastScheduledEmotionPinLoadId = nil
+        emotionPinRenderRevision = 0
         lastPressedEmotionId = nil
         lastPressedEmotionScale = 1
         eventSink.onMapRecovered()
@@ -214,7 +282,9 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             )
             applyInitialCameraIfNeeded(pendingState)
             if !applyRecordCamera(pendingState) { applyCameraCommandIfNeeded(pendingState) }
-            updateEmotionPins(pendingState)
+            registerSymbolImages(pendingState)
+            _ = updateEmotionPins(pendingState)
+            updateRegionClusters(pendingState)
             updateEmotionPinPress(pendingState)
             publishViewportIfReady()
         }
@@ -231,10 +301,18 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     func mapViewDidLayoutSubviews() {
         mapView.compassViewMargins = CGPoint(x: 16, y: 16)
         mapView.attributionButtonMargins = CGPoint(x: 16, y: 16)
+        if styleIsReady, let state = pendingState, state.isVisible {
+            applyInitialCameraIfNeeded(state)
+        }
         publishViewportIfReady()
     }
 
+    func mapView(_ mapView: MLNMapView, regionWillChangeAnimated animated: Bool) {
+        eventSink.onCameraMovingChanged(isMoving: true)
+    }
+
     func mapView(_ mapView: MLNMapView, regionDidChangeAnimated animated: Bool) {
+        eventSink.onCameraMovingChanged(isMoving: false)
         publishRecordViewport()
         publishViewportIfReady()
     }
@@ -251,19 +329,28 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     func mapViewDidBecomeIdle(_ mapView: MLNMapView) {
-        guard styleIsReady, let state = pendingState,
-              !state.isRecordLocationPicking, let token = state.monitoringLoadId,
-              !mapView.bounds.isEmpty else { return }
+        publishContentIfReady()
+    }
+
+    private func publishContentIfReady() {
+        guard styleIsReady, let state = pendingState, state.isVisible, !mapView.bounds.isEmpty else { return }
+        let features = mapView.visibleFeatures(in: mapView.bounds, styleLayerIdentifiers: Set(["foundation-emotion-pin-layer"]))
+        guard features.allSatisfy({
+            ($0.attribute(forKey: "renderRevision") as? NSNumber)?.int64Value == emotionPinRenderRevision
+        }) else { return }
+        pruneObsoleteEmotionPinImages(for: state)
+
+        guard !state.isRecordLocationPicking,
+              let token = state.monitoringLoadId,
+              token == lastEmotionPinMonitoringLoadId else { return }
         let imageKeys = Set(state.emotionPinSymbolImages.map(\.key))
         guard state.emotionPinCoordinates.allSatisfy({ imageKeys.contains($0.imageKey) }) else { return }
-        let features = mapView.visibleFeatures(in: mapView.bounds, styleLayerIdentifiers: Set(["foundation-emotion-pin-layer"]))
-        guard features.allSatisfy({ ($0.attribute(forKey: "monitoring-load-id") as? String) == token }) else { return }
         let ids = Set(features.compactMap { ($0.identifier as? NSNumber)?.int64Value })
         eventSink.onContentPresented(loadId: token, entryIds: ids.map { String($0) })
     }
 
     func mapViewDidFinishRenderingFrame(_ mapView: MLNMapView, fullyRendered: Bool) {
-        if let state = pendingState, state.isRecordLocationPicking {
+        if let state = pendingState, state.isVisible, state.isRecordLocationPicking {
             _ = applyRecordCamera(state)
         }
     }
@@ -328,7 +415,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     private func publishRecordViewport() {
-        guard let state = pendingState, state.isRecordLocationPicking, let origin = state.recordOrigin else { return }
+        guard let state = pendingState, state.isVisible, state.isRecordLocationPicking,
+              let origin = state.recordOrigin else { return }
         let centerCoordinate = CLLocationCoordinate2D(latitude: origin.latitude, longitude: origin.longitude)
         let northCoordinate = CLLocationCoordinate2D(latitude: origin.latitude + 500.0 / 6_371_000.0 * 180.0 / .pi, longitude: origin.longitude)
         let originPoint = mapView.convert(centerCoordinate, toPointTo: mapView)
@@ -339,7 +427,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     private func publishHighlightedPinPosition() {
-        guard styleIsReady, let state = pendingState, !state.isRecordLocationPicking,
+        guard styleIsReady, let state = pendingState, state.isVisible, !state.isRecordLocationPicking,
               let id = state.highlightedEmotionId?.int64Value,
               let pin = state.emotionPinCoordinates.first(where: { $0.id == id }),
               lastEmotionPinImageKeys.contains(pin.imageKey),
@@ -359,7 +447,8 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
 
     private func publishViewportIfReady() {
         publishHighlightedPinPosition()
-        guard styleIsReady, mapView.bounds.width > 0, mapView.bounds.height > 0 else { return }
+        guard pendingState?.isVisible == true, styleIsReady,
+              mapView.bounds.width > 0, mapView.bounds.height > 0 else { return }
         let bounds = mapView.visibleCoordinateBounds
         let queryBounds = EmotionMapBounds(
             minLongitude: bounds.sw.longitude,
@@ -367,7 +456,38 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             maxLongitude: bounds.ne.longitude,
             maxLatitude: bounds.ne.latitude
         )
-        if queryBounds.isValid() { eventSink.onViewportChanged(bounds: queryBounds) }
+        if queryBounds.isValid() {
+            eventSink.onViewportChanged(viewport: EmotionMapViewport(bounds: queryBounds, zoom: mapView.zoomLevel))
+        }
+    }
+
+    private func installRegionClusterLayer(on style: MLNStyle) -> MLNShapeSource {
+        let source = MLNShapeSource(identifier: "foundation-region-cluster-source", features: [], options: nil)
+        style.addSource(source)
+        let layer = MLNSymbolStyleLayer(identifier: "foundation-region-cluster-layer", source: source)
+        layer.iconImageName = NSExpression(mglJSONObject: ["get", "imageKey"])
+        layer.iconScale = NSExpression(forConstantValue: 1)
+        layer.iconAllowsOverlap = NSExpression(forConstantValue: true)
+        layer.iconIgnoresPlacement = NSExpression(forConstantValue: true)
+        style.addLayer(layer)
+        return source
+    }
+
+    private func updateRegionClusters(_ state: FoundationIosMapRenderUiModel) {
+        guard let source = regionClusterSource else { return }
+        // Common presentation code owns replacement; this adapter only checks registration.
+        let coordinates = state.regionClusterCoordinates
+        guard coordinates.allSatisfy({ lastEmotionPinImageKeys.contains($0.imageKey) }) else { return }
+        guard coordinates != lastRegionClusterCoordinates else { return }
+        let features = coordinates.map { region -> MLNPointFeature in
+            let feature = MLNPointFeature()
+            feature.coordinate = CLLocationCoordinate2D(latitude: region.latitude, longitude: region.longitude)
+            feature.identifier = region.id
+            feature.attributes = ["imageKey": region.imageKey]
+            return feature
+        }
+        source.shape = MLNShapeCollectionFeature(shapes: features)
+        lastRegionClusterCoordinates = coordinates
     }
 
     private func installEmotionPinLayer(on style: MLNStyle) -> MLNShapeSource {
@@ -386,23 +506,36 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         return source
     }
 
-    private func updateEmotionPins(_ state: FoundationIosMapRenderUiModel) {
-        guard let style = mapView.style, let emotionPinSource else { return }
-        let imageKeys = Set(state.emotionPinSymbolImages.map(\.key))
+    private func registerSymbolImages(_ state: FoundationIosMapRenderUiModel) {
+        guard let style = mapView.style else { return }
         for image in state.emotionPinSymbolImages where !lastEmotionPinImageKeys.contains(image.key) {
-            guard let uiImage = image.toUIImage(scale: mapView.window?.screen.scale ?? UIScreen.main.scale) else { continue }
+            let scale = mapView.window?.screen.scale ?? UIScreen.main.scale
+            let cacheKey = "\(image.key)@\(scale)" as NSString
+            let uiImage: UIImage
+            if let cached = symbolImageCache.object(forKey: cacheKey) {
+                uiImage = cached
+            } else {
+                guard let converted = image.toUIImage(scale: scale) else { continue }
+                uiImage = converted
+                symbolImageCache.setObject(converted, forKey: cacheKey, cost: Int(image.width) * Int(image.height) * 4)
+            }
             style.setImage(uiImage, forName: image.key)
             lastEmotionPinImageKeys.insert(image.key)
         }
-        lastEmotionPinImageKeys.subtracting(imageKeys).forEach { style.removeImage(forName: $0) }
-        lastEmotionPinImageKeys.formIntersection(imageKeys)
+    }
+
+    @discardableResult
+    private func updateEmotionPins(_ state: FoundationIosMapRenderUiModel) -> Bool {
+        guard let style = mapView.style, let emotionPinSource else { return false }
+        lastEmotionPinMonitoringLoadId = state.monitoringLoadId
         recordStampLayer.update(state.recordPreviewPin, scale: state.recordPreviewScale, style: style)
 
         // Rasterization completes after pin data arrives. Publish only drawable features,
         // and leave the source untouched when unrelated Compose state changes.
         let coordinates = state.emotionPinCoordinates.filter { lastEmotionPinImageKeys.contains($0.imageKey) }
         let focusedId = state.focusedEmotionId?.int64Value
-        guard coordinates != lastEmotionPinCoordinates || focusedId != lastFocusedEmotionId else { return }
+        guard coordinates != lastEmotionPinCoordinates || focusedId != lastFocusedEmotionId else { return false }
+        emotionPinRenderRevision += 1
         let topPriority = coordinates.count
         let features = coordinates.enumerated().map { index, pin -> MLNPointFeature in
             let feature = MLNPointFeature()
@@ -410,7 +543,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             feature.identifier = NSNumber(value: pin.id)
             feature.attributes = [
                 "id": pin.id,
-                "monitoring-load-id": state.monitoringLoadId ?? "",
+                "renderRevision": emotionPinRenderRevision,
                 "imageKey": pin.imageKey,
                 "rotationDegrees": pin.rotationDegrees,
                 "focusScale": pin.id == focusedId ? 1.3 : 1.0,
@@ -421,6 +554,17 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         emotionPinSource.shape = MLNShapeCollectionFeature(shapes: features)
         lastEmotionPinCoordinates = coordinates
         lastFocusedEmotionId = focusedId
+        return true
+    }
+
+    private func pruneObsoleteEmotionPinImages(for state: FoundationIosMapRenderUiModel) {
+        guard let style = mapView.style else { return }
+        let desiredKeys = Set(state.emotionPinSymbolImages.map(\.key))
+            .union(lastEmotionPinCoordinates?.map(\.imageKey) ?? [])
+            .union(lastRegionClusterCoordinates?.map(\.imageKey) ?? [])
+        let obsoleteKeys = lastEmotionPinImageKeys.subtracting(desiredKeys)
+        obsoleteKeys.forEach { style.removeImage(forName: $0) }
+        lastEmotionPinImageKeys.subtract(obsoleteKeys)
     }
 
     private func updateEmotionPinPress(_ state: FoundationIosMapRenderUiModel) {
@@ -445,6 +589,24 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
 
     private func applyInitialCameraIfNeeded(_ state: FoundationIosMapRenderUiModel) {
         guard !didSetInitialCamera || (initialCameraUsedFallback && state.currentLocation != nil) else { return }
+        if !didSetInitialCamera, let saved = state.restoredCamera {
+            guard !mapView.bounds.isEmpty else { return }
+            let camera = mapView.camera
+            camera.centerCoordinate = CLLocationCoordinate2D(latitude: saved.latitude, longitude: saved.longitude)
+            camera.heading = saved.bearing
+            camera.pitch = saved.pitch
+            camera.altitude = MLNAltitudeForZoomLevel(
+                saved.zoom,
+                camera.pitch,
+                saved.latitude,
+                mapView.frame.size
+            )
+            mapView.setCamera(camera, animated: false)
+            didSetInitialCamera = true
+            initialCameraUsedFallback = saved.initialCameraUsedFallback
+            lastAppliedCameraCommandId = saved.lastAppliedCameraCommandId
+            if !(initialCameraUsedFallback && state.currentLocation != nil) { return }
+        }
         let center = state.currentLocation.map {
             CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
         } ?? CLLocationCoordinate2D(
@@ -454,6 +616,23 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         mapView.setCenter(center, zoomLevel: FoundationMapStyle.initialZoom, animated: false)
         didSetInitialCamera = true
         initialCameraUsedFallback = state.currentLocation == nil
+    }
+
+    private func saveCamera() {
+        guard didSetInitialCamera else { return }
+        let camera = mapView.camera
+        let center = camera.centerCoordinate
+        eventSink.onCameraSaved(
+            camera: MapCameraSnapshotUiModel(
+                latitude: center.latitude,
+                longitude: center.longitude,
+                zoom: mapView.zoomLevel,
+                bearing: camera.heading,
+                pitch: camera.pitch,
+                initialCameraUsedFallback: initialCameraUsedFallback,
+                lastAppliedCameraCommandId: lastAppliedCameraCommandId
+            )
+        )
     }
 
     private func applyCameraCommandIfNeeded(_ state: FoundationIosMapRenderUiModel) {
@@ -500,12 +679,9 @@ private extension FoundationIosMapSymbolImageUiModel {
         let byteCount = imageWidth * imageHeight * 4
         guard imageWidth > 0, imageHeight > 0, rgba.size == Int32(byteCount) else { return nil }
 
-        var pixelBytes = Data(count: byteCount)
+        var pixelBytes = doCopyRgbaData() as Data
         pixelBytes.withUnsafeMutableBytes { buffer in
             guard let baseAddress = buffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else { return }
-            for index in 0..<byteCount {
-                baseAddress[index] = UInt8(bitPattern: rgba.get(index: Int32(index)))
-            }
             for index in stride(from: 0, to: byteCount, by: 4) {
                 let alpha = UInt16(baseAddress[index + 3])
                 baseAddress[index] = UInt8((UInt16(baseAddress[index]) * alpha + 127) / 255)

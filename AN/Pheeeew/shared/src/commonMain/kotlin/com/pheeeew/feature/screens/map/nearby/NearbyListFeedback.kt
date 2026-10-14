@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -29,7 +30,17 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.feature.component.emotion.EmotionListLoadError
+import com.pheeeew.feature.component.emotion.face
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.nearby_confirm
+import pheeeew.shared.generated.resources.nearby_initial_empty_title
+import pheeeew.shared.generated.resources.nearby_leave_emotion
+import pheeeew.shared.generated.resources.nearby_load_error
+import pheeeew.shared.generated.resources.nearby_next_load_error
+import pheeeew.shared.generated.resources.nearby_no_visible_stamps
 
 private val FeedbackInk = Color(0xFF252826)
 private val FeedbackSecondary = Color(0xFF70766F)
@@ -54,15 +65,20 @@ internal fun NearbyEmptyState(
                     )
                 }
         }
-        Text("여기에 첫 감정을 남겨볼까요?", color = FeedbackInk, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         Text(
-            "아직 이곳에 보이는 스탬프가 없어요.\n지금의 감정을 가볍게 찍어보세요.",
+            stringResource(Res.string.nearby_initial_empty_title),
+            color = FeedbackInk,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            stringResource(Res.string.nearby_no_visible_stamps),
             color = FeedbackSecondary,
             fontSize = 13.sp,
             lineHeight = 19.sp,
             textAlign = TextAlign.Center,
         )
-        FeedbackButton("내 감정 남기기", onLeaveEmotion, highlighted = true)
+        FeedbackButton(stringResource(Res.string.nearby_leave_emotion), onLeaveEmotion, highlighted = true)
     }
 }
 
@@ -73,34 +89,16 @@ internal fun NearbyLoadError(
     modifier: Modifier = Modifier,
     onRetry: () -> Unit,
 ) {
-    Surface(
+    EmotionListLoadError(
+        title =
+            stringResource(
+                if (hasItems) Res.string.nearby_next_load_error else Res.string.nearby_load_error,
+            ),
+        message = message,
+        hasItems = hasItems,
+        onRetry = onRetry,
         modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        color = Color.Transparent,
-    ) {
-        Column(
-            Modifier.fillMaxWidth().padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
-        ) {
-            if (!hasItems) {
-                Image(
-                    painter = painterResource(EmotionState.FRUSTRATED.face),
-                    contentDescription = null,
-                    modifier = Modifier.size(32.dp),
-                )
-            }
-            Text(
-                if (hasItems) "다음 감정을 불러오지 못했어요" else "감정을 불러오지 못했어요",
-                color = FeedbackInk,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
-            Text(message, color = FeedbackSecondary, fontSize = 13.sp, lineHeight = 19.sp, textAlign = TextAlign.Center)
-            FeedbackButton("다시 불러오기", onRetry)
-        }
-    }
+    )
 }
 
 @Composable
@@ -118,7 +116,9 @@ internal fun NearbyNotice(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(message, Modifier.weight(1f), color = FeedbackInk, fontSize = 13.sp, lineHeight = 18.sp)
-            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("확인", color = FeedbackInk) }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(Res.string.nearby_confirm), color = FeedbackInk)
+            }
         }
     }
 }
@@ -127,7 +127,7 @@ internal fun NearbyNotice(
 private fun FeedbackButton(
     label: String,
     onClick: () -> Unit,
-    highlighted: Boolean = false,
+    highlighted: Boolean,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Button(
@@ -143,8 +143,8 @@ private fun FeedbackButton(
     ) { Text(label, fontSize = 13.sp, fontWeight = FontWeight.Bold) }
 }
 
-@Preview(name = "Nearby · 오류 및 안내", widthDp = 402, showBackground = true)
 @Composable
+@Preview(name = "Nearby · 오류 및 안내", widthDp = 402, showBackground = true)
 private fun NearbyFeedbackPreview() {
     AppTheme {
         Column(Modifier.padding(vertical = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {

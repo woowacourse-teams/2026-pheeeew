@@ -11,19 +11,23 @@ import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.groups.application.dto.GroupDetailV3Result;
+import com.pheeeew.groups.application.dto.GroupPressCommand;
 import com.pheeeew.groups.application.dto.GroupPressRankingItem;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.support.PostgisDataJpaTest;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -64,6 +68,9 @@ class GroupPressAggregationIntegrationTest {
     @Autowired
     private JdbcClient jdbcClient;
 
+    @Autowired
+    private MeterRegistry meterRegistry;
+
     @BeforeEach
     void setUp() {
         when(clock.getZone()).thenReturn(ZoneId.of("Asia/Seoul"));
@@ -88,7 +95,7 @@ class GroupPressAggregationIntegrationTest {
         Device 기기 = 기기를_저장한다();
         GroupResult 내_그룹 = 그룹을_만든다("내모임", 기기);
         GroupResult 옆_그룹 = 그룹을_만든다("옆모임", 기기를_저장한다());
-        groupService.join(기기.getPublicId(), 옆_그룹.inviteCode());
+        groupService.joinByInviteCode(기기.getPublicId(), 옆_그룹.inviteCode());
         눌린_것으로_둔다(기기, 이번_주_월요일(), EmotionState.ANGRY, 5);
 
         // when
@@ -108,8 +115,8 @@ class GroupPressAggregationIntegrationTest {
         Device 멤버 = 기기를_저장한다();
         Device 다른_멤버 = 기기를_저장한다();
         GroupResult 그룹 = 그룹을_만든다("한숨모임", 그룹장);
-        groupService.join(멤버.getPublicId(), 그룹.inviteCode());
-        groupService.join(다른_멤버.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(멤버.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(다른_멤버.getPublicId(), 그룹.inviteCode());
         눌린_것으로_둔다(그룹장, 이번_주_월요일(), EmotionState.ANGRY, 3);
         눌린_것으로_둔다(멤버, 이번_주_월요일(), EmotionState.ANGRY, 3);
         눌린_것으로_둔다(다른_멤버, 이번_주_월요일().plusDays(2), EmotionState.EXHAUSTED, 4);
@@ -128,7 +135,7 @@ class GroupPressAggregationIntegrationTest {
         Device 그룹장 = 기기를_저장한다();
         Device 떠날_기기 = 기기를_저장한다();
         GroupResult 그룹 = 그룹을_만든다("한숨모임", 그룹장);
-        groupService.join(떠날_기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(떠날_기기.getPublicId(), 그룹.inviteCode());
         눌린_것으로_둔다(그룹장, 이번_주_월요일(), EmotionState.ANGRY, 2);
         눌린_것으로_둔다(떠날_기기, 이번_주_월요일(), EmotionState.ANGRY, 4);
         long 탈퇴_전 = 상세(그룹, 그룹장).weeklyEmotionPressCount();
@@ -147,9 +154,9 @@ class GroupPressAggregationIntegrationTest {
         Device 그룹장 = 기기를_저장한다();
         Device 재가입_기기 = 기기를_저장한다();
         GroupResult 그룹 = 그룹을_만든다("한숨모임", 그룹장);
-        groupService.join(재가입_기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(재가입_기기.getPublicId(), 그룹.inviteCode());
         groupService.leave(그룹.publicId(), 재가입_기기.getPublicId());
-        groupService.join(재가입_기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(재가입_기기.getPublicId(), 그룹.inviteCode());
         눌린_것으로_둔다(재가입_기기, 이번_주_월요일(), EmotionState.ANGRY, 5);
 
         // when
@@ -170,7 +177,7 @@ class GroupPressAggregationIntegrationTest {
         long 가입_전 = 상세(그룹, 그룹장).weeklyEmotionPressCount();
 
         // when
-        groupService.join(늦게_온_기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(늦게_온_기기.getPublicId(), 그룹.inviteCode());
 
         // then
         assertThat(가입_전).isZero();
@@ -298,6 +305,39 @@ class GroupPressAggregationIntegrationTest {
                 .containsExactly(tuple("한숨모임", 77L));
     }
 
+    @Test
+    void 그룹_프레스의_적용량과_상태수와_두_제한_초과량을_지표에_전달한다() {
+        // given
+        Device 기기 = 기기를_저장한다();
+        GroupResult 그룹 = 그룹을_만든다("한숨모임", 기기);
+        var applied = meterRegistry.get("pheeeew.group.press.applied").summary();
+        var states = meterRegistry.get("pheeeew.group.press.states").summary();
+        var perState = meterRegistry.get("pheeeew.group.press.clamped").tag("limit", "per_state").summary();
+        var total = meterRegistry.get("pheeeew.group.press.clamped").tag("limit", "total").summary();
+        var bundled = meterRegistry.get("pheeeew.group.press.requests").tag("format", "counts").counter();
+        double 기존_적용량 = applied.totalAmount();
+        double 기존_상태수 = states.totalAmount();
+        double 기존_감정별_초과량 = perState.totalAmount();
+        double 기존_전체_초과량 = total.totalAmount();
+        double 기존_묶음_요청수 = bundled.count();
+        GroupPressCommand command = GroupPressCommand.of(Map.of(
+                EmotionState.ANGRY, 45, EmotionState.DISCOURAGED, 30, EmotionState.EXHAUSTED, 30,
+                EmotionState.FRUSTRATED, 30, EmotionState.IRRITATED, 30), true);
+
+        // when
+        var result = groupService.press(그룹.publicId(), 기기.getPublicId(), command);
+
+        // then
+        assertThat(result.total()).isEqualTo(100);
+        assertThat(result.counts().get(EmotionState.FRUSTRATED)).isEqualTo(10);
+        assertThat(result.counts().get(EmotionState.IRRITATED)).isZero();
+        assertThat(applied.totalAmount() - 기존_적용량).isEqualTo(100);
+        assertThat(states.totalAmount() - 기존_상태수).isEqualTo(4);
+        assertThat(perState.totalAmount() - 기존_감정별_초과량).isEqualTo(15);
+        assertThat(total.totalAmount() - 기존_전체_초과량).isEqualTo(50);
+        assertThat(bundled.count() - 기존_묶음_요청수).isOne();
+    }
+
     private Device 기기를_저장한다() {
         return deviceRepository.saveAndFlush(기본_기기_빌더().requestId(UUID.randomUUID()).build());
     }
@@ -307,6 +347,7 @@ class GroupPressAggregationIntegrationTest {
                 그룹장.getPublicId(),
                 name,
                 null,
+                GroupJoinType.PRIVATE,
                 GroupStampCommand.of("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
         );
     }

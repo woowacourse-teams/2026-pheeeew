@@ -5,6 +5,7 @@ import android.util.Log
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
+import com.pheeeew.core.network.AndroidConnectivityObserver
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.data.local.device.AndroidDeviceCredentialStorage
 import com.pheeeew.data.remote.device.attestation.AndroidPlayIntegrityProofProvider
@@ -34,6 +35,7 @@ object AndroidApiDependencies {
                 AndroidDeviceCredentialStorage(context.applicationContext, partition, build.legacyCredentialPolicy),
                 DevicePlatform.ANDROID,
                 monitoring = monitoring,
+                connectivityObserver = AndroidConnectivityObserver(context.applicationContext),
                 createProofProvider = { AndroidPlayIntegrityProofProvider(context, cloudProjectNumber) },
                 diagnostics =
                     DeviceSessionDiagnostics { event ->

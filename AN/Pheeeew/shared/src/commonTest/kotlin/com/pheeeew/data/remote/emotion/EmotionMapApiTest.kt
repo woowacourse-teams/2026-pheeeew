@@ -8,7 +8,10 @@ import com.pheeeew.core.network.createApiClient
 import com.pheeeew.data.repository.EmotionMapRepositoryImpl
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapPageResult
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.model.emotion.MapFilterContent
+import com.pheeeew.domain.model.emotion.MapFilterScope
 import com.pheeeew.domain.model.group.GroupStampFrame
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -22,6 +25,72 @@ import kotlin.test.assertIs
 
 class EmotionMapApiTest {
     @Test
+    fun `지도 첫 페이지는 모든 필터 조합을 보내고 다음 페이지는 커서로 복원한다`() =
+        runTest {
+            for (scope in MapFilterScope.entries) {
+                for (content in MapFilterContent.entries) {
+                    for (dated in listOf(false, true)) {
+                        val filter =
+                            EmotionSearchFilter(
+                                startDate = "2026-10-01".takeIf { dated },
+                                endDate = "2026-10-11".takeIf { dated },
+                                content = content,
+                                scope = scope,
+                                groupId =
+                                    "11111111-1111-4111-8111-111111111111".takeIf {
+                                        scope == MapFilterScope.GROUP
+                                    },
+                            )
+                        var count = 0
+                        val client =
+                            createApiClient(
+                                MockEngine { request ->
+                                    assertEquals("/api/v2/emotions/map", request.url.encodedPath)
+                                    assertEquals("Bearer token", request.headers[HttpHeaders.Authorization])
+                                    val expected =
+                                        if (count++ == 0) {
+                                            buildMap {
+                                                put("minLongitude", "126.9")
+                                                put("minLatitude", "37.5")
+                                                put("maxLongitude", "127.1")
+                                                put("maxLatitude", "37.6")
+                                                put("contentType", content.name)
+                                                put("scope", scope.name)
+                                                filter.startDate?.let { put("startDate", it) }
+                                                filter.endDate?.let { put("endDate", it) }
+                                                filter.groupId?.let { put("groupId", it) }
+                                            }
+                                        } else {
+                                            mapOf("cursor" to "opaque+/=cursor")
+                                        }
+                                    assertEquals(expected.keys, request.url.parameters.names())
+                                    expected.forEach { (key, value) ->
+                                        assertEquals(value, request.url.parameters[key])
+                                    }
+                                    respond(
+                                        """{"items":[],"hasNext":false,"nextCursor":null}""",
+                                        headers = jsonHeaders(),
+                                    )
+                                },
+                                ApiConfig("https://api.example.test"),
+                                AccessTokenProvider { AccessToken("token") },
+                            )
+                        try {
+                            val api = EmotionMapApi(client.requests)
+                            assertIs<ApiResult.Success<*>>(api.findPage(126.9, 37.5, 127.1, 37.6, null, null, filter))
+                            assertIs<ApiResult.Success<*>>(
+                                api.findPage(null, null, null, null, null, "opaque+/=cursor", filter),
+                            )
+                            assertEquals(2, count)
+                        } finally {
+                            client.close()
+                        }
+                    }
+                }
+            }
+        }
+
+    @Test
     fun `첫 페이지는 경계 값을 보내고 다음 페이지는 cursor만 보낸다`() =
         runTest {
             var requestNumber = 0
@@ -30,7 +99,7 @@ class EmotionMapApiTest {
                     engine =
                         MockEngine { request ->
                             assertEquals(HttpMethod.Get, request.method)
-                            assertEquals("/api/v1/emotions/map", request.url.encodedPath)
+                            assertEquals("/api/v2/emotions/map", request.url.encodedPath)
                             assertEquals("Bearer test-token", request.headers[HttpHeaders.Authorization])
                             if (requestNumber++ == 0) {
                                 assertEquals("126.9", request.url.parameters["minLongitude"])

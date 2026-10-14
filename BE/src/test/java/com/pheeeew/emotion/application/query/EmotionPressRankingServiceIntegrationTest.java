@@ -1,0 +1,343 @@
+package com.pheeeew.emotion.application.query;
+
+import static com.pheeeew.device.fixture.DeviceFixture.기본_기기_빌더;
+import static com.pheeeew.emotion.fixture.DeviceDailyPressFixture.개인_프레스를_저장한다;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
+import static org.mockito.Mockito.when;
+
+import com.pheeeew.device.domain.Device;
+import com.pheeeew.device.domain.repository.DeviceRepository;
+import com.pheeeew.emotion.application.dto.EmotionPressRankingItem;
+import com.pheeeew.emotion.application.dto.EmotionPressRankingResult;
+import com.pheeeew.emotion.application.dto.EmotionStatePressRankingResult;
+import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.groups.application.RankingWeek;
+import com.pheeeew.support.PostgisDataJpaTest;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+@PostgisDataJpaTest
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
+class EmotionPressRankingServiceIntegrationTest {
+
+    private static final Instant 기준_시각 = Instant.parse("2026-10-08T03:00:00Z");
+    private static final LocalDate 직전_일요일 = LocalDate.of(2026, 10, 4);
+    private static final LocalDate 주_시작_월요일 = LocalDate.of(2026, 10, 5);
+    private static final LocalDate 주_마지막_일요일 = LocalDate.of(2026, 10, 11);
+    private static final LocalDate 다음_주_월요일 = LocalDate.of(2026, 10, 12);
+    private static final int 상위_인원 = 100;
+
+    @MockitoBean
+    private Clock clock;
+
+    @Autowired
+    private EmotionPressRankingService emotionPressRankingService;
+
+    @Autowired
+    private DeviceRepository deviceRepository;
+
+    @Autowired
+    private JdbcClient jdbc;
+
+    @BeforeEach
+    void setUp() {
+        when(clock.getZone()).thenReturn(ZoneId.of("Asia/Seoul"));
+        when(clock.instant()).thenReturn(기준_시각);
+    }
+
+    @AfterEach
+    void tearDown() {
+        jdbc.sql("DELETE FROM device_daily_presses").update();
+        deviceRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void 여러_기기의_프레스를_전국_하나의_순위표로_합산한다() {
+        // given
+        Device 곰 = 기기와_프레스를_저장한다("한숨많은곰", 7);
+        기기와_프레스를_저장한다("지친다람쥐", 3);
+
+        // when
+        EmotionPressRankingResult 결과 = emotionPressRankingService.findPressRanking(곰.getPublicId(), 0);
+
+        // then
+        assertThat(결과.items())
+                .extracting(
+                        EmotionPressRankingItem::rank,
+                        EmotionPressRankingItem::nickname,
+                        EmotionPressRankingItem::pressCount
+                )
+                .containsExactly(tuple(1, "한숨많은곰", 7L), tuple(2, "지친다람쥐", 3L));
+    }
+
+    @Test
+    void 같은_기기가_다른_감정을_눌러도_한_항목으로_합친다() {
+        // given
+        Device 기기 = 기기를_저장한다("한숨많은곰");
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 주_시작_월요일, EmotionState.ANGRY, 10);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 주_시작_월요일, EmotionState.EXHAUSTED, 5);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 주_마지막_일요일, EmotionState.IRRITATED, 2);
+
+        // when
+        EmotionPressRankingResult 결과 = emotionPressRankingService.findPressRanking(기기.getPublicId(), 0);
+
+        // then
+        assertThat(결과.items())
+                .extracting(EmotionPressRankingItem::pressCount)
+                .containsExactly(17L);
+    }
+
+    @Test
+    void 주_시작일_기록은_세고_직전_일요일과_종료일_기록은_세지_않는다() {
+        // given
+        Device 기기 = 기기를_저장한다("한숨많은곰");
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 직전_일요일, EmotionState.ANGRY, 100);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 주_시작_월요일, EmotionState.ANGRY, 1);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 주_마지막_일요일, EmotionState.ANGRY, 2);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 다음_주_월요일, EmotionState.ANGRY, 400);
+
+        // when
+        EmotionPressRankingResult 결과 = emotionPressRankingService.findPressRanking(기기.getPublicId(), 0);
+
+        // then
+        assertThat(결과.me().pressCount()).isEqualTo(3);
+    }
+
+    @Test
+    void 동점은_공동_순위_일_이_이_사_로_매긴다() {
+        // given
+        Device 일등 = 기기와_프레스를_저장한다("일등곰", 10);
+        기기와_프레스를_저장한다("동점곰", 5);
+        기기와_프레스를_저장한다("동점범", 5);
+        기기와_프레스를_저장한다("사등곰", 1);
+
+        // when
+        EmotionPressRankingResult 결과 = emotionPressRankingService.findPressRanking(일등.getPublicId(), 0);
+
+        // then
+        assertThat(결과.items())
+                .extracting(EmotionPressRankingItem::rank, EmotionPressRankingItem::pressCount)
+                .containsExactly(tuple(1, 10L), tuple(2, 5L), tuple(2, 5L), tuple(4, 1L));
+    }
+
+    @Test
+    void 상위_백_밖이면_전체를_매긴_내_순위를_내리고_목록은_백_개로_자른다() {
+        // given
+        for (int 등수 = 1; 등수 <= 상위_인원; 등수++) {
+            기기와_프레스를_저장한다(null, 1000 - 등수);
+        }
+        Device 내_기기 = 기기와_프레스를_저장한다("꼴찌곰", 1);
+
+        // when
+        EmotionPressRankingResult 결과 = emotionPressRankingService.findPressRanking(내_기기.getPublicId(), 0);
+
+        // then
+        assertThat(결과.items()).hasSize(상위_인원);
+        assertThat(결과.items().getLast().rank()).isEqualTo(상위_인원);
+        assertThat(결과.items()).noneMatch(EmotionPressRankingItem::mine);
+        assertThat(결과.me())
+                .isEqualTo(new EmotionPressRankingItem(상위_인원 + 1, "꼴찌곰", 1, true));
+    }
+
+    @Test
+    void 상위_백_안에_있어도_me_를_함께_내린다() {
+        // given
+        기기와_프레스를_저장한다("일등곰", 10);
+        Device 내_기기 = 기기와_프레스를_저장한다("둘째곰", 5);
+
+        // when
+        EmotionPressRankingResult 결과 = emotionPressRankingService.findPressRanking(내_기기.getPublicId(), 0);
+
+        // then
+        assertThat(결과.items()).extracting(EmotionPressRankingItem::mine).containsExactly(false, true);
+        assertThat(결과.me()).isEqualTo(결과.items().getLast());
+        assertThat(결과.me().rank()).isEqualTo(2);
+    }
+
+    @Test
+    void 그_주에_누르지_않은_기기는_me_가_null_이고_목록에도_없다() {
+        // given
+        기기와_프레스를_저장한다("한숨많은곰", 9);
+        Device 안_누른_기기 = 기기를_저장한다("조용한곰");
+        개인_프레스를_저장한다(jdbc, 안_누른_기기.getId(), 직전_일요일, EmotionState.ANGRY, 50);
+
+        // when
+        EmotionPressRankingResult 결과 = emotionPressRankingService.findPressRanking(안_누른_기기.getPublicId(), 0);
+
+        // then
+        assertThat(결과.me()).isNull();
+        assertThat(결과.items())
+                .extracting(EmotionPressRankingItem::nickname)
+                .containsExactly("한숨많은곰");
+    }
+
+    @Test
+    void 아무도_누르지_않은_주는_빈_목록과_null_me_를_돌려준다() {
+        // given
+        Device 기기 = 기기를_저장한다("한숨많은곰");
+
+        // when
+        EmotionPressRankingResult 결과 = emotionPressRankingService.findPressRanking(기기.getPublicId(), 0);
+
+        // then
+        assertThat(결과.items()).isEmpty();
+        assertThat(결과.me()).isNull();
+    }
+
+    @Test
+    void 닉네임을_정하지_않은_기기는_익명으로_나온다() {
+        // given
+        Device 기기 = 기기와_프레스를_저장한다(null, 4);
+
+        // when
+        EmotionPressRankingResult 결과 = emotionPressRankingService.findPressRanking(기기.getPublicId(), 0);
+
+        // then
+        assertThat(결과.items())
+                .extracting(EmotionPressRankingItem::nickname)
+                .containsExactly("익명");
+        assertThat(결과.me().nickname()).isEqualTo("익명");
+    }
+
+    @Test
+    void 지난주를_요청하면_구간과_집계가_한_주_앞으로_간다() {
+        // given
+        Device 이번주_기기 = 기기와_프레스를_저장한다("이번주곰", 9);
+        Device 지난주_기기 = 기기를_저장한다("지난주곰");
+        개인_프레스를_저장한다(jdbc, 지난주_기기.getId(), 직전_일요일, EmotionState.ANGRY, 4);
+
+        // when
+        EmotionPressRankingResult 이번주 = emotionPressRankingService.findPressRanking(이번주_기기.getPublicId(), 0);
+        EmotionPressRankingResult 지난주 = emotionPressRankingService.findPressRanking(이번주_기기.getPublicId(), 1);
+
+        // then
+        assertThat(이번주.weeksAgo()).isZero();
+        assertThat(이번주.startAt()).isEqualTo(RankingWeek.of(기준_시각, 0).startAt());
+        assertThat(이번주.endAt()).isEqualTo(RankingWeek.of(기준_시각, 0).endAt());
+        assertThat(이번주.items())
+                .extracting(EmotionPressRankingItem::nickname)
+                .containsExactly("이번주곰");
+        assertThat(지난주.weeksAgo()).isOne();
+        assertThat(지난주.startAt()).isEqualTo(RankingWeek.of(기준_시각, 1).startAt());
+        assertThat(지난주.endAt()).isEqualTo(RankingWeek.of(기준_시각, 1).endAt());
+        assertThat(지난주.items())
+                .extracting(EmotionPressRankingItem::nickname)
+                .containsExactly("지난주곰");
+    }
+
+    @Test
+    void 감정별_랭킹은_고른_감정만_세고_다른_감정은_섞지_않는다() {
+        // given
+        Device 곰 = 기기를_저장한다("한숨많은곰");
+        개인_프레스를_저장한다(jdbc, 곰.getId(), 주_시작_월요일, EmotionState.ANGRY, 3);
+        개인_프레스를_저장한다(jdbc, 곰.getId(), 주_시작_월요일, EmotionState.EXHAUSTED, 100);
+        Device 다람쥐 = 기기를_저장한다("지친다람쥐");
+        개인_프레스를_저장한다(jdbc, 다람쥐.getId(), 주_시작_월요일, EmotionState.ANGRY, 7);
+
+        // when
+        EmotionStatePressRankingResult 결과 =
+                emotionPressRankingService.findPressRankingByState(곰.getPublicId(), EmotionState.ANGRY, 0);
+
+        // then
+        assertThat(결과.state()).isEqualTo(EmotionState.ANGRY);
+        assertThat(결과.items())
+                .extracting(
+                        EmotionPressRankingItem::rank,
+                        EmotionPressRankingItem::nickname,
+                        EmotionPressRankingItem::pressCount
+                )
+                .containsExactly(tuple(1, "지친다람쥐", 7L), tuple(2, "한숨많은곰", 3L));
+    }
+
+    @Test
+    void 감정별_랭킹은_같은_감정의_여러_날짜를_합산한다() {
+        // given
+        Device 기기 = 기기를_저장한다("한숨많은곰");
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 주_시작_월요일, EmotionState.ANGRY, 4);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 주_마지막_일요일, EmotionState.ANGRY, 6);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 직전_일요일, EmotionState.ANGRY, 100);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 다음_주_월요일, EmotionState.ANGRY, 400);
+
+        // when
+        EmotionStatePressRankingResult 결과 =
+                emotionPressRankingService.findPressRankingByState(기기.getPublicId(), EmotionState.ANGRY, 0);
+
+        // then
+        assertThat(결과.me().pressCount()).isEqualTo(10);
+    }
+
+    @Test
+    void 고른_감정을_누르지_않았으면_다른_감정을_눌렀어도_me_가_null_이다() {
+        // given
+        Device 기기 = 기기를_저장한다("한숨많은곰");
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 주_시작_월요일, EmotionState.EXHAUSTED, 50);
+
+        // when
+        EmotionStatePressRankingResult 결과 =
+                emotionPressRankingService.findPressRankingByState(기기.getPublicId(), EmotionState.ANGRY, 0);
+
+        // then
+        assertThat(결과.me()).isNull();
+        assertThat(결과.items()).isEmpty();
+    }
+
+    @Test
+    void 감정별_랭킹도_상위_백으로_자르고_백위_밖의_내_순위를_내린다() {
+        // given
+        for (int 등수 = 1; 등수 <= 상위_인원; 등수++) {
+            기기와_프레스를_저장한다(null, 1000 - 등수);
+        }
+        Device 내_기기 = 기기와_프레스를_저장한다("꼴찌곰", 1);
+
+        // when
+        EmotionStatePressRankingResult 결과 =
+                emotionPressRankingService.findPressRankingByState(내_기기.getPublicId(), EmotionState.ANGRY, 0);
+
+        // then
+        assertThat(결과.items()).hasSize(상위_인원);
+        assertThat(결과.items().getLast().rank()).isEqualTo(상위_인원);
+        assertThat(결과.items()).noneMatch(EmotionPressRankingItem::mine);
+        assertThat(결과.me())
+                .isEqualTo(new EmotionPressRankingItem(상위_인원 + 1, "꼴찌곰", 1, true));
+    }
+
+    @Test
+    void 감정별_랭킹도_지난주를_요청하면_구간이_한_주_앞으로_간다() {
+        // given
+        Device 기기 = 기기를_저장한다("한숨많은곰");
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 주_시작_월요일, EmotionState.ANGRY, 9);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 직전_일요일, EmotionState.ANGRY, 2);
+
+        // when
+        EmotionStatePressRankingResult 지난주 =
+                emotionPressRankingService.findPressRankingByState(기기.getPublicId(), EmotionState.ANGRY, 1);
+
+        // then
+        assertThat(지난주.weeksAgo()).isOne();
+        assertThat(지난주.startAt()).isEqualTo(RankingWeek.of(기준_시각, 1).startAt());
+        assertThat(지난주.endAt()).isEqualTo(RankingWeek.of(기준_시각, 1).endAt());
+        assertThat(지난주.me().pressCount()).isEqualTo(2);
+    }
+
+    private Device 기기를_저장한다(String 닉네임) {
+        return deviceRepository.saveAndFlush(기본_기기_빌더().nickname(닉네임).build());
+    }
+
+    private Device 기기와_프레스를_저장한다(String 닉네임, long 횟수) {
+        Device 기기 = 기기를_저장한다(닉네임);
+        개인_프레스를_저장한다(jdbc, 기기.getId(), 주_시작_월요일, EmotionState.ANGRY, 횟수);
+
+        return 기기;
+    }
+}

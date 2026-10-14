@@ -11,6 +11,7 @@ import com.pheeeew.appversion.application.AppVersionService;
 import com.pheeeew.appversion.application.dto.AppVersionResult;
 import com.pheeeew.appversion.domain.AppPlatform;
 import com.pheeeew.appversion.exception.AppVersionException;
+import com.pheeeew.appversion.infra.metrics.AppVersionMetrics;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
 import com.pheeeew.support.SharedMetricsTestConfiguration;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -35,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Import({
         GlobalExceptionHandler.class,
         SharedMetricsTestConfiguration.class,
+        AppVersionMetrics.class,
         AppVersionControllerTest.OtherController.class
 })
 @WebMvcTest({AppVersionController.class, AppVersionControllerTest.OtherController.class})

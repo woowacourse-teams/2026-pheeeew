@@ -4,6 +4,7 @@ import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapPage
 import com.pheeeew.domain.model.emotion.EmotionMapPin
 import com.pheeeew.domain.model.emotion.EmotionMapSnapshot
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import kotlin.time.Clock
 
 /** Caches viewport responses while keeping page assembly and expiry out of the feature layer. */
@@ -27,18 +28,20 @@ internal class EmotionMapCache(
     fun invalidate(
         bounds: EmotionMapBounds,
         groupId: String?,
+        filter: EmotionSearchFilter? = null,
     ) {
-        regions.removeAll { it.groupId == groupId && it.bounds.intersects(bounds) }
+        regions.removeAll { it.groupId == groupId && it.filter == filter && it.bounds.intersects(bounds) }
     }
 
     fun completePage(
         bounds: EmotionMapBounds,
         groupId: String?,
+        filter: EmotionSearchFilter? = null,
     ): EmotionMapPage? {
         evictExpired()
         val region =
             regions.lastOrNull {
-                it.isComplete && it.groupId == groupId && it.bounds.contains(bounds)
+                it.isComplete && it.groupId == groupId && it.filter == filter && it.bounds.contains(bounds)
             } ?: return null
         region.lastAccess = accessOrder++
         return region.page.copy(pins = region.page.pins.filter { bounds.contains(it) })
@@ -47,9 +50,14 @@ internal class EmotionMapCache(
     fun snapshot(
         bounds: EmotionMapBounds,
         groupId: String?,
+        filter: EmotionSearchFilter? = null,
     ): EmotionMapSnapshot? {
         evictExpired()
-        val relevant = regions.asReversed().filter { it.groupId == groupId && it.bounds.intersects(bounds) }
+        val relevant =
+            regions.asReversed().filter {
+                it.groupId == groupId && it.filter == filter &&
+                    it.bounds.intersects(bounds)
+            }
         if (relevant.isEmpty()) return null
         relevant.forEach { it.lastAccess = accessOrder++ }
         return EmotionMapSnapshot(
@@ -62,12 +70,14 @@ internal class EmotionMapCache(
         groupId: String?,
         cursor: String?,
         page: EmotionMapPage,
+        filter: EmotionSearchFilter? = null,
     ) {
         evictExpired()
         val previous =
             cursor?.let { expectedCursor ->
                 regions.lastOrNull {
-                    it.bounds == bounds && it.groupId == groupId && it.page.nextCursor == expectedCursor
+                    it.bounds == bounds && it.groupId == groupId && it.filter == filter &&
+                        it.page.nextCursor == expectedCursor
                 }
             }
         val isFirstPage = cursor == null || previous?.hasFirstPage == true
@@ -84,13 +94,14 @@ internal class EmotionMapCache(
         // An older overlapping response no longer proves that the region is complete.
         // Keep its pins for snapshots, but fetch again before replacing newer pins.
         regions
-            .filter { it.groupId == groupId && it.bounds.intersects(bounds) }
+            .filter { it.groupId == groupId && it.filter == filter && it.bounds.intersects(bounds) }
             .forEach { it.isComplete = false }
-        regions.removeAll { it.bounds == bounds && it.groupId == groupId }
+        regions.removeAll { it.bounds == bounds && it.groupId == groupId && it.filter == filter }
         regions +=
             Region(
                 bounds = bounds,
                 groupId = groupId,
+                filter = filter,
                 page = accumulatedPage,
                 hasFirstPage = isFirstPage,
                 isComplete = isFirstPage && !page.hasNext,
@@ -110,6 +121,7 @@ internal class EmotionMapCache(
     private data class Region(
         val bounds: EmotionMapBounds,
         val groupId: String?,
+        val filter: EmotionSearchFilter?,
         val page: EmotionMapPage,
         val hasFirstPage: Boolean,
         var isComplete: Boolean,

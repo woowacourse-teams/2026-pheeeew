@@ -25,11 +25,16 @@ import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.component.BasicTopBar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ranking_weekly_title
 
 internal val RankingTopBarHeight = 56.dp
 
 @Stable
-internal class RankingTopBarScrollBehavior {
+internal class RankingTopBarScrollBehavior(
+    private val canScrollDown: () -> Boolean,
+) {
     var isVisible by mutableStateOf(true)
         private set
 
@@ -40,7 +45,7 @@ internal class RankingTopBarScrollBehavior {
                 source: NestedScrollSource,
             ): Offset {
                 when {
-                    available.y < -1f -> isVisible = false
+                    available.y < -1f && canScrollDown() -> isVisible = false
                     available.y > 1f -> isVisible = true
                 }
                 return Offset.Zero
@@ -53,9 +58,9 @@ internal class RankingTopBarScrollBehavior {
 }
 
 @Composable
-internal fun rememberRankingTopBarScrollBehavior(): RankingTopBarScrollBehavior =
+internal fun rememberRankingTopBarScrollBehavior(canScrollDown: () -> Boolean): RankingTopBarScrollBehavior =
     remember {
-        RankingTopBarScrollBehavior()
+        RankingTopBarScrollBehavior(canScrollDown)
     }
 
 @Composable
@@ -88,8 +93,8 @@ internal fun RankingTopBarOverlay(
 private fun RankingTopBarPreview() {
     AppTheme {
         RankingTopBarOverlay(
-            title = "주간 랭킹",
-            behavior = rememberRankingTopBarScrollBehavior(),
+            title = stringResource(Res.string.ranking_weekly_title),
+            behavior = rememberRankingTopBarScrollBehavior { false },
         )
     }
 }

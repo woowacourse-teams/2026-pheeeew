@@ -20,6 +20,17 @@ internal class EmotionApi(
             ),
         ) { it.body<EmotionPageDto>() }
 
+    suspend fun listWithoutBounds(query: Map<String, String>) =
+        requests.execute(
+            ApiRequest(
+                HttpMethod.Get,
+                V3_PATH,
+                RequestKind.READ,
+                monitoringEndpoint = "emotion_list_v3",
+                queryParameters = query,
+            ),
+        ) { it.body<EmotionPageDto>() }
+
     suspend fun detail(id: Long) =
         requests.execute(
             ApiRequest(HttpMethod.Get, "$PATH/$id", RequestKind.READ, monitoringEndpoint = "emotion_detail"),
@@ -53,5 +64,6 @@ internal class EmotionApi(
 
     private companion object {
         const val PATH = "/api/v1/emotions"
+        const val V3_PATH = "/api/v3/emotions"
     }
 }

@@ -42,12 +42,17 @@ import com.pheeeew.feature.monitoring.product.labels
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_emotion_angry
 import pheeeew.shared.generated.resources.ic_emotion_discouraged
 import pheeeew.shared.generated.resources.ic_emotion_exhausted
 import pheeeew.shared.generated.resources.ic_emotion_frustrated
 import pheeeew.shared.generated.resources.ic_emotion_irritated
+import pheeeew.shared.generated.resources.onboarding_brand
+import pheeeew.shared.generated.resources.onboarding_next
+import pheeeew.shared.generated.resources.onboarding_skip
+import pheeeew.shared.generated.resources.onboarding_start_recording
 
 const val WELCOME_ONBOARDING_COMPLETED_KEY = "onboarding_completed"
 
@@ -144,13 +149,13 @@ fun OnboardingScreen(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text(
-                text = "히유",
+                text = stringResource(Res.string.onboarding_brand),
                 color = Color(0xFF202323),
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
             )
             Text(
-                text = "건너뛰기",
+                text = stringResource(Res.string.onboarding_skip),
                 color = Color(0xFF777777),
                 fontSize = 11.sp,
                 modifier =
@@ -239,7 +244,14 @@ fun OnboardingScreen(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = if (isLastPage) "내 감정 남기러 가기" else "다음",
+                text =
+                    if (isLastPage) {
+                        stringResource(
+                            Res.string.onboarding_start_recording,
+                        )
+                    } else {
+                        stringResource(Res.string.onboarding_next)
+                    },
                 color = Color.White,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,

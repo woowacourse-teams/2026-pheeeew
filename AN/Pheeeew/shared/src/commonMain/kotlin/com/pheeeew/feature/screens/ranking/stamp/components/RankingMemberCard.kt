@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.ranking.stamp.components
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -9,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -20,18 +22,24 @@ import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.ranking.stamp.RankingMember
 import com.pheeeew.feature.screens.ranking.stamp.sampleRankings
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.group_detail_rank_number
+import pheeeew.shared.generated.resources.ranking_score_count
+import pheeeew.shared.generated.resources.ranking_stamp_label
 import pheeeew.shared.generated.resources.weekly_ranking_crown
 
 @Composable
 fun RankingMemberCard(
     member: RankingMember,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier =
             modifier
                 .rankingCardBorder()
+                .clickable(role = Role.Button, onClick = onClick)
                 .padding(
                     start = 8.dp,
                     top = if (member.rank == 1) 10.dp else 8.dp,
@@ -46,7 +54,12 @@ fun RankingMemberCard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Text("${member.rank}위", color = AppColors.RankingContent, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        Text(
+            stringResource(Res.string.group_detail_rank_number, member.rank),
+            color = AppColors.RankingContent,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+        )
         if (member.rank == 1) {
             Image(
                 painter = painterResource(Res.drawable.weekly_ranking_crown),
@@ -68,9 +81,14 @@ fun RankingMemberCard(
                 maxLines = 2,
                 lineHeight = 17.sp,
             )
-            Text("감정 스탬프", color = AppColors.RankingContent, fontSize = 10.sp, lineHeight = 12.sp)
             Text(
-                "${member.score}개",
+                stringResource(Res.string.ranking_stamp_label),
+                color = AppColors.RankingContent,
+                fontSize = 10.sp,
+                lineHeight = 12.sp,
+            )
+            Text(
+                stringResource(Res.string.ranking_score_count, member.score),
                 color = AppColors.RankingContent,
                 fontSize = 12.sp,
                 lineHeight = 14.sp,
@@ -86,6 +104,6 @@ fun RankingMemberCard(
 @Composable
 private fun RankingMemberCardPreview() {
     AppTheme {
-        RankingMemberCard(sampleRankings.first(), Modifier.padding(16.dp))
+        RankingMemberCard(onClick = {}, member = sampleRankings.first(), modifier = Modifier.padding(16.dp))
     }
 }

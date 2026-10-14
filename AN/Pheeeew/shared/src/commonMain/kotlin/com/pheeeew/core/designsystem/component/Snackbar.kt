@@ -51,8 +51,10 @@ import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_error
+import pheeeew.shared.generated.resources.snackbar_close
 
 private const val SNACKBAR_DURATION_MILLIS = 3_000L
 
@@ -271,7 +273,7 @@ private fun SnackbarDismissButton(
     enabled: Boolean,
 ) {
     TextButton(onClick = onDismiss, enabled = enabled) {
-        Text("닫기", color = AppColors.TextPrimary, fontSize = 12.sp)
+        Text(stringResource(Res.string.snackbar_close), color = AppColors.TextPrimary, fontSize = 12.sp)
     }
 }
 

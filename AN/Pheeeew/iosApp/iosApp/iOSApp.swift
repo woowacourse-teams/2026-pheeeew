@@ -8,16 +8,35 @@ struct iOSApp: App {
     @State private var monitoringSmokeTestScheduled = false
 #endif
 
-    init() { _ = IosMonitoring.shared.instance }
+    init() {
+#if DEBUG
+        if !ProcessInfo.processInfo.arguments.contains("-group-detail-profile") {
+            _ = IosMonitoring.shared.instance
+        }
+#else
+        _ = IosMonitoring.shared.instance
+#endif
+    }
+
+    private var isGroupDetailProfileMode: Bool {
+#if DEBUG
+        ProcessInfo.processInfo.arguments.contains("-group-detail-profile")
+#else
+        false
+#endif
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .onChange(of: scenePhase) { phase in
-                    if phase == .active { IosMonitoring.shared.foreground() }
-                    if phase == .background { IosMonitoring.shared.background() }
+                    if !isGroupDetailProfileMode {
+                        if phase == .active { IosMonitoring.shared.foreground() }
+                        if phase == .background { IosMonitoring.shared.background() }
+                    }
                 }
                 .onAppear {
-                    if scenePhase == .active { IosMonitoring.shared.foreground() }
+                    if !isGroupDetailProfileMode, scenePhase == .active { IosMonitoring.shared.foreground() }
 #if DEBUG
                     if !monitoringSmokeTestScheduled,
                        ["1", "crash"].contains(ProcessInfo.processInfo.environment["MONITORING_SMOKE_TEST"] ?? ""),
@@ -28,6 +47,7 @@ struct iOSApp: App {
                                 fatalError("Development monitoring native crash test")
                             }
                             let monitoring = IosMonitoring.shared.instance
+                            IosMonitoring.shared.smokeTestActivity()
                             monitoring.reportError(
                                 error: KotlinIllegalStateException(message: "Development monitoring smoke test"),
                                 context: monitoring.context(screen: "unknown", parent: nil)

@@ -17,6 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.report_description_hint
 
 @Composable
 fun ReportDescriptionInput(
@@ -41,7 +44,7 @@ fun ReportDescriptionInput(
             Box(modifier = Modifier.fillMaxWidth()) {
                 if (value.isEmpty()) {
                     Text(
-                        text = "상황을 짧게 알려주면 더 빨리 확인해요.",
+                        text = stringResource(Res.string.report_description_hint),
                         color = AppColors.TextSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Medium,

@@ -56,7 +56,11 @@ pheeeew:
   app-attest:
     # App ID 는 {Team ID}.{Bundle ID} 다. 예전에 만든 App ID 는 prefix 가 Team ID 와 다를 수 있고,
     # 그때는 Team ID 가 아니라 App ID prefix 를 넣어야 한다.
-    team-id: Z6V4SXKRL6
+    # 여기 적은 prefix 중 하나와 맞으면 통과한다. 개발자 계정 이전으로 두 계정의 빌드가 함께 쓰이는 동안
+    # 둘을 모두 허용한다. 이전 계정 빌드 지원을 끝내면 Z6V4SXKRL6 을 지운다.
+    team-ids:
+      - Z6V4SXKRL6
+      - WKN466N42M
     bundle-id: com.itda.pheeeew
     # 실기기 개발 빌드는 DEVELOPMENT, TestFlight 와 App Store 빌드는 PRODUCTION 이다.
     # 둘은 배타적이라 한쪽만 통과한다. 개발 프로필이 DEVELOPMENT 로 재정의한다.

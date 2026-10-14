@@ -39,7 +39,7 @@ class PressRankingApiTest {
 
             try {
                 assertIs<ApiResult.Success<PressRankingResponseDto>>(PressRankingApi(client.requests).find(3, null))
-                assertEquals("/api/v2/groups/press-rankings", requestedPath)
+                assertEquals("/api/v2/groups/press-rankings/members", requestedPath)
                 assertEquals("3", requestedWeeksAgo)
             } finally {
                 client.close()
@@ -71,7 +71,7 @@ class PressRankingApiTest {
                     assertIs<ApiResult.Success<PressRankingResponseDto>>(
                         PressRankingApi(client.requests).find(2, "IRRITATED"),
                     )
-                assertEquals("/api/v2/groups/press-rankings/states/IRRITATED", requestedPath)
+                assertEquals("/api/v2/groups/press-rankings/members/states/IRRITATED", requestedPath)
                 assertEquals("2", requestedWeeksAgo)
                 assertEquals("Bearer app-access-token", authorization)
                 assertEquals("IRRITATED", result.value.state)
@@ -112,6 +112,6 @@ class PressRankingApiTest {
         const val EMPTY_RANKING =
             """{"weeksAgo":0,"startAt":"2026-09-28T00:00:00Z","endAt":"2026-10-05T00:00:00Z","hasPrevious":true,"items":[]}"""
         const val RANKING_WITH_MINE =
-            """{"state":"IRRITATED","weeksAgo":2,"startAt":"2026-09-14T00:00:00Z","endAt":"2026-09-21T00:00:00Z","hasPrevious":true,"items":[{"rank":2,"groupId":"3fa85f64-5717-4562-b3fc-2c963f66afa6","name":"히유 클럽","score":31,"mine":true}]}"""
+            """{"state":"IRRITATED","weeksAgo":2,"startAt":"2026-09-14T00:00:00Z","endAt":"2026-09-21T00:00:00Z","hasPrevious":true,"items":[{"rank":2,"groupId":"3fa85f64-5717-4562-b3fc-2c963f66afa6","name":"히유 클럽","score":31,"mine":true,"stamp":{"text":"히유","textColor":"#000000","backgroundColor":"#FFFFFF","frame":"CIRCLE"}}]}"""
     }
 }

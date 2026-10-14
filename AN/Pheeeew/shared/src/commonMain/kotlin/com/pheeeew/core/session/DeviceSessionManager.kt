@@ -73,7 +73,7 @@ class DeviceSessionManager(
                                 withContext(NonCancellable) { mutex.withLock { flight = null } }
                                 throw cancelled
                             } catch (_: Exception) {
-                                DeviceSessionResult.Failed(DeviceSessionFailure(DeviceSessionFailureKind.SERVER))
+                                DeviceSessionResult.Failed(DeviceSessionFailure(DeviceSessionFailureKind.UNEXPECTED))
                             }
                         mutex.withLock {
                             when (result) {

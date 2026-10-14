@@ -14,6 +14,7 @@ import com.pheeeew.domain.model.emotion.EmotionMapPage
 import com.pheeeew.domain.model.emotion.EmotionMapPageResult
 import com.pheeeew.domain.model.emotion.EmotionMapPin
 import com.pheeeew.domain.model.emotion.EmotionMapSnapshot
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.group.GroupStamp
 import com.pheeeew.domain.model.group.GroupStampFrame
@@ -33,11 +34,31 @@ class EmotionMapRepositoryImpl(
         groupId: String?,
     ): EmotionMapSnapshot? = cache.snapshot(bounds, groupId)
 
+    override fun findFilteredSnapshot(
+        bounds: EmotionMapBounds,
+        filter: EmotionSearchFilter,
+    ): EmotionMapSnapshot? = cache.snapshot(bounds, filter.groupId, filter)
+
     override suspend fun findPage(
         bounds: EmotionMapBounds?,
         groupId: String?,
         cursor: String?,
         forceRefresh: Boolean,
+    ): EmotionMapPageResult = findPageInternal(bounds, groupId, cursor, forceRefresh, null)
+
+    override suspend fun findFilteredPage(
+        bounds: EmotionMapBounds?,
+        filter: EmotionSearchFilter,
+        cursor: String?,
+        forceRefresh: Boolean,
+    ): EmotionMapPageResult = findPageInternal(bounds, filter.groupId, cursor, forceRefresh, filter)
+
+    private suspend fun findPageInternal(
+        bounds: EmotionMapBounds?,
+        groupId: String?,
+        cursor: String?,
+        forceRefresh: Boolean,
+        filter: EmotionSearchFilter?,
     ): EmotionMapPageResult {
         if (forceRefresh && cursor == null) {
             cacheGeneration++
@@ -45,12 +66,12 @@ class EmotionMapRepositoryImpl(
                 cache.clear()
             } else {
                 // Remove only overlapping regions; stale requests cannot repopulate the cache.
-                cache.invalidate(bounds, groupId)
+                cache.invalidate(bounds, groupId, filter)
             }
         }
         val generation = cacheGeneration
         if (!forceRefresh && cursor == null && bounds != null) {
-            cache.completePage(bounds, groupId)?.let { page ->
+            cache.completePage(bounds, groupId, filter)?.let { page ->
                 return EmotionMapPageResult.Success(page, fromCache = true)
             }
         }
@@ -64,6 +85,7 @@ class EmotionMapRepositoryImpl(
                         bounds?.maxLatitude,
                         if (cursor == null) groupId else null,
                         cursor,
+                        filter,
                     )
             ) {
                 is ApiResult.Failure -> {
@@ -81,7 +103,7 @@ class EmotionMapRepositoryImpl(
                         if (pageResult is EmotionMapPageResult.Success && bounds != null &&
                             generation == cacheGeneration
                         ) {
-                            cache.appendPage(bounds, groupId, cursor, pageResult.page)
+                            cache.appendPage(bounds, groupId, cursor, pageResult.page, filter)
                         }
                     }
                 }

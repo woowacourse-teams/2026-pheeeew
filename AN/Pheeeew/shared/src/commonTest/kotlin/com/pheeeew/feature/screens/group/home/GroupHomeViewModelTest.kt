@@ -16,6 +16,7 @@ import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -215,6 +216,9 @@ class GroupHomeViewModelTest {
                     )
                 val viewModel =
                     GroupHomeViewModel(
+                        groupExploreSource =
+                            com.pheeeew.feature.screens.group.home.explore
+                                .InMemoryGroupExploreSource(),
                         groupListSource = source,
                         groupJoinDependencies =
                             GroupJoinDependencies(
@@ -253,8 +257,60 @@ class GroupHomeViewModelTest {
             }
         }
 
+    @Test
+    fun `closing an uncertain join invalidates shared membership and verifies through home list`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val revision = MutableStateFlow(0L)
+                val verifiedGroup = group("verified-group")
+                val source =
+                    QueuedGroupListSource(
+                        CompletableDeferred(GroupListResult.Success(emptyList())),
+                        CompletableDeferred(GroupListResult.Success(listOf(verifiedGroup))),
+                    )
+                val viewModel =
+                    GroupHomeViewModel(
+                        groupExploreSource =
+                            com.pheeeew.feature.screens.group.home.explore
+                                .InMemoryGroupExploreSource(),
+                        groupListSource = source,
+                        groupJoinDependencies =
+                            GroupJoinDependencies(
+                                lookupGroupAction = { GroupLookupResult.Found(group("preview-group")) },
+                                joinGroupAction = { _, _ -> GroupJoinResult.OutcomeUnknown },
+                                errorReporter = GroupJoinErrorReporter {},
+                                operationKeyAllocator = GroupOperationKeyAllocator("join-unknown-test"),
+                            ),
+                        membershipChanges = revision,
+                        invalidateSharedMembership = { revision.value += 1 },
+                    )
+
+                advanceUntilIdle()
+                viewModel.openJoinSheet()
+                viewModel.onJoinCodeChanged("ABC123")
+                viewModel.onJoinSearchClick()
+                advanceUntilIdle()
+                viewModel.onJoinClick()
+                advanceUntilIdle()
+                assertIs<GroupJoinSubmissionState.Failed>(viewModel.joinUiState.value.submission)
+
+                assertTrue(viewModel.closeJoinSheet())
+                advanceUntilIdle()
+
+                assertEquals(1L, revision.value)
+                assertEquals(2, source.calls)
+                assertEquals(GroupHomeContent.Ready(listOf(verifiedGroup)), viewModel.uiState.value.content)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     private fun createViewModel(source: GroupListSource) =
         GroupHomeViewModel(
+            groupExploreSource =
+                com.pheeeew.feature.screens.group.home.explore
+                    .InMemoryGroupExploreSource(),
             groupListSource = source,
             groupJoinDependencies =
                 GroupJoinDependencies(

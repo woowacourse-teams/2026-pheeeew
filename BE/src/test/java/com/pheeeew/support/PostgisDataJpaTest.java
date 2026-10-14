@@ -24,6 +24,7 @@ import com.pheeeew.report.application.EmotionReportService;
 import com.pheeeew.emotion.application.EmotionPressMetrics;
 import com.pheeeew.emotion.application.command.EmotionPressService;
 import com.pheeeew.emotion.application.query.EmotionPressQueryService;
+import com.pheeeew.emotion.application.query.EmotionPressRankingService;
 import com.pheeeew.emotion.domain.repository.DeviceDailyPressRepository;
 import com.pheeeew.region.application.RegionClassifier;
 import com.pheeeew.region.domain.repository.RegionRepository;
@@ -32,6 +33,7 @@ import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import com.pheeeew.groups.application.GroupExploreService;
 import com.pheeeew.groups.application.GroupPressMetrics;
 import com.pheeeew.groups.application.GroupRankingService;
 import com.pheeeew.groups.application.GroupService;
@@ -70,6 +72,7 @@ import org.springframework.test.context.ActiveProfiles;
         EmotionReportMetrics.class,
         GroupPressMetrics.class,
         GroupService.class,
+        GroupExploreService.class,
         GroupRankingService.class,
         InviteCodeGenerator.class,
         EmotionReportService.class,
@@ -79,6 +82,7 @@ import org.springframework.test.context.ActiveProfiles;
         EmotionPressMetrics.class,
         EmotionPressService.class,
         EmotionPressQueryService.class,
+        EmotionPressRankingService.class,
         DeviceDailyPressRepository.class,
         RegionClassifier.class,
         RegionRepository.class

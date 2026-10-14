@@ -67,9 +67,10 @@ fun createAndroidMonitoring(
                         event
                     }
                 }
-                PostHog.setup(config.posthogConfig(registry), PostHogContext(application))
+                val analyticsReady = runCatching { migrateAndroidAnalyticsQueue(application) }.isSuccess
+                if (analyticsReady) PostHog.setup(config.posthogConfig(registry), PostHogContext(application))
                 identifyMonitoring(anonymousId, config)
-                SdkMonitoringTransport(registry)
+                SdkMonitoringTransport(registry, analyticsReady)
             }
         },
     )
@@ -86,4 +87,28 @@ private class AndroidMonitoringStore(
         temp.writeText(value)
         check(temp.renameTo(file))
     }
+}
+
+/** posthog-android 3.59.0 uses these roots; run before setup can restore native queues. */
+internal fun migrateAndroidAnalyticsQueue(application: Application) {
+    migrateAnalyticsQueueDirectories(
+        File(application.noBackupFilesDir, "user-report-v1-native-queue-migrated"),
+        listOf(
+            application.getDir("app_posthog-disk-queue", 0),
+            File(application.cacheDir, "posthog-disk-queue"),
+            File(application.cacheDir, "posthog-disk-replay-queue"),
+            File(application.cacheDir, "posthog-disk-logs-queue"),
+        ),
+    )
+}
+
+internal fun migrateAnalyticsQueueDirectories(
+    marker: File,
+    queues: List<File>,
+) {
+    if (marker.exists()) return
+    queues.forEach { queue -> check(!queue.exists() || queue.deleteRecursively()) }
+    val temp = File(marker.parentFile, "${marker.name}.tmp")
+    temp.writeText("user_report_v1")
+    check(temp.renameTo(marker))
 }

@@ -7,6 +7,7 @@ import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
 /** 참여 시트 입력·조회·제출의 화면 상태입니다. 시트 표시 여부는 홈이 소유합니다. */
 data class GroupJoinUiState(
     val input: String = "",
+    val targetMismatch: Boolean = false,
     val hasAttemptedSearch: Boolean = false,
     val lookup: GroupLookupState = GroupLookupState.Idle,
     val submission: GroupJoinSubmissionState = GroupJoinSubmissionState.Idle,

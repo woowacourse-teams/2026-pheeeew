@@ -33,6 +33,15 @@ import com.pheeeew.domain.usecase.DeleteEmotionUseCase
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.app_cancel
+import pheeeew.shared.generated.resources.emotion_block_action
+import pheeeew.shared.generated.resources.emotion_block_confirm
+import pheeeew.shared.generated.resources.emotion_delete_action
+import pheeeew.shared.generated.resources.emotion_delete_confirm
+import pheeeew.shared.generated.resources.emotion_delete_notice
+import pheeeew.shared.generated.resources.emotion_moderation_hidden_notice
 
 @Composable
 fun EmotionDetailOverlay(
@@ -205,10 +214,10 @@ private fun EmotionDetailReadyOverlay(
     }
     if (showBlockConfirmation) {
         ConfirmDialog(
-            title = "해당 사용자를 차단할까요?",
-            content = "차단 이후 해당 사용자가 올린 감정은 더 이상 보이지 않아요.",
-            confirmText = "차단하기",
-            cancelText = "취소",
+            title = stringResource(Res.string.emotion_block_confirm),
+            content = stringResource(Res.string.emotion_moderation_hidden_notice),
+            confirmText = stringResource(Res.string.emotion_block_action),
+            cancelText = stringResource(Res.string.app_cancel),
             onConfirm = {
                 if (!isBlocking) {
                     showBlockConfirmation = false
@@ -235,10 +244,10 @@ private fun EmotionDetailReadyOverlay(
     }
     if (showDeleteConfirmation && state.isMine) {
         ConfirmDialog(
-            title = "해당 감정을 삭제할까요?",
-            content = "삭제한 감정은 지도와 목록에서 더 이상 보이지 않아요.",
-            confirmText = "삭제하기",
-            cancelText = "취소",
+            title = stringResource(Res.string.emotion_delete_confirm),
+            content = stringResource(Res.string.emotion_delete_notice),
+            confirmText = stringResource(Res.string.emotion_delete_action),
+            cancelText = stringResource(Res.string.app_cancel),
             onConfirm = {
                 if (!isDeleting) {
                     showDeleteConfirmation = false

@@ -1,5 +1,9 @@
 package com.pheeeew.data.remote.group
 
+import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
+import com.pheeeew.domain.model.group.GroupStamp
+import com.pheeeew.domain.model.group.GroupStampFrame
+import com.pheeeew.domain.model.group.StampColor
 import com.pheeeew.domain.model.ranking.PressRanking
 import com.pheeeew.domain.model.ranking.PressRankingItem
 import kotlin.time.Instant
@@ -27,8 +31,22 @@ object PressRankingMapper {
         if (!UUID_PATTERN.matches(dto.groupId)) throw PressRankingContractException("items.groupId")
         if (dto.name.isBlank()) throw PressRankingContractException("items.name")
         if (dto.score < 0) throw PressRankingContractException("items.score")
-        return PressRankingItem(dto.rank, dto.groupId, dto.name, dto.score, dto.mine)
+        return PressRankingItem(dto.rank, dto.groupId, dto.name, dto.score, dto.mine, dto.stamp?.toDomain())
     }
+
+    private fun GroupStampResponseDto.toDomain(): GroupStamp =
+        GroupStamp(
+            text = text,
+            textColor =
+                StampColor.parseServerValue(textColor)
+                    ?: throw PressRankingContractException("stamp.textColor"),
+            backgroundColor =
+                StampColor.parseServerValue(backgroundColor)
+                    ?: throw PressRankingContractException("stamp.backgroundColor"),
+            frame =
+                GroupStampFrame.entries.firstOrNull { it.name == frame }
+                    ?: throw PressRankingContractException("stamp.frame"),
+        )
 
     private val UUID_PATTERN =
         Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")

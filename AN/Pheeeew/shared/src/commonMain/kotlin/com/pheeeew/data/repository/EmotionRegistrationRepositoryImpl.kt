@@ -1,5 +1,8 @@
 package com.pheeeew.data.repository
 
+import com.pheeeew.core.monitoring.ActivityType
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.MutationCertainty
 import com.pheeeew.core.network.NetworkFailure
@@ -23,6 +26,7 @@ import kotlin.time.TimeSource
 internal class EmotionRegistrationRepositoryImpl(
     private val api: EmotionRegistrationApi,
     private val audioUploadApi: AudioUploadApi,
+    private val monitoring: Monitoring = NoOpMonitoring,
 ) : EmotionRegistrationRepository {
     private data class UploadedAudio(
         val requestId: String,
@@ -39,6 +43,19 @@ internal class EmotionRegistrationRepositoryImpl(
         registration: EmotionRegistration,
         onAudioUploadFinished: (AudioUploadObservation) -> Unit,
     ): EmotionRegistrationResult {
+        when (val content = registration.content) {
+            EmotionRegistrationContent.None -> {
+                return EmotionRegistrationResult.Rejected
+            }
+
+            is EmotionRegistrationContent.Memo -> {
+                if (content.text.isBlank()) return EmotionRegistrationResult.Rejected
+            }
+
+            is EmotionRegistrationContent.Audio -> {
+                if (content.filePath.isBlank()) return EmotionRegistrationResult.Rejected
+            }
+        }
         val audioUploadId =
             when (val content = registration.content) {
                 is EmotionRegistrationContent.Audio -> {
@@ -126,6 +143,12 @@ internal class EmotionRegistrationRepositoryImpl(
             is ApiResult.Success -> {
                 if (result.value.id > 0) {
                     uploadedAudio = null
+                    runCatching {
+                        monitoring.recordSuccessfulActivity(
+                            ActivityType.EMOTION_RECORD,
+                            registration.occurredAt,
+                        )
+                    }
                     EmotionRegistrationResult.Success(result.value.id)
                 } else {
                     EmotionRegistrationResult.Unavailable

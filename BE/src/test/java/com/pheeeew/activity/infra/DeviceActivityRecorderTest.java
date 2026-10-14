@@ -17,6 +17,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.pheeeew.activity.application.DeviceDailyActivityService;
+import com.pheeeew.activity.infra.metrics.DeviceActivityRecordMetrics;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Clock;
 import java.time.Instant;
@@ -37,7 +38,8 @@ class DeviceActivityRecorderTest {
     private final Clock clock = mock(Clock.class);
     private final SimpleMeterRegistry registry = new SimpleMeterRegistry();
     private final ThreadPoolTaskExecutor executor = new DeviceActivityConfig().deviceActivityExecutor();
-    private final DeviceActivityRecorder recorder = new DeviceActivityRecorder(service, executor, registry, clock);
+    private final DeviceActivityRecorder recorder =
+            new DeviceActivityRecorder(service, executor, new DeviceActivityRecordMetrics(registry), clock);
     private final Logger logger = (Logger) LoggerFactory.getLogger(DeviceActivityRecorder.class);
     private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
 

@@ -24,7 +24,9 @@ import com.pheeeew.feature.screens.ranking.press.PressEmotion
 import com.pheeeew.feature.screens.ranking.press.PressGroupRank
 import com.pheeeew.feature.screens.ranking.press.samplePressGroupRanks
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.group_detail_rank_number
 import pheeeew.shared.generated.resources.ic_emotion_angry
 import pheeeew.shared.generated.resources.ic_emotion_discouraged
 import pheeeew.shared.generated.resources.ic_emotion_exhausted
@@ -87,7 +89,7 @@ internal fun MyPressRankCard(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = "${group.rank}위",
+                    text = stringResource(Res.string.group_detail_rank_number, group.rank),
                     color = AppColors.RankingContent,
                     fontSize = 36.sp,
                     lineHeight = 42.sp,

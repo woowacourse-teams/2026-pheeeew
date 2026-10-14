@@ -53,8 +53,14 @@ import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.screens.map.overlay.MapControlButton
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import com.pheeeew.feature.screens.map.record.noRippleClickable
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_my_location
+import pheeeew.shared.generated.resources.map_current_location
+import pheeeew.shared.generated.resources.record_choose_stamp_title
+import pheeeew.shared.generated.resources.record_location_confirm
+import pheeeew.shared.generated.resources.record_location_limit
+import pheeeew.shared.generated.resources.record_location_submit
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -79,6 +85,8 @@ fun RecordLocationSelectionContent(
     onStampScaleChanged: (Float) -> Unit = {},
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val selectedEmotionLabel = stringResource(selectedEmotion.label)
+    val stampDescription = selectedGroupStamp?.label ?: selectedEmotionLabel
     val density = LocalDensity.current.density
     val latestOnSelected by rememberUpdatedState(onCoordinateSelected)
     val latestCanMove by rememberUpdatedState(!isSubmitting)
@@ -119,7 +127,7 @@ fun RecordLocationSelectionContent(
                         Modifier
                             .size(62.dp)
                             .semantics {
-                                contentDescription = selectedGroupStamp?.label ?: selectedEmotion.label
+                                contentDescription = stampDescription
                             }.offset {
                                 IntOffset(
                                     (center.x + offsetX - 31.dp.toPx()).roundToInt(),
@@ -192,7 +200,7 @@ fun RecordLocationSelectionContent(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             BasicTopBar(
-                title = "스탬프를 눌러서 옮겨주세요",
+                title = stringResource(Res.string.record_choose_stamp_title),
                 onBack = onBack,
                 enabled = !isSubmitting,
             )
@@ -206,7 +214,7 @@ fun RecordLocationSelectionContent(
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = "내 위치에서 500m 내에서 찍을 수 있어요.",
+                    text = stringResource(Res.string.record_location_limit),
                     color = AppColors.TextPrimary,
                     fontSize = 12.sp,
                 )
@@ -225,7 +233,7 @@ fun RecordLocationSelectionContent(
         ) {
             MapControlButton(
                 icon = Res.drawable.ic_my_location,
-                contentDescription = "내 위치로 이동",
+                contentDescription = stringResource(Res.string.map_current_location),
                 onClick = onMyLocationClick,
                 enabled = !isRequestingLocation && !isSubmitting,
                 modifier = Modifier.padding(end = 20.dp, bottom = 12.dp),
@@ -242,7 +250,7 @@ fun RecordLocationSelectionContent(
             ) {
                 SheetDragHandle()
                 Text(
-                    text = "이 위치에 감정을 남길까요?",
+                    text = stringResource(Res.string.record_location_confirm),
                     modifier = Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 24.dp),
                     color = AppColors.GroupInk,
                     fontSize = 18.sp,
@@ -268,7 +276,12 @@ fun RecordLocationSelectionContent(
                             ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("여기에 남기기", color = AppColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text(
+                        stringResource(Res.string.record_location_submit),
+                        color = AppColors.TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
                 Spacer(Modifier.height(24.dp))
             }

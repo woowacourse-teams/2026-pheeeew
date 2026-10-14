@@ -1,17 +1,23 @@
 package com.pheeeew.feature.screens.group.detail
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
+import com.pheeeew.core.share.rememberSystemTextShareLauncher
+import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.monitoring.product.ProductScreen
-import com.pheeeew.feature.monitoring.product.labels
+import com.pheeeew.feature.monitoring.product.rememberObservedEmotionPlayer
+import com.pheeeew.feature.screens.group.join.GroupInviteLinkCodec
+import com.pheeeew.feature.screens.group.join.GroupJoinSheet
+import com.pheeeew.feature.screens.group.join.GroupJoinSubmissionState
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
@@ -25,7 +31,7 @@ import kotlinx.coroutines.flow.collect
 @Composable
 fun GroupDetailRoute(
     viewModel: GroupDetailViewModel,
-    isCurrentDestination: Boolean = true,
+    isCurrentDestination: Boolean,
     onBack: () -> Unit,
     onReturnHome: () -> Unit,
     onLeft: (groupId: GroupId, operationKey: GroupOperationKey) -> Unit,
@@ -37,15 +43,79 @@ fun GroupDetailRoute(
     ) -> Unit,
     onCopyCode: suspend (code: String, operationKey: GroupOperationKey) -> GroupCopyCodeResult,
     modifier: Modifier = Modifier,
+    onMoodBlockClick: ((String) -> Unit)?,
+    onMoodReportClick: ((String) -> Unit)?,
+    onMembersClick: (() -> Unit)? = null,
+    onJoined: () -> Unit = {},
 ) {
     ProductScreen(viewModel.telemetry, isCurrentDestination)
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val codeState by viewModel.codeJoinUiState.collectAsStateWithLifecycle()
+    val codeVisible by viewModel.isCodeJoinVisible.collectAsStateWithLifecycle()
+    val currentOnJoined by rememberUpdatedState(onJoined)
+    LaunchedEffect(isCurrentDestination, uiState.joinConfirmed) {
+        if (isCurrentDestination) {
+            uiState.joinConfirmed?.let { key ->
+                currentOnJoined()
+                viewModel.acknowledgeJoinConfirmed(key)
+            }
+        }
+    }
+    LaunchedEffect(isCurrentDestination, codeState.submission) {
+        if (isCurrentDestination) {
+            (codeState.submission as? GroupJoinSubmissionState.Succeeded)?.let {
+                viewModel.onCodeJoinSucceeded(it.groupId, it.operationKey)
+            }
+        }
+    }
+    if (codeVisible) {
+        GroupJoinSheet(
+            uiState = codeState,
+            onCodeChanged = viewModel::onJoinCodeChanged,
+            onSearchClick = viewModel::onJoinCodeSearch,
+            onJoinClick = viewModel::onJoinCodeSubmit,
+            onDismiss = viewModel::onCloseCodeJoin,
+            targetGroupName = uiState.detail?.group?.name,
+            onVerifyMembership = viewModel::onVerifyCodeMembership,
+        )
+    }
+    val shareLauncher = rememberSystemTextShareLauncher()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val audioPlayer = rememberObservedEmotionPlayer(viewModel.telemetry) { "group_detail" }
+    val playback by audioPlayer.state.collectAsStateWithLifecycle()
     val currentOnBack by rememberUpdatedState(onBack)
     val currentOnReturnHome by rememberUpdatedState(onReturnHome)
     val currentOnLeft by rememberUpdatedState(onLeft)
     val currentOnMembershipUnavailable by rememberUpdatedState(onMembershipUnavailable)
     val currentOnCopyCode by rememberUpdatedState(onCopyCode)
+
+    LaunchedEffect(lifecycleOwner, viewModel, audioPlayer, isCurrentDestination) {
+        if (!isCurrentDestination) return@LaunchedEffect
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.events.collect { event ->
+                when (event) {
+                    is GroupDetailEvent.PlayMoodAudio -> audioPlayer.play(event.emotionId, event.url)
+                    GroupDetailEvent.StopMoodAudio -> audioPlayer.stop()
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(viewModel, playback.id) {
+        viewModel.onMoodAudioPlaybackChanged(playback.id)
+    }
+
+    DisposableEffect(lifecycleOwner, audioPlayer) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_STOP) audioPlayer.stop()
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            audioPlayer.stop()
+        }
+    }
 
     LaunchedEffect(lifecycleOwner, viewModel, isCurrentDestination) {
         if (!isCurrentDestination) return@LaunchedEffect
@@ -89,20 +159,7 @@ fun GroupDetailRoute(
         }
     }
 
-    val foreground =
-        com.pheeeew.feature.screens.map.monitoring
-            .rememberMonitoringForeground() &&
-            LocalProductMonitoringVisible.current
     GroupDetailScreen(
-        feedbackOperationKey = { viewModel.lastAcceptedPressKey },
-        onFeedbackShown = { key ->
-            if (isCurrentDestination && foreground) {
-                viewModel.telemetry.emit(
-                    "group_emotion_feedback_viewed",
-                    labels("group_operation_key" to "${key.ownerInstanceId}:${key.sequence}"),
-                )
-            }
-        },
         uiState = uiState,
         actions =
             GroupDetailActions(
@@ -110,18 +167,36 @@ fun GroupDetailRoute(
                     if (viewModel.onBackRequested()) currentOnBack()
                 },
                 onReturnHome = { currentOnReturnHome() },
+                onJoinClick = viewModel::onJoinClick,
                 onRetry = viewModel::onRetry,
                 onMoreClick = viewModel::onMoreClick,
                 onInviteClick = viewModel::onInviteClick,
                 onCopyCodeClick = viewModel::onCopyCodeClick,
+                onShareInviteClick = {
+                    val current = viewModel.uiState.value
+                    val detail = current.detail
+                    if (detail != null && detail.role != GroupRole.NONE &&
+                        current.overlay == GroupDetailOverlay.InviteCode && detail.inviteCode != null
+                    ) {
+                        val message = GroupInviteLinkCodec.createShareMessage(detail.group.name, detail.inviteCode)
+                        if (message == null || !shareLauncher.shareText(message)) {
+                            viewModel.onInviteShareUnavailable()
+                        }
+                    }
+                },
                 onDismissOverlay = viewModel::onDismissOverlay,
                 onLeaveMenuClick = viewModel::onLeaveMenuClick,
                 onConfirmLeave = viewModel::onConfirmLeave,
                 onRetryLeave = viewModel::onRetryLeave,
                 onResolveLeaveOutcome = viewModel::onResolveLeaveOutcome,
-                onEmotionTap = viewModel::onEmotionTap,
-                onResolvePressOutcome = viewModel::onResolvePressOutcome,
                 onNoticeDismissed = viewModel::acknowledgeNotice,
+                onMoodReactionClick = viewModel::onMoodReactionClick,
+                onMoodAudioClick = viewModel::onMoodAudioClick,
+                onMoodBlockClick = onMoodBlockClick,
+                onMoodReportClick = onMoodReportClick,
+                onMoodFeedRetry = viewModel::onMoodFeedRetry,
+                onMoodFeedLoadMore = viewModel::onMoodFeedLoadMore,
+                onMembersClick = onMembersClick,
             ),
         modifier = modifier,
     )

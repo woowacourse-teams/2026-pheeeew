@@ -7,10 +7,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.pheeeew.common.logging.RequestLoggingFilter;
+import com.pheeeew.common.logging.RequestLoggingConfiguration;
+import com.pheeeew.common.logging.PheeeewRequestTimingStage;
 import com.pheeeew.common.logging.RequestTiming;
 import com.pheeeew.common.logging.RequestTiming.Measurement;
-import com.pheeeew.common.logging.RequestTiming.Stage;
+import com.pheeeew.common.logging.RequestTimingStage;
 import com.pheeeew.emotion.application.EmotionPressMetrics;
 import com.pheeeew.emotion.application.EmotionPressMetrics.QueryOperation;
 import io.micrometer.core.instrument.MockClock;
@@ -53,7 +54,7 @@ class EmotionPressQueryMetricsAspectTest {
             "findByPressDateAndDeviceId,my_daily,PRESS_MY_DAILY,false",
             "sumByPressDate,daily_total,PRESS_DAILY_TOTAL,true", "sumByPressDate,daily_total,PRESS_DAILY_TOTAL,false"})
     void JDBC_작업별_성공과_실패_시간을_구분한다(
-            String method, String operation, Stage stage, boolean succeeded
+            String method, String operation, PheeeewRequestTimingStage stage, boolean succeeded
     ) throws Throwable {
         // given
         var aspect = new EmotionPressQueryMetricsAspect(new EmotionPressMetrics(registry), clock::monotonicTime);
@@ -115,7 +116,7 @@ class EmotionPressQueryMetricsAspectTest {
                 assertThatThrownBy(() -> aspect.recordQuery(joinPoint)).isSameAs(original);
             }
         });
-        assertThat(timings).containsExactlyEntriesOf(Map.of(Stage.PRESS_INCREASE, Measurement.of(1, 0, 0)));
+        assertThat(timings).containsExactlyEntriesOf(Map.of(PheeeewRequestTimingStage.PRESS_INCREASE, Measurement.of(1, 0, 0)));
         verify(metrics).recordQuery(sample, QueryOperation.INCREASE, succeeded);
     }
 
@@ -140,7 +141,7 @@ class EmotionPressQueryMetricsAspectTest {
         });
 
         // then
-        assertThat(timings).containsExactlyEntriesOf(Map.of(Stage.PRESS_INCREASE,
+        assertThat(timings).containsExactlyEntriesOf(Map.of(PheeeewRequestTimingStage.PRESS_INCREASE,
                 Measurement.of(2, TimeUnit.SECONDS.toNanos(3), TimeUnit.SECONDS.toNanos(2))));
         assertThat(registry.get("pheeeew.emotion.press.query").tags("operation", "increase", "outcome", "success")
                 .timer().count()).isEqualTo(1);
@@ -148,10 +149,10 @@ class EmotionPressQueryMetricsAspectTest {
                 .timer().count()).isEqualTo(1);
     }
 
-    private Map<Stage, Measurement> inRequest(ThrowingCallable operation) throws Exception {
+    private Map<RequestTimingStage, Measurement> inRequest(ThrowingCallable operation) throws Exception {
         var request = new MockHttpServletRequest();
-        var snapshot = new AtomicReference<Map<Stage, Measurement>>();
-        new RequestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
+        var snapshot = new AtomicReference<Map<RequestTimingStage, Measurement>>();
+        new RequestLoggingConfiguration().requestLoggingFilter().doFilter(request, new MockHttpServletResponse(), (req, res) -> {
             RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
             try {
                 operation.call();

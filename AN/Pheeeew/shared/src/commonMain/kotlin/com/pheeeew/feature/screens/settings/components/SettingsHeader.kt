@@ -6,6 +6,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.component.BasicTopBar
 import com.pheeeew.feature.screens.settings.SettingsTheme
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.settings_title
 
 @Composable
 internal fun SettingsHeader(
@@ -13,7 +16,7 @@ internal fun SettingsHeader(
     modifier: Modifier = Modifier,
 ) {
     BasicTopBar(
-        title = "설정",
+        title = stringResource(Res.string.settings_title),
         onBack = onBackClick,
         modifier = modifier,
         height = 64.dp,

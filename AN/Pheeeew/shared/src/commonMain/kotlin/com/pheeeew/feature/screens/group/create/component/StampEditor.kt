@@ -1,5 +1,7 @@
 package com.pheeeew.feature.screens.group.create.component
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -131,7 +133,12 @@ internal fun StampEditor(
                 color = AppColors.RankingSecondaryContent,
                 fontSize = 11.sp,
             )
-            GroupStamp(appearance = stamp, size = 96.dp)
+            Crossfade(
+                targetState = Triple(stamp.shape, stamp.fillArgb, stamp.textArgb),
+                animationSpec = tween(180),
+            ) { (shape, fill, ink) ->
+                GroupStamp(appearance = stamp.copy(shape = shape, fillArgb = fill, textArgb = ink), size = 96.dp)
+            }
         }
         Spacer(Modifier.height(18.dp))
         Row(

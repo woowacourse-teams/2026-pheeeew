@@ -2,6 +2,7 @@ package com.pheeeew.groups.fixture;
 
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.groups.domain.Group;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupMember;
 import com.pheeeew.groups.domain.GroupRole;
 import com.pheeeew.groups.domain.GroupStamp;
@@ -21,7 +22,8 @@ public final class GroupFixture {
         return Group.builder()
                 .name("한숨모임")
                 .description("테스트 그룹입니다.")
-                .inviteCode(무작위_초대_코드());
+                .inviteCode(무작위_초대_코드())
+                .joinType(GroupJoinType.PRIVATE);
     }
 
     public static GroupStamp.GroupStampBuilder 기본_스탬프_빌더(Group group) {

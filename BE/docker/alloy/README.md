@@ -159,3 +159,11 @@ python3 docker/alloy/verify.py
 - [Alloy loki.source.file](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.file/)
 - [Alloy loki.process](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.process/)
 - [Docker Compose 환경 파일 문법](https://docs.docker.com/compose/how-tos/environment-variables/variable-interpolation/)
+
+## 수집 범위와 기존 DB 수집기 정리
+
+Alloy는 앱의 Prometheus 지표와 검토된 앱 로그만 전송해요. DB에 직접 연결하는 별도 수집기, 표본 볼륨, 전용 Loki 파이프라인은 운영 복잡도를 줄이기 위해 제거했어요. 기존 앱 지표 허용 목록과 로그 필터, 전송 대상, Alloy 위치 저장소는 유지해요.
+
+이 변경을 배포해도 별도 Compose로 실행한 기존 `db-observer` 컨테이너는 자동으로 중지되지 않아요. 서버 반영 시 개발·운영 각각의 실행 여부를 확인하고, 실행 중이라면 해당 수집기만 중지·제거해야 해요. 사용하지 않는 전용 표본 볼륨과 접속 파일은 보관 필요 여부와 다른 사용처를 확인한 뒤 별도로 정리해요. 앱 로그 볼륨과 Alloy 저장소는 정리 대상이 아니에요.
+
+Grafana Cloud에 이미 적용한 DB 전용 패널은 [대시보드 정리 안내](../grafana/README.md#기존-db-표본-대시보드-정리)를 따라 별도로 제거해요.

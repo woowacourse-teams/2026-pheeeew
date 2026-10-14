@@ -41,9 +41,13 @@ import com.pheeeew.core.designsystem.theme.AppShapes
 import com.pheeeew.feature.screens.map.drawPlaybackWaveform
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_mic
 import pheeeew.shared.generated.resources.ic_refresh
+import pheeeew.shared.generated.resources.record_again
+import pheeeew.shared.generated.resources.record_recording
+import pheeeew.shared.generated.resources.record_start
 
 @Composable
 internal fun RecordAudioContent(
@@ -153,7 +157,7 @@ private fun AudioReadyPanel(
         ) {
             Image(
                 painter = painterResource(Res.drawable.ic_mic),
-                contentDescription = "녹음 시작",
+                contentDescription = stringResource(Res.string.record_start),
                 modifier = Modifier.size(24.dp),
             )
         }
@@ -185,7 +189,7 @@ private fun AdioRecordingPanel(
             )
             Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = "녹음 중",
+                text = stringResource(Res.string.record_recording),
                 color = AppColors.RecordSheetRecording,
                 fontSize = 14.sp,
             )
@@ -274,13 +278,13 @@ private fun AdioCompletedPanel(
             ) {
                 Icon(
                     painter = painterResource(Res.drawable.ic_refresh),
-                    contentDescription = "다시 녹음",
+                    contentDescription = stringResource(Res.string.record_again),
                     tint = AppColors.TextPrimary,
                     modifier = Modifier.size(16.dp),
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "다시 녹음",
+                    text = stringResource(Res.string.record_again),
                     color = AppColors.TextPrimary,
                     fontSize = 14.sp,
                 )

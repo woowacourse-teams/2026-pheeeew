@@ -36,7 +36,8 @@ def verify_metrics(config):
                              "record_failures_total aggregation_failures_total",
         "jvm_gc_pause_seconds_": "count sum max",
         "hikaricp_connections_": "active idle pending max min timeout_total "
-                                 "acquire_seconds_count acquire_seconds_sum acquire_seconds_max",
+                                 "acquire_seconds_count acquire_seconds_sum acquire_seconds_max "
+                                 "usage_seconds_count usage_seconds_sum usage_seconds_max",
     }
     for kind in ("list",):
         families[f"pheeeew_sigh_{kind}_query_seconds_"] = "count sum bucket max"
@@ -50,7 +51,10 @@ def verify_metrics(config):
                 "pheeeew_unreviewed_total", "unreviewed_metric",
                 "pheeeew_region_query_seconds_created", "pheeeew_region_query_seconds_device_id",
                 "pheeeew_emotion_press_query_seconds_created", "pheeeew_emotion_press_query_seconds_device_id",
-                "pheeeew_group_press_query_seconds_count"]
+                "pheeeew_group_press_query_seconds_count",
+                "hikaricp_connections_usage_seconds_bucket", "hikaricp_connections_usage_seconds_created",
+                "hikaricp_connections_creation_seconds_count", "hikaricp_connections_creation_seconds_sum",
+                "hikaricp_connections_creation_seconds_max"]
     rejected.extend(name + "_extra" for name in accepted)
     for name, expected in [(name, True) for name in accepted] + [(name, False) for name in rejected]:
         if bool(re.fullmatch(pattern, name)) != expected:
@@ -140,7 +144,7 @@ def verify_labels(name, config, environment):
     for key, value in (("environment", environment), ("instance", f"pheeeew-{environment}")):
         found = re.findall(rf'{key}\s*=\s*"([^"]+)"', config)
         if found != [value, value]:
-            raise AssertionError(f"{name}: {key} 라벨이 수집·로그 두 곳 모두 {value} 여야 합니다. 실제 {found}")
+            raise AssertionError(f"{name}: {key} 라벨이 앱 지표·로그 모두 {value} 여야 합니다. 실제 {found}")
     print(f"{name}: 환경 라벨 검증 통과 ({environment})")
 
 

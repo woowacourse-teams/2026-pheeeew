@@ -19,13 +19,14 @@ internal fun DetailDialogButton(
     text: String,
     enabled: Boolean,
     isPrimary: Boolean,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     val textColor = if (isPrimary) Color(0xFFE84D58) else AppColors.GroupInk
     Text(
         text = text,
         modifier =
-            Modifier
+            modifier
                 .defaultMinSize(minHeight = 40.dp)
                 .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
                 .padding(horizontal = 8.dp, vertical = 8.dp),

@@ -49,7 +49,6 @@ class GroupDetailRepositoryImpl(
         when (this) {
             is NetworkFailure.HttpStatus -> {
                 when (statusCode) {
-                    FORBIDDEN_STATUS -> GroupDetailLookupResult.MembershipChanged
                     NOT_FOUND_STATUS -> GroupDetailLookupResult.NotFound
                     else -> GroupDetailLookupResult.Unavailable
                 }

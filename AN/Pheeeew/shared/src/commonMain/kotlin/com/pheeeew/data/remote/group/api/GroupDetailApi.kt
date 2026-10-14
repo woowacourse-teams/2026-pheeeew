@@ -8,7 +8,6 @@ import com.pheeeew.data.remote.group.dto.GroupDetailResponseDto
 import io.ktor.client.call.body
 import io.ktor.http.HttpMethod
 
-/** Reads a group's current detail and issues the body's documented bodyless leave operation. */
 class GroupDetailApi(
     private val requests: ApiRequestExecutor,
 ) {
@@ -16,7 +15,7 @@ class GroupDetailApi(
         requests.execute(
             ApiRequest(
                 method = HttpMethod.Get,
-                path = "$GROUPS_PATH/$groupId",
+                path = "$DETAIL_PATH/$groupId",
                 kind = RequestKind.READ,
                 monitoringEndpoint = "group_detail",
             ),
@@ -26,7 +25,7 @@ class GroupDetailApi(
         requests.executeNoContent(
             ApiRequest(
                 method = HttpMethod.Delete,
-                path = "$GROUPS_PATH/$groupId/members/me",
+                path = "$LEAVE_PATH/$groupId/members/me",
                 kind = RequestKind.WRITE,
                 replayAfterAuthentication = false,
                 monitoringEndpoint = "group_leave",
@@ -34,6 +33,7 @@ class GroupDetailApi(
         )
 
     private companion object {
-        const val GROUPS_PATH = "/api/v2/groups"
+        const val DETAIL_PATH = "/api/v3/groups"
+        const val LEAVE_PATH = "/api/v2/groups"
     }
 }

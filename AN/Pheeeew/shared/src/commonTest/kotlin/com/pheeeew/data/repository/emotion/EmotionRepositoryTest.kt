@@ -6,8 +6,13 @@ import com.pheeeew.core.network.createApiClient
 import com.pheeeew.data.remote.emotion.EmotionApi
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.EmotionBounds
+import com.pheeeew.domain.model.emotion.EmotionContentType
+import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.EmotionState
+import com.pheeeew.domain.model.emotion.MapFilterContent
+import com.pheeeew.domain.model.emotion.MapFilterScope
 import com.pheeeew.domain.repository.emotion.EmotionResult
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
@@ -22,6 +27,56 @@ import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 class EmotionRepositoryTest {
+    @Test
+    fun `필터 목록은 v3에서 좌표 없이 조회하고 다음 페이지는 커서만 전달한다`() =
+        runTest {
+            for (scope in MapFilterScope.entries) {
+                for (content in MapFilterContent.entries) {
+                    val filter =
+                        EmotionSearchFilter(
+                            startDate = "2026-10-01",
+                            endDate = "2026-10-11",
+                            content = content,
+                            scope = scope,
+                            groupId = "11111111-1111-4111-8111-111111111111".takeIf { scope == MapFilterScope.GROUP },
+                        )
+                    var count = 0
+                    val client =
+                        createApiClient(
+                            MockEngine { request ->
+                                assertEquals("/api/v3/emotions", request.url.encodedPath)
+                                assertEquals("Bearer token", request.headers[HttpHeaders.Authorization])
+                                val expected =
+                                    if (count++ == 0) {
+                                        buildMap {
+                                            put("startDate", "2026-10-01")
+                                            put("endDate", "2026-10-11")
+                                            put("contentType", content.name)
+                                            put("scope", scope.name)
+                                            filter.groupId?.let { put("groupId", it) }
+                                        }
+                                    } else {
+                                        mapOf("cursor" to "opaque+/=cursor")
+                                    }
+                                assertEquals(expected.keys, request.url.parameters.names())
+                                expected.forEach { (key, value) -> assertEquals(value, request.url.parameters[key]) }
+                                respond(EMPTY_PAGE, headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                            },
+                            ApiConfig("https://api.example.test"),
+                            { AccessToken("token") },
+                        )
+                    try {
+                        val repository = EmotionRepositoryImpl(EmotionApi(client.requests))
+                        assertIs<EmotionResult.Success<*>>(repository.filteredFirstPage(filter))
+                        assertIs<EmotionResult.Success<*>>(repository.nextFilteredPage("opaque+/=cursor"))
+                        assertEquals(2, count)
+                    } finally {
+                        client.close()
+                    }
+                }
+            }
+        }
+
     @Test
     fun `전체는 bounds만 다음 페이지는 cursor만 보내며 인증과 isMine을 보존한다`() =
         runTest {
@@ -111,6 +166,74 @@ class EmotionRepositoryTest {
             }
         }
 
+    @Test
+    fun `그룹 감정 목록은 v3 경로에서 그룹과 커서를 유지하며 메모와 오디오를 매핑한다`() =
+        runTest {
+            var index = 0
+            val groupId = "0b8f3a2e-5c71-4d9a-b0e4-7f2c1a6d8e39"
+            val client =
+                createApiClient(
+                    MockEngine { request ->
+                        assertEquals("/api/v3/emotions", request.url.encodedPath)
+                        if (index++ == 0) {
+                            assertEquals(setOf("groupId"), request.url.parameters.names())
+                            assertEquals(groupId, request.url.parameters["groupId"])
+                            respond(FEED_PAGE, headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                        } else {
+                            assertEquals(setOf("groupId", "cursor"), request.url.parameters.names())
+                            assertEquals(groupId, request.url.parameters["groupId"])
+                            assertEquals("opaque-cursor", request.url.parameters["cursor"])
+                            respond(EMPTY_PAGE, headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                        }
+                    },
+                    ApiConfig("https://api.example.test"),
+                    { AccessToken("token") },
+                )
+            try {
+                val repository = EmotionRepositoryImpl(EmotionApi(client.requests))
+                val firstPage =
+                    assertIs<EmotionPage>(
+                        assertIs<EmotionResult.Success<*>>(repository.feedPage(groupId, null)).value,
+                    )
+
+                assertEquals(
+                    listOf(EmotionContentType.MEMO, EmotionContentType.AUDIO),
+                    firstPage.items.map { it.contentType },
+                )
+                assertEquals("그룹에 남긴 마음", firstPage.items.first().memo)
+                val audio = firstPage.items[1].audio
+                assertEquals(
+                    "https://audio.example.test/play",
+                    audio?.url,
+                )
+                assertEquals("opaque-cursor", firstPage.nextCursor)
+                assertIs<EmotionResult.Success<*>>(repository.feedPage(groupId, firstPage.nextCursor))
+                assertEquals(2, index)
+            } finally {
+                client.close()
+            }
+        }
+
+    @Test
+    fun `그룹 감정 목록에서 본문이 빠진 항목은 응답 계약 오류로 처리한다`() =
+        runTest {
+            val client =
+                createApiClient(
+                    MockEngine {
+                        respond(MISSING_AUDIO_PAGE, headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                    },
+                    ApiConfig("https://api.example.test"),
+                    { AccessToken("token") },
+                )
+            try {
+                val result = EmotionRepositoryImpl(EmotionApi(client.requests)).feedPage("group-id", null)
+
+                assertIs<EmotionResult.Failure>(result)
+            } finally {
+                client.close()
+            }
+        }
+
     private companion object {
         val PAGE =
             """
@@ -118,6 +241,37 @@ class EmotionRepositoryTest {
               "state":"DISCOURAGED","nickname":"나","createdAt":"2026-09-27T00:00:00Z",
               "isMine":true,"contentType":"MEMO","memo":"메모",
               "emojis":[{"type":"HEART","count":3000000000,"selected":true}]
+            }}],"hasNext":false,"nextCursor":null}
+            """.trimIndent()
+
+        val FEED_PAGE =
+            """
+            {
+              "items": [
+                {"id": 101, "properties": {
+                  "state": "DISCOURAGED", "nickname": "나", "createdAt": "2026-09-27T00:00:00Z",
+                  "isMine": true, "contentType": "MEMO", "memo": "그룹에 남긴 마음",
+                  "emojis": [{"type": "HEART", "count": 3, "selected": true}],
+                  "groupStamp": {"text": "버티자", "textColor": "#FFFFFF", "backgroundColor": "#4A90D9", "frame": "SCALLOP"}
+                }},
+                {"id": 102, "properties": {
+                  "state": "ANGRY", "nickname": "동료", "createdAt": "2026-09-27T00:00:00Z",
+                  "isMine": false, "contentType": "AUDIO", "emojis": [],
+                  "audio": {"playbackUrl": "https://audio.example.test/play", "expiresAt": "2030-01-01T00:00:00Z"}
+                }}
+              ],
+              "hasNext": true,
+              "nextCursor": "opaque-cursor"
+            }
+            """.trimIndent()
+
+        const val EMPTY_PAGE = """{"items":[],"hasNext":false,"nextCursor":null}"""
+
+        val MISSING_AUDIO_PAGE =
+            """
+            {"items":[{"id":103,"properties":{
+              "state":"ANGRY","nickname":"동료","createdAt":"2026-09-27T00:00:00Z",
+              "isMine":false,"contentType":"AUDIO","emojis":[]
             }}],"hasNext":false,"nextCursor":null}
             """.trimIndent()
     }

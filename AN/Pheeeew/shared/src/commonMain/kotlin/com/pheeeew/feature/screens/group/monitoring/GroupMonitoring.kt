@@ -29,6 +29,7 @@ object GroupMonitoringEvents {
                                     "duplicate_name",
                                     "invalid_input",
                                     "rate_limited",
+                                    "join_type_unavailable",
                                     "unavailable",
                                     "unknown",
                                     "cancelled",
@@ -59,6 +60,7 @@ class MonitoredCreateGroupAction(
                         CreateGroupResult.DuplicateName -> "duplicate_name"
                         CreateGroupResult.InvalidInput -> "invalid_input"
                         CreateGroupResult.RateLimited -> "rate_limited"
+                        CreateGroupResult.JoinTypeUnavailable -> "join_type_unavailable"
                         CreateGroupResult.Unavailable -> "unavailable"
                         CreateGroupResult.OutcomeUnknown -> "unknown"
                     }

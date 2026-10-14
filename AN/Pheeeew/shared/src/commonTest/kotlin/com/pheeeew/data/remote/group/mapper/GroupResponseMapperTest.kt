@@ -81,6 +81,52 @@ class GroupResponseMapperTest {
         assertEquals("memberCount", exception.field)
     }
 
+    @Test
+    fun `admission policy is preserved and unknown policy is rejected`() {
+        com.pheeeew.domain.model.group.GroupJoinType.entries.forEach { type ->
+            assertEquals(type, GroupResponseMapper.toDomain(groupDto().copy(joinType = type.name)).joinType)
+        }
+        assertEquals(
+            "joinType",
+            assertFailsWith<GroupContractException> {
+                GroupResponseMapper.toDomain(groupDto().copy(joinType = "UNKNOWN"))
+            }.field,
+        )
+    }
+
+    @Test
+    fun `missing and null admission policy fail decoding for list and detail responses`() {
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val list = json.encodeToString(GroupResponseDto.serializer(), groupDto())
+        val detail =
+            list.dropLast(1) +
+                ",\"description\":null,\"weeklyStampCount\":0,\"weeklyStampRank\":null,\"weeklyEmotionPressCount\":0,\"weeklyEmotionPressRank\":null}"
+        json.decodeFromString(GroupResponseDto.serializer(), list)
+        json.decodeFromString(
+            com.pheeeew.data.remote.group.dto.GroupDetailResponseDto
+                .serializer(),
+            detail,
+        )
+        listOf(list, detail).forEachIndexed { index, encoded ->
+            listOf(
+                encoded.replace("\"joinType\":\"PUBLIC\",", ""),
+                encoded.replace("\"joinType\":\"PUBLIC\"", "\"joinType\":null"),
+            ).forEach { invalid ->
+                assertFailsWith<kotlinx.serialization.SerializationException> {
+                    if (index == 0) {
+                        json.decodeFromString(GroupResponseDto.serializer(), invalid)
+                    } else {
+                        json.decodeFromString(
+                            com.pheeeew.data.remote.group.dto.GroupDetailResponseDto
+                                .serializer(),
+                            invalid,
+                        )
+                    }
+                }
+            }
+        }
+    }
+
     private fun groupDto(
         frame: String = "CIRCLE",
         name: String = "test group",
@@ -91,6 +137,7 @@ class GroupResponseMapperTest {
         description = null,
         inviteCode = "invite",
         role = "OWNER",
+        joinType = "PUBLIC",
         memberCount = memberCount,
         stamp = stampDto(frame),
     )

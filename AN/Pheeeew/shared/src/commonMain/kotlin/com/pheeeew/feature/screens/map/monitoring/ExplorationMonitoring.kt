@@ -24,6 +24,7 @@ object ExplorationEvents {
         )
 
     private val number = PropertyRule(ValueType.INTEGER, required = true, minimum = 0.0)
+    private val flag = PropertyRule(ValueType.BOOLEAN, required = true)
     private val visit = mapOf("view_id" to text(), "entry_source" to text("map", "list"))
     private val load =
         visit +
@@ -42,6 +43,20 @@ object ExplorationEvents {
     private val detail =
         visit + mapOf("detail_view_id" to text(), "entry_key" to text(), "is_own" to PropertyRule(ValueType.BOOLEAN))
     val mapLoaded = EventDefinition("map_emotions_load_finished", properties = load)
+    val mapPinPageReceived =
+        EventDefinition(
+            "map_emotion_pins_page_received",
+            properties =
+                visit +
+                    mapOf(
+                        "page_index" to number,
+                        "pin_count" to number,
+                        "invalid_pin_count" to number,
+                        "has_next" to flag,
+                        "data_origin" to text("network", "cache"),
+                        "request_duration_ms" to number,
+                    ),
+        )
     val listViewed = EventDefinition("nearby_list_viewed", properties = visit)
     val listLoaded = EventDefinition("nearby_list_load_finished", properties = load)
     val detailOpened = EventDefinition("emotion_detail_opened", properties = detail)
@@ -57,7 +72,8 @@ object ExplorationEvents {
                     ),
         )
     val detailViewed = EventDefinition("emotion_detail_viewed", properties = detail + ("outcome" to text("success")))
-    val definitions = listOf(mapLoaded, listViewed, listLoaded, detailOpened, detailLoaded, detailViewed)
+    val definitions =
+        listOf(mapLoaded, mapPinPageReceived, listViewed, listLoaded, detailOpened, detailLoaded, detailViewed)
 }
 
 private fun id() = Uuid.random().toString()
@@ -90,6 +106,30 @@ class ContentMonitoring(
     private val pending = mutableSetOf<ContentLoad>()
     private val impressions = mutableMapOf<Long, String>()
     private val bodies = mutableSetOf<Long>()
+
+    fun mapPinPageReceived(
+        pageIndex: Int,
+        pinCount: Int,
+        invalidPinCount: Int,
+        hasNext: Boolean,
+        dataOrigin: String,
+        requestDurationMillis: Long,
+    ) {
+        if (source != "map") return
+        monitoring.emit(
+            ExplorationEvents.mapPinPageReceived,
+            fields() +
+                mapOf(
+                    "page_index" to pageIndex.toLong().value(),
+                    "pin_count" to pinCount.toLong().value(),
+                    "invalid_pin_count" to invalidPinCount.toLong().value(),
+                    "has_next" to EventValue.Flag(hasNext),
+                    "data_origin" to dataOrigin.value(),
+                    "request_duration_ms" to requestDurationMillis.value(),
+                ),
+            monitoring.safeContext(),
+        )
+    }
 
     fun itemVisible(
         entry: Long,
@@ -222,6 +262,7 @@ class ContentLoad internal constructor(
     fun ready(dataOrigin: String = origin) {
         if (ended) return
         origin = dataOrigin
+        if (responseMark != null) return
         responseMark = TimeSource.Monotonic.markNow()
         responseAt = Clock.System.now().toEpochMilliseconds()
         duration = start.elapsedNow().inWholeMilliseconds

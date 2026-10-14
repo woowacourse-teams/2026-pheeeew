@@ -4,8 +4,10 @@ import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.NetworkFailure
 import com.pheeeew.data.remote.emotion.EmotionApi
 import com.pheeeew.data.remote.emotion.EmotionResponseMapper
+import com.pheeeew.data.remote.emotion.toQueryParameters
 import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.repository.emotion.EmotionFailure
 import com.pheeeew.domain.repository.emotion.EmotionRepository
 import com.pheeeew.domain.repository.emotion.EmotionResult
@@ -28,8 +30,25 @@ internal class EmotionRepositoryImpl(
             },
         ).mapped(EmotionResponseMapper::page)
 
+    override suspend fun filteredFirstPage(filter: EmotionSearchFilter) =
+        api.listWithoutBounds(filter.toQueryParameters()).mapped(EmotionResponseMapper::page)
+
     override suspend fun nextPage(cursor: String) =
         api.list(mapOf("cursor" to cursor)).mapped(EmotionResponseMapper::page)
+
+    override suspend fun nextFilteredPage(cursor: String) =
+        api.listWithoutBounds(mapOf("cursor" to cursor)).mapped(EmotionResponseMapper::page)
+
+    override suspend fun feedPage(
+        groupId: String,
+        cursor: String?,
+    ) = api
+        .listWithoutBounds(
+            buildMap {
+                put("groupId", groupId)
+                cursor?.let { put("cursor", it) }
+            },
+        ).mapped(EmotionResponseMapper::feedPage)
 
     override suspend fun detail(id: Long) = api.detail(id).mapped(EmotionResponseMapper::emotion)
 

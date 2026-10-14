@@ -24,13 +24,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
-import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.navigation.PredictiveBackContent
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
@@ -40,7 +39,6 @@ import com.pheeeew.feature.screens.settings.components.ContactCard
 import com.pheeeew.feature.screens.settings.components.SETTINGS_CONTACT_EMAIL
 import com.pheeeew.feature.screens.settings.components.SettingsActionRow
 import com.pheeeew.feature.screens.settings.components.SettingsCard
-import com.pheeeew.feature.screens.settings.components.SettingsColors
 import com.pheeeew.feature.screens.settings.components.SettingsDivider
 import com.pheeeew.feature.screens.settings.components.SettingsHeader
 import com.pheeeew.feature.screens.settings.components.SettingsIcon
@@ -48,6 +46,14 @@ import com.pheeeew.feature.screens.settings.components.SettingsSectionTitle
 import com.pheeeew.feature.screens.settings.legal.LegalDocument
 import com.pheeeew.feature.screens.settings.legal.LegalDocumentRoute
 import kotlinx.coroutines.launch
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.settings_app_section
+import pheeeew.shared.generated.resources.settings_app_version
+import pheeeew.shared.generated.resources.settings_help_section
+import pheeeew.shared.generated.resources.settings_legal_open_source
+import pheeeew.shared.generated.resources.settings_legal_privacy
+import pheeeew.shared.generated.resources.settings_permissions
 
 @Composable
 fun SettingsScreen(
@@ -57,6 +63,7 @@ fun SettingsScreen(
     onPrivacyPolicyClick: () -> Unit,
     onOpenSourceLicenseClick: () -> Unit,
     onContactClick: () -> Unit,
+    onVersionClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -71,10 +78,10 @@ fun SettingsScreen(
     ) {
         SettingsHeader(onBackClick = onBackClick)
         Spacer(Modifier.height(25.dp))
-        SettingsSectionTitle("앱 설정")
+        SettingsSectionTitle(stringResource(Res.string.settings_app_section))
         SettingsCard {
             SettingsActionRow(
-                title = "접근 권한 설정",
+                title = stringResource(Res.string.settings_permissions),
                 icon = SettingsIcon.Tune,
                 highlighted = true,
                 onClick = onPermissionClick,
@@ -82,13 +89,26 @@ fun SettingsScreen(
         }
 
         Spacer(Modifier.height(37.dp))
-        SettingsSectionTitle("이용 안내")
+        SettingsSectionTitle(stringResource(Res.string.settings_help_section))
         SettingsCard {
-            SettingsActionRow("개인정보 처리방침", SettingsIcon.Shield, onClick = onPrivacyPolicyClick)
+            SettingsActionRow(
+                stringResource(Res.string.settings_legal_privacy),
+                SettingsIcon.Shield,
+                onClick = onPrivacyPolicyClick,
+            )
             SettingsDivider()
-            SettingsActionRow("오픈소스 라이선스", SettingsIcon.Document, onClick = onOpenSourceLicenseClick)
+            SettingsActionRow(
+                stringResource(Res.string.settings_legal_open_source),
+                SettingsIcon.Document,
+                onClick = onOpenSourceLicenseClick,
+            )
             SettingsDivider()
-            SettingsActionRow("앱 버전", SettingsIcon.Info, trailingText = appVersion)
+            SettingsActionRow(
+                stringResource(Res.string.settings_app_version),
+                SettingsIcon.Info,
+                trailingText = appVersion,
+                onClick = onVersionClick,
+            )
         }
 
         Spacer(Modifier.height(32.dp))
@@ -101,9 +121,11 @@ fun SettingsScreen(
     appVersion: String,
     onBackClick: () -> Unit,
     permissionSettingsLauncher: AppSettingsLauncher,
-    monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
+    monitoring: Monitoring = NoOpMonitoring,
     modifier: Modifier = Modifier,
 ) {
+    var versionTaps by remember { mutableStateOf(0) }
+    var analyticsIdentity by remember { mutableStateOf<String?>(null) }
     var selectedLegalDocument by remember { mutableStateOf<LegalDocument?>(null) }
     val telemetry = remember(monitoring) { ProductMonitoring(monitoring, "settings") }
     val legalTelemetry = remember(monitoring) { ProductMonitoring(monitoring, "legaldocument") }
@@ -121,6 +143,15 @@ fun SettingsScreen(
                     SettingsScreen(
                         appVersion = appVersion,
                         onBackClick = onBackClick,
+                        onVersionClick = {
+                            versionTaps++
+                            if (versionTaps == 7) {
+                                versionTaps = 0
+                                coroutineScope.launch {
+                                    analyticsIdentity = monitoring.analyticsIdentity() ?: "분석 기능이 초기화되지 않았어요."
+                                }
+                            }
+                        },
                         onPermissionClick = {
                             telemetry.emit("settings_action_selected", labels("action" to "permission"))
                             coroutineScope.launch {
@@ -178,6 +209,20 @@ fun SettingsScreen(
                             document = document,
                             onBack = { selectedLegalDocument = null },
                         )
+                    },
+                )
+            }
+
+            analyticsIdentity?.let { identity ->
+                androidx.compose.material3.AlertDialog(
+                    onDismissRequest = { analyticsIdentity = null },
+                    title = { Text("분석용 익명 ID") },
+                    text = {
+                        androidx.compose.foundation.text.selection
+                            .SelectionContainer { Text(identity) }
+                    },
+                    confirmButton = {
+                        androidx.compose.material3.TextButton(onClick = { analyticsIdentity = null }) { Text("닫기") }
                     },
                 )
             }

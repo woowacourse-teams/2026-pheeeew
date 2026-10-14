@@ -20,6 +20,7 @@ import com.pheeeew.groups.application.dto.GroupRankingResult;
 import com.pheeeew.groups.application.dto.GroupResult;
 import com.pheeeew.groups.application.dto.GroupStampCommand;
 import com.pheeeew.groups.application.dto.GroupStatePressRankingResult;
+import com.pheeeew.groups.domain.GroupJoinType;
 import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.groups.domain.StampFrame;
 import com.pheeeew.groups.domain.repository.GroupMemberRepository;
@@ -437,7 +438,7 @@ class GroupRankingIntegrationTest {
         // given
         GroupResult 그룹 = 그룹을_만든다("한모임");
         UUID 떠날_기기 = 기기_식별자를_만든다();
-        groupService.join(떠날_기기, 그룹.inviteCode());
+        groupService.joinByInviteCode(떠날_기기, 그룹.inviteCode());
         groupService.leave(그룹.publicId(), 떠날_기기);
         눌린_것으로_둔다(그룹, 이번_주_월요일(), EmotionState.ANGRY, 1);
 
@@ -649,7 +650,7 @@ class GroupRankingIntegrationTest {
         Device 그룹장 = 기기를_저장한다();
         Device 떠날_기기 = 기기를_저장한다();
         GroupResult 그룹 = 그룹을_만든다("한숨모임", 그룹장.getPublicId());
-        groupService.join(떠날_기기.getPublicId(), 그룹.inviteCode());
+        groupService.joinByInviteCode(떠날_기기.getPublicId(), 그룹.inviteCode());
         개인_프레스를_저장한다(jdbcClient, 그룹장.getId(), 이번_주_월요일(), EmotionState.ANGRY, 2);
         개인_프레스를_저장한다(jdbcClient, 떠날_기기.getId(), 이번_주_월요일(), EmotionState.ANGRY, 4);
 
@@ -806,6 +807,7 @@ class GroupRankingIntegrationTest {
                 devicePublicId,
                 name,
                 null,
+                GroupJoinType.PRIVATE,
                 GroupStampCommand.of("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
         );
     }
@@ -815,6 +817,7 @@ class GroupRankingIntegrationTest {
                 기기를_저장한다().getPublicId(),
                 name,
                 null,
+                GroupJoinType.PRIVATE,
                 GroupStampCommand.of("기본", "#FFFFFF", "#4A90D9", StampFrame.CIRCLE)
         );
     }

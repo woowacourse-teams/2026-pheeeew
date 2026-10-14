@@ -15,6 +15,8 @@ fun Group.toSummaryUiModel(weeklyStampCount: Long? = null): GroupSummaryUiModel 
         memberCount = memberCount,
         weeklyStampCount = weeklyStampCount,
         stamp = stamp.toAppearanceUiModel(),
+        description = description,
+        joinType = joinType.toUiJoinType(),
     )
 
 fun GroupPreview.toSummaryUiModel(): GroupSummaryUiModel =
@@ -24,9 +26,11 @@ fun GroupPreview.toSummaryUiModel(): GroupSummaryUiModel =
         memberCount = memberCount,
         weeklyStampCount = null,
         stamp = stamp.toAppearanceUiModel(),
+        description = description,
+        joinType = null,
     )
 
-private fun GroupStamp.toAppearanceUiModel() =
+internal fun GroupStamp.toAppearanceUiModel() =
     StampAppearanceUiModel(
         label = text,
         shape = frame.toUiShape(),
