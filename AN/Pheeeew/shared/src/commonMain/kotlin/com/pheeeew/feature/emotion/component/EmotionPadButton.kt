@@ -80,7 +80,10 @@ internal fun EmotionPadButton(
     onMotionChanged: () -> Unit,
     onTap: (Offset?) -> Unit,
     modifier: Modifier = Modifier,
+    measurement: ((String) -> Unit)? = null,
 ) {
+    val pendingDraw = remember(kind) { doubleArrayOf(-1.0) }
+    val lastDrawnCount = remember(kind) { longArrayOf(Long.MIN_VALUE) }
     val density = LocalDensity.current
     val focused = LocalWindowInfo.current.isWindowFocused
     val inputEnabled by rememberUpdatedState(enabled)
@@ -124,6 +127,10 @@ internal fun EmotionPadButton(
                             return@awaitEachGesture
                         }
                         pointer = down.position
+                        if (measurement != null) {
+                            pendingDraw[0] = now()
+                            runCatching { measurement.invoke("ui_down kind=${kind.name}") }
+                        }
                         motion.press(now(), reducedMotion)
                         onMotionChanged()
                         val up = waitForUpOrCancellation(pass = PointerEventPass.Initial)
@@ -211,6 +218,20 @@ internal fun EmotionPadButton(
                             translationY = (transform.y.toFloat() - 4f) * density.density
                             scaleX = transform.scale.toFloat()
                             scaleY = scaleX
+                        }.pressProbeDraw(measurement) {
+                            val transform = motion.sample(frameTime.value)
+                            drawContent()
+                            val down = pendingDraw[0]
+                            if (measurement != null && down >= 0.0) {
+                                if (transform.y != 0.0 || transform.scale != 1.0) {
+                                    pendingDraw[0] = -1.0
+                                    runCatching {
+                                        measurement.invoke(
+                                            "ui_face_draw kind=${kind.name} delay_ms=${now() - down}",
+                                        )
+                                    }
+                                }
+                            }
                         }.testTag("emotion-surface-${kind.name}"),
             )
         }
@@ -234,7 +255,14 @@ internal fun EmotionPadButton(
             Spacer(Modifier.height((3.6f * unit).dp))
             BasicText(
                 text = countText,
-                modifier = Modifier.fillMaxWidth(),
+                modifier =
+                    Modifier.fillMaxWidth().pressProbeDraw(measurement) {
+                        drawContent()
+                        if (measurement != null && lastDrawnCount[0] != count) {
+                            lastDrawnCount[0] = count
+                            runCatching { measurement.invoke("ui_count_draw kind=${kind.name} count=$count") }
+                        }
+                    },
                 style =
                     TextStyle(
                         color = emotionCountColor,

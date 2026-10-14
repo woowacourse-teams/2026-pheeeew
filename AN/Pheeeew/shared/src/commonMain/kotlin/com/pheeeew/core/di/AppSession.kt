@@ -12,6 +12,7 @@ import kotlinx.coroutines.cancel
 class AppSession internal constructor(
     apiClient: ApiClient,
     connectivityObserver: ConnectivityObserver,
+    measurement: ((String) -> Unit)? = null,
 ) {
     private val job = SupervisorJob()
 
@@ -20,7 +21,7 @@ class AppSession internal constructor(
     private val scope = CoroutineScope(job + Dispatchers.Main.immediate)
 
     val pressRepository: PressRepository =
-        createPressRepository(apiClient, scope, connectivityObserver = connectivityObserver)
+        createPressRepository(apiClient, scope, connectivityObserver = connectivityObserver, measurement = measurement)
 
     fun onForeground() {
         pressRepository.onForeground()

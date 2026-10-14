@@ -7,6 +7,7 @@ import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.network.AndroidConnectivityObserver
 import com.pheeeew.core.network.ApiConfig
+import com.pheeeew.core.network.DebugPressFaultInjection
 import com.pheeeew.data.local.device.AndroidDeviceCredentialStorage
 import com.pheeeew.data.remote.device.attestation.AndroidPlayIntegrityProofProvider
 import com.pheeeew.domain.model.device.DevicePlatform
@@ -27,6 +28,7 @@ object AndroidApiDependencies {
     ): ApiDependencies {
         require(build.isDebug || applicationId == "com.pheeeew") { "Release requires the official package" }
         require(build.attestationMode != "required" || cloudProjectNumber > 0) { "Play Integrity project is required" }
+        DebugPressFaultInjection.configure(if (build.isDebug && build.environment == "dev") context.filesDir else null)
         val partition = ApiConfig(build.baseUrl).deviceStorageEnvironment()
         check(selectedBuild == null || selectedBuild == build)
         return instance ?: ApiDependencies
@@ -35,6 +37,15 @@ object AndroidApiDependencies {
                 AndroidDeviceCredentialStorage(context.applicationContext, partition, build.legacyCredentialPolicy),
                 DevicePlatform.ANDROID,
                 monitoring = monitoring,
+                measurement =
+                    if (build.isDebug) {
+                        { message ->
+                            Log.i("PressMeasurement", message)
+                            Unit
+                        }
+                    } else {
+                        null
+                    },
                 connectivityObserver = AndroidConnectivityObserver(context.applicationContext),
                 createProofProvider = { AndroidPlayIntegrityProofProvider(context, cloudProjectNumber) },
                 diagnostics =

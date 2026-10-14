@@ -132,6 +132,7 @@ internal fun PressScreen(
                 enabled = true,
                 onEmotionTap = onEmotionTap,
                 arrangement = EmotionPadArrangement.TwoThree,
+                measurement = LocalPressUiMeasurement.current,
                 modifier = Modifier.width(padWidth).padding(horizontal = 16.dp),
             )
         }

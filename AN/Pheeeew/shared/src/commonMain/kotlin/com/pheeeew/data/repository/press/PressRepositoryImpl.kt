@@ -45,6 +45,7 @@ internal class PressRepositoryImpl(
     connectivity: Flow<Boolean>? = null,
     private val nowMillis: () -> Long = monotonicClock(),
     private val monitoring: Monitoring = NoOpMonitoring,
+    private val measurement: ((String) -> Unit)? = null,
     private val wallClock: () -> Long = {
         Clock.System
             .now()
@@ -108,6 +109,7 @@ internal class PressRepositoryImpl(
             return PressAcceptance.NumericLimit
         }
         outstanding++
+        observe { "input emotion=${emotion.name} pending=$outstanding" }
         optimisticAllPressCount++
         optimisticCounts[emotion] = optimisticCounts.getValue(emotion) + 1L
         if (pausedNotice == PressSessionNotice.Rejected) pausedNotice = null
@@ -210,6 +212,11 @@ internal class PressRepositoryImpl(
             publish(mutableState.value.copy(isSending = true))
             val result =
                 try {
+                    observe {
+                        "send sequence=${write.batch.sequence} counts=${write.batch.counts.entries.joinToString(
+                            ";",
+                        ) { "${it.key.name}:${it.value}" }}"
+                    }
                     sender.send(write.batch)
                 } catch (cancelled: CancellationException) {
                     // Cancellation does not prove the server didn't apply the request.
@@ -221,6 +228,7 @@ internal class PressRepositoryImpl(
                 } catch (_: Exception) {
                     PressSendResult.OutcomeUnknown
                 }
+            observe { "result sequence=${write.batch.sequence} outcome=${result::class.simpleName}" }
             when (result) {
                 is PressSendResult.Accepted -> {
                     runCatching {
@@ -515,7 +523,21 @@ internal class PressRepositoryImpl(
         }
     }
 
+    private inline fun observe(message: () -> String) {
+        val recorder = measurement ?: return
+        runCatching { recorder(message()) }
+    }
+
     private fun publish(base: PressSessionState) {
+        observe {
+            val counts =
+                base.myToday
+                    ?.counts
+                    ?.entries
+                    ?.joinToString(";") { "${it.key.name}:${it.value}" }
+            "state pending=$outstanding unknown=${pendingWrite?.uncertain == true} " +
+                "my=${base.myToday?.total} counts=$counts"
+        }
         mutableState.value =
             base.copy(
                 optimisticCounts = optimisticCounts.filterValues { it > 0L },
