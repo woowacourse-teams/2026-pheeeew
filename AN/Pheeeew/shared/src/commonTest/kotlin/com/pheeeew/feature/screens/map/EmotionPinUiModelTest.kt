@@ -4,6 +4,11 @@ import com.pheeeew.domain.model.emotion.EmotionMapPin
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.emotion_name_angry
+import pheeeew.shared.generated.resources.emotion_name_annoyed
+import pheeeew.shared.generated.resources.emotion_name_blocked
+import pheeeew.shared.generated.resources.emotion_name_defeated
+import pheeeew.shared.generated.resources.emotion_name_tired
 import pheeeew.shared.generated.resources.ic_emotion_angry
 import pheeeew.shared.generated.resources.ic_emotion_discouraged
 import pheeeew.shared.generated.resources.ic_emotion_exhausted
@@ -18,12 +23,35 @@ class EmotionPinUiModelTest {
         val expected =
             mapOf(
                 EmotionState.FRUSTRATED to
-                    Triple(EmotionTypeUiModel.FRUSTRATED, "답답", Res.drawable.ic_emotion_frustrated),
-                EmotionState.IRRITATED to Triple(EmotionTypeUiModel.IRRITATED, "짜증", Res.drawable.ic_emotion_irritated),
-                EmotionState.EXHAUSTED to Triple(EmotionTypeUiModel.EXHAUSTED, "지침", Res.drawable.ic_emotion_exhausted),
+                    Triple(
+                        EmotionTypeUiModel.FRUSTRATED,
+                        Res.string.emotion_name_blocked,
+                        Res.drawable.ic_emotion_frustrated,
+                    ),
+                EmotionState.IRRITATED to
+                    Triple(
+                        EmotionTypeUiModel.IRRITATED,
+                        Res.string.emotion_name_annoyed,
+                        Res.drawable.ic_emotion_irritated,
+                    ),
+                EmotionState.EXHAUSTED to
+                    Triple(
+                        EmotionTypeUiModel.EXHAUSTED,
+                        Res.string.emotion_name_tired,
+                        Res.drawable.ic_emotion_exhausted,
+                    ),
                 EmotionState.DISCOURAGED to
-                    Triple(EmotionTypeUiModel.DISCOURAGED, "좌절", Res.drawable.ic_emotion_discouraged),
-                EmotionState.ANGRY to Triple(EmotionTypeUiModel.ANGRY, "분노", Res.drawable.ic_emotion_angry),
+                    Triple(
+                        EmotionTypeUiModel.DISCOURAGED,
+                        Res.string.emotion_name_defeated,
+                        Res.drawable.ic_emotion_discouraged,
+                    ),
+                EmotionState.ANGRY to
+                    Triple(
+                        EmotionTypeUiModel.ANGRY,
+                        Res.string.emotion_name_angry,
+                        Res.drawable.ic_emotion_angry,
+                    ),
             )
 
         expected.forEach { (state, mapping) ->

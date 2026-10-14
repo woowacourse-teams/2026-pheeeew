@@ -26,6 +26,8 @@ enum class DeviceSessionFailureKind {
     NETWORK,
     CONTRACT,
     SERVER,
+    AUTHENTICATION,
+    UNEXPECTED,
     ATTESTATION,
     RATE_LIMITED,
     SESSION_CHANGED,

@@ -66,7 +66,12 @@ class MonitoringRuntime(
                                         (value as? JsonPrimitive)?.let { key to it }
                                     }.toMap()
                             val safe = registry.sanitizeEnvelope(event.name, fields)
-                            if (safe == null || safe["anonymous_id"] != JsonPrimitive(loaded.anonymousId) ||
+                            if (safe == null ||
+                                (
+                                    event.name == MeaningfulActivity.NAME &&
+                                        safe["activity_date"] != JsonPrimitive(activityDate(event.timestamp))
+                                ) ||
+                                safe["anonymous_id"] != JsonPrimitive(loaded.anonymousId) ||
                                 safe["environment"] != JsonPrimitive(config.environment)
                             ) {
                                 rejected.update { it + 1 }
@@ -137,6 +142,9 @@ class MonitoringRuntime(
         if (!config.configured) return
         try {
             val definition = event.definition
+            if (registry.definition(definition.name, definition.version) != definition) return
+            // Daily events must pass the durable deduplication path.
+            if (definition.name == MeaningfulActivity.NAME) return
             val fields = event.properties().mapValues { it.value.primitive() }
             val safe = registry.validate(definition, fields)
             if (safe == null || context.owner != owner) {
@@ -148,6 +156,67 @@ class MonitoringRuntime(
             enqueue { if (healthy) record(definition, safe, context, timestamp) }
         } catch (_: Exception) {
             rejected.update { it + 1 }
+        }
+    }
+
+    override suspend fun analyticsIdentity(): String? = initial.await()?.anonymousId
+
+    override fun recordSuccessfulActivity(
+        type: ActivityType,
+        occurredAt: Long,
+    ) {
+        if (!config.configured || registry.definition(MeaningfulActivity.NAME, 1) == null) return
+        enqueue {
+            if (!healthy) return@enqueue
+            val currentTime = now()
+            if (occurredAt < 0 || occurredAt > currentTime ||
+                currentTime - occurredAt > ACTIVITY_MAX_AGE
+            ) {
+                return@enqueue
+            }
+            val current = state!!
+            val date = activityDate(occurredAt)
+            val key = "$date:${type.wireValue}"
+            if (key in current.meaningfulDays) return@enqueue
+            if (current.pending.size >= config.queueCapacity) {
+                rejected.update { it + 1 }
+                return@enqueue
+            }
+            val fields =
+                JsonObject(
+                    mapOf(
+                        "anonymous_id" to JsonPrimitive(current.anonymousId),
+                        "event_id" to JsonPrimitive(newId()),
+                        "event_schema_version" to JsonPrimitive(1),
+                        "activity_date" to JsonPrimitive(date),
+                        "activity_type" to JsonPrimitive(type.wireValue),
+                        "audience" to
+                            JsonPrimitive(
+                                if (config.environment == "dev" ||
+                                    config.collection.isTestUser == true
+                                ) {
+                                    "test"
+                                } else {
+                                    "unknown"
+                                },
+                            ),
+                        "environment" to JsonPrimitive(config.environment),
+                        "platform" to JsonPrimitive(config.platform),
+                        "app_version" to JsonPrimitive(config.appVersion),
+                        "measurement_version" to JsonPrimitive(MeaningfulActivity.VERSION),
+                    ),
+                )
+            val next =
+                current.copy(
+                    meaningfulDays =
+                        current.meaningfulDays.filterValues { currentTime - it <= ACTIVITY_KEY_RETENTION } +
+                            (key to occurredAt),
+                    pending = current.pending + EventEnvelope(MeaningfulActivity.NAME, occurredAt, fields),
+                )
+            // Commit the receipt and outbox together; never mark success only in memory.
+            store.write(monitoringJson.encodeToString(next))
+            state = next
+            drain()
         }
     }
 
@@ -322,6 +391,7 @@ class MonitoringRuntime(
     }
 
     private fun activeDay(context: EventContext) {
+        if (registry.definition(LifecycleEvents.activeDay.name, LifecycleEvents.activeDay.version) == null) return
         val date = config.activeDay(now())
         if (date in state!!.activeDays) return
         state = state!!.copy(activeDays = (state!!.activeDays + date).takeLast(4096))
@@ -334,6 +404,7 @@ class MonitoringRuntime(
         context: EventContext,
         time: Long,
     ) {
+        if (registry.definition(definition.name, definition.version) != definition) return
         val common =
             mapOf(
                 "event_id" to JsonPrimitive(newId()),

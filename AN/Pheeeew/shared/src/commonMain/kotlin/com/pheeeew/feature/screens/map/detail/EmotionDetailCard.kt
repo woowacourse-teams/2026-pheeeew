@@ -53,6 +53,7 @@ import com.pheeeew.feature.component.stamp.GroupStamp
 import com.pheeeew.feature.screens.map.monitoring.rememberMonitoringForeground
 import com.pheeeew.feature.screens.map.record.noRippleClickable
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_close
 import pheeeew.shared.generated.resources.ic_more
@@ -186,7 +187,7 @@ private fun EmotionDetailEmotionHeader(
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Image(
             painterResource(uiModel.emotion.icon),
-            uiModel.emotion.label,
+            stringResource(uiModel.emotion.label),
             Modifier.size(64.dp),
         )
         Column(
@@ -194,7 +195,7 @@ private fun EmotionDetailEmotionHeader(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
-                uiModel.emotion.label,
+                stringResource(uiModel.emotion.label),
                 Modifier
                     .background(Color(0xFFF3C6D7), AppShapes.Pill)
                     .padding(horizontal = 16.dp, vertical = 4.dp),

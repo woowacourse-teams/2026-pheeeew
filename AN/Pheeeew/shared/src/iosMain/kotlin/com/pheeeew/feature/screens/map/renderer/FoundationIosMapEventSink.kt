@@ -1,9 +1,14 @@
 package com.pheeeew.feature.screens.map.renderer
 
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
+import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 
 interface FoundationIosMapEventSink {
+    fun onCameraMovingChanged(isMoving: Boolean)
+
+    fun onCameraSaved(camera: MapCameraSnapshotUiModel)
+
     fun onHighlightedPinPositionChanged(position: HighlightedPinPosition?)
 
     fun onContentPresented(
@@ -13,6 +18,8 @@ interface FoundationIosMapEventSink {
 
     fun onEmotionPinClick(id: Long)
 
+    fun onRegionClusterClick(id: String)
+
     fun onMapBackgroundClick()
 
     fun onRendererUnavailable()
@@ -21,11 +28,13 @@ interface FoundationIosMapEventSink {
 
     fun onMapRecovered()
 
+    fun onMemoryPressure()
+
     fun onRecordViewportChanged(
         centerX: Float,
         centerY: Float,
         radius: Float,
     )
 
-    fun onViewportChanged(bounds: EmotionMapBounds)
+    fun onViewportChanged(viewport: EmotionMapViewport)
 }

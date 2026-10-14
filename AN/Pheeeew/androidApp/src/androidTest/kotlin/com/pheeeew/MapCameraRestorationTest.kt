@@ -30,6 +30,12 @@ class MapCameraRestorationTest {
         awaitInitialLocationCamera(initial.second)
         onMain {
             initial.second.cameraPosition =
+                CameraPosition.Builder(initial.second.cameraPosition).bearing(0.0).build()
+        }
+        SystemClock.sleep(1000)
+        onMain { compassPosition(initial.first) }
+        onMain {
+            initial.second.cameraPosition =
                 CameraPosition
                     .Builder()
                     .target(LatLng(37.51, 127.04))
@@ -104,7 +110,7 @@ class MapCameraRestorationTest {
     private fun compassPosition(map: MapView): List<Int> {
         val compass = map.findViewWithTag<View>("compassView")
         assertNotNull(compass)
-        assertTrue("Rotated map compass must be visible", compass.isShown && compass.alpha > 0f)
+        assertTrue("Map compass must be visible", compass.isShown && compass.alpha > 0f)
         val position = IntArray(2)
         compass.getLocationOnScreen(position)
         return position.toList()

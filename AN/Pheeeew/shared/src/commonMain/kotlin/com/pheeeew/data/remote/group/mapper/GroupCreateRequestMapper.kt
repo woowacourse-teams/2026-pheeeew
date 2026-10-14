@@ -13,6 +13,7 @@ object GroupCreateRequestMapper {
             name = command.name,
             description = command.description?.let(::JsonPrimitive) ?: JsonNull,
             stamp = command.stamp.toRequestDto(),
+            joinType = command.joinType.name,
         )
 
     private fun GroupStamp.toRequestDto(): GroupStampRequestDto =

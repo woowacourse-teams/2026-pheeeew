@@ -1,6 +1,7 @@
 package com.pheeeew.feature.screens.map.renderer
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -10,6 +11,7 @@ import androidx.compose.ui.viewinterop.UIKitInteropProperties
 import androidx.compose.ui.viewinterop.UIKitView
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
+import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
@@ -22,27 +24,70 @@ private const val FALLBACK_LONGITUDE = 127.147538132656
 @Composable
 internal actual fun NativeMap(
     state: MapUiModel,
+    isVisible: Boolean,
+    isMounted: Boolean,
+    savedCamera: MapCameraSnapshotUiModel?,
+    onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
+    onMemoryPressure: () -> Unit,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
-    onViewportChanged: (EmotionMapBounds) -> Unit,
+    onViewportChanged: (EmotionMapViewport) -> Unit,
+    onCameraMovingChanged: (Boolean) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
+    onRegionClusterClick: (String) -> Unit,
     onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
     modifier: Modifier,
 ) {
+    val currentOnCameraMovingChanged by rememberUpdatedState(onCameraMovingChanged)
+    DisposableEffect(isVisible, isMounted) {
+        if (!isVisible || !isMounted) currentOnCameraMovingChanged(false)
+        onDispose { currentOnCameraMovingChanged(false) }
+    }
     val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
     val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
+    val currentOnRegionClusterClick by rememberUpdatedState(onRegionClusterClick)
     val currentOnMapBackgroundClick by rememberUpdatedState(onMapBackgroundClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
+    val currentOnCameraSaved by rememberUpdatedState(onCameraSaved)
+    val currentOnMemoryPressure by rememberUpdatedState(onMemoryPressure)
     val currentOnRecordViewportChanged by rememberUpdatedState(onRecordViewportChanged)
     val currentOnViewportChanged by rememberUpdatedState(onViewportChanged)
+    val emotionPinCoordinates =
+        remember(state.emotionPins) {
+            state.emotionPins.map {
+                FoundationIosEmotionPinCoordinateUiModel(
+                    id = it.id,
+                    latitude = it.latitude,
+                    longitude = it.longitude,
+                    imageKey = it.symbolImageKey(),
+                    rotationDegrees = it.rotationDegrees,
+                )
+            }
+        }
+    val regionClusterCoordinates =
+        remember(state.regionClusters) {
+            state.regionClusters.map {
+                FoundationIosRegionClusterCoordinateUiModel(it.id, it.latitude, it.longitude, it.symbolImageKey())
+            }
+        }
+    val allSymbolImages =
+        remember(state.emotionPinSymbolImages, state.regionClusterSymbolImages) {
+            (state.emotionPinSymbolImages + state.regionClusterSymbolImages).distinctBy { it.key }.map {
+                FoundationIosMapSymbolImageUiModel(it.key, it.width, it.height, it.rgba)
+            }
+        }
     val eventSink =
         remember {
             object : FoundationIosMapEventSink {
+                override fun onCameraMovingChanged(isMoving: Boolean) = currentOnCameraMovingChanged(isMoving)
+
+                override fun onCameraSaved(camera: MapCameraSnapshotUiModel) = currentOnCameraSaved(camera)
+
                 override fun onHighlightedPinPositionChanged(position: HighlightedPinPosition?) {
                     currentOnHighlightPosition(position)
                 }
@@ -54,6 +99,8 @@ internal actual fun NativeMap(
 
                 override fun onEmotionPinClick(id: Long) = currentOnEmotionPinClick(id)
 
+                override fun onRegionClusterClick(id: String) = currentOnRegionClusterClick(id)
+
                 override fun onMapBackgroundClick() = currentOnMapBackgroundClick()
 
                 override fun onRendererUnavailable() = currentOnMapError(MapErrorUiModel.RendererUnavailable)
@@ -61,6 +108,8 @@ internal actual fun NativeMap(
                 override fun onStyleLoadFailed() = currentOnMapError(MapErrorUiModel.StyleLoadFailed)
 
                 override fun onMapRecovered() = currentOnMapRecovered()
+
+                override fun onMemoryPressure() = currentOnMemoryPressure()
 
                 override fun onRecordViewportChanged(
                     centerX: Float,
@@ -70,11 +119,13 @@ internal actual fun NativeMap(
                     currentOnRecordViewportChanged(centerX, centerY, radius)
                 }
 
-                override fun onViewportChanged(bounds: EmotionMapBounds) {
-                    currentOnViewportChanged(bounds)
+                override fun onViewportChanged(viewport: EmotionMapViewport) {
+                    currentOnViewportChanged(viewport)
                 }
             }
         }
+
+    if (!isMounted) return
 
     UIKitView(
         factory = { FoundationIosMapBridge.createMapView(eventSink) },
@@ -82,7 +133,14 @@ internal actual fun NativeMap(
         update = { mapView ->
             FoundationIosMapBridge.updateMapView(
                 mapView = mapView,
-                state = state.toFoundationIosRenderUiModel(),
+                state =
+                    state.toFoundationIosRenderUiModel(
+                        isVisible = isVisible,
+                        savedCamera = savedCamera,
+                        emotionPinCoordinates = emotionPinCoordinates,
+                        regionClusterCoordinates = regionClusterCoordinates,
+                        symbolImages = allSymbolImages,
+                    ),
             )
         },
         onRelease = FoundationIosMapBridge::releaseMapView,
@@ -94,11 +152,19 @@ internal actual fun NativeMap(
     )
 }
 
-private fun MapUiModel.toFoundationIosRenderUiModel(): FoundationIosMapRenderUiModel {
+private fun MapUiModel.toFoundationIosRenderUiModel(
+    isVisible: Boolean,
+    savedCamera: MapCameraSnapshotUiModel?,
+    emotionPinCoordinates: List<FoundationIosEmotionPinCoordinateUiModel>,
+    regionClusterCoordinates: List<FoundationIosRegionClusterCoordinateUiModel>,
+    symbolImages: List<FoundationIosMapSymbolImageUiModel>,
+): FoundationIosMapRenderUiModel {
     val currentLocation = (locationState as? LocationState.Available)?.location
     val latitude = currentLocation?.latitude ?: FALLBACK_LATITUDE
     val longitude = currentLocation?.longitude ?: FALLBACK_LONGITUDE
     return FoundationIosMapRenderUiModel(
+        isVisible = isVisible,
+        restoredCamera = savedCamera,
         monitoringLoadId = emotionContentLoad?.loadId,
         currentLocation =
             currentLocation?.let {
@@ -127,19 +193,8 @@ private fun MapUiModel.toFoundationIosRenderUiModel(): FoundationIosMapRenderUiM
         pressedEmotionId = pressedEmotionId,
         pressedEmotionScale = pressedEmotionScale,
         focusedEmotionId = focusedEmotionId,
-        emotionPinCoordinates =
-            emotionPins.map {
-                FoundationIosEmotionPinCoordinateUiModel(
-                    id = it.id,
-                    latitude = it.latitude,
-                    longitude = it.longitude,
-                    imageKey = it.symbolImageKey(),
-                    rotationDegrees = it.rotationDegrees,
-                )
-            },
-        emotionPinSymbolImages =
-            emotionPinSymbolImages.map {
-                FoundationIosMapSymbolImageUiModel(it.key, it.width, it.height, it.rgba)
-            },
+        emotionPinCoordinates = emotionPinCoordinates,
+        regionClusterCoordinates = regionClusterCoordinates,
+        emotionPinSymbolImages = symbolImages,
     )
 }

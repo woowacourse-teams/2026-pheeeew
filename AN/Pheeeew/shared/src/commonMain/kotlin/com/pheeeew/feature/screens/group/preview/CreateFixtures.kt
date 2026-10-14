@@ -10,6 +10,7 @@ import com.pheeeew.feature.screens.group.create.GroupCreateSubmissionState
 import com.pheeeew.feature.screens.group.create.GroupCreateUiState
 import com.pheeeew.feature.screens.group.create.model.StampColorSelection
 import com.pheeeew.feature.screens.group.create.model.StampColorSheetState
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 
 internal object CreateFixtures {
@@ -24,9 +25,12 @@ internal object CreateFixtures {
                     fillArgb = 0xFFA7DCCFL,
                     textArgb = 0xFF202323L,
                 ),
+            joinType = GroupJoinType.PRIVATE,
         )
 
     val filled = GroupCreateUiState(draft = validDraft)
+
+    val publicJoinType = filled.copy(draft = validDraft.copy(joinType = GroupJoinType.PUBLIC))
 
     val confirming =
         filled.copy(submission = GroupCreateSubmissionState.Confirming)

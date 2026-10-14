@@ -27,6 +27,7 @@ class ApiGroupListSourceTest {
                     description = null,
                     inviteCode = "ABC123",
                     role = GroupRole.OWNER,
+                    joinType = com.pheeeew.domain.model.group.GroupJoinType.PUBLIC,
                     memberCount = 3_000_000_000L,
                     stamp =
                         GroupStamp(
@@ -41,6 +42,7 @@ class ApiGroupListSourceTest {
             val mapped = assertIs<GroupListResult.Success>(source.loadGroups()).groups.single()
             assertEquals(group.id.value, mapped.id.value)
             assertEquals(3_000_000_000L, mapped.memberCount)
+            assertEquals(com.pheeeew.feature.screens.group.model.GroupJoinType.PUBLIC, mapped.joinType)
             assertNull(mapped.weeklyStampCount)
             assertEquals("휴식", mapped.stamp.label)
             assertEquals(StampShapeId.TICKET, mapped.stamp.shape)

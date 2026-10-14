@@ -2,28 +2,26 @@ package com.pheeeew.feature.screens.map.nearby
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.monitoring.EventValue
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.model.GeoCoordinate
-import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.emotion.EmotionSearchFilter
+import com.pheeeew.domain.model.emotion.MapFilterSettings
 import com.pheeeew.domain.repository.EmotionModerationResult
 import com.pheeeew.domain.repository.emotion.EmotionFailure
 import com.pheeeew.domain.repository.emotion.EmotionRepository
 import com.pheeeew.domain.repository.emotion.EmotionResult
-import com.pheeeew.domain.repository.group.GroupStampListLoadResult
-import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.domain.usecase.BlockUserUseCase
-import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
-import com.pheeeew.feature.component.stamp.toUiShape
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.monitoring.product.resultLabel
+import com.pheeeew.feature.screens.map.filter.MapFilterListRefresher
 import com.pheeeew.feature.screens.map.monitoring.ContentLoad
 import com.pheeeew.feature.screens.map.monitoring.ContentMonitoring
-import com.pheeeew.feature.screens.map.record.group.GroupSelectorGroupUiModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -32,12 +30,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 
 class NearbyEmotionViewModel(
     private val repository: EmotionRepository,
-    private val groups: GroupStampListRepository,
     monitoring: Monitoring = NoOpMonitoring,
-) : ViewModel() {
+) : ViewModel(),
+    MapFilterListRefresher {
     private val mutableState = MutableStateFlow(NearbyEmotionUiState())
     val state = mutableState.asStateFlow()
     private val eventChannel = Channel<NearbyEmotionEvent>(Channel.BUFFERED)
@@ -64,22 +63,46 @@ class NearbyEmotionViewModel(
         if (state.value.visible && state.value.contentLoad === load) exploration.presented(load, count)
     }
 
-    private var viewport: EmotionBounds? = null
-    private var queryBounds: EmotionBounds? = null
     private var pageJob: Job? = null
-    private var groupJob: Job? = null
-    private var groupGeneration = 0L
     private var audioJob: Job? = null
     private var generation = 0L
     private var contentVersion = 0L
     private val blocked = mutableSetOf<Long>()
     private val changed = mutableMapOf<Long, NearbyEmotionItemUiModel>()
+    private var appliedFilterSettings = MapFilterSettings.DEFAULT
 
-    fun onViewportChanged(bounds: EmotionBounds) {
-        viewport = bounds
-        if (state.value.visible && queryBounds == null) {
-            queryBounds = bounds
-            refresh()
+    override fun isVisible(): Boolean = state.value.visible
+
+    override suspend fun loadFirstPage(filter: EmotionSearchFilter): EmotionResult<EmotionPage> =
+        repository.filteredFirstPage(filter)
+
+    override fun setAppliedSettings(settings: MapFilterSettings) {
+        val changedSettings = appliedFilterSettings != settings
+        appliedFilterSettings = settings
+        if (changedSettings && state.value.visible) refresh()
+    }
+
+    override fun commitFirstPage(
+        settings: MapFilterSettings,
+        page: EmotionPage,
+    ) {
+        appliedFilterSettings = settings
+        generation++
+        pageJob?.cancel()
+        audioJob?.cancel()
+        changed.clear()
+        state.value.contentLoad?.hidden()
+        mutableState.update { current ->
+            current.copy(
+                items = page.items.map { it.toUiModel() }.filterNot { it.id in blocked },
+                nextCursor = page.nextCursor,
+                loading = false,
+                loadingMore = false,
+                error = null,
+                selectedId = null,
+                audioLoadingId = null,
+                revision = current.revision + 1,
+            )
         }
     }
 
@@ -89,10 +112,8 @@ class NearbyEmotionViewModel(
 
     fun open() {
         if (state.value.visible) return
-        queryBounds = viewport
         mutableState.update { it.copy(visible = true, selectedId = null, message = null) }
         refresh()
-        loadGroups()
     }
 
     fun dismiss() {
@@ -104,7 +125,6 @@ class NearbyEmotionViewModel(
             it.copy(
                 visible = false,
                 selectedId = null,
-                groupSelectorVisible = false,
                 blockId = null,
                 audioLoadingId = null,
                 loading = false,
@@ -114,17 +134,12 @@ class NearbyEmotionViewModel(
     }
 
     fun refresh() {
-        val bounds =
-            queryBounds ?: run {
-                mutableState.update { it.copy(error = "지도 영역을 확인하고 있어요. 잠시 후 다시 시도해 주세요.", loading = false) }
-                return
-            }
         val ticket = ++generation
         pageJob?.cancel()
         audioJob?.cancel()
         changed.clear()
         state.value.contentLoad?.hidden()
-        val groupId = state.value.groupId.takeUnless { it == ALL_GROUPS }
+        val filter = appliedFilterSettings.toSearchFilter()
         mutableState.update {
             it.copy(
                 items = emptyList(),
@@ -140,13 +155,14 @@ class NearbyEmotionViewModel(
         pageJob =
             viewModelScope.launch {
                 val observation = exploration.load(if (state.value.revision == 1L) "initial" else "refresh")
-                loadPage(observation, ticket, append = false) { repository.firstPage(bounds, groupId) }
+                loadPage(observation, ticket, append = false) { repository.filteredFirstPage(filter) }
             }
     }
 
-    fun refreshCurrentViewport() {
-        queryBounds = viewport ?: queryBounds
-        refresh()
+    fun retryError() {
+        val current = state.value
+        if (current.loading || current.loadingMore) return
+        if (current.items.isEmpty()) refresh() else loadMore()
     }
 
     fun loadMore() {
@@ -158,7 +174,7 @@ class NearbyEmotionViewModel(
         pageJob =
             viewModelScope.launch {
                 val observation = exploration.load("pagination")
-                loadPage(observation, ticket, append = true, cursor = cursor) { repository.nextPage(cursor) }
+                loadPage(observation, ticket, append = true, cursor = cursor) { repository.nextFilteredPage(cursor) }
             }
     }
 
@@ -274,8 +290,7 @@ class NearbyEmotionViewModel(
                             ) +
                                 mapOf(
                                     "is_own" to
-                                        com.pheeeew.core.monitoring.EventValue
-                                            .Flag(item.isMine),
+                                        EventValue.Flag(item.isMine),
                                 ),
                             "emotion_reaction_started",
                         ).observe(::resultLabel) { repository.react(id, type, selected) }
@@ -408,111 +423,6 @@ class NearbyEmotionViewModel(
             else -> "차단에 실패했습니다. 잠시 후 다시 시도해주세요."
         }
 
-    fun onMembershipChanged() {
-        groupJob?.cancel()
-        groupJob = null
-        mutableState.update {
-            it.copy(groups = listOf(ALL_GROUP_OPTION), pendingGroupId = ALL_GROUPS, dialProgress = 0f)
-        }
-        loadGroups()
-    }
-
-    fun loadGroups() {
-        if (groupJob?.isActive == true) return
-        val ticket = ++groupGeneration
-        mutableState.update { it.copy(groupsLoading = true, groupsError = false) }
-        groupJob =
-            viewModelScope.launch {
-                val result =
-                    try {
-                        groups.findMyStamps()
-                    } catch (cancelled: CancellationException) {
-                        throw cancelled
-                    } catch (_: Exception) {
-                        GroupStampListLoadResult.Unavailable
-                    }
-                if (ticket != groupGeneration) return@launch
-                when (result) {
-                    is GroupStampListLoadResult.Loaded -> {
-                        val options =
-                            listOf(ALL_GROUP_OPTION) +
-                                result.groups.map {
-                                    GroupSelectorGroupUiModel(
-                                        it.id.value,
-                                        it.name,
-                                        StampAppearanceUiModel(
-                                            it.stamp.text,
-                                            it.stamp.frame.toUiShape(),
-                                            it.stamp.backgroundColor.argb,
-                                            it.stamp.textColor.argb,
-                                        ),
-                                    )
-                                }
-                        val disappeared = options.none { it.id == state.value.groupId }
-                        mutableState.update {
-                            val selectedId = if (disappeared) ALL_GROUPS else it.groupId
-                            val pendingId =
-                                it.pendingGroupId.takeIf { id -> options.any { option -> option.id == id } }
-                                    ?: selectedId
-                            it.copy(
-                                groups = options,
-                                groupsLoading = false,
-                                groupId = selectedId,
-                                pendingGroupId = pendingId,
-                                dialProgress = options.indexOfFirst { option -> option.id == pendingId }.toFloat(),
-                            )
-                        }
-                        if (disappeared && state.value.visible) refresh()
-                    }
-
-                    GroupStampListLoadResult.Unavailable -> {
-                        mutableState.update { it.copy(groupsLoading = false, groupsError = true) }
-                    }
-                }
-            }
-    }
-
-    fun openGroups() {
-        val current = state.value
-        mutableState.update {
-            it.copy(
-                groupSelectorVisible = true,
-                pendingGroupId = current.groupId,
-                dialProgress =
-                    current.groups
-                        .indexOfFirst { group ->
-                            group.id == current.groupId
-                        }.coerceAtLeast(0)
-                        .toFloat(),
-                selectedId = null,
-            )
-        }
-        loadGroups()
-    }
-
-    fun dismissGroups() {
-        mutableState.update { it.copy(groupSelectorVisible = false) }
-    }
-
-    fun dial(progress: Float) {
-        mutableState.update { it.copy(dialProgress = progress) }
-    }
-
-    fun pendingGroup(group: GroupSelectorGroupUiModel) {
-        mutableState.update { it.copy(pendingGroupId = group.id) }
-    }
-
-    fun completeGroup(group: GroupSelectorGroupUiModel) {
-        if (state.value.groups.none { it.id == group.id }) return
-        val changedGroup = state.value.groupId != group.id
-        telemetry.emit(
-            "nearby_filter_applied",
-            labels("group_selection" to if (group.id == ALL_GROUPS) "all" else "group"),
-        )
-        mutableState.update { it.copy(groupId = group.id, groupSelectorVisible = false) }
-        if (changedGroup) refresh()
-    }
-
     fun canPlay(event: NearbyEmotionEvent.Play): Boolean =
         state.value.visible && event.generation == generation &&
             event.id !in blocked && state.value.items.any { it.id == event.id }
@@ -526,7 +436,7 @@ class NearbyEmotionViewModel(
         val version = contentVersion
         val currentAudio = item.audio
         if (currentAudio != null && currentAudio.expiresAt >
-            kotlin.time.Clock.System
+            Clock.System
                 .now()
         ) {
             mutableState.update { it.copy(selectedId = null, audioLoadingId = null) }
@@ -552,8 +462,7 @@ class NearbyEmotionViewModel(
                         ) +
                             mapOf(
                                 "is_own" to
-                                    com.pheeeew.core.monitoring.EventValue
-                                        .Flag(item.isMine),
+                                    EventValue.Flag(item.isMine),
                             ),
                     )
                 var handedOff = false
@@ -566,7 +475,7 @@ class NearbyEmotionViewModel(
                             }
                             val audio = result.value.audio
                             if (audio != null && audio.expiresAt >
-                                kotlin.time.Clock.System
+                                Clock.System
                                     .now()
                             ) {
                                 eventChannel.send(NearbyEmotionEvent.Play(id, audio.url, ticket))

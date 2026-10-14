@@ -6,6 +6,7 @@ import com.pheeeew.data.remote.group.dto.GroupStampItemResponseDto
 import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
 import com.pheeeew.domain.model.group.Group
 import com.pheeeew.domain.model.group.GroupId
+import com.pheeeew.domain.model.group.GroupJoinType
 import com.pheeeew.domain.model.group.GroupPreview
 import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.domain.model.group.GroupStamp
@@ -32,6 +33,9 @@ object GroupResponseMapper {
             description = dto.description,
             inviteCode = dto.inviteCode,
             role = parseRole(dto.role),
+            joinType =
+                GroupJoinType.entries.firstOrNull { it.name == dto.joinType }
+                    ?: throw GroupContractException("joinType"),
             memberCount = parseMemberCount(dto.memberCount),
             stamp = dto.stamp.toDomain(),
         )
@@ -53,7 +57,7 @@ object GroupResponseMapper {
             frame = frame.name,
         )
 
-    private fun GroupStampResponseDto.toDomain(): GroupStamp =
+    internal fun GroupStampResponseDto.toDomain(): GroupStamp =
         GroupStamp(
             text = text,
             textColor = StampColor.parseServerValue(textColor) ?: throw GroupContractException("stamp.textColor"),
@@ -65,12 +69,12 @@ object GroupResponseMapper {
                     ?: throw GroupContractException("stamp.frame"),
         )
 
-    private fun parseId(value: String): GroupId = GroupId.parse(value) ?: throw GroupContractException("groupId")
+    internal fun parseId(value: String): GroupId = GroupId.parse(value) ?: throw GroupContractException("groupId")
 
-    private fun parseName(value: String): String =
+    internal fun parseName(value: String): String =
         value.takeIf(String::isNotEmpty) ?: throw GroupContractException("name")
 
-    private fun parseMemberCount(value: Long): Long =
+    internal fun parseMemberCount(value: Long): Long =
         value.takeIf { it >= 0L } ?: throw GroupContractException("memberCount")
 
     private fun parseRole(value: String): GroupRole =

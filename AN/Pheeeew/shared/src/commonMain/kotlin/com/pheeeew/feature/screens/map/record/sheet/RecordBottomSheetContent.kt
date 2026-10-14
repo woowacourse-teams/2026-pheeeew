@@ -76,6 +76,18 @@ import com.pheeeew.feature.screens.map.record.noRippleClickable
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
+import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.record_audio
+import pheeeew.shared.generated.resources.record_continue_editing
+import pheeeew.shared.generated.resources.record_discard_title
+import pheeeew.shared.generated.resources.record_emotion_prompt
+import pheeeew.shared.generated.resources.record_excluded_input_dialog
+import pheeeew.shared.generated.resources.record_memo
+import pheeeew.shared.generated.resources.record_memo_prompt
+import pheeeew.shared.generated.resources.record_next
+import pheeeew.shared.generated.resources.record_single_attachment_hint
+import pheeeew.shared.generated.resources.record_submit_selected_input
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,7 +102,6 @@ fun RecordBottomSheet(
     onMemoChange: (String) -> Unit,
     onGroupClick: () -> Unit,
     onNext: () -> Unit,
-    onSkip: () -> Unit,
     modifier: Modifier = Modifier,
     voiceRecorder: VoiceRecorder? = null,
     feedbackContent: @Composable () -> Unit = {},
@@ -143,20 +154,43 @@ fun RecordBottomSheet(
                     }
                 if (hasOtherInput) showOtherInputDialog = true else onNext()
             },
-            onSkip = onSkip,
             modifier = Modifier,
             voiceRecorder = voiceRecorder,
         )
     }
     if (showOtherInputDialog) {
-        val selectedInput = if (inputMode == RecordInputModeUiModel.Memo) "메모" else "녹음"
-        val excludedInput = if (inputMode == RecordInputModeUiModel.Memo) "녹음" else "메모"
+        val selectedInput =
+            stringResource(
+                if (inputMode ==
+                    RecordInputModeUiModel.Memo
+                ) {
+                    Res.string.record_memo
+                } else {
+                    Res.string.record_audio
+                },
+            )
+        val excludedInput =
+            stringResource(
+                if (inputMode ==
+                    RecordInputModeUiModel.Memo
+                ) {
+                    Res.string.record_audio
+                } else {
+                    Res.string.record_memo
+                },
+            )
         val excludedParticle = if (inputMode == RecordInputModeUiModel.Memo) "은" else "는"
         ConfirmDialog(
-            title = "작성한 내용이 제외돼요.",
-            content = "이번 등록에는 ${selectedInput}만 포함되고 $excludedInput$excludedParticle 저장되지 않아요.\n계속할까요?",
-            confirmText = "${selectedInput}만 등록",
-            cancelText = "계속 작성",
+            title = stringResource(Res.string.record_discard_title),
+            content =
+                stringResource(
+                    Res.string.record_excluded_input_dialog,
+                    selectedInput,
+                    excludedInput,
+                    excludedParticle,
+                ),
+            confirmText = stringResource(Res.string.record_submit_selected_input, selectedInput),
+            cancelText = stringResource(Res.string.record_continue_editing),
             onConfirm = {
                 showOtherInputDialog = false
                 onNext()
@@ -177,7 +211,6 @@ private fun RecordBottomSheetContent(
     onMemoChange: (String) -> Unit,
     onGroupClick: () -> Unit,
     onNext: () -> Unit,
-    onSkip: () -> Unit,
     modifier: Modifier,
     voiceRecorder: VoiceRecorder? = null,
 ) {
@@ -219,12 +252,17 @@ private fun RecordBottomSheetContent(
         ) {
             Image(
                 painter = painterResource(selectedEmotion.icon),
-                contentDescription = selectedEmotion.label,
+                contentDescription = stringResource(selectedEmotion.label),
                 modifier = Modifier.size(44.dp),
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "${selectedEmotion.recordPhrase} 감정\n${selectedEmotion.recordPrompt}",
+                text =
+                    stringResource(
+                        Res.string.record_emotion_prompt,
+                        stringResource(selectedEmotion.recordPhrase),
+                        stringResource(selectedEmotion.recordPrompt),
+                    ),
                 modifier = Modifier.weight(1f),
                 lineHeight = 22.sp,
                 color = AppColors.TextPrimary,
@@ -236,7 +274,7 @@ private fun RecordBottomSheetContent(
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
-            text = "메모와 녹음 중 선택한 한 가지만 등록돼요.",
+            text = stringResource(Res.string.record_single_attachment_hint),
             fontSize = 12.sp,
             color = AppColors.TextSecondary,
         )
@@ -273,8 +311,6 @@ private fun RecordBottomSheetContent(
 
         RecordSheetActions(
             onNext = onNext,
-            onSkip = onSkip,
-            canSkip = !isGroupSelectionLoading,
             enabled =
                 !isGroupSelectionLoading &&
                     when (inputMode) {
@@ -331,15 +367,12 @@ private fun rememberRecordingReady(voiceRecorder: VoiceRecorder?): Boolean {
 @Composable
 private fun RecordSheetActions(
     onNext: () -> Unit,
-    onSkip: () -> Unit,
-    canSkip: Boolean,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -360,20 +393,10 @@ private fun RecordSheetActions(
                     ),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = "다음", color = AppColors.TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-        }
-        Box(
-            modifier =
-                Modifier
-                    .height(48.dp)
-                    .noRippleClickable(enabled = canSkip, onClick = onSkip)
-                    .padding(horizontal = 16.dp),
-            contentAlignment = Alignment.Center,
-        ) {
             Text(
-                text = "건너뛰기",
-                color = AppColors.Border,
-                fontSize = 14.sp,
+                text = stringResource(Res.string.record_next),
+                color = AppColors.TextPrimary,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
@@ -418,7 +441,7 @@ private fun MemoPanel(
                                     .padding(bottom = 20.dp),
                         ) {
                             Text(
-                                text = "지금 감정을 짧게 적어보세요",
+                                text = stringResource(Res.string.record_memo_prompt),
                                 color = AppColors.Border.copy(alpha = 0.45f),
                                 fontSize = 16.sp,
                             )
@@ -473,13 +496,13 @@ private fun RecordInputModeToggle(
         )
         Row(modifier = Modifier.fillMaxSize()) {
             RecordInputModeTab(
-                label = "메모",
+                label = stringResource(Res.string.record_memo),
                 selected = inputMode == RecordInputModeUiModel.Memo,
                 onClick = { onInputModeChange(RecordInputModeUiModel.Memo) },
                 modifier = Modifier.weight(1f).fillMaxHeight(),
             )
             RecordInputModeTab(
-                label = "녹음",
+                label = stringResource(Res.string.record_audio),
                 selected = inputMode == RecordInputModeUiModel.Recording,
                 onClick = { onInputModeChange(RecordInputModeUiModel.Recording) },
                 modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -526,7 +549,6 @@ private fun RecordBottomSheetContentPreview() {
         onMemoChange = {},
         onGroupClick = {},
         onNext = {},
-        onSkip = {},
         modifier = Modifier,
     )
 }
@@ -544,7 +566,6 @@ private fun RecordBottomSheetRecordingPreview() {
         onMemoChange = {},
         onGroupClick = {},
         onNext = {},
-        onSkip = {},
         modifier = Modifier,
     )
 }

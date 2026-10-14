@@ -51,12 +51,16 @@ import com.pheeeew.feature.screens.ranking.components.rememberRankingTopBarScrol
 import com.pheeeew.feature.screens.ranking.stamp.components.RankingRow
 import com.pheeeew.feature.screens.ranking.stamp.components.TopThreeRanking
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ic_emotion_frustrated
+import pheeeew.shared.generated.resources.ranking_empty_week
+import pheeeew.shared.generated.resources.ranking_stamp_title
 
 @Composable
 fun WeeklyRankingRoute(
     apiClient: ApiClient,
+    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
 ) {
@@ -66,12 +70,13 @@ fun WeeklyRankingRoute(
         currentOnRefreshActionChanged(viewModel::onRefresh)
         onDispose { currentOnRefreshActionChanged(null) }
     }
-    WeeklyRankingRoute(viewModel = viewModel, modifier = modifier)
+    WeeklyRankingRoute(viewModel = viewModel, onGroupClick = onGroupClick, modifier = modifier)
 }
 
 @Composable
 fun WeeklyRankingRoute(
     viewModel: WeeklyRankingViewModel,
+    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     ProductScreen(viewModel.telemetry, true, "ranking_viewed")
@@ -82,6 +87,7 @@ fun WeeklyRankingRoute(
         onNextWeek = viewModel::onNextWeek,
         onRetry = viewModel::onRetry,
         onRefresh = viewModel::onRefresh,
+        onGroupClick = onGroupClick,
         modifier = modifier,
     )
 }
@@ -93,14 +99,17 @@ fun WeeklyRankingScreen(
     onNextWeek: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
+    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pullState = rememberPullToRefreshState()
     val scrollState = rememberScrollState()
-    val topBarBehavior = rememberRankingTopBarScrollBehavior()
-    LaunchedEffect(uiState.isRefreshing, uiState.status) {
+    val topBarBehavior = rememberRankingTopBarScrollBehavior { scrollState.canScrollForward }
+    LaunchedEffect(uiState.isRefreshing, uiState.status, scrollState.maxValue) {
         if (uiState.isRefreshing || uiState.status == WeeklyRankingStatus.Loading) {
             scrollState.scrollTo(0)
+            topBarBehavior.show()
+        } else if (scrollState.maxValue == 0) {
             topBarBehavior.show()
         }
     }
@@ -173,14 +182,22 @@ fun WeeklyRankingScreen(
                                     modifier = Modifier.padding(start = 32.dp, end = 32.dp, top = 96.dp),
                                 )
                             } else if (uiState.rankings.size >= 3) {
-                                TopThreeRanking(members = uiState.rankings.take(3))
+                                TopThreeRanking(members = uiState.rankings.take(3), onGroupClick = onGroupClick)
                                 Spacer(Modifier.height(22.dp))
                                 uiState.rankings.drop(3).forEach { member ->
-                                    RankingRow(member = member, modifier = Modifier.padding(bottom = 14.dp))
+                                    RankingRow(
+                                        member = member,
+                                        onClick = { onGroupClick(member.groupId) },
+                                        modifier = Modifier.padding(bottom = 14.dp),
+                                    )
                                 }
                             } else {
                                 uiState.rankings.forEach { member ->
-                                    RankingRow(member = member, modifier = Modifier.padding(bottom = 14.dp))
+                                    RankingRow(
+                                        member = member,
+                                        onClick = { onGroupClick(member.groupId) },
+                                        modifier = Modifier.padding(bottom = 14.dp),
+                                    )
                                 }
                             }
                         }
@@ -188,7 +205,7 @@ fun WeeklyRankingScreen(
                     Spacer(Modifier.navigationBarsPadding().height(AppBottomNavigationBarOverlaySpace))
                 }
                 RankingTopBarOverlay(
-                    title = "스탬프 주간 랭킹",
+                    title = stringResource(Res.string.ranking_stamp_title),
                     behavior = topBarBehavior,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
@@ -210,7 +227,7 @@ private fun EmptyRankingContent(modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(24.dp))
         Text(
-            text = "해당 주에 랭킹이 없어요.",
+            text = stringResource(Res.string.ranking_empty_week),
             color = AppColors.RankingContent,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
@@ -306,6 +323,7 @@ private fun WeeklyRankingPreviewFrame(uiState: WeeklyRankingUiState) {
             onNextWeek = {},
             onRetry = {},
             onRefresh = {},
+            onGroupClick = {},
         )
     }
 }

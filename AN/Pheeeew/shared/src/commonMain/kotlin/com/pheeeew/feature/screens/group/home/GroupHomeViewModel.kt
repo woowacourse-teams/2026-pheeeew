@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.utils.withMinimumLoadingTime
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.resultLabel
+import com.pheeeew.feature.screens.group.home.explore.GroupExploreSource
+import com.pheeeew.feature.screens.group.home.explore.GroupExploreStateHolder
 import com.pheeeew.feature.screens.group.join.GroupJoinDependencies
 import com.pheeeew.feature.screens.group.join.GroupJoinFailure
 import com.pheeeew.feature.screens.group.join.GroupJoinStateHolder
@@ -13,8 +15,11 @@ import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -22,10 +27,17 @@ import kotlinx.coroutines.launch
 class GroupHomeViewModel(
     private val groupListSource: GroupListSource,
     groupJoinDependencies: GroupJoinDependencies,
+    membershipChanges: Flow<Long> = kotlinx.coroutines.flow.emptyFlow(),
+    private val invalidateSharedMembership: () -> Unit = {},
+    groupExploreSource: GroupExploreSource,
 ) : ViewModel() {
     val telemetry = ProductMonitoring(groupJoinDependencies.monitoring, "group_home")
     private val _uiState = MutableStateFlow(GroupHomeUiState())
     val uiState = _uiState.asStateFlow()
+    private val _selectedTab = MutableStateFlow(GroupHomeTab.MyGroups)
+    val selectedTab = _selectedTab.asStateFlow()
+    private val groupExploreStateHolder = GroupExploreStateHolder(viewModelScope, groupExploreSource)
+    val exploreUiState = groupExploreStateHolder.uiState
     private val _isJoinSheetVisible = MutableStateFlow(false)
     val isJoinSheetVisible = _isJoinSheetVisible.asStateFlow()
     private val groupJoinStateHolder = GroupJoinStateHolder(viewModelScope, groupJoinDependencies)
@@ -37,12 +49,43 @@ class GroupHomeViewModel(
     private var isMembershipDirty = false
 
     init {
+        viewModelScope.launch {
+            (if (membershipChanges is StateFlow) membershipChanges.drop(1) else membershipChanges).collect {
+                invalidateMembership()
+                refreshMyGroups()
+            }
+        }
         loadGroups()
+    }
+
+    fun selectTab(tab: GroupHomeTab) {
+        if (_selectedTab.value == tab) return
+        _selectedTab.value = tab
+        if (tab == GroupHomeTab.Explore) groupExploreStateHolder.ensureLoaded()
+    }
+
+    fun onExploreQueryChanged(query: String) {
+        groupExploreStateHolder.onQueryChanged(query)
+    }
+
+    fun onExploreSearchSubmitted() {
+        groupExploreStateHolder.onSearchSubmitted()
+    }
+
+    fun loadMoreExploreGroups() {
+        groupExploreStateHolder.loadNextPage()
+    }
+
+    fun retryExploreGroups() {
+        groupExploreStateHolder.retry()
     }
 
     /** 첫 조회 실패 또는 목록 새로고침 실패에서 다시 요청합니다. */
     fun onRetry() {
-        refresh()
+        when (_selectedTab.value) {
+            GroupHomeTab.MyGroups -> refreshMyGroups()
+            GroupHomeTab.Explore -> groupExploreStateHolder.retry()
+        }
     }
 
     fun openJoinSheet() {
@@ -78,8 +121,7 @@ class GroupHomeViewModel(
 
         _isJoinSheetVisible.value = false
         if (needsMembershipVerification) {
-            invalidateMembership()
-            refresh()
+            invalidateSharedMembership()
         }
         return true
     }
@@ -98,13 +140,20 @@ class GroupHomeViewModel(
 
     /** 이미 진행 중인 일반 조회가 있으면 중복 요청을 만들지 않습니다. */
     fun refresh() {
+        when (_selectedTab.value) {
+            GroupHomeTab.MyGroups -> refreshMyGroups()
+            GroupHomeTab.Explore -> groupExploreStateHolder.refresh()
+        }
+    }
+
+    private fun refreshMyGroups() {
         if (listJob?.isActive == true) return
         loadGroups()
     }
 
     /** 생성·참여·탈퇴 성공 뒤 홈이 다시 보일 때 변경된 가입 목록을 읽습니다. */
     fun refreshIfDirty() {
-        if (isMembershipDirty) refresh()
+        if (isMembershipDirty) refreshMyGroups()
     }
 
     /** 가입 상태가 바뀌었음을 표시하고 진행 중인 이전 목록 응답을 무효화합니다. */
@@ -112,6 +161,7 @@ class GroupHomeViewModel(
         requestGeneration += 1
         membershipRevision += 1
         isMembershipDirty = true
+        groupExploreStateHolder.onMembershipChanged()
         listJob?.cancel()
         listJob = null
         _uiState.update { state ->

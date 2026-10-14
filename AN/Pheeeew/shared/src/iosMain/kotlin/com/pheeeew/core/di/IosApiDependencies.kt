@@ -2,6 +2,8 @@ package com.pheeeew.core.di
 
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.network.ApiConfig
+import com.pheeeew.core.network.ConnectivityObserver
+import com.pheeeew.core.network.IosConnectivityObserver
 import com.pheeeew.data.local.device.IosDeviceCredentialStorage
 import com.pheeeew.data.remote.device.attestation.IosAppAttestProofProvider
 import com.pheeeew.domain.model.device.DevicePlatform
@@ -13,6 +15,8 @@ import kotlin.native.Platform
 
 /** One session even when SwiftUI recreates its UIViewController. */
 object IosApiDependencies {
+    val connectivityObserver: ConnectivityObserver by lazy { IosConnectivityObserver() }
+
     @OptIn(ExperimentalNativeApi::class)
     val instance: ApiDependencies by lazy {
         fun setting(key: String): String =
@@ -37,6 +41,7 @@ object IosApiDependencies {
             ),
             DevicePlatform.IOS,
             monitoring = IosMonitoring.instance,
+            connectivityObserver = connectivityObserver,
             createProofProvider = { IosAppAttestProofProvider() },
             diagnostics =
                 DeviceSessionDiagnostics { event ->

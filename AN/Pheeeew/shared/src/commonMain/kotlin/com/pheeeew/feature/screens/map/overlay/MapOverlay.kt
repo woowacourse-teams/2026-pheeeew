@@ -1,7 +1,11 @@
 package com.pheeeew.feature.screens.map.overlay
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -12,7 +16,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -22,7 +25,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppBorders
@@ -41,10 +48,17 @@ import com.pheeeew.feature.screens.map.record.EmotionPromptLabel
 import com.pheeeew.feature.screens.map.record.EmotionTypeUiModel
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.ic_map_filter
 import pheeeew.shared.generated.resources.ic_menu
 import pheeeew.shared.generated.resources.ic_my_location
 import pheeeew.shared.generated.resources.ic_refresh
+import pheeeew.shared.generated.resources.map_current_location
+import pheeeew.shared.generated.resources.map_filter
+import pheeeew.shared.generated.resources.map_nearby_emotions
+import pheeeew.shared.generated.resources.map_open_list
+import pheeeew.shared.generated.resources.map_refresh
 
 private const val EMOTION_PROMPT_DAMPING_RATIO = 0.8205f
 private const val EMOTION_PROMPT_STIFFNESS = 380f
@@ -56,6 +70,7 @@ private val MAP_CONTROL_TINT = Color(0xFF2670F8)
 fun MapOverlay(
     onListClick: () -> Unit,
     onSettingClick: () -> Unit,
+    onFilterClick: () -> Unit,
     isEmotionSelectorExpanded: Boolean,
     onEmotionSelectorToggle: () -> Unit,
     onEmotionBubbleClick: (EmotionTypeUiModel) -> Unit,
@@ -65,7 +80,24 @@ fun MapOverlay(
     isMapError: Boolean,
     modifier: Modifier = Modifier,
     showNavigationButtons: Boolean = true,
+    nearbyMapControlHeight: Dp = 0.dp,
+    isMapCameraMoving: Boolean = false,
 ) {
+    val scope = rememberCoroutineScope()
+    val promptVisibility = remember(scope) { MapPromptVisibilityState(scope) }
+    LaunchedEffect(isMapCameraMoving) {
+        promptVisibility.onCameraMovingChanged(isMapCameraMoving)
+    }
+    LaunchedEffect(isEmotionSelectorExpanded) {
+        if (isEmotionSelectorExpanded) promptVisibility.reset()
+    }
+    val toggleEmotionSelector = {
+        promptVisibility.reset()
+        onEmotionSelectorToggle()
+    }
+    val promptBottomPadding = 190.dp + MAP_BOTTOM_BAR_LIFT
+    // The 112.dp bubble starts at 140.dp inside its 260.dp cluster, leaving 8.dp below it.
+    val locationBottomPadding = MAP_CONTROL_BOTTOM_SPACE + 8.dp
     val promptTranslationY by
         animateFloatAsState(
             targetValue = if (isEmotionSelectorExpanded) -90f else 0f,
@@ -88,14 +120,38 @@ fun MapOverlay(
                     .statusBarsPadding()
                     .padding(16.dp),
         ) {
-            EmotionPromptLabel(
-                isExpanded = isEmotionSelectorExpanded,
+            AnimatedVisibility(
+                visible = isEmotionSelectorExpanded || (!isMapCameraMoving && !promptVisibility.isHidden),
+                enter = fadeIn(tween(300)),
+                exit = fadeOut(tween(250)),
                 modifier =
                     Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 190.dp + MAP_BOTTOM_BAR_LIFT)
+                        .padding(bottom = promptBottomPadding)
                         .graphicsLayer { translationY = promptTranslationY.dp.toPx() },
-            )
+                label = "emotionPromptVisibility",
+            ) {
+                EmotionPromptLabel(
+                    isExpanded = isEmotionSelectorExpanded,
+                )
+            }
+
+            if (!isMapError && !isEmotionSelectorExpanded) {
+                MapControlButton(
+                    icon = Res.drawable.ic_my_location,
+                    contentDescription = stringResource(Res.string.map_current_location),
+                    enabled = !isRequestingLocation,
+                    onClick = onMyLocationClick,
+                    modifier =
+                        Modifier.align(Alignment.BottomEnd).padding(
+                            bottom =
+                                maxOf(
+                                    locationBottomPadding,
+                                    nearbyMapControlHeight,
+                                ),
+                        ),
+                )
+            }
 
             if (showNavigationButtons) {
                 Box(
@@ -120,12 +176,12 @@ fun MapOverlay(
                     ) {
                         Icon(
                             painter = painterResource(Res.drawable.ic_menu),
-                            contentDescription = "목록 열기",
+                            contentDescription = stringResource(Res.string.map_open_list),
                             modifier = Modifier.size(24.dp),
                         )
                         Spacer(modifier = Modifier.width(12.dp))
                         Text(
-                            text = "주변 감정",
+                            text = stringResource(Res.string.map_nearby_emotions),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -142,22 +198,22 @@ fun MapOverlay(
                 Column(
                     modifier =
                         Modifier
-                            .align(Alignment.BottomEnd)
-                            .navigationBarsPadding()
-                            .padding(bottom = MAP_CONTROL_BOTTOM_SPACE),
+                            .align(Alignment.TopEnd)
+                            .padding(top = 60.dp),
                     horizontalAlignment = Alignment.End,
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     MapControlButton(
-                        icon = Res.drawable.ic_refresh,
-                        contentDescription = "지도 새로고침",
-                        onClick = onRefreshClick,
+                        icon = Res.drawable.ic_map_filter,
+                        contentDescription = stringResource(Res.string.map_filter),
+                        onClick = onFilterClick,
+                        tint = Color.Unspecified,
                     )
                     MapControlButton(
-                        icon = Res.drawable.ic_my_location,
-                        contentDescription = "내 위치로 이동",
-                        enabled = !isRequestingLocation,
-                        onClick = onMyLocationClick,
+                        icon = Res.drawable.ic_refresh,
+                        contentDescription = stringResource(Res.string.map_refresh),
+                        onClick = onRefreshClick,
+                        tint = AppColors.TextPrimary,
                     )
                 }
             }
@@ -172,7 +228,7 @@ fun MapOverlay(
                             interactionSource = null,
                             indication = null,
                             onClickLabel = "감정 선택 닫기",
-                            onClick = onEmotionSelectorToggle,
+                            onClick = toggleEmotionSelector,
                         ),
             )
         }
@@ -187,7 +243,7 @@ fun MapOverlay(
             ) {
                 EmotionBubbleCluster(
                     isExpanded = isEmotionSelectorExpanded,
-                    onToggle = onEmotionSelectorToggle,
+                    onToggle = toggleEmotionSelector,
                     onEmotionClick = onEmotionBubbleClick,
                     modifier =
                         Modifier
@@ -206,11 +262,12 @@ internal fun MapControlButton(
     onClick: () -> Unit,
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
+    tint: Color = MAP_CONTROL_TINT,
 ) {
     Box(
         modifier =
             modifier
-                .size(48.dp)
+                .size(44.dp)
                 .shadow(elevation = 4.dp, shape = CircleShape)
                 .clip(CircleShape)
                 .background(AppColors.Surface)
@@ -220,8 +277,8 @@ internal fun MapControlButton(
         Icon(
             painter = painterResource(icon),
             contentDescription = contentDescription,
-            modifier = Modifier.size(24.dp),
-            tint = MAP_CONTROL_TINT,
+            modifier = Modifier.size(20.dp),
+            tint = tint,
         )
     }
 }
@@ -265,6 +322,7 @@ private fun MapOverlayPreviewContent(
         MapOverlay(
             onListClick = {},
             onSettingClick = {},
+            onFilterClick = {},
             isEmotionSelectorExpanded = isEmotionSelectorExpanded,
             onEmotionSelectorToggle = {},
             onEmotionBubbleClick = {},

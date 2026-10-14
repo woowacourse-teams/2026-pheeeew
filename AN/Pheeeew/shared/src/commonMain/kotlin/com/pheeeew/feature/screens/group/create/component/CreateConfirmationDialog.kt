@@ -39,21 +39,26 @@ import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.screens.group.create.GroupCreateFailure
+import com.pheeeew.feature.screens.group.model.GroupJoinType
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.group_create_confirm
 import pheeeew.shared.generated.resources.group_create_confirm_body
 import pheeeew.shared.generated.resources.group_create_confirm_cancel
 import pheeeew.shared.generated.resources.group_create_confirm_group_stamp_summary
+import pheeeew.shared.generated.resources.group_create_confirm_join_type
 import pheeeew.shared.generated.resources.group_create_confirm_title
 import pheeeew.shared.generated.resources.group_create_failure_close
 import pheeeew.shared.generated.resources.group_create_failure_edit
 import pheeeew.shared.generated.resources.group_create_failure_invalid_input
+import pheeeew.shared.generated.resources.group_create_failure_join_type_unavailable
 import pheeeew.shared.generated.resources.group_create_failure_rate_limited
 import pheeeew.shared.generated.resources.group_create_failure_retry
 import pheeeew.shared.generated.resources.group_create_failure_title
 import pheeeew.shared.generated.resources.group_create_failure_unavailable
 import pheeeew.shared.generated.resources.group_create_failure_unknown
+import pheeeew.shared.generated.resources.group_create_join_type_private
+import pheeeew.shared.generated.resources.group_create_join_type_public
 import pheeeew.shared.generated.resources.group_create_submitting
 import pheeeew.shared.generated.resources.group_create_submitting_title
 
@@ -64,6 +69,7 @@ internal fun CreateConfirmationDialog(
     isSubmitting: Boolean,
     groupName: String,
     stampLabel: String,
+    joinType: GroupJoinType,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -91,6 +97,7 @@ internal fun CreateConfirmationDialog(
                     title = title,
                     groupName = groupName,
                     stampLabel = stampLabel,
+                    joinType = joinType,
                     onDismiss = onDismiss,
                     onConfirm = onConfirm,
                 )
@@ -100,10 +107,11 @@ internal fun CreateConfirmationDialog(
 }
 
 @Composable
-private fun CreateConfirmationCard(
+internal fun CreateConfirmationCard(
     title: String,
     groupName: String,
     stampLabel: String,
+    joinType: GroupJoinType,
     onDismiss: () -> Unit,
     onConfirm: () -> Unit,
 ) {
@@ -149,6 +157,24 @@ private fun CreateConfirmationCard(
                 color = AppColors.RankingSecondaryContent,
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text =
+                    stringResource(
+                        Res.string.group_create_confirm_join_type,
+                        stringResource(
+                            if (joinType == GroupJoinType.PUBLIC) {
+                                Res.string.group_create_join_type_public
+                            } else {
+                                Res.string.group_create_join_type_private
+                            },
+                        ),
+                    ),
+                color = AppColors.GroupInk,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
             )
         }
@@ -222,6 +248,7 @@ internal fun CreateFailureDialog(
             GroupCreateFailure.InvalidInput -> Res.string.group_create_failure_invalid_input
             GroupCreateFailure.Unavailable -> Res.string.group_create_failure_unavailable
             GroupCreateFailure.RateLimited -> Res.string.group_create_failure_rate_limited
+            GroupCreateFailure.JoinTypeUnavailable -> Res.string.group_create_failure_join_type_unavailable
             GroupCreateFailure.OutcomeUnknown -> Res.string.group_create_failure_unknown
         }
     val message = stringResource(messageResource)
@@ -267,7 +294,9 @@ internal fun CreateFailureDialog(
                         stringResource(
                             if (failure == GroupCreateFailure.InvalidInput) {
                                 Res.string.group_create_failure_edit
-                            } else if (failure == GroupCreateFailure.RateLimited) {
+                            } else if (failure == GroupCreateFailure.RateLimited ||
+                                failure == GroupCreateFailure.JoinTypeUnavailable
+                            ) {
                                 Res.string.group_create_failure_close
                             } else {
                                 Res.string.group_create_failure_retry
@@ -275,7 +304,7 @@ internal fun CreateFailureDialog(
                         ),
                     onClick = if (failure == GroupCreateFailure.Unavailable) onRetry else onDismiss,
                 )
-                if (failure != GroupCreateFailure.RateLimited) {
+                if (failure != GroupCreateFailure.RateLimited && failure != GroupCreateFailure.JoinTypeUnavailable) {
                     Spacer(Modifier.height(10.dp))
                     DialogSecondaryAction(
                         text = stringResource(Res.string.group_create_failure_close),
@@ -329,44 +358,5 @@ private fun DialogSecondaryAction(
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
         )
-    }
-}
-
-@Preview(name = "그룹 생성 확인 - 기본", widthDp = 360, heightDp = 640)
-@Composable
-private fun CreateConfirmationCardPreview() {
-    CreateConfirmationPreviewFrame(groupName = "우리 동네", stampLabel = "히유")
-}
-
-@Preview(name = "그룹 생성 확인 - 좁은 화면과 긴 그룹명", widthDp = 320, heightDp = 640)
-@Composable
-private fun CreateConfirmationCardNarrowPreview() {
-    CreateConfirmationPreviewFrame(groupName = "가나다라마바사아자차", stampLabel = "가나다라")
-}
-
-@Preview(name = "그룹 생성 확인 - 큰 글씨", widthDp = 320, heightDp = 480, fontScale = 1.5f)
-@Composable
-private fun CreateConfirmationCardLargeFontPreview() {
-    CreateConfirmationPreviewFrame(groupName = "가나다라마바사아자차", stampLabel = "가나다라")
-}
-
-@Composable
-private fun CreateConfirmationPreviewFrame(
-    groupName: String,
-    stampLabel: String,
-) {
-    AppTheme {
-        Box(
-            modifier = Modifier.fillMaxSize().background(AppColors.GroupBackground).padding(24.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            CreateConfirmationCard(
-                title = stringResource(Res.string.group_create_confirm_title),
-                groupName = groupName,
-                stampLabel = stampLabel,
-                onDismiss = {},
-                onConfirm = {},
-            )
-        }
     }
 }

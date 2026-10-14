@@ -188,15 +188,12 @@ class RecordFunnelMonitoring(
         emit(RecordFunnelEvents.inputStarted, flowContext, fields + ("input_mode" to mode))
     }
 
-    fun inputFinished(
-        mode: String,
-        skipped: Boolean,
-    ) {
+    fun inputFinished(mode: String) {
         val fields = flowFields() ?: return
         emit(
             RecordFunnelEvents.inputFinished,
             flowContext,
-            fields + mapOf("input_mode" to mode, "action" to if (skipped) "skip" else "next"),
+            fields + mapOf("input_mode" to mode, "action" to "next"),
         )
     }
 

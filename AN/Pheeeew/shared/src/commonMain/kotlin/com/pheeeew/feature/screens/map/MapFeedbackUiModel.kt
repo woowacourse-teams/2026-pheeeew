@@ -35,6 +35,10 @@ internal fun MapUiModel.primaryFeedback(): MapFeedbackUiModel? =
             )
         }
 
+        regionClustersError != null -> {
+            MapFeedbackUiModel(regionClustersError, MapFeedbackAction.RetryPins)
+        }
+
         locationError != null -> {
             when (locationError) {
                 LocationError.PermissionDenied -> {

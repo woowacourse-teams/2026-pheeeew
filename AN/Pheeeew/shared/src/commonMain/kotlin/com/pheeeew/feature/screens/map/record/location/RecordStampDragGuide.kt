@@ -13,7 +13,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import org.jetbrains.compose.resources.painterResource
+import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.record_drag_stamp
 import pheeeew.shared.generated.resources.record_stamp_drag_guide
 
 @Composable
@@ -28,7 +30,7 @@ internal fun RecordStampDragGuide(modifier: Modifier = Modifier) {
             modifier = Modifier.matchParentSize(),
         )
         Text(
-            text = "끌어서 이동",
+            text = stringResource(Res.string.record_drag_stamp),
             modifier = Modifier.padding(bottom = 6.dp),
             color = AppColors.GroupInk,
             fontSize = 14.sp,

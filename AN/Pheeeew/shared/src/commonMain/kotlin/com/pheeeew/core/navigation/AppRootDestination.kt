@@ -9,4 +9,7 @@ data object MapRootDestination
 data object GroupRootDestination
 
 @Serializable
+data object PressRootDestination
+
+@Serializable
 data object RankingRootDestination

@@ -14,6 +14,7 @@ import com.pheeeew.feature.screens.group.create.GroupCreateCandidatesResult
 import com.pheeeew.feature.screens.group.create.GroupCreateDraft
 import com.pheeeew.feature.screens.group.home.GroupListResult
 import com.pheeeew.feature.screens.group.home.GroupListSource
+import com.pheeeew.feature.screens.group.mapper.toDomainJoinType
 import com.pheeeew.feature.screens.group.model.GroupId
 
 class ApiCreateGroupAction(
@@ -25,6 +26,7 @@ class ApiCreateGroupAction(
         val command =
             GroupCreateCommand(
                 name = draft.name,
+                joinType = draft.joinType.toDomainJoinType(),
                 description = draft.description.takeIf { it.isNotEmpty() },
                 stamp =
                     GroupStamp(

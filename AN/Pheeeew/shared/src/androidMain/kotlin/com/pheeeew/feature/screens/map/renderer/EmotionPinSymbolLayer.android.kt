@@ -1,7 +1,7 @@
 package com.pheeeew.feature.screens.map.renderer
 
-import android.graphics.Bitmap
 import android.graphics.Color
+import androidx.compose.ui.graphics.asAndroidBitmap
 import com.google.gson.JsonObject
 import com.pheeeew.feature.screens.map.EmotionPinSymbolImage
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
@@ -27,21 +27,35 @@ import org.maplibre.geojson.Point
 /** Native MapLibre source and symbol layer for emotion pins. */
 internal class EmotionPinSymbolLayer {
     private val registeredImageKeys = mutableSetOf<String>()
+    private val registeredImageSignatures = mutableMapOf<String, ImageSignature>()
+    private val renderDataById = linkedMapOf<Long, CachedPinRenderData>()
     private var lastRenderedPins: List<EmotionPinUiModel>? = null
+    private var lastInputPins: List<EmotionPinUiModel>? = null
+    private var lastRenderSignature: List<PinRenderSignature>? = null
     private var layerVisible: Boolean? = null
     private var lastMonitoringLoadId: String? = null
+    private var renderRevision = 0L
     private var lastPressedId: Long? = null
     private var lastPressedScale = 1f
-    private var lastFocusedId: Long? = null
+    private var focusedId: Long? = null
+    private var dynamicProperties: DynamicProperties? = null
+    private var lastTopPriority = 0
 
     fun install(style: Style) {
         registeredImageKeys.clear()
+        registeredImageSignatures.clear()
+        renderDataById.clear()
         lastRenderedPins = null
+        lastInputPins = null
+        lastRenderSignature = null
         layerVisible = null
         lastMonitoringLoadId = null
+        renderRevision = 0L
         lastPressedId = null
         lastPressedScale = 1f
-        lastFocusedId = null
+        focusedId = null
+        dynamicProperties = null
+        lastTopPriority = 0
         if (style.getSource(SOURCE_ID) == null) {
             style.addSource(GeoJsonSource(SOURCE_ID, FeatureCollection.fromFeatures(emptyList())))
         }
@@ -67,58 +81,96 @@ internal class EmotionPinSymbolLayer {
         pins: List<EmotionPinUiModel>,
         images: List<EmotionPinSymbolImage>,
         visible: Boolean,
-        densityDpi: Int,
         monitoringLoadId: String?,
         focusedId: Long?,
-    ) {
-        val source = style.getSourceAs<GeoJsonSource>(SOURCE_ID) ?: return
-        val requiredImageKeys = images.mapTo(mutableSetOf(), EmotionPinSymbolImage::key)
+    ): Boolean {
+        val source = style.getSourceAs<GeoJsonSource>(SOURCE_ID) ?: return false
+        var imageChanged = false
         images.forEach { image ->
-            if (style.getImage(image.key) == null) {
-                style.addImage(image.key, image.toAndroidBitmap(densityDpi))
+            val bitmap = image.androidImageBitmap?.asAndroidBitmap() ?: return@forEach
+            val signature = ImageSignature(image.width, image.height, bitmap.density)
+            if (registeredImageSignatures[image.key] != signature) {
+                if (style.getImage(image.key) != null) style.removeImage(image.key)
+                style.addImage(image.key, bitmap)
+                registeredImageSignatures[image.key] = signature
+                imageChanged = true
             }
+            registeredImageKeys += image.key
         }
-        // Drop obsolete raster images so viewport changes cannot grow the style indefinitely.
-        registeredImageKeys.filterNot(requiredImageKeys::contains).forEach { key ->
-            if (style.getImage(key) != null) style.removeImage(key)
-        }
-        registeredImageKeys.clear()
-        registeredImageKeys.addAll(requiredImageKeys)
 
         if (layerVisible != visible) {
             style.getLayer(LAYER_ID)?.setProperties(visibility(if (visible) Property.VISIBLE else Property.NONE))
             layerVisible = visible
         }
+        // Monitoring IDs change during viewport loads even when the map features do not.
+        lastMonitoringLoadId = monitoringLoadId
+        if (pins === lastInputPins && !imageChanged) {
+            this.focusedId = focusedId
+            applyDynamicProperties(style, lastTopPriority)
+            return false
+        }
+
         // A pin must not enter the source until its asynchronously rasterized icon is ready.
         val renderedPins = pins.filter { it.symbolImageKey() in registeredImageKeys }
-        // Loading, notices and other Compose state changes do not change the map's features.
-        if (renderedPins == lastRenderedPins && monitoringLoadId == lastMonitoringLoadId &&
-            focusedId == lastFocusedId
-        ) {
-            return
+        val renderData = renderedPins.map(::renderData)
+        val renderSignature = renderData.map(CachedPinRenderData::signature)
+        lastInputPins = pins
+        lastRenderedPins = renderedPins
+        this.focusedId = focusedId
+        // Image registration updates the style; only changed drawable pins require a source update.
+        val sourceChanged = renderSignature != lastRenderSignature
+        if (!sourceChanged) {
+            lastTopPriority = renderedPins.size
+            applyDynamicProperties(style, lastTopPriority)
+            return false
         }
-        val topPriority = renderedPins.size
+
+        renderRevision++
         val features: List<Feature> =
-            renderedPins.mapIndexed { index, pin ->
+            renderData.mapIndexed { index, pin ->
                 val properties =
                     JsonObject().apply {
-                        addProperty("monitoring-load-id", monitoringLoadId)
-                        addProperty(IMAGE_KEY_PROPERTY, pin.symbolImageKey())
-                        addProperty(ROTATION_PROPERTY, pin.rotationDegrees)
-                        addProperty(PIN_ID_PROPERTY, pin.id)
-                        addProperty(SCALE_PROPERTY, if (pin.id == focusedId) 1.3 else 1.0)
-                        addProperty(PRIORITY_PROPERTY, if (pin.id == focusedId) topPriority else index)
+                        addProperty(RENDER_REVISION_PROPERTY, renderRevision)
+                        addProperty(IMAGE_KEY_PROPERTY, pin.imageKey)
+                        addProperty(ROTATION_PROPERTY, pin.signature.rotationDegrees)
+                        addProperty(PIN_ID_PROPERTY, pin.signature.id)
+                        addProperty(SCALE_PROPERTY, 1.0)
+                        addProperty(PRIORITY_PROPERTY, index)
                     }
                 Feature.fromGeometry(
-                    Point.fromLngLat(pin.longitude, pin.latitude),
+                    pin.geometry,
                     properties,
-                    pin.id.toString(),
+                    pin.signature.id.toString(),
                 )
             }
         source.setGeoJson(FeatureCollection.fromFeatures(features))
-        lastRenderedPins = renderedPins
-        lastMonitoringLoadId = monitoringLoadId
-        lastFocusedId = focusedId
+        lastRenderSignature = renderSignature
+        lastTopPriority = renderedPins.size
+        applyDynamicProperties(style, lastTopPriority)
+        return true
+    }
+
+    fun isCurrentLoad(loadId: String): Boolean = lastMonitoringLoadId == loadId
+
+    fun hasImagesFor(pins: List<EmotionPinUiModel>): Boolean = pins.all { it.symbolImageKey() in registeredImageKeys }
+
+    fun isCurrentFrame(features: List<Feature>): Boolean =
+        features.all { feature ->
+            feature.getProperty(RENDER_REVISION_PROPERTY)?.takeUnless { it.isJsonNull }?.asLong == renderRevision
+        }
+
+    fun pruneObsoleteImages(
+        style: Style,
+        desiredImageKeys: Set<String>,
+    ) {
+        val referencedKeys =
+            desiredImageKeys + lastRenderedPins.orEmpty().map(EmotionPinUiModel::symbolImageKey)
+        val obsoleteKeys = registeredImageKeys - referencedKeys
+        obsoleteKeys.forEach { key ->
+            if (style.getImage(key) != null) style.removeImage(key)
+            registeredImageSignatures.remove(key)
+        }
+        registeredImageKeys.removeAll(obsoleteKeys)
     }
 
     fun updatePress(
@@ -127,39 +179,75 @@ internal class EmotionPinSymbolLayer {
         scale: Float,
     ) {
         if (pressedId == lastPressedId && scale == lastPressedScale) return
-        val layer = style.getLayer(LAYER_ID) ?: return
-        val size =
-            if (pressedId == null) {
-                Expression.get(SCALE_PROPERTY)
-            } else {
-                Expression.switchCase(
-                    Expression.eq(Expression.get(PIN_ID_PROPERTY), Expression.literal(pressedId)),
-                    Expression.literal(scale),
-                    Expression.get(SCALE_PROPERTY),
-                )
-            }
-        layer.setProperties(iconSize(size))
         lastPressedId = pressedId
         lastPressedScale = scale
+        applyDynamicProperties(style, lastTopPriority)
     }
 
-    private fun EmotionPinSymbolImage.toAndroidBitmap(densityDpi: Int): Bitmap {
-        val pixels = IntArray(width * height)
-        var byteIndex = 0
-        pixels.indices.forEach { pixelIndex ->
-            val red = rgba[byteIndex++].toInt() and 0xff
-            val green = rgba[byteIndex++].toInt() and 0xff
-            val blue = rgba[byteIndex++].toInt() and 0xff
-            val alpha = rgba[byteIndex++].toInt() and 0xff
-            pixels[pixelIndex] = Color.argb(alpha, red, green, blue)
+    private fun renderData(pin: EmotionPinUiModel): CachedPinRenderData {
+        val signature =
+            PinRenderSignature(
+                id = pin.id,
+                latitude = pin.latitude,
+                longitude = pin.longitude,
+                imageKey = pin.symbolImageKey(),
+                rotationDegrees = pin.rotationDegrees,
+            )
+        val cached = renderDataById[pin.id]
+        if (cached?.signature == signature) {
+            renderDataById.remove(pin.id)
+            renderDataById[pin.id] = cached
+            return cached
         }
-        return Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).apply {
-            setPixels(pixels, 0, width, 0, 0, width, height)
-            density = densityDpi
-        }
+        val updated =
+            CachedPinRenderData(
+                signature = signature,
+                geometry = Point.fromLngLat(pin.longitude, pin.latitude),
+                imageKey = signature.imageKey,
+            )
+        renderDataById.remove(pin.id)
+        renderDataById[pin.id] = updated
+        while (renderDataById.size > MAX_CACHED_PINS) renderDataById.remove(renderDataById.keys.first())
+        return updated
     }
 
-    private companion object {
+    private fun applyDynamicProperties(
+        style: Style,
+        topPriority: Int,
+    ) {
+        val next = DynamicProperties(focusedId, lastPressedId, lastPressedScale, topPriority)
+        if (next == dynamicProperties) return
+        val layer = style.getLayer(LAYER_ID) ?: return
+        val focusedScale =
+            focusedId?.let { id ->
+                Expression.switchCase(
+                    Expression.eq(Expression.get(PIN_ID_PROPERTY), Expression.literal(id)),
+                    Expression.literal(1.3),
+                    Expression.get(SCALE_PROPERTY),
+                )
+            } ?: Expression.get(SCALE_PROPERTY)
+        val iconScale =
+            lastPressedId?.let { id ->
+                Expression.switchCase(
+                    Expression.eq(Expression.get(PIN_ID_PROPERTY), Expression.literal(id)),
+                    Expression.literal(lastPressedScale.toDouble()),
+                    focusedScale,
+                )
+            } ?: focusedScale
+        val sortPriority =
+            focusedId?.let { id ->
+                Expression.switchCase(
+                    Expression.eq(Expression.get(PIN_ID_PROPERTY), Expression.literal(id)),
+                    Expression.literal(topPriority),
+                    Expression.get(PRIORITY_PROPERTY),
+                )
+            } ?: Expression.get(PRIORITY_PROPERTY)
+        layer.setProperties(iconSize(iconScale), symbolSortKey(sortPriority))
+        dynamicProperties = next
+    }
+
+    internal companion object {
+        private const val MAX_CACHED_PINS = 4_096
         const val SOURCE_ID = "emotion-pin-symbol-source"
         const val LAYER_ID = "emotion-pin-symbol-layer"
         const val IMAGE_KEY_PROPERTY = "image-key"
@@ -167,5 +255,33 @@ internal class EmotionPinSymbolLayer {
         const val PIN_ID_PROPERTY = "pin-id"
         const val SCALE_PROPERTY = "focus-scale"
         const val PRIORITY_PROPERTY = "focus-priority"
+        const val RENDER_REVISION_PROPERTY = "render-revision"
     }
+
+    private data class ImageSignature(
+        val width: Int,
+        val height: Int,
+        val densityDpi: Int,
+    )
+
+    private data class PinRenderSignature(
+        val id: Long,
+        val latitude: Double,
+        val longitude: Double,
+        val imageKey: String,
+        val rotationDegrees: Double,
+    )
+
+    private data class CachedPinRenderData(
+        val signature: PinRenderSignature,
+        val geometry: Point,
+        val imageKey: String,
+    )
+
+    private data class DynamicProperties(
+        val focusedId: Long?,
+        val pressedId: Long?,
+        val pressedScale: Float,
+        val topPriority: Int,
+    )
 }

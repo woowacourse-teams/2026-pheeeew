@@ -1,21 +1,23 @@
 package com.pheeeew.feature.screens.map.renderer
 
+import android.content.ComponentCallbacks2
+import android.content.res.Configuration
 import android.graphics.Color
 import android.graphics.PointF
 import android.graphics.RectF
 import android.view.Gravity
+import android.view.View
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -27,6 +29,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
+import com.pheeeew.domain.model.emotion.EmotionMapViewport
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
@@ -46,6 +49,7 @@ import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.layers.TransitionOptions
 import kotlin.math.PI
 import kotlin.math.hypot
 import kotlin.math.roundToInt
@@ -64,11 +68,18 @@ private const val FALLBACK_LONGITUDE = 127.147538132656
 @Composable
 internal actual fun NativeMap(
     state: MapUiModel,
+    isVisible: Boolean,
+    isMounted: Boolean,
+    savedCamera: MapCameraSnapshotUiModel?,
+    onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
+    onMemoryPressure: () -> Unit,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
-    onViewportChanged: (EmotionMapBounds) -> Unit,
+    onViewportChanged: (EmotionMapViewport) -> Unit,
+    onCameraMovingChanged: (Boolean) -> Unit,
     onEmotionPinClick: (Long) -> Unit,
+    onRegionClusterClick: (String) -> Unit,
     onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
@@ -79,72 +90,94 @@ internal actual fun NativeMap(
     val density = LocalDensity.current
     val statusBarInset = WindowInsets.statusBars.getTop(density)
     val navigationBarInset = WindowInsets.navigationBars.getBottom(density)
-    // NavHost restores saveable state, but recreates the native MapView on tab return.
-    var savedCamera by rememberSaveable { mutableStateOf<DoubleArray?>(null) }
-    var savedCameraCommandId by rememberSaveable { mutableLongStateOf(0L) }
+    val currentOnCameraMovingChanged by rememberUpdatedState(onCameraMovingChanged)
+    DisposableEffect(isVisible, isMounted) {
+        if (!isVisible || !isMounted) currentOnCameraMovingChanged(false)
+        onDispose { currentOnCameraMovingChanged(false) }
+    }
+    val currentIsVisible by rememberUpdatedState(isVisible)
     val currentOnContentPresented by rememberUpdatedState(onContentPresented)
     val currentOnEmotionPinClick by rememberUpdatedState(onEmotionPinClick)
+    val currentOnRegionClusterClick by rememberUpdatedState(onRegionClusterClick)
     val currentOnMapBackgroundClick by rememberUpdatedState(onMapBackgroundClick)
     val currentOnHighlightPosition by rememberUpdatedState(onHighlightedPinPositionChanged)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
-    val hostResult =
-        remember(context) {
-            runCatching {
-                MapLibre.getInstance(context.applicationContext)
-                AndroidFoundationMapHost(
-                    MapView(context).apply {
-                        setBackgroundColor(Color.BLACK)
-                        onCreate(null)
-                    },
-                    onMapError = currentOnMapError,
-                    onMapRecovered = currentOnMapRecovered,
-                    onRecordViewportChanged = onRecordViewportChanged,
-                    onViewportChanged = onViewportChanged,
-                    onEmotionPinClick = { currentOnEmotionPinClick(it) },
-                    onMapBackgroundClick = { currentOnMapBackgroundClick() },
-                    onHighlightedPinPositionChanged = { currentOnHighlightPosition(it) },
-                    onContentPresented = { token, count -> currentOnContentPresented(token, count) },
-                    restoredCamera = savedCamera,
-                    restoredCameraCommandId = savedCameraCommandId,
-                    onCameraSaved = { camera, commandId ->
-                        savedCamera = camera
-                        savedCameraCommandId = commandId
-                    },
-                )
+    val currentOnCameraSaved by rememberUpdatedState(onCameraSaved)
+    val currentOnMemoryPressure by rememberUpdatedState(onMemoryPressure)
+    var appLifecycleState by remember(lifecycleOwner) { mutableStateOf(lifecycleOwner.lifecycle.currentState) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { owner, _ -> appLifecycleState = owner.lifecycle.currentState }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    val host =
+        remember(context, isMounted) {
+            if (!isMounted) {
+                null
+            } else {
+                runCatching {
+                    MapLibre.getInstance(context.applicationContext)
+                    AndroidFoundationMapHost(
+                        MapView(context).apply {
+                            setBackgroundColor(Color.BLACK)
+                            onCreate(null)
+                        },
+                        onMapError = currentOnMapError,
+                        onMapRecovered = currentOnMapRecovered,
+                        onRecordViewportChanged = onRecordViewportChanged,
+                        onViewportChanged = onViewportChanged,
+                        onCameraMovingChanged = { currentOnCameraMovingChanged(it) },
+                        onEmotionPinClick = { currentOnEmotionPinClick(it) },
+                        onRegionClusterClick = { currentOnRegionClusterClick(it) },
+                        onMapBackgroundClick = { currentOnMapBackgroundClick() },
+                        onHighlightedPinPositionChanged = { currentOnHighlightPosition(it) },
+                        onContentPresented = { token, ids -> currentOnContentPresented(token, ids) },
+                        restoredCamera = savedCamera,
+                        onCameraSaved = { currentOnCameraSaved(it) },
+                    )
+                }.getOrNull()
             }
         }
-    val host = hostResult.getOrNull()
 
+    if (!isMounted) return
     if (host == null) {
-        LaunchedEffect(Unit) { currentOnMapError(MapErrorUiModel.RendererUnavailable) }
+        LaunchedEffect(isMounted) { currentOnMapError(MapErrorUiModel.RendererUnavailable) }
         return
     }
 
-    DisposableEffect(host, lifecycleOwner) {
-        val observer =
-            LifecycleEventObserver { _, event ->
-                when (event) {
-                    Lifecycle.Event.ON_START -> host.mapView.onStart()
-                    Lifecycle.Event.ON_RESUME -> host.mapView.onResume()
-                    Lifecycle.Event.ON_PAUSE -> host.mapView.onPause()
-                    Lifecycle.Event.ON_STOP -> host.mapView.onStop()
-                    else -> Unit
+    SideEffect {
+        host.synchronizeLifecycle(isVisible, appLifecycleState)
+    }
+    DisposableEffect(host) {
+        onDispose { host.release() }
+    }
+    DisposableEffect(context, host) {
+        val callbacks =
+            object : ComponentCallbacks2 {
+                override fun onConfigurationChanged(newConfig: Configuration) = Unit
+
+                override fun onLowMemory() {
+                    if (!currentIsVisible) currentOnMemoryPressure()
+                }
+
+                override fun onTrimMemory(level: Int) {
+                    if (!currentIsVisible && level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+                        currentOnMemoryPressure()
+                    }
                 }
             }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) host.mapView.onStart()
-        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) host.mapView.onResume()
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            host.release()
-        }
+        context.applicationContext.registerComponentCallbacks(callbacks)
+        onDispose { context.applicationContext.unregisterComponentCallbacks(callbacks) }
     }
 
     AndroidView(
         factory = { host.mapView },
         modifier = modifier,
-        update = { host.render(state, statusBarInset, navigationBarInset) },
+        update = { view ->
+            view.visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
+            if (isVisible) host.render(state, statusBarInset, navigationBarInset)
+        },
     )
 }
 
@@ -153,26 +186,30 @@ private class AndroidFoundationMapHost(
     private val onMapError: (MapErrorUiModel) -> Unit,
     private val onMapRecovered: () -> Unit,
     private val onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
-    private val onViewportChanged: (EmotionMapBounds) -> Unit,
+    private val onViewportChanged: (EmotionMapViewport) -> Unit,
+    private val onCameraMovingChanged: (Boolean) -> Unit,
     private val onEmotionPinClick: (Long) -> Unit,
+    private val onRegionClusterClick: (String) -> Unit,
     private val onMapBackgroundClick: () -> Unit,
     private val onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     private val onContentPresented: (String, List<String>) -> Unit,
-    private val restoredCamera: DoubleArray?,
-    restoredCameraCommandId: Long,
-    private val onCameraSaved: (DoubleArray, Long) -> Unit,
+    private val restoredCamera: MapCameraSnapshotUiModel?,
+    private val onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
 ) {
     private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
+    private val regionClusterSymbolLayer = RegionClusterSymbolLayer()
     private val recordStampLayer = AndroidRecordStampLayer()
     private val recordRangeLayer = AndroidRecordRangeLayer()
     private var map: MapLibreMap? = null
     private var style: Style? = null
     private var released = false
+    private var started = false
+    private var resumed = false
     private var latestState: MapUiModel? = null
     private var styleLoaded = false
     private var didSetInitialCamera = false
     private var initialCameraUsedFallback = false
-    private var lastAppliedCameraCommandId = restoredCameraCommandId
+    private var lastAppliedCameraCommandId = restoredCamera?.lastAppliedCameraCommandId ?: 0L
     private var fittedOrigin: GeoCoordinate? = null
     private var cameraBoundsInstalled = false
     private var statusBarInsetPx = 0
@@ -180,32 +217,37 @@ private class AndroidFoundationMapHost(
     private var didConfigureKoreanFontFaces = false
     private var pendingOriginalStyleJson: String? = null
     private var isRestoringOriginalStyle = false
+    private var lastScheduledPinLoadId: String? = null
+    private var lastSavedCamera: MapCameraSnapshotUiModel? = restoredCamera
 
     private val idleListener = MapView.OnDidBecomeIdleListener { publishContent() }
 
     private fun publishContent() {
         val state = latestState ?: return
-        val token = state.emotionContentLoad?.loadId ?: return
         val currentMap = map ?: return
         if (released || !styleLoaded || state.isRecordLocationPicking || mapView.width <= 0 ||
             mapView.height <= 0
         ) {
             return
         }
-        val imageKeys = state.emotionPinSymbolImages.mapTo(mutableSetOf()) { it.key }
-        if (state.emotionPins.any { it.symbolImageKey() !in imageKeys }) return
+        val token = state.emotionContentLoad?.loadId ?: return
+        if (!emotionPinSymbolLayer.isCurrentLoad(token) ||
+            !emotionPinSymbolLayer.hasImagesFor(state.emotionPins)
+        ) {
+            return
+        }
         val features =
             currentMap.queryRenderedFeatures(
                 RectF(0f, 0f, mapView.width.toFloat(), mapView.height.toFloat()),
                 "emotion-pin-symbol-layer",
             )
-        // Reject a native frame that still contains the previous asynchronous GeoJSON update.
-        if (features.any {
-                it.getProperty("monitoring-load-id")?.takeUnless { value -> value.isJsonNull }?.asString !=
-                    token
-            }
-        ) {
-            return
+        // Wait until the displayed feature set reflects the current source revision.
+        if (!emotionPinSymbolLayer.isCurrentFrame(features)) return
+        style?.let { loadedStyle ->
+            emotionPinSymbolLayer.pruneObsoleteImages(
+                loadedStyle,
+                state.emotionPinSymbolImages.mapTo(mutableSetOf()) { it.key },
+            )
         }
         val ids = features.mapNotNull { it.id()?.takeIf { id -> id.toLongOrNull() != null } }.distinct()
         onContentPresented(token, ids)
@@ -246,7 +288,17 @@ private class AndroidFoundationMapHost(
                         .firstOrNull()
                         ?.id()
                         ?.toLongOrNull()
-                if (id != null) onEmotionPinClick(id) else onMapBackgroundClick()
+                val regionId =
+                    if (id == null) {
+                        readyMap.queryRenderedFeatures(point, RegionClusterSymbolLayer.LAYER_ID).firstOrNull()?.id()
+                    } else {
+                        null
+                    }
+                when {
+                    id != null -> onEmotionPinClick(id)
+                    regionId != null -> onRegionClusterClick(regionId)
+                    else -> onMapBackgroundClick()
+                }
                 true
             }
             readyMap.setMinZoomPreference(MINIMUM_ZOOM)
@@ -258,22 +310,23 @@ private class AndroidFoundationMapHost(
                 setAttributionTintColor(Color.WHITE)
                 isCompassEnabled = true
                 compassGravity = Gravity.TOP or Gravity.END
-                setCompassFadeFacingNorth(true)
+                setCompassFadeFacingNorth(false)
             }
             applyCompassMargins()
             applyAttributionMargins()
             readyMap.addOnCameraMoveStartedListener { reason ->
+                onCameraMovingChanged(true)
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE && didSetInitialCamera) {
                     initialCameraUsedFallback = false
-                    saveCamera()
                 }
             }
+            // Camera persistence is handled at idle/release; per-move state writes re-render the AndroidView.
             readyMap.addOnCameraMoveListener {
-                saveCamera()
                 publishHighlightedPinPosition()
                 publishRecordViewport()
             }
             readyMap.addOnCameraIdleListener {
+                onCameraMovingChanged(false)
                 saveCamera()
                 publishRecordViewport()
                 publishViewport()
@@ -324,14 +377,38 @@ private class AndroidFoundationMapHost(
         publishViewport()
     }
 
+    fun synchronizeLifecycle(
+        visible: Boolean,
+        lifecycleState: Lifecycle.State,
+    ) {
+        if (released) return
+        val shouldStart = visible && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
+        val shouldResume = visible && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+        if (shouldStart && !started) {
+            mapView.onStart()
+            started = true
+        }
+        if (!shouldResume && resumed) {
+            mapView.onPause()
+            resumed = false
+        }
+        if (!shouldStart && started) {
+            mapView.onStop()
+            started = false
+        }
+        if (shouldResume && !resumed) {
+            mapView.onResume()
+            resumed = true
+        }
+    }
+
     fun release() {
         if (released) return
         saveCamera()
-        released = true
         mapView.removeOnDidFailLoadingMapListener(mapLoadFailureListener)
         mapView.removeOnDidBecomeIdleListener(idleListener)
-        mapView.onPause()
-        mapView.onStop()
+        synchronizeLifecycle(visible = false, lifecycleState = Lifecycle.State.DESTROYED)
+        released = true
         mapView.onDestroy()
         map = null
         style = null
@@ -341,17 +418,19 @@ private class AndroidFoundationMapHost(
         if (!didSetInitialCamera || released) return
         val camera = map?.cameraPosition ?: return
         val target = camera.target ?: return
-        onCameraSaved(
-            doubleArrayOf(
-                target.latitude,
-                target.longitude,
-                camera.zoom,
-                camera.bearing,
-                camera.tilt,
-                if (initialCameraUsedFallback) 1.0 else 0.0,
-            ),
-            lastAppliedCameraCommandId,
-        )
+        val savedCamera =
+            MapCameraSnapshotUiModel(
+                latitude = target.latitude,
+                longitude = target.longitude,
+                zoom = camera.zoom,
+                bearing = camera.bearing,
+                pitch = camera.tilt,
+                initialCameraUsedFallback = initialCameraUsedFallback,
+                lastAppliedCameraCommandId = lastAppliedCameraCommandId,
+            )
+        if (savedCamera == lastSavedCamera) return
+        lastSavedCamera = savedCamera
+        onCameraSaved(savedCamera)
     }
 
     private fun withKoreanFontFaces(styleJson: String): String? =
@@ -437,8 +516,11 @@ private class AndroidFoundationMapHost(
 
     private fun installLoadedStyle(loadedStyle: Style) {
         style = loadedStyle
+        // Keep symbols opaque when viewport and GeoJSON updates recalculate placement.
+        loadedStyle.setTransition(TransitionOptions(0L, 0L, false))
         AndroidMapAppearance.apply(loadedStyle)
         emotionPinSymbolLayer.install(loadedStyle)
+        regionClusterSymbolLayer.install(loadedStyle)
         recordRangeLayer.install(loadedStyle)
         AndroidCurrentLocationLayer.install(loadedStyle)
         recordStampLayer.install(loadedStyle)
@@ -479,18 +561,33 @@ private class AndroidFoundationMapHost(
         val currentLocation = (state.locationState as? LocationState.Available)?.location
         AndroidCurrentLocationLayer.update(style, currentLocation)
         recordRangeLayer.update(style, state.recordOrigin.takeIf { state.isRecordLocationPicking })
+        var pinSourceUpdated = false
         style?.let { loadedStyle ->
-            emotionPinSymbolLayer.update(
-                style = loadedStyle,
-                pins = state.emotionPins,
-                images = state.emotionPinSymbolImages,
-                visible = true,
-                densityDpi = mapView.resources.displayMetrics.densityDpi,
-                monitoringLoadId = state.emotionContentLoad?.loadId,
-                focusedId = state.focusedEmotionId,
-            )
+            // Prepare the incoming layer before removing features from the outgoing layer.
+            if (state.displayedRegionLevel != null) {
+                regionClusterSymbolLayer.update(loadedStyle, state.regionClusters, state.regionClusterSymbolImages)
+            }
+            pinSourceUpdated =
+                emotionPinSymbolLayer.update(
+                    style = loadedStyle,
+                    pins = state.emotionPins,
+                    images = state.emotionPinSymbolImages,
+                    visible = true,
+                    monitoringLoadId = state.emotionContentLoad?.loadId,
+                    focusedId = state.focusedEmotionId,
+                )
             emotionPinSymbolLayer.updatePress(loadedStyle, state.pressedEmotionId, state.pressedEmotionScale)
+            if (state.displayedRegionLevel == null) {
+                regionClusterSymbolLayer.update(loadedStyle, state.regionClusters, state.regionClusterSymbolImages)
+            }
             recordStampLayer.update(loadedStyle, state.recordPreviewPin, state.recordPreviewScale)
+        }
+        val loadId = state.emotionContentLoad?.loadId
+        if (!pinSourceUpdated && loadId != null && loadId != lastScheduledPinLoadId) {
+            lastScheduledPinLoadId = loadId
+            mapView.post {
+                if (!released) publishContent()
+            }
         }
         val point =
             currentLocation?.let { LatLng(it.latitude, it.longitude) }
@@ -499,13 +596,13 @@ private class AndroidFoundationMapHost(
             currentMap.cameraPosition =
                 CameraPosition
                     .Builder()
-                    .target(LatLng(restoredCamera[0], restoredCamera[1]))
-                    .zoom(restoredCamera[2])
-                    .bearing(restoredCamera[3])
-                    .tilt(restoredCamera[4])
+                    .target(LatLng(restoredCamera.latitude, restoredCamera.longitude))
+                    .zoom(restoredCamera.zoom)
+                    .bearing(restoredCamera.bearing)
+                    .tilt(restoredCamera.pitch)
                     .build()
             didSetInitialCamera = true
-            initialCameraUsedFallback = restoredCamera[5] == 1.0
+            initialCameraUsedFallback = restoredCamera.initialCameraUsedFallback
         }
         if (!didSetInitialCamera || (initialCameraUsedFallback && currentLocation != null)) {
             currentMap.cameraPosition =
@@ -689,6 +786,6 @@ private class AndroidFoundationMapHost(
                 maxLongitude = bounds.longitudeEast,
                 maxLatitude = bounds.latitudeNorth,
             )
-        if (queryBounds.isValid()) onViewportChanged(queryBounds)
+        if (queryBounds.isValid()) onViewportChanged(EmotionMapViewport(queryBounds, currentMap.cameraPosition.zoom))
     }
 }
