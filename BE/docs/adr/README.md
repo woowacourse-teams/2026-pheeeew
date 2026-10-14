@@ -121,6 +121,7 @@ Accepted (YYYY-MM-DD)
 | [0034](0034-change-group-join-type-without-reissuing-invite-code.md) | 가입 방식 전환 | 그룹장만 전용 경로로 바꾸고 초대 코드와 기존 멤버는 그대로 둬요 |
 | [0035](0035-serve-dev-api-without-cloudflare-proxy.md) | 개발 서버 API의 직접 연결 | Proposed: Cloudflare 프록시를 끄고 nginx가 공인 인증서로 직접 받아요. 스웨거는 Access 뒤의 문서용 주소로 옮겨요 |
 | [0036](0036-serve-prod-api-without-cloudflare-proxy.md) | 운영 서버 API의 직접 연결 | Proposed: 개발 서버 구성을 운영에 옮겨 프록시를 끄고 nginx가 공인 인증서로 직접 받아요 |
+| [0037](0037-allow-multiple-app-attest-app-ids.md) | App Attest App ID 허용 목록 | 개발자 계정 이전 동안 두 App ID prefix 를 모두 받고, 구버전 지원이 끝나면 이전 것을 지워요 |
 
 ## AI 사용
 
