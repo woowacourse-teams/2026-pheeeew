@@ -7,9 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B10101010101010101010101 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = B30303030303030303030303; };
-		64E63F4A3CF10CB4773C55F8 /* PostHog linkage in Frameworks */ = {isa = PBXBuildFile; productRef = 42CE4090DE15678DF75AB3F4; };
+		64E63F4A3CF10CB4773C55F8 /* KotlinMultiplatformLinkedPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 42CE4090DE15678DF75AB3F4 /* KotlinMultiplatformLinkedPackage */; };
 		A10101010101010101010101 /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = A30303030303030303030303 /* MapLibre */; };
+		B10101010101010101010101 /* Sentry in Frameworks */ = {isa = PBXBuildFile; productRef = B30303030303030303030303 /* Sentry */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,7 +49,7 @@
 			files = (
 				A10101010101010101010101 /* MapLibre in Frameworks */,
 				B10101010101010101010101 /* Sentry in Frameworks */,
-				64E63F4A3CF10CB4773C55F8 /* PostHog linkage in Frameworks */,
+				64E63F4A3CF10CB4773C55F8 /* KotlinMultiplatformLinkedPackage in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -128,8 +128,8 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A20202020202020202020202 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */,
-				B20202020202020202020202 /* Sentry */,
-				D8E30D8A61E2C4922BFFBEFE /* KotlinMultiplatformLinkedPackage */,
+				B20202020202020202020202 /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
+				D8E30D8A61E2C4922BFFBEFE /* XCLocalSwiftPackageReference "KotlinMultiplatformLinkedPackage" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = F93A3DCF112B44FD4AE0D285 /* Products */;
@@ -221,7 +221,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = Z6V4SXKRL6;
+				DEVELOPMENT_TEAM = WKN466N42M;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -281,7 +281,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = Z6V4SXKRL6;
+				DEVELOPMENT_TEAM = WKN466N42M;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -321,6 +321,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_ASSET_PATHS = "\"iosApp/Preview Content\"";
+				DEVELOPMENT_TEAM = WKN466N42M;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = iosApp/Info.plist;
@@ -402,7 +403,10 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		D8E30D8A61E2C4922BFFBEFE = {isa = XCLocalSwiftPackageReference; relativePath = KotlinMultiplatformLinkedPackage; };
+		D8E30D8A61E2C4922BFFBEFE /* XCLocalSwiftPackageReference "KotlinMultiplatformLinkedPackage" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = KotlinMultiplatformLinkedPackage;
+		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
@@ -414,16 +418,30 @@
 				version = 6.29.0;
 			};
 		};
-		B20202020202020202020202 = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/getsentry/sentry-cocoa"; requirement = {kind = exactVersion; version = 8.58.2; }; };
+		B20202020202020202020202 /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
+			requirement = {
+				kind = exactVersion;
+				version = 8.58.2;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		B30303030303030303030303 = {isa = XCSwiftPackageProductDependency; package = B20202020202020202020202; productName = Sentry; };
-		42CE4090DE15678DF75AB3F4 = {isa = XCSwiftPackageProductDependency; productName = KotlinMultiplatformLinkedPackage; };
+		42CE4090DE15678DF75AB3F4 /* KotlinMultiplatformLinkedPackage */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = KotlinMultiplatformLinkedPackage;
+		};
 		A30303030303030303030303 /* MapLibre */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = A20202020202020202020202 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */;
 			productName = MapLibre;
+		};
+		B30303030303030303030303 /* Sentry */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B20202020202020202020202 /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
+			productName = Sentry;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

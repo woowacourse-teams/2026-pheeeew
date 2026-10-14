@@ -1,5 +1,3 @@
-#include "TeamID.xcconfig"
-
 PRODUCT_NAME=Pheeeew
 PRODUCT_BUNDLE_IDENTIFIER=com.itda.pheeeew
 
