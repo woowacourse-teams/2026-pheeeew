@@ -93,11 +93,11 @@ public final class AppAttestFixture {
     }
 
     public static AppAttestProperties 설정된_app_attest_설정() {
-        return new AppAttestProperties(팀_ID, 번들_ID, AppAttestEnvironment.PRODUCTION, false);
+        return new AppAttestProperties(List.of(팀_ID), 번들_ID, AppAttestEnvironment.PRODUCTION, false);
     }
 
     public static AppAttestProperties 개발_환경_설정() {
-        return new AppAttestProperties(팀_ID, 번들_ID, AppAttestEnvironment.DEVELOPMENT, false);
+        return new AppAttestProperties(List.of(팀_ID), 번들_ID, AppAttestEnvironment.DEVELOPMENT, false);
     }
 
     public static AppAttestProperties 설정이_없는_app_attest_설정() {
@@ -105,7 +105,7 @@ public final class AppAttestFixture {
     }
 
     public static AppAttestProperties 강제가_켜진_설정() {
-        return new AppAttestProperties(팀_ID, 번들_ID, AppAttestEnvironment.PRODUCTION, true);
+        return new AppAttestProperties(List.of(팀_ID), 번들_ID, AppAttestEnvironment.PRODUCTION, true);
     }
 
     private static String 텍스트를_읽는다(String fileName) {

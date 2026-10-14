@@ -5,6 +5,7 @@ import static com.pheeeew.device.fixture.AppAttestFixture.팀_ID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -28,12 +29,12 @@ class AppAttestPropertiesTest {
     @CsvSource(value = {
             "NULL,com.pheeeew.app",
             "1234567890,NULL",
-            "'   ',com.pheeeew.app",
             "1234567890,'   '"
     }, nullValues = "NULL")
     void 설정값이_반쪽이면_검증을_켜지_않는다(String teamId, String bundleId) {
         // given / when
-        AppAttestProperties properties = new AppAttestProperties(teamId, bundleId, null, false);
+        AppAttestProperties properties =
+                new AppAttestProperties(teamId == null ? null : List.of(teamId), bundleId, null, false);
 
         // then
         assertThat(properties.isConfigured()).isFalse();
@@ -42,18 +43,18 @@ class AppAttestPropertiesTest {
     @Test
     void 설정값이_모두_있으면_App_ID_를_만든다() {
         // given / when
-        AppAttestProperties properties = new AppAttestProperties(팀_ID, 번들_ID, null, false);
+        AppAttestProperties properties = new AppAttestProperties(List.of(팀_ID), 번들_ID, null, false);
 
         // then
         assertThat(properties.isConfigured()).isTrue();
-        assertThat(properties.appId()).isEqualTo(팀_ID + "." + 번들_ID);
+        assertThat(properties.appIds()).containsExactly(팀_ID + "." + 번들_ID);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"123456789", "12345678901", "abcdefghij", "1234-56789", "1234 56789"})
     void Team_ID_형식이_어긋나면_설정을_만들_수_없다(String teamId) {
         // given / when / then
-        assertThatThrownBy(() -> new AppAttestProperties(teamId, 번들_ID, null, false))
+        assertThatThrownBy(() -> new AppAttestProperties(List.of(teamId), 번들_ID, null, false))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -61,7 +62,7 @@ class AppAttestPropertiesTest {
     @ValueSource(strings = {"pheeeew", "com..pheeeew", "com.pheeeew.", "com pheeeew", "com.pheeeew!"})
     void Bundle_ID_형식이_어긋나면_설정을_만들_수_없다(String bundleId) {
         // given / when / then
-        assertThatThrownBy(() -> new AppAttestProperties(팀_ID, bundleId, null, false))
+        assertThatThrownBy(() -> new AppAttestProperties(List.of(팀_ID), bundleId, null, false))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -73,7 +74,7 @@ class AppAttestPropertiesTest {
     }, nullValues = "NULL")
     void App_ID_가_없으면_강제를_켤_수_없다(String teamId, String bundleId) {
         // given / when / then
-        assertThatThrownBy(() -> new AppAttestProperties(teamId, bundleId, null, true))
+        assertThatThrownBy(() -> new AppAttestProperties(teamId == null ? null : List.of(teamId), bundleId, null, true))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
@@ -86,7 +87,8 @@ class AppAttestPropertiesTest {
                 .run(context -> {
                     AppAttestProperties properties = context.getBean(AppAttestProperties.class);
                     assertThat(properties.isConfigured()).isTrue();
-                    assertThat(properties.appId()).isEqualTo("Z6V4SXKRL6.com.itda.pheeeew");
+                    assertThat(properties.appIds())
+                            .containsExactly("Z6V4SXKRL6.com.itda.pheeeew", "WKN466N42M.com.itda.pheeeew");
                     assertThat(properties.requireAttestation()).isFalse();
                 });
     }

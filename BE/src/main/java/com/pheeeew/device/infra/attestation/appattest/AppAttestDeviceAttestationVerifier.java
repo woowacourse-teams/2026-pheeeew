@@ -234,8 +234,10 @@ public class AppAttestDeviceAttestationVerifier implements DeviceAttestationVeri
     }
 
     private void requireMatchingAppId(AppAttestAuthenticatorData authenticatorData) {
-        byte[] expectedRpIdHash = hash(appAttestProperties.appId().getBytes(StandardCharsets.US_ASCII));
-        if (!MessageDigest.isEqual(expectedRpIdHash, authenticatorData.rpIdHash())) {
+        boolean matched = appAttestProperties.appIds().stream()
+                .map(appId -> hash(appId.getBytes(StandardCharsets.US_ASCII)))
+                .anyMatch(expectedRpIdHash -> MessageDigest.isEqual(expectedRpIdHash, authenticatorData.rpIdHash()));
+        if (!matched) {
             throw rejected(AppAttestRejection.APP_ID_MISMATCH);
         }
     }
