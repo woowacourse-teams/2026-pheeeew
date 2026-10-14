@@ -79,6 +79,38 @@ class AppAttestPropertiesTest {
     }
 
     @Test
+    void 팀_ID_가_여럿이면_같은_번들_ID_로_App_ID_를_여러_개_만든다() {
+        // given / when
+        AppAttestProperties properties =
+                new AppAttestProperties(List.of("Z6V4SXKRL6", "WKN466N42M"), 번들_ID, null, false);
+
+        // then
+        assertThat(properties.appIds())
+                .containsExactly("Z6V4SXKRL6." + 번들_ID, "WKN466N42M." + 번들_ID);
+    }
+
+    @Test
+    void 팀_ID_중_하나라도_형식이_어긋나면_설정을_만들_수_없다() {
+        // given / when / then
+        assertThatThrownBy(() -> new AppAttestProperties(List.of(팀_ID, "짧음"), 번들_ID, null, false))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void 같은_팀_ID_를_두_번_적으면_설정을_만들_수_없다() {
+        // given / when / then
+        assertThatThrownBy(() -> new AppAttestProperties(List.of(팀_ID, 팀_ID), 번들_ID, null, false))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void 팀_ID_목록이_비면_강제를_켤_수_없다() {
+        // given / when / then
+        assertThatThrownBy(() -> new AppAttestProperties(List.of(), 번들_ID, null, true))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void 설정_파일이_실제_App_ID_를_담고_있다() {
         // given / when / then
         new ApplicationContextRunner()

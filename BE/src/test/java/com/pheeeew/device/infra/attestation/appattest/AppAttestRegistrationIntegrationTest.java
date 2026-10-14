@@ -6,9 +6,11 @@ import static com.pheeeew.device.fixture.AppAttestFixture.강제가_켜진_설�
 import static com.pheeeew.device.fixture.AppAttestFixture.개발_증명;
 import static com.pheeeew.device.fixture.AppAttestFixture.개발_환경_설정;
 import static com.pheeeew.device.fixture.AppAttestFixture.다른_앱으로_만든_증명;
+import static com.pheeeew.device.fixture.AppAttestFixture.모두_맞지_않는_팀_ID_설정;
 import static com.pheeeew.device.fixture.AppAttestFixture.샌드박스_증명;
 import static com.pheeeew.device.fixture.AppAttestFixture.설정된_app_attest_설정;
 import static com.pheeeew.device.fixture.AppAttestFixture.설정이_없는_app_attest_설정;
+import static com.pheeeew.device.fixture.AppAttestFixture.앞에_맞지_않는_팀_ID_가_있는_설정;
 import static com.pheeeew.device.fixture.AppAttestFixture.정품_증명;
 import static com.pheeeew.device.fixture.AppAttestFixture.증명에_묶이지_않은_challenge;
 import static com.pheeeew.device.fixture.AppAttestFixture.증명에_묶인_challenge;
@@ -193,6 +195,39 @@ class AppAttestRegistrationIntegrationTest {
 
         // when
         Throwable throwable = catchThrowable(() -> deviceService.save(UUID.randomUUID(), "스타크", 증명));
+
+        // then
+        증명을_확인할_수_없다(throwable);
+        assertThat(거절_수("APP_ID_MISMATCH")).isOne();
+        assertThat(deviceRepository.count()).isZero();
+    }
+
+    @Test
+    void 허용_목록의_첫_항목이_아니어도_맞는_App_ID_면_통과한다() {
+        // given
+        DeviceService 두_팀_ID_서비스 =
+                등록_서비스를_만든다(앞에_맞지_않는_팀_ID_가_있는_설정(), 합성_루트를_신뢰하는_체인_검증기());
+        DeviceAttestation 증명 = 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자);
+
+        // when
+        DeviceSaveResult result = 두_팀_ID_서비스.save(UUID.randomUUID(), "스타크", 증명);
+
+        // then
+        assertThat(result.created()).isTrue();
+        assertThat(deviceRepository.count()).isOne();
+        assertThat(승인_수()).isOne();
+        assertThat(거절_수("APP_ID_MISMATCH")).isZero();
+    }
+
+    @Test
+    void 허용_목록_어디에도_없는_App_ID_는_거절한다() {
+        // given
+        DeviceService 모두_어긋난_서비스 =
+                등록_서비스를_만든다(모두_맞지_않는_팀_ID_설정(), 합성_루트를_신뢰하는_체인_검증기());
+        DeviceAttestation 증명 = 증명을_담은_요청(정품_증명(), 증명에_묶인_challenge, 키_식별자);
+
+        // when
+        Throwable throwable = catchThrowable(() -> 모두_어긋난_서비스.save(UUID.randomUUID(), "스타크", 증명));
 
         // then
         증명을_확인할_수_없다(throwable);
