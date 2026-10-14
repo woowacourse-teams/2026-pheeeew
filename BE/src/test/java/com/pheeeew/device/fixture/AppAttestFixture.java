@@ -21,6 +21,8 @@ import java.util.Set;
 public final class AppAttestFixture {
 
     public static final String 팀_ID = "1234567890";
+    public static final String 맞지_않는_팀_ID = "9999999999";
+    public static final String 또_다른_맞지_않는_팀_ID = "8888888888";
     public static final String 번들_ID = "com.pheeeew.app";
     public static final String 증명에_묶인_challenge = "appattest-fixture-challenge-000000000000000";
     public static final String 증명에_묶이지_않은_challenge = "appattest-fixture-challenge-000000000000001";
@@ -93,11 +95,21 @@ public final class AppAttestFixture {
     }
 
     public static AppAttestProperties 설정된_app_attest_설정() {
-        return new AppAttestProperties(팀_ID, 번들_ID, AppAttestEnvironment.PRODUCTION, false);
+        return new AppAttestProperties(List.of(팀_ID), 번들_ID, AppAttestEnvironment.PRODUCTION, false);
+    }
+
+    public static AppAttestProperties 앞에_맞지_않는_팀_ID_가_있는_설정() {
+        return new AppAttestProperties(
+                List.of(맞지_않는_팀_ID, 팀_ID), 번들_ID, AppAttestEnvironment.PRODUCTION, false);
+    }
+
+    public static AppAttestProperties 모두_맞지_않는_팀_ID_설정() {
+        return new AppAttestProperties(
+                List.of(맞지_않는_팀_ID, 또_다른_맞지_않는_팀_ID), 번들_ID, AppAttestEnvironment.PRODUCTION, false);
     }
 
     public static AppAttestProperties 개발_환경_설정() {
-        return new AppAttestProperties(팀_ID, 번들_ID, AppAttestEnvironment.DEVELOPMENT, false);
+        return new AppAttestProperties(List.of(팀_ID), 번들_ID, AppAttestEnvironment.DEVELOPMENT, false);
     }
 
     public static AppAttestProperties 설정이_없는_app_attest_설정() {
@@ -105,7 +117,7 @@ public final class AppAttestFixture {
     }
 
     public static AppAttestProperties 강제가_켜진_설정() {
-        return new AppAttestProperties(팀_ID, 번들_ID, AppAttestEnvironment.PRODUCTION, true);
+        return new AppAttestProperties(List.of(팀_ID), 번들_ID, AppAttestEnvironment.PRODUCTION, true);
     }
 
     private static String 텍스트를_읽는다(String fileName) {
