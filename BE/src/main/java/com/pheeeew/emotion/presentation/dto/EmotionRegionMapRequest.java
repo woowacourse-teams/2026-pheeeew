@@ -32,7 +32,7 @@ public record EmotionRegionMapRequest(
         @Schema(description = "화면의 최대 위도", minimum = "-90", maximum = "90", example = "37.6") Double maxLatitude,
 
         @NotNull
-        @Schema(description = "클라이언트가 확대 정도에 따라 선택한 지역 계층. 서버는 다른 계층으로 전환하지 않습니다.") RegionLevel level,
+        @Schema(description = "SIDO·SIGUNGU는 bbox와 무관한 전국 집계입니다. EMD는 기존 화면 교차 조회 호환용입니다.") RegionLevel level,
 
         @Schema(description = "GROUP 범위의 그룹 공개 ID. scope 없이 지정하면 GROUP으로 조회합니다.") UUID groupId,
 
