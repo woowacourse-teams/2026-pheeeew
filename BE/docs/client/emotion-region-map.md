@@ -95,6 +95,14 @@ Authorization: Bearer <access-token>
 ## 응답
 
 Content-Type은 `application/json`, Cache-Control은 `no-cache, private`예요.
+지역 요약 API의 정상 GET(200) JSON은 HTTP gzip을 지원해요. 요청의 `Accept-Encoding`에
+허용된 `gzip`이 있고 원본 UTF-8 본문이 2,048바이트 이상이면 Tomcat이 본문 압축과
+`Content-Encoding: gzip`·`Vary: Accept-Encoding`을 처리해요. 2,048바이트 미만이면 비압축 JSON을 받아요.
+헤더 생략·`identity`·`gzip;q=0` 요청은 기존 비압축 JSON을 받아요. 압축 해제 후 JSON 구조와 값은 같아요.
+다른 API·비GET·오류 응답은 이 압축 대상에서 제외해요. EMD도 같은 API를 사용하므로 포함해요.
+현재 동기식 지역 요약 응답만 전송 직전 메모리에 임시 보관해 실제 바이트 길이를 확정해요.
+응답 크기만큼 임시 메모리를 사용하며 응답을 재사용하는 서버 캐시는 아니에요.
+이 설정은 앱의 자동 해제 동작을 전제로 하며 심사 빌드의 실기기 확인·운영 배포 완료를 의미하지 않아요.
 지역 코드순으로 모든 요약을 최상위 JSON 배열로 한 번에 반환해요.
 이 API는 페이지네이션을 사용하지 않으므로 `items`, `hasNext`, `nextCursor` 래퍼 필드가 없어요.
 아래 지역 이름·좌표·개수는 형식 설명용 합성 값이며 실제 SGIS 값이나 운영 측정 결과가 아니에요.
