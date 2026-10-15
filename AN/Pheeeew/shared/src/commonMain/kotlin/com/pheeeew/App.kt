@@ -166,6 +166,7 @@ fun App(
     mapFilterSettingsRepository: MapFilterSettingsRepository,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
+    onOpenDeveloperTools: (() -> Unit)? = null,
 ) {
     AppTheme {
         AppContent(
@@ -180,6 +181,7 @@ fun App(
             mapFilterSettingsRepository = mapFilterSettingsRepository,
             hasCompletedOnboarding = hasCompletedOnboarding,
             onOnboardingCompleted = onOnboardingCompleted,
+            onOpenDeveloperTools = onOpenDeveloperTools,
         )
     }
 }
@@ -197,6 +199,7 @@ private fun AppContent(
     mapFilterSettingsRepository: MapFilterSettingsRepository,
     hasCompletedOnboarding: Boolean,
     onOnboardingCompleted: () -> Unit,
+    onOpenDeveloperTools: (() -> Unit)?,
 ) {
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -818,6 +821,7 @@ private fun AppContent(
                     onBackClick = { isSettingsVisible = false },
                     permissionSettingsLauncher = permissionSettingsLauncher,
                     modifier = Modifier.fillMaxSize(),
+                    onOpenDeveloperTools = onOpenDeveloperTools,
                 )
             }
 

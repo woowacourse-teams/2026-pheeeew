@@ -32,6 +32,7 @@ import kotlin.time.Clock
 
 /** App/process owner. Feature dependencies borrow [client] and must not close it. */
 class ApiDependencies private constructor(
+    val buildConfig: DeviceSessionBuildConfig,
     private val bootstrap: ApiClient,
     val client: ApiClient,
     val session: DeviceSessionManager,
@@ -126,6 +127,7 @@ class ApiDependencies private constructor(
                 }
             val client = createPlatformApiClient(config, session, observer, attemptObserver, monitoring)
             return ApiDependencies(
+                build,
                 bootstrap,
                 client,
                 session,

@@ -8,7 +8,11 @@ struct ComposeView: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Self.Context) -> UIViewController {
         FoundationIosMapBridge.shared.registerFactory(factory: Self.foundationMapFactory)
+#if DEBUG
+        return DebugMainViewControllerKt.DebugMainViewController()
+#else
         return MainViewControllerKt.MainViewController()
+#endif
     }
 
     func updateUIViewController(_ uiViewController: UIViewController, context: Self.Context) {}

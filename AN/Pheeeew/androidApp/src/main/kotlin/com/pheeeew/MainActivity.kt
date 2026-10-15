@@ -49,21 +49,24 @@ class MainActivity : ComponentActivity() {
         val appSettingsLauncher = AndroidAppSettingsLauncher(this@MainActivity)
 
         setContent {
-            App(
-                locationDependencies = locationDependencies,
-                lastRecordedGroupRepository = lastRecordedGroupRepository,
-                groupCreateSessionStore = groupCreateSessionStore,
-                hasCompletedOnboarding = hasCompletedOnboarding,
-                onOnboardingCompleted = {
-                    onboardingPreferences.edit().putBoolean(WELCOME_ONBOARDING_COMPLETED_KEY, true).apply()
-                },
-                appVersion = BuildConfig.VERSION_NAME,
-                appVersionApi = appVersionApi,
-                permissionSettingsLauncher = appSettingsLauncher,
-                appSettingsLauncher = appSettingsLauncher,
-                apiDependencies = apiDependencies,
-                mapFilterSettingsRepository = SessionMapFilterSettings.repository,
-            )
+            DeveloperToolsEntry(apiDependencies.buildConfig) { onOpenDeveloperTools ->
+                App(
+                    locationDependencies = locationDependencies,
+                    lastRecordedGroupRepository = lastRecordedGroupRepository,
+                    groupCreateSessionStore = groupCreateSessionStore,
+                    hasCompletedOnboarding = hasCompletedOnboarding,
+                    onOnboardingCompleted = {
+                        onboardingPreferences.edit().putBoolean(WELCOME_ONBOARDING_COMPLETED_KEY, true).apply()
+                    },
+                    appVersion = BuildConfig.VERSION_NAME,
+                    appVersionApi = appVersionApi,
+                    permissionSettingsLauncher = appSettingsLauncher,
+                    appSettingsLauncher = appSettingsLauncher,
+                    apiDependencies = apiDependencies,
+                    mapFilterSettingsRepository = SessionMapFilterSettings.repository,
+                    onOpenDeveloperTools = onOpenDeveloperTools,
+                )
+            }
         }
     }
 }

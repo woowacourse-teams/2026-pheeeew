@@ -32,6 +32,8 @@ kotlin {
 }
 dependencies {
     implementation(project(":shared"))
+    debugImplementation(project(":developerTools"))
+    debugImplementation(libs.compose.foundation)
     implementation("androidx.lifecycle:lifecycle-process:2.10.0")
 
     androidTestImplementation(libs.androidx.testExt.junit)
