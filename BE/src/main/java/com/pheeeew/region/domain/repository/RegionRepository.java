@@ -43,6 +43,19 @@ public class RegionRepository {
                 """).query(Boolean.class).single();
     }
 
+    public List<Region> findByLevel(RegionLevel level) {
+        return jdbc.sql("""
+                SELECT code, level, name, parent_code,
+                       ST_X(display_point) AS longitude, ST_Y(display_point) AS latitude
+                FROM regions
+                WHERE level = :level
+                ORDER BY code
+                """).param("level", level.name())
+                .query((row, index) -> Region.of(row.getString("code"), RegionLevel.valueOf(row.getString("level")),
+                        row.getString("name"), row.getString("parent_code"), row.getDouble("longitude"), row.getDouble("latitude")))
+                .list();
+    }
+
     public List<Region> findIntersectingRegions(EmotionSearchBounds bounds, RegionLevel level) {
         return jdbc.sql("""
                 WITH bounds AS (
