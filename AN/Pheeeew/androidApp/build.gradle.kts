@@ -263,3 +263,38 @@ androidComponents {
             }.configureEach { dependsOn(validation) }
     }
 }
+
+val verifyDeveloperToolsIsolation by tasks.registering {
+    group = "verification"
+    description = "Verify developerTools is present only in the Android Debug runtime graph."
+    listOf("debug", "release").forEach { variant ->
+        val graph =
+            configurations
+                .named("${variant}RuntimeClasspath")
+                .flatMap { it.incoming.resolutionResult.rootComponent }
+                .map { root ->
+                    val visited = mutableSetOf<String>()
+
+                    fun visit(component: org.gradle.api.artifacts.result.ResolvedComponentResult) {
+                        if (!visited.add(component.id.displayName)) return
+                        component.dependencies
+                            .filterIsInstance<org.gradle.api.artifacts.result.ResolvedDependencyResult>()
+                            .forEach { visit(it.selected) }
+                    }
+                    visit(root)
+                    visited.sorted()
+                }
+        inputs.property(variant, graph)
+    }
+    doLast {
+        inputs.properties.toSortedMap().forEach { (variant, value) ->
+            val includesTools = (value as List<*>).contains("project :developerTools")
+            check(includesTools == (variant == "debug")) { "Developer tools isolation failed: $variant" }
+            println("$variant developerTools=$includesTools")
+        }
+    }
+}
+
+tasks.matching { it.name == "preDebugBuild" || it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(verifyDeveloperToolsIsolation)
+}
