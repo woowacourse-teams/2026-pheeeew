@@ -98,3 +98,51 @@ kotlin {
 dependencies {
     androidRuntimeClasspath(libs.compose.uiTooling)
 }
+
+// Resolve both graphs without relying on dead-code elimination or stripped symbols.
+val verifyDeveloperToolsIsolation by tasks.registering {
+    group = "verification"
+    description = "Verify shared iOS frameworks never compile/link developerTools."
+    kotlin.targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().forEach { target ->
+        listOf("main").forEach { name ->
+            val compilation = target.compilations.getByName(name)
+            val graph =
+                configurations
+                    .named(compilation.compileDependencyConfigurationName)
+                    .flatMap { it.incoming.resolutionResult.rootComponent }
+                    .map { root ->
+                        val visited = mutableSetOf<String>()
+
+                        fun visit(component: org.gradle.api.artifacts.result.ResolvedComponentResult) {
+                            if (!visited.add(component.id.displayName)) return
+                            component.dependencies
+                                .filterIsInstance<org.gradle.api.artifacts.result.ResolvedDependencyResult>()
+                                .forEach { visit(it.selected) }
+                        }
+                        visit(root)
+                        visited.sorted()
+                    }
+            inputs.property("${target.name}.$name", graph)
+        }
+        target.binaries.withType<org.jetbrains.kotlin.gradle.plugin.mpp.Framework>().forEach { binary ->
+            inputs.property("${target.name}.${binary.name}.compilation", binary.compilation.name)
+        }
+    }
+    doLast {
+        inputs.properties.toSortedMap().forEach { (name, value) ->
+            if (name.endsWith(".compilation")) {
+                val expected = "main"
+                check(value == expected) { "Unexpected framework compilation: $name = $value" }
+            } else {
+                val components = value as List<*>
+                val includesTools = components.contains("project :developerTools")
+                check(!includesTools) { "Developer tools isolation failed: $name" }
+                println("$name developerTools=$includesTools")
+            }
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("link") && it.name.contains("FrameworkIos") }.configureEach {
+    dependsOn(verifyDeveloperToolsIsolation)
+}
