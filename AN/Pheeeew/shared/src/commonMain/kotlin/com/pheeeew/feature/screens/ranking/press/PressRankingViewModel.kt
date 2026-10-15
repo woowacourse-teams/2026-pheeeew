@@ -19,7 +19,8 @@ internal data class PressRankingUiState(
     val weeksAgo: Int = 0,
     val weekLabel: String = koreanWeekRangeLabel(),
     val hasPrevious: Boolean = false,
-    val groups: List<PressGroupRank> = emptyList(),
+    val people: List<PressPersonRank> = emptyList(),
+    val me: PressPersonRank? = null,
     val status: PressRankingStatus = PressRankingStatus.Loading,
     val isRefreshing: Boolean = false,
     val hasRefreshError: Boolean = false,
@@ -118,7 +119,8 @@ internal class PressRankingViewModel(
                                     weeksAgo = weeksAgo,
                                     weekLabel = formatWeekRange(result.startAt, result.endAt),
                                     hasPrevious = result.hasPrevious,
-                                    groups = result.groups,
+                                    people = result.people,
+                                    me = result.me,
                                     status = PressRankingStatus.Ready,
                                 )
                         }

@@ -755,7 +755,6 @@ private fun AppContent(
                                 RankingBottomNavigationDestination.Press -> {
                                     PressRankingRoute(
                                         apiClient = apiDependencies.client,
-                                        onGroupClick = openGroupDetail,
                                         modifier = Modifier.fillMaxSize(),
                                         onRefreshActionChanged = { refreshPressRanking = it },
                                     )

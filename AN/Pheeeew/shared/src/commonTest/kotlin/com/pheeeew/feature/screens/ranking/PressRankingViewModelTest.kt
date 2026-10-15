@@ -1,7 +1,7 @@
 package com.pheeeew.feature.screens.ranking
 
 import com.pheeeew.feature.screens.ranking.press.PressEmotion
-import com.pheeeew.feature.screens.ranking.press.PressGroupRank
+import com.pheeeew.feature.screens.ranking.press.PressPersonRank
 import com.pheeeew.feature.screens.ranking.press.PressRankingLoadResult
 import com.pheeeew.feature.screens.ranking.press.PressRankingSource
 import com.pheeeew.feature.screens.ranking.press.PressRankingStatus
@@ -31,8 +31,8 @@ class PressRankingViewModelTest {
             try {
                 val calls = mutableListOf<Pair<PressEmotion, Int>>()
                 var shouldFail = false
-                val groups =
-                    listOf(PressGroupRank("00000000-0000-0000-0000-000000000001", 1, "히유 클럽", "내 그룹", 42, true))
+                val people =
+                    listOf(PressPersonRank(1, "히유 클럽", 42))
                 val source =
                     object : PressRankingSource {
                         override suspend fun load(
@@ -45,7 +45,8 @@ class PressRankingViewModelTest {
                                 startAt = "2026-09-21T00:00:00Z",
                                 endAt = "2026-09-28T00:00:00Z",
                                 hasPrevious = true,
-                                groups = groups,
+                                people = people,
+                                me = people.single(),
                             )
                         }
                     }
@@ -67,7 +68,8 @@ class PressRankingViewModelTest {
                 viewModel.onRefresh()
                 advanceUntilIdle()
                 assertTrue(viewModel.uiState.value.hasRefreshError)
-                assertEquals(groups, viewModel.uiState.value.groups)
+                assertEquals(people, viewModel.uiState.value.people)
+                assertEquals(people.single(), viewModel.uiState.value.me)
                 assertFalse(viewModel.uiState.value.isRefreshing)
             } finally {
                 Dispatchers.resetMain()
@@ -93,7 +95,7 @@ class PressRankingViewModelTest {
                                     startAt = "2026-09-28T00:00:00Z",
                                     endAt = "2026-10-05T00:00:00Z",
                                     hasPrevious = false,
-                                    groups = emptyList(),
+                                    people = emptyList(),
                                 )
                             }
                     }
@@ -107,7 +109,7 @@ class PressRankingViewModelTest {
                 advanceUntilIdle()
                 assertEquals(PressRankingStatus.Ready, viewModel.uiState.value.status)
                 assertTrue(
-                    viewModel.uiState.value.groups
+                    viewModel.uiState.value.people
                         .isEmpty(),
                 )
             } finally {
@@ -134,9 +136,9 @@ class PressRankingViewModelTest {
                                     startAt = "2026-09-28T00:00:00Z",
                                     endAt = "2026-10-05T00:00:00Z",
                                     hasPrevious = false,
-                                    groups =
+                                    people =
                                         listOf(
-                                            PressGroupRank("00000000-0000-0000-0000-000000000001", 1, "현재 결과", "", 20),
+                                            PressPersonRank(1, "현재 결과", 20),
                                         ),
                                 )
                             }
@@ -148,9 +150,9 @@ class PressRankingViewModelTest {
                 advanceUntilIdle()
                 assertEquals(
                     "현재 결과",
-                    viewModel.uiState.value.groups
+                    viewModel.uiState.value.people
                         .single()
-                        .groupName,
+                        .nickname,
                 )
 
                 staleResponse.complete(
@@ -158,16 +160,16 @@ class PressRankingViewModelTest {
                         startAt = "2026-09-21T00:00:00Z",
                         endAt = "2026-09-28T00:00:00Z",
                         hasPrevious = true,
-                        groups = listOf(PressGroupRank("00000000-0000-0000-0000-000000000001", 1, "늦은 결과", "", 99)),
+                        people = listOf(PressPersonRank(1, "늦은 결과", 99)),
                     ),
                 )
                 advanceUntilIdle()
                 assertEquals(PressEmotion.Angry, viewModel.uiState.value.selectedEmotion)
                 assertEquals(
                     "현재 결과",
-                    viewModel.uiState.value.groups
+                    viewModel.uiState.value.people
                         .single()
-                        .groupName,
+                        .nickname,
                 )
             } finally {
                 Dispatchers.resetMain()

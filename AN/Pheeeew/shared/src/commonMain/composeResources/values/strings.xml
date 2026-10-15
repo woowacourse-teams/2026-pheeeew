@@ -133,11 +133,10 @@
     <string name="ranking_empty_week">해당 주에 랭킹이 없어요.</string>
     <string name="ranking_stamp_title">스탬프 주간 랭킹</string>
     <string name="ranking_weekly_title">주간 랭킹</string>
-    <string name="ranking_press_title">프레스 주간 랭킹</string>
+    <string name="ranking_press_title">개인 전국 주간 랭킹</string>
     <string name="press_ranking_headline">지금, 어떤 마음이 모였을까?</string>
-    <string name="press_ranking_subtitle">그룹별 누적 누름 수</string>
-    <string name="press_ranking_group">프레스 그룹</string>
-    <string name="press_ranking_my_group">내 그룹</string>
+    <string name="press_ranking_subtitle">개인별 전국 주간 프레스 수</string>
+    <string name="press_ranking_person">프레스 랭킹</string>
     <string name="ranking_stamp_label">감정 스탬프</string>
     <string name="ranking_score_count">%1$d개</string>
 

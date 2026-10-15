@@ -1,89 +1,61 @@
 package com.pheeeew.data.remote.group
 
-import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class PressRankingMapperTest {
     @Test
-    fun `API 응답을 기간과 공동 순위를 포함해 매핑한다`() {
+    fun `공동 순위와 Long 프레스 수와 100위 밖 내 순위를 보존한다`() {
         val ranking =
             PressRankingMapper.toDomain(
-                PressRankingResponseDto(
-                    weeksAgo = 1,
-                    startAt = "2026-09-21T00:00:00Z",
-                    endAt = "2026-09-28T00:00:00Z",
-                    hasPrevious = true,
+                response().copy(
                     items =
                         listOf(
-                            PressRankingItemResponseDto(
-                                2,
-                                GROUP_ID,
-                                "히유 클럽",
-                                31,
-                                mine = true,
-                                stamp = GroupStampResponseDto("히유", "#17191A", "#9DEBD5", "CIRCLE"),
-                            ),
-                            PressRankingItemResponseDto(2, OTHER_GROUP_ID, "별터 모임", 31),
+                            PressRankingItemResponseDto(2, "익명", 3_000_000_000L),
+                            PressRankingItemResponseDto(2, "익명", 3_000_000_000L),
                         ),
+                    me = PressRankingItemResponseDto(150, "한숨많은곰", 31),
                 ),
             )
-
-        assertEquals(1, ranking.weeksAgo)
-        assertEquals("2026-09-21T00:00:00Z", ranking.startAt)
-        assertEquals("2026-09-28T00:00:00Z", ranking.endAt)
+        assertEquals(listOf(2, 2), ranking.items.map { it.rank })
+        assertEquals(3_000_000_000L, ranking.items.first().pressCount)
+        assertEquals(150, ranking.me?.rank)
+        assertEquals("한숨많은곰", ranking.me?.nickname)
         assertTrue(ranking.hasPrevious)
-        assertEquals(2, ranking.items[0].rank)
-        assertEquals(31, ranking.items[0].score)
-        assertTrue(ranking.items[0].mine)
-        assertEquals("히유", ranking.items[0].stamp?.text)
-        assertEquals(
-            0xFF9DEBD5,
-            ranking.items[0]
-                .stamp
-                ?.backgroundColor
-                ?.argb,
-        )
-        assertFalse(ranking.items[1].mine)
     }
 
     @Test
-    fun `빈 결과를 정상적으로 매핑한다`() {
-        val ranking =
-            PressRankingMapper.toDomain(
-                PressRankingResponseDto(
-                    weeksAgo = 0,
-                    startAt = "2026-09-28T00:00:00Z",
-                    endAt = "2026-10-05T00:00:00Z",
-                    hasPrevious = false,
-                    items = emptyList(),
-                ),
-            )
-
-        assertEquals(emptyList(), ranking.items)
+    fun `빈 결과와 미참여 내 순위를 보존하고 520주에서 이전 이동을 막는다`() {
+        val ranking = PressRankingMapper.toDomain(response().copy(weeksAgo = 520))
+        assertTrue(ranking.items.isEmpty())
+        assertNull(ranking.me)
         assertFalse(ranking.hasPrevious)
     }
 
     @Test
-    fun `잘못된 항목 계약은 거부한다`() {
-        assertFailsWith<PressRankingContractException> {
-            PressRankingMapper.toDomain(
-                PressRankingResponseDto(
-                    weeksAgo = 0,
-                    startAt = "2026-09-28T00:00:00Z",
-                    endAt = "2026-10-05T00:00:00Z",
-                    hasPrevious = false,
-                    items = listOf(PressRankingItemResponseDto(1, "bad-id", "그룹", 3)),
-                ),
+    fun `잘못된 항목과 기간 계약을 거부한다`() {
+        val invalid =
+            listOf(
+                response().copy(weeksAgo = 521),
+                response().copy(startAt = "invalid"),
+                response().copy(endAt = response().startAt),
+                response().copy(items = listOf(PressRankingItemResponseDto(0, "닉네임", 1))),
+                response().copy(items = listOf(PressRankingItemResponseDto(1, "", 1))),
+                response().copy(me = PressRankingItemResponseDto(1, "닉네임", -1)),
             )
-        }
+        invalid.forEach { dto -> assertFailsWith<PressRankingContractException> { PressRankingMapper.toDomain(dto) } }
     }
 
-    private companion object {
-        const val GROUP_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6"
-        const val OTHER_GROUP_ID = "73cbfafa-a5a8-4fc1-a29d-621a7e93be24"
-    }
+    private fun response() =
+        PressRankingResponseDto(
+            weeksAgo = 0,
+            startAt = "2026-10-05T15:00:00Z",
+            endAt = "2026-10-12T15:00:00Z",
+            items = emptyList(),
+            me = null,
+        )
 }

@@ -46,9 +46,9 @@ import com.pheeeew.feature.screens.ranking.components.RankingTopBarHeight
 import com.pheeeew.feature.screens.ranking.components.RankingTopBarOverlay
 import com.pheeeew.feature.screens.ranking.components.WeekSelector
 import com.pheeeew.feature.screens.ranking.components.rememberRankingTopBarScrollBehavior
-import com.pheeeew.feature.screens.ranking.press.components.MyPressRankList
+import com.pheeeew.feature.screens.ranking.press.components.MyPressRankCard
 import com.pheeeew.feature.screens.ranking.press.components.PressEmotionFilter
-import com.pheeeew.feature.screens.ranking.press.components.PressGroupRankList
+import com.pheeeew.feature.screens.ranking.press.components.PressPersonRankList
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ranking_empty_week
@@ -57,7 +57,6 @@ import pheeeew.shared.generated.resources.ranking_press_title
 @Composable
 fun PressRankingRoute(
     apiClient: ApiClient,
-    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
 ) {
@@ -76,7 +75,6 @@ fun PressRankingRoute(
         onNextWeek = viewModel::onNextWeek,
         onRetry = viewModel::onRetry,
         onRefresh = viewModel::onRefresh,
-        onGroupClick = onGroupClick,
         modifier = modifier,
     )
 }
@@ -89,7 +87,6 @@ internal fun PressRankingScreen(
     onNextWeek: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
-    onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val pullState = rememberPullToRefreshState()
@@ -173,17 +170,15 @@ internal fun PressRankingScreen(
                         }
 
                         PressRankingStatus.Ready -> {
-                            val myGroups = uiState.groups.filter(PressGroupRank::isMyGroup)
-                            if (myGroups.isNotEmpty()) {
-                                MyPressRankList(
-                                    groups = myGroups,
+                            uiState.me?.let { me ->
+                                MyPressRankCard(
+                                    person = me,
                                     emotion = uiState.selectedEmotion,
-                                    onGroupClick = { onGroupClick(it.groupId) },
                                     modifier = Modifier.padding(horizontal = 24.dp),
                                 )
                                 Spacer(Modifier.height(24.dp))
                             }
-                            if (uiState.groups.isEmpty()) {
+                            if (uiState.people.isEmpty()) {
                                 Text(
                                     text = stringResource(Res.string.ranking_empty_week),
                                     color = AppColors.RankingSecondaryContent,
@@ -193,9 +188,8 @@ internal fun PressRankingScreen(
                                     modifier = Modifier.fillMaxWidth().padding(top = 96.dp),
                                 )
                             } else {
-                                PressGroupRankList(
-                                    groups = uiState.groups,
-                                    onGroupClick = { onGroupClick(it.groupId) },
+                                PressPersonRankList(
+                                    people = uiState.people,
                                     modifier = Modifier.padding(horizontal = 24.dp),
                                 )
                             }
@@ -223,7 +217,8 @@ private fun PressRankingScreenPreview() {
                 PressRankingUiState(
                     weekLabel = samplePressWeeks.last(),
                     hasPrevious = true,
-                    groups = samplePressGroupRanks,
+                    people = samplePressPersonRanks,
+                    me = samplePressPersonRanks[1],
                     status = PressRankingStatus.Ready,
                 ),
             onEmotionSelected = {},
@@ -231,7 +226,6 @@ private fun PressRankingScreenPreview() {
             onNextWeek = {},
             onRetry = {},
             onRefresh = {},
-            onGroupClick = {},
         )
     }
 }

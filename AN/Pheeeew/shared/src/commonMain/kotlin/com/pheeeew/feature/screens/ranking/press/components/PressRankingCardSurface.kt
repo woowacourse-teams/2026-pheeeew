@@ -27,7 +27,7 @@ import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
-import pheeeew.shared.generated.resources.press_ranking_group
+import pheeeew.shared.generated.resources.press_ranking_person
 
 @Composable
 internal fun PressRankingCardSurface(
@@ -82,7 +82,7 @@ internal fun PressRankingCardSurface(
 private fun PressRankingCardSurfacePreview() {
     AppTheme {
         PressRankingCardSurface(Modifier.padding(20.dp)) {
-            Text(stringResource(Res.string.press_ranking_group), Modifier.padding(24.dp))
+            Text(stringResource(Res.string.press_ranking_person), Modifier.padding(24.dp))
         }
     }
 }
