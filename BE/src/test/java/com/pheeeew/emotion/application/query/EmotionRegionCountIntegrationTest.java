@@ -16,6 +16,8 @@ import com.pheeeew.common.logging.RequestTiming;
 import com.pheeeew.common.logging.RequestTiming.Measurement;
 import com.pheeeew.common.logging.RequestTimingStage;
 import com.pheeeew.device.domain.Device;
+import com.pheeeew.device.exception.DeviceErrorCode;
+import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.dto.RegionEmotionSummary;
 import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.domain.Emotion;
@@ -444,12 +446,15 @@ class EmotionRegionCountIntegrationTest {
 
     @ParameterizedTest
     @CsvSource({
-            "ALL,ALL,5,DISCOURAGED", "MEMO,ALL,3,ANGRY", "AUDIO,ALL,2,DISCOURAGED",
-            "ALL,GROUP,3,DISCOURAGED", "MEMO,GROUP,2,ANGRY", "AUDIO,GROUP,1,DISCOURAGED",
-            "ALL,MY,2,ANGRY", "MEMO,MY,1,ANGRY", "AUDIO,MY,1,DISCOURAGED"
+            "ALL,ALL,5,DISCOURAGED,false", "MEMO,ALL,3,ANGRY,false", "AUDIO,ALL,2,DISCOURAGED,false",
+            "ALL,GROUP,3,DISCOURAGED,false", "MEMO,GROUP,2,ANGRY,false", "AUDIO,GROUP,1,DISCOURAGED,false",
+            "ALL,MY,2,ANGRY,false", "MEMO,MY,1,ANGRY,false", "AUDIO,MY,1,DISCOURAGED,false",
+            "ALL,ALL,5,DISCOURAGED,true", "MEMO,ALL,3,ANGRY,true", "AUDIO,ALL,2,DISCOURAGED,true",
+            "ALL,GROUP,3,DISCOURAGED,true", "MEMO,GROUP,2,ANGRY,true", "AUDIO,GROUP,1,DISCOURAGED,true",
+            "ALL,MY,2,ANGRY,true", "MEMO,MY,1,ANGRY,true", "AUDIO,MY,1,DISCOURAGED,true"
     })
     void KST_날짜_내용_범위_AND_필터를_개수와_대표_감정에_함께_적용한다(
-            EmotionContentFilter contentType, EmotionSearchScope scope, long count, EmotionState state
+            EmotionContentFilter contentType, EmotionSearchScope scope, long count, EmotionState state, boolean nationwide
     ) {
         // given: 요청 기기는 그룹 비회원이며, 다른 기기와 작성 기기 없는 과거 기록도 있다.
         Device other = 기본_기기_빌더().build();
@@ -483,7 +488,9 @@ class EmotionRegionCountIntegrationTest {
         var bounds = EmotionSearchBounds.of(126, 37, 128, 39);
 
         // when
-        var regions = service.findRegionMap(bounds, RegionLevel.EMD, requester.getPublicId(), filter);
+        var regions = nationwide
+                ? service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.SIGUNGU, requester.getPublicId(), filter)
+                : service.findRegionMap(bounds, RegionLevel.EMD, requester.getPublicId(), filter);
         var map = service.findContentMapWithinBounds(bounds, requester.getPublicId(), groupId,
                 date, date, contentType, scope, null);
 
@@ -519,8 +526,8 @@ class EmotionRegionCountIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void 미존재나_삭제된_그룹은_빈_화면에서도_그룹_없음으로_거부한다(boolean deleted) {
+    @CsvSource({"false,false", "true,false", "false,true", "true,true"})
+    void 미존재나_삭제된_그룹은_빈_화면에서도_그룹_없음으로_거부한다(boolean deleted, boolean nationwide) {
         // given
         UUID groupId = UUID.randomUUID();
         if (deleted) {
@@ -533,10 +540,110 @@ class EmotionRegionCountIntegrationTest {
         var filter = EmotionSearchFilter.of(null, null, null, null, groupId);
 
         // when / then
-        assertThatThrownBy(() -> service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42),
-                RegionLevel.EMD, requester.getPublicId(), filter))
+        assertThatThrownBy(() -> {
+            if (nationwide) {
+                service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.SIDO, requester.getPublicId(), filter);
+            } else {
+                service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42),
+                        RegionLevel.EMD, requester.getPublicId(), filter);
+            }
+        })
                 .isInstanceOfSatisfying(GroupException.class,
                         error -> assertThat(error.getErrorCode()).isEqualTo(GroupErrorCode.GROUP_NOT_FOUND));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = RegionLevel.class, names = {"SIDO", "SIGUNGU"})
+    void 전국_조회는_bbox와_무관하게_경계_공간_연산_없이_코드순으로_반환한다(RegionLevel level) throws Exception {
+        // given: 떨어진 두 지역에 내용이 있고 세 번째 지역에는 NONE만 있다.
+        addRegion("10", RegionLevel.SIDO, null);
+        addRegion("10010", RegionLevel.SIGUNGU, "10");
+        addRegion("10010530", RegionLevel.EMD, "10010");
+        addRegion("12", RegionLevel.SIDO, null);
+        addRegion("12010", RegionLevel.SIGUNGU, "12");
+        addRegion("12010530", RegionLevel.EMD, "12010");
+        jdbc.sql("""
+                UPDATE regions SET boundary = ST_Translate(boundary, 2, -2),
+                    display_point = ST_Translate(display_point, 2, -2) WHERE code LIKE '10%'
+                """).update();
+        save(classified().memo("메모").state(EmotionState.ANGRY));
+        save(classified().regionCode("10010530").audio(Audio.builder().objectKey("national.m4a").build())
+                .state(EmotionState.DISCOURAGED));
+        save(classified().regionCode("12010530"));
+        entityManager.flush();
+        // EMD 호환 경로는 여전히 화면 교차에 따라 다른 결과를 반환한다.
+        assertThat(findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.EMD, null)).isEmpty();
+        assertThat(findRegionMap(EmotionSearchBounds.of(126.5, 37.5, 127.5, 38.5), RegionLevel.EMD, null))
+                .extracting(item -> item.region().code()).containsExactly(EMD);
+        // 경계 컬럼을 읽는 회귀는 SQL 실패로 드러나며 변경은 테스트 트랜잭션에서 롤백된다.
+        jdbc.sql("ALTER TABLE regions RENAME COLUMN boundary TO unavailable_boundary").update();
+
+        // when
+        var results = service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), level, requester.getPublicId(),
+                EmotionSearchFilter.of(null, null, null, null, null));
+        var timings = inRequest(() -> {
+            assertThat(findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), level, null)).isEqualTo(results);
+            assertThat(findRegionMap(EmotionSearchBounds.of(-180, -90, 180, 90), level, null)).isEqualTo(results);
+            assertThat(findRegionMap(EmotionSearchBounds.of(170, 37, -170, 39), level, null)).isEqualTo(results);
+        });
+        assertThat(timings).containsOnlyKeys(PheeeewRequestTimingStage.REGIONS_SERVICE,
+                PheeeewRequestTimingStage.REGIONS_AGGREGATION_READY, PheeeewRequestTimingStage.REGIONS_SUMMARY);
+        assertThat(timings.values()).allSatisfy(value -> assertThat(value.count()).isEqualTo(3));
+
+        // then: 선택 계층만 반환하고 원래 표시 좌표와 지역 메타데이터를 유지한다.
+        String firstCode = level == RegionLevel.SIDO ? "10" : "10010";
+        String secondCode = level == RegionLevel.SIDO ? "11" : "11010";
+        assertThat(results).extracting(item -> item.region().code()).containsExactly(firstCode, secondCode);
+        assertThat(results.getFirst().region()).satisfies(region -> {
+            assertThat(region.level()).isEqualTo(level);
+            assertThat(region.name()).isEqualTo("합산 검증 지역");
+            assertThat(region.parentCode()).isEqualTo(level == RegionLevel.SIDO ? null : "10");
+            assertThat(region.longitude()).isEqualTo(129);
+            assertThat(region.latitude()).isEqualTo(36);
+        });
+        assertThat(results).extracting(EmotionRegionMapItemView::summary).containsExactly(
+                RegionEmotionSummary.of(1, EmotionState.DISCOURAGED), RegionEmotionSummary.of(1, EmotionState.ANGRY));
+    }
+
+    @Test
+    void 전국_조회도_기기_확인을_그룹_확인보다_먼저_수행한다() {
+        // given
+        var filter = EmotionSearchFilter.of(null, null, null, null, UUID.randomUUID());
+
+        // when / then
+        assertThatThrownBy(() -> service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.SIDO, UUID.randomUUID(), filter))
+                .isInstanceOfSatisfying(DeviceException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(DeviceErrorCode.DEVICE_NOT_FOUND));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"0,false", "0,true", "1,false", "1,true", "2,false", "2,true"})
+    void 전국_조회도_경계나_백필_미준비면_지역이_없어도_거부한다(int status, boolean empty) {
+        // given
+        String sql = switch (status) {
+            case 0 -> "UPDATE region_datasets SET boundaries_verified_at = NULL, backfill_verified_at = NULL";
+            case 1 -> "UPDATE region_datasets SET backfill_verified_at = NULL";
+            default -> "DELETE FROM region_datasets";
+        };
+        jdbc.sql(sql).update();
+        if (empty) {
+            jdbc.sql("DELETE FROM regions").update();
+        }
+        var filter = EmotionSearchFilter.of(null, null, null, null, null);
+
+        // when / then
+        assertThatThrownBy(() -> service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.SIDO, requester.getPublicId(), filter))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_REGION_DATA_UNAVAILABLE));
+    }
+
+    @Test
+    void 전국_조회는_준비된_데이터에_내용_있는_감정이_없으면_빈_목록을_반환한다() {
+        // given
+        var filter = EmotionSearchFilter.of(null, null, null, null, null);
+
+        // when / then
+        assertThat(service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.SIDO, requester.getPublicId(), filter)).isEmpty();
     }
 
     private List<EmotionRegionMapItemView> findRegionMap(EmotionSearchBounds bounds, RegionLevel level, UUID groupId) {

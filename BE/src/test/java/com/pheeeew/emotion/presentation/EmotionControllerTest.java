@@ -1109,21 +1109,25 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"ALL,ALL", "MEMO,MY", "AUDIO,GROUP"})
-    void 지역_요약_필터와_인증된_기기를_서비스로_전달한다(EmotionContentFilter contentType, EmotionSearchScope scope) {
+    @CsvSource({"SIDO,ALL,ALL", "SIDO,MEMO,MY", "SIDO,AUDIO,GROUP",
+            "SIGUNGU,ALL,ALL", "SIGUNGU,MEMO,MY", "SIGUNGU,AUDIO,GROUP",
+            "EMD,ALL,ALL", "EMD,MEMO,MY", "EMD,AUDIO,GROUP"})
+    void 지역_요약_필터와_인증된_기기를_서비스로_전달한다(
+            RegionLevel level, EmotionContentFilter contentType, EmotionSearchScope scope
+    ) {
         // given
         UUID groupId = scope == EmotionSearchScope.GROUP ? UUID.randomUUID() : null;
         LocalDate date = LocalDate.of(2026, 10, 1);
         var filter = EmotionSearchFilter.of(date, date, contentType, scope, groupId);
         var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
-        when(emotionMapQueryService.findRegionMap(bounds, RegionLevel.EMD, DEVICE_PUBLIC_ID, filter)).thenReturn(List.of());
+        when(emotionMapQueryService.findRegionMap(bounds, level, DEVICE_PUBLIC_ID, filter)).thenReturn(List.of());
 
         // when / then: 요청 파라미터의 기기 ID로 인증 기기를 대체할 수 없다.
-        request(HttpMethod.GET, REGION_MAP_URI + REGION_BOUNDS_QUERY + "&level=EMD&startDate=" + date
+        request(HttpMethod.GET, REGION_MAP_URI + REGION_BOUNDS_QUERY + "&level=" + level + "&startDate=" + date
                 + "&endDate=" + date + "&contentType=" + contentType + "&scope=" + scope
                 + (groupId == null ? "" : "&groupId=" + groupId) + "&devicePublicId=" + UUID.randomUUID(),
                 "access-token").expectStatus().isOk().expectBody().json("[]", JsonCompareMode.STRICT);
-        verify(emotionMapQueryService).findRegionMap(bounds, RegionLevel.EMD, DEVICE_PUBLIC_ID, filter);
+        verify(emotionMapQueryService).findRegionMap(bounds, level, DEVICE_PUBLIC_ID, filter);
     }
 
     @ParameterizedTest
@@ -1176,7 +1180,9 @@ class EmotionControllerTest {
     @Test
     void 지역_요약의_GET_외_메서드와_추가_하위_경로는_허용하지_않는다() {
         // given / when / then
-        request(HttpMethod.POST, REGION_MAP_URI, "access-token").expectStatus().isForbidden();
+        for (HttpMethod method : List.of(HttpMethod.POST, HttpMethod.PUT, HttpMethod.PATCH, HttpMethod.DELETE)) {
+            request(method, REGION_MAP_URI, "access-token").expectStatus().isForbidden();
+        }
         request(HttpMethod.GET, REGION_MAP_URI + "/extra", "access-token").expectStatus().isForbidden();
         verifyNoInteractions(emotionQueryService, emotionMapQueryService);
     }
@@ -1191,6 +1197,27 @@ class EmotionControllerTest {
         // when / then
         request(HttpMethod.GET, REGION_MAP_URI + REGION_BOUNDS_QUERY + "&level=EMD", "access-token")
                 .expectStatus().isEqualTo(503).expectBody().jsonPath("$.code").isEqualTo("EMOTION-013");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"SIDO", "SIGUNGU"})
+    void 전국_요약도_기존_bbox_필수값과_좌표_범위를_검증한다(String level) {
+        // when / then
+        for (String query : List.of("?level=" + level,
+                REGION_BOUNDS_QUERY.replace("127.8", "181") + "&level=" + level,
+                REGION_BOUNDS_QUERY.replace("37.2", "NaN") + "&level=" + level)) {
+            request(HttpMethod.GET, REGION_MAP_URI + query, "access-token")
+                    .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        }
+        verifyNoInteractions(emotionQueryService, emotionMapQueryService);
+    }
+
+    @Test
+    void 별도_v3_지역_요약_경로는_공개하지_않는다() {
+        // when / then
+        request(HttpMethod.GET, "/api/v3/emotions/map/regions" + REGION_BOUNDS_QUERY + "&level=SIDO", "access-token")
+                .expectStatus().isForbidden();
+        verifyNoInteractions(emotionQueryService, emotionMapQueryService);
     }
 
     private String createBody(String content) {
