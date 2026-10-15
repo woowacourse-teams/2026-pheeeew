@@ -189,6 +189,7 @@ jobs:
       - name: .env 갱신
         env:
           APP_IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:dev-${{ github.sha }}
+          DB_URL: ${{ secrets.DB_URL }}
           DB_USERNAME: ${{ secrets.DB_USERNAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           JWT_PRIVATE_KEY_BASE64: ${{ secrets.JWT_PRIVATE_KEY_BASE64 }}
@@ -203,6 +204,7 @@ jobs:
           umask 077
           {
             echo "APP_IMAGE=$APP_IMAGE"
+            echo "DB_URL=$DB_URL"
             echo "DB_USERNAME=$DB_USERNAME"
             echo "DB_PASSWORD=$DB_PASSWORD"
             echo "JWT_PRIVATE_KEY_BASE64=$JWT_PRIVATE_KEY_BASE64"
