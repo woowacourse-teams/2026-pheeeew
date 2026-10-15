@@ -36,7 +36,7 @@ BE 구현 기준 계약이에요. 클라이언트 연동과 실제 기기 성능
 ## 요청
 
 ```http
-GET /api/v2/emotions/map/regions?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6&level=EMD
+GET /api/v2/emotions/map/regions?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6&level=SIGUNGU
 Authorization: Bearer <access-token>
 ```
 
@@ -44,7 +44,7 @@ Authorization: Bearer <access-token>
 | --- | --- | --- |
 | `minLongitude`, `maxLongitude` | 예 | 화면의 서쪽·동쪽 경도. 각각 -180~180이며 서로 달라야 해요. |
 | `minLatitude`, `maxLatitude` | 예 | 화면의 최소·최대 위도. 각각 -90~90이며 최소가 최대보다 작아야 해요. |
-| `level` | 예 | `SIDO`, `SIGUNGU`, `EMD` 중 하나예요. |
+| `level` | 예 | 클라이언트는 `SIDO`, `SIGUNGU`를 사용해요. `EMD`는 기존 요청 호환용이에요. |
 | `groupId` | 조건부 | GROUP 범위의 그룹 공개 UUID. scope 없이 지정하면 GROUP으로 조회해요. |
 | `startDate`, `endDate` | 조건부 | `yyyy-MM-dd`. 함께 지정하며 0001~9999년, 시작일 ≤ 종료일이에요. KST 기준 양 끝 날짜를 포함하며 둘 다 생략하면 전체 기간이에요. |
 | `contentType` | 아니요 | `ALL`(기본값), `MEMO`, `AUDIO`. ALL도 NONE을 제외해요. |
@@ -52,7 +52,8 @@ Authorization: Bearer <access-token>
 
 좌표는 WGS84(EPSG:4326)를 사용하며 NaN·무한대는 허용하지 않아요.
 날짜변경선을 넘는 화면은 `minLongitude > maxLongitude`로 표현해요.
-지역 코드는 서버가 경계와 화면의 교차로 선택하므로 요청에 전달하지 않아요. 커서 없이 매번 화면과 계층을 전달해요.
+SIDO·SIGUNGU는 bbox와 무관하게 해당 계층의 전국 요약을 반환해요. bbox 필수값·범위 검증은 호환을 위해 유지해요.
+EMD에서만 화면과 경계의 교차로 지역을 선택해요. 지역 코드와 커서는 요청에 전달하지 않아요.
 `GROUP`에는 `groupId`가 필수이고 `ALL`·`MY`에는 전달할 수 없어요.
 그룹 가입 여부로 제한하지 않으며 존재하지 않거나 삭제된 그룹은 `404 GROUP-001`을 반환해요.
 기존 bbox·level·groupId만 보내는 정상 요청은 유지하지만, 미존재 그룹을 빈 배열로 반환하던 동작은 변경돼요.
@@ -61,7 +62,7 @@ Authorization: Bearer <access-token>
 예를 들어 아래 요청은 인증된 기기의 2026-10-01~2026-10-13 메모 기록만 집계해요.
 
 ```http
-GET /api/v2/emotions/map/regions?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6&level=EMD&startDate=2026-10-01&endDate=2026-10-13&contentType=MEMO&scope=MY
+GET /api/v2/emotions/map/regions?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6&level=SIGUNGU&startDate=2026-10-01&endDate=2026-10-13&contentType=MEMO&scope=MY
 Authorization: Bearer <access-token>
 ```
 
@@ -79,11 +80,13 @@ Authorization: Bearer <access-token>
 
 수원·성남·용인은 `SIGUNGU`에서 각 구로 나뉘며 시 전체를 묶는 별도 `CITY` 계층은 없어요.
 클라이언트가 확대 정도에 따라 계층과 `GET /api/v2/emotions/map`의 개별 조회 전환을 선택해요.
-정확한 줌 경계는 아직 미확정이에요. 서버는 요청한 계층을 자동으로 바꾸지 않아요.
+클라이언트는 EMD 요약을 요청하지 않고, 더 확대하면 개별 지도를 사용해요. 서버는 요청한 계층을 자동으로 바꾸지 않아요.
+서버의 EMD 공간 조회는 기존 요청 호환을 위해 남겨요.
 
 ## 집계 대상
 
-- bbox는 지역 선택에만 사용해요. 경계 일부나 경계선이 화면에 걸쳐도 지역을 선택해요.
+- SIDO·SIGUNGU는 bbox로 지역을 선택하지 않고 전국 집계를 반환해요. 동일 계층·필터에서는 화면 위치나 크기에 따라 집계 대상이 달라지지 않아요.
+- EMD 호환 경로에서만 bbox로 지역을 선택해요. 경계 일부나 경계선이 화면에 걸쳐도 지역을 선택해요.
 - 총 개수와 대표 감정은 선택한 지역 전체의 같은 기록에서 계산해요. 날짜를 생략하면 전체 기간이고, 지정하면 해당 기간만 집계해요. 개별 지도 페이지 제한은 적용하지 않아요.
 - `MEMO`, `AUDIO`만 포함하고 `NONE`은 제외하며, 삭제·서비스 전체 비노출 기록과 집계 조회 시점 이후 작성된 기록은 제외해요.
 - 개인 감정 차단·작성자 차단을 요약에 적용하지 않아요. 기존 개별 지도·상세의 차단 정책은 유지해요.
@@ -100,12 +103,12 @@ Content-Type은 `application/json`, Cache-Control은 `no-cache, private`예요.
 [
   {
     "type": "Feature",
-    "id": "11010530",
+    "id": "11010",
     "geometry": {"type": "Point", "coordinates": [127.0, 38.0]},
     "properties": {
-      "level": "EMD",
+      "level": "SIGUNGU",
       "name": "검증용 지역",
-      "parentCode": "11010",
+      "parentCode": "11",
       "totalCount": 3,
       "representativeState": "ANGRY"
     }
@@ -123,12 +126,20 @@ NULL 상태 기록도 총 개수에 포함하며 모든 대상의 상태가 NULL
 ## 표시와 결과 갱신
 
 1. 현재 화면·계층·필터와 요청 순서를 기록하고 조회해요.
-2. 응답 중 현재 화면 안의 표시점만 렌더링해요. 화면 밖 표시점은 보관해 소폭 이동할 때 재사용할 수 있어요.
+2. SIDO·SIGUNGU 전국 응답 중 현재 화면 안의 표시점만 렌더링해요. 화면 밖 표시점도 해당 계층·필터의 전국 목록에 보관해요.
 3. 현재 요청의 최신 성공 응답으로 활성 지역 목록을 교체해요. 이전 목록과 단순 병합하지 않아요.
 4. 새 응답에서 빠진 지역은 활성 목록에서 제거해요. 삭제 후 0개가 된 지역을 예전 캐시로 다시 표시하지 않아요.
 5. 다른 계층·필터·화면의 결과나 늦게 도착한 이전 요청의 응답으로 현재 결과를 덮어쓰지 않아요.
 
 이 규칙은 클라이언트 연동 시 적용할 계약이며 클라이언트 구현을 완료했다는 의미는 아니에요.
+서버 응답 캐시는 추가하지 않았어요. 앱 캐시를 적용할 때 전국 결과의 식별자는 계층·필터·그룹·인증 기기이며 bbox는 포함하지 않아요.
+HTTP `no-cache, private`는 유지하며 앱의 명시적 데이터 캐시와는 별개예요.
+
+## 계측
+
+`regions_service`는 기존 v2 서비스 호출 전체, `regions_summary`는 감정 집계 구간이에요.
+SIDO·SIGUNGU에서는 `regions_intersection`, `regions_boundaries`가 기록되지 않으며 공간 조회 0초로 해석하지 않아요.
+계층별 지역 메타데이터 조회 시간은 별도 단계로 계측하지 않으며 서비스 전체 시간에 포함돼요.
 
 ## 오류와 공개 준비
 
