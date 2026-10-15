@@ -49,7 +49,7 @@ python3 scripts/inspect-developer-tools-ios.py \
 
 Android 검사 스크립트는 Debug APK를 양성 대조군으로 사용하고 Release APK/AAB의 Manifest·DEX·리소스 전체와 R8 클래스 매핑을 검사한다. 난독화로 클래스 이름이 없어질 수 있으므로 빌드의 resolved dependency graph에서 구현 모듈이 제외된 결과와 함께 판단한다.
 
-iOS 검사는 Archive 성공 여부, 실제 Release 프레임워크 생성 작업, resolved dependency graph, 정적 프레임워크의 링크 맵 입력, 앱 실행 파일·포함 프레임워크·리소스를 함께 검사한다. 심벌 검색만으로 제외를 판정하지 않는다. `LD_GENERATE_MAP_FILE=YES`를 Release xcconfig에 설정했다. 서명을 생략한 로컬 Archive는 배포용 서명 검증을 대신하지 않는다.
+iOS 검사는 Archive 성공 여부, 실제 Release 프레임워크 생성 작업, resolved dependency graph, 정적 프레임워크의 링크 맵 입력, 앱 실행 파일·포함 프레임워크·리소스를 함께 검사한다. 빌드 로그의 Archive 경로와 Release 구성, 링커의 `-map` 및 `-o` 경로를 전달한 Archive·링크 맵 헤더와 대조한다. Archive 실행 파일의 Mach-O UUID를 같은 링크 출력 또는 그 출력에서 생성된 dSYM의 UUID와 비교한다. 정적 프레임워크 입력은 `shared`의 Release 경로에 있어야 하며 실제 Release 프레임워크와 SHA-256이 같아야 한다. 해당 Archive를 생성한 DerivedData(링크 맵·dSYM·프레임워크)와 `shared/build` 결과물을 함께 보존해야 한다. 심벌 검색만으로 제외를 판정하지 않는다. `LD_GENERATE_MAP_FILE=YES`를 Release xcconfig에 설정했다. 서명을 생략한 로컬 Archive는 배포용 서명 검증을 대신하지 않는다.
 
 UI 확인: Debug 앱의 설정 → 개발자 도구에서 버전 `2.3.0`, 빌드 `11`, Debug 구성, `dev`, `https://api-dev.pheeeew.com`을 확인하고 뒤로 가기로 설정으로 복귀한다. Release 설정에는 진입 항목이 없어야 한다.
 
@@ -102,3 +102,17 @@ Debug는 구현이 있는 DEX 20개, Release APK/AAB는 구현이 없는 DEX 1�
 - 기준 커밋 위 변경 구현 파일의 내용 지문 SHA-256: `fc8cbd46a201f3094783be42444739f2c052a89e326086f4bc0ce2d938e5c575`. 변경 경로를 정렬해 `경로 + NUL + 파일 내용 + NUL`로 연결한 값이며 이 문서는 제외한다.
 
 남은 확인은 두 플랫폼의 실제 설정 메뉴 진입·표시·뒤로 가기와 Release 메뉴 부재 확인이다. 네이티브 UI 조작 도구 오류 때문에 이 항목을 완료 처리하지 않았다.
+
+## 리뷰 반영: 검사 실패 처리 및 빌드 근거 연결
+
+- 두 검사 스크립트의 `assert`를 명시적인 조건 검사와 `ValueError`로 바꿔 `python3 -O` 및 `PYTHONOPTIMIZE=1`에서도 실패 검사를 수행한다.
+- iOS는 다른 Archive의 로그, 다른 링크 맵, Debug 프레임워크 경로, Release 프레임워크 내용 불일치, 실행 파일·dSYM UUID 불일치를 거부한다.
+- 다음 회귀 테스트 9개를 일반 실행과 두 최적화 실행에서 모두 통과했다.
+
+```sh
+PYTHONDONTWRITEBYTECODE=1 python3 scripts/test-inspect-developer-tools.py
+PYTHONDONTWRITEBYTECODE=1 python3 -O scripts/test-inspect-developer-tools.py
+PYTHONDONTWRITEBYTECODE=1 PYTHONOPTIMIZE=1 python3 scripts/test-inspect-developer-tools.py
+```
+
+기존 Android Debug/Release APK·Release AAB와 iOS Release Archive에도 수정한 스크립트를 `python3 -O`로 실행해 통과했다. 앱 코드는 변경하지 않았으며 위 결과물 해시는 그대로다. 앞의 구현 파일 내용 지문은 최초 기능·검사 커밋의 기록이다.

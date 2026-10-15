@@ -22,9 +22,11 @@ def inspect(path, expect_tools):
         entries = archive.namelist()
         dex = [name for name in entries if name.endswith(".dex")]
         manifests = [name for name in entries if name.endswith("AndroidManifest.xml")]
-        assert dex and manifests, f"Not an APK/AAB: {path}"
+        if not (dex and manifests):
+            raise ValueError(f"Not an APK/AAB: {path}")
         found = [name for name in entries if matches(name.encode()) or matches(archive.read(name))]
-        assert bool(found) == expect_tools, f"Unexpected developer tools entries in {path}: {found}"
+        if not (bool(found) == expect_tools):
+            raise ValueError(f"Unexpected developer tools entries in {path}: {found}")
         print(f"{path}: developerTools={bool(found)}, DEX={len(dex)}, manifests={len(manifests)}")
         print("sha256=" + hashlib.sha256(path.read_bytes()).hexdigest())
 
@@ -39,7 +41,8 @@ def main():
     inspect(args.debug_apk, True)
     inspect(args.release_apk, False)
     inspect(args.release_aab, False)
-    assert not matches(args.mapping.read_bytes()), "Developer tools were supplied to R8"
+    if not (not matches(args.mapping.read_bytes())):
+        raise ValueError("Developer tools were supplied to R8")
     print(f"{args.mapping}: no developer tools input classes")
     print("Pair this result with :androidApp:verifyDeveloperToolsIsolation; absence of names alone is insufficient.")
 
