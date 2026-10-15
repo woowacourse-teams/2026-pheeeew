@@ -24,7 +24,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppBorders
 
-internal enum class SettingsIcon { Tune, Shield, Document, Info, Mail }
+internal enum class SettingsIcon { Tune, Shield, Document, Info, Mail, Person }
 
 internal object SettingsColors {
     val Ink = Color(0xFF252A2C)
@@ -210,6 +210,18 @@ internal fun SettingsLineIcon(
                     stroke.width,
                     cap = StrokeCap.Round,
                 )
+            }
+
+            SettingsIcon.Person -> {
+                drawCircle(color, w * .16f, Offset(w * .50f, h * .34f), style = stroke)
+                val path =
+                    Path().apply {
+                        moveTo(w * .22f, h * .84f)
+                        lineTo(w * .22f, h * .73f)
+                        quadraticTo(w * .50f, h * .49f, w * .78f, h * .73f)
+                        lineTo(w * .78f, h * .84f)
+                    }
+                drawPath(path, color, style = stroke)
             }
         }
     }
