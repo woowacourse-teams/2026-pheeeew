@@ -122,6 +122,7 @@ Accepted (YYYY-MM-DD)
 | [0035](0035-serve-dev-api-without-cloudflare-proxy.md) | 개발 서버 API의 직접 연결 | Proposed: Cloudflare 프록시를 끄고 nginx가 공인 인증서로 직접 받아요. 스웨거는 Access 뒤의 문서용 주소로 옮겨요 |
 | [0036](0036-serve-prod-api-without-cloudflare-proxy.md) | 운영 서버 API의 직접 연결 | Proposed: 개발 서버 구성을 운영에 옮겨 프록시를 끄고 nginx가 공인 인증서로 직접 받아요 |
 | [0037](0037-allow-multiple-app-attest-app-ids.md) | App Attest App ID 허용 목록 | 개발자 계정 이전 동안 두 App ID prefix 를 모두 받고, 구버전 지원이 끝나면 이전 것을 지워요 |
+| [0039](0039-use-national-region-map-summaries.md) | v2 시도·시군구 전국 요약 | bbox 검증과 요청 계약을 유지하며 SIDO·SIGUNGU는 전국 집계, EMD는 기존 공간 조회로 처리해요 |
 
 ## AI 사용
 

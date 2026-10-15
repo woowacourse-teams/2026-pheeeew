@@ -196,11 +196,13 @@ public interface EmotionControllerApi {
     @Operation(summary = "내용 있는 행정구역 지도 감정 요약 조회 v2", description = """
             minLongitude, minLatitude, maxLongitude, maxLatitude와 level은 필수입니다.
             날짜변경선을 넘는 영역은 minLongitude > maxLongitude로 표현합니다.
-            클라이언트가 확대 정도에 따라 SIDO, SIGUNGU, EMD를 선택합니다. 서버는 계층을 자동으로 전환하지 않습니다.
+            클라이언트는 확대 정도에 따라 SIDO, SIGUNGU를 선택합니다. EMD는 기존 요청 호환용으로 유지합니다.
+            SIDO·SIGUNGU에서는 bbox 형식·범위만 검증하고 해당 계층의 전국 요약을 반환합니다.
+            bbox를 바꾸어도 계층·필터가 같으면 같은 집계 대상이며, 화면 밖 지역도 응답에 포함됩니다.
             SIGUNGU는 SGIS 시군구 계층입니다. 구가 있는 수원·성남·용인 등은 시 전체 대신 각 구를 반환합니다.
 
-            화면과 경계가 교차하는 지역을 선택하며 경계선 접촉도 포함합니다.
-            개수와 대표 감정은 화면이 아닌 선택한 지역 전체에서 필터를 만족하는 기록에서 계산합니다.
+            EMD에서만 화면과 경계가 교차하는 지역을 선택하며 경계선 접촉도 포함합니다.
+            모든 계층에서 개수와 대표 감정은 화면이 아닌 선택한 지역 전체의 기록에서 계산합니다.
             MEMO, AUDIO만 포함하며 NONE과 삭제·서비스 전체 비노출 기록은 제외합니다.
             startDate와 endDate는 함께 지정하며 KST 기준 양 끝 날짜를 포함합니다. 생략하면 전체 기간입니다.
             contentType은 ALL(기본값), MEMO, AUDIO이며 ALL도 NONE을 제외합니다.
@@ -217,7 +219,9 @@ public interface EmotionControllerApi {
             대표 감정은 최빈값이며 동률은 ANGRY, DISCOURAGED, EXHAUSTED, FRUSTRATED, IRRITATED 순서입니다.
             NULL 상태도 총 개수에 포함하며 모든 대상의 상태가 NULL이면 대표 감정은 null입니다.
 
-            최신 성공 응답이 현재 요청의 완전한 결과입니다. 이전 결과와 단순 병합하지 않습니다.
+            최신 성공 응답은 SIDO·SIGUNGU에서는 계층·필터, EMD에서는 계층·필터·bbox의 완전한 결과입니다.
+            이전 결과와 단순 병합하지 않습니다.
+            SIDO·SIGUNGU는 전국 요약을 보관하고 현재 화면 안의 고정 표시점만 렌더링합니다.
             level·필터·화면이 바뀐 요청과 늦게 도착한 이전 응답을 구분합니다.
             지역 요약 준비가 완료되지 않으면 빈 결과 대신 EMOTION-013과 503을 반환합니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))

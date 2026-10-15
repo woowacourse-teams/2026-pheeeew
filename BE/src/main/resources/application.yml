@@ -69,6 +69,13 @@ pheeeew:
     # 켠 상태를 되돌릴 수 없게 만들려면 AppAttestProperties.ENFORCEMENT_LOCKED 를 함께 true 로 바꾼다.
     require-attestation: false
 
+server:
+  compression:
+    # RegionMapCompressionConfiguration이 지역 요약 GET의 길이를 확정하고 정상 응답만 압축한다.
+    enabled: true
+    mime-types: application/json
+    min-response-size: 2KB
+
 management:
   prometheus:
     metrics:

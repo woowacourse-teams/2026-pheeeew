@@ -65,7 +65,10 @@ public class EmotionMapQueryService {
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
         validateGroup(filter.groupId());
 
-        List<Region> regions = regionClassifier.findIntersectingRegions(bounds, level);
+        List<Region> regions = switch (level) {
+            case SIDO, SIGUNGU -> regionRepository.findByLevel(level);
+            case EMD -> regionClassifier.findIntersectingRegions(bounds, level);
+        };
         List<String> regionCodes = regions.stream()
                 .map(Region::code)
                 .toList();
