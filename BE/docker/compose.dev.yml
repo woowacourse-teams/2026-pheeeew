@@ -34,7 +34,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: dev
       TZ: Asia/Seoul
-      DB_URL: jdbc:postgresql://postgres:5432/pheeeew
+      DB_URL: ${DB_URL:?}
       DB_USERNAME: ${DB_USERNAME:?}
       DB_PASSWORD: ${DB_PASSWORD:?}
       JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64:?}
