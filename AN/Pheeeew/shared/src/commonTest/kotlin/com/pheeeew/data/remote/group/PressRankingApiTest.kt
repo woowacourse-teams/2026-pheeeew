@@ -15,7 +15,6 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertTrue
 
 class PressRankingApiTest {
     @Test
@@ -39,7 +38,7 @@ class PressRankingApiTest {
 
             try {
                 assertIs<ApiResult.Success<PressRankingResponseDto>>(PressRankingApi(client.requests).find(3, null))
-                assertEquals("/api/v2/groups/press-rankings/members", requestedPath)
+                assertEquals("/api/v2/emotions/press-rankings", requestedPath)
                 assertEquals("3", requestedWeeksAgo)
             } finally {
                 client.close()
@@ -71,15 +70,17 @@ class PressRankingApiTest {
                     assertIs<ApiResult.Success<PressRankingResponseDto>>(
                         PressRankingApi(client.requests).find(2, "IRRITATED"),
                     )
-                assertEquals("/api/v2/groups/press-rankings/members/states/IRRITATED", requestedPath)
+                assertEquals("/api/v2/emotions/press-rankings/states/IRRITATED", requestedPath)
                 assertEquals("2", requestedWeeksAgo)
                 assertEquals("Bearer app-access-token", authorization)
                 assertEquals("IRRITATED", result.value.state)
-                assertTrue(
+                assertEquals(
+                    3_000_000_000L,
                     result.value.items
                         .single()
-                        .mine,
+                        .pressCount,
                 )
+                assertEquals(150, result.value.me?.rank)
             } finally {
                 client.close()
             }
@@ -101,6 +102,9 @@ class PressRankingApiTest {
                 kotlin.test.assertFailsWith<IllegalArgumentException> {
                     PressRankingApi(client.requests).find(-1, null)
                 }
+                kotlin.test.assertFailsWith<IllegalArgumentException> {
+                    PressRankingApi(client.requests).find(521, null)
+                }
             } finally {
                 client.close()
             }
@@ -110,8 +114,8 @@ class PressRankingApiTest {
 
     private companion object {
         const val EMPTY_RANKING =
-            """{"weeksAgo":0,"startAt":"2026-09-28T00:00:00Z","endAt":"2026-10-05T00:00:00Z","hasPrevious":true,"items":[]}"""
+            """{"weeksAgo":0,"startAt":"2026-09-28T00:00:00Z","endAt":"2026-10-05T00:00:00Z","items":[],"me":null}"""
         const val RANKING_WITH_MINE =
-            """{"state":"IRRITATED","weeksAgo":2,"startAt":"2026-09-14T00:00:00Z","endAt":"2026-09-21T00:00:00Z","hasPrevious":true,"items":[{"rank":2,"groupId":"3fa85f64-5717-4562-b3fc-2c963f66afa6","name":"히유 클럽","score":31,"mine":true,"stamp":{"text":"히유","textColor":"#000000","backgroundColor":"#FFFFFF","frame":"CIRCLE"}}]}"""
+            """{"state":"IRRITATED","weeksAgo":2,"startAt":"2026-09-14T00:00:00Z","endAt":"2026-09-21T00:00:00Z","items":[{"rank":2,"nickname":"익명","pressCount":3000000000}],"me":{"rank":150,"nickname":"한숨많은곰","pressCount":31}}"""
     }
 }

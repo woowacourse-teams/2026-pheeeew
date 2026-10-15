@@ -8,29 +8,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.feature.screens.ranking.press.PressGroupRank
-import com.pheeeew.feature.screens.ranking.press.samplePressGroupRanks
+import com.pheeeew.feature.screens.ranking.press.PressPersonRank
+import com.pheeeew.feature.screens.ranking.press.samplePressPersonRanks
 
 @Composable
-internal fun PressGroupRankList(
-    groups: List<PressGroupRank>,
+internal fun PressPersonRankList(
+    people: List<PressPersonRank>,
     modifier: Modifier = Modifier,
-    onGroupClick: (PressGroupRank) -> Unit,
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        groups.forEach { group ->
-            PressGroupRankRow(group, onClick = { onGroupClick(group) })
+        people.forEach { person ->
+            PressPersonRankRow(person)
         }
     }
 }
 
-@Preview(name = "프레스 그룹 랭킹 목록")
+@Preview(name = "개인 프레스 랭킹 목록")
 @Composable
-private fun PressGroupRankListPreview() {
+private fun PressPersonRankListPreview() {
     AppTheme {
-        PressGroupRankList(samplePressGroupRanks, onGroupClick = {})
+        PressPersonRankList(samplePressPersonRanks)
     }
 }

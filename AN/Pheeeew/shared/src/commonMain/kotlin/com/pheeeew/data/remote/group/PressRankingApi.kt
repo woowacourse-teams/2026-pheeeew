@@ -14,7 +14,7 @@ class PressRankingApi(
         weeksAgo: Int,
         state: String?,
     ): ApiResult<PressRankingResponseDto> {
-        require(weeksAgo >= 0) { "weeksAgo는 0 이상이어야 합니다." }
+        require(weeksAgo in 0..520) { "weeksAgo는 0 이상 520 이하여야 합니다." }
         require(state == null || state in STATES) { "지원하지 않는 감정 상태입니다." }
 
         val path = if (state == null) PATH else "$PATH/states/$state"
@@ -31,7 +31,7 @@ class PressRankingApi(
     }
 
     private companion object {
-        const val PATH = "/api/v2/groups/press-rankings/members"
+        const val PATH = "/api/v2/emotions/press-rankings"
         val STATES = setOf("FRUSTRATED", "IRRITATED", "EXHAUSTED", "DISCOURAGED", "ANGRY")
     }
 }

@@ -1,9 +1,5 @@
 package com.pheeeew.data.remote.group
 
-import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
-import com.pheeeew.domain.model.group.GroupStamp
-import com.pheeeew.domain.model.group.GroupStampFrame
-import com.pheeeew.domain.model.group.StampColor
 import com.pheeeew.domain.model.ranking.PressRanking
 import com.pheeeew.domain.model.ranking.PressRankingItem
 import kotlin.time.Instant
@@ -14,40 +10,25 @@ class PressRankingContractException(
 
 object PressRankingMapper {
     fun toDomain(dto: PressRankingResponseDto): PressRanking {
-        if (dto.weeksAgo < 0) throw PressRankingContractException("weeksAgo")
-        if (runCatching { Instant.parse(dto.startAt) }.isFailure) throw PressRankingContractException("startAt")
-        if (runCatching { Instant.parse(dto.endAt) }.isFailure) throw PressRankingContractException("endAt")
+        if (dto.weeksAgo !in 0..520) throw PressRankingContractException("weeksAgo")
+        val start =
+            runCatching { Instant.parse(dto.startAt) }.getOrNull() ?: throw PressRankingContractException("startAt")
+        val end = runCatching { Instant.parse(dto.endAt) }.getOrNull() ?: throw PressRankingContractException("endAt")
+        if (start >= end) throw PressRankingContractException("endAt")
         return PressRanking(
             weeksAgo = dto.weeksAgo,
             startAt = dto.startAt,
             endAt = dto.endAt,
-            hasPrevious = dto.hasPrevious,
+            hasPrevious = dto.weeksAgo < 520,
             items = dto.items.map(::toDomain),
+            me = dto.me?.let(::toDomain),
         )
     }
 
     private fun toDomain(dto: PressRankingItemResponseDto): PressRankingItem {
         if (dto.rank < 1) throw PressRankingContractException("items.rank")
-        if (!UUID_PATTERN.matches(dto.groupId)) throw PressRankingContractException("items.groupId")
-        if (dto.name.isBlank()) throw PressRankingContractException("items.name")
-        if (dto.score < 0) throw PressRankingContractException("items.score")
-        return PressRankingItem(dto.rank, dto.groupId, dto.name, dto.score, dto.mine, dto.stamp?.toDomain())
+        if (dto.nickname.isBlank()) throw PressRankingContractException("items.nickname")
+        if (dto.pressCount < 0) throw PressRankingContractException("items.pressCount")
+        return PressRankingItem(dto.rank, dto.nickname, dto.pressCount)
     }
-
-    private fun GroupStampResponseDto.toDomain(): GroupStamp =
-        GroupStamp(
-            text = text,
-            textColor =
-                StampColor.parseServerValue(textColor)
-                    ?: throw PressRankingContractException("stamp.textColor"),
-            backgroundColor =
-                StampColor.parseServerValue(backgroundColor)
-                    ?: throw PressRankingContractException("stamp.backgroundColor"),
-            frame =
-                GroupStampFrame.entries.firstOrNull { it.name == frame }
-                    ?: throw PressRankingContractException("stamp.frame"),
-        )
-
-    private val UUID_PATTERN =
-        Regex("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 }
