@@ -81,7 +81,19 @@ fun SettingsScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SettingsHeader(onBackClick = onBackClick)
-        Spacer(Modifier.height(25.dp))
+        Spacer(Modifier.height(32.dp))
+
+        SettingsSectionTitle(stringResource(Res.string.settings_profile_section))
+        SettingsCard {
+            SettingsActionRow(
+                title = "닉네임", // TODO:  실제 닉네임 반영
+                icon = SettingsIcon.Person,
+                trailingText = stringResource(Res.string.settings_nickname_change),
+                onClick = { isNicknameDialogVisible = true },
+            )
+        }
+        Spacer(Modifier.height(32.dp))
+
         SettingsSectionTitle(stringResource(Res.string.settings_app_section))
         SettingsCard {
             SettingsActionRow(
@@ -92,17 +104,7 @@ fun SettingsScreen(
             )
         }
 
-        Spacer(Modifier.height(22.dp))
-        SettingsSectionTitle(stringResource(Res.string.settings_profile_section))
-        SettingsCard {
-            SettingsActionRow(
-                title = stringResource(Res.string.settings_nickname_change),
-                icon = SettingsIcon.Person,
-                onClick = { isNicknameDialogVisible = true },
-            )
-        }
-
-        Spacer(Modifier.height(37.dp))
+        Spacer(Modifier.height(32.dp))
         SettingsSectionTitle(stringResource(Res.string.settings_help_section))
         SettingsCard {
             SettingsActionRow(

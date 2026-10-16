@@ -14,6 +14,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.feature.screens.settings.SettingsTheme
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -43,10 +44,10 @@ internal fun NicknameInputField(
         keyboardActions = KeyboardActions(onDone = { onImeDone() }),
         colors =
             OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFFDADDD9),
-                unfocusedBorderColor = Color(0xFFDADDD9),
-                focusedContainerColor = Color(0xFFF7F8F6),
-                unfocusedContainerColor = Color(0xFFF7F8F6),
+                focusedBorderColor = AppColors.Border,
+                unfocusedBorderColor = AppColors.BorderLight,
+                focusedContainerColor = Color.White,
+                unfocusedContainerColor = Color.White,
                 focusedTextColor = SettingsColors.Ink,
                 unfocusedTextColor = SettingsColors.Ink,
                 cursorColor = SettingsColors.Ink,

@@ -30,6 +30,7 @@ import pheeeew.shared.generated.resources.settings_nickname_confirm
 import pheeeew.shared.generated.resources.settings_nickname_dialog_description
 import pheeeew.shared.generated.resources.settings_nickname_dialog_title
 
+// TODO: 닉네임이 있으면 해당 닉네임으로 채워놓기
 @Composable
 internal fun NicknameDialogContent(
     nickname: String,
@@ -46,7 +47,6 @@ internal fun NicknameDialogContent(
                 .fillMaxWidth()
                 .clip(shape)
                 .background(Color.White)
-                .border(AppBorders.Standard, SettingsColors.Ink, shape)
                 .padding(horizontal = 24.dp, vertical = 24.dp),
     ) {
         Text(
