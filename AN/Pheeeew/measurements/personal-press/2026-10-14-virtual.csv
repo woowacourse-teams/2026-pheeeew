@@ -1,0 +1,8 @@
+experiment,input_pattern,response_ms,accepted_inputs,sender_calls,batch_sizes,max_pending_inputs,confirmation_p50_ms,confirmation_p95_ms,drain_after_input_window_ms,server_delta,max_concurrent_writes
+PRESS_PROBE,single,100,1,1,1,1,600,600,500,1,1
+PRESS_PROBE,same,100,100,15,5/7/7/7/7/7/7/7/7/7/7/7/7/7/4,8,500,800,400,100,1
+PRESS_PROBE,mixed,100,100,15,5/7/7/7/7/7/7/7/7/7/7/7/7/7/4,8,500,800,400,100,1
+PRESS_PROBE,same,1000,100,7,5/16/16/16/16/16/15,26,1800,2600,1100,100,1
+PRESS_PROBE,mixed,1000,100,7,5/16/16/16/16/16/15,26,1800,2600,1100,100,1
+PRESS_PROBE,same,3000,100,5,5/30/30/30/5,62,4700,6300,6400,100,1
+PRESS_PROBE,mixed,3000,100,4,5/36/36/23,66,5000,6500,4300,100,1
