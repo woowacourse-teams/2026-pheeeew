@@ -20,10 +20,14 @@ cd ../pheeeew-644-reproduction/AN/Pheeeew
 
 ```sh
 python3 measurements/personal-press/summarize_device.py \
-  measurements/personal-press/2026-10-14-device.log > /tmp/pheeeew-644-device.csv
+  measurements/personal-press/2026-10-14-device.log --start-run 2 > /tmp/pheeeew-644-device.csv
 python3 measurements/personal-press/summarize_failure_ui.py \
   measurements/personal-press/2026-10-14-failure-ui.log
 ```
+
+정상 분석기는 전체 로그의 시작·종료를 먼저 연결하고 모든 회차의 완료·중단 상태를 stderr로 보고한다. 기본값은 첫 회차부터 분석하며 이후 회차가 정확히 9개여야 한다. 보관 로그에는 중단된 예비 실행 1회가 있어 `--start-run 2`로 명시적으로 제외한다. 로그 앞의 시작 없는 종료 기록도 별도로 보고한다.
+
+선택된 9회는 단일·같은 감정·교차 감정 각각 1~3회로 구성되어야 하며, 시작과 종료의 조건·회차 번호가 일치해야 한다. 선택된 회차가 중단됐거나 뒤에 추가 회차가 남으면 실패한다. 과거의 완료 회차로 빈자리를 채우지 않는다. 새 로그도 보고된 회차 목록을 확인한 뒤 예비 실행을 제외할 시작 번호를 지정한다. CSV는 stdout에만 출력하므로 회차 보고와 섞이지 않는다.
 
 첫 명령은 지정한 출력 파일에 정상 실험 결과를 쓴다. 두 번째 명령은 입력 로그 옆의 2026-10-14-failure.csv와 2026-10-14-ui.csv를 다시 생성한다.
 
