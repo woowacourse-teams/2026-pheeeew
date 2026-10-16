@@ -4,6 +4,7 @@ import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.repository.projection.RegionEmotionSummaryProjection;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
+import com.pheeeew.region.domain.RegionLevel;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -48,6 +49,7 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long>, Emotion
     @Override
     List<RegionEmotionSummaryProjection> findSummariesByRegionCodes(
             List<String> regionCodes,
+            RegionLevel level,
             EmotionSearchFilter filter,
             Long deviceId,
             Instant snapshotAt
