@@ -50,6 +50,98 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelViewportTest {
     @Test
+    fun `닉네임 확인 전 지도는 표시해도 위치와 감정 조회를 시작하지 않는다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var locationRefreshes = 0
+                val repository = QueuedEmotionMapRepository(CompletableDeferred(emptyPage()))
+                val viewModel =
+                    MapViewModel(
+                        RefreshLocationUseCase(
+                            object : LocationPermissionController {
+                                override suspend fun currentStatus() = LocationPermissionStatus.Granted
+
+                                override suspend fun requestPermission() = LocationPermissionStatus.Granted
+                            },
+                            object : LocationRepository {
+                                override val state = MutableStateFlow<LocationState>(LocationState.Loading)
+
+                                override suspend fun refresh() {
+                                    locationRefreshes++
+                                }
+                            },
+                        ),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                        dataLoadingEnabled = false,
+                    )
+                val latestBounds = bounds(127.1, 37.6)
+                viewModel.start()
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 16.0))
+                viewModel.onViewportChanged(EmotionMapViewport(latestBounds, 16.0))
+                viewModel.refreshEmotionPins()
+                viewModel.onConnectivityChanged(false)
+                viewModel.onConnectivityChanged(true)
+                advanceTimeBy(700)
+                runCurrent()
+                assertTrue(repository.requestedBounds.isEmpty())
+                assertEquals(0, locationRefreshes)
+
+                viewModel.enableDataLoading()
+                viewModel.start()
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(listOf<EmotionMapBounds?>(latestBounds.expandedForPinQuery()), repository.requestedBounds)
+                assertEquals(1, locationRefreshes)
+
+                viewModel.enableDataLoading()
+                viewModel.start()
+                runCurrent()
+                assertEquals(1, repository.requestedBounds.size)
+                assertEquals(1, locationRefreshes)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `닉네임 확인 후 보류한 지도 영역으로 클러스터 조회를 시작한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var regionQueries = 0
+                val pins = QueuedEmotionMapRepository()
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, _, _ ->
+                                    regionQueries++
+                                    EmotionRegionResult.Success(emptyList())
+                                },
+                            ),
+                        dataLoadingEnabled = false,
+                    )
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 11.0))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(0, regionQueries)
+
+                viewModel.enableDataLoading()
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(1, regionQueries)
+                assertTrue(pins.requestedBounds.isEmpty())
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `기본 한달 필터와 내 기록 필터 적용 후에도 클러스터를 조회한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))

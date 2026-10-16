@@ -70,7 +70,9 @@ class MapViewModel(
     private val filterListRefresher: MapFilterListRefresher? = null,
     private val pinSnapshotIntervalMillis: Long = MapPinSnapshotPublisher.DEFAULT_INTERVAL_MILLIS,
     private val pinSnapshotDelay: suspend (Long) -> Unit = { delay(it) },
+    dataLoadingEnabled: Boolean = true,
 ) : ViewModel() {
+    private var dataLoadingEnabled = dataLoadingEnabled
     private val _uiModel = MutableStateFlow(MapUiModel())
     val uiModel: StateFlow<MapUiModel> = _uiModel.asStateFlow()
     private val _filterUiModel = MutableStateFlow(MapFilterUiModel())
@@ -497,9 +499,16 @@ class MapViewModel(
     private val locallyRegisteredPins = linkedMapOf<Long, EmotionPinUiModel>()
 
     fun start() {
-        if (hasStarted) return
+        if (!dataLoadingEnabled || hasStarted) return
         hasStarted = true
         requestCurrentLocation(moveCamera = false, requestPermission = true)
+    }
+
+    fun enableDataLoading() {
+        if (dataLoadingEnabled) return
+        dataLoadingEnabled = true
+        latestViewport?.let { updateViewport(it, forceRegionRefresh = false) }
+            ?: requestedBounds?.let(::onViewportChanged)
     }
 
     fun dismissLocationPermissionDialog() {
@@ -612,6 +621,10 @@ class MapViewModel(
 
     fun onViewportChanged(bounds: EmotionMapBounds) {
         if (!bounds.isValid()) return
+        if (!dataLoadingEnabled) {
+            requestedBounds = bounds
+            return
+        }
         if (_filterUiModel.value.applying) {
             pinViewportBounds = bounds
             latestViewport = latestViewport?.copy(bounds = bounds)
@@ -658,6 +671,7 @@ class MapViewModel(
     ) {
         if (!viewport.isValid() || _uiModel.value.isRecordLocationPicking) return
         latestViewport = viewport
+        if (!dataLoadingEnabled) return
         if (_filterUiModel.value.applying) return
         if (!filterSettingsLoaded) return
         val level = MapZoomPolicy.regionLevelForZoom(viewport.zoom)
@@ -769,7 +783,7 @@ class MapViewModel(
         }
 
     fun refreshEmotionPins() {
-        if (_filterUiModel.value.applying) return
+        if (!dataLoadingEnabled || _filterUiModel.value.applying) return
         if (latestViewport?.zoom?.let(MapZoomPolicy::regionLevelForZoom) != null && findRegions != null) {
             retryRegionClusters()
             return
@@ -1099,7 +1113,7 @@ class MapViewModel(
     fun onConnectivityChanged(connected: Boolean) {
         val wasOffline = _uiModel.value.isOffline
         _uiModel.value = _uiModel.value.copy(isOffline = !connected)
-        if (connected && wasOffline) {
+        if (dataLoadingEnabled && connected && wasOffline) {
             if (_uiModel.value.mapError != null) retryMap()
             refreshEmotionPins()
         }
@@ -1209,6 +1223,7 @@ class MapViewModel(
             groupStampListRepository: GroupStampListRepository? = null,
             filterSettingsRepository: MapFilterSettingsRepository? = null,
             filterListRefresher: MapFilterListRefresher? = null,
+            dataLoadingEnabled: Boolean = true,
         ): MapViewModel =
             MapViewModel(
                 refreshLocation =
@@ -1228,6 +1243,7 @@ class MapViewModel(
                 groupStampListRepository = groupStampListRepository,
                 filterSettingsRepository = filterSettingsRepository,
                 filterListRefresher = filterListRefresher,
+                dataLoadingEnabled = dataLoadingEnabled,
             )
 
         private const val VIEWPORT_DEBOUNCE_MILLIS = 700L

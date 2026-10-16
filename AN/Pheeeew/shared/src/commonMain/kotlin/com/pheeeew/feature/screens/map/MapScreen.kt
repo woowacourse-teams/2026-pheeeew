@@ -104,9 +104,13 @@ fun MapScreen(
     monitoringVisible: Boolean = true,
     nearbyMapControlHeight: Dp = 0.dp,
     isMapCameraMoving: Boolean = false,
+    featuresEnabled: Boolean = true,
 ) {
-    LaunchedEffect(viewModel) {
-        viewModel.start()
+    LaunchedEffect(viewModel, featuresEnabled) {
+        if (featuresEnabled) {
+            viewModel.enableDataLoading()
+            viewModel.start()
+        }
     }
     val voiceRecorder =
         com.pheeeew.feature.screens.map.monitoring.rememberMonitoredVoiceRecorder(

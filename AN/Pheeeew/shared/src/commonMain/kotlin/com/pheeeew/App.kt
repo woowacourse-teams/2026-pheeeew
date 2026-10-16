@@ -51,6 +51,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -128,6 +129,9 @@ import com.pheeeew.feature.screens.press.PressRoute
 import com.pheeeew.feature.screens.ranking.press.PressRankingRoute
 import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
+import com.pheeeew.feature.screens.settings.AppEntryGate
+import com.pheeeew.feature.screens.settings.AppEntryPhase
+import com.pheeeew.feature.screens.settings.AppEntryViewModel
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.feature.screens.splash.SplashScreen
 import kotlinx.coroutines.CancellationException
@@ -204,7 +208,6 @@ private fun AppContent(
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val connectivityObserver = apiDependencies.connectivityObserver
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
     var versionCheckAttempt by remember { mutableStateOf(0) }
     var initialVersionCheckComplete by remember { mutableStateOf(false) }
     var splashAnimationCompleted by rememberSaveable { mutableStateOf(false) }
@@ -216,8 +219,111 @@ private fun AppContent(
     var mapMounted by remember { mutableStateOf(false) }
     var savedMapCamera by remember { mutableStateOf<MapCameraSnapshotUiModel?>(null) }
 
-    LaunchedEffect(apiDependencies) {
-        apiDependencies.prepareSession()
+    LaunchedEffect(appVersionApi, appVersion, versionCheckAttempt) {
+        try {
+            val policy = withTimeout(VERSION_CHECK_TIMEOUT_MILLIS) { appVersionApi.getPolicy().toPolicy() }
+            versionDecision = evaluateAppVersion(appVersion, policy)
+        } catch (cancellation: CancellationException) {
+            throw cancellation
+        } catch (_: Exception) {
+            // Fail open if the public version-policy endpoint is temporarily unavailable.
+        } finally {
+            initialVersionCheckComplete = true
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer =
+            LifecycleEventObserver { _, event ->
+                if (event == Lifecycle.Event.ON_RESUME && initialVersionCheckComplete) {
+                    versionCheckAttempt++
+                }
+            }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val requiredUpdate = versionDecision as? AppVersionDecision.UpdateRequired
+
+    if (!splashAnimationCompleted || !initialVersionCheckComplete) {
+        Box(Modifier.fillMaxSize()) {
+            SplashScreen(
+                animationCompleted = splashAnimationCompleted,
+                onAnimationCompleted = { splashAnimationCompleted = true },
+            )
+        }
+        return
+    }
+
+    if (requiredUpdate != null) {
+        Box(Modifier.fillMaxSize()) {
+            RequiredUpdateDialog(
+                storeOpenError = storeOpenError,
+                onOpenStore = {
+                    storeOpenError = runCatching { uriHandler.openUri(requiredUpdate.storeUrl) }.isFailure
+                },
+                onRetry = { versionCheckAttempt++ },
+            )
+        }
+        return
+    }
+
+    if (!onboardingCompleted) {
+        val onboardingRecorder = rememberVoiceRecorder()
+        val onboardingScope = rememberCoroutineScope()
+        var microphoneDialogResult by remember { mutableStateOf<CompletableDeferred<Unit>?>(null) }
+        OnboardingScreen(
+            monitoring = apiDependencies.client.monitoring,
+            onFinished = {
+                try {
+                    onboardingRecorder.requestMicrophonePermission()
+                    onboardingRecorder.state.first { !it.requestingPermission }
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (_: Exception) {
+                    // Recording can request permission again when the user needs it.
+                }
+                if (!onboardingRecorder.state.value.microphonePermissionGranted) {
+                    val result = CompletableDeferred<Unit>()
+                    microphoneDialogResult = result
+                    try {
+                        result.await()
+                    } finally {
+                        microphoneDialogResult = null
+                    }
+                }
+                onOnboardingCompleted()
+                onboardingCompleted = true
+            },
+        )
+        microphoneDialogResult?.let { result ->
+            ConfirmDialog(
+                title = stringResource(Res.string.app_microphone_permission_title),
+                content = stringResource(Res.string.app_microphone_permission_message),
+                confirmText = stringResource(Res.string.app_open_settings),
+                cancelText = stringResource(Res.string.app_cancel),
+                onConfirm = {
+                    onboardingScope.launch {
+                        try {
+                            permissionSettingsLauncher.openAppSettings()
+                        } finally {
+                            result.complete(Unit)
+                        }
+                    }
+                },
+                onCancel = { result.complete(Unit) },
+            )
+        }
+        return
+    }
+
+    val appEntryViewModel: AppEntryViewModel =
+        viewModel { AppEntryViewModel(apiDependencies.session, apiDependencies.nicknameRepository) }
+    val appEntryState by appEntryViewModel.uiState.collectAsStateWithLifecycle()
+    val mainFeaturesReady = appEntryState.phase == AppEntryPhase.READY
+
+    if (mainFeaturesReady) {
+        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
     }
 
     val emotionMapDependencies =
@@ -240,11 +346,15 @@ private fun AppContent(
                 groupStampListRepository = groupStampListRepository,
                 filterSettingsRepository = mapFilterSettingsRepository,
                 filterListRefresher = nearbyViewModel,
+                dataLoadingEnabled = mainFeaturesReady,
             )
         }
-    LaunchedEffect(mapViewModel) { mapViewModel.onMapRendererAttached() }
+    LaunchedEffect(mapViewModel, mainFeaturesReady) {
+        if (mainFeaturesReady) mapViewModel.onMapRendererAttached()
+    }
     val connectivityLifecycleOwner = LocalLifecycleOwner.current
-    LaunchedEffect(connectivityObserver, connectivityLifecycleOwner, mapViewModel) {
+    LaunchedEffect(connectivityObserver, connectivityLifecycleOwner, mapViewModel, mainFeaturesReady) {
+        if (!mainFeaturesReady) return@LaunchedEffect
         connectivityLifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             connectivityObserver.isConnected.collect(mapViewModel::onConnectivityChanged)
         }
@@ -276,9 +386,7 @@ private fun AppContent(
         viewModel { EmotionDetailViewModel(detailRepository, apiDependencies.client.monitoring) }
     val detailState by detailViewModel.uiModel.collectAsState()
 
-    val requiredUpdate = versionDecision as? AppVersionDecision.UpdateRequired
-    val mapReady =
-        splashAnimationCompleted && initialVersionCheckComplete && requiredUpdate == null && onboardingCompleted
+    val mapReady = true
     LaunchedEffect(mapReady, mapVisible) {
         if (!mapReady) {
             mapMounted = false
@@ -359,30 +467,6 @@ private fun AppContent(
             emotionPins = contentRenderState.pins,
         )
 
-    LaunchedEffect(appVersionApi, appVersion, versionCheckAttempt) {
-        try {
-            val policy = withTimeout(VERSION_CHECK_TIMEOUT_MILLIS) { appVersionApi.getPolicy().toPolicy() }
-            versionDecision = evaluateAppVersion(appVersion, policy)
-        } catch (cancellation: CancellationException) {
-            throw cancellation
-        } catch (_: Exception) {
-            // Fail open if the public version-policy endpoint is temporarily unavailable.
-        } finally {
-            initialVersionCheckComplete = true
-        }
-    }
-
-    DisposableEffect(lifecycleOwner) {
-        val observer =
-            LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME && initialVersionCheckComplete) {
-                    versionCheckAttempt++
-                }
-            }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
-    }
-
     Box(Modifier.fillMaxSize()) {
         key(mapUiModel.mapRevision) {
             NativeMap(
@@ -428,27 +512,8 @@ private fun AppContent(
             )
         }
 
-        if (!splashAnimationCompleted || !initialVersionCheckComplete) {
-            SplashScreen(
-                animationCompleted = splashAnimationCompleted,
-                onAnimationCompleted = { splashAnimationCompleted = true },
-            )
-            return@Box
-        }
-
-        if (requiredUpdate != null) {
-            RequiredUpdateDialog(
-                storeOpenError = storeOpenError,
-                onOpenStore = {
-                    storeOpenError = runCatching { uriHandler.openUri(requiredUpdate.storeUrl) }.isFailure
-                },
-                onRetry = { versionCheckAttempt++ },
-            )
-            return@Box
-        }
-
         val suggestedUpdate = versionDecision as? AppVersionDecision.UpdateSuggested
-        if (suggestedUpdate != null && !suggestionDismissed) {
+        if (mainFeaturesReady && suggestedUpdate != null && !suggestionDismissed) {
             AppAlertDialog(
                 onDismissRequest = { suggestionDismissed = true },
                 title = { Text(stringResource(Res.string.app_update_suggested_title)) },
@@ -470,54 +535,6 @@ private fun AppContent(
             )
         }
 
-        if (!onboardingCompleted) {
-            val onboardingRecorder = rememberVoiceRecorder()
-            val onboardingScope = rememberCoroutineScope()
-            var microphoneDialogResult by remember { mutableStateOf<CompletableDeferred<Unit>?>(null) }
-            OnboardingScreen(
-                monitoring = apiDependencies.client.monitoring,
-                onFinished = {
-                    try {
-                        onboardingRecorder.requestMicrophonePermission()
-                        onboardingRecorder.state.first { !it.requestingPermission }
-                    } catch (cancellation: CancellationException) {
-                        throw cancellation
-                    } catch (_: Exception) {
-                        // Recording can request permission again when the user needs it.
-                    }
-                    if (!onboardingRecorder.state.value.microphonePermissionGranted) {
-                        val result = CompletableDeferred<Unit>()
-                        microphoneDialogResult = result
-                        try {
-                            result.await()
-                        } finally {
-                            microphoneDialogResult = null
-                        }
-                    }
-                    onOnboardingCompleted()
-                    onboardingCompleted = true
-                },
-            )
-            microphoneDialogResult?.let { result ->
-                ConfirmDialog(
-                    title = stringResource(Res.string.app_microphone_permission_title),
-                    content = stringResource(Res.string.app_microphone_permission_message),
-                    confirmText = stringResource(Res.string.app_open_settings),
-                    cancelText = stringResource(Res.string.app_cancel),
-                    onConfirm = {
-                        onboardingScope.launch {
-                            try {
-                                permissionSettingsLauncher.openAppSettings()
-                            } finally {
-                                result.complete(Unit)
-                            }
-                        }
-                    },
-                    onCancel = { result.complete(Unit) },
-                )
-            }
-            return@Box
-        }
         val audioRepository = remember { createEmotionAudioRepository() }
 
         val moderation =
@@ -600,6 +617,7 @@ private fun AppContent(
                     Box(modifier = Modifier.fillMaxSize()) {
                         MapScreen(
                             viewModel = mapViewModel,
+                            featuresEnabled = mainFeaturesReady,
                             recordViewModel = mapRecordViewModel,
                             highlightedEmotion = highlightedEmotion,
                             onHighlightedEmotionChanged = { highlightedEmotion = it },
@@ -609,7 +627,8 @@ private fun AppContent(
                             onMapVisibilityChanged = { mapVisible = it },
                             onMapContentActiveChanged = { mapContentActive = it },
                             monitoringVisible =
-                                !nearbyState.visible && detailState == EmotionDetailLoadUiModel.Closed &&
+                                mainFeaturesReady && !nearbyState.visible &&
+                                    detailState == EmotionDetailLoadUiModel.Closed &&
                                     !isSettingsVisible && reportTarget == null,
                             onListClick = nearbyViewModel::toggle,
                             nearbyMapControlHeight = nearbyMapControlHeight,
@@ -679,6 +698,7 @@ private fun AppContent(
                     popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
                     popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
                 ) {
+                    if (!mainFeaturesReady) return@composable
                     CompositionLocalProvider(
                         LocalProductMonitoringVisible provides
                             (!isSettingsVisible && reportTarget == null),
@@ -702,6 +722,7 @@ private fun AppContent(
                     popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
                     popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
                 ) {
+                    if (!mainFeaturesReady) return@composable
                     PressRoute(
                         repository = apiDependencies.appSession.pressRepository,
                         modifier = Modifier.fillMaxSize(),
@@ -714,6 +735,7 @@ private fun AppContent(
                     popEnterTransition = { rootTabEnterTransition(initialState.destination, targetState.destination) },
                     popExitTransition = { rootTabExitTransition(initialState.destination, targetState.destination) },
                 ) { entry ->
+                    if (!mainFeaturesReady) return@composable
                     val openGroupDetail: (String) -> Unit = { groupId ->
                         if (navController.currentBackStackEntry == entry) {
                             navController.navigate(GroupDetailDestination(groupId)) {
@@ -766,6 +788,7 @@ private fun AppContent(
                 }
 
                 composable<GroupDetailDestination> { entry ->
+                    if (!mainFeaturesReady) return@composable
                     val destination = entry.toRoute<GroupDetailDestination>()
                     val groupId = GroupId(destination.groupId)
                     val groupDetailViewModel: GroupDetailViewModel =
@@ -822,6 +845,7 @@ private fun AppContent(
                     permissionSettingsLauncher = permissionSettingsLauncher,
                     modifier = Modifier.fillMaxSize(),
                     onOpenDeveloperTools = onOpenDeveloperTools,
+                    nicknameRepository = apiDependencies.nicknameRepository,
                 )
             }
 
@@ -854,6 +878,7 @@ private fun AppContent(
                         rankingDestination = destination
                     },
                     onDestinationSelected = { destination ->
+                        if (!mainFeaturesReady) return@AppBottomNavigationBar
                         nearbyViewModel.dismiss()
                         if (destination == AppDestination.Ranking) {
                             if (selectedDestination != AppDestination.Ranking) {
@@ -889,6 +914,12 @@ private fun AppContent(
                 )
             }
         }
+        AppEntryGate(
+            state = appEntryState,
+            onNicknameChanged = appEntryViewModel::onNicknameChanged,
+            onSubmit = appEntryViewModel::submitNickname,
+            onRetry = appEntryViewModel::retry,
+        )
     }
 }
 
