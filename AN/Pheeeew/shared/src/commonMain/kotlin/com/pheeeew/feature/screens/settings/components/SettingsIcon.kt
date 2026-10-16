@@ -32,6 +32,7 @@ internal object SettingsColors {
     val Secondary = Color(0xFF848B8C)
     val Divider = Color(0xFFE8EAEA)
     val Footer = Color(0xFF9AA0A0)
+    val Error = Color(0xFFB3261E)
 }
 
 @Composable

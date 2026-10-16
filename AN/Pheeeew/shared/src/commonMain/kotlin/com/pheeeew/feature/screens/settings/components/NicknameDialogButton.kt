@@ -6,7 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,6 +29,8 @@ internal fun NicknameDialogButton(
     text: String,
     modifier: Modifier = Modifier,
     primary: Boolean = false,
+    enabled: Boolean = true,
+    isLoading: Boolean = false,
     onClick: () -> Unit,
 ) {
     Box(
@@ -34,18 +38,27 @@ internal fun NicknameDialogButton(
             modifier
                 .height(42.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(if (primary) AppColors.Primary else Color.Transparent)
-                .clickable(onClick = onClick),
+                .background(
+                    if (primary) AppColors.Primary.copy(alpha = if (enabled) 1f else 0.35f) else Color.Transparent,
+                ).clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = text,
-            color = SettingsColors.Ink,
-            fontFamily = notoSansKrFontFamily(),
-            fontSize = 14.sp,
-            fontWeight = if (primary) FontWeight.Bold else FontWeight.SemiBold,
-            textAlign = TextAlign.Center,
-        )
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(18.dp),
+                strokeWidth = 2.dp,
+                color = SettingsColors.Ink,
+            )
+        } else {
+            Text(
+                text = text,
+                color = if (enabled) SettingsColors.Ink else SettingsColors.Footer,
+                fontFamily = notoSansKrFontFamily(),
+                fontSize = 14.sp,
+                fontWeight = if (primary) FontWeight.Bold else FontWeight.SemiBold,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 

@@ -14,8 +14,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,12 +28,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.navigation.PredictiveBackContent
 import com.pheeeew.core.permission.AppSettingsLauncher
+import com.pheeeew.domain.repository.device.DeviceNicknameRepository
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.monitoring.product.labels
@@ -45,6 +53,8 @@ import com.pheeeew.feature.screens.settings.components.SettingsIcon
 import com.pheeeew.feature.screens.settings.components.SettingsSectionTitle
 import com.pheeeew.feature.screens.settings.legal.LegalDocument
 import com.pheeeew.feature.screens.settings.legal.LegalDocumentRoute
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -54,6 +64,10 @@ import pheeeew.shared.generated.resources.settings_help_section
 import pheeeew.shared.generated.resources.settings_legal_open_source
 import pheeeew.shared.generated.resources.settings_legal_privacy
 import pheeeew.shared.generated.resources.settings_nickname_change
+import pheeeew.shared.generated.resources.settings_nickname_changed
+import pheeeew.shared.generated.resources.settings_nickname_default
+import pheeeew.shared.generated.resources.settings_nickname_load_failed
+import pheeeew.shared.generated.resources.settings_nickname_loading
 import pheeeew.shared.generated.resources.settings_permissions
 import pheeeew.shared.generated.resources.settings_profile_section
 
@@ -68,8 +82,10 @@ fun SettingsScreen(
     onVersionClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     onOpenDeveloperTools: (() -> Unit)? = null,
+    profileNickname: String? = null,
+    onNicknameClick: () -> Unit = {},
+    nicknameDialog: (@Composable () -> Unit)? = null,
 ) {
-    var isNicknameDialogVisible by remember { mutableStateOf(false) }
     Column(
         modifier =
             modifier
@@ -86,10 +102,10 @@ fun SettingsScreen(
         SettingsSectionTitle(stringResource(Res.string.settings_profile_section))
         SettingsCard {
             SettingsActionRow(
-                title = "닉네임", // TODO:  실제 닉네임 반영
+                title = profileNickname ?: stringResource(Res.string.settings_nickname_default),
                 icon = SettingsIcon.Person,
                 trailingText = stringResource(Res.string.settings_nickname_change),
-                onClick = { isNicknameDialogVisible = true },
+                onClick = onNicknameClick,
             )
         }
         Spacer(Modifier.height(32.dp))
@@ -138,12 +154,7 @@ fun SettingsScreen(
         ContactCard(onClick = onContactClick)
     }
 
-    if (isNicknameDialogVisible) {
-        NicknameDialog(
-            onDismiss = { isNicknameDialogVisible = false },
-            onConfirm = { isNicknameDialogVisible = false },
-        )
-    }
+    nicknameDialog?.invoke()
 }
 
 @Composable
@@ -154,6 +165,7 @@ fun SettingsScreen(
     monitoring: Monitoring = NoOpMonitoring,
     modifier: Modifier = Modifier,
     onOpenDeveloperTools: (() -> Unit)? = null,
+    nicknameRepository: DeviceNicknameRepository? = null,
 ) {
     var versionTaps by remember { mutableStateOf(0) }
     var analyticsIdentity by remember { mutableStateOf<String?>(null) }
@@ -165,6 +177,23 @@ fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     val snackbarHostState = remember { SnackbarHostState() }
+    val nicknameViewModel =
+        nicknameRepository?.let { repository ->
+            viewModel { SettingsViewModel(repository) }
+        }
+    val nicknameState by nicknameViewModel?.uiState?.collectAsStateWithLifecycle()
+        ?: remember { mutableStateOf(SettingsUiState()) }
+    val nicknameChangedMessage = stringResource(Res.string.settings_nickname_changed)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(nicknameViewModel, lifecycleOwner, nicknameChangedMessage) {
+        val viewModel = nicknameViewModel ?: return@LaunchedEffect
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.uiState.map { it.nicknameChangedNoticeId }.filterNotNull().collect { noticeId ->
+                viewModel.acknowledgeNicknameChanged(noticeId)
+                snackbarHostState.showSnackbar(NicknameChangedSnackbarVisuals(nicknameChangedMessage))
+            }
+        }
+    }
 
     SettingsTheme {
         Box(modifier = modifier.fillMaxSize()) {
@@ -174,6 +203,45 @@ fun SettingsScreen(
                     SettingsScreen(
                         appVersion = appVersion,
                         onOpenDeveloperTools = onOpenDeveloperTools,
+                        profileNickname =
+                            nicknameState.nickname
+                                ?: when {
+                                    nicknameState.isLoading -> stringResource(Res.string.settings_nickname_loading)
+                                    nicknameState.loadFailed -> stringResource(Res.string.settings_nickname_load_failed)
+                                    else -> null
+                                },
+                        onNicknameClick = {
+                            if (nicknameState.loadFailed) {
+                                nicknameViewModel?.refreshNickname()
+                            } else {
+                                nicknameViewModel?.openNicknameEditor()
+                            }
+                        },
+                        nicknameDialog =
+                            if (nicknameState.isDialogVisible) {
+                                {
+                                    NicknameDialog(
+                                        nickname = nicknameState.draft,
+                                        onNicknameChange = nicknameViewModel!!::onNicknameChanged,
+                                        onDismiss = nicknameViewModel::closeNicknameEditor,
+                                        onConfirm = {
+                                            if (nicknameState.savedButUnverified) {
+                                                nicknameViewModel.retryConfirmSavedNickname()
+                                            } else {
+                                                nicknameViewModel.saveNickname()
+                                            }
+                                        },
+                                        canDismiss = true,
+                                        isBusy = nicknameState.isSaving,
+                                        inputEnabled = !nicknameState.savedButUnverified,
+                                        message = nicknameState.message?.asText(),
+                                        confirmEnabled = nicknameState.canConfirm,
+                                        isLoadingIndicatorVisible = nicknameState.isLoadingIndicatorVisible,
+                                    )
+                                }
+                            } else {
+                                null
+                            },
                         onBackClick = onBackClick,
                         onVersionClick = {
                             versionTaps++
@@ -266,7 +334,7 @@ fun SettingsScreen(
                     Snackbar(
                         message = data.visuals.message,
                         onDismiss = data::dismiss,
-                        isError = true,
+                        isError = data.visuals !is NicknameChangedSnackbarVisuals,
                         maxLines = 3,
                         presentationKey = data,
                     )
@@ -275,6 +343,13 @@ fun SettingsScreen(
         }
     }
 }
+
+private data class NicknameChangedSnackbarVisuals(
+    override val message: String,
+    override val actionLabel: String? = null,
+    override val withDismissAction: Boolean = false,
+    override val duration: SnackbarDuration = SnackbarDuration.Short,
+) : SnackbarVisuals
 
 @Preview(
     showSystemUi = true,
