@@ -21,6 +21,7 @@ import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.dto.RegionEmotionSummary;
 import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.domain.Emotion;
+import com.pheeeew.emotion.domain.EmotionContent;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
@@ -48,6 +49,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import org.hibernate.FlushMode;
+import org.hibernate.Session;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -446,15 +449,18 @@ class EmotionRegionCountIntegrationTest {
 
     @ParameterizedTest
     @CsvSource({
-            "ALL,ALL,5,DISCOURAGED,false", "MEMO,ALL,3,ANGRY,false", "AUDIO,ALL,2,DISCOURAGED,false",
-            "ALL,GROUP,3,DISCOURAGED,false", "MEMO,GROUP,2,ANGRY,false", "AUDIO,GROUP,1,DISCOURAGED,false",
-            "ALL,MY,2,ANGRY,false", "MEMO,MY,1,ANGRY,false", "AUDIO,MY,1,DISCOURAGED,false",
-            "ALL,ALL,5,DISCOURAGED,true", "MEMO,ALL,3,ANGRY,true", "AUDIO,ALL,2,DISCOURAGED,true",
-            "ALL,GROUP,3,DISCOURAGED,true", "MEMO,GROUP,2,ANGRY,true", "AUDIO,GROUP,1,DISCOURAGED,true",
-            "ALL,MY,2,ANGRY,true", "MEMO,MY,1,ANGRY,true", "AUDIO,MY,1,DISCOURAGED,true"
+            "ALL,ALL,5,DISCOURAGED,EMD", "MEMO,ALL,3,ANGRY,EMD", "AUDIO,ALL,2,DISCOURAGED,EMD",
+            "ALL,GROUP,3,DISCOURAGED,EMD", "MEMO,GROUP,2,ANGRY,EMD", "AUDIO,GROUP,1,DISCOURAGED,EMD",
+            "ALL,MY,2,ANGRY,EMD", "MEMO,MY,1,ANGRY,EMD", "AUDIO,MY,1,DISCOURAGED,EMD",
+            "ALL,ALL,5,DISCOURAGED,SIGUNGU", "MEMO,ALL,3,ANGRY,SIGUNGU", "AUDIO,ALL,2,DISCOURAGED,SIGUNGU",
+            "ALL,GROUP,3,DISCOURAGED,SIGUNGU", "MEMO,GROUP,2,ANGRY,SIGUNGU", "AUDIO,GROUP,1,DISCOURAGED,SIGUNGU",
+            "ALL,MY,2,ANGRY,SIGUNGU", "MEMO,MY,1,ANGRY,SIGUNGU", "AUDIO,MY,1,DISCOURAGED,SIGUNGU",
+            "ALL,ALL,5,DISCOURAGED,SIDO", "MEMO,ALL,3,ANGRY,SIDO", "AUDIO,ALL,2,DISCOURAGED,SIDO",
+            "ALL,GROUP,3,DISCOURAGED,SIDO", "MEMO,GROUP,2,ANGRY,SIDO", "AUDIO,GROUP,1,DISCOURAGED,SIDO",
+            "ALL,MY,2,ANGRY,SIDO", "MEMO,MY,1,ANGRY,SIDO", "AUDIO,MY,1,DISCOURAGED,SIDO"
     })
     void KST_날짜_내용_범위_AND_필터를_개수와_대표_감정에_함께_적용한다(
-            EmotionContentFilter contentType, EmotionSearchScope scope, long count, EmotionState state, boolean nationwide
+            EmotionContentFilter contentType, EmotionSearchScope scope, long count, EmotionState state, RegionLevel level
     ) {
         // given: 요청 기기는 그룹 비회원이며, 다른 기기와 작성 기기 없는 과거 기록도 있다.
         Device other = 기본_기기_빌더().build();
@@ -488,9 +494,7 @@ class EmotionRegionCountIntegrationTest {
         var bounds = EmotionSearchBounds.of(126, 37, 128, 39);
 
         // when
-        var regions = nationwide
-                ? service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.SIGUNGU, requester.getPublicId(), filter)
-                : service.findRegionMap(bounds, RegionLevel.EMD, requester.getPublicId(), filter);
+        var regions = service.findRegionMap(bounds, level, requester.getPublicId(), filter);
         var map = service.findContentMapWithinBounds(bounds, requester.getPublicId(), groupId,
                 date, date, contentType, scope, null);
 
@@ -644,6 +648,91 @@ class EmotionRegionCountIntegrationTest {
 
         // when / then
         assertThat(service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.SIDO, requester.getPublicId(), filter)).isEmpty();
+    }
+
+    @ParameterizedTest
+    @EnumSource(RegionLevel.class)
+    void 외부_쓰기_트랜잭션의_감정_수정은_집계_전에_자동_flush한다(RegionLevel level) {
+        // given: DataJpaTest의 외부 쓰기 트랜잭션에 서비스가 참여한다.
+        Emotion emotion = save(classified().memo("변경 전").state(EmotionState.ANGRY));
+        entityManager.flush();
+        emotion.update(EmotionState.DISCOURAGED, EmotionContent.builder().audio(
+                Audio.builder().objectKey("changed.m4a").build()).build(), null);
+        assertThat(jdbc.sql("SELECT state FROM emotions WHERE id = :id").param("id", emotion.getId())
+                .query(String.class).single()).isEqualTo("ANGRY");
+        var filter = EmotionSearchFilter.of(null, null, EmotionContentFilter.AUDIO, null, null);
+
+        // when: 명시적인 flush 없이 내용 필터와 대표 감정 모두 변경분을 읽는다.
+        var result = service.findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), level,
+                requester.getPublicId(), filter);
+
+        // then
+        assertThat(result).singleElement().satisfies(item ->
+                assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(1, EmotionState.DISCOURAGED)));
+        assertThat(jdbc.sql("SELECT state FROM emotions WHERE id = :id").param("id", emotion.getId())
+                .query(String.class).single()).isEqualTo("DISCOURAGED");
+    }
+
+    @ParameterizedTest
+    @EnumSource(RegionLevel.class)
+    void 외부_쓰기_트랜잭션의_감정_삭제는_자동_flush하여_0건_지역을_생략한다(RegionLevel level) {
+        // given
+        Emotion emotion = save(classified().memo("삭제 전").state(EmotionState.ANGRY));
+        entityManager.flush();
+        emotion.delete();
+
+        // when / then
+        assertThat(findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), level, null)).isEmpty();
+        assertThat(jdbc.sql("SELECT deleted_at IS NOT NULL FROM emotions WHERE id = :id")
+                .param("id", emotion.getId()).query(Boolean.class).single()).isTrue();
+    }
+
+    @ParameterizedTest
+    @EnumSource(RegionLevel.class)
+    void 그룹_집계는_감정의_그룹_변경과_스탬프의_자동_flush를_유지한다(RegionLevel level) {
+        // given
+        Group group = 기본_그룹_빌더().build();
+        entityManager.persist(group);
+        GroupStamp stamp = 기본_스탬프_빌더(group).build();
+        entityManager.persist(stamp);
+        Emotion emotion = save(classified().memo("메모").state(EmotionState.ANGRY));
+        entityManager.flush();
+        emotion.update(EmotionState.DISCOURAGED, emotion.getContent(), stamp);
+
+        // when / then: 기존 행의 연관 변경이 그룹 필터에 반영된다.
+        assertThat(findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), level, group.getPublicId()))
+                .singleElement().satisfies(item ->
+                        assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(1, EmotionState.DISCOURAGED)));
+
+        // 감정 변경 없이 스탬프만 수정해도 GROUP 쿼리의 동기화 대상에 포함한다.
+        stamp.change("수정", stamp.getTextColor(), stamp.getBackgroundColor(), stamp.getFrame());
+        findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), level, group.getPublicId());
+        assertThat(jdbc.sql("SELECT text FROM group_stamps WHERE id = :id").param("id", stamp.getId())
+                .query(String.class).single()).isEqualTo("수정");
+    }
+
+    @ParameterizedTest
+    @EnumSource(RegionLevel.class)
+    void 집계는_외부_트랜잭션의_MANUAL_flush_설정을_강제로_덮어쓰지_않는다(RegionLevel level) {
+        // given: 읽기 전용 트랜잭션에서도 사용하는 MANUAL 모드를 보존한다.
+        Emotion emotion = save(classified().memo("메모").state(EmotionState.ANGRY));
+        entityManager.flush();
+        Session session = entityManager.unwrap(Session.class);
+        FlushMode previous = session.getHibernateFlushMode();
+        session.setHibernateFlushMode(FlushMode.MANUAL);
+        emotion.delete();
+
+        try {
+            // when / then
+            assertThat(findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), level, null))
+                    .singleElement().satisfies(item ->
+                            assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(1, EmotionState.ANGRY)));
+            assertThat(jdbc.sql("SELECT deleted_at IS NULL FROM emotions WHERE id = :id")
+                    .param("id", emotion.getId()).query(Boolean.class).single()).isTrue();
+            assertThat(session.getHibernateFlushMode()).isEqualTo(FlushMode.MANUAL);
+        } finally {
+            session.setHibernateFlushMode(previous);
+        }
     }
 
     private List<EmotionRegionMapItemView> findRegionMap(EmotionSearchBounds bounds, RegionLevel level, UUID groupId) {

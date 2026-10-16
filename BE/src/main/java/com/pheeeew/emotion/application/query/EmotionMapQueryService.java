@@ -73,7 +73,7 @@ public class EmotionMapQueryService {
                 .map(Region::code)
                 .toList();
 
-        Map<String, RegionEmotionSummary> summaries = findSummariesByRegionCodes(regionCodes, filter, deviceId);
+        Map<String, RegionEmotionSummary> summaries = findSummariesByRegionCodes(regionCodes, level, filter, deviceId);
 
         return regions.stream()
                 .filter(region -> summaries.containsKey(region.code()))
@@ -119,7 +119,7 @@ public class EmotionMapQueryService {
     }
 
     private Map<String, RegionEmotionSummary> findSummariesByRegionCodes(
-            List<String> regionCodes, EmotionSearchFilter filter, Long deviceId
+            List<String> regionCodes, RegionLevel level, EmotionSearchFilter filter, Long deviceId
     ) {
         if (!regionRepository.isAggregationReady()) {
             throw new EmotionException(EMOTION_REGION_DATA_UNAVAILABLE);
@@ -131,7 +131,7 @@ public class EmotionMapQueryService {
 
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
 
-        return emotionRepository.findSummariesByRegionCodes(regionCodes, filter, deviceId, snapshotAt).stream()
+        return emotionRepository.findSummariesByRegionCodes(regionCodes, level, filter, deviceId, snapshotAt).stream()
                 .collect(Collectors.toMap(RegionEmotionSummaryProjection::regionCode, RegionEmotionSummary::from));
     }
 
