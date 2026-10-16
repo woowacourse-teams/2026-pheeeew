@@ -18,6 +18,7 @@ import com.pheeeew.data.remote.device.dto.DeviceRefreshRequestDto
 import com.pheeeew.data.remote.device.dto.DeviceRefreshResponseDto
 import com.pheeeew.data.remote.device.dto.DeviceRegistrationRequestDto
 import com.pheeeew.data.remote.device.dto.DeviceRegistrationResponseDto
+import com.pheeeew.data.remote.device.dto.DeviceV3RegistrationRequestDto
 import com.pheeeew.domain.model.device.DeviceAccess
 import com.pheeeew.domain.model.device.DeviceCredentials
 import com.pheeeew.domain.model.device.DeviceDiagnosticOutcome
@@ -39,6 +40,23 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class DeviceSessionRepositoryTest {
+    @Test
+    fun `restore requests a nickname before registering a new device`() =
+        runTest {
+            val api = Api()
+            val storage = Storage()
+            val repository = repository(api, storage)
+
+            assertIs<DeviceSessionResult.NeedsRegistration>(repository.restore())
+            assertTrue(api.ids.isEmpty())
+
+            val ready = assertIs<DeviceSessionResult.Ready>(repository.register("  Sunny  "))
+            assertEquals("Sunny", api.registeredNicknames.single())
+            assertEquals("new", api.ids.single())
+            assertEquals("refresh", storage.value?.refreshToken)
+            assertEquals(1L, ready.access.generation)
+        }
+
     @Test
     fun `release upgrade copies legacy token and resumes the same session without registration`() =
         runTest {
@@ -492,10 +510,19 @@ class DeviceSessionRepositoryTest {
         var refreshUsed: String? = null
         var challenges = 0
         val ids = mutableListOf<String>()
+        val registeredNicknames = mutableListOf<String>()
 
         override suspend fun register(request: DeviceRegistrationRequestDto): ApiResult<DeviceRegistrationResponseDto> {
             ids += request.requestId
             return registerBlock(request)
+        }
+
+        override suspend fun register(
+            request: DeviceV3RegistrationRequestDto,
+        ): ApiResult<DeviceRegistrationResponseDto> {
+            registeredNicknames += request.nickname
+            ids += request.requestId
+            return registerBlock(DeviceRegistrationRequestDto(request.requestId, request.attestation))
         }
 
         override suspend fun refresh(request: DeviceRefreshRequestDto): ApiResult<DeviceRefreshResponseDto> {

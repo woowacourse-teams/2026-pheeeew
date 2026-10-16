@@ -1,6 +1,10 @@
 package com.pheeeew.domain.model.device
 
 sealed interface DeviceSessionResult {
+    data class NeedsRegistration(
+        val pendingNickname: String? = null,
+    ) : DeviceSessionResult
+
     class Ready(
         val access: DeviceAccess,
     ) : DeviceSessionResult

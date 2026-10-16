@@ -7,6 +7,7 @@ class DeviceCredentials(
     val refreshToken: String? = null,
     val pendingRequestId: String? = null,
     val pendingStartedAtMillis: Long? = null,
+    val pendingNickname: String? = null,
     val generation: Long = 0,
     val preservesLegacyIdentity: Boolean = false,
 ) {
@@ -14,6 +15,8 @@ class DeviceCredentials(
         require(refreshToken == null || refreshToken.isNotBlank())
         require(pendingRequestId == null || pendingRequestId.isNotBlank())
         require((pendingRequestId == null) == (pendingStartedAtMillis == null))
+        require(pendingNickname == null || pendingNickname.isNotBlank())
+        require(pendingNickname == null || pendingRequestId != null)
         require(generation >= 0)
     }
 

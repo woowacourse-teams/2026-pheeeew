@@ -12,18 +12,23 @@ import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.network.createPlatformApiClient
 import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.local.device.DeviceCredentialStorage
+import com.pheeeew.data.remote.device.api.DeviceNicknameApi
 import com.pheeeew.data.remote.device.api.KtorDeviceSessionApi
 import com.pheeeew.data.remote.device.attestation.DeviceProofProvider
+import com.pheeeew.data.repository.device.DeviceNicknameRepositoryImpl
 import com.pheeeew.data.repository.device.DeviceSessionRepositoryImpl
 import com.pheeeew.domain.model.device.DeviceDiagnosticOutcome
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.model.device.DeviceSessionDiagnostic
 import com.pheeeew.domain.model.device.DeviceSessionDiagnostics
+import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.device.DeviceSessionStage
 import com.pheeeew.domain.model.device.recordSafely
+import com.pheeeew.domain.repository.device.DeviceNicknameRepository
 import com.pheeeew.feature.monitoring.network.ApiMonitoringEvents
 import com.pheeeew.feature.monitoring.network.MonitoringApiObserver
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -36,12 +41,13 @@ class ApiDependencies private constructor(
     private val bootstrap: ApiClient,
     val client: ApiClient,
     val session: DeviceSessionManager,
+    val nicknameRepository: DeviceNicknameRepository,
     val connectivityObserver: ConnectivityObserver,
     val appSession: AppSession,
     private val scope: CoroutineScope,
 ) {
     fun prepareSession() {
-        scope.launch { session.prepare() }
+        scope.launch { session.restore() }
     }
 
     fun close() {
@@ -126,11 +132,28 @@ class ApiDependencies private constructor(
                     )
                 }
             val client = createPlatformApiClient(config, session, observer, attemptObserver, monitoring)
+            val nicknameRepository = DeviceNicknameRepositoryImpl(DeviceNicknameApi(client.requests))
+            scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                var generation: Long? = null
+                session.state.collect { state ->
+                    val nextGeneration =
+                        when (state) {
+                            is DeviceSessionResult.Ready -> state.access.generation
+                            is DeviceSessionResult.NeedsRegistration -> null
+                            else -> return@collect
+                        }
+                    if (generation != null && generation != nextGeneration) {
+                        nicknameRepository.invalidate()
+                    }
+                    generation = nextGeneration
+                }
+            }
             return ApiDependencies(
                 build,
                 bootstrap,
                 client,
                 session,
+                nicknameRepository,
                 connectivityObserver,
                 AppSession(client, connectivityObserver),
                 scope,

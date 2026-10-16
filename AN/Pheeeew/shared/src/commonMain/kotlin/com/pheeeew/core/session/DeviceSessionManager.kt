@@ -37,19 +37,26 @@ class DeviceSessionManager(
     private val mutableState = MutableStateFlow<DeviceSessionResult?>(null)
     val state: StateFlow<DeviceSessionResult?> = mutableState.asStateFlow()
 
-    suspend fun prepare(): DeviceSessionResult = obtain(null)
+    suspend fun prepare(): DeviceSessionResult = obtain(null, Mode.LEGACY_PREPARE)
 
-    override suspend fun accessToken(): AccessToken = prepare().tokenOrThrow()
+    suspend fun restore(): DeviceSessionResult = obtain(null, Mode.RESTORE)
+
+    suspend fun register(nickname: String): DeviceSessionResult = obtain(null, Mode.Register(nickname))
+
+    override suspend fun accessToken(): AccessToken = restore().tokenOrThrow()
 
     override suspend fun recover(rejected: AccessToken): AccessToken {
-        val access = obtain(rejected).tokenOrThrow()
+        val access = obtain(rejected, Mode.RESTORE).tokenOrThrow()
         if (access.generation != rejected.generation) {
             throw SessionAccessException(SessionFailureDetails(DeviceSessionFailureKind.SESSION_CHANGED.name))
         }
         return access
     }
 
-    private suspend fun obtain(rejected: AccessToken?): DeviceSessionResult {
+    private suspend fun obtain(
+        rejected: AccessToken?,
+        mode: Mode,
+    ): DeviceSessionResult {
         scope.coroutineContext.ensureActive()
         val task =
             mutex.withLock {
@@ -61,14 +68,22 @@ class DeviceSessionManager(
                     }
                 }
                 flight?.let { return@withLock it }
-                if (now() < retryAt) lastFailure?.let { return it }
+                if (now() < retryAt) {
+                    val rejectedNicknameCanChange =
+                        mode is Mode.Register && lastFailure?.reason?.code in setOf("DEVICE-008", "DEVICE-009")
+                    if (!rejectedNicknameCanChange) lastFailure?.let { return it }
+                }
                 // Clear a rejected/expired token before starting work so it cannot escape during refresh.
                 cached = null
                 scope
                     .async(start = CoroutineStart.LAZY) {
                         val result =
                             try {
-                                repository.prepare()
+                                when (mode) {
+                                    Mode.LEGACY_PREPARE -> repository.prepare()
+                                    Mode.RESTORE -> repository.restore()
+                                    is Mode.Register -> repository.register(mode.nickname)
+                                }
                             } catch (cancelled: CancellationException) {
                                 withContext(NonCancellable) { mutex.withLock { flight = null } }
                                 throw cancelled
@@ -87,6 +102,11 @@ class DeviceSessionManager(
                                     lastFailure = result
                                     retryAt = maxOf(now() + 1000, result.reason.retryAtMillis ?: 0)
                                 }
+
+                                is DeviceSessionResult.NeedsRegistration -> {
+                                    lastFailure = null
+                                    retryAt = 0
+                                }
                             }
                             mutableState.value = result
                             flight = null
@@ -100,8 +120,23 @@ class DeviceSessionManager(
     private fun DeviceSessionResult.tokenOrThrow(): AccessToken =
         when (this) {
             is DeviceSessionResult.Ready -> AccessToken(access.value, access.generation)
+
             is DeviceSessionResult.Failed -> throw SessionAccessException(reason.details())
+
+            is DeviceSessionResult.NeedsRegistration -> throw SessionAccessException(
+                SessionFailureDetails(DeviceSessionFailureKind.SESSION_CHANGED.name),
+            )
         }
+
+    private sealed interface Mode {
+        data object LEGACY_PREPARE : Mode
+
+        data object RESTORE : Mode
+
+        data class Register(
+            val nickname: String,
+        ) : Mode
+    }
 
     private fun DeviceSessionFailure.details() =
         SessionFailureDetails(kind.name, statusCode, code, retryAtMillis, stage?.name, sdkCode)

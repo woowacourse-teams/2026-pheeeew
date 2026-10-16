@@ -11,6 +11,7 @@ import com.pheeeew.data.remote.device.dto.DeviceRefreshRequestDto
 import com.pheeeew.data.remote.device.dto.DeviceRefreshResponseDto
 import com.pheeeew.data.remote.device.dto.DeviceRegistrationRequestDto
 import com.pheeeew.data.remote.device.dto.DeviceRegistrationResponseDto
+import com.pheeeew.data.remote.device.dto.DeviceV3RegistrationRequestDto
 import com.pheeeew.domain.model.device.DeviceDiagnosticOutcome
 import com.pheeeew.domain.model.device.DeviceSessionDiagnostic
 import com.pheeeew.domain.model.device.DeviceSessionDiagnostics
@@ -25,6 +26,9 @@ class KtorDeviceSessionApi(
 ) : DeviceSessionApi {
     override suspend fun register(request: DeviceRegistrationRequestDto): ApiResult<DeviceRegistrationResponseDto> =
         execute(DeviceSessionStage.REGISTER, post("/api/v2/devices", request), setOf(200, 201))
+
+    override suspend fun register(request: DeviceV3RegistrationRequestDto): ApiResult<DeviceRegistrationResponseDto> =
+        execute(DeviceSessionStage.REGISTER, post("/api/v3/devices", request), setOf(200, 201))
 
     override suspend fun refresh(request: DeviceRefreshRequestDto): ApiResult<DeviceRefreshResponseDto> =
         execute(DeviceSessionStage.REFRESH, post("/api/v2/devices/tokens", request), setOf(200))
@@ -68,7 +72,7 @@ class KtorDeviceSessionApi(
         body = body,
         monitoringEndpoint =
             when (path) {
-                "/api/v2/devices" -> "device_register"
+                "/api/v2/devices", "/api/v3/devices" -> "device_register"
                 "/api/v2/devices/tokens" -> "device_refresh"
                 "/api/v2/devices/challenge" -> "device_challenge"
                 else -> null
