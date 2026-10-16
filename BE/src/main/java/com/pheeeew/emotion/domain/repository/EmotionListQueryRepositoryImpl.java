@@ -17,9 +17,11 @@ import com.querydsl.jpa.JPAExpressions;
 import com.querydsl.jpa.impl.JPAQuery;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
+import java.sql.Statement;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.hibernate.Session;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -29,9 +31,11 @@ public class EmotionListQueryRepositoryImpl implements EmotionListQueryRepositor
 
     private static final GeometryFactory GEOMETRY_FACTORY = new GeometryFactory(new PrecisionModel(), 4326);
 
+    private final EntityManager entityManager;
     private final JPAQueryFactory queryFactory;
 
     public EmotionListQueryRepositoryImpl(EntityManager entityManager) {
+        this.entityManager = entityManager;
         this.queryFactory = new JPAQueryFactory(entityManager);
     }
 
@@ -77,10 +81,20 @@ public class EmotionListQueryRepositoryImpl implements EmotionListQueryRepositor
             EmotionSearchFilter filter,
             int limit
     ) {
+        forceCustomPlanForMapTransaction();
         return visibleQuery(snapshotAt, lastCreatedAt, lastId, deviceId, filter, true)
                 .where(withinBounds(bounds))
                 .limit(limit)
                 .fetch();
+    }
+
+    private void forceCustomPlanForMapTransaction() {
+        // 외부 트랜잭션에 참여한 경우에도 물리 트랜잭션이 종료될 때 복원된다.
+        entityManager.unwrap(Session.class).doWork(connection -> {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("SET LOCAL plan_cache_mode = 'force_custom_plan'");
+            }
+        });
     }
 
     private JPAQuery<Emotion> visibleQuery(
