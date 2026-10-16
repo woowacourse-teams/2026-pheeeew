@@ -105,7 +105,7 @@ internal fun PressRankingScreen(
     }
     val pullDistance = with(LocalDensity.current) { 56.dp.toPx() }
     Column(
-        modifier = modifier.fillMaxSize().background(AppColors.Background).statusBarsPadding(),
+        modifier = modifier.fillMaxSize().background(AppColors.GroupBackground).statusBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         PullToRefreshBox(

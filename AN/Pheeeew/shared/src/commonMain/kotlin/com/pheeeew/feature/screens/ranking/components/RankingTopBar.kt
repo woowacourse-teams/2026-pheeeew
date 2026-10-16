@@ -83,7 +83,7 @@ internal fun RankingTopBarOverlay(
         BasicTopBar(
             title = title,
             titleColor = AppColors.RankingContent,
-            modifier = Modifier.offset(y = offsetY).background(AppColors.Background, RectangleShape),
+            modifier = Modifier.offset(y = offsetY).background(AppColors.GroupBackground, RectangleShape),
         )
     }
 }
