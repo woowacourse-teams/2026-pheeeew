@@ -94,20 +94,13 @@ object ApiMonitoringEvents {
 
 class MonitoringApiObserver(
     private val monitoring: Monitoring,
-    private val measurement: ((String) -> Unit)? = null,
 ) : ApiAttemptObserver {
     override fun started(
         endpoint: String,
         method: String,
     ): ApiAttempt {
         val context = monitoring.context("network")
-        runCatching { measurement?.invoke("http_start endpoint=$endpoint method=$method") }
         return ApiAttempt { outcome, status, elapsed ->
-            runCatching {
-                measurement?.invoke(
-                    "http_end endpoint=$endpoint method=$method outcome=$outcome status=$status duration=$elapsed",
-                )
-            }
             monitoring.track(
                 DefinedEvent(
                     ApiMonitoringEvents.finished,

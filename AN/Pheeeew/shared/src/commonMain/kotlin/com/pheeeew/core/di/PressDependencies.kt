@@ -16,7 +16,6 @@ fun createPressRepository(
     sessionScope: CoroutineScope,
     sender: PressSender? = null,
     connectivityObserver: ConnectivityObserver? = null,
-    measurement: ((String) -> Unit)? = null,
 ): PressRepository =
     PressRepositoryImpl(
         statistics = PressApiStatisticsDataSource(EmotionPressApi(apiClient.requests)),
@@ -24,5 +23,4 @@ fun createPressRepository(
         sessionScope = sessionScope,
         connectivity = connectivityObserver?.isConnected,
         monitoring = apiClient.monitoring,
-        measurement = measurement,
     )

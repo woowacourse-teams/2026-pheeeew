@@ -58,7 +58,6 @@ internal fun EmotionPad(
     preserveFeedbackWhileDisabled: Boolean = false,
     modifier: Modifier = Modifier,
     reducedMotionOverride: Boolean? = null,
-    measurement: ((String) -> Unit)? = null,
 ) {
     val reducedMotion = reducedMotionOverride ?: rememberTapReducedMotion()
     val mark = remember { TimeSource.Monotonic.markNow() }
@@ -242,7 +241,6 @@ internal fun EmotionPad(
                     font = font,
                     now = ::now,
                     onMotionChanged = ::refresh,
-                    measurement = measurement,
                     onTap = { pointer ->
                         val accepted = callback(kind)
                         dispatchEmotionTapFeedback(
@@ -269,7 +267,6 @@ internal fun EmotionPad(
             }
             EmotionFeedbackLayer(
                 particles = particles,
-                measurement = measurement,
                 frameTime = frameTime,
                 padPosition = padPositionState,
                 modifier = Modifier.fillMaxSize(),

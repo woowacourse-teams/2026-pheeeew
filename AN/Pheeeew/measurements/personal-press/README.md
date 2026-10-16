@@ -2,9 +2,34 @@
 
 2026년 10월 14일 기준 코드 a8233674db8785522502ffe1a36e35ff5be2a313에서 개인 프레스 Repository의 기본 전송 설정을 가상 시간으로 측정했다. 서버와 HTTP 계층은 가짜이므로 아래 요청 수는 Sender 호출 수이며 실제 HTTP POST 수가 아니다. 실제 앱 정상 입력 9회 측정과 앱 재실행 후 서버 집계 확인도 완료했다. 아래 가상 시간 표와 실제 앱 표는 구분한다.
 
-## 재실행
+## 자료와 재현 코드의 위치
 
-AN/Pheeeew에서 실행한다.
+이 브랜치와 PR #776에는 원본 로그, 분석 스크립트, CSV와 이 README만 남긴다. 앱 관측 훅, 장애 주입기, 자동 입력 테스트 등 실험용 코드는 포함하지 않는다.
+
+당시 재현 코드는 별도 원격 브랜치 [feat/644-personal-press-reproduction](https://github.com/woowacourse-teams/2026-pheeeew/tree/feat/644-personal-press-reproduction)에 보존했다. 고정된 실험 코드 커밋은 [3898c00290ef97b2b74c819695049c36b7416d91](https://github.com/woowacourse-teams/2026-pheeeew/commit/3898c00290ef97b2b74c819695049c36b7416d91)이다. 재현 브랜치는 실험 보관용이며 제품 브랜치에 병합하기 위한 변경이 아니다.
+
+아래 Gradle 테스트·설치 명령은 모두 재현 코드 체크아웃의 AN/Pheeeew에서 실행한다. 기기 테스트는 실제 개발 서버 입력을 만들며 장애 실험은 기기 네트워크를 일시 변경한다.
+
+```sh
+git fetch origin
+git worktree add --detach ../pheeeew-644-reproduction 3898c00290ef97b2b74c819695049c36b7416d91
+cd ../pheeeew-644-reproduction/AN/Pheeeew
+```
+
+저장된 로그의 재분석은 실험 코드를 체크아웃하거나 기기를 연결하지 않아도 가능하다. 이 자료 브랜치의 AN/Pheeeew에서 실행한다. 두 스크립트는 Python 표준 라이브러리만 사용한다.
+
+```sh
+python3 measurements/personal-press/summarize_device.py \
+  measurements/personal-press/2026-10-14-device.log > /tmp/pheeeew-644-device.csv
+python3 measurements/personal-press/summarize_failure_ui.py \
+  measurements/personal-press/2026-10-14-failure-ui.log
+```
+
+첫 명령은 지정한 출력 파일에 정상 실험 결과를 쓴다. 두 번째 명령은 입력 로그 옆의 2026-10-14-failure.csv와 2026-10-14-ui.csv를 다시 생성한다.
+
+## 로직 실험 재실행
+
+재현 코드 체크아웃의 AN/Pheeeew에서 실행한다.
 
 ```sh
 ./gradlew :shared:testAndroidHostTest \
@@ -86,6 +111,8 @@ UiAutomation의 touchscreen DOWN/UP 이벤트를 100ms 간격으로 주입했다
 
 ## 실제 앱 재실행과 로그 분석
 
+아래 설치·기기 테스트는 별도 보존한 재현 코드에서 실행한다.
+
 전용 테스트 기기에서 개발 서버용 debug 앱을 설치하고 온보딩을 완료한다. 아래 테스트는 실제 서버에 603개 입력을 보내며 명시적인 옵션이 없으면 건너뛴다.
 
 ```sh
@@ -145,6 +172,8 @@ PressMeasurement는 debug Android에서만 활성화되며 입력 감정·대기
 
 ## 장애와 UI 실험 재실행
 
+아래 설치·기기 테스트는 별도 보존한 재현 코드에서 실행한다.
+
 개발 서버용 debug 앱을 설치하고 온보딩을 완료한 전용 기기에서 실행한다. 테스트는 첫 실패 묶음·후속 입력·네트워크 복구·UI 입력을 포함해 총 275개를 수용하도록 한다. 네트워크 설정은 finally에서 복원하며 사용자 조작 없이 실행한다.
 
 ```sh
@@ -158,4 +187,4 @@ python3 measurements/personal-press/summarize_failure_ui.py measurements/persona
 
 DebugPressFaultInjection은 dev debug에서만 엔진에 설치되며 api-dev의 정확한 개인 프레스 POST 경로에만 적용된다. 테스트가 run-as로 files/press-probe-fault-MODE 파일을 만들면 첫 해당 POST가 파일을 소비한다. 테스트 finally에서도 파일을 제거한다. UI 그리기 훅은 관측 콜백이 없는 앱에서 추가 draw 의존성을 만들지 않는다.
 
-저장 결과는 2026-10-14-failure.csv, 2026-10-14-ui.csv와 2026-10-14-failure-ui.log다. 프레스·Tap 회귀 테스트 51개와 기기 측정 테스트 1개가 통과했고 관련 Kotlin 형식 검사도 통과했다.
+저장 결과는 2026-10-14-failure.csv, 2026-10-14-ui.csv와 2026-10-14-failure-ui.log다. 실험 코드 커밋에서 프레스·Tap 회귀 테스트 51개와 기기 측정 테스트 1개가 통과했고 관련 Kotlin 형식 검사도 통과했다. 이 자료 전용 변경에서는 저장된 로그를 재분석해 CSV와 일치하는지 확인한다.

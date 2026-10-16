@@ -59,11 +59,10 @@ class ApiDependencies private constructor(
             connectivityObserver: ConnectivityObserver,
             diagnostics: DeviceSessionDiagnostics = DeviceSessionDiagnostics {},
             monitoring: Monitoring = NoOpMonitoring,
-            measurement: ((String) -> Unit)? = null,
         ): ApiDependencies {
             val attestationPolicy = build.policy(createProofProvider)
             val config = ApiConfig(build.baseUrl)
-            val attemptObserver = MonitoringApiObserver(monitoring, measurement)
+            val attemptObserver = MonitoringApiObserver(monitoring)
             val bootstrap = createPlatformApiClient(config, attemptObserver = attemptObserver, monitoring = monitoring)
             val diagnosticContext = monitoring.context("network")
             val sessionDiagnostics =
@@ -131,7 +130,7 @@ class ApiDependencies private constructor(
                 client,
                 session,
                 connectivityObserver,
-                AppSession(client, connectivityObserver, measurement),
+                AppSession(client, connectivityObserver),
                 scope,
             )
         }

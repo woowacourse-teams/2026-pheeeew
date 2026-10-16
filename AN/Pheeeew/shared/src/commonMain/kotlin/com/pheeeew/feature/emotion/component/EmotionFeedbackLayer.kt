@@ -11,7 +11,6 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.key
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -40,14 +39,12 @@ internal fun EmotionFeedbackLayer(
     frameTime: State<Double>,
     padPosition: State<Offset>,
     modifier: Modifier = Modifier,
-    measurement: ((String) -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     val font = notoSansKrFontFamily()
     Box(modifier = modifier) {
         particles.forEach { particle ->
             key(particle.id) {
-                val firstDraw = remember(particle.id) { booleanArrayOf(true) }
                 val reaction = particle.reaction
                 val emotion = TapCatalog.emotion(particle.key)
                 // Alpha compositing clips to the layer bounds, so include the sticker shadow.
@@ -59,17 +56,7 @@ internal fun EmotionFeedbackLayer(
                 Box(
                     modifier =
                         Modifier
-                            .pressProbeDraw(measurement) {
-                                drawContent()
-                                if (measurement != null && firstDraw[0]) {
-                                    firstDraw[0] = false
-                                    runCatching {
-                                        measurement.invoke(
-                                            "ui_reaction_draw kind=${particle.key.name} id=${particle.id}",
-                                        )
-                                    }
-                                }
-                            }.requiredSize(
+                            .requiredSize(
                                 particle.width.dp + shadowPadding * 2,
                                 particle.height.dp + shadowPadding * 2,
                             ).graphicsLayer {

@@ -1,11 +1,9 @@
 package com.pheeeew
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.ViewModelProvider
 import com.pheeeew.core.di.AndroidApiDependencies
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
@@ -17,7 +15,6 @@ import com.pheeeew.data.location.platform.android.LocationDependenciesHolder
 import com.pheeeew.data.location.platform.android.createAndroidLocationDependencies
 import com.pheeeew.data.remote.version.AppVersionApi
 import com.pheeeew.feature.screens.onboarding.WELCOME_ONBOARDING_COMPLETED_KEY
-import com.pheeeew.feature.screens.press.LocalPressUiMeasurement
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,33 +49,21 @@ class MainActivity : ComponentActivity() {
         val appSettingsLauncher = AndroidAppSettingsLauncher(this@MainActivity)
 
         setContent {
-            CompositionLocalProvider(
-                LocalPressUiMeasurement provides
-                    if (BuildConfig.DEBUG) {
-                        { message ->
-                            Log.i("PressMeasurement", message)
-                            Unit
-                        }
-                    } else {
-                        null
-                    },
-            ) {
-                App(
-                    locationDependencies = locationDependencies,
-                    lastRecordedGroupRepository = lastRecordedGroupRepository,
-                    groupCreateSessionStore = groupCreateSessionStore,
-                    hasCompletedOnboarding = hasCompletedOnboarding,
-                    onOnboardingCompleted = {
-                        onboardingPreferences.edit().putBoolean(WELCOME_ONBOARDING_COMPLETED_KEY, true).apply()
-                    },
-                    appVersion = BuildConfig.VERSION_NAME,
-                    appVersionApi = appVersionApi,
-                    permissionSettingsLauncher = appSettingsLauncher,
-                    appSettingsLauncher = appSettingsLauncher,
-                    apiDependencies = apiDependencies,
-                    mapFilterSettingsRepository = SessionMapFilterSettings.repository,
-                )
-            }
+            App(
+                locationDependencies = locationDependencies,
+                lastRecordedGroupRepository = lastRecordedGroupRepository,
+                groupCreateSessionStore = groupCreateSessionStore,
+                hasCompletedOnboarding = hasCompletedOnboarding,
+                onOnboardingCompleted = {
+                    onboardingPreferences.edit().putBoolean(WELCOME_ONBOARDING_COMPLETED_KEY, true).apply()
+                },
+                appVersion = BuildConfig.VERSION_NAME,
+                appVersionApi = appVersionApi,
+                permissionSettingsLauncher = appSettingsLauncher,
+                appSettingsLauncher = appSettingsLauncher,
+                apiDependencies = apiDependencies,
+                mapFilterSettingsRepository = SessionMapFilterSettings.repository,
+            )
         }
     }
 }
