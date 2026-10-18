@@ -18,7 +18,6 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headersOf
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -27,6 +26,7 @@ import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class EmotionRegionMapApiTest {
     @Test
@@ -58,6 +58,7 @@ class EmotionRegionMapApiTest {
                 assertEquals(1, requests)
                 first.cancel()
                 first.join()
+                assertTrue(first.isCancelled)
                 release.complete(Unit)
                 assertIs<EmotionRegionResult.Success>(second.await())
                 assertEquals(1, requests)
@@ -99,17 +100,57 @@ class EmotionRegionMapApiTest {
                 started.await()
                 repository.invalidateSession()
                 release.complete(Unit)
-                try {
-                    oldRequest.await()
-                } catch (_: CancellationException) {
-                    // Session changes cancel the shared transport request and clear its cache key.
-                }
+                assertEquals(EmotionRegionResult.Failure, oldRequest.await())
                 assertEquals(null, repository.findSnapshot(EmotionRegionLevel.SIGUNGU))
                 repository.findRegions(area, EmotionRegionLevel.SIGUNGU)
                 assertEquals(3, requests)
             } finally {
                 release.complete(Unit)
                 client.close()
+            }
+        }
+
+    @Test
+    @OptIn(ExperimentalCoroutinesApi::class)
+    fun `전체 무효화와 강제 새로고침은 활성 대기자에게 실패를 반환하고 새 요청은 완료한다`() =
+        runTest {
+            for (forceRefresh in listOf(false, true)) {
+                val started = CompletableDeferred<Unit>()
+                val release = CompletableDeferred<Unit>()
+                var requests = 0
+                val client =
+                    createApiClient(
+                        MockEngine {
+                            if (++requests == 1) {
+                                started.complete(Unit)
+                                release.await()
+                            }
+                            respond("[]", headers = headersOf(HttpHeaders.ContentType, "application/json"))
+                        },
+                        ApiConfig("https://api.example.test"),
+                        AccessTokenProvider { AccessToken("token") },
+                    )
+                try {
+                    val repository = EmotionRegionMapRepositoryImpl(EmotionRegionMapApi(client.requests))
+                    val area = EmotionMapBounds(126.9, 37.5, 127.1, 37.6)
+                    val first = async { repository.findRegions(area, EmotionRegionLevel.SIGUNGU) }
+                    started.await()
+                    val second = async { repository.findRegions(area, EmotionRegionLevel.SIGUNGU) }
+                    runCurrent()
+                    assertEquals(1, requests)
+
+                    if (!forceRefresh) repository.invalidateAll()
+                    assertIs<EmotionRegionResult.Success>(
+                        repository.findRegions(area, EmotionRegionLevel.SIGUNGU, forceRefresh = forceRefresh),
+                    )
+                    assertEquals(EmotionRegionResult.Failure, first.await())
+                    assertEquals(EmotionRegionResult.Failure, second.await())
+                    assertEquals(2, requests)
+                    assertEquals(emptyList(), repository.findSnapshot(EmotionRegionLevel.SIGUNGU))
+                } finally {
+                    release.complete(Unit)
+                    client.close()
+                }
             }
         }
 
