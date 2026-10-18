@@ -11,8 +11,7 @@ import com.pheeeew.data.remote.device.dto.DeviceV3RegistrationRequestDto
 interface DeviceSessionApi {
     suspend fun register(request: DeviceRegistrationRequestDto): ApiResult<DeviceRegistrationResponseDto>
 
-    suspend fun register(request: DeviceV3RegistrationRequestDto): ApiResult<DeviceRegistrationResponseDto> =
-        register(DeviceRegistrationRequestDto(request.requestId, request.attestation))
+    suspend fun register(request: DeviceV3RegistrationRequestDto): ApiResult<DeviceRegistrationResponseDto>
 
     suspend fun refresh(request: DeviceRefreshRequestDto): ApiResult<DeviceRefreshResponseDto>
 
