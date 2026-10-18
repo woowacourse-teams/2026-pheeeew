@@ -287,7 +287,7 @@ class DeviceSessionRepositoryTest {
             assertTrue(api.ids.isEmpty())
             api.refreshResult = http(401, "DEVICE-003")
             val result = assertIs<DeviceSessionResult.Ready>(repository.prepare())
-            assertEquals(8, result.access.generation)
+            assertEquals(8L, result.access.generation)
         }
 
     @Test
@@ -470,6 +470,59 @@ class DeviceSessionRepositoryTest {
             assertFalse(event.toString().contains("secret-token-value"))
         }
 
+    @Test
+    fun `restore and prepare share refresh rejection and identity protection rules`() =
+        runTest {
+            for (restoreOnly in listOf(true, false)) {
+                for (preserveIdentity in listOf(true, false)) {
+                    for (rejection in listOf(http(401, "DEVICE-003"), http(401, "DEVICE-004"), networkFailure())) {
+                        val credentials =
+                            DeviceCredentials(
+                                refreshToken = "stored",
+                                generation = 7,
+                                preservesLegacyIdentity = preserveIdentity,
+                            )
+                        val storage = Storage(credentials)
+                        val api = Api().apply { refreshResult = rejection }
+                        val repository = repository(api, storage)
+                        val result = if (restoreOnly) repository.restore() else repository.prepare()
+                        val invalid = (rejection.reason as? NetworkFailure.HttpStatus)?.statusCode == 401
+                        if (invalid && !preserveIdentity) {
+                            if (restoreOnly) {
+                                assertIs<DeviceSessionResult.NeedsRegistration>(result)
+                                assertNull(storage.value?.refreshToken)
+                                assertNull(storage.value?.pendingRequestId)
+                                assertEquals(7L, storage.value?.generation)
+                                assertTrue(api.ids.isEmpty())
+                            } else {
+                                assertIs<DeviceSessionResult.Ready>(result)
+                                assertEquals(8L, result.access.generation)
+                                assertEquals(listOf("new"), api.ids)
+                            }
+                        } else {
+                            assertIs<DeviceSessionResult.Failed>(result)
+                            assertEquals(credentials.refreshToken, storage.value?.refreshToken)
+                            assertEquals(credentials.generation, storage.value?.generation)
+                            assertEquals(credentials.preservesLegacyIdentity, storage.value?.preservesLegacyIdentity)
+                            assertTrue(api.ids.isEmpty())
+                        }
+                    }
+                }
+            }
+        }
+
+    @Test
+    fun `restore resets diagnostic stage before reading storage again`() =
+        runTest {
+            val storage = Storage(DeviceCredentials(refreshToken = "stored", generation = 1))
+            val repository = repository(Api(), storage)
+            assertIs<DeviceSessionResult.Ready>(repository.restore())
+            storage.throwOnRead = true
+            val failure = assertIs<DeviceSessionResult.Failed>(repository.restore())
+            assertEquals(DeviceSessionFailureKind.UNEXPECTED, failure.reason.kind)
+            assertEquals(DeviceSessionStage.STORAGE, failure.reason.stage)
+        }
+
     private fun repository(
         api: Api,
         storage: Storage,
@@ -480,11 +533,14 @@ class DeviceSessionRepositoryTest {
     private class Storage(
         var value: DeviceCredentials? = null,
     ) : DeviceCredentialStorage {
+        var throwOnRead = false
         var readFailure = false
         var rejectWrite = false
 
         override suspend fun read(): CredentialRead =
-            if (readFailure) {
+            if (throwOnRead) {
+                error("storage read failed")
+            } else if (readFailure) {
                 CredentialRead.Failure()
             } else {
                 value?.let(CredentialRead::Found)

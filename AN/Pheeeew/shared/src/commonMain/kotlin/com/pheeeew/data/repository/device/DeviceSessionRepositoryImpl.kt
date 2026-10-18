@@ -56,6 +56,7 @@ class DeviceSessionRepositoryImpl(
     override suspend fun restore(): DeviceSessionResult {
         if (now() < blockedUntil) return checkNotNull(blockedFailure)
         return try {
+            stage = DeviceSessionStage.STORAGE
             val credentials =
                 when (val result = storage.read()) {
                     is CredentialRead.Found -> result.credentials
@@ -77,34 +78,7 @@ class DeviceSessionRepositoryImpl(
                     DeviceSessionResult.NeedsRegistration()
                 }
             } else {
-                stage = DeviceSessionStage.REFRESH
-                val issuedAt = now()
-                when (val result = api.refresh(DeviceRefreshRequestDto(credentials.refreshToken))) {
-                    is ApiResult.Success -> {
-                        access(
-                            result.value.accessToken,
-                            result.value.expiresIn,
-                            issuedAt,
-                            credentials.generation,
-                        )
-                    }
-
-                    is ApiResult.Failure -> {
-                        val http = result.reason as? NetworkFailure.HttpStatus
-                        if (http?.statusCode != 401 || http.error?.code !in setOf("DEVICE-003", "DEVICE-004")) {
-                            failure(result.reason)
-                        } else if (credentials.preservesLegacyIdentity) {
-                            failure(result.reason)
-                        } else {
-                            val cleared = DeviceCredentials(generation = credentials.generation)
-                            if (!storage.write(cleared)) {
-                                failed(DeviceSessionFailureKind.STORAGE)
-                            } else {
-                                DeviceSessionResult.NeedsRegistration()
-                            }
-                        }
-                    }
-                }
+                refreshStored(credentials)
             }
         } catch (cancelled: CancellationException) {
             throw cancelled
@@ -180,30 +154,39 @@ class DeviceSessionRepositoryImpl(
                     },
                 )
             }
-        val refreshToken = credentials.refreshToken
-        if (refreshToken != null) {
-            stage = DeviceSessionStage.REFRESH
-            val issuedAt = now()
-            when (val result = api.refresh(DeviceRefreshRequestDto(refreshToken))) {
-                is ApiResult.Success -> {
-                    return access(result.value.accessToken, result.value.expiresIn, issuedAt, credentials.generation)
-                }
+        if (credentials.refreshToken != null) {
+            val result = refreshStored(credentials)
+            if (result !is DeviceSessionResult.NeedsRegistration) return result
+            return register(DeviceCredentials(generation = credentials.generation))
+        }
+        return register(credentials)
+    }
 
-                is ApiResult.Failure -> {
-                    val http = result.reason as? NetworkFailure.HttpStatus
-                    if (http?.statusCode != 401 || http.error?.code !in setOf("DEVICE-003", "DEVICE-004")) {
-                        return failure(result.reason)
-                    }
-                    // An upgraded user's identity must never be replaced by automatic registration.
-                    if (credentials.preservesLegacyIdentity) return failure(result.reason)
-                    // Persist invalidation before any new registration. No token deletion on network failure.
+    private suspend fun refreshStored(credentials: DeviceCredentials): DeviceSessionResult {
+        stage = DeviceSessionStage.REFRESH
+        val issuedAt = now()
+        return when (val result = api.refresh(DeviceRefreshRequestDto(checkNotNull(credentials.refreshToken)))) {
+            is ApiResult.Success -> {
+                access(result.value.accessToken, result.value.expiresIn, issuedAt, credentials.generation)
+            }
+
+            is ApiResult.Failure -> {
+                val http = result.reason as? NetworkFailure.HttpStatus
+                if (http?.statusCode != 401 || http.error?.code !in setOf("DEVICE-003", "DEVICE-004") ||
+                    credentials.preservesLegacyIdentity
+                ) {
+                    failure(result.reason)
+                } else {
+                    // Persist invalidation before registration; preserve credentials on network failures.
                     val cleared = DeviceCredentials(generation = credentials.generation)
-                    if (!storage.write(cleared)) return failed(DeviceSessionFailureKind.STORAGE)
-                    return register(cleared)
+                    if (!storage.write(cleared)) {
+                        failed(DeviceSessionFailureKind.STORAGE)
+                    } else {
+                        DeviceSessionResult.NeedsRegistration()
+                    }
                 }
             }
         }
-        return register(credentials)
     }
 
     private suspend fun register(initial: DeviceCredentials): DeviceSessionResult = register(null, initial)
