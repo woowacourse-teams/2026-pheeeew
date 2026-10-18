@@ -126,7 +126,7 @@ class MapViewModelViewportTest {
                             ),
                         dataLoadingEnabled = false,
                     )
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(0, regionQueries)
@@ -161,7 +161,7 @@ class MapViewModelViewportTest {
                                 },
                             ),
                     )
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(MapFilterSettings.DEFAULT.toSearchFilter(), filters.single())
@@ -219,11 +219,11 @@ class MapViewModelViewportTest {
                             ),
                     )
                 val area = bounds(127.0, 37.5)
-                viewModel.onViewportChanged(EmotionMapViewport(area, 12.0))
+                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(listOf(1L), viewModel.pinIds())
-                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(listOf(1L), viewModel.pinIds())
@@ -241,7 +241,7 @@ class MapViewModelViewportTest {
                     viewModel.uiModel.value.regionClusters
                         .map { it.id },
                 )
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(128.0, 37.5), 12.0))
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(128.0, 37.5), 11.0))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(
@@ -280,10 +280,10 @@ class MapViewModelViewportTest {
                                 },
                             ),
                     )
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 10.0))
                 advanceTimeBy(700)
                 runCurrent()
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.01, 37.51), 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.01, 37.51), 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(1, calls)
@@ -1151,7 +1151,7 @@ class MapViewModelViewportTest {
                 viewModel.onViewportChanged(EmotionMapViewport(area, 8.0))
                 advanceTimeBy(700)
                 runCurrent()
-                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 old.complete(EmotionRegionResult.Success(listOf(EmotionRegion("old", "서울", 127.0, 37.5, 1, null))))
@@ -1171,11 +1171,11 @@ class MapViewModelViewportTest {
                 )
                 viewModel.focusOnRegionCluster("new")
                 assertEquals(
-                    12.0,
+                    11.0,
                     viewModel.uiModel.value.cameraCommand
                         ?.value,
                 )
-                viewModel.onViewportChanged(EmotionMapViewport(area, 12.0))
+                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
@@ -1217,13 +1217,13 @@ class MapViewModelViewportTest {
                                 },
                             ),
                     )
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 val original = viewModel.uiModel.value.regionClusters
                 assertEquals(listOf("a", "b"), original.map { it.id })
 
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.01, 37.5), 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.01, 37.5), 10.0))
                 assertEquals(original, viewModel.uiModel.value.regionClusters)
                 advanceTimeBy(700)
                 runCurrent()
@@ -1235,7 +1235,7 @@ class MapViewModelViewportTest {
                 assertEquals(listOf("a", "c"), replacement.map { it.id })
                 assertEquals(9L, replacement.first().count)
 
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.02, 37.5), 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.02, 37.5), 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 failed.complete(EmotionRegionResult.Failure)
@@ -1243,7 +1243,7 @@ class MapViewModelViewportTest {
                 assertEquals(replacement, viewModel.uiModel.value.regionClusters)
                 assertFalse(viewModel.uiModel.value.isLoadingRegionClusters)
 
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.03, 37.5), 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.03, 37.5), 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(replacement, viewModel.uiModel.value.regionClusters)
@@ -1289,7 +1289,7 @@ class MapViewModelViewportTest {
                         findRegionSnapshot = FindEmotionRegionSnapshotUseCase(regionsRepository),
                     )
                 runCurrent()
-                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
                 assertEquals(
                     3L,
                     viewModel.uiModel.value.regionClusters
@@ -1300,11 +1300,11 @@ class MapViewModelViewportTest {
                 runCurrent()
                 assertEquals(0, networkCalls)
 
-                viewModel.onViewportChanged(EmotionMapViewport(bounds(128.0, 37.5), 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(128.0, 37.5), 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
-                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
                 assertEquals(
                     3L,
                     viewModel.uiModel.value.regionClusters
@@ -1368,7 +1368,7 @@ class MapViewModelViewportTest {
                 viewModel.onViewportChanged(EmotionMapViewport(area, 8.0))
                 advanceTimeBy(700)
                 runCurrent()
-                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 viewModel.focusOnRegionCluster("city")
@@ -1387,14 +1387,14 @@ class MapViewModelViewportTest {
                 )
                 assertEquals(EmotionRegionLevel.SIDO, viewModel.uiModel.value.displayedRegionLevel)
 
-                viewModel.onViewportChanged(EmotionMapViewport(area, 11.0))
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
                 advanceTimeBy(700)
                 runCurrent()
                 next.complete(EmotionRegionResult.Success(listOf(city.copy(id = "district", name = "강남구"))))
                 runCurrent()
                 viewModel.focusOnRegionCluster("district")
                 assertEquals(
-                    12.0,
+                    11.0,
                     viewModel.uiModel.value.cameraCommand
                         ?.value,
                 )
