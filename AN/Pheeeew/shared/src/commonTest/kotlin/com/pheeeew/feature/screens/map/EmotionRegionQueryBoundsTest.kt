@@ -1,14 +1,42 @@
 package com.pheeeew.feature.screens.map
 
+import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
 import com.pheeeew.domain.model.emotion.coversRegionViewport
+import com.pheeeew.domain.model.emotion.enclosingEmotionMapBounds
 import com.pheeeew.domain.model.emotion.expandedForRegionQuery
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class EmotionRegionQueryBoundsTest {
+    @Test
+    fun `렌더링 여백 경계는 날짜변경선을 가로지르는 최소 범위를 만든다`() {
+        val bounds =
+            enclosingEmotionMapBounds(
+                listOf(
+                    GeoCoordinate(10.0, 179.0),
+                    GeoCoordinate(11.0, -179.0),
+                    GeoCoordinate(-10.0, 178.0),
+                    GeoCoordinate(-11.0, -178.0),
+                ),
+            )
+        assertEquals(178.0, bounds?.minLongitude)
+        assertEquals(-178.0, bounds?.maxLongitude)
+        assertEquals(-11.0, bounds?.minLatitude)
+        assertEquals(11.0, bounds?.maxLatitude)
+    }
+
+    @Test
+    fun `렌더링 경계가 세계 범위를 덮으면 모든 경도를 포함한다`() {
+        val perimeter = (0..12).map { step -> GeoCoordinate(step.toDouble(), -180.0 + step * 30.0) }
+        val bounds = enclosingEmotionMapBounds(perimeter)
+
+        assertEquals(-180.0, bounds?.minLongitude)
+        assertEquals(180.0, bounds?.maxLongitude)
+    }
+
     @Test
     fun `작은 이동은 같은 격자 조회 범위에 들어간다`() {
         val area = EmotionMapBounds(126.9, 37.5, 127.1, 37.6)

@@ -354,6 +354,7 @@ private fun AppContent(
                 filterListRefresher = nearbyViewModel,
                 dataLoadingEnabled = false,
                 invalidateSessionCache = emotionMapDependencies.invalidateSession,
+                invalidateRegionCache = emotionMapDependencies.invalidateRegions,
             )
         }
     LaunchedEffect(mapViewModel, mainFeaturesReady, sessionGeneration) {
@@ -693,7 +694,7 @@ private fun AppContent(
                             monitoringVisible = !isSettingsVisible && reportTarget == null,
                             onDeleteSucceeded = {
                                 detailViewModel.dismiss()
-                                mapViewModel.refreshEmotionPins()
+                                mapViewModel.onEmotionDeleted()
                                 moderationMessage = "삭제했어요."
                             },
                         )

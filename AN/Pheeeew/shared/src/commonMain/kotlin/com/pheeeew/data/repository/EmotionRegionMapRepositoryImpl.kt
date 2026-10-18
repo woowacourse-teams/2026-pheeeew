@@ -2,16 +2,31 @@ package com.pheeeew.data.repository
 
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.data.cache.EmotionRegionMapCache
+import com.pheeeew.data.cache.EmotionRegionMapCache.Generation
 import com.pheeeew.data.remote.emotion.EmotionRegionMapApi
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionRegion
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
+import com.pheeeew.domain.model.emotion.EmotionRegionQueryKey
 import com.pheeeew.domain.model.emotion.EmotionRegionResult
 import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.expandedForRegionQuery
 import com.pheeeew.domain.repository.EmotionRegionMapRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -19,24 +34,37 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
+import kotlin.time.Clock
 
 class EmotionRegionMapRepositoryImpl(
     private val api: EmotionRegionMapApi,
 ) : EmotionRegionMapRepository {
     private val cache = EmotionRegionMapCache()
-    private var cacheGeneration = 0L
+
+    private data class RequestKey(
+        val query: EmotionRegionQueryKey,
+        val generation: Generation,
+    )
+
+    private val requestsScope = MutableStateFlow(newRequestsScope())
+    private val requestsMutex = Mutex()
+    private val inFlight = mutableMapOf<RequestKey, Deferred<EmotionRegionResult>>()
 
     fun invalidateSession() {
-        cacheGeneration++
         cache.clear()
+        rotateRequestsScope()
+    }
+
+    fun invalidateAll() {
+        cache.invalidateAll()
+        rotateRequestsScope()
     }
 
     override fun findSnapshot(
-        bounds: EmotionMapBounds,
         level: EmotionRegionLevel,
         groupId: String?,
         filter: EmotionSearchFilter?,
-    ): List<EmotionRegion>? = cache.snapshot(bounds, level, if (filter != null) filter.groupId else groupId, filter)
+    ): List<EmotionRegion>? = cache.snapshot(EmotionRegionQueryKey.create(level, groupId, filter))
 
     override suspend fun findRegions(
         bounds: EmotionMapBounds,
@@ -45,31 +73,74 @@ class EmotionRegionMapRepositoryImpl(
         forceRefresh: Boolean,
         filter: EmotionSearchFilter?,
     ): EmotionRegionResult {
-        val queryGroupId = if (filter != null) filter.groupId else groupId
-        if (forceRefresh) {
-            cacheGeneration++
-            // A newly registered emotion changes both administrative levels.
-            cache.invalidateGroup(queryGroupId)
-        } else {
-            findSnapshot(bounds, level, groupId, filter)?.let { return EmotionRegionResult.Success(it) }
-        }
-        val generation = cacheGeneration
-        val queryBounds = bounds.expandedForRegionQuery(level)
+        val key = EmotionRegionQueryKey.create(level, groupId, filter)
+        var shouldStart = false
+        val request =
+            requestsMutex.withLock {
+                if (forceRefresh) {
+                    cache.invalidateGroup(key.groupId)
+                    inFlight.keys.filter { it.query.groupId == key.groupId }.forEach { staleKey ->
+                        inFlight.remove(staleKey)?.cancel()
+                    }
+                } else {
+                    cache.snapshot(key)?.let { return EmotionRegionResult.Success(it) }
+                }
+                val generation = cache.generation(key.groupId)
+                val activeRequestKey = RequestKey(key, generation)
+                inFlight[activeRequestKey]?.takeIf { it.isActive }?.let { return@withLock it }
+                inFlight.remove(activeRequestKey)
+                val queryBounds = bounds.expandedForRegionQuery(level)
+                shouldStart = true
+                requestsScope.value
+                    .async(start = CoroutineStart.LAZY) {
+                        fetchAndCache(key, queryBounds, level, groupId, filter, generation)
+                    }.also { created ->
+                        inFlight[activeRequestKey] = created
+                        created.invokeOnCompletion {
+                            requestsScope.value.launch {
+                                requestsMutex.withLock {
+                                    if (inFlight[activeRequestKey] === created) inFlight.remove(activeRequestKey)
+                                }
+                            }
+                        }
+                    }
+            }
+        if (shouldStart) request.start()
         return try {
+            request.await()
+        } catch (_: CancellationException) {
+            currentCoroutineContext().ensureActive()
+            EmotionRegionResult.Failure
+        } catch (_: Exception) {
+            EmotionRegionResult.Failure
+        }
+    }
+
+    private suspend fun fetchAndCache(
+        key: EmotionRegionQueryKey,
+        queryBounds: EmotionMapBounds,
+        level: EmotionRegionLevel,
+        groupId: String?,
+        filter: EmotionSearchFilter?,
+        generation: Generation,
+    ): EmotionRegionResult =
+        try {
             when (val result = api.findRegions(queryBounds, level, groupId, filter)) {
                 is ApiResult.Failure -> {
                     EmotionRegionResult.Failure
                 }
 
                 is ApiResult.Success -> {
-                    val regions = result.value.mapNotNull(::parseRegion)
-                    if (result.value.isNotEmpty() && regions.isEmpty()) {
+                    val fetchedAt = Clock.System.now().toEpochMilliseconds()
+                    val regions = result.value.map(::parseRegion)
+                    if (regions.any { it == null }) {
                         EmotionRegionResult.Failure
                     } else {
-                        if (generation == cacheGeneration) {
-                            cache.put(queryBounds, level, queryGroupId, regions, filter)
+                        val completeRegions = regions.filterNotNull()
+                        requestsMutex.withLock {
+                            cache.put(key, completeRegions, generation, fetchedAt)
                         }
-                        EmotionRegionResult.Success(regions)
+                        EmotionRegionResult.Success(completeRegions)
                     }
                 }
             }
@@ -78,7 +149,6 @@ class EmotionRegionMapRepositoryImpl(
         } catch (_: Exception) {
             EmotionRegionResult.Failure
         }
-    }
 
     private fun parseRegion(element: JsonElement): EmotionRegion? =
         runCatching {
@@ -123,4 +193,17 @@ class EmotionRegionMapRepositoryImpl(
 
     private fun JsonObject.number(vararg keys: String): Long? =
         keys.firstNotNullOfOrNull { key -> (this[key] as? JsonPrimitive)?.longOrNull }
+
+    private fun newRequestsScope() = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private fun rotateRequestsScope() {
+        val replacement = newRequestsScope()
+        while (true) {
+            val previous = requestsScope.value
+            if (requestsScope.compareAndSet(previous, replacement)) {
+                previous.coroutineContext[Job]?.cancel()
+                return
+            }
+        }
+    }
 }

@@ -16,6 +16,7 @@ data class EmotionMapDependencies(
     val findRegions: FindEmotionRegionsUseCase,
     val findRegionSnapshot: FindEmotionRegionSnapshotUseCase,
     val invalidateSession: () -> Unit = {},
+    val invalidateRegions: () -> Unit = {},
 )
 
 fun createEmotionMapDependencies(apiClient: ApiClient): EmotionMapDependencies {
@@ -31,5 +32,6 @@ fun createEmotionMapDependencies(apiClient: ApiClient): EmotionMapDependencies {
             repository.invalidateSession()
             regionRepository.invalidateSession()
         },
+        invalidateRegions = regionRepository::invalidateAll,
     )
 }
