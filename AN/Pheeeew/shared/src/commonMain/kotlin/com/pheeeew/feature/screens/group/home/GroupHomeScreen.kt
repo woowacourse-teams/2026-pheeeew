@@ -147,12 +147,11 @@ fun GroupHomeScreen(
         }
     }
 
-    Box(modifier.fillMaxSize().navigationBarsPadding()) {
+    Box(modifier.fillMaxSize().background(AppColors.GroupBackground).navigationBarsPadding()) {
         Column(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .background(AppColors.GroupBackground)
                     .statusBarsPadding(),
         ) {
             GroupHomeSwipePager(

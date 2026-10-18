@@ -18,12 +18,55 @@ import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class EmotionRegionMapApiTest {
+    @Test
+    fun `세션 무효화는 캐시를 비우고 이전 조회가 캐시를 다시 채우지 못하게 한다`() =
+        runTest {
+            var requests = 0
+            val started = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val client =
+                createApiClient(
+                    MockEngine {
+                        if (++requests == 2) {
+                            started.complete(Unit)
+                            release.await()
+                        }
+                        respond(
+                            """[]""",
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                        )
+                    },
+                    ApiConfig("https://api.example.test"),
+                    AccessTokenProvider { AccessToken("token") },
+                )
+            try {
+                val repository = EmotionRegionMapRepositoryImpl(EmotionRegionMapApi(client.requests))
+                val area = EmotionMapBounds(126.9, 37.5, 127.1, 37.6)
+                repository.findRegions(area, EmotionRegionLevel.SIGUNGU)
+                repository.findRegions(area, EmotionRegionLevel.SIGUNGU)
+                assertEquals(1, requests)
+                val oldRequest = async { repository.findRegions(area, EmotionRegionLevel.SIGUNGU, forceRefresh = true) }
+                started.await()
+                repository.invalidateSession()
+                release.complete(Unit)
+                oldRequest.await()
+                assertEquals(null, repository.findSnapshot(area, EmotionRegionLevel.SIGUNGU))
+                repository.findRegions(area, EmotionRegionLevel.SIGUNGU)
+                assertEquals(3, requests)
+            } finally {
+                release.complete(Unit)
+                client.close()
+            }
+        }
+
     @Test
     fun `필터를 집계 요청에 전달하고 다른 필터의 캐시를 재사용하지 않는다`() =
         runTest {

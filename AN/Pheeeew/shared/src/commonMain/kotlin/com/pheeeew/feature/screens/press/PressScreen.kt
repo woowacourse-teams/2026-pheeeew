@@ -77,7 +77,7 @@ internal fun PressScreen(
         modifier =
             modifier
                 .fillMaxSize()
-                .background(Color.White)
+                .background(AppColors.GroupBackground)
                 .statusBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {

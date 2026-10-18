@@ -13,4 +13,20 @@ class MonitoredDeviceSession(
         telemetry.operation("device_session_prepare_finished").observe(
             { if (it is DeviceSessionResult.Ready) "success" else "failed" },
         ) { delegate.prepare() }
+
+    override suspend fun restore() =
+        telemetry.operation("device_session_restore_finished").observe(
+            {
+                when (it) {
+                    is DeviceSessionResult.Ready -> "success"
+                    is DeviceSessionResult.NeedsRegistration -> "needs_registration"
+                    is DeviceSessionResult.Failed -> "failed"
+                }
+            },
+        ) { delegate.restore() }
+
+    override suspend fun register(nickname: String) =
+        telemetry.operation("device_session_register_finished").observe(
+            { if (it is DeviceSessionResult.Ready) "success" else "failed" },
+        ) { delegate.register(nickname) }
 }

@@ -75,6 +75,10 @@ internal class EmotionRegionMapCache(
         entries.keys.removeAll { it.level == level && it.groupId == groupId }
     }
 
+    fun clear() {
+        entries.clear()
+    }
+
     fun invalidateGroup(groupId: String?) {
         entries.keys.removeAll { it.groupId == groupId }
     }

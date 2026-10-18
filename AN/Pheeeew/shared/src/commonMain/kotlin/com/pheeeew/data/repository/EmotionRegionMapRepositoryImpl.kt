@@ -26,6 +26,11 @@ class EmotionRegionMapRepositoryImpl(
     private val cache = EmotionRegionMapCache()
     private var cacheGeneration = 0L
 
+    fun invalidateSession() {
+        cacheGeneration++
+        cache.clear()
+    }
+
     override fun findSnapshot(
         bounds: EmotionMapBounds,
         level: EmotionRegionLevel,

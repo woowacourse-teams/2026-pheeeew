@@ -30,6 +30,15 @@ class DeviceRegistrationResponseDto(
 }
 
 @Serializable
+class DeviceV3RegistrationRequestDto(
+    val requestId: String,
+    val nickname: String,
+    val attestation: DeviceAttestationDto,
+) {
+    override fun toString(): String = "DeviceV3RegistrationRequestDto(<redacted>)"
+}
+
+@Serializable
 class DeviceRefreshRequestDto(
     val refreshToken: String,
 ) {
