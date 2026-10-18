@@ -473,31 +473,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
                 let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
                 return GeoCoordinate(latitude: coordinate.latitude, longitude: coordinate.longitude)
             }
-            let longitudes = corners.map { ($0.longitude.truncatingRemainder(dividingBy: 360) + 360)
-                .truncatingRemainder(dividingBy: 360) }.sorted()
-            var largestGapIndex = longitudes.count - 1
-            var largestGap = longitudes[0] + 360 - longitudes[longitudes.count - 1]
-            if longitudes.count > 1 {
-                for index in 0..<(longitudes.count - 1) {
-                    let gap = longitudes[index + 1] - longitudes[index]
-                    if gap > largestGap {
-                        largestGap = gap
-                        largestGapIndex = index
-                    }
-                }
-            }
-            let start = longitudes[(largestGapIndex + 1) % longitudes.count]
-            let end = longitudes[largestGapIndex]
-            let longitudeSpan = 360 - largestGap
-            let minLongitude = longitudeSpan >= 330 ? -180 : (start >= 180 ? start - 360 : start)
-            let maxLongitude = longitudeSpan >= 330 ? 180 : (end >= 180 ? end - 360 : end)
-            let renderBounds = EmotionMapBounds(
-                minLongitude: minLongitude,
-                minLatitude: corners.map(\.latitude).min() ?? queryBounds.minLatitude,
-                maxLongitude: maxLongitude,
-                maxLatitude: corners.map(\.latitude).max() ?? queryBounds.maxLatitude
-            )
-            let validRenderBounds = renderBounds.isValid() ? renderBounds : queryBounds
+            let validRenderBounds = EmotionMapModelsKt.enclosingEmotionMapBounds(coordinates: corners) ?? queryBounds
             eventSink.onViewportChanged(
                 viewport: EmotionMapViewport(bounds: queryBounds, zoom: mapView.zoomLevel, renderBounds: validRenderBounds)
             )
