@@ -18,12 +18,55 @@ import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.headersOf
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
 class EmotionMapApiTest {
+    @Test
+    fun `세션 무효화는 캐시를 비우고 이전 조회가 캐시를 다시 채우지 못하게 한다`() =
+        runTest {
+            var requests = 0
+            val started = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val client =
+                createApiClient(
+                    MockEngine {
+                        if (++requests == 2) {
+                            started.complete(Unit)
+                            release.await()
+                        }
+                        respond(
+                            """{"items":[],"hasNext":false,"nextCursor":null}""",
+                            headers = headersOf(HttpHeaders.ContentType, "application/json"),
+                        )
+                    },
+                    ApiConfig("https://api.example.test"),
+                    AccessTokenProvider { AccessToken("token") },
+                )
+            try {
+                val repository = EmotionMapRepositoryImpl(EmotionMapApi(client.requests))
+                val area = EmotionMapBounds(126.9, 37.5, 127.1, 37.6)
+                repository.findPage(area, groupId = null, cursor = null)
+                repository.findPage(area, groupId = null, cursor = null)
+                assertEquals(1, requests)
+                val oldRequest = async { repository.findPage(area, groupId = null, cursor = null, forceRefresh = true) }
+                started.await()
+                repository.invalidateSession()
+                release.complete(Unit)
+                oldRequest.await()
+                assertEquals(null, repository.findSnapshot(area, groupId = null))
+                repository.findPage(area, groupId = null, cursor = null)
+                assertEquals(3, requests)
+            } finally {
+                release.complete(Unit)
+                client.close()
+            }
+        }
+
     @Test
     fun `지도 첫 페이지는 모든 필터 조합을 보내고 다음 페이지는 커서로 복원한다`() =
         runTest {

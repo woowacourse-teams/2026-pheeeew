@@ -34,6 +34,7 @@ import com.pheeeew.feature.screens.map.filter.FilterScope
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
@@ -41,6 +42,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -49,6 +51,126 @@ import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelViewportTest {
+    @Test
+    fun `준비 해제 후 지도 조회를 멈추고 새 세션에서 늦은 이전 응답을 무시한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var requests = 0
+                var invalidations = 0
+                val staleResponse = CompletableDeferred<EmotionMapPageResult>()
+                val repository =
+                    object : EmotionMapRepository {
+                        override fun findSnapshot(
+                            bounds: EmotionMapBounds,
+                            groupId: String?,
+                        ): EmotionMapSnapshot? = null
+
+                        override suspend fun findPage(
+                            bounds: EmotionMapBounds?,
+                            groupId: String?,
+                            cursor: String?,
+                            forceRefresh: Boolean,
+                        ): EmotionMapPageResult =
+                            when (++requests) {
+                                1 -> page(listOf(pin(1, 127.02, 37.55)))
+                                2 -> withContext(NonCancellable) { staleResponse.await() }
+                                else -> page(listOf(pin(3, 127.12, 37.65)))
+                            }
+                    }
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(repository),
+                        FindEmotionMapSnapshotUseCase(repository),
+                        dataLoadingEnabled = false,
+                        invalidateSessionCache = { invalidations++ },
+                    )
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 16.0))
+                viewModel.updateReadiness(true, 1)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(listOf(1L), viewModel.pinIds())
+                viewModel.refreshEmotionPins()
+                runCurrent()
+                assertEquals(2, requests)
+
+                viewModel.updateReadiness(false, 1)
+                assertTrue(viewModel.pinIds().isEmpty())
+                assertFalse(viewModel.uiModel.value.isLoadingEmotionPins)
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.1, 37.6), 16.0))
+                viewModel.retryEmotionPins()
+                viewModel.onConnectivityChanged(false)
+                viewModel.onConnectivityChanged(true)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(2, requests)
+                assertEquals(1, invalidations)
+
+                viewModel.updateReadiness(true, 2)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(listOf(3L), viewModel.pinIds())
+                assertEquals(2, invalidations)
+                staleResponse.complete(page(listOf(pin(2, 127.02, 37.55))))
+                runCurrent()
+                assertEquals(listOf(3L), viewModel.pinIds())
+                assertFalse(viewModel.uiModel.value.isLoadingEmotionPins)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `같은 세션의 준비 복구도 현재 뷰포트로 지역 요약을 다시 조회한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var requests = 0
+                val pins = QueuedEmotionMapRepository()
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, _, _ ->
+                                    requests++
+                                    EmotionRegionResult.Success(
+                                        listOf(EmotionRegion("city", "서울", 127.0, 37.5, 3, null)),
+                                    )
+                                },
+                            ),
+                        dataLoadingEnabled = false,
+                    )
+                viewModel.onViewportChanged(EmotionMapViewport(bounds(127.0, 37.5), 10.0))
+                viewModel.updateReadiness(true, 1)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(1, requests)
+                assertEquals(1, viewModel.uiModel.value.regionClusters.size)
+
+                viewModel.updateReadiness(false, 1)
+                assertTrue(
+                    viewModel.uiModel.value.regionClusters
+                        .isEmpty(),
+                )
+                viewModel.retryRegionClusters()
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(1, requests)
+
+                viewModel.updateReadiness(true, 1)
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(2, requests)
+                assertEquals(1, viewModel.uiModel.value.regionClusters.size)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
     @Test
     fun `닉네임 확인 전 지도는 표시해도 위치와 감정 조회를 시작하지 않는다`() =
         runTest {

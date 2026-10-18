@@ -85,6 +85,7 @@ import com.pheeeew.core.navigation.RankingRootDestination
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.data.remote.version.AppVersionApi
 import com.pheeeew.data.remote.version.toPolicy
+import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
 import com.pheeeew.domain.model.version.evaluateAppVersion
 import com.pheeeew.domain.repository.MapFilterSettingsRepository
@@ -320,7 +321,12 @@ private fun AppContent(
     val appEntryViewModel: AppEntryViewModel =
         viewModel { AppEntryViewModel(apiDependencies.session, apiDependencies.nicknameRepository) }
     val appEntryState by appEntryViewModel.uiState.collectAsStateWithLifecycle()
-    val mainFeaturesReady = appEntryState.phase == AppEntryPhase.READY
+    val sessionState by apiDependencies.session.state.collectAsStateWithLifecycle()
+    val sessionGeneration =
+        (sessionState as? DeviceSessionResult.Ready)?.access?.generation
+    val mainFeaturesReady =
+        appEntryState.phase == AppEntryPhase.READY && sessionGeneration != null &&
+            appEntryState.sessionGeneration == sessionGeneration
 
     if (mainFeaturesReady) {
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
@@ -346,10 +352,12 @@ private fun AppContent(
                 groupStampListRepository = groupStampListRepository,
                 filterSettingsRepository = mapFilterSettingsRepository,
                 filterListRefresher = nearbyViewModel,
-                dataLoadingEnabled = mainFeaturesReady,
+                dataLoadingEnabled = false,
+                invalidateSessionCache = emotionMapDependencies.invalidateSession,
             )
         }
-    LaunchedEffect(mapViewModel, mainFeaturesReady) {
+    LaunchedEffect(mapViewModel, mainFeaturesReady, sessionGeneration) {
+        mapViewModel.updateReadiness(mainFeaturesReady, sessionGeneration)
         if (mainFeaturesReady) mapViewModel.onMapRendererAttached()
     }
     val connectivityLifecycleOwner = LocalLifecycleOwner.current

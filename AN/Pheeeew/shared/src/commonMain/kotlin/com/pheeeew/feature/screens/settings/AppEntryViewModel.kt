@@ -20,6 +20,7 @@ enum class AppEntryPhase { LOADING, REGISTRATION_REQUIRED, NICKNAME_REQUIRED, RE
 
 data class AppEntryUiState(
     val phase: AppEntryPhase = AppEntryPhase.LOADING,
+    val sessionGeneration: Long? = null,
     val nickname: String = "",
     val currentNickname: String? = null,
     val validation: DeviceNicknameValidation = DeviceNicknameValidation.EMPTY,
@@ -53,7 +54,12 @@ class AppEntryViewModel(
                         mutableUiState.update {
                             it.copy(
                                 currentNickname = state.nickname,
-                                phase = if (state.nickname.isNullOrBlank()) AppEntryPhase.NICKNAME_REQUIRED else AppEntryPhase.READY,
+                                phase =
+                                    if (state.nickname.isNullOrBlank()) {
+                                        AppEntryPhase.NICKNAME_REQUIRED
+                                    } else {
+                                        AppEntryPhase.READY
+                                    },
                             )
                         }
                     }
@@ -188,7 +194,12 @@ class AppEntryViewModel(
                         val duplicate = result.reason.statusCode == 409 && result.reason.code == "DEVICE-009"
                         val invalid = result.reason.code == "DEVICE-008"
                         mutableUiState.value.copy(
-                            availability = if (duplicate) NicknameAvailabilityState.TAKEN else mutableUiState.value.availability,
+                            availability =
+                                if (duplicate) {
+                                    NicknameAvailabilityState.TAKEN
+                                } else {
+                                    mutableUiState.value.availability
+                                },
                             nicknameLocked = !duplicate && !invalid,
                             message =
                                 when {
@@ -233,12 +244,14 @@ class AppEntryViewModel(
     private suspend fun resolveNickname(
         keepDraftWhenUnset: Boolean = false,
         inlineFailure: Boolean = false,
-    ): AppEntryUiState =
-        when (val result = nicknameRepository.findMyNickname()) {
+    ): AppEntryUiState {
+        val generation = (session.state.value as? DeviceSessionResult.Ready)?.access?.generation
+        return when (val result = nicknameRepository.findMyNickname()) {
             is DeviceNicknameLookup.Found -> {
                 if (!result.nickname.isNullOrBlank()) {
                     mutableUiState.value.copy(
                         phase = AppEntryPhase.READY,
+                        sessionGeneration = generation,
                         currentNickname = result.nickname,
                         nickname = result.nickname,
                         nicknameLocked = false,
@@ -263,8 +276,14 @@ class AppEntryViewModel(
                 mutableUiState.value.copy(
                     phase = if (inlineFailure) mutableUiState.value.phase else AppEntryPhase.FAILED,
                     isVerificationPending = inlineFailure,
-                    message = if (inlineFailure) NicknameUiMessage.RESULT_UNCONFIRMED else NicknameUiMessage.NICKNAME_LOOKUP_FAILED,
+                    message =
+                        if (inlineFailure) {
+                            NicknameUiMessage.RESULT_UNCONFIRMED
+                        } else {
+                            NicknameUiMessage.NICKNAME_LOOKUP_FAILED
+                        },
                 )
             }
         }
+    }
 }

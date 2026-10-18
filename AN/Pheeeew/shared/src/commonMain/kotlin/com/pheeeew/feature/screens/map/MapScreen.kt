@@ -108,7 +108,6 @@ fun MapScreen(
 ) {
     LaunchedEffect(viewModel, featuresEnabled) {
         if (featuresEnabled) {
-            viewModel.enableDataLoading()
             viewModel.start()
         }
     }

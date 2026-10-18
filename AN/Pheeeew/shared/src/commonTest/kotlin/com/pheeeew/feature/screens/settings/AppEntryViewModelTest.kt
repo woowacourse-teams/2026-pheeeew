@@ -153,6 +153,7 @@ class AppEntryViewModelTest {
             assertEquals(listOf("새 사용자"), sessionRepository.registeredNicknames)
             assertEquals(AppEntryPhase.READY, viewModel.uiState.value.phase)
             assertEquals("새 사용자", viewModel.uiState.value.currentNickname)
+            assertEquals(1L, viewModel.uiState.value.sessionGeneration)
         }
 
     @Test
@@ -173,6 +174,7 @@ class AppEntryViewModelTest {
             assertEquals(listOf("이전 사용자"), nicknameRepository.updatedNicknames)
             assertEquals(AppEntryPhase.READY, viewModel.uiState.value.phase)
             assertEquals("이전 사용자", viewModel.uiState.value.currentNickname)
+            assertEquals(1L, viewModel.uiState.value.sessionGeneration)
         }
 
     @Test
