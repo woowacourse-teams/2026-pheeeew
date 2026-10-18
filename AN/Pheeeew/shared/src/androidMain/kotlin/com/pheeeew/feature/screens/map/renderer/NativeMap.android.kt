@@ -30,6 +30,7 @@ import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapViewport
+import com.pheeeew.domain.model.emotion.enclosingEmotionMapBounds
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapCameraActionUiModel
 import com.pheeeew.feature.screens.map.MapErrorUiModel
@@ -62,6 +63,7 @@ private const val MAP_FONT_BOLD_ASSET_URL =
 private const val INITIAL_ZOOM = 11.0
 private const val MINIMUM_ZOOM = 2.0
 private const val MAXIMUM_ZOOM = 20.0
+private const val REGION_RENDER_PADDING_DP = 96f
 private const val FALLBACK_LATITUDE = 37.4409230460675
 private const val FALLBACK_LONGITUDE = 127.147538132656
 
@@ -786,6 +788,27 @@ private class AndroidFoundationMapHost(
                 maxLongitude = bounds.longitudeEast,
                 maxLatitude = bounds.latitudeNorth,
             )
-        if (queryBounds.isValid()) onViewportChanged(EmotionMapViewport(queryBounds, currentMap.cameraPosition.zoom))
+        if (queryBounds.isValid()) {
+            val padding = REGION_RENDER_PADDING_DP * mapView.resources.displayMetrics.density
+            val paddedWidth = mapView.width + padding * 2
+            val paddedHeight = mapView.height + padding * 2
+            val edgeSegments = 12
+            val renderCoordinates =
+                buildList {
+                    for (step in 0..edgeSegments) {
+                        val fraction = step.toFloat() / edgeSegments
+                        val x = -padding + paddedWidth * fraction
+                        val y = -padding + paddedHeight * fraction
+                        add(PointF(x, -padding))
+                        add(PointF(mapView.width + padding, y))
+                        add(PointF(mapView.width + padding - paddedWidth * fraction, mapView.height + padding))
+                        add(PointF(-padding, mapView.height + padding - paddedHeight * fraction))
+                    }
+                }.map { point ->
+                    currentMap.projection.fromScreenLocation(point).let { GeoCoordinate(it.latitude, it.longitude) }
+                }
+            val renderBounds = enclosingEmotionMapBounds(renderCoordinates) ?: queryBounds
+            onViewportChanged(EmotionMapViewport(queryBounds, currentMap.cameraPosition.zoom, renderBounds))
+        }
     }
 }

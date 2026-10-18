@@ -4,6 +4,8 @@ import UIKit
 import CoreGraphics
 import Foundation
 
+private let regionRenderPaddingPoints: CGFloat = 96
+
 final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerDelegate {
     let mapView: MLNMapView
     private let eventSink: FoundationIosMapEventSink
@@ -457,7 +459,48 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             maxLatitude: bounds.ne.latitude
         )
         if queryBounds.isValid() {
-            eventSink.onViewportChanged(viewport: EmotionMapViewport(bounds: queryBounds, zoom: mapView.zoomLevel))
+            let padded = mapView.bounds.insetBy(dx: -regionRenderPaddingPoints, dy: -regionRenderPaddingPoints)
+            let edgeSegments = 12
+            var samplePoints: [CGPoint] = []
+            for step in 0...edgeSegments {
+                let fraction = CGFloat(step) / CGFloat(edgeSegments)
+                samplePoints.append(CGPoint(x: padded.minX + padded.width * fraction, y: padded.minY))
+                samplePoints.append(CGPoint(x: padded.maxX, y: padded.minY + padded.height * fraction))
+                samplePoints.append(CGPoint(x: padded.maxX - padded.width * fraction, y: padded.maxY))
+                samplePoints.append(CGPoint(x: padded.minX, y: padded.maxY - padded.height * fraction))
+            }
+            let corners = samplePoints.map { point in
+                let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
+                return GeoCoordinate(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            }
+            let longitudes = corners.map { ($0.longitude.truncatingRemainder(dividingBy: 360) + 360)
+                .truncatingRemainder(dividingBy: 360) }.sorted()
+            var largestGapIndex = longitudes.count - 1
+            var largestGap = longitudes[0] + 360 - longitudes[longitudes.count - 1]
+            if longitudes.count > 1 {
+                for index in 0..<(longitudes.count - 1) {
+                    let gap = longitudes[index + 1] - longitudes[index]
+                    if gap > largestGap {
+                        largestGap = gap
+                        largestGapIndex = index
+                    }
+                }
+            }
+            let start = longitudes[(largestGapIndex + 1) % longitudes.count]
+            let end = longitudes[largestGapIndex]
+            let longitudeSpan = 360 - largestGap
+            let minLongitude = longitudeSpan >= 330 ? -180 : (start >= 180 ? start - 360 : start)
+            let maxLongitude = longitudeSpan >= 330 ? 180 : (end >= 180 ? end - 360 : end)
+            let renderBounds = EmotionMapBounds(
+                minLongitude: minLongitude,
+                minLatitude: corners.map(\.latitude).min() ?? queryBounds.minLatitude,
+                maxLongitude: maxLongitude,
+                maxLatitude: corners.map(\.latitude).max() ?? queryBounds.maxLatitude
+            )
+            let validRenderBounds = renderBounds.isValid() ? renderBounds : queryBounds
+            eventSink.onViewportChanged(
+                viewport: EmotionMapViewport(bounds: queryBounds, zoom: mapView.zoomLevel, renderBounds: validRenderBounds)
+            )
         }
     }
 
