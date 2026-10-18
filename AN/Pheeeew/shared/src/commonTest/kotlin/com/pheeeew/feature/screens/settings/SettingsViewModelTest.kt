@@ -236,6 +236,74 @@ class SettingsViewModelTest {
             assertEquals(null, viewModel.uiState.value.nicknameChangedNoticeId)
         }
 
+    @Test
+    fun `저장 결과 확인 대기 중에도 닫고 서버 값으로 다시 동기화한다`() =
+        runViewModelTest {
+            for (updateResult in listOf(
+                DeviceNicknameUpdateResult.UPDATED,
+                DeviceNicknameUpdateResult.OUTCOME_UNKNOWN,
+            )) {
+                val repository =
+                    FakeDeviceNicknameRepository("이전 이름").apply {
+                        this.updateResult = updateResult
+                        lookupResults += DeviceNicknameLookup.Found("이전 이름")
+                        lookupResults += DeviceNicknameLookup.Failed
+                        lookupResults += DeviceNicknameLookup.Found("서버 이름")
+                    }
+                val viewModel = createViewModel(repository)
+                viewModel.openNicknameEditor()
+                viewModel.onNicknameChanged("새 이름")
+                viewModel.saveNickname()
+                runCurrent()
+                assertTrue(viewModel.uiState.value.savedButUnverified)
+                assertEquals(
+                    updateResult == DeviceNicknameUpdateResult.OUTCOME_UNKNOWN,
+                    viewModel.uiState.value.updateOutcomeUnknown,
+                )
+
+                viewModel.closeNicknameEditor()
+                assertFalse(viewModel.uiState.value.isDialogVisible)
+                assertFalse(viewModel.uiState.value.savedButUnverified)
+                assertFalse(viewModel.uiState.value.updateOutcomeUnknown)
+                assertEquals(null, viewModel.uiState.value.message)
+                runCurrent()
+
+                assertEquals(3, repository.lookupCalls)
+                assertEquals(listOf("새 이름"), repository.updatedNicknames)
+                assertEquals("서버 이름", viewModel.uiState.value.nickname)
+                assertEquals(null, viewModel.uiState.value.nicknameChangedNoticeId)
+                viewModel.openNicknameEditor()
+                assertEquals("서버 이름", viewModel.uiState.value.draft)
+            }
+        }
+
+    @Test
+    fun `재조회가 계속 실패하거나 저장 값과 달라도 모달을 닫을 수 있다`() =
+        runViewModelTest {
+            for (lookup in listOf(DeviceNicknameLookup.Failed, DeviceNicknameLookup.Found("다른 이름"))) {
+                val repository =
+                    FakeDeviceNicknameRepository("이전 이름").apply {
+                        lookupResults += DeviceNicknameLookup.Found("이전 이름")
+                        lookupResults += lookup
+                        lookupResults += lookup
+                    }
+                val viewModel = createViewModel(repository)
+                viewModel.openNicknameEditor()
+                viewModel.onNicknameChanged("새 이름")
+                viewModel.saveNickname()
+                runCurrent()
+                assertTrue(viewModel.uiState.value.savedButUnverified)
+
+                viewModel.closeNicknameEditor()
+                runCurrent()
+                assertFalse(viewModel.uiState.value.isDialogVisible)
+                assertFalse(viewModel.uiState.value.savedButUnverified)
+                assertEquals(3, repository.lookupCalls)
+                assertEquals(listOf("새 이름"), repository.updatedNicknames)
+                assertEquals(null, viewModel.uiState.value.nicknameChangedNoticeId)
+            }
+        }
+
     private fun TestScope.createViewModel(repository: DeviceNicknameRepository): SettingsViewModel =
         SettingsViewModel(repository).also { runCurrent() }
 
@@ -257,10 +325,12 @@ class SettingsViewModelTest {
         val updatedNicknames = mutableListOf<String>()
         val checkedNicknames = mutableListOf<String>()
         val lookupResults = mutableListOf<DeviceNicknameLookup>()
+        var lookupCalls = 0
         var updateDelayMillis = 0L
         var updateResult = DeviceNicknameUpdateResult.UPDATED
 
         override suspend fun findMyNickname(): DeviceNicknameLookup {
+            lookupCalls++
             val result =
                 if (lookupResults.isNotEmpty()) {
                     lookupResults.removeAt(

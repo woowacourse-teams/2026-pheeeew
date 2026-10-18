@@ -79,8 +79,17 @@ class SettingsViewModel(
     }
 
     fun closeNicknameEditor() {
-        if (mutableUiState.value.isSaving || mutableUiState.value.savedButUnverified) return
-        mutableUiState.update { it.copy(isDialogVisible = false, message = null) }
+        val state = mutableUiState.value
+        if (state.isSaving) return
+        mutableUiState.update {
+            it.copy(
+                isDialogVisible = false,
+                message = null,
+                savedButUnverified = false,
+                updateOutcomeUnknown = false,
+            )
+        }
+        if (state.savedButUnverified) refreshNickname()
     }
 
     fun onNicknameChanged(value: String) {
@@ -218,7 +227,12 @@ class SettingsViewModel(
                     )
                 } else {
                     mutableUiState.value.copy(
-                        message = if (putSucceeded) NicknameUiMessage.SAVED_UNCONFIRMED else NicknameUiMessage.CHANGE_UNCONFIRMED,
+                        message =
+                            if (putSucceeded) {
+                                NicknameUiMessage.SAVED_UNCONFIRMED
+                            } else {
+                                NicknameUiMessage.CHANGE_UNCONFIRMED
+                            },
                         savedButUnverified = putSucceeded,
                         updateOutcomeUnknown = false,
                     )
