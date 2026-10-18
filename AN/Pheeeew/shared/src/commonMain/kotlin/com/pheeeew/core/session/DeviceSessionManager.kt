@@ -37,16 +37,16 @@ class DeviceSessionManager(
     private val mutableState = MutableStateFlow<DeviceSessionResult?>(null)
     val state: StateFlow<DeviceSessionResult?> = mutableState.asStateFlow()
 
-    suspend fun prepare(): DeviceSessionResult = obtain(null, Mode.LEGACY_PREPARE)
+    suspend fun prepare(): DeviceSessionResult = obtain(null, Mode.LegacyPrepare)
 
-    suspend fun restore(): DeviceSessionResult = obtain(null, Mode.RESTORE)
+    suspend fun restore(): DeviceSessionResult = obtain(null, Mode.Restore)
 
     suspend fun register(nickname: String): DeviceSessionResult = obtain(null, Mode.Register(nickname))
 
     override suspend fun accessToken(): AccessToken = restore().tokenOrThrow()
 
     override suspend fun recover(rejected: AccessToken): AccessToken {
-        val access = obtain(rejected, Mode.RESTORE).tokenOrThrow()
+        val access = obtain(rejected, Mode.Restore).tokenOrThrow()
         if (access.generation != rejected.generation) {
             throw SessionAccessException(SessionFailureDetails(DeviceSessionFailureKind.SESSION_CHANGED.name))
         }
@@ -80,8 +80,8 @@ class DeviceSessionManager(
                         val result =
                             try {
                                 when (mode) {
-                                    Mode.LEGACY_PREPARE -> repository.prepare()
-                                    Mode.RESTORE -> repository.restore()
+                                    Mode.LegacyPrepare -> repository.prepare()
+                                    Mode.Restore -> repository.restore()
                                     is Mode.Register -> repository.register(mode.nickname)
                                 }
                             } catch (cancelled: CancellationException) {
@@ -129,9 +129,9 @@ class DeviceSessionManager(
         }
 
     private sealed interface Mode {
-        data object LEGACY_PREPARE : Mode
+        data object LegacyPrepare : Mode
 
-        data object RESTORE : Mode
+        data object Restore : Mode
 
         data class Register(
             val nickname: String,

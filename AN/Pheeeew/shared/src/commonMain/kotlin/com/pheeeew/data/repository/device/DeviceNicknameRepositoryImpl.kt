@@ -91,10 +91,21 @@ class DeviceNicknameRepositoryImpl(
                 is ApiResult.Failure -> {
                     val http = result.reason as? NetworkFailure.HttpStatus
                     when {
-                        http?.statusCode == 409 && http.error?.code == "DEVICE-009" -> DeviceNicknameUpdateResult.DUPLICATE
-                        http?.statusCode == 400 && http.error?.code == "DEVICE-008" -> DeviceNicknameUpdateResult.INVALID
-                        result.reason.mutationCertainty() == MutationCertainty.UNKNOWN -> DeviceNicknameUpdateResult.OUTCOME_UNKNOWN
-                        else -> DeviceNicknameUpdateResult.FAILED
+                        http?.statusCode == 409 && http.error?.code == "DEVICE-009" -> {
+                            DeviceNicknameUpdateResult.DUPLICATE
+                        }
+
+                        http?.statusCode == 400 && http.error?.code == "DEVICE-008" -> {
+                            DeviceNicknameUpdateResult.INVALID
+                        }
+
+                        result.reason.mutationCertainty() == MutationCertainty.UNKNOWN -> {
+                            DeviceNicknameUpdateResult.OUTCOME_UNKNOWN
+                        }
+
+                        else -> {
+                            DeviceNicknameUpdateResult.FAILED
+                        }
                     }
                 }
             }

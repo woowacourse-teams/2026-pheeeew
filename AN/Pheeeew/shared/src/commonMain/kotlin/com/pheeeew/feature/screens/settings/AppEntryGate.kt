@@ -80,7 +80,11 @@ internal fun AppEntryGate(
                 inputEnabled = !state.nicknameLocked && !state.isVerificationPending,
                 title =
                     stringResource(
-                        if (registration) Res.string.settings_nickname_registration_title else Res.string.settings_nickname_required_title,
+                        if (registration) {
+                            Res.string.settings_nickname_registration_title
+                        } else {
+                            Res.string.settings_nickname_required_title
+                        },
                     ),
                 message = state.message?.asText(),
                 confirmEnabled = state.canConfirm,
