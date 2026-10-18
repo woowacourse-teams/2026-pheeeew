@@ -62,7 +62,7 @@ class MapFilterApplyTest {
                     }
                 val vm = viewModel(settings, list, regions = regions)
                 runCurrent()
-                vm.onViewportChanged(EmotionMapViewport(BOUNDS, 11.0))
+                vm.onViewportChanged(EmotionMapViewport(BOUNDS, 10.0))
                 advanceUntilIdle()
                 vm.openFilter()
                 vm.selectFilterScope(FilterScope.Mine)
@@ -113,13 +113,13 @@ class MapFilterApplyTest {
                     }
                 val vm = viewModel(settings, ListRefresher(visible = false), regions = regions)
                 runCurrent()
-                vm.onViewportChanged(EmotionMapViewport(BOUNDS, 11.0))
+                vm.onViewportChanged(EmotionMapViewport(BOUNDS, 10.0))
                 advanceUntilIdle()
                 vm.openFilter()
                 vm.selectFilterScope(FilterScope.Mine)
                 vm.applyFilter()
                 runCurrent()
-                vm.onViewportChanged(EmotionMapViewport(latest, 11.0))
+                vm.onViewportChanged(EmotionMapViewport(latest, 10.0))
                 gate.complete(Unit)
                 runCurrent()
                 assertEquals(
@@ -162,14 +162,14 @@ class MapFilterApplyTest {
                     }
                 val vm = viewModel(settings, ListRefresher(visible = false), regions = regions)
                 runCurrent()
-                vm.onViewportChanged(EmotionMapViewport(BOUNDS, 11.0))
+                vm.onViewportChanged(EmotionMapViewport(BOUNDS, 10.0))
                 advanceUntilIdle()
                 vm.openFilter()
                 vm.selectFilterScope(FilterScope.Mine)
                 vm.applyFilter()
                 runCurrent()
                 val latest = BOUNDS.copy(minLongitude = 128.0, maxLongitude = 128.2)
-                vm.onViewportChanged(EmotionMapViewport(latest, 11.0))
+                vm.onViewportChanged(EmotionMapViewport(latest, 10.0))
                 runCurrent()
                 assertEquals(null, settings.saved)
                 assertEquals(
@@ -210,7 +210,7 @@ class MapFilterApplyTest {
                     }
                 val vm = viewModel(SettingsRepository(), ListRefresher(visible = false), map, regions)
                 runCurrent()
-                vm.onViewportChanged(EmotionMapViewport(BOUNDS, 11.0))
+                vm.onViewportChanged(EmotionMapViewport(BOUNDS, 10.0))
                 advanceUntilIdle()
                 vm.openFilter()
                 vm.selectFilterScope(FilterScope.Mine)
@@ -250,7 +250,7 @@ class MapFilterApplyTest {
                         }
                     val vm = viewModel(settings, ListRefresher(visible = false), regions = regions)
                     runCurrent()
-                    vm.onViewportChanged(EmotionMapViewport(BOUNDS, 11.0))
+                    vm.onViewportChanged(EmotionMapViewport(BOUNDS, 10.0))
                     advanceUntilIdle()
                     vm.openFilter()
                     vm.selectFilterScope(FilterScope.Mine)
