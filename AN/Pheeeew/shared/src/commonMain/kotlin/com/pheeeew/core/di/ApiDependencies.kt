@@ -42,7 +42,6 @@ class ApiDependencies private constructor(
     val client: ApiClient,
     val session: DeviceSessionManager,
     val nicknameRepository: DeviceNicknameRepository,
-
     val connectivityObserver: ConnectivityObserver,
     val appSession: AppSession,
     private val scope: CoroutineScope,
