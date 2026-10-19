@@ -19,6 +19,7 @@ import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
@@ -36,7 +37,7 @@ class EmotionApiRegistrationTest {
                             assertEquals("/api/v3/emotions", request.url.encodedPath)
                             assertEquals("Bearer token", request.headers[HttpHeaders.Authorization])
                             val body = Json.parseToJsonElement(request.body.toByteArray().decodeToString()).jsonObject
-                            assertEquals("false", body.getValue("anonymous").jsonPrimitive.content)
+                            assertEquals(JsonPrimitive(false), body.getValue("anonymous"))
                             assertEquals("MEMO", body.getValue("contentType").jsonPrimitive.content)
                             assertEquals("답답한 하루", body.getValue("memo").jsonPrimitive.content)
                             assertEquals("FRUSTRATED", body.getValue("state").jsonPrimitive.content)

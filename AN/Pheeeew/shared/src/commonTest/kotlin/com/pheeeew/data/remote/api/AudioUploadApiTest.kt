@@ -22,6 +22,7 @@ import io.ktor.http.content.OutgoingContent
 import io.ktor.http.headersOf
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
@@ -91,7 +92,7 @@ class AudioUploadApiTest {
                                             .parseToJsonElement(
                                                 request.body.toByteArray().decodeToString(),
                                             ).jsonObject
-                                    assertEquals("true", body.getValue("anonymous").jsonPrimitive.content)
+                                    assertEquals(JsonPrimitive(true), body.getValue("anonymous"))
                                     assertEquals("AUDIO", body.getValue("contentType").jsonPrimitive.content)
                                     assertEquals("upload-123", body.getValue("audioUploadId").jsonPrimitive.content)
                                     assertEquals("request-123", body.getValue("requestId").jsonPrimitive.content)
