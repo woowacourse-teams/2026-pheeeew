@@ -22,6 +22,8 @@ import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
 import com.pheeeew.emotion.application.AudioUrlIssuer.PlaybackUrl;
+import com.pheeeew.emotion.application.EmotionCursorCodec;
+import com.pheeeew.emotion.application.dto.EmotionCursor;
 import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
 import com.pheeeew.emotion.application.query.EmotionMapQueryService;
@@ -57,6 +59,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.UUID;
 import java.util.stream.Stream;
+import java.util.stream.LongStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -856,6 +859,96 @@ class EmotionControllerTest {
         request(HttpMethod.GET, "/api/v1/emotions?cursor=next&groupId=" + UUID.randomUUID(), "access-token")
                 .expectStatus().isBadRequest();
         verifyNoInteractions(emotionQueryService);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"map,false", "map,true", "list,false", "list,true", "regions,false"})
+    void 반복한_groupId를_단일_키의_목록으로_받아_첫_페이지와_다음_페이지에_전달한다(String api, boolean next) {
+        // given
+        UUID a = UUID.randomUUID();
+        UUID b = UUID.randomUUID();
+        List<UUID> groups = List.of(b, a, b);
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+        String cursor = next ? "next" : null;
+        String query = "&groupId=" + b + "&groupId=" + a + "&groupId=" + b;
+        if (api.equals("map")) {
+            when(emotionMapQueryService.findContentMapWithinBounds(next ? null : bounds, DEVICE_PUBLIC_ID,
+                    groups, null, null, null, null, cursor)).thenReturn(EmotionMapPageView.of(List.of(), false, null));
+        } else if (api.equals("list")) {
+            when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groups, null, null, null, null, cursor))
+                    .thenReturn(EmotionPageView.of(List.of(), false, null));
+        } else {
+            when(emotionMapQueryService.findRegionMap(bounds, RegionLevel.SIDO, DEVICE_PUBLIC_ID, EmotionSearchFilter.from(groups)))
+                    .thenReturn(List.of());
+        }
+        String uri = switch (api) {
+            case "map" -> "/api/v2/emotions/map?" + (next ? "cursor=next" : "minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38");
+            case "list" -> "/api/v3/emotions?" + (next ? "cursor=next" : "");
+            default -> "/api/v2/emotions/map/regions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38&level=SIDO";
+        };
+
+        // when / then
+        request(HttpMethod.GET, uri + query, "access-token").expectStatus().isOk();
+        if (api.equals("map")) {
+            verify(emotionMapQueryService).findContentMapWithinBounds(next ? null : bounds, DEVICE_PUBLIC_ID,
+                    groups, null, null, null, null, cursor);
+        } else if (api.equals("list")) {
+            verify(emotionQueryService).findListWithoutBounds(DEVICE_PUBLIC_ID, groups, null, null, null, null, cursor);
+        } else {
+            verify(emotionMapQueryService).findRegionMap(bounds, RegionLevel.SIDO, DEVICE_PUBLIC_ID, EmotionSearchFilter.from(groups));
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void 긴_그룹_선택과_2048자를_넘는_다음_커서를_HTTP로_전달한다(boolean map) {
+        // given
+        List<UUID> groups = LongStream.range(0, 100).mapToObj(id -> new UUID(0, id)).toList();
+        var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
+        var filter = EmotionSearchFilter.from(groups);
+        Instant snapshot = Instant.parse("2026-10-08T00:00:00Z");
+        var cursor = map ? EmotionCursor.initialWithinBounds(bounds, snapshot, filter)
+                : EmotionCursor.initialWithoutBounds(snapshot, filter);
+        String encoded = EmotionCursorCodec.encode(cursor);
+        String query = groups.stream().map(id -> "groupId=" + id).collect(Collectors.joining("&"));
+        String uri = map ? "/api/v2/emotions/map" : "/api/v3/emotions";
+        String firstQuery = map ? "minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38&" + query : query;
+        if (map) {
+            when(emotionMapQueryService.findContentMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groups, null, null, null, null, null))
+                    .thenReturn(EmotionMapPageView.of(List.of(), true, encoded));
+            when(emotionMapQueryService.findContentMapWithinBounds(null, DEVICE_PUBLIC_ID, null, null, null, null, null, encoded))
+                    .thenReturn(EmotionMapPageView.of(List.of(), false, null));
+        } else {
+            when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groups, null, null, null, null, null))
+                    .thenReturn(EmotionPageView.of(List.of(), true, encoded));
+            when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, null, null, null, null, null, encoded))
+                    .thenReturn(EmotionPageView.of(List.of(), false, null));
+        }
+
+        // when / then
+        assertThat(query.length()).isGreaterThan(2_048);
+        assertThat(encoded.length()).isGreaterThan(2_048);
+        request(HttpMethod.GET, uri + "?" + firstQuery, "access-token").expectStatus().isOk()
+                .expectBody().jsonPath("$.nextCursor").isEqualTo(encoded);
+        request(HttpMethod.GET, uri + "?cursor=" + encoded, "access-token").expectStatus().isOk()
+                .expectBody().jsonPath("$.hasNext").isEqualTo(false);
+        if (map) {
+            verify(emotionMapQueryService).findContentMapWithinBounds(null, DEVICE_PUBLIC_ID, null, null, null, null, null, encoded);
+        } else {
+            verify(emotionQueryService).findListWithoutBounds(DEVICE_PUBLIC_ID, null, null, null, null, null, encoded);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"groupId=", "groupId=%20", "groupId=11111111-1111-1111-1111-111111111111&groupId=",
+            "groupId=11111111-1111-1111-1111-111111111111&groupId=invalid"})
+    void 빈_값이나_잘못된_원소가_있는_그룹_목록은_조회_전에_거부한다(String query) {
+        // given / when / then
+        for (String uri : List.of("/api/v2/emotions/map?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38&",
+                "/api/v3/emotions?", "/api/v2/emotions/map/regions?minLongitude=126&minLatitude=37&maxLongitude=128&maxLatitude=38&level=SIDO&")) {
+            request(HttpMethod.GET, uri + query, "access-token").expectStatus().isBadRequest();
+        }
+        verifyNoInteractions(emotionQueryService, emotionMapQueryService);
     }
 
     @Test

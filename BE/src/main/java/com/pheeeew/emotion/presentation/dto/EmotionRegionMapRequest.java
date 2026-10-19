@@ -7,6 +7,7 @@ import com.pheeeew.emotion.domain.repository.query.EmotionSearchScope;
 import com.pheeeew.region.domain.RegionLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
@@ -35,7 +36,9 @@ public record EmotionRegionMapRequest(
         @NotNull
         @Schema(description = "SIDO·SIGUNGU는 bbox와 무관한 전국 집계입니다. EMD는 기존 화면 교차 조회 호환용입니다.") RegionLevel level,
 
-        @Schema(description = "GROUP 범위의 그룹 공개 ID. scope 없이 지정하면 GROUP으로 조회합니다.") UUID groupId,
+        @Size(min = 1)
+        @Schema(description = "GROUP 범위의 그룹 공개 ID 목록. groupId=A&groupId=B처럼 반복하여 전달하며 OR로 조회합니다. "
+                + "scope 없이 지정하면 GROUP으로 조회하고 순서와 중복은 무시합니다.") List<@NotNull UUID> groupId,
 
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
         @Schema(description = "KST 기준 시작일(포함). 종료일과 함께 지정하며 둘 다 생략하면 전체 기간입니다.", example = "2026-10-01")
@@ -75,7 +78,7 @@ public record EmotionRegionMapRequest(
     }
 
     public EmotionSearchFilter toFilter() {
-        return EmotionSearchFilter.of(startDate, endDate, contentType, scope, groupId == null ? null : List.of(groupId));
+        return EmotionSearchFilter.of(startDate, endDate, contentType, scope, groupId);
     }
 
     public EmotionSearchBounds toBounds() {

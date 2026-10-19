@@ -70,8 +70,10 @@ public interface EmotionControllerApi {
             ### 조회 범위
 
             - 좌표 제한 없이 메모 또는 녹음이 있는 감정(contentType=MEMO, AUDIO)을 조회합니다. NONE은 제외합니다.
-            - scope=ALL은 그룹 없는 감정과 모든 그룹의 감정을, GROUP은 지정 그룹을, MY는 인증된 기기가 작성한 감정을 조회합니다.
+            - scope=ALL은 그룹 없는 감정과 모든 그룹의 감정을, GROUP은 선택한 그룹 중 하나에 속한 감정을, MY는 인증된 기기가 작성한 감정을 조회합니다.
             - scope를 생략하면 ALL입니다. 단, 기존 groupId 단독 요청은 GROUP으로 처리합니다.
+            - 여러 그룹은 groupId=A&groupId=B처럼 같은 키를 반복합니다. 그룹끼리는 OR이며 순서와 중복은 무시합니다.
+            - 단일 groupId 요청도 유지합니다. 선택한 그룹 중 하나라도 없거나 삭제되었으면 404를 반환합니다.
             - GROUP의 첫 페이지에는 groupId가 필수이며 ALL·MY에서는 groupId를 전달할 수 없습니다.
             - GROUP은 감정에 연결된 그룹 스탬프를 기준으로 조회합니다. 작성자의 현재 그룹 소속은 조회 조건이 아닙니다.
             - 조회 기기의 그룹 가입 여부로 제한하지 않습니다. 존재하지 않거나 삭제된 그룹은 다음 페이지에서도 GROUP-001과 404를 반환합니다.
@@ -91,6 +93,7 @@ public interface EmotionControllerApi {
             - 생성 시각 내림차순, 같은 시각이면 ID 내림차순으로 최대 50개씩 반환합니다.
             - 다음 페이지에는 이전 응답의 nextCursor를 cursor로 전달합니다. 커서는 해석하거나 수정하지 않고 그대로 사용합니다.
             - 필터를 생략하면 커서에 저장된 값을 복원합니다. 명시한 필터는 커서와 같아야 하며 다르면 400 오류를 반환합니다.
+            - 다음 페이지에서 groupId는 생략하거나 전체 선택 집합을 다시 전달합니다. 순서·중복은 무시하지만 일부만 보내거나 추가하면 400입니다.
             - 날짜를 다시 명시할 때는 시작일·종료일을 함께 전달합니다. scope=GROUP만 명시해도 그룹 ID는 커서에서 복원합니다.
             - 필터를 바꿀 때는 cursor를 빼고 첫 페이지부터 조회합니다.
             - 최초 조회 이후 작성된 감정은 후속 페이지에서 제외하고, 삭제·차단은 매 페이지에 반영합니다.
@@ -104,6 +107,7 @@ public interface EmotionControllerApi {
             - 전체 첫 페이지: GET /api/v3/emotions
             - 본인 메모·기간 필터: GET /api/v3/emotions?scope=MY&contentType=MEMO&startDate=2026-10-01&endDate=2026-10-11
             - 그룹 첫 페이지: GET /api/v3/emotions?groupId=11111111-1111-4111-8111-111111111111
+            - 여러 그룹 첫 페이지: GET /api/v3/emotions?groupId=11111111-1111-4111-8111-111111111111&groupId=22222222-2222-4222-8222-222222222222
             - 전체·그룹 다음 페이지: GET /api/v3/emotions?cursor={nextCursor}
             - 같은 그룹을 명시한 다음 페이지: GET /api/v3/emotions?groupId=11111111-1111-4111-8111-111111111111&cursor={nextCursor}
 
@@ -161,8 +165,10 @@ public interface EmotionControllerApi {
             - startDate·endDate는 0001~9999년의 날짜를 함께 지정합니다. 시작일은 종료일 이하여야 합니다.
             - 날짜는 KST(Asia/Seoul) 기준이며 시작일과 종료일을 모두 포함합니다. 둘 다 생략하면 전체 기간입니다.
             - contentType은 ALL, MEMO, AUDIO입니다. 생략하면 ALL이며 MEMO·AUDIO를 함께 조회합니다.
-            - scope=ALL은 전체, GROUP은 특정 그룹, MY는 인증된 기기가 작성한 감정입니다. 클라이언트의 devicePublicId는 무시합니다.
+            - scope=ALL은 전체, GROUP은 선택한 그룹 중 하나에 속한 감정, MY는 인증된 기기가 작성한 감정입니다. 클라이언트의 devicePublicId는 무시합니다.
             - scope를 생략하면 ALL이며 groupId만 지정하면 GROUP입니다. GROUP의 첫 페이지에는 groupId가 필요하고 ALL·MY에는 전달할 수 없습니다.
+            - 여러 그룹은 groupId=A&groupId=B처럼 같은 키를 반복합니다. 그룹끼리는 OR이며 순서와 중복은 무시합니다.
+            - 단일 groupId 요청도 유지합니다. 선택한 그룹 중 하나라도 없거나 삭제되었으면 404를 반환합니다.
             - 그룹 가입 여부로 조회를 제한하지 않습니다. 존재하지 않거나 삭제된 그룹은 매 페이지에서 404 오류를 반환합니다.
             - 영역·기간·내용·범위 조건을 모두 만족하는 감정에 페이지 제한을 적용합니다.
 
@@ -171,6 +177,7 @@ public interface EmotionControllerApi {
             - (createdAt DESC, id DESC) 순으로 최대 200개씩 반환합니다. 총량을 잘라내지 않습니다.
             - 다음 페이지에는 nextCursor를 cursor로 전달하며 영역 좌표는 전달하지 않습니다.
             - 필터를 생략하면 커서에 저장된 값을 복원합니다. 명시한 필터는 커서와 같아야 하며 다르면 400 오류를 반환합니다.
+            - 다음 페이지에서 groupId는 생략하거나 전체 선택 집합을 다시 전달합니다. 순서·중복은 무시하지만 일부만 보내거나 추가하면 400입니다.
             - 날짜를 다시 명시할 때는 시작일·종료일을 함께 전달합니다. scope=GROUP만 명시해도 그룹 ID는 커서에서 복원합니다.
             - 영역이나 필터를 바꾸면 cursor를 빼고 첫 페이지부터 조회합니다. v3 목록 API의 커서는 사용할 수 없습니다.
             - 최초 조회 이후 작성된 감정은 제외하고 삭제·차단은 매 페이지에 반영합니다.
@@ -179,6 +186,7 @@ public interface EmotionControllerApi {
 
             ### 요청 예시
 
+            - 여러 그룹 첫 페이지: GET /api/v2/emotions/map?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6&groupId=11111111-1111-4111-8111-111111111111&groupId=22222222-2222-4222-8222-222222222222
             - 본인 메모·기간 필터: GET /api/v2/emotions/map?minLongitude=126.9&minLatitude=37.5&maxLongitude=127.1&maxLatitude=37.6&scope=MY&contentType=MEMO&startDate=2026-10-01&endDate=2026-10-11
             - 다음 페이지: GET /api/v2/emotions/map?cursor={nextCursor}
             """, security = @SecurityRequirement(name = "bearerAuth"))
@@ -207,6 +215,8 @@ public interface EmotionControllerApi {
             startDate와 endDate는 함께 지정하며 KST 기준 양 끝 날짜를 포함합니다. 생략하면 전체 기간입니다.
             contentType은 ALL(기본값), MEMO, AUDIO이며 ALL도 NONE을 제외합니다.
             scope는 ALL, GROUP, MY입니다. 생략하면 groupId가 있으면 GROUP, 없으면 ALL입니다.
+            여러 그룹은 groupId=A&groupId=B처럼 같은 키를 반복합니다. 그룹끼리는 OR이며 순서와 중복은 무시합니다.
+            단일 groupId 요청도 유지합니다. 선택한 그룹 중 하나라도 없거나 삭제되었으면 404를 반환합니다.
             MY는 인증된 기기가 작성한 기록입니다. GROUP은 groupId가 필수이고 ALL·MY에는 groupId를 전달할 수 없습니다.
             날짜·내용·범위는 AND로 적용하며 개수와 대표 감정은 동일한 대상에서 계산합니다.
             개인 감정 차단과 작성자 차단은 요약에 적용하지 않습니다. 기존 개별 조회의 차단 정책은 유지합니다.

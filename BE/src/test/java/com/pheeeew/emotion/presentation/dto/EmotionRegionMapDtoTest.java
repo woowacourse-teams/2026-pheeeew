@@ -12,6 +12,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
@@ -45,14 +46,14 @@ class EmotionRegionMapDtoTest {
         UUID groupId = UUID.randomUUID();
         var values = parameters();
         values.putAll(Map.of("level", level, "minLongitude", west, "minLatitude", south,
-                "maxLongitude", east, "maxLatitude", north, "groupId", groupId));
+                "maxLongitude", east, "maxLatitude", north, "groupId", List.of(groupId)));
         var request = JSON_MAPPER.convertValue(values, EmotionRegionMapRequest.class);
 
         // when / then
         assertThat(validator.validate(request)).isEmpty();
         assertThat(request.toBounds()).isEqualTo(EmotionSearchBounds.of(west, south, east, north));
         assertThat(request.level()).isEqualTo(level);
-        assertThat(request.groupId()).isEqualTo(groupId);
+        assertThat(request.groupId()).containsExactly(groupId);
     }
 
     @ParameterizedTest
