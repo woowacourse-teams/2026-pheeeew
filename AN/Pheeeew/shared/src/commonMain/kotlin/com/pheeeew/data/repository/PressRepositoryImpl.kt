@@ -42,6 +42,7 @@ internal class PressRepositoryImpl(
     private val batchMaxTotal: Int = 100,
     private val flushDelayMillis: Long = 500L,
     private val retryPolicy: PressRetryPolicy = PressRetryPolicy(),
+    private val aggregateRefreshMillis: Long = 1_000L,
     connectivity: Flow<Boolean>? = null,
     private val nowMillis: () -> Long = monotonicClock(),
     private val monitoring: Monitoring = NoOpMonitoring,
@@ -79,10 +80,13 @@ internal class PressRepositoryImpl(
     private var failures = 0
     private var statisticsFailures = 0
     private var retryNotBefore = 0L
+    private var batchFlushNotBefore: Long? = null
+    private var aggregateRefreshJob: Job? = null
 
     init {
         require(batchMaxPerEmotion > 0 && batchMaxTotal > 0)
         require(flushDelayMillis >= 0)
+        require(aggregateRefreshMillis > 0)
         connectivity?.let { updates ->
             sessionScope.launch {
                 updates.distinctUntilChanged().collect { available ->
@@ -98,6 +102,7 @@ internal class PressRepositoryImpl(
     }
 
     override fun accept(emotion: EmotionState): PressAcceptance {
+        val wasEmpty = !batch.isNotEmpty
         val serverTotal = mutableState.value.myToday?.total ?: 0L
         val allServerTotal = mutableState.value.allToday?.total ?: 0L
         if (outstanding >= Long.MAX_VALUE - serverTotal ||
@@ -107,6 +112,7 @@ internal class PressRepositoryImpl(
             mutableState.update { it.copy(notice = PressSessionNotice.NumericLimit) }
             return PressAcceptance.NumericLimit
         }
+        if (wasEmpty) batchFlushNotBefore = safeDeadline(nowMillis(), flushDelayMillis)
         outstanding++
         optimisticAllPressCount++
         optimisticCounts[emotion] = optimisticCounts.getValue(emotion) + 1L
@@ -159,6 +165,16 @@ internal class PressRepositoryImpl(
         return window > 0 && nowMillis() - write.createdAtMillis < window
     }
 
+    /** Completing a read is not a retry: fresh input keeps the wait established on acceptance. */
+    private fun resumeQueuedWork() {
+        val now = nowMillis()
+        val wait = if (pendingWrite == null) remainingBatchWait(now) else 0L
+        scheduleSend(wait)
+    }
+
+    private fun remainingBatchWait(now: Long = nowMillis()): Long =
+        ((batchFlushNotBefore ?: now) - now).coerceAtLeast(0L)
+
     private fun scheduleSend(delayMillis: Long) {
         if (workerJob?.isActive == true || connected == false || outstanding == 0L) return
         if (pausedNotice == PressSessionNotice.WaitingForApiContract) return
@@ -176,7 +192,7 @@ internal class PressRepositoryImpl(
                         refreshAgain = false
                         launchRead()
                     } else if (outstanding > 0L && sessionScope.coroutineContext[Job]?.isActive != false) {
-                        scheduleSend(0L)
+                        resumeQueuedWork()
                     }
                 }
             }
@@ -288,12 +304,11 @@ internal class PressRepositoryImpl(
                 }
             }
             if (outstanding > 0) {
-                val interval = if (batch.isReadyToFlush(batchMaxPerEmotion, batchMaxTotal)) 0L else flushDelayMillis
                 delay(retryPolicy.minRequestIntervalMillis)
-                awaitFlush(interval)
+                awaitFlush(remainingBatchWait())
             }
         }
-        if (outstanding == 0L && allStatsDirtyAfterWrite) refreshAllAfterWrite()
+        if (outstanding == 0L && allStatsDirtyAfterWrite) scheduleAggregateRefresh()
     }
 
     private suspend fun awaitFlush(delayMillis: Long) {
@@ -305,6 +320,7 @@ internal class PressRepositoryImpl(
 
     private fun newWrite(): PendingWrite? {
         val next = batch.take(batchMaxPerEmotion, batchMaxTotal, lastEmotionIndex, nextSequence) ?: return null
+        if (!batch.isNotEmpty) batchFlushNotBefore = null
         nextSequence = if (nextSequence == Long.MAX_VALUE) 1L else nextSequence + 1L
         lastEmotionIndex = (lastEmotionIndex + 1) % EmotionState.entries.size
         return PendingWrite(next, checkNotNull(mutableState.value.myToday), nowMillis())
@@ -339,7 +355,7 @@ internal class PressRepositoryImpl(
                         refreshAgain = false
                         launchRead()
                     } else if (outstanding > 0) {
-                        scheduleSend(0L)
+                        resumeQueuedWork()
                     }
                 }
             }
@@ -429,16 +445,46 @@ internal class PressRepositoryImpl(
         }
     }
 
-    private suspend fun refreshAllAfterWrite() {
+    private fun scheduleAggregateRefresh() {
+        if (aggregateRefreshJob?.isActive == true) return
+        aggregateRefreshJob =
+            sessionScope.launch {
+                while (allStatsDirtyAfterWrite && connected != false && pendingWrite?.uncertain != true) {
+                    delay(aggregateRefreshMillis)
+                    if (pendingWrite?.phase != WritePhase.InFlight) {
+                        refreshAllAfterWrite(detached = true)
+                    }
+                }
+            }
+    }
+
+    private suspend fun refreshAllAfterWrite(detached: Boolean = false) {
         allStatsDirtyAfterWrite = false
         val acceptedCoveredAtReadStart = acceptedSinceAllSnapshot
+        val generation = readGeneration
         publish(mutableState.value.copy(isLoadingAll = true, hasAllError = false))
         when (val result = readSafely(statistics::findAllToday)) {
             is PressReadResult.Loaded -> {
                 val all = result.value
+                if (detached &&
+                    (
+                        generation != readGeneration || pendingWrite?.phase == WritePhase.InFlight ||
+                            pendingWrite?.uncertain == true
+                    )
+                ) {
+                    // A write or paired read superseded this snapshot. Never subtract its old coverage.
+                    allStatsDirtyAfterWrite = true
+                    publish(mutableState.value.copy(isLoadingAll = false))
+                    return
+                }
                 val myDate = mutableState.value.myToday?.pressDate
                 if (myDate != null && myDate != all.pressDate) {
-                    readAndReconcile()
+                    if (detached) {
+                        publish(mutableState.value.copy(isLoadingAll = false))
+                        refreshToday(force = true)
+                    } else {
+                        readAndReconcile()
+                    }
                 } else {
                     if (reconcileAllSnapshot(all, acceptedCoveredAtReadStart) &&
                         all.total <= Long.MAX_VALUE - optimisticAllPressCount

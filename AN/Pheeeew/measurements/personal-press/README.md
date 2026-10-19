@@ -4,7 +4,7 @@
 
 ## 자료와 재현 코드의 위치
 
-이 브랜치와 PR #776에는 원본 로그, 분석 스크립트, CSV와 이 README만 남긴다. 앱 관측 훅, 장애 주입기, 자동 입력 테스트 등 실험용 코드는 포함하지 않는다.
+기준 측정 PR #776에는 원본 로그, 분석 스크립트, CSV와 이 README만 남겼다. 당시 앱 관측 훅, 장애 주입기, 자동 입력 테스트 등 실험용 코드는 제외했다. 이후 #799의 제품 코드·회귀 테스트 변경과 직접 전후 비교는 아래 별도 절에서 안내한다.
 
 당시 재현 코드는 별도 원격 브랜치 [feat/644-personal-press-reproduction](https://github.com/woowacourse-teams/2026-pheeeew/tree/feat/644-personal-press-reproduction)에 보존했다. 고정된 실험 코드 커밋은 [3898c00290ef97b2b74c819695049c36b7416d91](https://github.com/woowacourse-teams/2026-pheeeew/commit/3898c00290ef97b2b74c819695049c36b7416d91)이다. 재현 브랜치는 실험 보관용이며 제품 브랜치에 병합하기 위한 변경이 아니다.
 
@@ -192,3 +192,15 @@ python3 measurements/personal-press/summarize_failure_ui.py measurements/persona
 DebugPressFaultInjection은 dev debug에서만 엔진에 설치되며 api-dev의 정확한 개인 프레스 POST 경로에만 적용된다. 테스트가 run-as로 files/press-probe-fault-MODE 파일을 만들면 첫 해당 POST가 파일을 소비한다. 테스트 finally에서도 파일을 제거한다. UI 그리기 훅은 관측 콜백이 없는 앱에서 추가 draw 의존성을 만들지 않는다.
 
 저장 결과는 2026-10-14-failure.csv, 2026-10-14-ui.csv와 2026-10-14-failure-ui.log다. 실험 코드 커밋에서 프레스·Tap 회귀 테스트 51개와 기기 측정 테스트 1개가 통과했고 관련 Kotlin 형식 검사도 통과했다. 이 자료 전용 변경에서는 저장된 로그를 재분석해 CSV와 일치하는지 확인한다.
+
+## #799 묶음 대기 일관성 개선
+
+집계 조회 중 들어온 입력의 묶음 대기 유지 수정과 직접 전후 비교는 [#799 결과 및 재실행 절차](799-batch-wait.md)에 기록했다. 기존 500ms·감정별 30개·전체 100개 설정에서 비교했다. 대기 시간·상한 후보 비교와 종료·복구 후속 실험은 #802 및 #801의 별도 자료로 분리했다.
+
+### 2026-10-18 POST 후 대기 보완
+
+[POST 중 유입 입력의 대기 보완과 비교](799-post-wait.md). 이전 iPhone 결과는 과거 구현 측정이며 이번 보완의 실기기 측정 결과가 아니다.
+
+### 집계 조회 합치기
+
+[동일 USB 실기기 전후 비교와 원본 증거](799-aggregate-device/README.md). 현재 제품 후보는 POST 대기 보완과 집계 조회 합치기를 함께 포함한다.
