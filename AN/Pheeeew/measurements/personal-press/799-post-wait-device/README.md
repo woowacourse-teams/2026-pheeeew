@@ -27,3 +27,7 @@ POST +16.9%, 전체 측정 요청 +51.1%. 각 run_end 이전 검증용 개인 GE
 APK SHA256:
 - before: `df9f772b73e3f6f54b5a2f6d3cefcd2b496b959449fe94184aeb6fbda543128d`
 - after: `04c7bb17238a741f94711aab60afa7bd789bc40887e467f110361f0ccff38129`
+
+### 원본 무결성 확인
+
+`analyze.py`는 분석 전에 기존 `SHA256.json`과 원본 로그·콘솔 출력·기기 정보·화면 및 저장된 테스트 결과를 비교한다. 누락 또는 불일치하면 실패하며 매니페스트는 덮어쓰지 않는다. 재생성하는 `comparison.csv`와 수정 가능한 설명 문서 `README.md`, 분석 코드 `analyze.py`는 원본 검증 대상에서 제외한다. 임의로 추가된 `.DS_Store` 등은 매니페스트에 등록하지 않는다.

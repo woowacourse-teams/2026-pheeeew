@@ -3,6 +3,14 @@ from collections import defaultdict,deque
 from decimal import Decimal
 import re,csv,math,json,hashlib
 root=Path(__file__).parent
+# README and analysis code can evolve; comparison.csv is regenerated.
+recorded=json.loads((root/'SHA256.json').read_text())
+for name,digest in recorded.items():
+ if name in ('comparison.csv','README.md','analyze.py'):continue
+ path=root/name
+ if not path.is_file():raise SystemExit(f'Missing original evidence: {name}')
+ actual=hashlib.sha256(path.read_bytes()).hexdigest()
+ if actual!=digest:raise SystemExit(f'Original evidence checksum mismatch: {name}: {actual} != {digest}')
 rows=[]
 for variant in ['before','after']:
  for rep in [1,2,3]:
@@ -46,4 +54,3 @@ for variant in ['before','after']:
 with (root/'comparison.csv').open('w',newline='') as f:
  w=csv.DictWriter(f,fieldnames=list(rows[0]));w.writeheader();w.writerows(rows)
 for r in rows:print(r)
-(root/'SHA256.json').write_text(json.dumps({str(p.relative_to(root)):hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file() and p.name!='SHA256.json'},indent=2))

@@ -141,7 +141,9 @@ python3 summarize_799_iphone.py . ./summarize_device.py /tmp/press-799-reanalyze
 - 수정 전: 67e2cb86b17d27332a3016cbf9550086520c803a888b0e75a985cd5aebc04199
 - 수정 후: f2e5459f1ddf8ea023767730c41b26018657f3344808c5f4560e3266e47ac735
 
-## 최신 an/dev 반영 후 재검증 (2026-10-18)
+## POST 후 대기 보완 이전의 과거 재검증 (2026-10-18)
+
+아래 59개/9개 테스트와 17회·p95 680ms는 POST 후 대기 보완 및 집계 합치기 이전 단계의 기록이다. 현재 코드를 재실행한 결과를 뜻하지 않는다. 이후 구현과 검증은 [POST 대기 보완](799-post-wait.md)과 [집계 합치기](799-aggregate-device/README.md)를 참고한다.
 
 feat/799-preserve-press-batch-wait를 origin/an/dev 0f725625f50c741a3f2e8131b5eb9a08d6dfe9ef로 fast-forward하고 기존 #799 수정·테스트를 충돌 없이 다시 적용했다. 기준 이후 15개 커밋을 반영했으며 프레스 Repository의 기존 기본 설정은 유지했다.
 
@@ -152,7 +154,7 @@ ANDROID_HOME=/Users/USER/Library/Android/sdk ./gradlew ktlintCheck :androidApp:a
 
 - Gradle BUILD SUCCESSFUL. 관련 테스트 59개, 실패·오류·건너뜀 0개. 이 중 PressBatchWaitTest 9개다.
 - 전체 ktlintCheck와 Android Debug APK 빌드 성공.
-- 최신 실행의 BATCH_WAIT_PROBE 두 행이 저장된 after CSV의 전송 수·묶음 크기·p50·p95·최대 대기·정리 시간과 모두 일치했다. 두 입력 패턴 모두 전송 17회, p50 340ms, p95 680ms, 최대 대기 7개, 정리 140ms다.
+- 당시 실행의 BATCH_WAIT_PROBE 두 행이 저장된 after CSV의 전송 수·묶음 크기·p50·p95·최대 대기·정리 시간과 모두 일치했다. 두 입력 패턴 모두 전송 17회, p50 340ms, p95 680ms, 최대 대기 7개, 정리 140ms다.
 - 기존 iPhone 원본 로그를 재분석하여 CSV 3개의 모든 행이 동일함을 확인했다. 원본 로그·기존 CSV·실제 화면 캡처도 분리 전 보존본의 SHA-256과 일치한다.
 - 문서의 로컬 링크와 git diff --check를 확인했다.
 
