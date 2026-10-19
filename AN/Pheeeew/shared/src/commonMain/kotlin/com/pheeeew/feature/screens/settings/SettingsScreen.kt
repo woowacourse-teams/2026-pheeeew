@@ -39,7 +39,6 @@ import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.navigation.PredictiveBackContent
 import com.pheeeew.core.permission.AppSettingsLauncher
-import com.pheeeew.domain.repository.device.DeviceNicknameRepository
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.monitoring.product.labels
@@ -53,6 +52,7 @@ import com.pheeeew.feature.screens.settings.components.SettingsIcon
 import com.pheeeew.feature.screens.settings.components.SettingsSectionTitle
 import com.pheeeew.feature.screens.settings.legal.LegalDocument
 import com.pheeeew.feature.screens.settings.legal.LegalDocumentRoute
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -165,7 +165,6 @@ fun SettingsScreen(
     monitoring: Monitoring = NoOpMonitoring,
     modifier: Modifier = Modifier,
     onOpenDeveloperTools: (() -> Unit)? = null,
-    nicknameRepository: DeviceNicknameRepository? = null,
 ) {
     var versionTaps by remember { mutableStateOf(0) }
     var analyticsIdentity by remember { mutableStateOf<String?>(null) }
@@ -177,16 +176,12 @@ fun SettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
     val snackbarHostState = remember { SnackbarHostState() }
-    val nicknameViewModel =
-        nicknameRepository?.let { repository ->
-            viewModel { SettingsViewModel(repository) }
-        }
-    val nicknameState by nicknameViewModel?.uiState?.collectAsStateWithLifecycle()
-        ?: remember { mutableStateOf(SettingsUiState()) }
+    val nicknameViewModel: SettingsViewModel = metroViewModel()
+    val nicknameState by nicknameViewModel.uiState.collectAsStateWithLifecycle()
     val nicknameChangedMessage = stringResource(Res.string.settings_nickname_changed)
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(nicknameViewModel, lifecycleOwner, nicknameChangedMessage) {
-        val viewModel = nicknameViewModel ?: return@LaunchedEffect
+        val viewModel = nicknameViewModel
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.uiState.map { it.nicknameChangedNoticeId }.filterNotNull().collect { noticeId ->
                 viewModel.acknowledgeNicknameChanged(noticeId)
@@ -212,9 +207,9 @@ fun SettingsScreen(
                                 },
                         onNicknameClick = {
                             if (nicknameState.loadFailed) {
-                                nicknameViewModel?.refreshNickname()
+                                nicknameViewModel.refreshNickname()
                             } else {
-                                nicknameViewModel?.openNicknameEditor()
+                                nicknameViewModel.openNicknameEditor()
                             }
                         },
                         nicknameDialog =
@@ -222,7 +217,7 @@ fun SettingsScreen(
                                 {
                                     NicknameDialog(
                                         nickname = nicknameState.draft,
-                                        onNicknameChange = nicknameViewModel!!::onNicknameChanged,
+                                        onNicknameChange = nicknameViewModel::onNicknameChanged,
                                         onDismiss = nicknameViewModel::closeNicknameEditor,
                                         onConfirm = {
                                             if (nicknameState.savedButUnverified) {

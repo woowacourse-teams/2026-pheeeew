@@ -8,8 +8,8 @@ import com.pheeeew.domain.model.group.GroupStampFrame
 import com.pheeeew.domain.model.group.GroupStampItem
 import com.pheeeew.domain.model.group.StampColor
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
-import com.pheeeew.domain.repository.group.GroupStampListLoadResult
-import com.pheeeew.domain.repository.group.GroupStampListRepository
+import com.pheeeew.domain.repository.GroupStampListLoadResult
+import com.pheeeew.domain.repository.GroupStampListRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import kotlinx.coroutines.CompletableDeferred

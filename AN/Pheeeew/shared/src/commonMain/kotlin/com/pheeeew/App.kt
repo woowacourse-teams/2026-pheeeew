@@ -11,7 +11,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -27,12 +26,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,44 +59,26 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
+import com.pheeeew.core.audio.LocalAudioFactories
 import com.pheeeew.core.audio.rememberVoiceRecorder
 import com.pheeeew.core.designsystem.component.AppAlertDialog
 import com.pheeeew.core.designsystem.component.AppDialog
 import com.pheeeew.core.designsystem.component.ConfirmDialog
-import com.pheeeew.core.designsystem.component.Snackbar
-import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.core.di.ApiDependencies
-import com.pheeeew.core.di.LocationDependencies
-import com.pheeeew.core.di.createEmotionAudioRepository
-import com.pheeeew.core.di.createEmotionDetailRepository
-import com.pheeeew.core.di.createEmotionMapDependencies
-import com.pheeeew.core.di.createEmotionModerationDependencies
-import com.pheeeew.core.di.createEmotionRegistrationRepository
-import com.pheeeew.core.di.emotion.createNearbyEmotionViewModel
-import com.pheeeew.core.di.group.createGroupDependencies
-import com.pheeeew.core.di.group.createGroupStampListRepository
+import com.pheeeew.core.di.AppGraph
+import com.pheeeew.core.di.UiGraph
 import com.pheeeew.core.navigation.DoubleBackToExitHandler
 import com.pheeeew.core.navigation.GroupRootDestination
 import com.pheeeew.core.navigation.MapRootDestination
 import com.pheeeew.core.navigation.PressRootDestination
 import com.pheeeew.core.navigation.RankingRootDestination
-import com.pheeeew.core.permission.AppSettingsLauncher
-import com.pheeeew.data.remote.version.AppVersionApi
-import com.pheeeew.data.remote.version.toPolicy
 import com.pheeeew.domain.model.device.DeviceSessionResult
 import com.pheeeew.domain.model.version.AppVersionDecision
-import com.pheeeew.domain.model.version.evaluateAppVersion
-import com.pheeeew.domain.repository.MapFilterSettingsRepository
-import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
-import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.component.AppBottomNavigationBar
 import com.pheeeew.feature.component.AppBottomNavigationBarBottomSpacing
 import com.pheeeew.feature.component.AppDestination
 import com.pheeeew.feature.component.RankingBottomNavigationDestination
-import com.pheeeew.feature.component.emotion.face
 import com.pheeeew.feature.monitoring.product.LocalProductMonitoringVisible
-import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
 import com.pheeeew.feature.screens.group.detail.GroupCopyCodeResult
 import com.pheeeew.feature.screens.group.detail.GroupDetailRoute
 import com.pheeeew.feature.screens.group.detail.GroupDetailViewModel
@@ -133,15 +114,18 @@ import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.AppEntryGate
 import com.pheeeew.feature.screens.settings.AppEntryPhase
 import com.pheeeew.feature.screens.settings.AppEntryViewModel
+import com.pheeeew.feature.screens.settings.AppStartupViewModel
 import com.pheeeew.feature.screens.settings.SettingsScreen
 import com.pheeeew.feature.screens.splash.SplashScreen
+import dev.zacsweers.metrox.viewmodel.LocalMetroViewModelFactory
+import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -160,84 +144,55 @@ import pheeeew.shared.generated.resources.app_update_suggested_title
 
 @Composable
 fun App(
-    locationDependencies: LocationDependencies,
-    apiDependencies: ApiDependencies,
-    lastRecordedGroupRepository: LastRecordedGroupRepository,
-    groupCreateSessionStore: GroupCreateSessionStore,
-    appVersion: String,
-    appVersionApi: AppVersionApi,
-    permissionSettingsLauncher: AppSettingsLauncher,
-    appSettingsLauncher: AppSettingsLauncher,
-    mapFilterSettingsRepository: MapFilterSettingsRepository,
-    hasCompletedOnboarding: Boolean,
-    onOnboardingCompleted: () -> Unit,
+    appGraph: AppGraph,
+    uiGraph: UiGraph,
     onOpenDeveloperTools: (() -> Unit)? = null,
 ) {
-    AppTheme {
-        AppContent(
-            locationDependencies = locationDependencies,
-            apiDependencies = apiDependencies,
-            lastRecordedGroupRepository = lastRecordedGroupRepository,
-            groupCreateSessionStore = groupCreateSessionStore,
-            appVersion = appVersion,
-            appVersionApi = appVersionApi,
-            permissionSettingsLauncher = permissionSettingsLauncher,
-            appSettingsLauncher = appSettingsLauncher,
-            mapFilterSettingsRepository = mapFilterSettingsRepository,
-            hasCompletedOnboarding = hasCompletedOnboarding,
-            onOnboardingCompleted = onOnboardingCompleted,
-            onOpenDeveloperTools = onOpenDeveloperTools,
-        )
+    val factory = remember(uiGraph) { uiGraph.viewModelFactory }
+    CompositionLocalProvider(
+        LocalMetroViewModelFactory provides factory,
+        LocalAudioFactories provides appGraph.audioFactories,
+    ) {
+        AppTheme { AppContent(appGraph, uiGraph, onOpenDeveloperTools) }
     }
 }
 
 @Composable
 private fun AppContent(
-    locationDependencies: LocationDependencies,
-    apiDependencies: ApiDependencies,
-    lastRecordedGroupRepository: LastRecordedGroupRepository,
-    groupCreateSessionStore: GroupCreateSessionStore,
-    appVersion: String,
-    appVersionApi: AppVersionApi,
-    permissionSettingsLauncher: AppSettingsLauncher,
-    appSettingsLauncher: AppSettingsLauncher,
-    mapFilterSettingsRepository: MapFilterSettingsRepository,
-    hasCompletedOnboarding: Boolean,
-    onOnboardingCompleted: () -> Unit,
+    appGraph: AppGraph,
+    uiGraph: UiGraph,
     onOpenDeveloperTools: (() -> Unit)?,
 ) {
+    val apiDependencies = appGraph.apiDependencies
+    val appVersion = appGraph.appVersion
+    val permissionSettingsLauncher = appGraph.appSettingsLauncher
+    val appSettingsLauncher = appGraph.appSettingsLauncher
+    val onboardingStore = appGraph.onboardingStore
     val uriHandler = LocalUriHandler.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val connectivityObserver = apiDependencies.connectivityObserver
-    var versionCheckAttempt by remember { mutableStateOf(0) }
-    var initialVersionCheckComplete by remember { mutableStateOf(false) }
+    val startupViewModel: AppStartupViewModel = metroViewModel()
+    val startupState by startupViewModel.state.collectAsStateWithLifecycle()
+    val initialVersionCheckComplete = startupState.checked
+    val versionDecision = startupState.decision
+    val checkedForResume by rememberUpdatedState(initialVersionCheckComplete)
     var splashAnimationCompleted by rememberSaveable { mutableStateOf(false) }
-    var versionDecision by remember { mutableStateOf<AppVersionDecision?>(null) }
     var suggestionDismissed by remember { mutableStateOf(false) }
     var storeOpenError by remember { mutableStateOf(false) }
-    var onboardingCompleted by remember { mutableStateOf(hasCompletedOnboarding) }
+    var onboardingCompleted by remember { mutableStateOf(onboardingStore.isCompleted()) }
     var mapVisible by remember { mutableStateOf(false) }
     var mapMounted by remember { mutableStateOf(false) }
     var savedMapCamera by remember { mutableStateOf<MapCameraSnapshotUiModel?>(null) }
 
-    LaunchedEffect(appVersionApi, appVersion, versionCheckAttempt) {
-        try {
-            val policy = withTimeout(VERSION_CHECK_TIMEOUT_MILLIS) { appVersionApi.getPolicy().toPolicy() }
-            versionDecision = evaluateAppVersion(appVersion, policy)
-        } catch (cancellation: CancellationException) {
-            throw cancellation
-        } catch (_: Exception) {
-            // Fail open if the public version-policy endpoint is temporarily unavailable.
-        } finally {
-            initialVersionCheckComplete = true
-        }
+    LaunchedEffect(startupViewModel) {
+        if (!startupViewModel.state.value.checked) startupViewModel.checkVersion()
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME && initialVersionCheckComplete) {
-                    versionCheckAttempt++
+                if (event == Lifecycle.Event.ON_RESUME && checkedForResume) {
+                    startupViewModel.checkVersion()
                 }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -263,7 +218,7 @@ private fun AppContent(
                 onOpenStore = {
                     storeOpenError = runCatching { uriHandler.openUri(requiredUpdate.storeUrl) }.isFailure
                 },
-                onRetry = { versionCheckAttempt++ },
+                onRetry = { startupViewModel.checkVersion() },
             )
         }
         return
@@ -293,7 +248,7 @@ private fun AppContent(
                         microphoneDialogResult = null
                     }
                 }
-                onOnboardingCompleted()
+                onboardingStore.complete()
                 onboardingCompleted = true
             },
         )
@@ -319,7 +274,7 @@ private fun AppContent(
     }
 
     val appEntryViewModel: AppEntryViewModel =
-        viewModel { AppEntryViewModel(apiDependencies.session, apiDependencies.nicknameRepository) }
+        metroViewModel()
     val appEntryState by appEntryViewModel.uiState.collectAsStateWithLifecycle()
     val sessionState by apiDependencies.session.state.collectAsStateWithLifecycle()
     val sessionGeneration =
@@ -332,29 +287,11 @@ private fun AppContent(
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
     }
 
-    val emotionMapDependencies =
-        remember(apiDependencies.client) {
-            createEmotionMapDependencies(apiDependencies.client)
-        }
-    val groupStampListRepository =
-        remember(apiDependencies.client) { createGroupStampListRepository(apiDependencies.client) }
-    val nearbyViewModel: NearbyEmotionViewModel =
-        viewModel { createNearbyEmotionViewModel(apiDependencies.client) }
+    val groupStampListRepository = uiGraph.groupStampListRepository
+    val nearbyViewModel: NearbyEmotionViewModel = metroViewModel()
     val mapViewModel: MapViewModel =
-        viewModel {
-            MapViewModel.create(
-                locationDependencies,
-                emotionMapDependencies.findPage,
-                emotionMapDependencies.findSnapshot,
-                apiDependencies.client.monitoring,
-                findRegions = emotionMapDependencies.findRegions,
-                findRegionSnapshot = emotionMapDependencies.findRegionSnapshot,
-                groupStampListRepository = groupStampListRepository,
-                filterSettingsRepository = mapFilterSettingsRepository,
-                filterListRefresher = nearbyViewModel,
-                dataLoadingEnabled = false,
-                invalidateSessionCache = emotionMapDependencies.invalidateSession,
-            )
+        assistedMetroViewModel<MapViewModel, MapViewModel.Factory> {
+            create(nearbyViewModel)
         }
     LaunchedEffect(mapViewModel, mainFeaturesReady, sessionGeneration) {
         mapViewModel.updateReadiness(mainFeaturesReady, sessionGeneration)
@@ -367,32 +304,19 @@ private fun AppContent(
             connectivityObserver.isConnected.collect(mapViewModel::onConnectivityChanged)
         }
     }
-    val registrationRepository =
-        remember(apiDependencies.client) { createEmotionRegistrationRepository(apiDependencies.client) }
-    val mapRecordViewModel: MapRecordViewModel =
-        viewModel {
-            MapRecordViewModel(
-                IsWithinEmotionRecordRadiusUseCase(),
-                registrationRepository,
-                groupStampListRepository,
-                lastRecordedGroupRepository,
-                apiDependencies.client.monitoring,
-            )
-        }
-    val nearbyState by nearbyViewModel.state.collectAsState()
+    val mapRecordViewModel: MapRecordViewModel = metroViewModel()
+    val nearbyState by nearbyViewModel.state.collectAsStateWithLifecycle()
     var mapPageOffset by remember { mutableStateOf(0f) }
     var isMapCameraMoving by remember { mutableStateOf(false) }
     var nearbyMapControlHeight by remember { mutableStateOf(0.dp) }
     LaunchedEffect(nearbyState.visible, mapViewModel) {
         if (!nearbyState.visible) mapViewModel.clearFocusedEmotion()
     }
-    val mapUiModel by mapViewModel.uiModel.collectAsState()
-    val recordUiModel by mapRecordViewModel.uiModel.collectAsState()
-    val groupOptions by mapRecordViewModel.groupOptions.collectAsState()
-    val detailRepository = remember(apiDependencies.client) { createEmotionDetailRepository(apiDependencies.client) }
-    val detailViewModel: EmotionDetailViewModel =
-        viewModel { EmotionDetailViewModel(detailRepository, apiDependencies.client.monitoring) }
-    val detailState by detailViewModel.uiModel.collectAsState()
+    val mapUiModel by mapViewModel.uiModel.collectAsStateWithLifecycle()
+    val recordUiModel by mapRecordViewModel.uiModel.collectAsStateWithLifecycle()
+    val groupOptions by mapRecordViewModel.groupOptions.collectAsStateWithLifecycle()
+    val detailViewModel: EmotionDetailViewModel = metroViewModel()
+    val detailState by detailViewModel.uiModel.collectAsStateWithLifecycle()
 
     val mapReady = true
     LaunchedEffect(mapReady, mapVisible) {
@@ -543,21 +467,8 @@ private fun AppContent(
             )
         }
 
-        val audioRepository = remember { createEmotionAudioRepository() }
-
-        val moderation =
-            remember(apiDependencies.client) {
-                createEmotionModerationDependencies(apiDependencies.client)
-            }
-        val groupDependencies =
-            remember(apiDependencies.client, groupStampListRepository, groupCreateSessionStore) {
-                createGroupDependencies(
-                    apiClient = apiDependencies.client,
-                    membershipChanges = groupStampListRepository.membershipChanges,
-                    invalidateSharedMembership = groupStampListRepository::invalidate,
-                    createSessionStore = groupCreateSessionStore,
-                )
-            }
+        val audioRepository = remember(uiGraph) { uiGraph.audioRepository }
+        val moderation = remember(uiGraph) { uiGraph.moderation }
 
         val clipboardManager = LocalClipboardManager.current
         val navController = rememberNavController()
@@ -643,7 +554,7 @@ private fun AppContent(
                             isMapCameraMoving = isMapCameraMoving,
                             onSettingClick = { isSettingsVisible = true },
                             onEmotionBubbleClick = {},
-                            locationPermissionController = locationDependencies.permissionController,
+                            locationPermissionController = uiGraph.locationDependencies.permissionController,
                             appSettingsLauncher = appSettingsLauncher,
                             modifier = Modifier.fillMaxSize(),
                             message = moderationMessage,
@@ -693,7 +604,7 @@ private fun AppContent(
                             monitoringVisible = !isSettingsVisible && reportTarget == null,
                             onDeleteSucceeded = {
                                 detailViewModel.dismiss()
-                                mapViewModel.refreshEmotionPins()
+                                mapViewModel.onEmotionDeleted()
                                 moderationMessage = "삭제했어요."
                             },
                         )
@@ -712,7 +623,6 @@ private fun AppContent(
                             (!isSettingsVisible && reportTarget == null),
                     ) {
                         GroupFeatureHost(
-                            dependencies = groupDependencies,
                             modifier = Modifier.fillMaxSize(),
                             onGroupDetailVisibilityChanged = { isGroupDetailVisible = it },
                             onGroupCreateVisibilityChanged = { isGroupCreateVisible = it },
@@ -732,7 +642,6 @@ private fun AppContent(
                 ) {
                     if (!mainFeaturesReady) return@composable
                     PressRoute(
-                        repository = apiDependencies.appSession.pressRepository,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -775,7 +684,6 @@ private fun AppContent(
                             when (destination) {
                                 RankingBottomNavigationDestination.Stamp -> {
                                     WeeklyRankingRoute(
-                                        apiClient = apiDependencies.client,
                                         onGroupClick = openGroupDetail,
                                         modifier = Modifier.fillMaxSize(),
                                         onRefreshActionChanged = { refreshStampRanking = it },
@@ -784,7 +692,6 @@ private fun AppContent(
 
                                 RankingBottomNavigationDestination.Press -> {
                                     PressRankingRoute(
-                                        apiClient = apiDependencies.client,
                                         modifier = Modifier.fillMaxSize(),
                                         onRefreshActionChanged = { refreshPressRanking = it },
                                     )
@@ -799,8 +706,10 @@ private fun AppContent(
                     val destination = entry.toRoute<GroupDetailDestination>()
                     val groupId = GroupId(destination.groupId)
                     val groupDetailViewModel: GroupDetailViewModel =
-                        viewModel(viewModelStoreOwner = entry) {
-                            GroupDetailViewModel(groupId = groupId, dependencies = groupDependencies.detail)
+                        assistedMetroViewModel<GroupDetailViewModel, GroupDetailViewModel.Factory>(
+                            viewModelStoreOwner = entry,
+                        ) {
+                            create(groupId)
                         }
 
                     fun returnToRanking() {
@@ -852,7 +761,6 @@ private fun AppContent(
                     permissionSettingsLauncher = permissionSettingsLauncher,
                     modifier = Modifier.fillMaxSize(),
                     onOpenDeveloperTools = onOpenDeveloperTools,
-                    nicknameRepository = apiDependencies.nicknameRepository,
                 )
             }
 
@@ -971,7 +879,6 @@ private fun RequiredUpdateDialog(
     }
 }
 
-private const val VERSION_CHECK_TIMEOUT_MILLIS = 10_000L
 private const val MAP_INACTIVE_RELEASE_DELAY_MILLIS = 30_000L
 
 private fun androidx.navigation.NavDestination.rootTabIndex(): Int? =

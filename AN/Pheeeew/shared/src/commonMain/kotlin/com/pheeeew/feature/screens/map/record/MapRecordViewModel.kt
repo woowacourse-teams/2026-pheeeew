@@ -11,9 +11,9 @@ import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
-import com.pheeeew.domain.repository.group.GroupStampListLoadResult
-import com.pheeeew.domain.repository.group.GroupStampListRepository
-import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
+import com.pheeeew.domain.repository.GroupStampListLoadResult
+import com.pheeeew.domain.repository.GroupStampListRepository
+import com.pheeeew.domain.repository.LastRecordedGroupRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
@@ -25,6 +25,7 @@ import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
 import com.pheeeew.feature.screens.map.record.sheet.RecordBottomSheetUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.record.sheet.RecordInputModeUiModel
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -38,6 +39,7 @@ import kotlin.math.roundToInt
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
+@Inject
 class MapRecordViewModel(
     private val isWithinRecordRadius: IsWithinEmotionRecordRadiusUseCase,
     private val registrationRepository: EmotionRegistrationRepository,

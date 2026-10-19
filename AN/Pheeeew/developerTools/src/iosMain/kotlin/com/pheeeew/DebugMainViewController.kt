@@ -8,7 +8,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.ComposeUIViewController
-import com.pheeeew.core.di.IosApiDependencies
+import com.pheeeew.core.di.iosDeviceBuildConfig
 import com.pheeeew.core.navigation.PredictiveBackContent
 import com.pheeeew.developertools.DeveloperToolsInfo
 import com.pheeeew.developertools.DeveloperToolsScreen
@@ -17,7 +17,7 @@ import platform.Foundation.NSBundle
 @Suppress("ktlint:standard:function-naming")
 fun DebugMainViewController() =
     ComposeUIViewController {
-        val build = remember { IosApiDependencies.instance.buildConfig }
+        val build = remember { iosDeviceBuildConfig() }
         val info =
             remember {
                 DeveloperToolsInfo(

@@ -15,9 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import com.pheeeew.core.audio.MAX_RECORDING_DURATION_SECONDS
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,8 +33,8 @@ import kotlin.math.log10
 
 @Composable
 actual fun rememberVoiceRecorder(): VoiceRecorder {
-    val context = LocalContext.current.applicationContext
-    val recorder = remember(context) { AndroidVoiceRecorder(context) }
+    val factory = LocalAudioFactories.current.voiceRecorder
+    val recorder = remember(factory) { factory.create() as AndroidVoiceRecorder }
     val launcher =
         rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission(), recorder::permissionResult)
     SideEffect { recorder.launchPermissionRequest = { launcher.launch(Manifest.permission.RECORD_AUDIO) } }
@@ -42,7 +42,8 @@ actual fun rememberVoiceRecorder(): VoiceRecorder {
     return recorder
 }
 
-private class AndroidVoiceRecorder(
+@Inject
+internal class AndroidVoiceRecorder(
     private val context: Context,
 ) : VoiceRecorder {
     private val mutable = MutableStateFlow(VoiceRecordingState())

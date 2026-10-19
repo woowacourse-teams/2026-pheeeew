@@ -1,0 +1,484 @@
+package com.pheeeew.data.repository
+
+import com.pheeeew.core.network.ApiResult
+import com.pheeeew.core.network.NetworkFailure
+import com.pheeeew.data.local.device.CredentialRead
+import com.pheeeew.data.local.device.DeviceCredentialStorage
+import com.pheeeew.data.remote.api.DeviceSessionApi
+import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
+import com.pheeeew.data.remote.attestation.DeviceProofException
+import com.pheeeew.data.remote.dto.DeviceAttestationDto
+import com.pheeeew.data.remote.dto.DeviceRefreshRequestDto
+import com.pheeeew.data.remote.dto.DeviceRegistrationRequestDto
+import com.pheeeew.data.remote.dto.DeviceV3RegistrationRequestDto
+import com.pheeeew.domain.model.device.DeviceAccess
+import com.pheeeew.domain.model.device.DeviceCredentials
+import com.pheeeew.domain.model.device.DeviceDiagnosticOutcome
+import com.pheeeew.domain.model.device.DevicePlatform
+import com.pheeeew.domain.model.device.DeviceSessionDiagnostic
+import com.pheeeew.domain.model.device.DeviceSessionDiagnostics
+import com.pheeeew.domain.model.device.DeviceSessionFailure
+import com.pheeeew.domain.model.device.DeviceSessionFailureKind
+import com.pheeeew.domain.model.device.DeviceSessionResult
+import com.pheeeew.domain.model.device.DeviceSessionStage
+import com.pheeeew.domain.model.device.recordSafely
+import com.pheeeew.domain.repository.DeviceSessionRepository
+import io.ktor.http.fromHttpToGmtDate
+import kotlinx.coroutines.CancellationException
+import kotlin.uuid.Uuid
+
+/** Called exclusively by the app's single session owner. */
+class DeviceSessionRepositoryImpl(
+    private val api: DeviceSessionApi,
+    private val storage: DeviceCredentialStorage,
+    private val platform: DevicePlatform,
+    private val attestationPolicy: DeviceAttestationPolicy,
+    private val now: () -> Long,
+    private val diagnostics: DeviceSessionDiagnostics = DeviceSessionDiagnostics {},
+    private val newRequestId: () -> String = { Uuid.random().toString() },
+) : DeviceSessionRepository {
+    private var stage = DeviceSessionStage.STORAGE
+    private var blockedUntil: Long = 0
+    private var blockedFailure: DeviceSessionResult.Failed? = null
+
+    override suspend fun prepare(): DeviceSessionResult {
+        if (now() < blockedUntil) return checkNotNull(blockedFailure)
+        return try {
+            stage = DeviceSessionStage.STORAGE
+            prepareStored()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            failed(DeviceSessionFailureKind.UNEXPECTED, exceptionType = error::class.simpleName)
+        }
+    }
+
+    override suspend fun restore(): DeviceSessionResult {
+        if (now() < blockedUntil) return checkNotNull(blockedFailure)
+        return try {
+            stage = DeviceSessionStage.STORAGE
+            val credentials =
+                when (val result = storage.read()) {
+                    is CredentialRead.Found -> result.credentials
+
+                    CredentialRead.Missing -> return DeviceSessionResult.NeedsRegistration()
+
+                    is CredentialRead.Failure -> return failed(
+                        if (result.legacyEnvironmentUnknown) {
+                            DeviceSessionFailureKind.LEGACY_ENVIRONMENT_UNKNOWN
+                        } else {
+                            DeviceSessionFailureKind.STORAGE
+                        },
+                    )
+                }
+            if (credentials.refreshToken == null) {
+                if (credentials.pendingNickname != null) {
+                    register(credentials.pendingNickname, credentials)
+                } else {
+                    DeviceSessionResult.NeedsRegistration()
+                }
+            } else {
+                refreshStored(credentials)
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            failed(DeviceSessionFailureKind.UNEXPECTED, exceptionType = error::class.simpleName)
+        }
+    }
+
+    override suspend fun invalidateMissingDevice(generation: Long): DeviceSessionResult {
+        stage = DeviceSessionStage.STORAGE
+        val credentials =
+            when (val result = storage.read()) {
+                is CredentialRead.Found -> {
+                    result.credentials
+                }
+
+                CredentialRead.Missing -> {
+                    if (!storage.write(DeviceCredentials(generation = generation))) {
+                        return failed(DeviceSessionFailureKind.STORAGE)
+                    }
+                    return DeviceSessionResult.NeedsRegistration()
+                }
+
+                is CredentialRead.Failure -> {
+                    return failed(
+                        if (result.legacyEnvironmentUnknown) {
+                            DeviceSessionFailureKind.LEGACY_ENVIRONMENT_UNKNOWN
+                        } else {
+                            DeviceSessionFailureKind.STORAGE
+                        },
+                    )
+                }
+            }
+        // A late response must never clear the credentials of a newer identity.
+        if (credentials.generation != generation) return restore()
+        if (credentials.preservesLegacyIdentity) return failed(DeviceSessionFailureKind.SESSION_CHANGED)
+        // A previous invalidation may already have started a user-authorized registration.
+        // Keep its request ID so a lost registration response cannot create another device.
+        if (credentials.refreshToken == null) return DeviceSessionResult.NeedsRegistration(credentials.pendingNickname)
+        if (!storage.write(DeviceCredentials(generation = generation))) return failed(DeviceSessionFailureKind.STORAGE)
+        return DeviceSessionResult.NeedsRegistration()
+    }
+
+    override suspend fun register(nickname: String): DeviceSessionResult {
+        if (now() < blockedUntil) return checkNotNull(blockedFailure)
+        val normalized = nickname.trim()
+        if (normalized.isBlank()) return failed(DeviceSessionFailureKind.CONTRACT)
+        return try {
+            val credentials =
+                when (val result = storage.read()) {
+                    is CredentialRead.Found -> result.credentials
+
+                    CredentialRead.Missing -> DeviceCredentials()
+
+                    is CredentialRead.Failure -> return failed(
+                        if (result.legacyEnvironmentUnknown) {
+                            DeviceSessionFailureKind.LEGACY_ENVIRONMENT_UNKNOWN
+                        } else {
+                            DeviceSessionFailureKind.STORAGE
+                        },
+                    )
+                }
+            if (credentials.refreshToken != null) return restore()
+            val pending =
+                if (credentials.pendingRequestId != null) {
+                    val preservedNickname = credentials.pendingNickname ?: normalized
+                    if (credentials.pendingNickname == null) {
+                        DeviceCredentials(
+                            pendingRequestId = credentials.pendingRequestId,
+                            pendingStartedAtMillis = credentials.pendingStartedAtMillis,
+                            pendingNickname = preservedNickname,
+                            generation = credentials.generation,
+                            preservesLegacyIdentity = credentials.preservesLegacyIdentity,
+                        ).also {
+                            if (!storage.write(it)) return failed(DeviceSessionFailureKind.STORAGE)
+                        }
+                    } else {
+                        credentials
+                    }
+                } else {
+                    DeviceCredentials(
+                        pendingRequestId = newRequestId(),
+                        pendingStartedAtMillis = now(),
+                        pendingNickname = normalized,
+                        generation = credentials.generation,
+                    ).also { if (!storage.write(it)) return failed(DeviceSessionFailureKind.STORAGE) }
+                }
+            register(pending.pendingNickname ?: normalized, pending)
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (error: Exception) {
+            failed(DeviceSessionFailureKind.UNEXPECTED, exceptionType = error::class.simpleName)
+        }
+    }
+
+    private suspend fun prepareStored(): DeviceSessionResult {
+        val credentials =
+            when (val result = storage.read()) {
+                is CredentialRead.Found -> result.credentials
+
+                CredentialRead.Missing -> DeviceCredentials()
+
+                is CredentialRead.Failure -> return failed(
+                    if (result.legacyEnvironmentUnknown) {
+                        DeviceSessionFailureKind.LEGACY_ENVIRONMENT_UNKNOWN
+                    } else {
+                        DeviceSessionFailureKind.STORAGE
+                    },
+                )
+            }
+        if (credentials.refreshToken != null) {
+            val result = refreshStored(credentials)
+            if (result !is DeviceSessionResult.NeedsRegistration) return result
+            return register(DeviceCredentials(generation = credentials.generation))
+        }
+        return register(credentials)
+    }
+
+    private suspend fun refreshStored(credentials: DeviceCredentials): DeviceSessionResult {
+        stage = DeviceSessionStage.REFRESH
+        val issuedAt = now()
+        return when (val result = api.refresh(DeviceRefreshRequestDto(checkNotNull(credentials.refreshToken)))) {
+            is ApiResult.Success -> {
+                access(result.value.accessToken, result.value.expiresIn, issuedAt, credentials.generation)
+            }
+
+            is ApiResult.Failure -> {
+                val http = result.reason as? NetworkFailure.HttpStatus
+                if (http?.statusCode != 401 || http.error?.code !in setOf("DEVICE-003", "DEVICE-004") ||
+                    credentials.preservesLegacyIdentity
+                ) {
+                    failure(result.reason)
+                } else {
+                    // Persist invalidation before registration; preserve credentials on network failures.
+                    val cleared = DeviceCredentials(generation = credentials.generation)
+                    if (!storage.write(cleared)) {
+                        failed(DeviceSessionFailureKind.STORAGE)
+                    } else {
+                        DeviceSessionResult.NeedsRegistration()
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun register(initial: DeviceCredentials): DeviceSessionResult = register(null, initial)
+
+    private suspend fun register(
+        nickname: String?,
+        initial: DeviceCredentials,
+    ): DeviceSessionResult {
+        var pending = initial
+        // At most two registration transmissions, including expired-window recovery.
+        repeat(2) { attempt ->
+            if (pending.pendingRequestId == null) {
+                pending =
+                    DeviceCredentials(
+                        pendingRequestId = newRequestId(),
+                        pendingStartedAtMillis = now(),
+                        pendingNickname = nickname,
+                        generation = pending.generation,
+                    )
+                if (!storage.write(pending)) return failed(DeviceSessionFailureKind.STORAGE)
+            }
+            val attestation =
+                when (val policy = attestationPolicy) {
+                    DeviceAttestationPolicy.PlatformOnly -> {
+                        DeviceAttestationDto(platform.name)
+                    }
+
+                    is DeviceAttestationPolicy.Required -> {
+                        stage = DeviceSessionStage.CHALLENGE
+                        val challenge =
+                            when (val result = api.challenge()) {
+                                is ApiResult.Success -> result.value
+                                is ApiResult.Failure -> return failure(result.reason)
+                            }
+                        if (challenge.challenge.isBlank() ||
+                            challenge.expiresIn <= 0
+                        ) {
+                            return failed(DeviceSessionFailureKind.CONTRACT)
+                        }
+                        stage = DeviceSessionStage.PROOF
+                        diagnostics.recordSafely(DeviceSessionDiagnostic(stage, DeviceDiagnosticOutcome.STARTED))
+                        val proof =
+                            try {
+                                policy.provider.attest(platform, challenge.challenge)
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (error: Exception) {
+                                return failed(
+                                    DeviceSessionFailureKind.ATTESTATION,
+                                    (error as? DeviceProofException)?.sdkCode,
+                                )
+                            }
+                        if (proof.platform != platform.name || proof.token.isNullOrBlank() ||
+                            proof.challenge != challenge.challenge ||
+                            (platform == DevicePlatform.IOS && proof.keyId.isNullOrBlank())
+                        ) {
+                            return failed(DeviceSessionFailureKind.ATTESTATION)
+                        }
+                        diagnostics.recordSafely(DeviceSessionDiagnostic(stage, DeviceDiagnosticOutcome.SUCCEEDED))
+                        proof
+                    }
+                }
+            stage = DeviceSessionStage.REGISTER
+            val issuedAt = now()
+            when (
+                val result =
+                    if (nickname == null) {
+                        api.register(DeviceRegistrationRequestDto(checkNotNull(pending.pendingRequestId), attestation))
+                    } else {
+                        api.register(
+                            DeviceV3RegistrationRequestDto(
+                                checkNotNull(pending.pendingRequestId),
+                                pending.pendingNickname ?: nickname,
+                                attestation,
+                            ),
+                        )
+                    }
+            ) {
+                is ApiResult.Success -> {
+                    val dto = result.value
+                    if (dto.refreshToken.isBlank() ||
+                        pending.generation == Long.MAX_VALUE
+                    ) {
+                        return failed(DeviceSessionFailureKind.CONTRACT)
+                    }
+                    val ready = access(dto.accessToken, dto.expiresIn, issuedAt, pending.generation + 1)
+                    if (ready !is DeviceSessionResult.Ready) return ready
+                    // One atomic replacement both saves refresh and removes the pending registration.
+                    if (!storage.write(
+                            DeviceCredentials(refreshToken = dto.refreshToken, generation = ready.access.generation),
+                        )
+                    ) {
+                        return failed(DeviceSessionFailureKind.STORAGE)
+                    }
+                    return ready
+                }
+
+                is ApiResult.Failure -> {
+                    val http = result.reason as? NetworkFailure.HttpStatus
+                    if (attempt == 0 && http?.statusCode == 409 && http.error?.code == "DEVICE-002") {
+                        pending = DeviceCredentials(generation = pending.generation)
+                    } else if (http?.statusCode == 409 && http.error?.code == "DEVICE-009") {
+                        if (!storage.write(DeviceCredentials(generation = pending.generation))) {
+                            return failed(DeviceSessionFailureKind.STORAGE)
+                        }
+                        return failure(result.reason)
+                    } else if (http?.statusCode == 400 && http.error?.code == "DEVICE-008") {
+                        if (!storage.write(DeviceCredentials(generation = pending.generation))) {
+                            return failed(DeviceSessionFailureKind.STORAGE)
+                        }
+                        return failure(result.reason)
+                    } else if (attempt == 0 && retryableRegistration(result.reason)) {
+                        // Preserve requestId even when the server's success body could not be decoded.
+                    } else {
+                        return failure(result.reason)
+                    }
+                }
+            }
+        }
+        return failed(DeviceSessionFailureKind.SERVER)
+    }
+
+    private fun retryableRegistration(reason: NetworkFailure): Boolean =
+        when (reason) {
+            is NetworkFailure.Transport, is NetworkFailure.Contract -> {
+                true
+            }
+
+            is NetworkFailure.HttpStatus -> {
+                (reason.statusCode >= 500 && reason.statusCode != 503) ||
+                    (
+                        reason.statusCode == 400 && reason.error?.code == "DEVICE-005" &&
+                            attestationPolicy is DeviceAttestationPolicy.Required
+                    )
+            }
+
+            else -> {
+                false
+            }
+        }
+
+    private fun access(
+        token: String,
+        seconds: Long,
+        issuedAt: Long,
+        generation: Long,
+    ): DeviceSessionResult {
+        if (token.isBlank() || seconds <= 0 || issuedAt < 0 || seconds > (Long.MAX_VALUE - issuedAt) / 1000) {
+            return failed(DeviceSessionFailureKind.CONTRACT)
+        }
+        return DeviceSessionResult.Ready(DeviceAccess(token, issuedAt, issuedAt + seconds * 1000, generation))
+    }
+
+    private fun failure(reason: NetworkFailure): DeviceSessionResult.Failed {
+        val http = reason as? NetworkFailure.HttpStatus
+        val kind =
+            when (reason) {
+                is NetworkFailure.Transport -> {
+                    DeviceSessionFailureKind.NETWORK
+                }
+
+                is NetworkFailure.Contract -> {
+                    DeviceSessionFailureKind.CONTRACT
+                }
+
+                is NetworkFailure.Unexpected -> {
+                    DeviceSessionFailureKind.UNEXPECTED
+                }
+
+                is NetworkFailure.SessionUnavailable, is NetworkFailure.SessionProviderFailed -> {
+                    DeviceSessionFailureKind.AUTHENTICATION
+                }
+
+                is NetworkFailure.HttpStatus -> {
+                    when {
+                        reason.statusCode == 401 -> {
+                            DeviceSessionFailureKind.AUTHENTICATION
+                        }
+
+                        reason.statusCode == 429 || reason.error?.code == "DEVICE-007" -> {
+                            DeviceSessionFailureKind.RATE_LIMITED
+                        }
+
+                        reason.error?.code in setOf("DEVICE-005", "DEVICE-006") -> {
+                            DeviceSessionFailureKind.ATTESTATION
+                        }
+
+                        else -> {
+                            DeviceSessionFailureKind.SERVER
+                        }
+                    }
+                }
+
+                else -> {
+                    DeviceSessionFailureKind.SERVER
+                }
+            }
+        val retrySeconds =
+            http
+                ?.retryAfter
+                ?.trim()
+                ?.toLongOrNull()
+                ?.takeIf { it >= 0 }
+        val time = now()
+        val retryAt =
+            retrySeconds?.let { time + minOf(it, (Long.MAX_VALUE - time) / 1000) * 1000 }
+                ?: http?.retryAfter?.let { runCatching { it.fromHttpToGmtDate().timestamp }.getOrNull() }
+        diagnostics.recordSafely(
+            DeviceSessionDiagnostic(
+                stage,
+                DeviceDiagnosticOutcome.FAILED,
+                http?.statusCode,
+                http?.error?.code,
+                failureKind = kind,
+            ),
+        )
+        val result =
+            DeviceSessionResult.Failed(
+                DeviceSessionFailure(
+                    kind,
+                    http?.statusCode,
+                    http?.error?.code?.takeIf {
+                        it.matches(Regex("(?:DEVICE|AUTH|COMMON)-[0-9]{3}"))
+                    },
+                    retryAt,
+                    stage,
+                ),
+            )
+        if (retryAt != null && http?.statusCode in setOf(429, 503)) {
+            blockedUntil = retryAt
+            blockedFailure = result
+        }
+        return result
+    }
+
+    private fun failed(
+        kind: DeviceSessionFailureKind,
+        sdkCode: Int? = null,
+        exceptionType: String? = null,
+    ): DeviceSessionResult.Failed {
+        val failedStage =
+            if (kind == DeviceSessionFailureKind.STORAGE ||
+                kind == DeviceSessionFailureKind.LEGACY_ENVIRONMENT_UNKNOWN
+            ) {
+                DeviceSessionStage.STORAGE
+            } else {
+                stage
+            }
+        diagnostics.recordSafely(
+            DeviceSessionDiagnostic(
+                failedStage,
+                DeviceDiagnosticOutcome.FAILED,
+                sdkCode = sdkCode,
+                failureKind = kind,
+                exceptionType = exceptionType,
+            ),
+        )
+        return DeviceSessionResult.Failed(DeviceSessionFailure(kind, stage = failedStage, sdkCode = sdkCode))
+    }
+}

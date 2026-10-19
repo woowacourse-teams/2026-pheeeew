@@ -4,6 +4,8 @@ import UIKit
 import CoreGraphics
 import Foundation
 
+private let regionRenderPaddingPoints: CGFloat = 96
+
 final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecognizerDelegate {
     let mapView: MLNMapView
     private let eventSink: FoundationIosMapEventSink
@@ -457,7 +459,24 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             maxLatitude: bounds.ne.latitude
         )
         if queryBounds.isValid() {
-            eventSink.onViewportChanged(viewport: EmotionMapViewport(bounds: queryBounds, zoom: mapView.zoomLevel))
+            let padded = mapView.bounds.insetBy(dx: -regionRenderPaddingPoints, dy: -regionRenderPaddingPoints)
+            let edgeSegments = 12
+            var samplePoints: [CGPoint] = []
+            for step in 0...edgeSegments {
+                let fraction = CGFloat(step) / CGFloat(edgeSegments)
+                samplePoints.append(CGPoint(x: padded.minX + padded.width * fraction, y: padded.minY))
+                samplePoints.append(CGPoint(x: padded.maxX, y: padded.minY + padded.height * fraction))
+                samplePoints.append(CGPoint(x: padded.maxX - padded.width * fraction, y: padded.maxY))
+                samplePoints.append(CGPoint(x: padded.minX, y: padded.maxY - padded.height * fraction))
+            }
+            let corners = samplePoints.map { point in
+                let coordinate = mapView.convert(point, toCoordinateFrom: mapView)
+                return GeoCoordinate(latitude: coordinate.latitude, longitude: coordinate.longitude)
+            }
+            let validRenderBounds = EmotionMapModelsKt.enclosingEmotionMapBounds(coordinates: corners) ?? queryBounds
+            eventSink.onViewportChanged(
+                viewport: EmotionMapViewport(bounds: queryBounds, zoom: mapView.zoomLevel, renderBounds: validRenderBounds)
+            )
         }
     }
 

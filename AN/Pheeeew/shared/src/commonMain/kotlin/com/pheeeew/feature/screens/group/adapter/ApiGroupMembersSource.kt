@@ -1,14 +1,16 @@
 package com.pheeeew.feature.screens.group.adapter
 
-import com.pheeeew.domain.repository.group.GroupMembersRepository
-import com.pheeeew.domain.repository.group.GroupMembersResult
+import com.pheeeew.domain.repository.GroupMembersRepository
+import com.pheeeew.domain.repository.GroupMembersResult
 import com.pheeeew.feature.screens.group.members.GroupMemberUiModel
 import com.pheeeew.feature.screens.group.members.GroupMembersPage
 import com.pheeeew.feature.screens.group.members.GroupMembersPageResult
 import com.pheeeew.feature.screens.group.members.GroupMembersSource
 import com.pheeeew.feature.screens.group.model.GroupId
+import dev.zacsweers.metro.Inject
 import com.pheeeew.domain.model.group.GroupId as DomainGroupId
 
+@Inject
 class ApiGroupMembersSource(
     private val repository: GroupMembersRepository,
 ) : GroupMembersSource {

@@ -6,11 +6,11 @@ import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.MutationCertainty
 import com.pheeeew.core.network.NetworkFailure
-import com.pheeeew.data.remote.audio.AudioUploadApi
-import com.pheeeew.data.remote.emotion.EmotionRegistrationApi
-import com.pheeeew.data.remote.emotion.toRequestDto
-import com.pheeeew.data.repository.audio.MAX_AUDIO_UPLOAD_BYTES
-import com.pheeeew.data.repository.audio.readRecordingAudioFile
+import com.pheeeew.data.remote.api.AudioUploadApi
+import com.pheeeew.data.remote.api.EmotionApi
+import com.pheeeew.data.remote.mapper.toRequestDto
+import com.pheeeew.data.repository.MAX_AUDIO_UPLOAD_BYTES
+import com.pheeeew.data.repository.readRecordingAudioFile
 import com.pheeeew.domain.model.emotion.EmotionRegistration
 import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
@@ -18,13 +18,15 @@ import com.pheeeew.domain.repository.AudioUploadObservation
 import com.pheeeew.domain.repository.AudioUploadOutcome
 import com.pheeeew.domain.repository.AudioUploadStage
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.time.TimeSource
 
+@Inject
 internal class EmotionRegistrationRepositoryImpl(
-    private val api: EmotionRegistrationApi,
+    private val api: EmotionApi,
     private val audioUploadApi: AudioUploadApi,
     private val monitoring: Monitoring = NoOpMonitoring,
 ) : EmotionRegistrationRepository {

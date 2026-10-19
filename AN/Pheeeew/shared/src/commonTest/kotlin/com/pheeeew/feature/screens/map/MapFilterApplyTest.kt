@@ -1,7 +1,5 @@
 package com.pheeeew.feature.screens.map
 
-import com.pheeeew.core.permission.LocationPermissionController
-import com.pheeeew.core.permission.LocationPermissionStatus
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapPage
@@ -17,12 +15,14 @@ import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.MapFilterScope
 import com.pheeeew.domain.model.emotion.MapFilterSettings
+import com.pheeeew.domain.permission.LocationPermissionController
+import com.pheeeew.domain.permission.LocationPermissionStatus
+import com.pheeeew.domain.repository.EmotionFailure
 import com.pheeeew.domain.repository.EmotionMapRepository
 import com.pheeeew.domain.repository.EmotionRegionMapRepository
+import com.pheeeew.domain.repository.EmotionResult
 import com.pheeeew.domain.repository.LocationRepository
 import com.pheeeew.domain.repository.MapFilterSettingsRepository
-import com.pheeeew.domain.repository.emotion.EmotionFailure
-import com.pheeeew.domain.repository.emotion.EmotionResult
 import com.pheeeew.domain.usecase.FindEmotionMapPageUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase
 import com.pheeeew.domain.usecase.FindEmotionRegionsUseCase
@@ -119,7 +119,7 @@ class MapFilterApplyTest {
                 vm.selectFilterScope(FilterScope.Mine)
                 vm.applyFilter()
                 runCurrent()
-                vm.onViewportChanged(EmotionMapViewport(latest, 10.0))
+                vm.onViewportChanged(EmotionMapViewport(latest, 10.0, WORLD_RENDER_BOUNDS))
                 gate.complete(Unit)
                 runCurrent()
                 assertEquals(
@@ -169,7 +169,7 @@ class MapFilterApplyTest {
                 vm.applyFilter()
                 runCurrent()
                 val latest = BOUNDS.copy(minLongitude = 128.0, maxLongitude = 128.2)
-                vm.onViewportChanged(EmotionMapViewport(latest, 10.0))
+                vm.onViewportChanged(EmotionMapViewport(latest, 10.0, WORLD_RENDER_BOUNDS))
                 runCurrent()
                 assertEquals(null, settings.saved)
                 assertEquals(
@@ -527,7 +527,6 @@ class MapFilterApplyTest {
             ) = load(bounds, filter)
 
             override fun findSnapshot(
-                bounds: EmotionMapBounds,
                 level: EmotionRegionLevel,
                 groupId: String?,
                 filter: EmotionSearchFilter?,
@@ -623,5 +622,6 @@ class MapFilterApplyTest {
 
     private companion object {
         val BOUNDS = EmotionMapBounds(126.9, 37.5, 127.1, 37.6)
+        val WORLD_RENDER_BOUNDS = EmotionMapBounds(-180.0, -90.0, 180.0, 90.0)
     }
 }

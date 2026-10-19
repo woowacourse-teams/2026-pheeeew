@@ -3,11 +3,11 @@ package com.pheeeew.data.repository
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.core.network.NetworkFailure
 import com.pheeeew.data.cache.EmotionMapCache
-import com.pheeeew.data.remote.emotion.EmotionGroupStampDto
-import com.pheeeew.data.remote.emotion.EmotionMapApi
-import com.pheeeew.data.remote.emotion.EmotionMapFeatureDto
-import com.pheeeew.data.remote.emotion.EmotionMapPageDto
-import com.pheeeew.data.remote.emotion.EmotionMapPropertiesDto
+import com.pheeeew.data.remote.api.EmotionMapApi
+import com.pheeeew.data.remote.dto.EmotionGroupStampDto
+import com.pheeeew.data.remote.dto.EmotionMapFeatureDto
+import com.pheeeew.data.remote.dto.EmotionMapPageDto
+import com.pheeeew.data.remote.dto.EmotionMapPropertiesDto
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapFailure
 import com.pheeeew.domain.model.emotion.EmotionMapPage
@@ -20,9 +20,11 @@ import com.pheeeew.domain.model.group.GroupStamp
 import com.pheeeew.domain.model.group.GroupStampFrame
 import com.pheeeew.domain.model.group.StampColor
 import com.pheeeew.domain.repository.EmotionMapRepository
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CancellationException
 import kotlin.time.Instant
 
+@Inject
 class EmotionMapRepositoryImpl(
     private val api: EmotionMapApi,
 ) : EmotionMapRepository {

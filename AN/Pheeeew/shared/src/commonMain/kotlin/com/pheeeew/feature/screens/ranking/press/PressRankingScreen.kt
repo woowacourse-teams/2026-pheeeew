@@ -38,8 +38,6 @@ import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.core.di.createPressRankingViewModel
-import com.pheeeew.core.network.ApiClient
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.ranking.components.RankingTopBarHeight
@@ -49,6 +47,7 @@ import com.pheeeew.feature.screens.ranking.components.rememberRankingTopBarScrol
 import com.pheeeew.feature.screens.ranking.press.components.MyPressRankCard
 import com.pheeeew.feature.screens.ranking.press.components.PressEmotionFilter
 import com.pheeeew.feature.screens.ranking.press.components.PressPersonRankList
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
 import pheeeew.shared.generated.resources.ranking_empty_week
@@ -56,11 +55,10 @@ import pheeeew.shared.generated.resources.ranking_press_title
 
 @Composable
 fun PressRankingRoute(
-    apiClient: ApiClient,
     modifier: Modifier = Modifier,
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
 ) {
-    val viewModel: PressRankingViewModel = viewModel { createPressRankingViewModel(apiClient) }
+    val viewModel: PressRankingViewModel = metroViewModel()
     val currentOnRefreshActionChanged by rememberUpdatedState(onRefreshActionChanged)
     DisposableEffect(viewModel) {
         currentOnRefreshActionChanged(viewModel::onRefresh)

@@ -1,8 +1,8 @@
 package com.pheeeew.feature.monitoring.product
 import com.pheeeew.core.monitoring.DefinedEvent
 import com.pheeeew.core.monitoring.Monitoring
-import com.pheeeew.core.permission.LocationPermissionController
-import com.pheeeew.core.permission.LocationPermissionStatus
+import com.pheeeew.domain.permission.LocationPermissionController
+import com.pheeeew.domain.permission.LocationPermissionStatus
 import com.pheeeew.feature.screens.map.monitoring.RecordFunnelEvents
 import kotlinx.coroutines.CancellationException
 

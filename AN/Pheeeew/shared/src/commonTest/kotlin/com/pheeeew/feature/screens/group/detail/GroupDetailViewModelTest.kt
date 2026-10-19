@@ -5,10 +5,11 @@ import com.pheeeew.domain.model.emotion.EmotionBounds
 import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.group.GroupRole
-import com.pheeeew.domain.repository.emotion.EmotionFailure
-import com.pheeeew.domain.repository.emotion.EmotionRepository
-import com.pheeeew.domain.repository.emotion.EmotionResult
-import com.pheeeew.domain.repository.group.GroupPublicJoinResult
+import com.pheeeew.domain.repository.EmotionFailure
+import com.pheeeew.domain.repository.EmotionModerationResult
+import com.pheeeew.domain.repository.EmotionRepository
+import com.pheeeew.domain.repository.EmotionResult
+import com.pheeeew.domain.repository.GroupPublicJoinResult
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
@@ -882,7 +883,7 @@ class GroupDetailViewModelTest {
             selected: Boolean,
         ) = unavailable<Unit>()
 
-        override suspend fun block(id: Long) = unavailable<Unit>()
+        override suspend fun delete(emotionId: Long) = EmotionModerationResult.Unavailable
 
         private fun <T> unavailable() = EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
     }

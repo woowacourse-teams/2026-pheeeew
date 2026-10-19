@@ -6,8 +6,8 @@ import com.pheeeew.domain.model.emotion.EmotionRegistration
 import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
-import com.pheeeew.domain.repository.group.GroupStampListLoadResult
-import com.pheeeew.domain.repository.group.GroupStampListRepository
+import com.pheeeew.domain.repository.GroupStampListLoadResult
+import com.pheeeew.domain.repository.GroupStampListRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
 import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius

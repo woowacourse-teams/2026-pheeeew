@@ -2,9 +2,9 @@ package com.pheeeew.feature.screens.group.adapter
 
 import com.pheeeew.domain.model.group.GroupStamp
 import com.pheeeew.domain.model.group.StampColor
-import com.pheeeew.domain.repository.group.GroupCreateCommand
-import com.pheeeew.domain.repository.group.GroupCreateRepository
-import com.pheeeew.domain.repository.group.GroupCreateRepositoryResult
+import com.pheeeew.domain.repository.GroupCreateCommand
+import com.pheeeew.domain.repository.GroupCreateRepository
+import com.pheeeew.domain.repository.GroupCreateRepositoryResult
 import com.pheeeew.feature.component.stamp.toDomainFrame
 import com.pheeeew.feature.screens.group.create.CreateGroupAction
 import com.pheeeew.feature.screens.group.create.CreateGroupResult
@@ -16,7 +16,9 @@ import com.pheeeew.feature.screens.group.home.GroupListResult
 import com.pheeeew.feature.screens.group.home.GroupListSource
 import com.pheeeew.feature.screens.group.mapper.toDomainJoinType
 import com.pheeeew.feature.screens.group.model.GroupId
+import dev.zacsweers.metro.Inject
 
+@Inject
 class ApiCreateGroupAction(
     private val repository: GroupCreateRepository,
 ) : CreateGroupAction {
@@ -49,6 +51,7 @@ class ApiCreateGroupAction(
 }
 
 /** Reads membership summaries and offers only exact-name matches as recovery candidates. */
+@Inject
 class GroupListCreateRecoveryAction(
     private val groupListSource: GroupListSource,
 ) : FindGroupCreateCandidatesAction {

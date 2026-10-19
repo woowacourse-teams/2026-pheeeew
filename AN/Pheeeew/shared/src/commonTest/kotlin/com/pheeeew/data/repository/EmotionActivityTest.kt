@@ -6,8 +6,8 @@ import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.network.AccessToken
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createApiClient
-import com.pheeeew.data.remote.audio.AudioUploadApi
-import com.pheeeew.data.remote.emotion.EmotionRegistrationApi
+import com.pheeeew.data.remote.api.AudioUploadApi
+import com.pheeeew.data.remote.api.EmotionApi
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.emotion.EmotionRegistration
 import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
@@ -54,7 +54,7 @@ class EmotionActivityTest {
             try {
                 val repository =
                     EmotionRegistrationRepositoryImpl(
-                        EmotionRegistrationApi(client.requests),
+                        EmotionApi(client.requests),
                         AudioUploadApi(client.requests),
                         monitoring,
                     )

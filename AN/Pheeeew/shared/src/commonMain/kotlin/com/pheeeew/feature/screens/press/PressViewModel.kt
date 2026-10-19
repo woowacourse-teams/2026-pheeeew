@@ -7,8 +7,9 @@ import com.pheeeew.domain.model.press.AllDailyPressSnapshot
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
 import com.pheeeew.domain.model.press.PressAcceptance
 import com.pheeeew.domain.model.press.PressSessionState
-import com.pheeeew.domain.repository.press.PressRepository
+import com.pheeeew.domain.repository.PressRepository
 import com.pheeeew.feature.emotion.model.EmotionKind
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -41,6 +42,7 @@ internal data class PressUiState(
 }
 
 /** Owns only this screen's projection; durable-for-session data and work live in PressRepository. */
+@Inject
 internal class PressViewModel(
     private val repository: PressRepository,
 ) : ViewModel() {

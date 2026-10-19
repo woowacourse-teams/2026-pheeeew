@@ -1,0 +1,20 @@
+{
+  "README.md": "da1a97c48624ead2da9aa5f3f3b2b261971cf44e7bd7a4c24db44945eb2ec727",
+  "comparison.csv": "3b82aa4314a2bb9e189a9e7aa1e720e518c2d143c7ba40d9f99ada563cb55073",
+  "repository-tests.xml": "b3fa54906269fad0a6b30208dcb3b8d8bb6294d01dcc10cb773d50df313d8553",
+  "device-environment.json": "15c9f0c78ed6d67a1d1cbac9da2c1b63b0ad789b6b5581e9cd07b92d4b133c7a",
+  "actual-device-screen.png": "9ee287ddf7569efe1ee0f82966999223d208fb94884321d2ac4413bad1abdf40",
+  "analyze.py": "e1a6513b85e827e500ca2ebc1fefc258d63cd6beca3fc760c64412be65214706",
+  "logs/postwait-before_continuous_continuous_r3-inject.console.txt": "6a7483429cdba3f023cb60a1540344b3c1e863814fab853c437b0617380001ee",
+  "logs/postwait-after_continuous_continuous_r1-inject.console.txt": "96fb5275f818d6cdcf0aeb7a13a49d1858224ea553dd730e95439a316ab8ae34",
+  "logs/postwait-after_continuous_continuous_r2-inject.console.txt": "2a44a9d97f8be4e7ca9512d552964aa71204629c7815a698654a969dc9823535",
+  "logs/postwait-before_continuous_continuous_r1.log": "9467e42e7b69afd68ebf0dac14fa77dfb3e9718f26e1edc95018a71215db21cd",
+  "logs/postwait-before_continuous_continuous_r3.log": "334d98ffd2c6ea22c318662f94081128d68168f63b65fc914485d175250cc2bc",
+  "logs/postwait-before_continuous_continuous_r2.log": "f539ad8a16dc6c984379d2ec3cc7ee2fda37386259a8bf3a0e02d87c7e6d207a",
+  "logs/postwait-after_continuous_continuous_r3-inject.console.txt": "08e32b319d9d4477c1a61cb721b131f3d3fecb785e1afe81ee5f9dd5bae6e13d",
+  "logs/postwait-before_continuous_continuous_r1-inject.console.txt": "3b90ffa5a00b21d6c850a027b3afd9240a91c0f2da3c5832574bd102c08a1eb0",
+  "logs/postwait-before_continuous_continuous_r2-inject.console.txt": "ef893093b8aae8fb64cae6ecc5bc2b15f7cfd9ac82b76015c7296effbd13d291",
+  "logs/postwait-after_continuous_continuous_r1.log": "84ef8b53c54c8d21c2dc8301ecd5645b05d4f8de8e297ef2657721bc8dbede91",
+  "logs/postwait-after_continuous_continuous_r3.log": "57cedba30780ed0569ea03ab9e5722a8885d35fb4879becb7d78f1db27a11c4b",
+  "logs/postwait-after_continuous_continuous_r2.log": "426141b5d6fcbd2560898bba84120a303640dcccc672892d32d29bc2fdad35ce"
+}

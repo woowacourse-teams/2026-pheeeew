@@ -1,8 +1,8 @@
 package com.pheeeew.core.network
 
-import com.pheeeew.data.remote.device.api.KtorDeviceSessionApi
-import com.pheeeew.data.remote.device.dto.DeviceAttestationDto
-import com.pheeeew.data.remote.device.dto.DeviceRegistrationRequestDto
+import com.pheeeew.data.remote.api.KtorDeviceSessionApi
+import com.pheeeew.data.remote.dto.DeviceAttestationDto
+import com.pheeeew.data.remote.dto.DeviceRegistrationRequestDto
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.statement.bodyAsText
@@ -39,6 +39,50 @@ class AuthenticationRecoveryTest {
                 assertEquals("AUTH-001", assertIs<NetworkFailure.HttpStatus>(failure.reason).error?.code)
                 assertEquals(2, calls)
                 assertEquals(1, provider.recoveries)
+            } finally {
+                client.close()
+            }
+        }
+
+    @Test
+    fun `DEVICE-004 after AUTH-001 recovery invalidates the renewed token without another replay`() =
+        runTest {
+            var calls = 0
+            var recoveries = 0
+            var invalidations = 0
+            val provider =
+                object : RecoverableAccessTokenProvider {
+                    override suspend fun accessToken() = AccessToken("old")
+
+                    override suspend fun recover(rejected: AccessToken): AccessToken {
+                        recoveries++
+                        return AccessToken("new")
+                    }
+
+                    override suspend fun deviceUnavailable(rejected: AccessToken) {
+                        assertEquals("new", rejected.value)
+                        invalidations++
+                    }
+                }
+            val client =
+                createApiClient(
+                    MockEngine {
+                        val code = if (calls++ == 0) "AUTH-001" else "DEVICE-004"
+                        respond(
+                            """{"code":"$code"}""",
+                            HttpStatusCode.Unauthorized,
+                            headersOf("Content-Type", "application/json"),
+                        )
+                    },
+                    ApiConfig("https://example.com"),
+                    provider,
+                )
+            try {
+                val failure = assertIs<ApiResult.Failure>(client.requests.execute(read()) { it.bodyAsText() })
+                assertEquals("DEVICE-004", assertIs<NetworkFailure.HttpStatus>(failure.reason).error?.code)
+                assertEquals(2, calls)
+                assertEquals(1, recoveries)
+                assertEquals(1, invalidations)
             } finally {
                 client.close()
             }
