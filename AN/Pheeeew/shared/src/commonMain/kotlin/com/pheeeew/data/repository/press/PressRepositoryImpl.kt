@@ -79,6 +79,7 @@ internal class PressRepositoryImpl(
     private var failures = 0
     private var statisticsFailures = 0
     private var retryNotBefore = 0L
+    private var batchFlushNotBefore: Long? = null
 
     init {
         require(batchMaxPerEmotion > 0 && batchMaxTotal > 0)
@@ -98,6 +99,7 @@ internal class PressRepositoryImpl(
     }
 
     override fun accept(emotion: EmotionState): PressAcceptance {
+        val wasEmpty = !batch.isNotEmpty
         val serverTotal = mutableState.value.myToday?.total ?: 0L
         val allServerTotal = mutableState.value.allToday?.total ?: 0L
         if (outstanding >= Long.MAX_VALUE - serverTotal ||
@@ -107,6 +109,7 @@ internal class PressRepositoryImpl(
             mutableState.update { it.copy(notice = PressSessionNotice.NumericLimit) }
             return PressAcceptance.NumericLimit
         }
+        if (wasEmpty) batchFlushNotBefore = safeDeadline(nowMillis(), flushDelayMillis)
         outstanding++
         optimisticAllPressCount++
         optimisticCounts[emotion] = optimisticCounts.getValue(emotion) + 1L
@@ -159,6 +162,16 @@ internal class PressRepositoryImpl(
         return window > 0 && nowMillis() - write.createdAtMillis < window
     }
 
+    /** Completing a read is not a retry: fresh input keeps the wait established on acceptance. */
+    private fun resumeQueuedWork() {
+        val now = nowMillis()
+        val wait = if (pendingWrite == null) remainingBatchWait(now) else 0L
+        scheduleSend(wait)
+    }
+
+    private fun remainingBatchWait(now: Long = nowMillis()): Long =
+        ((batchFlushNotBefore ?: now) - now).coerceAtLeast(0L)
+
     private fun scheduleSend(delayMillis: Long) {
         if (workerJob?.isActive == true || connected == false || outstanding == 0L) return
         if (pausedNotice == PressSessionNotice.WaitingForApiContract) return
@@ -176,7 +189,7 @@ internal class PressRepositoryImpl(
                         refreshAgain = false
                         launchRead()
                     } else if (outstanding > 0L && sessionScope.coroutineContext[Job]?.isActive != false) {
-                        scheduleSend(0L)
+                        resumeQueuedWork()
                     }
                 }
             }
@@ -288,9 +301,8 @@ internal class PressRepositoryImpl(
                 }
             }
             if (outstanding > 0) {
-                val interval = if (batch.isReadyToFlush(batchMaxPerEmotion, batchMaxTotal)) 0L else flushDelayMillis
                 delay(retryPolicy.minRequestIntervalMillis)
-                awaitFlush(interval)
+                awaitFlush(remainingBatchWait())
             }
         }
         if (outstanding == 0L && allStatsDirtyAfterWrite) refreshAllAfterWrite()
@@ -305,6 +317,7 @@ internal class PressRepositoryImpl(
 
     private fun newWrite(): PendingWrite? {
         val next = batch.take(batchMaxPerEmotion, batchMaxTotal, lastEmotionIndex, nextSequence) ?: return null
+        if (!batch.isNotEmpty) batchFlushNotBefore = null
         nextSequence = if (nextSequence == Long.MAX_VALUE) 1L else nextSequence + 1L
         lastEmotionIndex = (lastEmotionIndex + 1) % EmotionState.entries.size
         return PendingWrite(next, checkNotNull(mutableState.value.myToday), nowMillis())
@@ -339,7 +352,7 @@ internal class PressRepositoryImpl(
                         refreshAgain = false
                         launchRead()
                     } else if (outstanding > 0) {
-                        scheduleSend(0L)
+                        resumeQueuedWork()
                     }
                 }
             }
