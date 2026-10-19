@@ -1,6 +1,6 @@
 package com.pheeeew.feature.screens.map.record
 
-import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
+import com.pheeeew.domain.repository.LastRecordedGroupRepository
 
 class InMemoryLastRecordedGroupRepository(
     var groupId: String? = null,

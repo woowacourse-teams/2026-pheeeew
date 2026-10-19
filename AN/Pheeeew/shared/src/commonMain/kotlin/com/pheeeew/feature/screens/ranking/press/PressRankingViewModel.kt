@@ -2,9 +2,12 @@ package com.pheeeew.feature.screens.ranking.press
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.utils.withMinimumLoadingTime
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.resultLabel
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,9 +35,10 @@ internal enum class PressRankingStatus {
     Failed,
 }
 
+@Inject
 internal class PressRankingViewModel(
     private val source: PressRankingSource,
-    monitoring: com.pheeeew.core.monitoring.Monitoring = com.pheeeew.core.monitoring.NoOpMonitoring,
+    monitoring: Monitoring = NoOpMonitoring,
 ) : ViewModel() {
     val telemetry = ProductMonitoring(monitoring, "ranking")
     private val _uiState = MutableStateFlow(PressRankingUiState())

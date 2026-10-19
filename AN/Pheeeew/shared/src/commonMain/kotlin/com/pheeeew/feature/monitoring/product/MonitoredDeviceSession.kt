@@ -1,7 +1,7 @@
 package com.pheeeew.feature.monitoring.product
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.domain.model.device.DeviceSessionResult
-import com.pheeeew.domain.repository.device.DeviceSessionRepository
+import com.pheeeew.domain.repository.DeviceSessionRepository
 
 class MonitoredDeviceSession(
     private val delegate: DeviceSessionRepository,
@@ -24,6 +24,8 @@ class MonitoredDeviceSession(
                 }
             },
         ) { delegate.restore() }
+
+    override suspend fun invalidateMissingDevice(generation: Long) = delegate.invalidateMissingDevice(generation)
 
     override suspend fun register(nickname: String) =
         telemetry.operation("device_session_register_finished").observe(

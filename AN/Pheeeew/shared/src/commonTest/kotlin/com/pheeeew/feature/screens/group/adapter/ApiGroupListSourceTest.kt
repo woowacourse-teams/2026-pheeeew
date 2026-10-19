@@ -5,8 +5,8 @@ import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.domain.model.group.GroupStamp
 import com.pheeeew.domain.model.group.GroupStampFrame
 import com.pheeeew.domain.model.group.StampColor
-import com.pheeeew.domain.repository.group.GroupListLoadResult
-import com.pheeeew.domain.repository.group.GroupListRepository
+import com.pheeeew.domain.repository.GroupListLoadResult
+import com.pheeeew.domain.repository.GroupListRepository
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.home.GroupListResult
 import kotlinx.coroutines.test.runTest

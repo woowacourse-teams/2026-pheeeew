@@ -7,14 +7,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.pheeeew.domain.repository.press.PressRepository
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
-internal fun PressRoute(
-    repository: PressRepository,
-    modifier: Modifier = Modifier,
-) {
-    val viewModel: PressViewModel = viewModel { PressViewModel(repository) }
+internal fun PressRoute(modifier: Modifier = Modifier) {
+    val viewModel: PressViewModel = metroViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.onScreenResumed() }
     PressScreen(

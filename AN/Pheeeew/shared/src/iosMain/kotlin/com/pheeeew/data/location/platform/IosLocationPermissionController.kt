@@ -1,7 +1,8 @@
 package com.pheeeew.data.location.platform.ios
 
-import com.pheeeew.core.permission.LocationPermissionController
-import com.pheeeew.core.permission.LocationPermissionStatus
+import com.pheeeew.domain.permission.LocationPermissionController
+import com.pheeeew.domain.permission.LocationPermissionStatus
+import dev.zacsweers.metro.Inject
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
@@ -21,10 +22,14 @@ import platform.darwin.dispatch_get_main_queue
 import kotlin.coroutines.resume
 
 @OptIn(ExperimentalForeignApi::class)
+@Inject
 class IosLocationPermissionController(
     private val locationManager: CLLocationManager = CLLocationManager(),
-) : LocationPermissionController {
+) : LocationPermissionController,
+    AutoCloseable {
     private val delegate = PermissionDelegate(locationManager)
+
+    override fun close() = delegate.close()
 
     override suspend fun currentStatus(): LocationPermissionStatus =
         withContext(Dispatchers.Main) {
@@ -45,6 +50,13 @@ private class PermissionDelegate(
 ) : NSObject(),
     CLLocationManagerDelegateProtocol {
     private var continuation: CancellableContinuation<LocationPermissionStatus>? = null
+
+    fun close() {
+        continuation?.cancel()
+        continuation = null
+        if (locationManager.delegate === this) locationManager.delegate = null
+        locationManager.stopUpdatingLocation()
+    }
 
     suspend fun requestPermission(): LocationPermissionStatus {
         val status = locationManager.authorizationStatus

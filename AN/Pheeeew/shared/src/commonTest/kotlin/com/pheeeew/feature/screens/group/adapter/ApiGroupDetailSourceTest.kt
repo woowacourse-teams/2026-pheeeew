@@ -1,12 +1,12 @@
 package com.pheeeew.feature.screens.group.adapter
 
-import com.pheeeew.data.remote.group.dto.GroupDetailResponseDto
-import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
-import com.pheeeew.data.remote.group.mapper.GroupDetailResponseMapper
+import com.pheeeew.data.remote.dto.GroupDetailResponseDto
+import com.pheeeew.data.remote.dto.GroupStampResponseDto
+import com.pheeeew.data.remote.mapper.GroupDetailResponseMapper
 import com.pheeeew.domain.model.group.GroupRole
-import com.pheeeew.domain.repository.group.GroupDetailLookupResult
-import com.pheeeew.domain.repository.group.GroupDetailRepository
-import com.pheeeew.domain.repository.group.GroupLeaveResult
+import com.pheeeew.domain.repository.GroupDetailLookupResult
+import com.pheeeew.domain.repository.GroupDetailRepository
+import com.pheeeew.domain.repository.GroupLeaveResult
 import com.pheeeew.feature.screens.group.detail.GroupDetailLoadResult
 import com.pheeeew.feature.screens.group.detail.model.GroupMoodFeedUiState
 import com.pheeeew.feature.screens.group.detail.model.toReadyUiModel

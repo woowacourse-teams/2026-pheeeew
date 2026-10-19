@@ -4,7 +4,7 @@ import com.pheeeew.domain.model.device.DeviceNicknameAvailability
 import com.pheeeew.domain.model.device.DeviceNicknameLookup
 import com.pheeeew.domain.model.device.DeviceNicknameState
 import com.pheeeew.domain.model.device.DeviceNicknameUpdateResult
-import com.pheeeew.domain.repository.device.DeviceNicknameRepository
+import com.pheeeew.domain.repository.DeviceNicknameRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay

@@ -1,0 +1,658 @@
+package com.pheeeew.data.repository
+
+import com.pheeeew.core.network.ApiError
+import com.pheeeew.core.network.ApiResult
+import com.pheeeew.core.network.MutationCertainty
+import com.pheeeew.core.network.NetworkFailure
+import com.pheeeew.core.network.TransportFailureReason
+import com.pheeeew.data.local.device.CredentialRead
+import com.pheeeew.data.local.device.DeviceCredentialStorage
+import com.pheeeew.data.local.device.LegacyCredentialPolicy
+import com.pheeeew.data.local.device.migrateLegacyCredentials
+import com.pheeeew.data.remote.api.DeviceSessionApi
+import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
+import com.pheeeew.data.remote.attestation.DeviceProofException
+import com.pheeeew.data.remote.dto.DeviceAttestationDto
+import com.pheeeew.data.remote.dto.DeviceChallengeDto
+import com.pheeeew.data.remote.dto.DeviceRefreshRequestDto
+import com.pheeeew.data.remote.dto.DeviceRefreshResponseDto
+import com.pheeeew.data.remote.dto.DeviceRegistrationRequestDto
+import com.pheeeew.data.remote.dto.DeviceRegistrationResponseDto
+import com.pheeeew.data.remote.dto.DeviceV3RegistrationRequestDto
+import com.pheeeew.domain.model.device.DeviceAccess
+import com.pheeeew.domain.model.device.DeviceCredentials
+import com.pheeeew.domain.model.device.DeviceDiagnosticOutcome
+import com.pheeeew.domain.model.device.DevicePlatform
+import com.pheeeew.domain.model.device.DeviceSessionDiagnostic
+import com.pheeeew.domain.model.device.DeviceSessionDiagnostics
+import com.pheeeew.domain.model.device.DeviceSessionFailureKind
+import com.pheeeew.domain.model.device.DeviceSessionResult
+import com.pheeeew.domain.model.device.DeviceSessionStage
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.test.runTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class DeviceSessionRepositoryTest {
+    @Test
+    fun `restore requests a nickname before registering a new device`() =
+        runTest {
+            val api = Api()
+            val storage = Storage()
+            val repository = repository(api, storage)
+
+            assertIs<DeviceSessionResult.NeedsRegistration>(repository.restore())
+            assertTrue(api.ids.isEmpty())
+
+            val ready = assertIs<DeviceSessionResult.Ready>(repository.register("  Sunny  "))
+            assertEquals("Sunny", api.registeredNicknames.single())
+            assertEquals("new", api.ids.single())
+            assertEquals("refresh", storage.value?.refreshToken)
+            assertEquals(1L, ready.access.generation)
+        }
+
+    @Test
+    fun `release upgrade copies legacy token and resumes the same session without registration`() =
+        runTest {
+            val storage = Storage()
+            val imported =
+                migrateLegacyCredentials(
+                    "legacy-refresh",
+                    LegacyCredentialPolicy.IMPORT_CURRENT_ENVIRONMENT,
+                    storage::write,
+                )
+            assertIs<CredentialRead.Found>(imported)
+            val api = Api()
+            repeat(2) {
+                val ready = assertIs<DeviceSessionResult.Ready>(repository(api, storage).prepare())
+                assertEquals(1, ready.access.generation)
+                assertEquals("legacy-refresh", api.refreshUsed)
+            }
+            assertTrue(api.ids.isEmpty())
+            assertEquals(0, api.challenges)
+            assertTrue(checkNotNull(storage.value).preservesLegacyIdentity)
+        }
+
+    @Test
+    fun `legacy migration refuses unknown environment and retries failed persistence`() =
+        runTest {
+            val storage = Storage()
+            assertEquals(
+                CredentialRead.Failure(true),
+                migrateLegacyCredentials("legacy", LegacyCredentialPolicy.UNCONFIRMED, storage::write),
+            )
+            assertNull(storage.value)
+            assertEquals(
+                CredentialRead.Missing,
+                migrateLegacyCredentials(
+                    "legacy",
+                    LegacyCredentialPolicy.START_NEW_ENVIRONMENT_SESSION,
+                    storage::write,
+                ),
+            )
+            assertNull(storage.value)
+            storage.rejectWrite = true
+            assertIs<CredentialRead.Failure>(
+                migrateLegacyCredentials("legacy", LegacyCredentialPolicy.IMPORT_CURRENT_ENVIRONMENT, storage::write),
+            )
+            assertNull(storage.value)
+            storage.rejectWrite = false
+            assertIs<CredentialRead.Found>(
+                migrateLegacyCredentials("legacy", LegacyCredentialPolicy.IMPORT_CURRENT_ENVIRONMENT, storage::write),
+            )
+            assertEquals("legacy", storage.value?.refreshToken)
+        }
+
+    @Test
+    fun `legacy identity survives server rejection network failure and restart`() =
+        runTest {
+            for (failure in listOf(
+                http(401, "DEVICE-003"),
+                http(401, "DEVICE-004"),
+                http(503, "COMMON-001"),
+                networkFailure(),
+            )) {
+                val storage =
+                    Storage(DeviceCredentials(refreshToken = "legacy", generation = 1, preservesLegacyIdentity = true))
+                val api = Api().apply { refreshResult = failure }
+                repeat(2) { assertIs<DeviceSessionResult.Failed>(repository(api, storage).prepare()) }
+                assertEquals("legacy", storage.value?.refreshToken)
+
+                assertTrue(checkNotNull(storage.value).preservesLegacyIdentity)
+                assertTrue(api.ids.isEmpty())
+                assertEquals(0, api.challenges)
+            }
+        }
+
+    @Test
+    fun `required proof is bound to a fresh challenge on retry with the same registration id`() =
+        runTest {
+            val api = Api()
+            val challenges = mutableListOf<String>()
+            api.registerBlock = { request ->
+                assertEquals("proof-${api.challenges}", request.attestation.token)
+                assertEquals("challenge-${api.challenges}", request.attestation.challenge)
+                if (api.ids.size == 1) http(400, "DEVICE-005") else success()
+            }
+            val result =
+                repository(
+                    api,
+                    Storage(),
+                    DeviceAttestationPolicy.Required { platform, challenge ->
+                        challenges += challenge
+                        DeviceAttestationDto(platform.name, "proof-${api.challenges}", challenge)
+                    },
+                ).prepare()
+            assertIs<DeviceSessionResult.Ready>(result)
+            assertEquals(listOf("challenge-1", "challenge-2"), challenges)
+            assertEquals(listOf("new", "new"), api.ids)
+        }
+
+    @Test
+    fun `rejected proof does not register again or downgrade`() =
+        runTest {
+            val api = Api().apply { registerBlock = { http(403, "DEVICE-006") } }
+            val result =
+                repository(
+                    api,
+                    Storage(),
+                    DeviceAttestationPolicy.Required { platform, challenge ->
+                        DeviceAttestationDto(platform.name, "proof", challenge)
+                    },
+                ).prepare()
+            assertEquals(DeviceSessionFailureKind.ATTESTATION, assertIs<DeviceSessionResult.Failed>(result).reason.kind)
+            assertEquals(1, api.ids.size)
+            assertEquals(1, api.challenges)
+        }
+
+    @Test
+    fun `refresh does not invoke proof provider`() =
+        runTest {
+            val api = Api()
+            val result =
+                repository(
+                    api,
+                    Storage(DeviceCredentials(refreshToken = "existing", generation = 1)),
+                    DeviceAttestationPolicy.Required { _, _ -> error("Must not generate a new key for refresh") },
+                ).prepare()
+            assertIs<DeviceSessionResult.Ready>(result)
+            assertEquals(0, api.challenges)
+            assertTrue(api.ids.isEmpty())
+        }
+
+    @Test
+    fun `unexpected refresh exception becomes a safe diagnosed failure`() =
+        runTest {
+            val events = mutableListOf<DeviceSessionDiagnostic>()
+            val api = Api().apply { refreshBlock = { throw IllegalStateException("refresh secret") } }
+            val repository =
+                DeviceSessionRepositoryImpl(
+                    api,
+                    Storage(DeviceCredentials(refreshToken = "existing")),
+                    DevicePlatform.IOS,
+                    DeviceAttestationPolicy.PlatformOnly,
+                    { 1000 },
+                    DeviceSessionDiagnostics { events += it },
+                )
+
+            val failure = assertIs<DeviceSessionResult.Failed>(repository.prepare()).reason
+            assertEquals(DeviceSessionFailureKind.UNEXPECTED, failure.kind)
+            assertEquals(DeviceSessionStage.REFRESH, failure.stage)
+            assertEquals(1, events.size)
+            assertEquals(DeviceSessionStage.REFRESH, events.single().stage)
+            assertEquals(DeviceDiagnosticOutcome.FAILED, events.single().outcome)
+            assertEquals(DeviceSessionFailureKind.UNEXPECTED, events.single().failureKind)
+            assertEquals("IllegalStateException", events.single().exceptionType)
+            assertFalse(events.single().toString().contains("refresh secret"))
+        }
+
+    @Test
+    fun `registration persists refresh before exposing access and removes pending`() =
+        runTest {
+            val storage = Storage()
+            val api =
+                Api().apply {
+                    registerBlock = {
+                        assertEquals(it.requestId, storage.value?.pendingRequestId)
+                        assertEquals("ANDROID", it.attestation.platform)
+                        assertNull(it.attestation.token)
+                        success()
+                    }
+                }
+            val result = assertIs<DeviceSessionResult.Ready>(repository(api, storage).prepare())
+            assertEquals("refresh", storage.value?.refreshToken)
+            assertNull(storage.value?.pendingRequestId)
+            assertEquals(1, result.access.generation)
+            assertEquals(0, api.challenges)
+        }
+
+    @Test
+    fun `uncertain registration reuses persisted id across attempts and process restart`() =
+        runTest {
+            val storage = Storage()
+            val api = Api().apply { registerBlock = { networkFailure() } }
+            assertIs<DeviceSessionResult.Failed>(repository(api, storage).prepare())
+            val id = storage.value?.pendingRequestId
+            api.registerBlock = { success() }
+            repository(api, storage).prepare()
+            assertEquals(listOf(id, id, id), api.ids)
+        }
+
+    @Test
+    fun `expired window allows one new registration id`() =
+        runTest {
+            val storage = Storage(DeviceCredentials(pendingRequestId = "old", pendingStartedAtMillis = 0))
+            val api =
+                Api().apply {
+                    registerBlock =
+                        { if (it.requestId == "old") http(409, "DEVICE-002") else success() }
+                }
+            assertIs<DeviceSessionResult.Ready>(repository(api, storage).prepare())
+            assertEquals(listOf("old", "new"), api.ids)
+        }
+
+    @Test
+    fun `repeated expired windows terminate after two transmissions`() =
+        runTest {
+            val api = Api().apply { registerBlock = { http(409, "DEVICE-002") } }
+            assertIs<DeviceSessionResult.Failed>(repository(api, Storage()).prepare())
+            assertEquals(2, api.ids.size)
+        }
+
+    @Test
+    fun `refresh preserves credential and generation`() =
+        runTest {
+            val storage = Storage(DeviceCredentials(refreshToken = "old-refresh", generation = 7))
+            val api = Api()
+            val result = assertIs<DeviceSessionResult.Ready>(repository(api, storage).prepare())
+            assertEquals("old-refresh", api.refreshUsed)
+            assertEquals("old-refresh", storage.value?.refreshToken)
+            assertEquals(7, result.access.generation)
+            assertTrue(api.ids.isEmpty())
+        }
+
+    @Test
+    fun `invalid refresh replaces identity while server failure retains it`() =
+        runTest {
+            val storage = Storage(DeviceCredentials(refreshToken = "old", generation = 7))
+            val api = Api().apply { refreshResult = http(500, "SERVER-001") }
+            val repository = repository(api, storage)
+            assertIs<DeviceSessionResult.Failed>(repository.prepare())
+            assertEquals("old", storage.value?.refreshToken)
+            assertTrue(api.ids.isEmpty())
+            api.refreshResult = http(401, "DEVICE-003")
+            val result = assertIs<DeviceSessionResult.Ready>(repository.prepare())
+            assertEquals(8L, result.access.generation)
+        }
+
+    @Test
+    fun `storage read error does not register`() =
+        runTest {
+            val storage = Storage().apply { readFailure = true }
+            val api = Api()
+            val result = assertIs<DeviceSessionResult.Failed>(repository(api, storage).prepare())
+            assertEquals(DeviceSessionFailureKind.STORAGE, result.reason.kind)
+            assertTrue(api.ids.isEmpty())
+        }
+
+    @Test
+    fun `pending write failure prevents transmission`() =
+        runTest {
+            val storage = Storage().apply { rejectWrite = true }
+            val api = Api()
+            assertIs<DeviceSessionResult.Failed>(repository(api, storage).prepare())
+            assertTrue(api.ids.isEmpty())
+        }
+
+    @Test
+    fun `refresh persistence failure never publishes access`() =
+        runTest {
+            val storage = Storage()
+            val api =
+                Api().apply {
+                    registerBlock = {
+                        storage.rejectWrite = true
+                        success()
+                    }
+                }
+            val result = assertIs<DeviceSessionResult.Failed>(repository(api, storage).prepare())
+            assertEquals(DeviceSessionFailureKind.STORAGE, result.reason.kind)
+            assertNotNull(storage.value?.pendingRequestId)
+            assertNull(storage.value?.refreshToken)
+        }
+
+    @Test
+    fun `invalid tokens ttl and overflow fail without saving success`() =
+        runTest {
+            for (dto in listOf(
+                DeviceRegistrationResponseDto("", "r", 10),
+                DeviceRegistrationResponseDto("a", "", 10),
+                DeviceRegistrationResponseDto("a", "r", 0),
+                DeviceRegistrationResponseDto("a", "r", Long.MAX_VALUE),
+            )) {
+                val storage = Storage()
+                val api = Api().apply { registerBlock = { ApiResult.Success(dto) } }
+                assertIs<DeviceSessionResult.Failed>(repository(api, storage).prepare())
+                assertNull(storage.value?.refreshToken)
+            }
+        }
+
+    @Test
+    fun `retry after suppresses further registration calls`() =
+        runTest {
+            var now = 1000L
+            val api = Api().apply { registerBlock = { http(503, "DEVICE-007", "30") } }
+            val repository = repository(api, Storage(), now = { now })
+            repeat(3) { assertIs<DeviceSessionResult.Failed>(repository.prepare()) }
+            assertEquals(1, api.ids.size)
+            now += 30_000
+            repository.prepare()
+            assertEquals(2, api.ids.size)
+        }
+
+    @Test
+    fun `proof failure never downgrades to platform only`() =
+        runTest {
+            val api = Api()
+            val repository =
+                repository(
+                    api,
+                    Storage(),
+                    DeviceAttestationPolicy.Required {
+                        _,
+                        _,
+                        ->
+                        error("private proof data")
+                    },
+                )
+            assertEquals(
+                DeviceSessionFailureKind.ATTESTATION,
+                assertIs<DeviceSessionResult.Failed>(repository.prepare()).reason.kind,
+            )
+            assertEquals(1, api.challenges)
+            assertTrue(api.ids.isEmpty())
+        }
+
+    @Test
+    fun `cancellation preserves pending id and propagates`() =
+        runTest {
+            val storage = Storage()
+            val api = Api().apply { registerBlock = { throw CancellationException() } }
+            assertFailsWith<CancellationException> { repository(api, storage).prepare() }
+            assertNotNull(storage.value?.pendingRequestId)
+        }
+
+    @Test
+    fun `credential and wire types redact secrets`() {
+        val secret = "never-log-this"
+        listOf(
+            DeviceCredentials(refreshToken = secret),
+            DeviceAttestationDto("IOS", secret, secret, secret),
+            DeviceRegistrationRequestDto(secret, DeviceAttestationDto("IOS")),
+            DeviceRegistrationResponseDto(secret, secret, 10),
+            DeviceRefreshRequestDto(secret),
+            DeviceRefreshResponseDto(secret, 10),
+            DeviceChallengeDto(secret, 10),
+            DeviceAccess(secret, 0, 100, 1),
+        ).forEach { assertFalse(it.toString().contains(secret)) }
+    }
+
+    @Test
+    fun `proof SDK failure preserves safe code and differs from registration rejection`() =
+        runTest {
+            val events = mutableListOf<DeviceSessionDiagnostic>()
+            val api = Api()
+            val proofFailure =
+                DeviceSessionRepositoryImpl(
+                    api,
+                    Storage(),
+                    DevicePlatform.ANDROID,
+                    DeviceAttestationPolicy.Required { _, _ -> throw DeviceProofException(-7) },
+                    { 1000 },
+                    DeviceSessionDiagnostics { events += it },
+                )
+            val failure = assertIs<DeviceSessionResult.Failed>(proofFailure.prepare()).reason
+            assertEquals(DeviceSessionStage.PROOF, failure.stage)
+            assertEquals(-7, failure.sdkCode)
+            assertTrue(api.ids.isEmpty())
+            assertEquals(DeviceDiagnosticOutcome.FAILED, events.last().outcome)
+
+            api.registerBlock = { http(403, "DEVICE-006") }
+            val serverFailure =
+                DeviceSessionRepositoryImpl(
+                    api,
+                    Storage(),
+                    DevicePlatform.ANDROID,
+                    DeviceAttestationPolicy.Required {
+                        platform,
+                        challenge,
+                        ->
+                        DeviceAttestationDto(platform.name, "proof", challenge)
+                    },
+                    { 1000 },
+                )
+            val rejected = assertIs<DeviceSessionResult.Failed>(serverFailure.prepare()).reason
+            assertEquals(DeviceSessionStage.REGISTER, rejected.stage)
+            assertEquals("DEVICE-006", rejected.code)
+            assertNull(rejected.sdkCode)
+            assertEquals(1, api.ids.size)
+        }
+
+    @Test
+    fun `diagnostic logger failure does not change successful registration`() =
+        runTest {
+            val repository =
+                DeviceSessionRepositoryImpl(
+                    Api(),
+                    Storage(),
+                    DevicePlatform.ANDROID,
+                    DeviceAttestationPolicy.Required {
+                        platform,
+                        challenge,
+                        ->
+                        DeviceAttestationDto(platform.name, "proof", challenge)
+                    },
+                    { 1000 },
+                    DeviceSessionDiagnostics { error("logger failed") },
+                )
+            assertIs<DeviceSessionResult.Ready>(repository.prepare())
+            val event =
+                DeviceSessionDiagnostic(
+                    DeviceSessionStage.REGISTER,
+                    DeviceDiagnosticOutcome.FAILED,
+                    serverCode = "secret-token-value",
+                )
+            assertFalse(event.toString().contains("secret-token-value"))
+        }
+
+    @Test
+    fun `restore and prepare share refresh rejection and identity protection rules`() =
+        runTest {
+            for (restoreOnly in listOf(true, false)) {
+                for (preserveIdentity in listOf(true, false)) {
+                    for (rejection in listOf(http(401, "DEVICE-003"), http(401, "DEVICE-004"), networkFailure())) {
+                        val credentials =
+                            DeviceCredentials(
+                                refreshToken = "stored",
+                                generation = 7,
+                                preservesLegacyIdentity = preserveIdentity,
+                            )
+                        val storage = Storage(credentials)
+                        val api = Api().apply { refreshResult = rejection }
+                        val repository = repository(api, storage)
+                        val result = if (restoreOnly) repository.restore() else repository.prepare()
+                        val invalid = (rejection.reason as? NetworkFailure.HttpStatus)?.statusCode == 401
+                        if (invalid && !preserveIdentity) {
+                            if (restoreOnly) {
+                                assertIs<DeviceSessionResult.NeedsRegistration>(result)
+                                assertNull(storage.value?.refreshToken)
+                                assertNull(storage.value?.pendingRequestId)
+                                assertEquals(7L, storage.value?.generation)
+                                assertTrue(api.ids.isEmpty())
+                            } else {
+                                assertIs<DeviceSessionResult.Ready>(result)
+                                assertEquals(8L, result.access.generation)
+                                assertEquals(listOf("new"), api.ids)
+                            }
+                        } else {
+                            assertIs<DeviceSessionResult.Failed>(result)
+                            assertEquals(credentials.refreshToken, storage.value?.refreshToken)
+                            assertEquals(credentials.generation, storage.value?.generation)
+                            assertEquals(credentials.preservesLegacyIdentity, storage.value?.preservesLegacyIdentity)
+                            assertTrue(api.ids.isEmpty())
+                        }
+                    }
+                }
+            }
+        }
+
+    @Test
+    fun `restore resets diagnostic stage before reading storage again`() =
+        runTest {
+            val storage = Storage(DeviceCredentials(refreshToken = "stored", generation = 1))
+            val repository = repository(Api(), storage)
+            assertIs<DeviceSessionResult.Ready>(repository.restore())
+            storage.throwOnRead = true
+            val failure = assertIs<DeviceSessionResult.Failed>(repository.restore())
+            assertEquals(DeviceSessionFailureKind.UNEXPECTED, failure.reason.kind)
+            assertEquals(DeviceSessionStage.STORAGE, failure.reason.stage)
+        }
+
+    @Test
+    fun `서버에서 사라진 기기는 자격 증명 무효화를 저장한 후에만 재등록을 요청한다`() =
+        runTest {
+            val api = Api()
+            val storage = Storage(DeviceCredentials(refreshToken = "old", generation = 4))
+            val repository = repository(api, storage)
+            assertIs<DeviceSessionResult.NeedsRegistration>(repository.invalidateMissingDevice(4))
+            assertEquals(4L, storage.value?.generation)
+            assertNull(storage.value?.refreshToken)
+            assertTrue(api.ids.isEmpty())
+            assertNull(api.refreshUsed)
+
+            storage.value = DeviceCredentials(refreshToken = "preserved", generation = 4)
+            storage.rejectWrite = true
+            val result = assertIs<DeviceSessionResult.Failed>(repository.invalidateMissingDevice(4))
+            assertEquals(DeviceSessionFailureKind.STORAGE, result.reason.kind)
+            assertEquals("preserved", storage.value?.refreshToken)
+        }
+
+    @Test
+    fun `늦은 기기 무효화 응답과 레거시 자격 증명을 보존한다`() =
+        runTest {
+            val api = Api()
+            val storage = Storage(DeviceCredentials(refreshToken = "new", generation = 5))
+            assertIs<DeviceSessionResult.Ready>(repository(api, storage).invalidateMissingDevice(4))
+            assertEquals("new", storage.value?.refreshToken)
+            storage.value = DeviceCredentials(refreshToken = "legacy", generation = 5, preservesLegacyIdentity = true)
+            val result = assertIs<DeviceSessionResult.Failed>(repository(api, storage).invalidateMissingDevice(5))
+            assertEquals(DeviceSessionFailureKind.SESSION_CHANGED, result.reason.kind)
+            assertEquals("legacy", storage.value?.refreshToken)
+
+            storage.value =
+                DeviceCredentials(
+                    generation = 5,
+                    pendingRequestId = "pending-registration",
+                    pendingNickname = "chosen nickname",
+                    pendingStartedAtMillis = 1000,
+                )
+            val pending =
+                assertIs<DeviceSessionResult.NeedsRegistration>(
+                    repository(api, storage).invalidateMissingDevice(5),
+                )
+            assertEquals("chosen nickname", pending.pendingNickname)
+            assertEquals("pending-registration", storage.value?.pendingRequestId)
+
+            storage.value = null
+            assertIs<DeviceSessionResult.NeedsRegistration>(repository(api, storage).invalidateMissingDevice(5))
+            assertEquals(5L, storage.value?.generation)
+        }
+
+    private fun repository(
+        api: Api,
+        storage: Storage,
+        policy: DeviceAttestationPolicy = DeviceAttestationPolicy.PlatformOnly,
+        now: () -> Long = { 1000 },
+    ) = DeviceSessionRepositoryImpl(api, storage, DevicePlatform.ANDROID, policy, now) { "new" }
+
+    private class Storage(
+        var value: DeviceCredentials? = null,
+    ) : DeviceCredentialStorage {
+        var throwOnRead = false
+        var readFailure = false
+        var rejectWrite = false
+
+        override suspend fun read(): CredentialRead =
+            if (throwOnRead) {
+                error("storage read failed")
+            } else if (readFailure) {
+                CredentialRead.Failure()
+            } else {
+                value?.let(CredentialRead::Found)
+                    ?: CredentialRead.Missing
+            }
+
+        override suspend fun write(credentials: DeviceCredentials): Boolean {
+            if (rejectWrite) return false
+            value = credentials
+            return true
+        }
+    }
+
+    private class Api : DeviceSessionApi {
+        var registerBlock: suspend (
+            DeviceRegistrationRequestDto,
+        ) -> ApiResult<DeviceRegistrationResponseDto> = { success() }
+        var refreshResult: ApiResult<DeviceRefreshResponseDto> =
+            ApiResult.Success(
+                DeviceRefreshResponseDto("access", 1800),
+            )
+        var refreshBlock: suspend (DeviceRefreshRequestDto) -> ApiResult<DeviceRefreshResponseDto> = { refreshResult }
+        var refreshUsed: String? = null
+        var challenges = 0
+        val ids = mutableListOf<String>()
+        val registeredNicknames = mutableListOf<String>()
+
+        override suspend fun register(request: DeviceRegistrationRequestDto): ApiResult<DeviceRegistrationResponseDto> {
+            ids += request.requestId
+            return registerBlock(request)
+        }
+
+        override suspend fun register(
+            request: DeviceV3RegistrationRequestDto,
+        ): ApiResult<DeviceRegistrationResponseDto> {
+            registeredNicknames += request.nickname
+            ids += request.requestId
+            return registerBlock(DeviceRegistrationRequestDto(request.requestId, request.attestation))
+        }
+
+        override suspend fun refresh(request: DeviceRefreshRequestDto): ApiResult<DeviceRefreshResponseDto> {
+            refreshUsed = request.refreshToken
+            return refreshBlock(request)
+        }
+
+        override suspend fun challenge(): ApiResult<DeviceChallengeDto> {
+            challenges++
+            return ApiResult.Success(DeviceChallengeDto("challenge-$challenges", 300))
+        }
+    }
+
+    private companion object {
+        fun success() = ApiResult.Success(DeviceRegistrationResponseDto("access", "refresh", 1800))
+
+        fun networkFailure() =
+            ApiResult.Failure(NetworkFailure.Transport(TransportFailureReason.CONNECTION, MutationCertainty.UNKNOWN))
+
+        fun http(
+            status: Int,
+            code: String,
+            retry: String? = null,
+        ) = ApiResult.Failure(NetworkFailure.HttpStatus(status, ApiError(code, null), retry, MutationCertainty.UNKNOWN))
+    }
+}

@@ -1,10 +1,12 @@
 package com.pheeeew.domain.usecase
 
-import com.pheeeew.domain.repository.EmotionModerationRepository
+import com.pheeeew.domain.repository.BlockRepository
 import com.pheeeew.domain.repository.EmotionModerationResult
+import com.pheeeew.domain.repository.EmotionRepository
+import com.pheeeew.domain.repository.ReportRepository
 
 class BlockUserUseCase(
-    private val repository: EmotionModerationRepository,
+    private val repository: BlockRepository,
 ) {
     suspend operator fun invoke(emotionId: Long): EmotionModerationResult {
         require(emotionId > 0)
@@ -13,7 +15,7 @@ class BlockUserUseCase(
 }
 
 class DeleteEmotionUseCase(
-    private val repository: EmotionModerationRepository,
+    private val repository: EmotionRepository,
 ) {
     suspend operator fun invoke(emotionId: Long): EmotionModerationResult {
         require(emotionId > 0)
@@ -22,7 +24,7 @@ class DeleteEmotionUseCase(
 }
 
 class ReportEmotionUseCase(
-    private val repository: EmotionModerationRepository,
+    private val repository: ReportRepository,
 ) {
     suspend operator fun invoke(
         emotionId: Long,
