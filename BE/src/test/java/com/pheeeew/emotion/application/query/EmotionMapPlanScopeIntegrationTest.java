@@ -183,7 +183,7 @@ class EmotionMapPlanScopeIntegrationTest {
             assertThat(currentMode()).isEqualTo("force_custom_plan");
             observer.start();
             assertThat(service.findRegionMap(BOUNDS, RegionLevel.SIDO, viewer.getPublicId(),
-                    EmotionSearchFilter.of(null, null, null, null, null))).hasSize(1);
+                    EmotionSearchFilter.from(null))).hasSize(1);
             assertObservedMode("force_custom_plan");
         });
 
@@ -222,7 +222,7 @@ class EmotionMapPlanScopeIntegrationTest {
         assertThat(jdbc.sql("SELECT pg_backend_pid()").query(Integer.class).single()).isEqualTo(backendPid);
         observer.start();
         var regions = service.findRegionMap(BOUNDS, RegionLevel.SIDO, viewer.getPublicId(),
-                EmotionSearchFilter.of(null, null, null, null, null));
+                EmotionSearchFilter.from(null));
         assertThat(regions).singleElement().satisfies(item -> {
             assertThat(item.region().code()).isEqualTo("11");
             assertThat(item.summary().totalCount()).isEqualTo(1);

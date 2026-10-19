@@ -20,7 +20,6 @@ import jakarta.persistence.EntityManager;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 import org.hibernate.Session;
 import org.locationtech.jts.geom.Envelope;
 import org.locationtech.jts.geom.Geometry;
@@ -60,11 +59,10 @@ public class EmotionListQueryRepositoryImpl implements EmotionListQueryRepositor
             Instant lastCreatedAt,
             long lastId,
             Long deviceId,
-            UUID groupId,
+            EmotionSearchFilter filter,
             boolean contentOnly,
             int limit
     ) {
-        EmotionSearchFilter filter = EmotionSearchFilter.of(null, null, null, null, groupId);
         return visibleQuery(snapshotAt, lastCreatedAt, lastId, deviceId, filter, contentOnly)
                 .where(withinBounds(bounds))
                 .limit(limit)

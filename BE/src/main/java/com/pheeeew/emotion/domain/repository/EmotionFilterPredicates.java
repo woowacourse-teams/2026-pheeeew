@@ -8,6 +8,7 @@ import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import com.querydsl.core.types.dsl.BooleanExpression;
 import com.querydsl.jpa.JPAExpressions;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 final class EmotionFilterPredicates {
@@ -34,14 +35,14 @@ final class EmotionFilterPredicates {
     static BooleanExpression scopeMatches(EmotionSearchFilter filter, Long deviceId) {
         return switch (filter.scope()) {
             case ALL -> null;
-            case GROUP -> hasGroupStamp(filter.groupId());
+            case GROUP -> hasGroupStamp(filter.groupIds());
             case MY -> emotion.deviceId.eq(deviceId);
         };
     }
 
-    static BooleanExpression hasGroupStamp(UUID groupId) {
+    static BooleanExpression hasGroupStamp(List<UUID> groupIds) {
         return JPAExpressions.selectOne().from(groupStamp)
-                .where(groupStamp.id.eq(emotion.groupStamp.id), groupStamp.group.publicId.eq(groupId))
+                .where(groupStamp.id.eq(emotion.groupStamp.id), groupStamp.group.publicId.in(groupIds))
                 .exists();
     }
 

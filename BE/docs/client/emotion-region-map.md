@@ -45,7 +45,7 @@ Authorization: Bearer <access-token>
 | `minLongitude`, `maxLongitude` | 예 | 화면의 서쪽·동쪽 경도. 각각 -180~180이며 서로 달라야 해요. |
 | `minLatitude`, `maxLatitude` | 예 | 화면의 최소·최대 위도. 각각 -90~90이며 최소가 최대보다 작아야 해요. |
 | `level` | 예 | 클라이언트는 `SIDO`, `SIGUNGU`를 사용해요. `EMD`는 기존 요청 호환용이에요. |
-| `groupId` | 조건부 | GROUP 범위의 그룹 공개 UUID. scope 없이 지정하면 GROUP으로 조회해요. |
+| `groupId` | 조건부 | GROUP 범위의 그룹 공개 UUID 목록. `groupId=A&groupId=B`처럼 반복하며 선택한 그룹 중 하나에 속한 기록을 조회해요. 단일 값도 유지해요. |
 | `startDate`, `endDate` | 조건부 | `yyyy-MM-dd`. 함께 지정하며 0001~9999년, 시작일 ≤ 종료일이에요. KST 기준 양 끝 날짜를 포함하며 둘 다 생략하면 전체 기간이에요. |
 | `contentType` | 아니요 | `ALL`(기본값), `MEMO`, `AUDIO`. ALL도 NONE을 제외해요. |
 | `scope` | 아니요 | `ALL`, `GROUP`, `MY`. 생략하면 groupId가 있으면 GROUP, 없으면 ALL이에요. MY는 인증된 기기가 작성한 기록이에요. |
@@ -55,7 +55,8 @@ Authorization: Bearer <access-token>
 SIDO·SIGUNGU는 bbox와 무관하게 해당 계층의 전국 요약을 반환해요. bbox 필수값·범위 검증은 호환을 위해 유지해요.
 EMD에서만 화면과 경계의 교차로 지역을 선택해요. 지역 코드와 커서는 요청에 전달하지 않아요.
 `GROUP`에는 `groupId`가 필수이고 `ALL`·`MY`에는 전달할 수 없어요.
-그룹 가입 여부로 제한하지 않으며 존재하지 않거나 삭제된 그룹은 `404 GROUP-001`을 반환해요.
+그룹 ID의 순서와 중복은 무시해요. 그룹끼리는 OR, 날짜·내용·범위 조건과는 AND로 적용해요. 빈 값과 잘못된 UUID는 400으로 거절해요.
+그룹 가입 여부로 제한하지 않으며 선택한 그룹 중 하나라도 존재하지 않거나 삭제되었으면 `404 GROUP-001`을 반환해요.
 기존 bbox·level·groupId만 보내는 정상 요청은 유지하지만, 미존재 그룹을 빈 배열로 반환하던 동작은 변경돼요.
 
 날짜·내용·범위 필터는 AND로 적용해요. 날짜는 KST 시작일 00:00 이상, 종료일 다음 날 00:00 미만이에요.
@@ -66,9 +67,13 @@ GET /api/v2/emotions/map/regions?minLongitude=126.9&minLatitude=37.5&maxLongitud
 Authorization: Bearer <access-token>
 ```
 
-그룹 녹음 조회는 `contentType=AUDIO&scope=GROUP&groupId=<group-public-uuid>`를 전달해요.
+여러 그룹의 녹음 조회는 `contentType=AUDIO&scope=GROUP&groupId=<group-a-uuid>&groupId=<group-b-uuid>`를 전달해요.
 지도 확대·축소로 개별 지도와 지역 요약을 전환할 때 같은 필터를 전달해야 해요.
 서버 구현 계약이며 AN 연동·배포 완료를 의미하지 않아요.
+
+개별 지도·목록의 커서는 선택한 그룹 전체를 보존하며 기존 2,048자 제한 없이 발급·해석해요.
+기존 커서도 계속 사용할 수 있어요. 그룹을 많이 선택했다면 다음 페이지에는 `cursor`만 전달해요.
+HTTP 서버·프록시의 요청 URL 길이 제한은 그대로이므로 무제한 크기의 요청을 보장하지는 않아요.
 
 ## 계층과 확대 전환
 

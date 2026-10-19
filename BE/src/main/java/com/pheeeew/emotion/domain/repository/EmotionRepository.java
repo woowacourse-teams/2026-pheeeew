@@ -62,7 +62,7 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long>, Emotion
             Instant lastCreatedAt,
             long lastId,
             Long deviceId,
-            UUID groupId,
+            EmotionSearchFilter filter,
             boolean contentOnly,
             int limit
     );
