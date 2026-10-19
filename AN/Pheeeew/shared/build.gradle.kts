@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.metro)
 }
 
 kotlin {
@@ -63,6 +64,7 @@ kotlin {
             implementation(libs.ktor.client.darwin)
         }
         commonMain.dependencies {
+            implementation(libs.metro.viewmodel.compose)
             implementation(libs.sentry)
             implementation(libs.posthog)
             implementation(libs.compose.runtime)
