@@ -83,13 +83,14 @@ class AudioUploadApiTest {
                                 }
 
                                 2 -> {
-                                    assertEquals("/api/v2/emotions", request.url.encodedPath)
+                                    assertEquals("/api/v3/emotions", request.url.encodedPath)
                                     assertEquals("Bearer token", request.headers[HttpHeaders.Authorization])
                                     val body =
                                         Json
                                             .parseToJsonElement(
                                                 request.body.toByteArray().decodeToString(),
                                             ).jsonObject
+                                    assertEquals("true", body.getValue("anonymous").jsonPrimitive.content)
                                     assertEquals("AUDIO", body.getValue("contentType").jsonPrimitive.content)
                                     assertEquals("upload-123", body.getValue("audioUploadId").jsonPrimitive.content)
                                     assertEquals("request-123", body.getValue("requestId").jsonPrimitive.content)
@@ -132,6 +133,7 @@ class AudioUploadApiTest {
                             rotationDegrees = 35.5,
                             content = EmotionRegistrationContent.Audio("unused/path.m4a"),
                             groupId = null,
+                            anonymous = true,
                         ).toRequestDto(upload.uploadId)!!,
                     )
                 assertEquals(

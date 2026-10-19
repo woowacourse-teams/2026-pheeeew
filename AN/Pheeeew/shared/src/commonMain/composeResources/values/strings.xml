@@ -75,7 +75,7 @@
     <string name="record_recording">녹음 중</string>
     <string name="record_again">다시 녹음</string>
     <string name="record_discard_title">작성한 내용이 제외돼요.</string>
-    <string name="record_single_attachment_hint">메모 또는 녹음 중 하나는 필수예요. 한 가지만 등록할 수 있어요.</string>
+    <string name="record_single_attachment_hint">메모 또는 녹음 중 하나를 선택해주세요.</string>
     <string name="record_excluded_input_dialog">이번 등록에는 %1$s만 포함되고 %2$s%3$s 저장되지 않아요.
 계속할까요?</string>
     <string name="record_submit_selected_input">%1$s만 등록</string>
@@ -83,6 +83,7 @@
     <string name="record_next">다음</string>
     <string name="record_memo_prompt">지금 감정을 짧게 적어보세요</string>
     <string name="record_memo">메모</string>
+    <string name="record_anonymous">익명</string>
     <string name="record_audio">녹음</string>
     <string name="record_drag_stamp">끌어서 이동</string>
     <string name="record_choose_stamp_title">스탬프를 눌러서 옮겨주세요</string>
@@ -96,11 +97,11 @@
     <string name="record_emotion_phrase_annoyed">짜증난</string>
     <string name="record_emotion_prompt_annoyed">에잇! 짜증나!!</string>
     <string name="record_emotion_phrase_tired">지친</string>
-    <string name="record_emotion_prompt_tired">아무것도 하기 싫다… 아무것도 안 하는 것도 힘들다…</string>
+    <string name="record_emotion_prompt_tired">아무것도 하기 싫다…</string>
     <string name="record_emotion_phrase_defeated">좌절한</string>
     <string name="record_emotion_prompt_defeated">오늘도 왜 나만 힘들지!?</string>
     <string name="record_emotion_phrase_angry">분노한</string>
-    <string name="record_emotion_prompt_angry">아니, 이건 아니지… 아아아아악!!!!!!</string>
+    <string name="record_emotion_prompt_angry">아아아아악!!!!!!</string>
     <string name="record_emotion_choose">%1$s 선택</string>
     <string name="tap_reaction_blocked_1">아오!!</string>
     <string name="tap_reaction_blocked_2">으아아</string>

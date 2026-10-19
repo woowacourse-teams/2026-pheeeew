@@ -24,8 +24,11 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.SheetValue
@@ -52,6 +55,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -78,6 +82,7 @@ import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.record_anonymous
 import pheeeew.shared.generated.resources.record_audio
 import pheeeew.shared.generated.resources.record_continue_editing
 import pheeeew.shared.generated.resources.record_discard_title
@@ -95,6 +100,8 @@ fun RecordBottomSheet(
     selectedEmotion: EmotionTypeUiModel,
     inputMode: RecordInputModeUiModel,
     memo: String,
+    isAnonymous: Boolean,
+    onAnonymousChange: (Boolean) -> Unit,
     selectedGroupStamp: StampAppearanceUiModel?,
     isGroupSelectionLoading: Boolean,
     onDismissRequest: () -> Unit,
@@ -141,6 +148,8 @@ fun RecordBottomSheet(
             selectedEmotion = selectedEmotion,
             inputMode = inputMode,
             memo = memo,
+            isAnonymous = isAnonymous,
+            onAnonymousChange = onAnonymousChange,
             selectedGroupStamp = selectedGroupStamp,
             isGroupSelectionLoading = isGroupSelectionLoading,
             onInputModeChange = onInputModeChange,
@@ -205,6 +214,8 @@ private fun RecordBottomSheetContent(
     selectedEmotion: EmotionTypeUiModel,
     inputMode: RecordInputModeUiModel,
     memo: String,
+    isAnonymous: Boolean,
+    onAnonymousChange: (Boolean) -> Unit,
     selectedGroupStamp: StampAppearanceUiModel?,
     isGroupSelectionLoading: Boolean,
     onInputModeChange: (RecordInputModeUiModel) -> Unit,
@@ -247,27 +258,38 @@ private fun RecordBottomSheetContent(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Image(
-                painter = painterResource(selectedEmotion.icon),
-                contentDescription = stringResource(selectedEmotion.label),
-                modifier = Modifier.size(44.dp),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text =
-                    stringResource(
-                        Res.string.record_emotion_prompt,
-                        stringResource(selectedEmotion.recordPhrase),
-                        stringResource(selectedEmotion.recordPrompt),
-                    ),
+            Row(
                 modifier = Modifier.weight(1f),
-                lineHeight = 22.sp,
-                color = AppColors.TextPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(selectedEmotion.icon),
+                    contentDescription = stringResource(selectedEmotion.label),
+                    modifier = Modifier.size(44.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text =
+                        stringResource(
+                            Res.string.record_emotion_prompt,
+                            stringResource(selectedEmotion.recordPhrase),
+                            stringResource(selectedEmotion.recordPrompt),
+                        ),
+                    modifier = Modifier.weight(1f),
+                    lineHeight = 22.sp,
+                    color = AppColors.TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            GroupSelectionButton(
+                stamp = selectedGroupStamp,
+                loading = isGroupSelectionLoading,
+                onClick = onGroupClick,
             )
         }
 
@@ -281,7 +303,7 @@ private fun RecordBottomSheetContent(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(40.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RecordInputModeToggle(
@@ -289,11 +311,34 @@ private fun RecordBottomSheetContent(
                 onInputModeChange = onInputModeChange,
                 modifier = Modifier.weight(1f),
             )
-            GroupSelectionButton(
-                stamp = selectedGroupStamp,
-                loading = isGroupSelectionLoading,
-                onClick = onGroupClick,
-            )
+            Row(
+                modifier =
+                    Modifier.toggleable(
+                        value = isAnonymous,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        role = Role.Checkbox,
+                        onValueChange = onAnonymousChange,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(Res.string.record_anonymous),
+                    color = AppColors.TextPrimary,
+                    fontSize = 12.sp,
+                )
+                Checkbox(
+                    checked = isAnonymous,
+                    onCheckedChange = null,
+                    colors =
+                        CheckboxDefaults.colors(
+                            checkedColor = AppColors.RecordSheetAction,
+                            uncheckedColor = AppColors.TextSecondary,
+                            checkmarkColor = AppColors.Surface,
+                        ),
+                    modifier = Modifier.padding(start = 4.dp),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -543,6 +588,8 @@ private fun RecordBottomSheetContentPreview() {
         selectedEmotion = EmotionTypeUiModel.ANGRY,
         inputMode = RecordInputModeUiModel.Memo,
         memo = "",
+        isAnonymous = false,
+        onAnonymousChange = {},
         selectedGroupStamp = null,
         isGroupSelectionLoading = false,
         onInputModeChange = {},
@@ -560,6 +607,8 @@ private fun RecordBottomSheetRecordingPreview() {
         selectedEmotion = EmotionTypeUiModel.EXHAUSTED,
         inputMode = RecordInputModeUiModel.Recording,
         memo = "",
+        isAnonymous = false,
+        onAnonymousChange = {},
         selectedGroupStamp = null,
         isGroupSelectionLoading = false,
         onInputModeChange = {},
