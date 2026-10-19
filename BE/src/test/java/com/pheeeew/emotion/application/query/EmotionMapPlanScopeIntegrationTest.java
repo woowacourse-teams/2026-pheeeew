@@ -73,6 +73,7 @@ class EmotionMapPlanScopeIntegrationTest {
     private Device viewer;
     private Emotion emotion;
     private Group group;
+    private Group otherGroup;
     private GroupStamp stamp;
     private Map<String, Object> previousReadiness;
     private int backendPid;
@@ -95,6 +96,8 @@ class EmotionMapPlanScopeIntegrationTest {
             entityManager.persist(viewer);
             group = 기본_그룹_빌더().build();
             entityManager.persist(group);
+            otherGroup = 기본_그룹_빌더().name("다른모임").build();
+            entityManager.persist(otherGroup);
             stamp = 기본_스탬프_빌더(group).build();
             entityManager.persist(stamp);
             emotion = 기본_한숨_빌더().deviceId(viewer.getId()).memo("지도 계획 범위 검증").build();
@@ -112,6 +115,7 @@ class EmotionMapPlanScopeIntegrationTest {
             jdbc.sql("DELETE FROM emotions WHERE id = :id").param("id", emotion.getId()).update();
             jdbc.sql("DELETE FROM group_stamps WHERE id = :id").param("id", stamp.getId()).update();
             jdbc.sql("DELETE FROM groups WHERE id = :id").param("id", group.getId()).update();
+            jdbc.sql("DELETE FROM groups WHERE id = :id").param("id", otherGroup.getId()).update();
             jdbc.sql("DELETE FROM devices WHERE id = :id").param("id", viewer.getId()).update();
             jdbc.sql("DELETE FROM regions WHERE code IN ('11010530', '11010', '11')").update();
             jdbc.sql("""
@@ -223,7 +227,10 @@ class EmotionMapPlanScopeIntegrationTest {
                 EmotionSearchFilter.of(null, null, null, null, null),
                 EmotionSearchFilter.of(day, day, null, null, null),
                 EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.MY, null),
-                EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.GROUP, group.getPublicId()));
+                EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.GROUP,
+                        List.of(group.getPublicId())),
+                EmotionSearchFilter.of(null, null, EmotionContentFilter.MEMO, EmotionSearchScope.GROUP,
+                        List.of(group.getPublicId(), otherGroup.getPublicId())));
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.setReadOnly(true);
 
@@ -252,8 +259,9 @@ class EmotionMapPlanScopeIntegrationTest {
                         .isEqualTo(mode.equals("force_custom_plan") ? 5L : 0L);
                 assertThat((Long) after.get("generic_plans") - (Long) before.get("generic_plans"))
                         .isEqualTo(mode.equals("force_generic_plan") ? 5L : 0L);
-                assertThat(sql).contains("left(e.region_code, " + (level == RegionLevel.SIDO ? 2 : 5) + ")")
-                        .doesNotContain("JOIN regions", " IN (");
+                String root = "left(e.region_code, " + (level == RegionLevel.SIDO ? 2 : 5) + ")";
+                assertThat(sql).contains(root)
+                        .doesNotContain("JOIN regions", root + " IN (", "e.region_code IN (");
                 assertObservedMode(mode);
                 String name = (String) after.get("name");
                 assertThat(name).matches("S_\\d+");
@@ -286,7 +294,7 @@ class EmotionMapPlanScopeIntegrationTest {
         switch (filter.scope()) {
             case ALL -> { }
             case MY -> arguments.add(viewer.getId().toString());
-            case GROUP -> arguments.add("'" + filter.groupId() + "'::uuid");
+            case GROUP -> filter.groupIds().forEach(groupId -> arguments.add("'" + groupId + "'::uuid"));
         }
         return arguments;
     }
