@@ -77,6 +77,8 @@ class PressViewModelTest {
                 advanceTimeBy(300)
                 runCurrent()
 
+                advanceTimeBy(1_000)
+                runCurrent()
                 assertEquals(1, sender.attempts)
                 assertEquals(0L, viewModel.uiState.value.pendingPressCount)
                 assertEquals(
@@ -475,6 +477,8 @@ class PressViewModelTest {
                 val totalReadGate = CompletableDeferred<Unit>()
                 statistics.allReadGate = totalReadGate
                 assertTrue(viewModel.onEmotionTap(EmotionKind.Angry))
+                runCurrent()
+                advanceTimeBy(1_000)
                 runCurrent()
                 assertEquals(1L, viewModel.uiState.value.optimisticAllPressCount)
 

@@ -72,7 +72,7 @@ class PressBatchWaitTest {
         }
 
     @Test
-    fun `expired deadline does not add another full wait after read`() =
+    fun `slow aggregate read does not postpone the input deadline`() =
         runTest {
             val f = Fixture(this, 1_000)
             f.start()
@@ -80,12 +80,12 @@ class PressBatchWaitTest {
             advanceTimeBy(650)
             runCurrent()
             f.tap()
-            advanceTimeBy(949)
+            advanceTimeBy(499)
             runCurrent()
             assertEquals(listOf(500L), f.starts)
             advanceTimeBy(1)
             runCurrent()
-            assertEquals(listOf(500L, 1_600L), f.starts)
+            assertEquals(listOf(500L, 1_150L), f.starts)
         }
 
     @Test
@@ -292,11 +292,90 @@ class PressBatchWaitTest {
             }
         }
 
+    @Test
+    fun `aggregate requests coalesce without delaying confirmed inputs`() =
+        runTest {
+            val f = Fixture(this, 50, sendMillis = 40)
+            f.start()
+            repeat(100) {
+                f.tap()
+                advanceTimeBy(100)
+                runCurrent()
+            }
+            advanceTimeBy(2_000)
+            runCurrent()
+            assertEquals(100, f.confirmations.size)
+            assertEquals(0L, f.repository.state.value.pendingPressCount)
+            kotlin.test.assertTrue(f.allReads <= 7, "aggregate reads=${f.allReads}")
+            assertEquals(
+                100L,
+                f.repository.state.value.allToday
+                    ?.total,
+            )
+            assertEquals(0L, f.repository.state.value.optimisticAllPressCount)
+        }
+
+    @Test
+    fun `aggregate started before a new write never rolls back its coverage`() =
+        runTest {
+            val f = Fixture(this, 2_000, sendMillis = 100, captureAllAtStart = true)
+            f.start()
+            f.tap()
+            advanceTimeBy(1_700)
+            runCurrent()
+            f.tap()
+            advanceTimeBy(1_900)
+            runCurrent()
+            assertEquals(2, f.confirmations.size)
+            assertEquals(0L, f.repository.state.value.pendingPressCount)
+            // The stale response must leave the acknowledged optimistic coverage intact.
+            assertEquals(2L, f.repository.state.value.optimisticAllPressCount)
+            advanceTimeBy(3_100)
+            runCurrent()
+            assertEquals(
+                2L,
+                f.repository.state.value.allToday
+                    ?.total,
+            )
+            assertEquals(0L, f.repository.state.value.optimisticAllPressCount)
+        }
+
+    @Test
+    fun `aggregate returned during an in flight write preserves optimistic totals`() =
+        runTest {
+            val f = Fixture(this, 2_000, sendMillis = 100, captureAllAtStart = true)
+            f.start()
+            f.tap()
+            advanceTimeBy(1_700)
+            runCurrent()
+            f.sendMillis = 3_000
+            f.tap()
+            advanceTimeBy(2_000)
+            runCurrent()
+            assertEquals(1L, f.repository.state.value.pendingPressCount)
+            assertEquals(
+                0L,
+                f.repository.state.value.allToday
+                    ?.total,
+            )
+            assertEquals(2L, f.repository.state.value.optimisticAllPressCount)
+            advanceTimeBy(7_000)
+            runCurrent()
+            assertEquals(
+                2L,
+                f.repository.state.value.allToday
+                    ?.total,
+            )
+            assertEquals(0L, f.repository.state.value.optimisticAllPressCount)
+            assertEquals(2, f.confirmations.size)
+        }
+
     private class Fixture(
         private val scope: TestScope,
         private val allReadMillis: Long,
         connectivity: MutableStateFlow<Boolean>? = null,
-        private val sendMillis: Long = 100,
+        var sendMillis: Long = 100,
+        private val captureAllAtStart: Boolean = false,
     ) : PressStatisticsDataSource,
         PressSender {
         private val counts = EmotionState.entries.associateWith { 0L }.toMutableMap()
@@ -336,11 +415,14 @@ class PressBatchWaitTest {
             PressReadResult.Loaded(MyDailyPressSnapshot("2026-10-16", counts.toMap(), counts.values.sum()))
 
         override suspend fun findAllToday(): PressReadResult<AllDailyPressSnapshot> {
+            val captured = counts.values.sum()
             if (!initialRead) {
                 allReads++
                 delay(allReadMillis)
             }
-            return PressReadResult.Loaded(AllDailyPressSnapshot("2026-10-16", counts.values.sum()))
+            return PressReadResult.Loaded(
+                AllDailyPressSnapshot("2026-10-16", if (captureAllAtStart) captured else counts.values.sum()),
+            )
         }
 
         override suspend fun send(batch: PressBatch): PressSendResult {

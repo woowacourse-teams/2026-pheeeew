@@ -291,7 +291,7 @@ class PressRepositoryLongQueueTest {
             server.apply(sender.batches.first())
             repository.refreshToday(force = true)
             runCurrent()
-            advanceTimeBy(100)
+            advanceTimeBy(1_100)
             runCurrent()
             assertEquals(2, sender.batches.size)
             assertNotEquals(sender.batches[0].requestId, sender.batches[1].requestId)
@@ -363,7 +363,7 @@ class PressRepositoryLongQueueTest {
             server.pressDate = "2026-10-09"
             repository.refreshToday(force = true)
             runCurrent()
-            advanceTimeBy(100)
+            advanceTimeBy(1_100)
             runCurrent()
             assertEquals(2, sender.batches.size)
             assertEquals(
