@@ -17,8 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.input.TextFieldLineLimits
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,6 +52,8 @@ import com.pheeeew.core.designsystem.component.AppModalBottomSheet
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
+import com.pheeeew.core.designsystem.input.rememberTextEditor
+import com.pheeeew.core.designsystem.input.rememberTextInputPlatformOptions
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
@@ -104,6 +107,7 @@ fun GroupJoinSheet(
     targetGroupName: String? = null,
     onVerifyMembership: (() -> Unit)? = null,
 ) {
+    val editor = rememberTextEditor(uiState.input, onCodeChanged)
     val scope = rememberCoroutineScope()
     val latestDismiss by rememberUpdatedState(onDismiss)
     val latestDismissBlocked by rememberUpdatedState(uiState.isDismissBlocked)
@@ -166,8 +170,14 @@ fun GroupJoinSheet(
 
             Spacer(Modifier.height(22.dp))
             OutlinedTextField(
-                value = uiState.input,
-                onValueChange = onCodeChanged,
+                state = editor.state,
+                inputTransformation = {
+                    val next = TextFieldValue(asCharSequence().toString(), selection).normalizeInviteCode()
+                    if (next.text != asCharSequence().toString()) {
+                        replace(0, length, next.text)
+                        selection = next.selection
+                    }
+                },
                 modifier =
                     Modifier
                         .fillMaxWidth()
@@ -185,21 +195,19 @@ fun GroupJoinSheet(
                         !(targetGroupName != null && uiState.needsMembershipVerification),
                 isError = uiState.shouldShowCodeValidationError,
                 placeholder = { Text(stringResource(Res.string.group_join_code_placeholder)) },
-                singleLine = true,
+                lineLimits = TextFieldLineLimits.SingleLine,
                 shape = JoinInputShape,
                 keyboardOptions =
                     KeyboardOptions(
                         capitalization = KeyboardCapitalization.Characters,
                         imeAction = ImeAction.Search,
                         keyboardType = KeyboardType.Ascii,
+                        platformImeOptions = rememberTextInputPlatformOptions(),
                     ),
-                keyboardActions =
-                    KeyboardActions(
-                        onSearch = {
-                            keyboardController?.hide()
-                            onSearchClick()
-                        },
-                    ),
+                onKeyboardAction = {
+                    keyboardController?.hide()
+                    onSearchClick()
+                },
                 colors =
                     OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Color.Transparent,
