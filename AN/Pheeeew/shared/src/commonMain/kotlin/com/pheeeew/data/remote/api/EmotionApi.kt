@@ -85,7 +85,7 @@ class EmotionApi(
         requests.execute(
             ApiRequest(
                 method = HttpMethod.Post,
-                path = "/api/v2/emotions",
+                path = V3_PATH,
                 kind = RequestKind.WRITE,
                 body = request,
                 replayAfterAuthentication = true,

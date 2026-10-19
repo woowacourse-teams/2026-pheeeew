@@ -136,6 +136,11 @@ class MapRecordViewModel(
         _uiModel.value = _uiModel.value.copy(inputMode = inputMode)
     }
 
+    fun onAnonymousChange(isAnonymous: Boolean) {
+        if (_uiModel.value.step != RecordFlowStepUiModel.Input || _uiModel.value.isSubmitting) return
+        _uiModel.value = _uiModel.value.copy(isAnonymous = isAnonymous)
+    }
+
     fun onMemoChange(memo: String) {
         if (memo.isNotBlank()) funnel.inputStarted("text")
         _uiModel.value = _uiModel.value.copy(memo = memo.take(MAX_MEMO_LENGTH))
@@ -241,6 +246,7 @@ class MapRecordViewModel(
                 rotationDegrees = 0.0,
                 groupId = state.selectedGroupId.takeUnless { it == NO_GROUP_ID },
                 content = content,
+                anonymous = state.isAnonymous,
             ).also { pendingRegistration = it }
         val submission =
             funnel.submit(

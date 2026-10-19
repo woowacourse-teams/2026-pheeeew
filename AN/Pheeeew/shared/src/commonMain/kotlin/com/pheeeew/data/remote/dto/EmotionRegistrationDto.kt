@@ -13,6 +13,7 @@ internal data class EmotionRegistrationRequestDto(
     val memo: String?,
     val audioUploadId: String?,
     val groupId: String?,
+    val anonymous: Boolean,
 )
 
 @Serializable

@@ -27,5 +27,6 @@ internal fun EmotionRegistration.toRequestDto(audioUploadId: String?): EmotionRe
         memo = (content as? EmotionRegistrationContent.Memo)?.text,
         audioUploadId = resolvedAudioUploadId,
         groupId = groupId,
+        anonymous = anonymous,
     )
 }
