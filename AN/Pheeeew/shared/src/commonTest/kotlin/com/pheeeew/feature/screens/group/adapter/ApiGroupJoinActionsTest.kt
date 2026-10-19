@@ -1,11 +1,11 @@
 package com.pheeeew.feature.screens.group.adapter
 
-import com.pheeeew.data.remote.group.dto.GroupPreviewResponseDto
-import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
-import com.pheeeew.data.remote.group.mapper.GroupResponseMapper
-import com.pheeeew.domain.repository.group.GroupInviteLookupResult
-import com.pheeeew.domain.repository.group.GroupJoinRepository
-import com.pheeeew.domain.repository.group.GroupJoinRepositoryResult
+import com.pheeeew.data.remote.dto.GroupPreviewResponseDto
+import com.pheeeew.data.remote.dto.GroupStampResponseDto
+import com.pheeeew.data.remote.mapper.GroupResponseMapper
+import com.pheeeew.domain.repository.GroupInviteLookupResult
+import com.pheeeew.domain.repository.GroupJoinRepository
+import com.pheeeew.domain.repository.GroupJoinRepositoryResult
 import com.pheeeew.feature.screens.group.home.GroupListResult
 import com.pheeeew.feature.screens.group.home.GroupListSource
 import com.pheeeew.feature.screens.group.join.GroupJoinResult

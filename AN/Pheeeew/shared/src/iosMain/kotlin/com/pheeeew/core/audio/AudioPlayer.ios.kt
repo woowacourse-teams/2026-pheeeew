@@ -5,6 +5,7 @@ package com.pheeeew.core.audio
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,11 +37,13 @@ import platform.darwin.NSObjectProtocol
 
 @Composable
 actual fun rememberAudioPlayer(): AudioPlayer {
-    val player = remember { IosAudioPlayer() }
+    val factory = LocalAudioFactories.current.audioPlayer
+    val player = remember(factory) { factory.create() }
     DisposableEffect(player) { onDispose { player.release() } }
     return player
 }
 
+@Inject
 internal class IosAudioPlayer : AudioPlayer {
     private val mutableState = MutableStateFlow(AudioPlayerState())
     override val state = mutableState.asStateFlow()

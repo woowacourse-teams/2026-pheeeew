@@ -2,6 +2,7 @@ package com.pheeeew.data.location.platform.ios
 
 import com.pheeeew.core.location.PlatformLocationProvider
 import com.pheeeew.domain.model.CurrentLocation
+import dev.zacsweers.metro.Inject
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.useContents
 import kotlinx.coroutines.CancellableContinuation
@@ -19,10 +20,14 @@ import platform.darwin.dispatch_get_main_queue
 import kotlin.coroutines.resume
 
 @OptIn(ExperimentalForeignApi::class)
+@Inject
 internal class IosPlatformLocationProvider(
     private val locationManager: CLLocationManager = CLLocationManager(),
-) : PlatformLocationProvider {
+) : PlatformLocationProvider,
+    AutoCloseable {
     private val delegate = LocationDelegate(locationManager)
+
+    override fun close() = delegate.close()
 
     override suspend fun getCurrentLocation(): CurrentLocation? =
         withContext(Dispatchers.Main) {
@@ -36,6 +41,13 @@ private class LocationDelegate(
 ) : NSObject(),
     CLLocationManagerDelegateProtocol {
     private var continuation: CancellableContinuation<CurrentLocation?>? = null
+
+    fun close() {
+        continuation?.cancel()
+        continuation = null
+        if (locationManager.delegate === this) locationManager.delegate = null
+        locationManager.stopUpdatingLocation()
+    }
 
     suspend fun requestLocation(): CurrentLocation? =
         suspendCancellableCoroutine { requestContinuation ->

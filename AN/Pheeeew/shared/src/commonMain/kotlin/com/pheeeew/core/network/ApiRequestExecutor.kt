@@ -203,13 +203,13 @@ class ApiRequestExecutor internal constructor(
         val first = transmit(request, token)
         val response = (first as? RequestExecutionResult.Response)?.value ?: return first
         val recovery = accessTokenProvider as? RecoverableAccessTokenProvider
-        if (token == null || recovery == null || !request.replayAfterAuthentication ||
-            response.status.value != 401
-        ) {
-            return first
-        }
+        if (token == null || recovery == null || response.status.value != 401) return first
         val failure = response.toHttpFailure(request.kind)
-        if ((failure.reason as? NetworkFailure.HttpStatus)?.error?.code != "AUTH-001") return first
+        val code = (failure.reason as? NetworkFailure.HttpStatus)?.error?.code
+        if (code == "DEVICE-004") {
+            return invalidateDevice(request, recovery, token) ?: first
+        }
+        if (!request.replayAfterAuthentication || code != "AUTH-001") return first
         val renewed =
             try {
                 recovery.recover(token)
@@ -220,8 +220,32 @@ class ApiRequestExecutor internal constructor(
             } catch (_: Exception) {
                 return request.sessionProviderFailure()
             }
-        return transmit(request, renewed)
+        val replayed = transmit(request, renewed)
+        val replayResponse = (replayed as? RequestExecutionResult.Response)?.value ?: return replayed
+        if (replayResponse.status.value == 401 &&
+            (replayResponse.toHttpFailure(request.kind).reason as? NetworkFailure.HttpStatus)?.error?.code ==
+            "DEVICE-004"
+        ) {
+            return invalidateDevice(request, recovery, renewed) ?: replayed
+        }
+        return replayed
     }
+
+    private suspend fun invalidateDevice(
+        request: ApiRequest,
+        recovery: RecoverableAccessTokenProvider,
+        token: AccessToken,
+    ): RequestExecutionResult.Failure? =
+        try {
+            recovery.deviceUnavailable(token)
+            null
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (failure: SessionAccessException) {
+            request.sessionProviderFailure(failure.details)
+        } catch (_: Exception) {
+            request.sessionProviderFailure()
+        }
 
     private suspend fun transmit(
         request: ApiRequest,

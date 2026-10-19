@@ -2,9 +2,9 @@ package com.pheeeew.feature.screens.group.adapter
 
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
-import com.pheeeew.domain.repository.group.GroupInviteLookupResult
-import com.pheeeew.domain.repository.group.GroupJoinRepository
-import com.pheeeew.domain.repository.group.GroupJoinRepositoryResult
+import com.pheeeew.domain.repository.GroupInviteLookupResult
+import com.pheeeew.domain.repository.GroupJoinRepository
+import com.pheeeew.domain.repository.GroupJoinRepositoryResult
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.screens.group.home.GroupListResult
@@ -15,7 +15,9 @@ import com.pheeeew.feature.screens.group.join.JoinGroupAction
 import com.pheeeew.feature.screens.group.join.LookupGroupAction
 import com.pheeeew.feature.screens.group.mapper.toSummaryUiModel
 import com.pheeeew.feature.screens.group.model.GroupId
+import dev.zacsweers.metro.Inject
 
+@Inject
 class ApiLookupGroupAction(
     private val repository: GroupJoinRepository,
 ) : LookupGroupAction {
@@ -29,6 +31,7 @@ class ApiLookupGroupAction(
 }
 
 /** Adapts the API result and checks membership before reporting 409 or an uncertain write as joined. */
+@Inject
 class ApiJoinGroupAction(
     private val repository: GroupJoinRepository,
     private val groupListSource: GroupListSource,

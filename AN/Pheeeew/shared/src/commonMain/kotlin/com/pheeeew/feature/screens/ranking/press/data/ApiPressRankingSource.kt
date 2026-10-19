@@ -6,8 +6,10 @@ import com.pheeeew.feature.screens.ranking.press.PressEmotion
 import com.pheeeew.feature.screens.ranking.press.PressPersonRank
 import com.pheeeew.feature.screens.ranking.press.PressRankingLoadResult
 import com.pheeeew.feature.screens.ranking.press.PressRankingSource
+import dev.zacsweers.metro.Inject
 import com.pheeeew.domain.repository.PressRankingLoadResult as RepositoryResult
 
+@Inject
 internal class ApiPressRankingSource(
     private val repository: PressRankingRepository,
 ) : PressRankingSource {

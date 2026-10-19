@@ -1,15 +1,15 @@
 package com.pheeeew.feature.screens.map
 
 import com.pheeeew.core.location.PlatformLocationProvider
-import com.pheeeew.core.permission.LocationPermissionController
-import com.pheeeew.core.permission.LocationPermissionStatus
-import com.pheeeew.data.location.repository.LocationRepositoryImpl
+import com.pheeeew.data.repository.LocationRepositoryImpl
 import com.pheeeew.domain.model.CurrentLocation
 import com.pheeeew.domain.model.LocationError
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionMapPageResult
 import com.pheeeew.domain.model.emotion.EmotionMapSnapshot
+import com.pheeeew.domain.permission.LocationPermissionController
+import com.pheeeew.domain.permission.LocationPermissionStatus
 import com.pheeeew.domain.repository.EmotionMapRepository
 import com.pheeeew.domain.usecase.FindEmotionMapPageUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase

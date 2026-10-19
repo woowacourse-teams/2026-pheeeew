@@ -6,7 +6,7 @@ import com.pheeeew.domain.model.device.DeviceAccess
 import com.pheeeew.domain.model.device.DeviceSessionFailure
 import com.pheeeew.domain.model.device.DeviceSessionFailureKind
 import com.pheeeew.domain.model.device.DeviceSessionResult
-import com.pheeeew.domain.repository.device.DeviceSessionRepository
+import com.pheeeew.domain.repository.DeviceSessionRepository
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runCurrent
@@ -128,6 +128,159 @@ class DeviceSessionManagerTest {
             now += 100
             manager.accessToken()
             assertEquals(2, calls)
+        }
+
+    @Test
+    fun `DEVICE-004는 세션을 재등록 대기로 바꾸고 늦은 응답은 새 기기를 지우지 않는다`() =
+        runTest {
+            var generation = 1L
+            var invalidations = 0
+            val repository =
+                object : DeviceSessionRepository {
+                    override suspend fun prepare(): DeviceSessionResult = ready("token-$generation", generation)
+
+                    override suspend fun invalidateMissingDevice(generation: Long): DeviceSessionResult {
+                        invalidations++
+                        return DeviceSessionResult.NeedsRegistration()
+                    }
+                }
+            val manager = DeviceSessionManager(repository, backgroundScope) { 1000 }
+            val rejected = manager.accessToken()
+            manager.deviceUnavailable(rejected)
+            assertIs<DeviceSessionResult.NeedsRegistration>(manager.state.value)
+            assertEquals(1, invalidations)
+            generation = 2
+            manager.register("new nickname")
+            manager.deviceUnavailable(rejected)
+            assertEquals(1, invalidations)
+            assertEquals(2L, manager.accessToken().generation)
+        }
+
+    @Test
+    fun `DEVICE-004 arriving during refresh must invalidate after that refresh finishes`() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            var calls = 0
+            var invalidations = 0
+            val manager =
+                DeviceSessionManager(
+                    object : DeviceSessionRepository {
+                        override suspend fun prepare(): DeviceSessionResult {
+                            calls++
+                            if (calls > 1) gate.await()
+                            return ready(if (calls == 1) "A" else "B")
+                        }
+
+                        override suspend fun invalidateMissingDevice(generation: Long): DeviceSessionResult {
+                            invalidations++
+                            return DeviceSessionResult.NeedsRegistration()
+                        }
+                    },
+                    backgroundScope,
+                ) { 1000 }
+            val rejected = manager.accessToken()
+            val refreshing = async { manager.recover(rejected) }
+            runCurrent()
+            val missing = async { manager.deviceUnavailable(rejected) }
+            runCurrent()
+            gate.complete(Unit)
+            refreshing.await()
+            missing.await()
+            assertEquals(1, invalidations)
+            assertEquals(2, calls)
+            assertIs<DeviceSessionResult.NeedsRegistration>(manager.state.value)
+        }
+
+    @Test
+    fun `DEVICE-004 applies to the same device even after its access token changes`() =
+        runTest {
+            var calls = 0
+            var invalidations = 0
+            val manager =
+                DeviceSessionManager(
+                    object : DeviceSessionRepository {
+                        override suspend fun prepare(): DeviceSessionResult = ready("token-${++calls}")
+
+                        override suspend fun invalidateMissingDevice(generation: Long): DeviceSessionResult {
+                            invalidations++
+                            return DeviceSessionResult.NeedsRegistration()
+                        }
+                    },
+                    backgroundScope,
+                ) { 1000 }
+            val rejected = manager.accessToken()
+            manager.recover(rejected)
+            manager.deviceUnavailable(rejected)
+            assertEquals(1, invalidations)
+            assertIs<DeviceSessionResult.NeedsRegistration>(manager.state.value)
+        }
+
+    @Test
+    fun `DEVICE-004 waiting for a new registration does not invalidate the new device`() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            var invalidations = 0
+            val manager =
+                DeviceSessionManager(
+                    object : DeviceSessionRepository {
+                        override suspend fun prepare(): DeviceSessionResult = DeviceSessionResult.NeedsRegistration()
+
+                        override suspend fun register(nickname: String): DeviceSessionResult {
+                            gate.await()
+                            return ready("new-device", 2)
+                        }
+
+                        override suspend fun invalidateMissingDevice(generation: Long): DeviceSessionResult {
+                            invalidations++
+                            return DeviceSessionResult.NeedsRegistration()
+                        }
+                    },
+                    backgroundScope,
+                ) { 1000 }
+            val registering = async { manager.register("nickname") }
+            runCurrent()
+            val missing = async { manager.deviceUnavailable(AccessToken("old-device", 1)) }
+            runCurrent()
+            gate.complete(Unit)
+            registering.await()
+            missing.await()
+            assertEquals(0, invalidations)
+            assertEquals(2L, manager.accessToken().generation)
+        }
+
+    @Test
+    fun `cancelling the HTTP caller does not drop invalidation waiting for refresh`() =
+        runTest {
+            val gate = CompletableDeferred<Unit>()
+            var calls = 0
+            var invalidations = 0
+            val manager =
+                DeviceSessionManager(
+                    object : DeviceSessionRepository {
+                        override suspend fun prepare(): DeviceSessionResult {
+                            calls++
+                            if (calls > 1) gate.await()
+                            return ready()
+                        }
+
+                        override suspend fun invalidateMissingDevice(generation: Long): DeviceSessionResult {
+                            invalidations++
+                            return DeviceSessionResult.NeedsRegistration()
+                        }
+                    },
+                    backgroundScope,
+                ) { 1000 }
+            val rejected = manager.accessToken()
+            val refreshing = async { manager.recover(rejected) }
+            runCurrent()
+            val missing = async { manager.deviceUnavailable(rejected) }
+            runCurrent()
+            missing.cancel()
+            gate.complete(Unit)
+            refreshing.await()
+            runCurrent()
+            assertEquals(1, invalidations)
+            assertIs<DeviceSessionResult.NeedsRegistration>(manager.state.value)
         }
 
     private fun ready(

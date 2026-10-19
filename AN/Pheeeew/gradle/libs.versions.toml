@@ -1,4 +1,5 @@
 [versions]
+metro = "1.4.5"
 agp = "9.0.1"
 android-compileSdk = "36"
 android-minSdk = "26"
@@ -28,6 +29,7 @@ play-integrity = "1.5.0"
 sentryGradle = "6.22.0"
 
 [libraries]
+metro-viewmodel-compose = { module = "dev.zacsweers.metro:metrox-viewmodel-compose", version.ref = "metro" }
 sentry = { module = "io.sentry:sentry-kotlin-multiplatform", version = "0.27.0" }
 posthog = { module = "com.posthog:posthog-kmp", version = "0.5.1" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -67,6 +69,7 @@ play-services-location = { module = "com.google.android.gms:play-services-locati
 play-integrity = { module = "com.google.android.play:integrity", version.ref = "play-integrity" }
 
 [plugins]
+metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 androidApplication = { id = "com.android.application", version.ref = "agp" }
 androidTest = { id = "com.android.test", version.ref = "agp" }
 androidMultiplatformLibrary = { id = "com.android.kotlin.multiplatform.library", version.ref = "agp" }

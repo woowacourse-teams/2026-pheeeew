@@ -14,8 +14,11 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
-import com.pheeeew.core.permission.LocationPermissionController
-import com.pheeeew.core.permission.LocationPermissionStatus
+import com.pheeeew.domain.permission.LocationPermissionController
+import com.pheeeew.domain.permission.LocationPermissionStatus
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.suspendCancellableCoroutine
@@ -25,10 +28,16 @@ import kotlinx.coroutines.withContext
 import java.lang.ref.WeakReference
 import kotlin.coroutines.resume
 
+@AssistedInject
 class AndroidLocationPermissionController(
-    activity: ComponentActivity,
+    @Assisted activity: ComponentActivity,
 ) : LocationPermissionController,
     AutoCloseable {
+    @AssistedFactory
+    interface Factory {
+        fun create(activity: ComponentActivity): AndroidLocationPermissionController
+    }
+
     private val applicationContext = activity.applicationContext
     private val preferences =
         applicationContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)

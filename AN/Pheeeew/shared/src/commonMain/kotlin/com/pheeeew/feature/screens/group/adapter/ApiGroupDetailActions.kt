@@ -2,9 +2,9 @@ package com.pheeeew.feature.screens.group.adapter
 
 import com.pheeeew.domain.model.group.GroupDetail
 import com.pheeeew.domain.model.group.GroupRole
-import com.pheeeew.domain.repository.group.GroupDetailLookupResult
-import com.pheeeew.domain.repository.group.GroupDetailRepository
-import com.pheeeew.domain.repository.group.GroupLeaveResult
+import com.pheeeew.domain.repository.GroupDetailLookupResult
+import com.pheeeew.domain.repository.GroupDetailRepository
+import com.pheeeew.domain.repository.GroupLeaveResult
 import com.pheeeew.feature.screens.group.detail.GroupDetailLoadResult
 import com.pheeeew.feature.screens.group.detail.GroupDetailSource
 import com.pheeeew.feature.screens.group.detail.LeaveGroupAction
@@ -13,8 +13,10 @@ import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
 import com.pheeeew.feature.screens.group.mapper.toSummaryUiModel
 import com.pheeeew.feature.screens.group.mapper.toUiJoinType
 import com.pheeeew.feature.screens.group.model.GroupId
+import dev.zacsweers.metro.Inject
 import com.pheeeew.domain.model.group.GroupId as DomainGroupId
 
+@Inject
 class ApiGroupDetailSource(
     private val repository: GroupDetailRepository,
 ) : GroupDetailSource {
@@ -30,6 +32,7 @@ class ApiGroupDetailSource(
     }
 }
 
+@Inject
 class ApiLeaveGroupAction(
     private val repository: GroupDetailRepository,
 ) : LeaveGroupAction {

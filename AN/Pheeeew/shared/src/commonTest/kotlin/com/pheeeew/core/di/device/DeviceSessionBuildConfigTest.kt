@@ -1,9 +1,9 @@
 package com.pheeeew.core.di.device
 
 import com.pheeeew.data.local.device.LegacyCredentialPolicy
-import com.pheeeew.data.remote.device.attestation.DeviceAttestationPolicy
-import com.pheeeew.data.remote.device.attestation.DeviceProofProvider
-import com.pheeeew.data.remote.device.dto.DeviceAttestationDto
+import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
+import com.pheeeew.data.remote.attestation.DeviceProofProvider
+import com.pheeeew.data.remote.dto.DeviceAttestationDto
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

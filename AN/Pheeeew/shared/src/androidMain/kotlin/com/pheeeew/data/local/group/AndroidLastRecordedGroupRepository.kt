@@ -1,7 +1,7 @@
 package com.pheeeew.data.local.group
 
 import android.content.Context
-import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
+import com.pheeeew.domain.repository.LastRecordedGroupRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

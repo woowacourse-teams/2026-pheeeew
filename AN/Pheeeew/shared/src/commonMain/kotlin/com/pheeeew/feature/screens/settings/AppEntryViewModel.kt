@@ -10,7 +10,8 @@ import com.pheeeew.domain.model.device.DeviceNicknamePolicy
 import com.pheeeew.domain.model.device.DeviceNicknameUpdateResult
 import com.pheeeew.domain.model.device.DeviceNicknameValidation
 import com.pheeeew.domain.model.device.DeviceSessionResult
-import com.pheeeew.domain.repository.device.DeviceNicknameRepository
+import com.pheeeew.domain.repository.DeviceNicknameRepository
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -37,6 +38,7 @@ data class AppEntryUiState(
                 validation == DeviceNicknameValidation.VALID && !isSubmitting
 }
 
+@Inject
 class AppEntryViewModel(
     private val session: DeviceSessionManager,
     private val nicknameRepository: DeviceNicknameRepository,
@@ -45,6 +47,30 @@ class AppEntryViewModel(
     val uiState = mutableUiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            session.state.collect { result ->
+                if (mutableUiState.value.phase == AppEntryPhase.READY) {
+                    when (result) {
+                        is DeviceSessionResult.NeedsRegistration -> {
+                            retry()
+                        }
+
+                        is DeviceSessionResult.Failed -> {
+                            mutableUiState.update {
+                                it.copy(
+                                    phase = AppEntryPhase.FAILED,
+                                    message = NicknameUiMessage.DEVICE_PREPARATION_FAILED,
+                                )
+                            }
+                        }
+
+                        else -> {
+                            Unit
+                        }
+                    }
+                }
+            }
+        }
         viewModelScope.launch {
             nicknameRepository.nicknameState.collect { state ->
                 if (mutableUiState.value.phase == AppEntryPhase.READY) {

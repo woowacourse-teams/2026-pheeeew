@@ -1,12 +1,14 @@
 package com.pheeeew.data.repository
 
 import com.pheeeew.core.network.ApiResult
-import com.pheeeew.data.remote.group.GroupRankingApi
-import com.pheeeew.data.remote.group.GroupRankingMapper
+import com.pheeeew.data.remote.api.GroupRankingApi
+import com.pheeeew.data.remote.mapper.GroupRankingMapper
 import com.pheeeew.domain.repository.GroupRankingLoadResult
 import com.pheeeew.domain.repository.GroupRankingRepository
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CancellationException
 
+@Inject
 class GroupRankingRepositoryImpl(
     private val api: GroupRankingApi,
 ) : GroupRankingRepository {

@@ -3,6 +3,7 @@ package com.pheeeew.core.audio
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
+import dev.zacsweers.metro.Inject
 import kotlinx.cinterop.BetaInteropApi
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.cinterop.addressOf
@@ -34,13 +35,15 @@ import platform.Foundation.create
 
 @Composable
 actual fun rememberAudioPlayback(): AudioPlayback {
-    val player = remember { IosAudioPlayback() }
+    val factory = LocalAudioFactories.current.audioPlayback
+    val player = remember(factory) { factory.create() }
     DisposableEffect(player) { onDispose { player.release() } }
     return player
 }
 
 @OptIn(ExperimentalForeignApi::class, BetaInteropApi::class)
-private class IosAudioPlayback : AudioPlayback {
+@Inject
+internal class IosAudioPlayback : AudioPlayback {
     private val mutable = MutableStateFlow(AudioPlaybackState.Empty)
     override val state = mutable.asStateFlow()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)

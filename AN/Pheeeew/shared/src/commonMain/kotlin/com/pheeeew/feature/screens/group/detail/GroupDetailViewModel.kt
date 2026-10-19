@@ -5,9 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.group.GroupRole
-import com.pheeeew.domain.repository.emotion.EmotionFailure
-import com.pheeeew.domain.repository.emotion.EmotionResult
-import com.pheeeew.domain.repository.group.GroupPublicJoinResult
+import com.pheeeew.domain.repository.EmotionFailure
+import com.pheeeew.domain.repository.EmotionResult
+import com.pheeeew.domain.repository.GroupPublicJoinResult
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.monitoring.product.resultLabel
@@ -20,6 +20,10 @@ import com.pheeeew.feature.screens.group.join.GroupJoinUiState
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
+import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -34,11 +38,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 
+@AssistedInject
 class GroupDetailViewModel(
-    val groupId: GroupId,
+    @Assisted val groupId: GroupId,
     private val dependencies: GroupDetailDependencies,
     initialGroupName: String? = null,
 ) : ViewModel() {
+    @AssistedFactory
+    interface Factory : ManualViewModelAssistedFactory {
+        fun create(groupId: GroupId): GroupDetailViewModel
+    }
+
     val telemetry = ProductMonitoring(dependencies.monitoring, "group_detail", labels("group_key" to groupId.value))
     private val _uiState =
         MutableStateFlow(
