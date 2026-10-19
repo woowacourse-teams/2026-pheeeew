@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.data.repository.press.PressBatchWaitTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-18T12:52:21.069Z" hostname="MacBook-Pro.local" time="0.121">
+  <properties/>
+  <testcase name="compare post and statistics latency combinations" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.109"/>
+  <testcase name="compare continuous inputs with delayed statistics reads" classname="com.pheeeew.data.repository.press.PressBatchWaitTest" time="0.012"/>
+  <system-out><![CDATA[LATENCY_PROBE,post=40,get=50,posts=17,gets=9,p50=340,p95=680,peak=7
+LATENCY_PROBE,post=40,get=500,posts=17,gets=9,p50=340,p95=680,peak=7
+LATENCY_PROBE,post=40,get=3000,posts=6,gets=4,p50=1400,p95=2900,peak=31
+LATENCY_PROBE,post=500,get=50,posts=10,gets=1,p50=1100,p95=1600,peak=16
+LATENCY_PROBE,post=500,get=500,posts=10,gets=1,p50=1100,p95=1600,peak=16
+LATENCY_PROBE,post=500,get=3000,posts=10,gets=1,p50=1100,p95=1600,peak=16
+LATENCY_PROBE,post=1000,get=50,posts=7,gets=1,p50=1800,p95=2600,peak=26
+LATENCY_PROBE,post=1000,get=500,posts=7,gets=1,p50=1800,p95=2600,peak=26
+LATENCY_PROBE,post=1000,get=3000,posts=7,gets=1,p50=1800,p95=2600,peak=26
+BATCH_WAIT_PROBE,mixed=false,sends=17,sizes=5/7/5/7/5/7/5/7/5/7/5/7/5/7/5/7/4,p50=340,p95=680,peak=7,drain=140
+BATCH_WAIT_PROBE,mixed=true,sends=17,sizes=5/7/5/7/5/7/5/7/5/7/5/7/5/7/5/7/4,p50=340,p95=680,peak=7,drain=140
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

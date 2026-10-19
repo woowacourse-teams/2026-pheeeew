@@ -1,0 +1,19 @@
+{
+  "README.md": "31548c98c3f848ed31dd04d461229095d24807515dafe1ea300bcba394948be9",
+  "comparison.csv": "cd907c5a69c180ab79d0aa93dba6ef5e09335e9139d55b68faaa298c4724e58c",
+  "device-environment.json": "9f4138f5c2ba4266e1ed0777520bff5eeea8fb26f9abe72237787cc8d157f780",
+  "actual-device-screen.png": "ec8e2dfb79d26c8a361bad0ac4214abedc90f8f02c5cc76c6b676b9ac431f768",
+  "analyze.py": "e1a6513b85e827e500ca2ebc1fefc258d63cd6beca3fc760c64412be65214706",
+  "logs/postwait-before_continuous_continuous_r3-inject.console.txt": "8d7ac605b1ff9f8c67d0605ccf10d5abfd9589525bb648ab152848035a500473",
+  "logs/postwait-after_continuous_continuous_r1-inject.console.txt": "a35e6336cfdc7b150287ec52a032f4f2332ad35d1ada8305818fbe604682ce6e",
+  "logs/postwait-after_continuous_continuous_r2-inject.console.txt": "61c4ac7cc74bf710b28a55276dcadbc5bea706706ac9c72ed32ca3d37a7f54a7",
+  "logs/postwait-before_continuous_continuous_r1.log": "ed7b8626d2107a59309976e0255007bcaccfde0453b51173278b9042cbe41b2b",
+  "logs/postwait-before_continuous_continuous_r3.log": "3ea9762d2428cf33ac8005454ac6bd7efbdf7768e795de910ee387500491ce1d",
+  "logs/postwait-before_continuous_continuous_r2.log": "70a15efc7450f6a57c099941c3ad5779358679de4d723fe9fa399325c9c5fd1f",
+  "logs/postwait-after_continuous_continuous_r3-inject.console.txt": "1627bfbdbe5371588cc7b5b21866ac4f39b1602336e1e8f8e83f804f0bd6d817",
+  "logs/postwait-before_continuous_continuous_r1-inject.console.txt": "a1810874f1842bb2941a82b71c3d2ae2ac59807c9065585df5cdfd8f4dfc341b",
+  "logs/postwait-before_continuous_continuous_r2-inject.console.txt": "f0b45c966d2b9c8c705c5a3a7f47ccd488d528092fd2b20469d6edc86318e587",
+  "logs/postwait-after_continuous_continuous_r1.log": "0a51f303628fdb240f37e2877369dd1234a854d0c79449c726eeb0478b517dd6",
+  "logs/postwait-after_continuous_continuous_r3.log": "0a9d14f53cbb3e9bab8715023bc1b735ff4fe5cbc1ec6ba3c3335562ec6260bb",
+  "logs/postwait-after_continuous_continuous_r2.log": "3db4a2e2677032748f604b7714f5bb867f4c6f62f4a4f72afa86c2b522f87283"
+}
