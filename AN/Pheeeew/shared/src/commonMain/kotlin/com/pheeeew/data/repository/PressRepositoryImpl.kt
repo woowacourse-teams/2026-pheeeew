@@ -86,7 +86,7 @@ internal class PressRepositoryImpl(
     init {
         require(batchMaxPerEmotion > 0 && batchMaxTotal > 0)
         require(flushDelayMillis >= 0)
-        require(aggregateRefreshMillis >= 0)
+        require(aggregateRefreshMillis > 0)
         connectivity?.let { updates ->
             sessionScope.launch {
                 updates.distinctUntilChanged().collect { available ->
@@ -451,7 +451,9 @@ internal class PressRepositoryImpl(
             sessionScope.launch {
                 while (allStatsDirtyAfterWrite && connected != false && pendingWrite?.uncertain != true) {
                     delay(aggregateRefreshMillis)
-                    refreshAllAfterWrite(detached = true)
+                    if (pendingWrite?.phase != WritePhase.InFlight) {
+                        refreshAllAfterWrite(detached = true)
+                    }
                 }
             }
     }

@@ -57,18 +57,17 @@ class PressBatchWaitTest {
             val f = Fixture(this, 200)
             f.start()
             f.tap()
-            advanceTimeBy(650)
+            advanceTimeBy(1_650)
             runCurrent()
+            assertEquals(1, f.allReads)
+            assertEquals(0, f.completedAllReads)
             f.tap()
-            advanceTimeBy(150)
-            runCurrent()
-            assertEquals(listOf(500L), f.starts)
-            advanceTimeBy(349)
+            advanceTimeBy(499)
             runCurrent()
             assertEquals(listOf(500L), f.starts)
             advanceTimeBy(1)
             runCurrent()
-            assertEquals(listOf(500L, 1_150L), f.starts)
+            assertEquals(listOf(500L, 2_150L), f.starts)
         }
 
     @Test
@@ -77,15 +76,18 @@ class PressBatchWaitTest {
             val f = Fixture(this, 1_000)
             f.start()
             f.tap()
-            advanceTimeBy(650)
+            advanceTimeBy(1_650)
             runCurrent()
+            assertEquals(1, f.allReads)
+            assertEquals(0, f.completedAllReads)
             f.tap()
             advanceTimeBy(499)
             runCurrent()
             assertEquals(listOf(500L), f.starts)
             advanceTimeBy(1)
             runCurrent()
-            assertEquals(listOf(500L, 1_150L), f.starts)
+            assertEquals(listOf(500L, 2_150L), f.starts)
+            assertEquals(0, f.completedAllReads)
         }
 
     @Test
@@ -113,8 +115,10 @@ class PressBatchWaitTest {
                 val f = Fixture(this, 200)
                 f.start()
                 f.tap()
-                advanceTimeBy(650)
+                advanceTimeBy(1_650)
                 runCurrent()
+                assertEquals(1, f.allReads)
+                assertEquals(0, f.completedAllReads)
                 val count = if (mixed) 100 else 30
                 repeat(count) { f.tap(EmotionState.entries[if (mixed) it % 5 else 0]) }
                 advanceTimeBy(150)
@@ -130,34 +134,58 @@ class PressBatchWaitTest {
             val f = Fixture(this, 200)
             f.start()
             f.tap()
-            advanceTimeBy(650)
+            advanceTimeBy(1_650)
             runCurrent()
+            assertEquals(1, f.allReads)
+            assertEquals(0, f.completedAllReads)
             f.tap()
             advanceTimeBy(250)
             runCurrent()
             assertEquals(listOf(500L), f.starts)
             repeat(29) { f.tap() }
             runCurrent()
-            assertEquals(listOf(500L, 900L), f.starts)
+            assertEquals(listOf(500L, 1_900L), f.starts)
             assertEquals(30, f.batches.last().totalCount)
         }
 
     @Test
     fun `deferred statistics refresh also preserves the input deadline`() =
         runTest {
-            val f = Fixture(this, 200)
+            val f = Fixture(this, 200, sendMillis = 1_000)
             f.start()
             f.tap()
             advanceTimeBy(650)
             runCurrent()
-            f.tap()
             f.repository.refreshToday(force = true)
-            advanceTimeBy(350)
+            advanceTimeBy(950)
+            runCurrent()
+            assertEquals(1, f.allReads)
+            assertEquals(0, f.completedAllReads)
+            f.tap()
+            advanceTimeBy(499)
             runCurrent()
             assertEquals(listOf(500L), f.starts)
-            advanceTimeBy(150)
+            advanceTimeBy(1)
             runCurrent()
-            assertEquals(listOf(500L, 1_150L), f.starts)
+            assertEquals(listOf(500L, 2_100L), f.starts)
+        }
+
+    @Test
+    fun `aggregate refresh skips ticks while post is in flight`() =
+        runTest {
+            val f = Fixture(this, 200)
+            f.start()
+            f.tap()
+            advanceTimeBy(700)
+            runCurrent()
+            f.sendMillis = 3_000
+            f.tap()
+            advanceTimeBy(2_900)
+            runCurrent()
+            assertEquals(0, f.allReads)
+            advanceTimeBy(1_100)
+            runCurrent()
+            assertEquals(1, f.allReads)
         }
 
     @Test
@@ -370,12 +398,21 @@ class PressBatchWaitTest {
             assertEquals(2, f.confirmations.size)
         }
 
+    @Test
+    fun `zero aggregate interval is rejected`() =
+        runTest {
+            kotlin.test.assertFailsWith<IllegalArgumentException> {
+                Fixture(this, 200, aggregateRefreshMillis = 0)
+            }
+        }
+
     private class Fixture(
         private val scope: TestScope,
         private val allReadMillis: Long,
         connectivity: MutableStateFlow<Boolean>? = null,
         var sendMillis: Long = 100,
         private val captureAllAtStart: Boolean = false,
+        aggregateRefreshMillis: Long = 1_000L,
     ) : PressStatisticsDataSource,
         PressSender {
         private val counts = EmotionState.entries.associateWith { 0L }.toMutableMap()
@@ -384,6 +421,7 @@ class PressBatchWaitTest {
         val batches = mutableListOf<PressBatch>()
         val confirmations = mutableListOf<Long>()
         private val inputs = EmotionState.entries.associateWith { ArrayDeque<Long>() }
+        var completedAllReads = 0
         var allReads = 0
         var peakPending = 0L
         private var concurrent = 0
@@ -395,6 +433,7 @@ class PressBatchWaitTest {
                 this,
                 scope.backgroundScope,
                 connectivity = connectivity,
+                aggregateRefreshMillis = aggregateRefreshMillis,
                 retryPolicy = PressRetryPolicy(jitter = { 1.0 }),
                 nowMillis = { scope.testScheduler.currentTime },
             )
@@ -419,6 +458,7 @@ class PressBatchWaitTest {
             if (!initialRead) {
                 allReads++
                 delay(allReadMillis)
+                completedAllReads++
             }
             return PressReadResult.Loaded(
                 AllDailyPressSnapshot("2026-10-16", if (captureAllAtStart) captured else counts.values.sum()),
