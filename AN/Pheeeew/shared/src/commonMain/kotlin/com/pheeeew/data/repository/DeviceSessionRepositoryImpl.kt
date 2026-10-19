@@ -87,6 +87,41 @@ class DeviceSessionRepositoryImpl(
         }
     }
 
+    override suspend fun invalidateMissingDevice(generation: Long): DeviceSessionResult {
+        stage = DeviceSessionStage.STORAGE
+        val credentials =
+            when (val result = storage.read()) {
+                is CredentialRead.Found -> {
+                    result.credentials
+                }
+
+                CredentialRead.Missing -> {
+                    if (!storage.write(DeviceCredentials(generation = generation))) {
+                        return failed(DeviceSessionFailureKind.STORAGE)
+                    }
+                    return DeviceSessionResult.NeedsRegistration()
+                }
+
+                is CredentialRead.Failure -> {
+                    return failed(
+                        if (result.legacyEnvironmentUnknown) {
+                            DeviceSessionFailureKind.LEGACY_ENVIRONMENT_UNKNOWN
+                        } else {
+                            DeviceSessionFailureKind.STORAGE
+                        },
+                    )
+                }
+            }
+        // A late response must never clear the credentials of a newer identity.
+        if (credentials.generation != generation) return restore()
+        if (credentials.preservesLegacyIdentity) return failed(DeviceSessionFailureKind.SESSION_CHANGED)
+        // A previous invalidation may already have started a user-authorized registration.
+        // Keep its request ID so a lost registration response cannot create another device.
+        if (credentials.refreshToken == null) return DeviceSessionResult.NeedsRegistration(credentials.pendingNickname)
+        if (!storage.write(DeviceCredentials(generation = generation))) return failed(DeviceSessionFailureKind.STORAGE)
+        return DeviceSessionResult.NeedsRegistration()
+    }
+
     override suspend fun register(nickname: String): DeviceSessionResult {
         if (now() < blockedUntil) return checkNotNull(blockedFailure)
         val normalized = nickname.trim()

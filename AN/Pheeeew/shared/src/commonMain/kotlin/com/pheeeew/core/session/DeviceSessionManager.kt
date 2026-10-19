@@ -23,7 +23,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
-/** All callers share the same in-flight success or failure, independent of a caller's cancellation. */
+/**
+ * Session work belongs to the app scope. Matching callers share its success or failure;
+ * a missing-device notification waits for different work before rechecking the identity.
+ */
 class DeviceSessionManager(
     private val repository: DeviceSessionRepository,
     private val scope: CoroutineScope,
@@ -32,6 +35,7 @@ class DeviceSessionManager(
     private val mutex = Mutex()
     private var cached: DeviceAccess? = null
     private var flight: Deferred<DeviceSessionResult>? = null
+    private var flightMode: Mode? = null
     private var lastFailure: DeviceSessionResult.Failed? = null
     private var retryAt = 0L
     private val mutableState = MutableStateFlow<DeviceSessionResult?>(null)
@@ -53,22 +57,40 @@ class DeviceSessionManager(
         return access
     }
 
+    override suspend fun deviceUnavailable(rejected: AccessToken) {
+        // The notification belongs to the session, even if the originating HTTP caller is cancelled.
+        scope.async { obtain(rejected, Mode.MissingDevice(rejected.generation)) }.await()
+    }
+
     private suspend fun obtain(
         rejected: AccessToken?,
         mode: Mode,
     ): DeviceSessionResult {
         scope.coroutineContext.ensureActive()
-        val task =
+        val (task, needsInvalidationAfterFlight) =
             mutex.withLock {
                 cached?.let { access ->
-                    if (access.isUsable(now()) &&
-                        (rejected == null || rejected.value != access.value || rejected.generation != access.generation)
-                    ) {
+                    val canReuse =
+                        if (mode is Mode.MissingDevice) {
+                            // DEVICE-004 rejects the identity, including its refreshed access tokens.
+                            access.generation != mode.generation
+                        } else {
+                            access.isUsable(now()) &&
+                                (
+                                    rejected == null || rejected.value != access.value ||
+                                        rejected.generation != access.generation
+                                )
+                        }
+                    if (canReuse) {
                         return DeviceSessionResult.Ready(access)
                     }
                 }
-                flight?.let { return@withLock it }
-                if (now() < retryAt) {
+                flight?.let {
+                    // Refresh/register and invalidation are different operations. Serialize them,
+                    // then recheck the generation instead of losing invalidation in their result.
+                    return@withLock it to (mode is Mode.MissingDevice && flightMode != mode)
+                }
+                if (mode !is Mode.MissingDevice && now() < retryAt) {
                     val rejectedNicknameCanChange =
                         mode is Mode.Register && lastFailure?.reason?.code in setOf("DEVICE-008", "DEVICE-009")
                     if (!rejectedNicknameCanChange) lastFailure?.let { return it }
@@ -83,9 +105,15 @@ class DeviceSessionManager(
                                     Mode.LegacyPrepare -> repository.prepare()
                                     Mode.Restore -> repository.restore()
                                     is Mode.Register -> repository.register(mode.nickname)
+                                    is Mode.MissingDevice -> repository.invalidateMissingDevice(mode.generation)
                                 }
                             } catch (cancelled: CancellationException) {
-                                withContext(NonCancellable) { mutex.withLock { flight = null } }
+                                withContext(NonCancellable) {
+                                    mutex.withLock {
+                                        flight = null
+                                        flightMode = null
+                                    }
+                                }
                                 throw cancelled
                             } catch (_: Exception) {
                                 DeviceSessionResult.Failed(DeviceSessionFailure(DeviceSessionFailureKind.UNEXPECTED))
@@ -110,11 +138,16 @@ class DeviceSessionManager(
                             }
                             mutableState.value = result
                             flight = null
+                            flightMode = null
                         }
                         result
-                    }.also { flight = it }
+                    }.also {
+                        flight = it
+                        flightMode = mode
+                    } to false
             }
-        return task.await()
+        val result = task.await()
+        return if (needsInvalidationAfterFlight) obtain(rejected, mode) else result
     }
 
     private fun DeviceSessionResult.tokenOrThrow(): AccessToken =
@@ -132,6 +165,10 @@ class DeviceSessionManager(
         data object LegacyPrepare : Mode
 
         data object Restore : Mode
+
+        data class MissingDevice(
+            val generation: Long,
+        ) : Mode
 
         data class Register(
             val nickname: String,

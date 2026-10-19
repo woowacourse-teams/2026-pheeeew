@@ -222,6 +222,44 @@ class EmotionActionRepositoriesTest {
         }
 
     @Test
+    fun `DEVICE-004는 갱신 없이 기기 소유자에게 알리고 재전송하지 않는다`() =
+        runTest {
+            var calls = 0
+            var invalidations = 0
+            val provider =
+                object : RecoverableAccessTokenProvider {
+                    override suspend fun accessToken() = AccessToken("old")
+
+                    override suspend fun recover(rejected: AccessToken): AccessToken =
+                        error("DEVICE-004 must not refresh")
+
+                    override suspend fun deviceUnavailable(rejected: AccessToken) {
+                        invalidations++
+                    }
+                }
+            val client =
+                createApiClient(
+                    MockEngine {
+                        calls++
+                        respond(
+                            """{"code":"DEVICE-004"}""",
+                            HttpStatusCode.Unauthorized,
+                            headersOf("Content-Type", "application/json"),
+                        )
+                    },
+                    ApiConfig("https://example.com"),
+                    provider,
+                )
+            try {
+                for (action in actions(client.requests)) assertEquals(EmotionModerationResult.Unavailable, action())
+                assertEquals(4, calls)
+                assertEquals(4, invalidations)
+            } finally {
+                client.close()
+            }
+        }
+
+    @Test
     fun `서버 오류는 인증 갱신이나 쓰기 재전송으로 처리하지 않는다`() =
         runTest {
             var calls = 0

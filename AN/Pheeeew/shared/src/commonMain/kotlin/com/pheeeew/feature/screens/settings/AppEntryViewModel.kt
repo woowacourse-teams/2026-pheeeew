@@ -48,6 +48,30 @@ class AppEntryViewModel(
 
     init {
         viewModelScope.launch {
+            session.state.collect { result ->
+                if (mutableUiState.value.phase == AppEntryPhase.READY) {
+                    when (result) {
+                        is DeviceSessionResult.NeedsRegistration -> {
+                            retry()
+                        }
+
+                        is DeviceSessionResult.Failed -> {
+                            mutableUiState.update {
+                                it.copy(
+                                    phase = AppEntryPhase.FAILED,
+                                    message = NicknameUiMessage.DEVICE_PREPARATION_FAILED,
+                                )
+                            }
+                        }
+
+                        else -> {
+                            Unit
+                        }
+                    }
+                }
+            }
+        }
+        viewModelScope.launch {
             nicknameRepository.nicknameState.collect { state ->
                 if (mutableUiState.value.phase == AppEntryPhase.READY) {
                     if (!state.isConfirmed) {

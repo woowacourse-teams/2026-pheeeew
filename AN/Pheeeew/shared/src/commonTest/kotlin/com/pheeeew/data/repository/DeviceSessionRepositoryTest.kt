@@ -123,6 +123,7 @@ class DeviceSessionRepositoryTest {
                 val api = Api().apply { refreshResult = failure }
                 repeat(2) { assertIs<DeviceSessionResult.Failed>(repository(api, storage).prepare()) }
                 assertEquals("legacy", storage.value?.refreshToken)
+
                 assertTrue(checkNotNull(storage.value).preservesLegacyIdentity)
                 assertTrue(api.ids.isEmpty())
                 assertEquals(0, api.challenges)
@@ -521,6 +522,56 @@ class DeviceSessionRepositoryTest {
             val failure = assertIs<DeviceSessionResult.Failed>(repository.restore())
             assertEquals(DeviceSessionFailureKind.UNEXPECTED, failure.reason.kind)
             assertEquals(DeviceSessionStage.STORAGE, failure.reason.stage)
+        }
+
+    @Test
+    fun `서버에서 사라진 기기는 자격 증명 무효화를 저장한 후에만 재등록을 요청한다`() =
+        runTest {
+            val api = Api()
+            val storage = Storage(DeviceCredentials(refreshToken = "old", generation = 4))
+            val repository = repository(api, storage)
+            assertIs<DeviceSessionResult.NeedsRegistration>(repository.invalidateMissingDevice(4))
+            assertEquals(4L, storage.value?.generation)
+            assertNull(storage.value?.refreshToken)
+            assertTrue(api.ids.isEmpty())
+            assertNull(api.refreshUsed)
+
+            storage.value = DeviceCredentials(refreshToken = "preserved", generation = 4)
+            storage.rejectWrite = true
+            val result = assertIs<DeviceSessionResult.Failed>(repository.invalidateMissingDevice(4))
+            assertEquals(DeviceSessionFailureKind.STORAGE, result.reason.kind)
+            assertEquals("preserved", storage.value?.refreshToken)
+        }
+
+    @Test
+    fun `늦은 기기 무효화 응답과 레거시 자격 증명을 보존한다`() =
+        runTest {
+            val api = Api()
+            val storage = Storage(DeviceCredentials(refreshToken = "new", generation = 5))
+            assertIs<DeviceSessionResult.Ready>(repository(api, storage).invalidateMissingDevice(4))
+            assertEquals("new", storage.value?.refreshToken)
+            storage.value = DeviceCredentials(refreshToken = "legacy", generation = 5, preservesLegacyIdentity = true)
+            val result = assertIs<DeviceSessionResult.Failed>(repository(api, storage).invalidateMissingDevice(5))
+            assertEquals(DeviceSessionFailureKind.SESSION_CHANGED, result.reason.kind)
+            assertEquals("legacy", storage.value?.refreshToken)
+
+            storage.value =
+                DeviceCredentials(
+                    generation = 5,
+                    pendingRequestId = "pending-registration",
+                    pendingNickname = "chosen nickname",
+                    pendingStartedAtMillis = 1000,
+                )
+            val pending =
+                assertIs<DeviceSessionResult.NeedsRegistration>(
+                    repository(api, storage).invalidateMissingDevice(5),
+                )
+            assertEquals("chosen nickname", pending.pendingNickname)
+            assertEquals("pending-registration", storage.value?.pendingRequestId)
+
+            storage.value = null
+            assertIs<DeviceSessionResult.NeedsRegistration>(repository(api, storage).invalidateMissingDevice(5))
+            assertEquals(5L, storage.value?.generation)
         }
 
     private fun repository(

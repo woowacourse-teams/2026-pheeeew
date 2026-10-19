@@ -230,6 +230,55 @@ class AppEntryViewModelTest {
             assertTrue(observer.uiState.value.isDialogVisible)
         }
 
+    @Test
+    fun `사용 중인 기기가 서버에서 사라지면 자동 등록 없이 닉네임 등록 화면으로 돌아간다`() =
+        runViewModelTest {
+            var result: DeviceSessionResult = ready()
+            val repository =
+                object : DeviceSessionRepository {
+                    override suspend fun prepare() = result
+
+                    override suspend fun restore() = result
+
+                    override suspend fun register(nickname: String): DeviceSessionResult =
+                        error("Must wait for user input")
+
+                    override suspend fun invalidateMissingDevice(generation: Long): DeviceSessionResult {
+                        result = DeviceSessionResult.NeedsRegistration()
+                        return result
+                    }
+                }
+            val manager = DeviceSessionManager(repository, backgroundScope) { 1000L }
+            val viewModel = AppEntryViewModel(manager, FakeDeviceNicknameRepository().apply { nickname = "existing" })
+            runCurrent()
+            assertEquals(AppEntryPhase.READY, viewModel.uiState.value.phase)
+            manager.deviceUnavailable(manager.accessToken())
+            runCurrent()
+            assertEquals(AppEntryPhase.REGISTRATION_REQUIRED, viewModel.uiState.value.phase)
+        }
+
+    @Test
+    fun `기기 무효화 저장 실패는 등록 화면이 아니라 재시도 가능한 실패로 표시한다`() =
+        runViewModelTest {
+            val repository =
+                object : DeviceSessionRepository {
+                    override suspend fun prepare(): DeviceSessionResult = ready()
+
+                    override suspend fun restore(): DeviceSessionResult = ready()
+
+                    override suspend fun invalidateMissingDevice(generation: Long): DeviceSessionResult =
+                        DeviceSessionResult.Failed(DeviceSessionFailure(DeviceSessionFailureKind.STORAGE))
+                }
+            val manager = DeviceSessionManager(repository, backgroundScope) { 1000L }
+            val viewModel = AppEntryViewModel(manager, FakeDeviceNicknameRepository().apply { nickname = "existing" })
+            runCurrent()
+            assertEquals(AppEntryPhase.READY, viewModel.uiState.value.phase)
+            manager.deviceUnavailable(manager.accessToken())
+            runCurrent()
+            assertEquals(AppEntryPhase.FAILED, viewModel.uiState.value.phase)
+            assertEquals(NicknameUiMessage.DEVICE_PREPARATION_FAILED, viewModel.uiState.value.message)
+        }
+
     private fun TestScope.createViewModel(
         sessionRepository: DeviceSessionRepository,
         nicknameRepository: DeviceNicknameRepository,
