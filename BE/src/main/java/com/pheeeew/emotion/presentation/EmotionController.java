@@ -70,7 +70,7 @@ public class EmotionController implements EmotionControllerApi {
             @ModelAttribute EmotionsWithoutBoundsRequest request,
             @CurrentDevice UUID devicePublicId
     ) {
-        EmotionPageView page = emotionQueryService.findListWithoutBounds(devicePublicId, request.groupId(),
+        EmotionPageView page = emotionQueryService.findListWithoutBounds(devicePublicId, request.groupId() == null ? null : List.of(request.groupId()),
                 request.startDate(), request.endDate(), request.contentType(), request.scope(), request.cursor());
 
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
@@ -115,7 +115,7 @@ public class EmotionController implements EmotionControllerApi {
             @CurrentDevice UUID devicePublicId
     ) {
         EmotionMapPageView page = emotionMapQueryService.findContentMapWithinBounds(
-                request.toBounds(), devicePublicId, request.groupId(),
+                request.toBounds(), devicePublicId, request.groupId() == null ? null : List.of(request.groupId()),
                 request.startDate(), request.endDate(), request.contentType(), request.scope(), request.cursor());
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(CursorResponse.of(page.items().stream().map(EmotionMapResponse::from).toList(),

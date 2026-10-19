@@ -490,18 +490,90 @@ class EmotionRegionCountIntegrationTest {
         entityManager.clear();
         LocalDate date = LocalDate.of(2025, 1, 2);
         UUID groupId = scope == EmotionSearchScope.GROUP ? group.getPublicId() : null;
-        var filter = EmotionSearchFilter.of(date, date, contentType, scope, groupId);
+        var filter = EmotionSearchFilter.of(date, date, contentType, scope, groupId == null ? null : List.of(groupId));
         var bounds = EmotionSearchBounds.of(126, 37, 128, 39);
 
         // when
         var regions = service.findRegionMap(bounds, level, requester.getPublicId(), filter);
-        var map = service.findContentMapWithinBounds(bounds, requester.getPublicId(), groupId,
+        var map = service.findContentMapWithinBounds(bounds, requester.getPublicId(), groupId == null ? null : List.of(groupId),
                 date, date, contentType, scope, null);
 
         // then: 공간·차단 정책 차이가 없는 자료에서는 개별 지도와 같은 대상이다.
         assertThat(regions).singleElement().satisfies(item ->
                 assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(count, state)));
         assertThat(map.items()).hasSize((int) count);
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "ALL,EMD,6,DISCOURAGED", "MEMO,EMD,4,ANGRY", "AUDIO,EMD,2,DISCOURAGED",
+            "ALL,SIGUNGU,6,DISCOURAGED", "MEMO,SIGUNGU,4,ANGRY", "AUDIO,SIGUNGU,2,DISCOURAGED",
+            "ALL,SIDO,6,DISCOURAGED", "MEMO,SIDO,4,ANGRY", "AUDIO,SIDO,2,DISCOURAGED"
+    })
+    void 여러_그룹을_지역별로_합산하고_날짜와_내용_조건을_개수와_대표_감정에_함께_적용한다(
+            EmotionContentFilter contentType, RegionLevel level, long total, EmotionState state
+    ) {
+        // given: 그룹 비회원이며, 선택한 A와 B 이외의 기록만 있는 세 번째 지역도 있다.
+        addRegion("11010531", RegionLevel.EMD, "11010");
+        addRegion("11010532", RegionLevel.EMD, "11010");
+        GroupStamp a = saveStamp("그룹 A");
+        GroupStamp b = saveStamp("그룹 B");
+        GroupStamp c = saveStamp("그룹 C");
+        Device author = 기본_기기_빌더().build();
+        entityManager.persist(author);
+        Emotion blocked = saveAt(classified().groupStamp(a).deviceId(author.getId()).memo("시작 경계")
+                .state(EmotionState.ANGRY), "2025-01-01T15:00:00Z");
+        saveAt(classified().groupStamp(a).deviceId(author.getId()).memo("같은 스탬프")
+                .state(EmotionState.ANGRY), "2025-01-02T01:00:00Z");
+        saveAt(classified().groupStamp(a).audio(Audio.builder().objectKey("a.m4a").build())
+                .state(EmotionState.DISCOURAGED), "2025-01-02T14:59:59.999999Z");
+        saveAt(classified().groupStamp(b).memo("그룹 B")
+                .state(EmotionState.DISCOURAGED), "2025-01-02T02:00:00Z");
+        saveAt(classified().groupStamp(b).regionCode("11010531").audio(Audio.builder().objectKey("b.m4a").build())
+                .state(EmotionState.DISCOURAGED), "2025-01-02T03:00:00Z");
+        saveAt(classified().groupStamp(b).regionCode("11010531").memo("상태 없음"), "2025-01-02T04:00:00Z");
+        saveAt(classified().groupStamp(c).memo("선택하지 않은 그룹").state(EmotionState.IRRITATED), "2025-01-02T05:00:00Z");
+        saveAt(classified().groupStamp(c).regionCode("11010532").memo("제외할 지역"), "2025-01-02T05:00:00Z");
+        saveAt(classified().memo("그룹 없음").state(EmotionState.IRRITATED), "2025-01-02T05:00:00Z");
+        saveAt(classified().groupStamp(a).memo("시작 직전").state(EmotionState.IRRITATED), "2025-01-01T14:59:59.999999Z");
+        saveAt(classified().groupStamp(b).memo("종료 직후").state(EmotionState.IRRITATED), "2025-01-02T15:00:00Z");
+        saveAt(classified().groupStamp(a).state(EmotionState.IRRITATED), "2025-01-02T05:00:00Z");
+        saveAt(classified().groupStamp(b).memo("삭제").state(EmotionState.IRRITATED), "2025-01-02T05:00:00Z").delete();
+        saveAt(classified().groupStamp(b).memo("미래").state(EmotionState.IRRITATED), "2100-01-02T05:00:00Z");
+        entityManager.persist(EmotionBlock.builder().blockerDeviceId(requester.getId()).emotionId(blocked.getId()).build());
+        entityManager.persist(DeviceBlock.builder().blockerDeviceId(requester.getId()).blockedDeviceId(author.getId())
+                .originEmotionId(blocked.getId()).build());
+        entityManager.flush();
+        entityManager.clear();
+        LocalDate date = LocalDate.of(2025, 1, 2);
+        var bounds = level == RegionLevel.EMD ? EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8)
+                : EmotionSearchBounds.of(130, 40, 132, 42);
+        var filter = EmotionSearchFilter.of(date, date, contentType, null,
+                List.of(b.getGroup().getPublicId(), a.getGroup().getPublicId(), b.getGroup().getPublicId()));
+
+        // when
+        var combined = service.findRegionMap(bounds, level, requester.getPublicId(), filter).stream()
+                .collect(Collectors.toMap(item -> item.region().code(), EmotionRegionMapItemView::summary));
+        long aCount = service.findRegionMap(bounds, level, requester.getPublicId(),
+                EmotionSearchFilter.of(date, date, contentType, null, List.of(a.getGroup().getPublicId()))).stream()
+                .mapToLong(item -> item.summary().totalCount()).sum();
+        long bCount = service.findRegionMap(bounds, level, requester.getPublicId(),
+                EmotionSearchFilter.of(date, date, contentType, null, List.of(b.getGroup().getPublicId()))).stream()
+                .mapToLong(item -> item.summary().totalCount()).sum();
+
+        // then: 개인 차단은 집계에 적용하지 않으며, 그룹 중복 지정으로 개수가 늘어나지 않는다.
+        assertThat(aCount).isEqualTo(total / 2);
+        assertThat(bCount).isEqualTo(total / 2);
+        assertThat(combined.values().stream().mapToLong(RegionEmotionSummary::totalCount).sum()).isEqualTo(aCount + bCount);
+        Map<String, RegionEmotionSummary> expected = level == RegionLevel.EMD ? switch (contentType) {
+            case ALL -> Map.of(EMD, RegionEmotionSummary.of(4, EmotionState.ANGRY),
+                    "11010531", RegionEmotionSummary.of(2, EmotionState.DISCOURAGED));
+            case MEMO -> Map.of(EMD, RegionEmotionSummary.of(3, EmotionState.ANGRY),
+                    "11010531", RegionEmotionSummary.of(1, null));
+            case AUDIO -> Map.of(EMD, RegionEmotionSummary.of(1, EmotionState.DISCOURAGED),
+                    "11010531", RegionEmotionSummary.of(1, EmotionState.DISCOURAGED));
+        } : Map.of(level == RegionLevel.SIDO ? "11" : "11010", RegionEmotionSummary.of(total, state));
+        assertThat(combined).containsExactlyInAnyOrderEntriesOf(expected);
     }
 
     @ParameterizedTest
@@ -531,7 +603,7 @@ class EmotionRegionCountIntegrationTest {
 
     @ParameterizedTest
     @CsvSource({"false,false", "true,false", "false,true", "true,true"})
-    void 미존재나_삭제된_그룹은_빈_화면에서도_그룹_없음으로_거부한다(boolean deleted, boolean nationwide) {
+    void 선택한_그룹_중_하나라도_미존재나_삭제되었으면_빈_화면에서도_거부한다(boolean deleted, boolean nationwide) {
         // given
         UUID groupId = UUID.randomUUID();
         if (deleted) {
@@ -540,8 +612,10 @@ class EmotionRegionCountIntegrationTest {
             group.delete(Instant.now());
             groupId = group.getPublicId();
         }
+        Group valid = 기본_그룹_빌더().name("유효 그룹").build();
+        entityManager.persist(valid);
         entityManager.flush();
-        var filter = EmotionSearchFilter.of(null, null, null, null, groupId);
+        var filter = EmotionSearchFilter.from(List.of(valid.getPublicId(), groupId));
 
         // when / then
         assertThatThrownBy(() -> {
@@ -584,7 +658,7 @@ class EmotionRegionCountIntegrationTest {
 
         // when
         var results = service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), level, requester.getPublicId(),
-                EmotionSearchFilter.of(null, null, null, null, null));
+                EmotionSearchFilter.from(null));
         var timings = inRequest(() -> {
             assertThat(findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), level, null)).isEqualTo(results);
             assertThat(findRegionMap(EmotionSearchBounds.of(-180, -90, 180, 90), level, null)).isEqualTo(results);
@@ -612,7 +686,7 @@ class EmotionRegionCountIntegrationTest {
     @Test
     void 전국_조회도_기기_확인을_그룹_확인보다_먼저_수행한다() {
         // given
-        var filter = EmotionSearchFilter.of(null, null, null, null, UUID.randomUUID());
+        var filter = EmotionSearchFilter.from(List.of(UUID.randomUUID()));
 
         // when / then
         assertThatThrownBy(() -> service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.SIDO, UUID.randomUUID(), filter))
@@ -633,7 +707,7 @@ class EmotionRegionCountIntegrationTest {
         if (empty) {
             jdbc.sql("DELETE FROM regions").update();
         }
-        var filter = EmotionSearchFilter.of(null, null, null, null, null);
+        var filter = EmotionSearchFilter.from(null);
 
         // when / then
         assertThatThrownBy(() -> service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.SIDO, requester.getPublicId(), filter))
@@ -644,7 +718,7 @@ class EmotionRegionCountIntegrationTest {
     @Test
     void 전국_조회는_준비된_데이터에_내용_있는_감정이_없으면_빈_목록을_반환한다() {
         // given
-        var filter = EmotionSearchFilter.of(null, null, null, null, null);
+        var filter = EmotionSearchFilter.from(null);
 
         // when / then
         assertThat(service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.SIDO, requester.getPublicId(), filter)).isEmpty();
@@ -735,9 +809,17 @@ class EmotionRegionCountIntegrationTest {
         }
     }
 
+    private GroupStamp saveStamp(String name) {
+        Group group = 기본_그룹_빌더().name(name).build();
+        entityManager.persist(group);
+        GroupStamp stamp = 기본_스탬프_빌더(group).build();
+        entityManager.persist(stamp);
+        return stamp;
+    }
+
     private List<EmotionRegionMapItemView> findRegionMap(EmotionSearchBounds bounds, RegionLevel level, UUID groupId) {
         return service.findRegionMap(bounds, level, requester.getPublicId(),
-                EmotionSearchFilter.of(null, null, null, null, groupId));
+                EmotionSearchFilter.from(groupId == null ? null : List.of(groupId)));
     }
 
     private Emotion saveAt(Emotion.EmotionBuilder builder, String createdAt) {

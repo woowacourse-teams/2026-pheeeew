@@ -657,7 +657,7 @@ class EmotionControllerTest {
     @MethodSource("listWithoutBoundsRequests")
     void 좌표_없는_목록은_그룹과_커서를_인증된_기기로_조회하고_기존_응답을_유지한다(String query, UUID groupId, String cursor) {
         // given
-        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groupId, null, null, null, null, cursor))
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groupId == null ? null : List.of(groupId), null, null, null, null, cursor))
                 .thenReturn(EmotionPageView.of(List.of(detailView(42L, true), detailView(43L, false)), true, "next-page"));
         String separator = query.isEmpty() ? "?" : "&";
 
@@ -676,7 +676,7 @@ class EmotionControllerTest {
                 .jsonPath("$.items[0].properties.isMine").isEqualTo(true)
                 .jsonPath("$.items[1].properties.isMine").isEqualTo(false)
                 .jsonPath("$.hasNext").isEqualTo(true).jsonPath("$.nextCursor").isEqualTo("next-page");
-        verify(emotionQueryService).findListWithoutBounds(DEVICE_PUBLIC_ID, groupId, null, null, null, null, cursor);
+        verify(emotionQueryService).findListWithoutBounds(DEVICE_PUBLIC_ID, groupId == null ? null : List.of(groupId), null, null, null, null, cursor);
     }
 
     @Test
@@ -721,14 +721,14 @@ class EmotionControllerTest {
         // given
         UUID groupId = scope == EmotionSearchScope.GROUP ? UUID.randomUUID() : null;
         LocalDate date = LocalDate.of(2026, 10, 1);
-        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groupId, date, date, contentType, scope, null))
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groupId == null ? null : List.of(groupId), date, date, contentType, scope, null))
                 .thenReturn(EmotionPageView.of(List.of(), false, null));
         String query = "?startDate=2026-10-01&endDate=2026-10-01&contentType=" + contentType + "&scope=" + scope
                 + (groupId == null ? "" : "&groupId=" + groupId) + "&devicePublicId=" + UUID.randomUUID();
 
         // when / then
         request(HttpMethod.GET, "/api/v3/emotions" + query, "access-token").expectStatus().isOk();
-        verify(emotionQueryService).findListWithoutBounds(DEVICE_PUBLIC_ID, groupId, date, date, contentType, scope, null);
+        verify(emotionQueryService).findListWithoutBounds(DEVICE_PUBLIC_ID, groupId == null ? null : List.of(groupId), date, date, contentType, scope, null);
     }
 
     @ParameterizedTest
@@ -793,7 +793,7 @@ class EmotionControllerTest {
     void 좌표_없는_목록의_커서와_재생_오류는_기존_오류_응답으로_반환한다(EmotionErrorCode error, int status) {
         // given
         UUID groupId = UUID.randomUUID();
-        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groupId, null, null, null, null, "cursor"))
+        when(emotionQueryService.findListWithoutBounds(DEVICE_PUBLIC_ID, groupId == null ? null : List.of(groupId), null, null, null, null, "cursor"))
                 .thenThrow(new EmotionException(error));
 
         // when / then
@@ -865,7 +865,7 @@ class EmotionControllerTest {
         var bounds = EmotionSearchBounds.of(126, 37, 128, 38);
         var item = new EmotionMapItemView(42L, 126.9774, 37.5669,
                 Instant.parse("2026-09-24T12:00:00Z"), EmotionState.FRUSTRATED, 35.5, null, groupId);
-        when(emotionMapQueryService.findContentMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null, null, null, null, null))
+        when(emotionMapQueryService.findContentMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId == null ? null : List.of(groupId), null, null, null, null, null))
                 .thenReturn(EmotionMapPageView.of(List.of(item), true, "next-map"));
         when(emotionMapQueryService.findContentMapWithinBounds(null, DEVICE_PUBLIC_ID, null, null, null, null, null, "next-map"))
                 .thenReturn(EmotionMapPageView.of(List.of(), false, null));
@@ -878,7 +878,7 @@ class EmotionControllerTest {
                 .jsonPath("$.nextCursor").isEqualTo("next-map");
         request(HttpMethod.GET, "/api/v2/emotions/map?cursor=next-map", "access-token")
                 .expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty();
-        verify(emotionMapQueryService).findContentMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, null, null, null, null, null);
+        verify(emotionMapQueryService).findContentMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId == null ? null : List.of(groupId), null, null, null, null, null);
         verify(emotionMapQueryService).findContentMapWithinBounds(null, DEVICE_PUBLIC_ID, null, null, null, null, null, "next-map");
         org.mockito.Mockito.verifyNoMoreInteractions(emotionQueryService, emotionMapQueryService);
     }
@@ -892,9 +892,9 @@ class EmotionControllerTest {
         UUID groupId = scope == EmotionSearchScope.GROUP ? UUID.randomUUID() : null;
         var bounds = EmotionSearchBounds.of(170, -10, -170, 10);
         LocalDate date = LocalDate.of(2026, 10, 1);
-        when(emotionMapQueryService.findContentMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, date, date, contentType, scope, null))
+        when(emotionMapQueryService.findContentMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId == null ? null : List.of(groupId), date, date, contentType, scope, null))
                 .thenReturn(EmotionMapPageView.of(List.of(), true, "next-map"));
-        when(emotionMapQueryService.findContentMapWithinBounds(null, DEVICE_PUBLIC_ID, groupId, date, date, contentType, scope, "next-map"))
+        when(emotionMapQueryService.findContentMapWithinBounds(null, DEVICE_PUBLIC_ID, groupId == null ? null : List.of(groupId), date, date, contentType, scope, "next-map"))
                 .thenReturn(EmotionMapPageView.of(List.of(), false, null));
         String filters = "&startDate=2026-10-01&endDate=2026-10-01&contentType=" + contentType + "&scope=" + scope
                 + (groupId == null ? "" : "&groupId=" + groupId) + "&devicePublicId=" + UUID.randomUUID();
@@ -903,8 +903,8 @@ class EmotionControllerTest {
         request(HttpMethod.GET, "/api/v2/emotions/map?minLongitude=170&minLatitude=-10&maxLongitude=-170&maxLatitude=10" + filters,
                 "access-token").expectStatus().isOk();
         request(HttpMethod.GET, "/api/v2/emotions/map?cursor=next-map" + filters, "access-token").expectStatus().isOk();
-        verify(emotionMapQueryService).findContentMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId, date, date, contentType, scope, null);
-        verify(emotionMapQueryService).findContentMapWithinBounds(null, DEVICE_PUBLIC_ID, groupId, date, date, contentType, scope, "next-map");
+        verify(emotionMapQueryService).findContentMapWithinBounds(bounds, DEVICE_PUBLIC_ID, groupId == null ? null : List.of(groupId), date, date, contentType, scope, null);
+        verify(emotionMapQueryService).findContentMapWithinBounds(null, DEVICE_PUBLIC_ID, groupId == null ? null : List.of(groupId), date, date, contentType, scope, "next-map");
     }
 
     @ParameterizedTest
@@ -1053,7 +1053,7 @@ class EmotionControllerTest {
         var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
         var region = Region.of(code, level, "검증용 지역", parentCode, 127, 38);
         var item = EmotionRegionMapItemView.of(region, RegionEmotionSummary.of(3L, EmotionState.ANGRY));
-        when(emotionMapQueryService.findRegionMap(bounds, level, DEVICE_PUBLIC_ID, EmotionSearchFilter.of(null, null, null, null, groupId))).thenReturn(List.of(item));
+        when(emotionMapQueryService.findRegionMap(bounds, level, DEVICE_PUBLIC_ID, EmotionSearchFilter.from(groupId == null ? null : List.of(groupId)))).thenReturn(List.of(item));
 
         // when / then
         request(HttpMethod.GET, REGION_MAP_URI + REGION_BOUNDS_QUERY + "&level=" + level + "&groupId=" + groupId,
@@ -1066,7 +1066,7 @@ class EmotionControllerTest {
                          "properties":{"level":"%s","name":"검증용 지역","parentCode":%s,
                          "totalCount":3,"representativeState":"ANGRY"}}]
                         """.formatted(code, level, parentCode == null ? "null" : "\"" + parentCode + "\""), JsonCompareMode.STRICT);
-        verify(emotionMapQueryService).findRegionMap(bounds, level, DEVICE_PUBLIC_ID, EmotionSearchFilter.of(null, null, null, null, groupId));
+        verify(emotionMapQueryService).findRegionMap(bounds, level, DEVICE_PUBLIC_ID, EmotionSearchFilter.from(groupId == null ? null : List.of(groupId)));
         org.mockito.Mockito.verifyNoMoreInteractions(emotionQueryService, emotionMapQueryService);
     }
 
@@ -1074,13 +1074,13 @@ class EmotionControllerTest {
     void 지역_요약은_날짜변경선과_그룹_생략을_허용하고_빈_결과도_정상_응답한다() {
         // given
         var bounds = EmotionSearchBounds.of(170, 37, -170, 39);
-        when(emotionMapQueryService.findRegionMap(bounds, RegionLevel.EMD, DEVICE_PUBLIC_ID, EmotionSearchFilter.of(null, null, null, null, null))).thenReturn(List.of());
+        when(emotionMapQueryService.findRegionMap(bounds, RegionLevel.EMD, DEVICE_PUBLIC_ID, EmotionSearchFilter.from(null))).thenReturn(List.of());
 
         // when / then
         request(HttpMethod.GET, REGION_MAP_URI + "?minLongitude=170&minLatitude=37&maxLongitude=-170&maxLatitude=39&level=EMD",
                 "access-token").expectStatus().isOk()
                 .expectBody().json("[]", JsonCompareMode.STRICT);
-        verify(emotionMapQueryService).findRegionMap(bounds, RegionLevel.EMD, DEVICE_PUBLIC_ID, EmotionSearchFilter.of(null, null, null, null, null));
+        verify(emotionMapQueryService).findRegionMap(bounds, RegionLevel.EMD, DEVICE_PUBLIC_ID, EmotionSearchFilter.from(null));
     }
 
     @ParameterizedTest
@@ -1118,7 +1118,7 @@ class EmotionControllerTest {
         // given
         UUID groupId = scope == EmotionSearchScope.GROUP ? UUID.randomUUID() : null;
         LocalDate date = LocalDate.of(2026, 10, 1);
-        var filter = EmotionSearchFilter.of(date, date, contentType, scope, groupId);
+        var filter = EmotionSearchFilter.of(date, date, contentType, scope, groupId == null ? null : List.of(groupId));
         var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
         when(emotionMapQueryService.findRegionMap(bounds, level, DEVICE_PUBLIC_ID, filter)).thenReturn(List.of());
 
@@ -1150,7 +1150,7 @@ class EmotionControllerTest {
     void 지역_요약의_그룹_없음_오류를_404로_전달한다() {
         // given
         UUID groupId = UUID.randomUUID();
-        var filter = EmotionSearchFilter.of(null, null, null, null, groupId);
+        var filter = EmotionSearchFilter.from(groupId == null ? null : List.of(groupId));
         when(emotionMapQueryService.findRegionMap(EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8),
                 RegionLevel.EMD, DEVICE_PUBLIC_ID, filter)).thenThrow(new GroupException(GroupErrorCode.GROUP_NOT_FOUND));
 
@@ -1191,7 +1191,7 @@ class EmotionControllerTest {
     void 지역_요약_준비_오류는_빈_응답_대신_503으로_전달한다() {
         // given
         when(emotionMapQueryService.findRegionMap(EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8), RegionLevel.EMD, DEVICE_PUBLIC_ID,
-                EmotionSearchFilter.of(null, null, null, null, null)))
+                EmotionSearchFilter.from(null)))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_REGION_DATA_UNAVAILABLE));
 
         // when / then

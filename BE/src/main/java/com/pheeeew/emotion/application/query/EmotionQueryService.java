@@ -82,7 +82,8 @@ public class EmotionQueryService {
 
     public EmotionPageView findListWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor) {
         EmotionCursor cursor = encodedCursor == null
-                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
+                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(),
+                        EmotionSearchFilter.from(groupId == null ? null : List.of(groupId)))
                 : EmotionCursorCodec.decodeWithinBounds(encodedCursor);
 
         cursor.validateSnapshotAt(Instant.now(clock));
@@ -92,7 +93,7 @@ public class EmotionQueryService {
 
     public EmotionPageView findListWithoutBounds(
             UUID devicePublicId,
-            UUID groupId,
+            List<UUID> groupIds,
             LocalDate startDate,
             LocalDate endDate,
             EmotionContentFilter contentType,
@@ -100,12 +101,13 @@ public class EmotionQueryService {
             String encodedCursor
     ) {
         EmotionCursor cursor = encodedCursor == null
-                ? EmotionCursor.initialWithoutBounds(currentSnapshotAt(), groupId).withFilter(
-                        EmotionSearchFilter.of(startDate, endDate, contentType, scope, groupId))
+                ? EmotionCursor.initialWithoutBounds(currentSnapshotAt(),
+                        EmotionSearchFilter.of(startDate, endDate, contentType, scope,
+                                groupIds))
                 : EmotionCursorCodec.decodeFilteredWithoutBounds(encodedCursor);
 
         cursor.validateSnapshotAt(Instant.now(clock));
-        cursor.validateRequestedFilter(startDate, endDate, contentType, scope, groupId);
+        cursor.validateRequestedFilter(startDate, endDate, contentType, scope, groupIds);
 
         return findList(cursor, devicePublicId);
     }
@@ -163,7 +165,7 @@ public class EmotionQueryService {
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
         if (cursor.bounds() == null) {
-            validateGroup(cursor.groupId());
+            validateGroups(cursor.groupIds());
         }
 
         int pageSize = cursor.bounds() == null ? WITHOUT_BOUNDS_PAGE_SIZE : WITHIN_BOUNDS_PAGE_SIZE;
@@ -183,8 +185,8 @@ public class EmotionQueryService {
         return EmotionPageView.of(items, true, nextCursor);
     }
 
-    private void validateGroup(UUID groupId) {
-        if (groupId != null && groupRepository.findByPublicIdAndDeletedAtIsNull(groupId).isEmpty()) {
+    private void validateGroups(List<UUID> groupIds) {
+        if (!groupIds.isEmpty() && groupRepository.countByPublicIdInAndDeletedAtIsNull(groupIds) != groupIds.size()) {
             throw new GroupException(GROUP_NOT_FOUND);
         }
     }
@@ -196,7 +198,7 @@ public class EmotionQueryService {
         }
 
         return emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), true, limit);
+                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.filter(), true, limit);
     }
 
     private List<EmotionDetailView> toListItems(List<Emotion> page, Long deviceId) {

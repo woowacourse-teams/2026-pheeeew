@@ -13,6 +13,7 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.hibernate.Session;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.type.StandardBasicTypes;
@@ -52,7 +53,7 @@ public class EmotionRegionQueryRepositoryImpl implements EmotionRegionQueryRepos
             query.setParameter("deviceId", deviceId);
         }
         if (filter.scope() == EmotionSearchScope.GROUP) {
-            query.setParameter("groupId", filter.groupId());
+            query.setParameterList("groupIds", filter.groupIds(), UUID.class);
         }
 
         Map<String, Map<EmotionState, Long>> countsByRoot = new HashMap<>();
@@ -108,7 +109,7 @@ public class EmotionRegionQueryRepositoryImpl implements EmotionRegionQueryRepos
             case GROUP -> sql.append("""
                      AND EXISTS (
                         SELECT 1 FROM group_stamps gs JOIN groups g ON g.id = gs.group_id
-                        WHERE gs.id = e.group_stamp_id AND g.public_id = :groupId
+                        WHERE gs.id = e.group_stamp_id AND g.public_id IN (:groupIds)
                     )
                     """);
         }

@@ -11,6 +11,7 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -74,7 +75,7 @@ public record EmotionRegionMapRequest(
     }
 
     public EmotionSearchFilter toFilter() {
-        return EmotionSearchFilter.of(startDate, endDate, contentType, scope, groupId);
+        return EmotionSearchFilter.of(startDate, endDate, contentType, scope, groupId == null ? null : List.of(groupId));
     }
 
     public EmotionSearchBounds toBounds() {

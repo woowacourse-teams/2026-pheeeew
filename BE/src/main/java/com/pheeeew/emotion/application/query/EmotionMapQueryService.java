@@ -63,7 +63,7 @@ public class EmotionMapQueryService {
     ) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
-        validateGroup(filter.groupId());
+        validateGroups(filter.groupIds());
 
         List<Region> regions = switch (level) {
             case SIDO, SIGUNGU -> regionRepository.findByLevel(level);
@@ -83,7 +83,8 @@ public class EmotionMapQueryService {
 
     public EmotionMapPageView findMapWithinBounds(EmotionSearchBounds bounds, UUID devicePublicId, UUID groupId, String encodedCursor) {
         EmotionCursor cursor = encodedCursor == null
-                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId)
+                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(),
+                        EmotionSearchFilter.from(groupId == null ? null : List.of(groupId)))
                 : EmotionCursorCodec.decodeWithinBounds(encodedCursor);
 
         cursor.validateSnapshotAt(Instant.now(clock));
@@ -94,7 +95,7 @@ public class EmotionMapQueryService {
     public EmotionMapPageView findContentMapWithinBounds(
             EmotionSearchBounds bounds,
             UUID devicePublicId,
-            UUID groupId,
+            List<UUID> groupIds,
             LocalDate startDate,
             LocalDate endDate,
             EmotionContentFilter contentType,
@@ -102,18 +103,19 @@ public class EmotionMapQueryService {
             String encodedCursor
     ) {
         EmotionCursor cursor = encodedCursor == null
-                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(), groupId).withFilter(
-                        EmotionSearchFilter.of(startDate, endDate, contentType, scope, groupId))
+                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(),
+                        EmotionSearchFilter.of(startDate, endDate, contentType, scope,
+                                groupIds))
                 : EmotionCursorCodec.decodeFilteredWithinBounds(encodedCursor);
 
         cursor.validateSnapshotAt(Instant.now(clock));
-        cursor.validateRequestedFilter(startDate, endDate, contentType, scope, groupId);
+        cursor.validateRequestedFilter(startDate, endDate, contentType, scope, groupIds);
 
         return findMap(cursor, devicePublicId, true);
     }
 
-    private void validateGroup(UUID groupId) {
-        if (groupId != null && groupRepository.findByPublicIdAndDeletedAtIsNull(groupId).isEmpty()) {
+    private void validateGroups(List<UUID> groupIds) {
+        if (!groupIds.isEmpty() && groupRepository.countByPublicIdInAndDeletedAtIsNull(groupIds) != groupIds.size()) {
             throw new GroupException(GROUP_NOT_FOUND);
         }
     }
@@ -144,7 +146,7 @@ public class EmotionMapQueryService {
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
         if (contentOnly) {
-            validateGroup(cursor.groupId());
+            validateGroups(cursor.groupIds());
         }
 
         List<Emotion> found = findMapEmotions(cursor, deviceId, contentOnly);
@@ -178,7 +180,7 @@ public class EmotionMapQueryService {
         }
 
         return emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.groupId(), false, MAP_PAGE_SIZE + 1);
+                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.filter(), false, MAP_PAGE_SIZE + 1);
     }
 
     private Map<Long, GroupStampResult> findStamps(List<Emotion> page) {
