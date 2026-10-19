@@ -11,10 +11,11 @@ import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.MapFilterSettings
+import com.pheeeew.domain.repository.BlockRepository
+import com.pheeeew.domain.repository.EmotionFailure
 import com.pheeeew.domain.repository.EmotionModerationResult
-import com.pheeeew.domain.repository.emotion.EmotionFailure
-import com.pheeeew.domain.repository.emotion.EmotionRepository
-import com.pheeeew.domain.repository.emotion.EmotionResult
+import com.pheeeew.domain.repository.EmotionRepository
+import com.pheeeew.domain.repository.EmotionResult
 import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
@@ -22,6 +23,7 @@ import com.pheeeew.feature.monitoring.product.resultLabel
 import com.pheeeew.feature.screens.map.filter.MapFilterListRefresher
 import com.pheeeew.feature.screens.map.monitoring.ContentLoad
 import com.pheeeew.feature.screens.map.monitoring.ContentMonitoring
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -32,8 +34,10 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 
+@Inject
 class NearbyEmotionViewModel(
     private val repository: EmotionRepository,
+    private val blocks: BlockRepository,
     monitoring: Monitoring = NoOpMonitoring,
 ) : ViewModel(),
     MapFilterListRefresher {
@@ -388,10 +392,7 @@ class NearbyEmotionViewModel(
                             if (blockUser != null) {
                                 blockUser(id)
                             } else {
-                                when (repository.block(id)) {
-                                    is EmotionResult.Success -> EmotionModerationResult.Success
-                                    is EmotionResult.Failure -> EmotionModerationResult.Unavailable
-                                }
+                                blocks.blockEmotion(id)
                             }
                         } catch (cancelled: CancellationException) {
                             throw cancelled

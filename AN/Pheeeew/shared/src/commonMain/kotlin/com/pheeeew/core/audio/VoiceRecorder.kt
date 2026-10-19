@@ -18,6 +18,10 @@ data class VoiceRecordingState(
 )
 
 interface VoiceRecorder {
+    fun interface Factory {
+        fun create(): VoiceRecorder
+    }
+
     val state: StateFlow<VoiceRecordingState>
 
     fun refreshPermissionStatus()

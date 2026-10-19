@@ -16,10 +16,12 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.pheeeew.core.location.PlatformLocationProvider
 import com.pheeeew.domain.model.CurrentLocation
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
+@Inject
 class AndroidPlatformLocationProvider(
     context: Context,
 ) : PlatformLocationProvider {
@@ -53,7 +55,14 @@ class AndroidPlatformLocationProvider(
     @SuppressLint("MissingPermission")
     private fun lastKnown(provider: String): Location? =
         try {
-            if (locationManager.isProviderEnabled(provider)) locationManager.getLastKnownLocation(provider) else null
+            if (locationManager.isProviderEnabled(
+                    provider,
+                )
+            ) {
+                locationManager.getLastKnownLocation(provider)
+            } else {
+                null
+            }
         } catch (_: SecurityException) {
             null
         } catch (_: IllegalArgumentException) {

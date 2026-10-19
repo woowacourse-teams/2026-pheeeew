@@ -1,8 +1,8 @@
 package com.pheeeew.core.network
 
-import com.pheeeew.data.remote.device.api.KtorDeviceSessionApi
-import com.pheeeew.data.remote.device.dto.DeviceAttestationDto
-import com.pheeeew.data.remote.device.dto.DeviceRegistrationRequestDto
+import com.pheeeew.data.remote.api.KtorDeviceSessionApi
+import com.pheeeew.data.remote.dto.DeviceAttestationDto
+import com.pheeeew.data.remote.dto.DeviceRegistrationRequestDto
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.client.statement.bodyAsText

@@ -8,7 +8,8 @@ import com.pheeeew.domain.model.device.DeviceNicknameLookup
 import com.pheeeew.domain.model.device.DeviceNicknamePolicy
 import com.pheeeew.domain.model.device.DeviceNicknameUpdateResult
 import com.pheeeew.domain.model.device.DeviceNicknameValidation
-import com.pheeeew.domain.repository.device.DeviceNicknameRepository
+import com.pheeeew.domain.repository.DeviceNicknameRepository
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -35,6 +36,7 @@ data class SettingsUiState(
         get() = isDialogVisible && validation == DeviceNicknameValidation.VALID && !isSaving
 }
 
+@Inject
 class SettingsViewModel(
     private val repository: DeviceNicknameRepository,
 ) : ViewModel() {

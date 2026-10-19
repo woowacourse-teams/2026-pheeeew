@@ -3,10 +3,8 @@ package com.pheeeew.core.di.group
 import com.pheeeew.core.network.AccessToken
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createApiClient
-import com.pheeeew.data.remote.group.api.GroupStampListApi
-import com.pheeeew.data.repository.group.GroupStampListRepositoryImpl
-import com.pheeeew.domain.repository.group.GroupPublicJoinResult
-import com.pheeeew.domain.repository.group.GroupStampListLoadResult
+import com.pheeeew.domain.repository.GroupPublicJoinResult
+import com.pheeeew.domain.repository.GroupStampListLoadResult
 import com.pheeeew.feature.screens.group.detail.GroupDetailLoadResult
 import com.pheeeew.feature.screens.group.detail.LeaveGroupResult
 import com.pheeeew.feature.screens.group.home.GroupListResult
@@ -110,8 +108,9 @@ class GroupApiMembershipIntegrationTest {
                     accessTokenProvider = { AccessToken("token") },
                 )
             try {
-                val stamps = GroupStampListRepositoryImpl(GroupStampListApi(client.requests))
-                val dependencies = createGroupDependencies(client, stamps.membershipChanges, stamps::invalidate)
+                val graph = createUiTestGraph(client)
+                val stamps = graph.stamps
+                val dependencies = graph.dependencies
                 val id = GroupId(ID)
                 assertEquals(0, assertIs<GroupStampListLoadResult.Loaded>(stamps.findMyStamps()).groups.size)
                 assertEquals(GroupPublicJoinResult.Joined, dependencies.detail.publicJoinAction.join(id))

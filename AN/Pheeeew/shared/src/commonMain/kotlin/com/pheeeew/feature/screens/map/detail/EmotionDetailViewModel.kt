@@ -10,6 +10,7 @@ import com.pheeeew.domain.repository.EmotionDetailRepository
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.screens.map.monitoring.DetailVisit
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,7 @@ sealed interface EmotionDetailLoadUiModel {
     ) : EmotionDetailLoadUiModel
 }
 
+@Inject
 class EmotionDetailViewModel(
     private val repository: EmotionDetailRepository,
     private val monitoring: Monitoring = NoOpMonitoring,

@@ -1,0 +1,198 @@
+package com.pheeeew.core.di
+
+import com.pheeeew.core.audio.AudioFactories
+import com.pheeeew.core.audio.IosAudioPlayback
+import com.pheeeew.core.audio.IosAudioPlayer
+import com.pheeeew.core.audio.IosVoiceRecorder
+import com.pheeeew.core.di.device.DeviceSessionBuildConfig
+import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.network.ApiConfig
+import com.pheeeew.core.network.ConnectivityObserver
+import com.pheeeew.core.network.IosConnectivityObserver
+import com.pheeeew.core.permission.AppSettingsLauncher
+import com.pheeeew.core.permission.IosAppSettingsLauncher
+import com.pheeeew.data.local.device.DeviceCredentialStorage
+import com.pheeeew.data.local.device.IosDeviceCredentialStorage
+import com.pheeeew.data.local.group.IosGroupCreateSessionStore
+import com.pheeeew.data.local.group.IosLastRecordedGroupRepository
+import com.pheeeew.data.location.platform.ios.IosLocationPermissionController
+import com.pheeeew.data.location.platform.ios.IosPlatformLocationProvider
+import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
+import com.pheeeew.data.remote.attestation.IosAppAttestProofProvider
+import com.pheeeew.data.repository.AppVersionRepositoryImpl
+import com.pheeeew.data.repository.EmotionMapRepositoryImpl
+import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
+import com.pheeeew.data.repository.GroupDetailRepositoryImpl
+import com.pheeeew.data.repository.GroupListRepositoryImpl
+import com.pheeeew.data.repository.GroupStampListRepositoryImpl
+import com.pheeeew.data.repository.LocationRepositoryImpl
+import com.pheeeew.domain.model.device.DevicePlatform
+import com.pheeeew.domain.repository.AppVersionRepository
+import com.pheeeew.domain.repository.LastRecordedGroupRepository
+import com.pheeeew.domain.repository.LocationRepository
+import com.pheeeew.domain.repository.OnboardingStore
+import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
+import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
+import dev.zacsweers.metro.DependencyGraph
+import dev.zacsweers.metro.GraphExtension
+import dev.zacsweers.metro.Provides
+import dev.zacsweers.metro.SingleIn
+import dev.zacsweers.metro.createGraph
+import platform.CoreLocation.CLLocationManager
+import platform.Foundation.NSBundle
+import platform.Foundation.NSUserDefaults
+import kotlin.experimental.ExperimentalNativeApi
+import kotlin.native.Platform
+import kotlin.random.Random
+
+@DependencyGraph(AppScope::class)
+internal interface IosAppGraph :
+    AppGraph,
+    ApiBindings {
+    val controllerFactory: ViewControllerGraph.Factory
+
+    @Provides
+    @SingleIn(AppScope::class)
+    @OptIn(ExperimentalNativeApi::class)
+    fun build(): DeviceSessionBuildConfig {
+        fun setting(key: String): String =
+            (NSBundle.mainBundle.infoDictionary?.get(key) as? String)
+                ?.takeIf { it.isNotBlank() && !it.contains("$(") } ?: error("Missing device build setting: $key")
+        val configuration = setting("DEVICE_BUILD_CONFIGURATION")
+        require(configuration == if (Platform.isDebugBinary) "Debug" else "Release")
+        return DeviceSessionBuildConfig(
+            configuration == "Debug",
+            setting("DEVICE_ENVIRONMENT"),
+            setting("API_BASE_URL"),
+            setting("DEVICE_ATTESTATION_MODE"),
+            "${setting("CFBundleShortVersionString")}+${setting("CFBundleVersion")}",
+        )
+    }
+
+    @Provides @AppVersion
+    fun version(): String = NSBundle.mainBundle.infoDictionary?.get("CFBundleShortVersionString") as? String ?: "-"
+
+    @Provides @PlatformName
+    fun platformName(): String = "ios"
+
+    @Provides fun platform(): DevicePlatform = DevicePlatform.IOS
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun monitoringOwner(): AppMonitoring = provideIosMonitoring()
+
+    @Provides fun monitoring(owner: AppMonitoring): Monitoring = owner.runtime
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun connectivity(): ConnectivityObserver = IosConnectivityObserver()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun storage(build: DeviceSessionBuildConfig): DeviceCredentialStorage =
+        IosDeviceCredentialStorage(ApiConfig(build.baseUrl).deviceStorageEnvironment(), build.legacyCredentialPolicy)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun attestation(build: DeviceSessionBuildConfig): DeviceAttestationPolicy =
+        build.policy { IosAppAttestProofProvider() }
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun lastGroup(): LastRecordedGroupRepository = IosLastRecordedGroupRepository(NSUserDefaults.standardUserDefaults)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun groupDraft(): GroupCreateSessionStore = IosGroupCreateSessionStore(NSUserDefaults.standardUserDefaults)
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun onboarding(): OnboardingStore = IosOnboardingStore()
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun settings(): AppSettingsLauncher = IosAppSettingsLauncher()
+
+    @Provides fun versions(impl: AppVersionRepositoryImpl): AppVersionRepository = impl
+
+    @Provides
+    @SingleIn(AppScope::class)
+    fun audio(
+        recorder: () -> IosVoiceRecorder,
+        player: () -> IosAudioPlayer,
+        playback: () -> IosAudioPlayback,
+    ): AudioFactories = AudioFactories({ recorder() }, { player() }, { playback() })
+}
+
+@GraphExtension(ViewControllerScope::class)
+internal interface ViewControllerGraph :
+    UiGraph,
+    UiBindings {
+    @GraphExtension.Factory interface Factory {
+        fun create(): ViewControllerGraph
+    }
+
+    @Provides
+    @SingleIn(ViewControllerScope::class)
+    fun services(
+        map: EmotionMapRepositoryImpl,
+        regions: EmotionRegionMapRepositoryImpl,
+        stamps: GroupStampListRepositoryImpl,
+        list: GroupListRepositoryImpl,
+        detail: GroupDetailRepositoryImpl,
+    ): UiServices =
+        UiServices(
+            map,
+            regions,
+            stamps,
+            list,
+            detail,
+            GroupOperationKeyAllocator("group-${Random.nextLong().toULong().toString(16)}"),
+        )
+
+    @Provides
+    @SingleIn(ViewControllerScope::class)
+    fun locationManager(): CLLocationManager = CLLocationManager()
+
+    @Provides
+    @SingleIn(ViewControllerScope::class)
+    fun permission(manager: CLLocationManager): IosLocationPermissionController =
+        IosLocationPermissionController(manager)
+
+    @Provides
+    @SingleIn(ViewControllerScope::class)
+    fun provider(manager: CLLocationManager): IosPlatformLocationProvider = IosPlatformLocationProvider(manager)
+
+    @Provides
+    @SingleIn(ViewControllerScope::class)
+    fun repository(
+        permission: IosLocationPermissionController,
+        provider: IosPlatformLocationProvider,
+    ): LocationRepository = LocationRepositoryImpl(permission, provider)
+
+    @Provides
+    @SingleIn(ViewControllerScope::class)
+    fun location(
+        permission: IosLocationPermissionController,
+        provider: IosPlatformLocationProvider,
+        repository: LocationRepository,
+    ): LocationDependencies =
+        LocationDependencies(permission, repository) {
+            permission.close()
+            provider.close()
+        }
+}
+
+internal object IosGraphs {
+    val app: IosAppGraph by lazy { createGraph<IosAppGraph>() }
+}
+
+private class IosOnboardingStore : OnboardingStore {
+    override fun isCompleted(): Boolean = NSUserDefaults.standardUserDefaults.boolForKey("onboarding_completed")
+
+    override fun complete() {
+        NSUserDefaults.standardUserDefaults.setBool(true, forKey = "onboarding_completed")
+    }
+}
+
+fun iosDeviceBuildConfig(): DeviceSessionBuildConfig = IosGraphs.app.apiDependencies.buildConfig

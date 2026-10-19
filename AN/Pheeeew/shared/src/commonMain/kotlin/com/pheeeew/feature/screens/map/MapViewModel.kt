@@ -2,7 +2,9 @@ package com.pheeeew.feature.screens.map
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pheeeew.core.di.LocationDependencies
+import com.pheeeew.core.di.InvalidateMapSession
+import com.pheeeew.core.di.InvalidateRegions
+import com.pheeeew.core.di.MapInitiallyEnabled
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.domain.model.GeoCoordinate
@@ -21,18 +23,18 @@ import com.pheeeew.domain.model.emotion.MapFilterPeriod
 import com.pheeeew.domain.model.emotion.MapFilterScope
 import com.pheeeew.domain.model.emotion.MapFilterSettings
 import com.pheeeew.domain.model.emotion.SearchDate
+import com.pheeeew.domain.repository.EmotionResult
+import com.pheeeew.domain.repository.GroupStampListLoadResult
+import com.pheeeew.domain.repository.GroupStampListRepository
 import com.pheeeew.domain.repository.MapFilterSettingsRepository
-import com.pheeeew.domain.repository.emotion.EmotionResult
-import com.pheeeew.domain.repository.group.GroupStampListLoadResult
-import com.pheeeew.domain.repository.group.GroupStampListRepository
 import com.pheeeew.domain.usecase.FindEmotionMapPageUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase
 import com.pheeeew.domain.usecase.FindEmotionRegionSnapshotUseCase
 import com.pheeeew.domain.usecase.FindEmotionRegionsUseCase
 import com.pheeeew.domain.usecase.RefreshLocationUseCase
-import com.pheeeew.feature.monitoring.product.MonitoredLocationPermission
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.ProductOperation
+import com.pheeeew.feature.screens.map.cache.CacheInvalidator
 import com.pheeeew.feature.screens.map.filter.FilterContent
 import com.pheeeew.feature.screens.map.filter.FilterDate
 import com.pheeeew.feature.screens.map.filter.FilterPage
@@ -44,6 +46,10 @@ import com.pheeeew.feature.screens.map.monitoring.ContentLoad
 import com.pheeeew.feature.screens.map.monitoring.ContentMonitoring
 import com.pheeeew.feature.screens.map.nearby.NEARBY_COLLAPSED_MAP_HEIGHT_FRACTION
 import com.pheeeew.feature.screens.map.record.group.toSelectorUiModel
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
+import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -56,6 +62,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlin.time.TimeSource
 
+@AssistedInject
 class MapViewModel(
     private val refreshLocation: RefreshLocationUseCase,
     private val findEmotionMapPage: FindEmotionMapPageUseCase,
@@ -65,13 +72,18 @@ class MapViewModel(
     private val findRegionSnapshot: FindEmotionRegionSnapshotUseCase? = null,
     private val groupStampListRepository: GroupStampListRepository? = null,
     private val filterSettingsRepository: MapFilterSettingsRepository? = null,
-    private val filterListRefresher: MapFilterListRefresher? = null,
+    @Assisted private val filterListRefresher: MapFilterListRefresher? = null,
     private val pinSnapshotIntervalMillis: Long = MapPinSnapshotPublisher.DEFAULT_INTERVAL_MILLIS,
     private val pinSnapshotDelay: suspend (Long) -> Unit = { delay(it) },
-    dataLoadingEnabled: Boolean = true,
-    private val invalidateSessionCache: () -> Unit = {},
-    private val invalidateRegionCache: () -> Unit = {},
+    @MapInitiallyEnabled dataLoadingEnabled: Boolean = true,
+    @InvalidateMapSession private val invalidateSessionCache: CacheInvalidator = CacheInvalidator {},
+    @InvalidateRegions private val invalidateRegionCache: CacheInvalidator = CacheInvalidator {},
 ) : ViewModel() {
+    @AssistedFactory
+    interface Factory : ManualViewModelAssistedFactory {
+        fun create(filterListRefresher: MapFilterListRefresher?): MapViewModel
+    }
+
     private var sessionGeneration: Long? = null
     private var dataLoadingEnabled = dataLoadingEnabled
     private val _uiModel = MutableStateFlow(MapUiModel())
@@ -1338,43 +1350,6 @@ class MapViewModel(
 
     companion object {
         private const val LOCATION_FOCUS_ZOOM = 15.5
-
-        fun create(
-            locationDependencies: LocationDependencies,
-            findEmotionMapPage: FindEmotionMapPageUseCase,
-            findEmotionMapSnapshot: FindEmotionMapSnapshotUseCase,
-            monitoring: Monitoring = NoOpMonitoring,
-            findRegions: FindEmotionRegionsUseCase? = null,
-            findRegionSnapshot: FindEmotionRegionSnapshotUseCase? = null,
-            groupStampListRepository: GroupStampListRepository? = null,
-            filterSettingsRepository: MapFilterSettingsRepository? = null,
-            filterListRefresher: MapFilterListRefresher? = null,
-            dataLoadingEnabled: Boolean = true,
-            invalidateSessionCache: () -> Unit = {},
-            invalidateRegionCache: () -> Unit = {},
-        ): MapViewModel =
-            MapViewModel(
-                refreshLocation =
-                    RefreshLocationUseCase(
-                        permissionController =
-                            MonitoredLocationPermission(
-                                locationDependencies.permissionController,
-                                monitoring,
-                            ),
-                        repository = locationDependencies.repository,
-                    ),
-                findEmotionMapPage = findEmotionMapPage,
-                findEmotionMapSnapshot = findEmotionMapSnapshot,
-                monitoring = monitoring,
-                findRegions = findRegions,
-                findRegionSnapshot = findRegionSnapshot,
-                groupStampListRepository = groupStampListRepository,
-                filterSettingsRepository = filterSettingsRepository,
-                filterListRefresher = filterListRefresher,
-                dataLoadingEnabled = dataLoadingEnabled,
-                invalidateSessionCache = invalidateSessionCache,
-                invalidateRegionCache = invalidateRegionCache,
-            )
 
         private const val VIEWPORT_DEBOUNCE_MILLIS = 700L
     }

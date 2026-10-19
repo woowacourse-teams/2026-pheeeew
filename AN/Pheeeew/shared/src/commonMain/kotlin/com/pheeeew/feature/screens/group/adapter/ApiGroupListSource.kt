@@ -1,12 +1,14 @@
 package com.pheeeew.feature.screens.group.adapter
 
-import com.pheeeew.domain.repository.group.GroupListLoadResult
-import com.pheeeew.domain.repository.group.GroupListRepository
+import com.pheeeew.domain.repository.GroupListLoadResult
+import com.pheeeew.domain.repository.GroupListRepository
 import com.pheeeew.feature.screens.group.home.GroupListResult
 import com.pheeeew.feature.screens.group.home.GroupListSource
 import com.pheeeew.feature.screens.group.mapper.toSummaryUiModel
+import dev.zacsweers.metro.Inject
 
 /** Adapts the domain repository to the existing home screen boundary. */
+@Inject
 class ApiGroupListSource(
     private val repository: GroupListRepository,
 ) : GroupListSource {

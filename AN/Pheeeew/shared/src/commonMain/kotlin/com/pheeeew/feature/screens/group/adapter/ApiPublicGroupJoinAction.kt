@@ -1,11 +1,13 @@
 package com.pheeeew.feature.screens.group.adapter
 
-import com.pheeeew.domain.repository.group.GroupPublicJoinRepository
-import com.pheeeew.domain.repository.group.GroupPublicJoinResult
+import com.pheeeew.domain.repository.GroupPublicJoinRepository
+import com.pheeeew.domain.repository.GroupPublicJoinResult
 import com.pheeeew.feature.screens.group.detail.JoinPublicGroupAction
 import com.pheeeew.feature.screens.group.model.GroupId
+import dev.zacsweers.metro.Inject
 import com.pheeeew.domain.model.group.GroupId as DomainGroupId
 
+@Inject
 class ApiPublicGroupJoinAction(
     private val repository: GroupPublicJoinRepository,
 ) : JoinPublicGroupAction {

@@ -9,8 +9,8 @@ import com.pheeeew.domain.model.device.DeviceNicknameUpdateResult
 import com.pheeeew.domain.model.device.DeviceSessionFailure
 import com.pheeeew.domain.model.device.DeviceSessionFailureKind
 import com.pheeeew.domain.model.device.DeviceSessionResult
-import com.pheeeew.domain.repository.device.DeviceNicknameRepository
-import com.pheeeew.domain.repository.device.DeviceSessionRepository
+import com.pheeeew.domain.repository.DeviceNicknameRepository
+import com.pheeeew.domain.repository.DeviceSessionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay

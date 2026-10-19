@@ -3,7 +3,7 @@ package com.pheeeew.data.repository
 import com.pheeeew.core.network.ApiResult
 import com.pheeeew.data.cache.EmotionRegionMapCache
 import com.pheeeew.data.cache.EmotionRegionMapCache.Generation
-import com.pheeeew.data.remote.emotion.EmotionRegionMapApi
+import com.pheeeew.data.remote.api.EmotionRegionMapApi
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
 import com.pheeeew.domain.model.emotion.EmotionRegion
 import com.pheeeew.domain.model.emotion.EmotionRegionLevel
@@ -13,6 +13,7 @@ import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.emotion.expandedForRegionQuery
 import com.pheeeew.domain.repository.EmotionRegionMapRepository
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -36,6 +37,7 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 import kotlin.time.Clock
 
+@Inject
 class EmotionRegionMapRepositoryImpl(
     private val api: EmotionRegionMapApi,
 ) : EmotionRegionMapRepository {
