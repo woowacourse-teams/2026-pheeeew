@@ -21,7 +21,7 @@ import com.pheeeew.data.remote.datasource.PressApiSender
 import com.pheeeew.data.remote.datasource.PressApiStatisticsDataSource
 import com.pheeeew.data.repository.DeviceNicknameRepositoryImpl
 import com.pheeeew.data.repository.DeviceSessionRepositoryImpl
-import com.pheeeew.data.repository.PressRepositoryImpl
+import com.pheeeew.data.repository.press.PressRepositoryImpl
 import com.pheeeew.domain.model.device.DeviceDiagnosticOutcome
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.model.device.DeviceSessionDiagnostic

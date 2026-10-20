@@ -1,4 +1,4 @@
-package com.pheeeew.data.repository
+package com.pheeeew.data.repository.press
 
 import kotlin.random.Random
 

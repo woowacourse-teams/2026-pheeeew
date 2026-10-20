@@ -1,4 +1,4 @@
-package com.pheeeew.data.repository
+package com.pheeeew.data.repository.press
 
 import com.pheeeew.core.monitoring.ActivityType
 import com.pheeeew.core.monitoring.Monitoring

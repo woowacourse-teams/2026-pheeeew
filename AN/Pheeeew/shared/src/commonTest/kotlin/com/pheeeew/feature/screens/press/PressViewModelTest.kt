@@ -1,8 +1,8 @@
 package com.pheeeew.feature.screens.press
 
 import androidx.lifecycle.ViewModelStore
-import com.pheeeew.data.repository.PressRepositoryImpl
-import com.pheeeew.data.repository.PressRetryPolicy
+import com.pheeeew.data.repository.press.PressRepositoryImpl
+import com.pheeeew.data.repository.press.PressRetryPolicy
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
