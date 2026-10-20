@@ -103,21 +103,21 @@ iPhone 17 Pro(iOS 26.6), Debug 2.3.0+11, 개발 서버, Wi-Fi에서 측정했다
 
 **수정 전: 조회가 끝나자 1개 입력을 즉시 전송**
 
-[수정 전 원본 로그](799-iphone-before.log)의 738~747행이다. 입력 수용 시각은 1.792122843277E9, 전송 시작은 1.792122843281E9로 차이는 4ms다. 전체 집계 GET은 그 사이에 끝났고, 종료 1ms 뒤에 전송됐다.
+[수정 전 원본 로그](../iphone/799-iphone-before.log)의 738~747행이다. 입력 수용 시각은 1.792122843277E9, 전송 시작은 1.792122843281E9로 차이는 4ms다. 전체 집계 GET은 그 사이에 끝났고, 종료 1ms 뒤에 전송됐다.
 
-![수정 전 원본 로그를 텍스트 편집기에서 연 실제 화면 캡처](images/799-iphone-before-actual-screen.png)
+![수정 전 원본 로그를 텍스트 편집기에서 연 실제 화면 캡처](../iphone/images/799-iphone-before-actual-screen.png)
 
 **수정 후: 조회가 끝나도 남은 대기를 지켜 6개를 묶어 전송**
 
-[수정 후 원본 로그](799-iphone-after.log)의 1249~1268행이다. 첫 입력 수용 시각은 1.792122974022E9, 전송 시작은 1.792122974523E9로 501ms 기다렸다. GET 종료 후 추가 입력을 수용했고, counts 합계 6개를 한 번에 전송했다.
+[수정 후 원본 로그](../iphone/799-iphone-after.log)의 1249~1268행이다. 첫 입력 수용 시각은 1.792122974022E9, 전송 시작은 1.792122974523E9로 501ms 기다렸다. GET 종료 후 추가 입력을 수용했고, counts 합계 6개를 한 번에 전송했다.
 
-![수정 후 원본 로그를 텍스트 편집기에서 연 실제 화면 캡처](images/799-iphone-after-actual-screen.png)
+![수정 후 원본 로그를 텍스트 편집기에서 연 실제 화면 캡처](../iphone/images/799-iphone-after-actual-screen.png)
 
 **서버 집계 확인: 교차 입력 100회의 증가량 검증**
 
 수정 후 교차 입력 1회차 종료 구간의 실제 화면이다. verification 행의 baseline=302, total=402, delta=100으로 입력 100회와 서버 집계 증가량이 일치한다. 바로 앞에는 재조회 응답과 pending=0 상태도 보인다. 전체 3회씩의 검증 결과는 위 결과표와 CSV에 기록했다.
 
-![수정 후 교차 입력 1회차 서버 집계 검증 로그의 실제 화면 캡처](images/799-iphone-verification-actual-screen.png)
+![수정 후 교차 입력 1회차 서버 집계 검증 로그의 실제 화면 캡처](../iphone/images/799-iphone-verification-actual-screen.png)
 
 ### 자료와 분석 재실행
 
@@ -126,10 +126,12 @@ iPhone 17 Pro(iOS 26.6), Debug 2.3.0+11, 개발 서버, Wi-Fi에서 측정했다
 - 799-iphone-comparison.csv: 묶음 수·평균 크기·1개 묶음 대기를 추가한 비교표. confirmation은 입력 수용→POST 성공 응답 처리, singleton_wait_ms는 입력 수용→논리 전송 시작이다.
 - summarize_799_iphone.py: 전후 각 3회 종료와 실험 밖 입력 부재를 검사하고, 임시 입력에서만 시각 표기를 정규화해 기존 분석기를 호출한다.
 
-이 폴더에서 실행한다. 원본 폴더를 결과 폴더로 덮어쓰지 않고 별도 경로에서 결과를 비교할 수 있다.
+아래 iPhone 자료는 `../iphone/`에 보관한다. `AN/Pheeeew`에서 실행하며, 원본 폴더를 결과 폴더로 덮어쓰지 않고 별도 경로에서 결과를 비교할 수 있다.
 
 ```sh
-python3 summarize_799_iphone.py . ./summarize_device.py /tmp/press-799-reanalyzed
+python3 measurements/personal-press/799/iphone/summarize_799_iphone.py \
+  measurements/personal-press/799/iphone \
+  measurements/personal-press/644-baseline/summarize_device.py /tmp/press-799-reanalyzed
 ```
 
 원본 기기 측정은 별도 로컬 브랜치 feat/799-iphone-comparison-reproduction에서 관측 콜백·자동 입력 화면을 추가해 수행했다. 제품 작업에는 이 관측 코드를 포함하지 않는다. 당시 수정 전 앱은 547f0877에 관측 코드만 적용하고, 수정 후 앱은 같은 상태에 #799 변경을 추가했다. 대기 500ms·감정별 30개·전체 100개를 양쪽에 동일하게 적용했고 각 패턴 사이에 조회·대기 정리를 확인했다.
@@ -143,7 +145,7 @@ python3 summarize_799_iphone.py . ./summarize_device.py /tmp/press-799-reanalyze
 
 ## POST 후 대기 보완 이전의 과거 재검증 (2026-10-18)
 
-아래 59개/9개 테스트와 17회·p95 680ms는 POST 후 대기 보완 및 집계 합치기 이전 단계의 기록이다. 현재 코드를 재실행한 결과를 뜻하지 않는다. 이후 구현과 검증은 [POST 대기 보완](799-post-wait.md)과 [집계 합치기](799-aggregate-device/README.md)를 참고한다.
+아래 59개/9개 테스트와 17회·p95 680ms는 POST 후 대기 보완 및 집계 합치기 이전 단계의 기록이다. 현재 코드를 재실행한 결과를 뜻하지 않는다. 이후 구현과 검증은 [POST 대기 보완](../post-wait/README.md)과 [집계 합치기](../aggregate-device/README.md)를 참고한다.
 
 feat/799-preserve-press-batch-wait를 origin/an/dev 0f725625f50c741a3f2e8131b5eb9a08d6dfe9ef로 fast-forward하고 기존 #799 수정·테스트를 충돌 없이 다시 적용했다. 기준 이후 15개 커밋을 반영했으며 프레스 Repository의 기존 기본 설정은 유지했다.
 
