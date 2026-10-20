@@ -5,7 +5,6 @@ import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 public interface EmotionListQueryRepository {
 
@@ -24,7 +23,7 @@ public interface EmotionListQueryRepository {
             Instant lastCreatedAt,
             long lastId,
             Long deviceId,
-            UUID groupId,
+            EmotionSearchFilter filter,
             boolean contentOnly,
             int limit
     );

@@ -12,7 +12,12 @@ import org.springframework.stereotype.Component;
 public class EmotionRegionQueryTimingAspect {
 
     // 전체 집계 지표는 Spring Data Repository Timer가 담당하고, 여기서는 요청별 시간만 기록한다.
-    @Around("execution(* com.pheeeew.emotion.domain.repository.EmotionRepository.findSummariesByRegionCodes(..))")
+    // 내부 query fragment 프록시와 중복되지 않게 외부 저장소 프록시에서만 계측한다.
+    @Around("""
+            this(com.pheeeew.emotion.domain.repository.EmotionRepository)
+            && (execution(* com.pheeeew.emotion.domain.repository.EmotionRepository.findSummariesByRegionCodes(..))
+                || execution(* com.pheeeew.emotion.domain.repository.EmotionRegionQueryRepository.findNationalSummaries(..)))
+            """)
     public Object recordSummary(ProceedingJoinPoint joinPoint) throws Throwable {
         long startedAt = System.nanoTime();
         try {
