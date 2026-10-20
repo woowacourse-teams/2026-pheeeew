@@ -1,0 +1,25 @@
+name: BE Nginx CI
+
+on:
+  pull_request:
+    branches: [main, be/dev, develop]
+    paths:
+      - 'BE/docker/nginx/**'
+      - '.github/workflows/be-nginx-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  nginx-health:
+    name: 개발 Nginx ALB 상태 검사
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Nginx 접근 제어 및 장애 응답 검증
+        working-directory: BE
+        run: python3 docker/nginx/test-alb-health.py
