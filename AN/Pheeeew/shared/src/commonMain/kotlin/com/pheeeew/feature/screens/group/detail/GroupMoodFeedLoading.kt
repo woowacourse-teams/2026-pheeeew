@@ -24,12 +24,18 @@ import kotlin.time.TimeMark
 import kotlin.time.TimeSource
 
 @Composable
-internal fun rememberDelayedLoadingVisibility(isLoading: Boolean): Boolean {
+internal fun rememberDelayedLoadingVisibility(
+    isLoading: Boolean,
+    isSuppressed: Boolean = false,
+): Boolean {
     var isVisible by remember { mutableStateOf(false) }
     var visibleSince by remember { mutableStateOf<TimeMark?>(null) }
 
-    LaunchedEffect(isLoading) {
-        if (isLoading) {
+    LaunchedEffect(isLoading, isSuppressed) {
+        if (isSuppressed) {
+            isVisible = false
+            visibleSince = null
+        } else if (isLoading) {
             delay(LOADING_INDICATOR_DELAY_MILLIS)
             visibleSince = TimeSource.Monotonic.markNow()
             isVisible = true
@@ -43,7 +49,7 @@ internal fun rememberDelayedLoadingVisibility(isLoading: Boolean): Boolean {
         }
     }
 
-    return isVisible
+    return isVisible && !isSuppressed
 }
 
 @Composable

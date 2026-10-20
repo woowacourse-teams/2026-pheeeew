@@ -137,17 +137,10 @@ class GroupDetailViewModel(
         ) {
             return
         }
-        if (state.detail != null) refreshMoodFeed()
         if (loadJob?.isActive == true) {
-            if (showRefreshIndicator && state.detail != null) {
-                _uiState.update { current ->
-                    current.copy(refreshStatus = GroupDetailRefreshStatus.Refreshing, isLoading = true)
-                }
-                scheduleLoadingIndicator(loadGeneration)
-            }
             return
         }
-        loadDetail(showRefreshIndicator = showRefreshIndicator)
+        loadDetail(showRefreshIndicator = showRefreshIndicator, refreshFeed = state.detail != null)
     }
 
     fun onMoodFeedRetry() {
@@ -335,23 +328,21 @@ class GroupDetailViewModel(
         val currentFeed = _uiState.value.moodFeed
         val current = currentFeed as? GroupMoodFeedUiState.Available
         val posts = current?.posts.orEmpty()
-        val keepInitialError = posts.isEmpty() && currentFeed is GroupMoodFeedUiState.LoadFailed
+        val keepInitialError = current == null && currentFeed is GroupMoodFeedUiState.LoadFailed
         val requestId = beginMoodFeedRequest()
         _uiState.update { state ->
             state.copy(
                 moodFeed =
-                    if (posts.isEmpty()) {
-                        if (keepInitialError) {
-                            GroupMoodFeedUiState.LoadFailed(isRetrying = true)
-                        } else {
-                            GroupMoodFeedUiState.Loading
-                        }
-                    } else {
+                    if (current != null) {
                         GroupMoodFeedUiState.Available(
                             posts = posts,
                             hasMore = moodFeedNextCursor != null,
                             loadState = GroupMoodFeedLoadState.Refreshing,
                         )
+                    } else if (keepInitialError) {
+                        GroupMoodFeedUiState.LoadFailed(isRetrying = true)
+                    } else {
+                        GroupMoodFeedUiState.Loading
                     },
             )
         }
@@ -375,7 +366,7 @@ class GroupDetailViewModel(
                     }
 
                     is EmotionResult.Failure -> {
-                        if (posts.isEmpty()) {
+                        if (current == null) {
                             _uiState.update { it.copy(moodFeed = GroupMoodFeedUiState.LoadFailed(isRetrying = false)) }
                         } else {
                             _uiState.update { state ->
@@ -456,6 +447,41 @@ class GroupDetailViewModel(
         moodFeedGeneration += 1
         moodFeedJob?.cancel()
         return moodFeedGeneration
+    }
+
+    private fun invalidateMoodFeedRequest() {
+        moodFeedGeneration += 1
+        moodFeedJob?.cancel()
+        moodFeedJob = null
+    }
+
+    private fun cancelCoordinatedMoodFeedRefresh(job: Job) {
+        if (moodFeedJob !== job) {
+            job.cancel()
+            return
+        }
+        invalidateMoodFeedRequest()
+        _uiState.update { state ->
+            val feed =
+                when (val current = state.moodFeed) {
+                    is GroupMoodFeedUiState.Available -> {
+                        if (current.loadState == GroupMoodFeedLoadState.Refreshing) {
+                            current.copy(loadState = GroupMoodFeedLoadState.Idle)
+                        } else {
+                            current
+                        }
+                    }
+
+                    is GroupMoodFeedUiState.LoadFailed -> {
+                        if (current.isRetrying) current.copy(isRetrying = false) else current
+                    }
+
+                    GroupMoodFeedUiState.Loading -> {
+                        current
+                    }
+                }
+            if (feed == state.moodFeed) state else state.copy(moodFeed = feed)
+        }
     }
 
     private suspend fun requestMoodFeedPage(cursor: String?): EmotionResult<EmotionPage> =
@@ -891,6 +917,7 @@ class GroupDetailViewModel(
     private fun loadDetail(
         reconcileLeaveOutcome: Boolean = false,
         showRefreshIndicator: Boolean = true,
+        refreshFeed: Boolean = false,
     ) {
         if (loadJob?.isActive == true) return
         val requestId = ++loadGeneration
@@ -915,15 +942,22 @@ class GroupDetailViewModel(
         }
         if (showRefreshIndicator) scheduleLoadingIndicator(requestId)
 
+        var coordinatedFeedJob: Job? = null
         loadJob =
             viewModelScope.launch {
                 try {
+                    coordinatedFeedJob =
+                        if (hasSnapshot && refreshFeed) {
+                            refreshMoodFeed()
+                            moodFeedJob
+                        } else {
+                            null
+                        }
                     val result =
                         telemetry
                             .operation(
                                 "group_detail_load_finished",
                             ).observe(::resultLabel) { requestDetail() }
-                    clearLoadingIndicator(requestId)
                     if (reconcileLeaveOutcome) {
                         telemetry.emit(
                             "operation_reconciled",
@@ -932,6 +966,13 @@ class GroupDetailViewModel(
                                 "outcome" to resultLabel(result),
                             ),
                         )
+                    }
+                    if (requestId != loadGeneration) return@launch
+
+                    if (result is GroupDetailLoadResult.MembershipChanged || result == GroupDetailLoadResult.NotFound) {
+                        invalidateMoodFeedRequest()
+                    } else {
+                        coordinatedFeedJob?.join()
                     }
                     if (requestId != loadGeneration) return@launch
 
@@ -944,6 +985,18 @@ class GroupDetailViewModel(
                         (result as? GroupDetailLoadResult.Loaded)
                             ?.detail
                             ?.takeIf { it.group.id == groupId }
+
+                    val initialMoodFeed =
+                        if (!hasSnapshot && loadedDetail != null) {
+                            val feedRequestId = beginMoodFeedRequest()
+                            requestMoodFeedPage(cursor = null)
+                                .takeIf { feedRequestId == moodFeedGeneration }
+                                ?.toInitialFeed()
+                        } else {
+                            null
+                        }
+                    if (requestId != loadGeneration) return@launch
+                    clearLoadingIndicator(requestId)
 
                     val leaveOutcomeLeftKey =
                         if (reconcileLeaveOutcome && loadedDetail?.role == GroupRole.NONE &&
@@ -1003,6 +1056,7 @@ class GroupDetailViewModel(
                                 } else {
                                     state.copy(
                                         content = GroupDetailContent.Ready(detail),
+                                        moodFeed = initialMoodFeed ?: state.moodFeed,
                                         groupName = detail.group.name,
                                         refreshStatus = GroupDetailRefreshStatus.Idle,
                                         isLoading = false,
@@ -1082,10 +1136,10 @@ class GroupDetailViewModel(
                             }
                         }
                     }
-                    if (loadedDetail != null && _uiState.value.moodFeed == GroupMoodFeedUiState.Loading) {
-                        loadInitialMoodFeed()
-                    }
                 } finally {
+                    if (requestId != loadGeneration && coordinatedFeedJob?.isActive == true) {
+                        coordinatedFeedJob?.let(::cancelCoordinatedMoodFeedRefresh)
+                    }
                     if (requestId == loadGeneration) {
                         clearLoadingIndicator(requestId)
                         _uiState.update { state ->
