@@ -85,6 +85,7 @@ internal actual fun NativeMap(
     onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
+    styleUrlOverride: String?,
     modifier: Modifier,
 ) {
     val context = LocalContext.current
@@ -114,7 +115,7 @@ internal actual fun NativeMap(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
     val host =
-        remember(context, isMounted) {
+        remember(context, isMounted, styleUrlOverride) {
             if (!isMounted) {
                 null
             } else {
@@ -137,6 +138,7 @@ internal actual fun NativeMap(
                         onContentPresented = { token, ids -> currentOnContentPresented(token, ids) },
                         restoredCamera = savedCamera,
                         onCameraSaved = { currentOnCameraSaved(it) },
+                        styleUrlOverride = styleUrlOverride,
                     )
                 }.getOrNull()
             }
@@ -197,6 +199,7 @@ private class AndroidFoundationMapHost(
     private val onContentPresented: (String, List<String>) -> Unit,
     private val restoredCamera: MapCameraSnapshotUiModel?,
     private val onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
+    private val styleUrlOverride: String?,
 ) {
     private val emotionPinSymbolLayer = EmotionPinSymbolLayer()
     private val regionClusterSymbolLayer = RegionClusterSymbolLayer()
@@ -341,7 +344,7 @@ private class AndroidFoundationMapHost(
                     publishViewport()
                 }
             }
-            readyMap.setStyle(Style.Builder().fromUri(OPEN_FREE_MAP_STYLE_URL)) { loadedStyle ->
+            readyMap.setStyle(Style.Builder().fromUri(styleUrlOverride ?: OPEN_FREE_MAP_STYLE_URL)) { loadedStyle ->
                 if (released) return@setStyle
                 if (!didConfigureKoreanFontFaces) {
                     didConfigureKoreanFontFaces = true

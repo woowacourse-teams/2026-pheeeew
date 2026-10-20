@@ -39,12 +39,12 @@ dependencies {
     androidTestImplementation(libs.androidx.testExt.junit)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.ktor.client.mock)
     androidTestImplementation(libs.androidx.security.crypto)
     androidTestImplementation(libs.maplibre.android)
 
     implementation(libs.androidx.activity.compose)
 
-    implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
 }
 
@@ -266,30 +266,42 @@ androidComponents {
 
 val verifyDeveloperToolsIsolation by tasks.registering {
     group = "verification"
-    description = "Verify developerTools is present only in the Android Debug runtime graph."
+    description = "Verify developerTools is present only in Android Debug compile/runtime graphs."
+    dependsOn(":shared:verifyDeveloperToolsIsolation")
     listOf("debug", "release").forEach { variant ->
-        val graph =
-            configurations
-                .named("${variant}RuntimeClasspath")
-                .flatMap { it.incoming.resolutionResult.rootComponent }
-                .map { root ->
-                    val visited = mutableSetOf<String>()
+        listOf("RuntimeClasspath", "CompileClasspath").forEach { classpath ->
+            val graph =
+                configurations
+                    .named("$variant$classpath")
+                    .flatMap { it.incoming.resolutionResult.rootComponent }
+                    .map { root ->
+                        val visited = mutableSetOf<String>()
 
-                    fun visit(component: org.gradle.api.artifacts.result.ResolvedComponentResult) {
-                        if (!visited.add(component.id.displayName)) return
-                        component.dependencies
-                            .filterIsInstance<org.gradle.api.artifacts.result.ResolvedDependencyResult>()
-                            .forEach { visit(it.selected) }
+                        fun visit(component: org.gradle.api.artifacts.result.ResolvedComponentResult) {
+                            if (!visited.add(component.id.displayName)) return
+                            component.dependencies
+                                .filterIsInstance<org.gradle.api.artifacts.result.ResolvedDependencyResult>()
+                                .forEach { visit(it.selected) }
+                        }
+                        visit(root)
+                        visited.sorted()
                     }
-                    visit(root)
-                    visited.sorted()
-                }
-        inputs.property(variant, graph)
+            inputs.property(if (classpath == "RuntimeClasspath") variant else "$variant.compile", graph)
+        }
     }
     doLast {
         inputs.properties.toSortedMap().forEach { (variant, value) ->
             val includesTools = (value as List<*>).contains("project :developerTools")
-            check(includesTools == (variant == "debug")) { "Developer tools isolation failed: $variant" }
+            check(includesTools == variant.startsWith("debug")) { "Developer tools isolation failed: $variant" }
+            if (variant.startsWith("release")) {
+                val tooling =
+                    (value as List<*>).filter {
+                        Regex(
+                            "^(androidx|org\\.jetbrains)\\.compose\\.ui:ui-tooling(-android)?:",
+                        ).containsMatchIn(it.toString())
+                    }
+                check(tooling.isEmpty()) { "Compose runtime tooling in Release: $tooling" }
+            }
             println("$variant developerTools=$includesTools")
         }
     }

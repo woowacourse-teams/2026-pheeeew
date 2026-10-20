@@ -11,11 +11,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val appGraph = (application as PheeeewApplication).appGraph
-        val uiGraph = ActivityRetainedGraphOwner.get(this, appGraph).attach(this)
-        setContent {
-            DeveloperToolsEntry(appGraph.apiDependencies.buildConfig) { onOpenDeveloperTools ->
-                App(appGraph = appGraph, uiGraph = uiGraph, onOpenDeveloperTools = onOpenDeveloperTools)
-            }
-        }
+        val owner = ActivityRetainedGraphOwner.get(this, appGraph)
+        owner.attach(this)
+        setContent { AppEntry(this, appGraph, owner) }
     }
 }

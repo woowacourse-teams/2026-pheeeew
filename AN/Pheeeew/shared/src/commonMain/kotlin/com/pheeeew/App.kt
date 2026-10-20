@@ -88,6 +88,7 @@ import com.pheeeew.feature.screens.group.navigation.GroupFeatureHost
 import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapContentRenderState
+import com.pheeeew.feature.screens.map.MapErrorUiModel
 import com.pheeeew.feature.screens.map.MapScreen
 import com.pheeeew.feature.screens.map.MapTransientNoticeUiModel
 import com.pheeeew.feature.screens.map.MapViewModel
@@ -104,8 +105,8 @@ import com.pheeeew.feature.screens.map.record.sheet.RecordFlowStepUiModel
 import com.pheeeew.feature.screens.map.rememberEmotionPinSymbolImages
 import com.pheeeew.feature.screens.map.rememberMapContentRenderState
 import com.pheeeew.feature.screens.map.rememberRegionClusterSymbolImages
+import com.pheeeew.feature.screens.map.renderer.LocalMapRenderer
 import com.pheeeew.feature.screens.map.renderer.MapCameraSnapshotUiModel
-import com.pheeeew.feature.screens.map.renderer.NativeMap
 import com.pheeeew.feature.screens.map.symbolImageKey
 import com.pheeeew.feature.screens.onboarding.OnboardingScreen
 import com.pheeeew.feature.screens.press.PressRoute
@@ -125,6 +126,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.DrawableResource
@@ -160,14 +162,14 @@ internal fun shouldShowMapFeedback(
 fun App(
     appGraph: AppGraph,
     uiGraph: UiGraph,
-    onOpenDeveloperTools: (() -> Unit)? = null,
+    settingsContent: @Composable () -> Unit = {},
 ) {
     val factory = remember(uiGraph) { uiGraph.viewModelFactory }
     CompositionLocalProvider(
         LocalMetroViewModelFactory provides factory,
         LocalAudioFactories provides appGraph.audioFactories,
     ) {
-        AppTheme { AppContent(appGraph, uiGraph, onOpenDeveloperTools) }
+        AppTheme { AppContent(appGraph, uiGraph, settingsContent) }
     }
 }
 
@@ -175,7 +177,7 @@ fun App(
 private fun AppContent(
     appGraph: AppGraph,
     uiGraph: UiGraph,
-    onOpenDeveloperTools: (() -> Unit)?,
+    settingsContent: @Composable () -> Unit,
 ) {
     val apiDependencies = appGraph.apiDependencies
     val appVersion = appGraph.appVersion
@@ -414,16 +416,17 @@ private fun AppContent(
         )
 
     Box(Modifier.fillMaxSize()) {
-        key(mapUiModel.mapRevision) {
-            NativeMap(
+        val mapRevision = mapUiModel.mapRevision
+        key(mapRevision) {
+            LocalMapRenderer.current.Content(
                 state = nativeMapState,
                 isVisible = mapVisible,
                 isMounted = mapMounted,
                 savedCamera = savedMapCamera,
                 onCameraSaved = { savedMapCamera = it },
                 onMemoryPressure = { if (!mapVisible) mapMounted = false },
-                onMapError = mapViewModel::onMapError,
-                onMapRecovered = mapViewModel::onMapRecovered,
+                onMapError = { mapViewModel.onMapError(it, mapRevision) },
+                onMapRecovered = { mapViewModel.onMapRecovered(mapRevision) },
                 onRecordViewportChanged = { centerX, centerY, radius ->
                     val viewport = RecordMapViewport(centerX, centerY, radius)
                     if (recordViewport.value != viewport) recordViewport.value = viewport
@@ -786,7 +789,7 @@ private fun AppContent(
                     onBackClick = { isSettingsVisible = false },
                     permissionSettingsLauncher = permissionSettingsLauncher,
                     modifier = Modifier.fillMaxSize(),
-                    onOpenDeveloperTools = onOpenDeveloperTools,
+                    settingsContent = settingsContent,
                 )
             }
 

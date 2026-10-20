@@ -27,6 +27,6 @@ class ReportApi(
         ) { response -> response.body<EmotionReportResponseDto>() }
 
     private companion object {
-        const val PATH = "/api/v2/reports"
+        const val PATH = ApiEndpointPaths.REPORT
     }
 }

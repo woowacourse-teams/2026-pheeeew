@@ -13,11 +13,16 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.window.ComposeUIViewController
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.domain.model.group.GroupRole
+import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
+import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.detail.GroupDetailActions
 import com.pheeeew.feature.screens.group.detail.GroupDetailContent
 import com.pheeeew.feature.screens.group.detail.GroupDetailScreen
 import com.pheeeew.feature.screens.group.detail.GroupDetailUiState
-import com.pheeeew.feature.screens.group.preview.previewGroupDetailUiModel
+import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
+import com.pheeeew.feature.screens.group.model.GroupId
+import com.pheeeew.feature.screens.group.model.GroupJoinType
+import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.delay
 import platform.Foundation.NSNotificationCenter
@@ -30,7 +35,7 @@ fun GroupDetailProfileViewController() =
         val detailState =
             remember {
                 mutableStateOf(
-                    previewGroupDetailUiModel(GroupRole.MEMBER).copy(weeklyEmotionPressCount = INITIAL_PRESS_COUNT),
+                    profileGroupDetailUiModel().copy(weeklyEmotionPressCount = INITIAL_PRESS_COUNT),
                 )
             }
         val pendingTapMarks = remember { mutableListOf<TimeMark>() }
@@ -101,6 +106,32 @@ fun GroupDetailProfileViewController() =
             )
         }
     }
+
+private fun profileGroupDetailUiModel(): GroupDetailUiModel =
+    GroupDetailUiModel(
+        group =
+            GroupSummaryUiModel(
+                id = GroupId("debug-profile"),
+                name = "우테코 8기 히유",
+                memberCount = 14,
+                weeklyStampCount = 42,
+                stamp =
+                    StampAppearanceUiModel(
+                        label = "히유",
+                        shape = StampShapeId.CIRCLE,
+                        fillArgb = 0xFF5E85E6,
+                        textArgb = 0xFFFFFFFF,
+                    ),
+                description = "그룹 상세 화면의 Debug 전용 프로파일 fixture",
+            ),
+        role = GroupRole.MEMBER,
+        inviteCode = "H1Y226",
+        joinType = GroupJoinType.PRIVATE,
+        weeklyStampCount = 42,
+        weeklyStampRank = 3,
+        weeklyEmotionPressCount = 318,
+        weeklyEmotionPressRank = 5,
+    )
 
 private fun List<Long>.percentileMillisFromMicros(percentile: Int): Double {
     if (isEmpty()) return 0.0

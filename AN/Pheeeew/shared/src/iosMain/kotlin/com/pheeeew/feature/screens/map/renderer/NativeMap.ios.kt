@@ -39,6 +39,7 @@ internal actual fun NativeMap(
     onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
+    styleUrlOverride: String?,
     modifier: Modifier,
 ) {
     val currentOnCameraMovingChanged by rememberUpdatedState(onCameraMovingChanged)
@@ -128,7 +129,7 @@ internal actual fun NativeMap(
     if (!isMounted) return
 
     UIKitView(
-        factory = { FoundationIosMapBridge.createMapView(eventSink) },
+        factory = { FoundationIosMapBridge.createMapView(eventSink, styleUrlOverride) },
         modifier = modifier,
         update = { mapView ->
             FoundationIosMapBridge.updateMapView(

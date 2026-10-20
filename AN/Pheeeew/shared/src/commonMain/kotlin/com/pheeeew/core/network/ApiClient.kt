@@ -16,10 +16,14 @@ import kotlinx.serialization.json.Json
  */
 class ApiClient internal constructor(
     private val client: HttpClient,
+    private val engine: HttpClientEngine,
     val requests: ApiRequestExecutor,
     val monitoring: Monitoring = NoOpMonitoring,
 ) {
-    fun close() = client.close()
+    fun close() {
+        client.close()
+        engine.close()
+    }
 }
 
 expect fun createPlatformApiClient(
@@ -55,6 +59,7 @@ internal fun createApiClient(
         }
     return ApiClient(
         client = httpClient,
+        engine = engine,
         requests = ApiRequestExecutor(httpClient, config, accessTokenProvider, json, observer, attemptObserver),
         monitoring = monitoring,
     )

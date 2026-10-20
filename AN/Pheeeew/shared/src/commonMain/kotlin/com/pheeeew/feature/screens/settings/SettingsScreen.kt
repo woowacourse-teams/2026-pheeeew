@@ -81,7 +81,7 @@ fun SettingsScreen(
     onContactClick: () -> Unit,
     onVersionClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
-    onOpenDeveloperTools: (() -> Unit)? = null,
+    settingsContent: @Composable () -> Unit = {},
     profileNickname: String? = null,
     onNicknameClick: () -> Unit = {},
     nicknameDialog: (@Composable () -> Unit)? = null,
@@ -143,12 +143,7 @@ fun SettingsScreen(
             )
         }
 
-        onOpenDeveloperTools?.let { onOpen ->
-            Spacer(Modifier.height(32.dp))
-            SettingsCard {
-                SettingsActionRow("개발자 도구", SettingsIcon.Tune, onClick = onOpen)
-            }
-        }
+        settingsContent()
 
         Spacer(Modifier.height(32.dp))
         ContactCard(onClick = onContactClick)
@@ -164,7 +159,7 @@ fun SettingsScreen(
     permissionSettingsLauncher: AppSettingsLauncher,
     monitoring: Monitoring = NoOpMonitoring,
     modifier: Modifier = Modifier,
-    onOpenDeveloperTools: (() -> Unit)? = null,
+    settingsContent: @Composable () -> Unit = {},
 ) {
     var versionTaps by remember { mutableStateOf(0) }
     var analyticsIdentity by remember { mutableStateOf<String?>(null) }
@@ -197,7 +192,7 @@ fun SettingsScreen(
                 content = {
                     SettingsScreen(
                         appVersion = appVersion,
-                        onOpenDeveloperTools = onOpenDeveloperTools,
+                        settingsContent = settingsContent,
                         profileNickname =
                             nicknameState.nickname
                                 ?: when {

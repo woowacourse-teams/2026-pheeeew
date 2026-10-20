@@ -20,6 +20,7 @@ kotlin {
                 .get()
                 .toInt()
         compilerOptions { jvmTarget = JvmTarget.JVM_11 }
+        withHostTest {}
     }
     // Debug replaces Shared with one static framework exporting the app library.
     // There is no Release framework in this module and no second Kotlin runtime.
@@ -32,12 +33,21 @@ kotlin {
     }
 
     sourceSets {
-        iosMain.dependencies { api(project(":shared")) }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.androidx.lifecycle.viewmodelCompose)
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
+        }
         commonMain.dependencies {
+            api(project(":shared"))
             implementation(libs.compose.runtime)
             implementation(libs.compose.foundation)
             implementation(libs.compose.material3)
             implementation(libs.compose.ui)
+            implementation(libs.compose.uiToolingPreview)
+            implementation(libs.ktor.client.core)
+            implementation(libs.kotlinx.coroutines.core)
         }
     }
 }

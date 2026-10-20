@@ -18,7 +18,7 @@ internal class AudioUploadApi(
         requests.execute(
             ApiRequest(
                 method = HttpMethod.Post,
-                path = "/api/v1/audio-uploads",
+                path = ApiEndpointPaths.AUDIO_UPLOAD_URL,
                 kind = RequestKind.WRITE,
                 body = AudioUploadUrlRequestDto(AUDIO_CONTENT_TYPE, contentLength),
                 replayAfterAuthentication = true,

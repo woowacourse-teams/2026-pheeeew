@@ -94,7 +94,7 @@ class EmotionApi(
         ) { it.body<EmotionRegistrationResponseDto>() }
 
     private companion object {
-        const val PATH = "/api/v1/emotions"
-        const val V3_PATH = "/api/v3/emotions"
+        const val PATH = ApiEndpointPaths.EMOTIONS
+        const val V3_PATH = ApiEndpointPaths.EMOTION_REGISTRATION
     }
 }

@@ -8,7 +8,6 @@ import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ConnectivityObserver
-import com.pheeeew.core.network.IosConnectivityObserver
 import com.pheeeew.core.permission.AppSettingsLauncher
 import com.pheeeew.core.permission.IosAppSettingsLauncher
 import com.pheeeew.data.local.device.DeviceCredentialStorage
@@ -25,11 +24,9 @@ import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
 import com.pheeeew.data.repository.GroupDetailRepositoryImpl
 import com.pheeeew.data.repository.GroupListRepositoryImpl
 import com.pheeeew.data.repository.GroupStampListRepositoryImpl
-import com.pheeeew.data.repository.LocationRepositoryImpl
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.repository.AppVersionRepository
 import com.pheeeew.domain.repository.LastRecordedGroupRepository
-import com.pheeeew.domain.repository.LocationRepository
 import com.pheeeew.domain.repository.OnboardingStore
 import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
 import com.pheeeew.feature.screens.group.create.ProcessGroupCreateSessionStore
@@ -38,7 +35,7 @@ import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
 import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
-import dev.zacsweers.metro.createGraph
+import dev.zacsweers.metro.createGraphFactory
 import platform.CoreLocation.CLLocationManager
 import platform.Foundation.NSBundle
 import platform.Foundation.NSUserDefaults
@@ -51,6 +48,13 @@ internal interface IosAppGraph :
     AppGraph,
     ApiBindings {
     val controllerFactory: ViewControllerGraph.Factory
+
+    @DependencyGraph.Factory
+    interface Factory {
+        fun create(
+            @Provides services: AppServiceFactory,
+        ): IosAppGraph
+    }
 
     @Provides
     @SingleIn(AppScope::class)
@@ -86,7 +90,7 @@ internal interface IosAppGraph :
 
     @Provides
     @SingleIn(AppScope::class)
-    fun connectivity(): ConnectivityObserver = IosConnectivityObserver()
+    fun connectivity(services: AppServiceFactory): ConnectivityObserver = services.createConnectivityObserver()
 
     @Provides
     @SingleIn(AppScope::class)
@@ -167,27 +171,28 @@ internal interface ViewControllerGraph :
 
     @Provides
     @SingleIn(ViewControllerScope::class)
-    fun repository(
-        permission: IosLocationPermissionController,
-        provider: IosPlatformLocationProvider,
-    ): LocationRepository = LocationRepositoryImpl(permission, provider)
-
-    @Provides
-    @SingleIn(ViewControllerScope::class)
     fun location(
         permission: IosLocationPermissionController,
         provider: IosPlatformLocationProvider,
-        repository: LocationRepository,
+        services: AppServiceFactory,
     ): LocationDependencies =
-        LocationDependencies(permission, repository) {
+        services.createLocationDependencies(permission, provider) {
             permission.close()
             provider.close()
         }
 }
 
 internal object IosGraphs {
-    val app: IosAppGraph by lazy { createGraph<IosAppGraph>() }
+    private var instance: IosAppGraph? = null
+
+    val app: IosAppGraph get() = initialize(IosAppServiceFactory())
+
+    fun initialize(services: AppServiceFactory): IosAppGraph =
+        instance ?: createGraphFactory<IosAppGraph.Factory>().create(services).also { instance = it }
 }
+
+/** Select platform adapters before the first use of the process graph. */
+fun initializeIosAppGraph(services: AppServiceFactory): AppGraph = IosGraphs.initialize(services)
 
 private class IosOnboardingStore : OnboardingStore {
     override fun isCompleted(): Boolean = NSUserDefaults.standardUserDefaults.boolForKey("onboarding_completed")

@@ -1,22 +1,19 @@
 package com.pheeeew
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.ComposeUIViewController
 import com.pheeeew.core.di.iosDeviceBuildConfig
-import com.pheeeew.core.navigation.PredictiveBackContent
+import com.pheeeew.developertools.DeveloperToolsHost
 import com.pheeeew.developertools.DeveloperToolsInfo
-import com.pheeeew.developertools.DeveloperToolsScreen
+import com.pheeeew.developertools.DeveloperToolsSettingsEntry
 import platform.Foundation.NSBundle
+import platform.UIKit.UIViewController
 
 @Suppress("ktlint:standard:function-naming")
-fun DebugMainViewController() =
-    ComposeUIViewController {
+fun DebugMainViewController(): UIViewController {
+    initializeDeveloperTools()
+    return ComposeUIViewController {
         val build = remember { iosDeviceBuildConfig() }
         val info =
             remember {
@@ -29,13 +26,11 @@ fun DebugMainViewController() =
                     apiBaseUrl = build.baseUrl,
                 )
             }
-        var visible by rememberSaveable { mutableStateOf(false) }
-        Box {
-            MainApp(onOpenDeveloperTools = { visible = true })
-            if (visible) {
-                PredictiveBackContent(onBack = { visible = false }, content = {
-                    DeveloperToolsScreen(info, onBack = { visible = false })
-                })
-            }
+        DeveloperToolsHost(
+            info = info,
+            onClearUiSession = {},
+        ) { onOpen ->
+            MainApp(settingsContent = { DeveloperToolsSettingsEntry(onOpen) })
         }
     }
+}
