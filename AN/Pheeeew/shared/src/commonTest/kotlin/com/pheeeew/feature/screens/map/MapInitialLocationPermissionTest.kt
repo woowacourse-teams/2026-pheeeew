@@ -32,6 +32,31 @@ import kotlin.time.Clock
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapInitialLocationPermissionTest {
     @Test
+    fun `스플래시 중에는 위치 권한 요청을 미루고 준비 완료 후 요청한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val permission = FakePermissionController(LocationPermissionStatus.Denied)
+                val viewModel = createViewModel(permission)
+
+                viewModel.updateReadiness(ready = true, generation = 1, startInitialLocationRequest = false)
+                runCurrent()
+
+                assertEquals(0, permission.requests)
+                assertFalse(viewModel.uiModel.value.isRequestingLocation)
+                assertFalse(viewModel.uiModel.value.showLocationPermissionDialog)
+
+                viewModel.updateReadiness(ready = true, generation = 1, startInitialLocationRequest = true)
+                runCurrent()
+
+                assertEquals(1, permission.requests)
+                assertTrue(viewModel.uiModel.value.isRequestingLocation)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `첫 진입에서 시스템 응답을 기다린 후 거절 안내를 표시하고 재진입에는 반복하지 않는다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))

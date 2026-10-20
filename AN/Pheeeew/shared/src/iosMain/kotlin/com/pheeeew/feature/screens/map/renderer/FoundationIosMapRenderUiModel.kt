@@ -8,6 +8,7 @@ import platform.Foundation.create
 
 data class FoundationIosMapRenderUiModel(
     val isVisible: Boolean,
+    val isActive: Boolean,
     val restoredCamera: MapCameraSnapshotUiModel?,
     val monitoringLoadId: String?,
     val currentLocation: FoundationIosCurrentLocationUiModel?,

@@ -17,6 +17,7 @@ interface MapRenderer {
     fun Content(
         state: MapUiModel,
         isVisible: Boolean,
+        isActive: Boolean,
         isMounted: Boolean,
         savedCamera: MapCameraSnapshotUiModel?,
         onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
@@ -42,6 +43,7 @@ object NativeMapRenderer : MapRenderer {
     override fun Content(
         state: MapUiModel,
         isVisible: Boolean,
+        isActive: Boolean,
         isMounted: Boolean,
         savedCamera: MapCameraSnapshotUiModel?,
         onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
@@ -78,6 +80,7 @@ object NativeMapRenderer : MapRenderer {
             NativeMap(
                 state = state,
                 isVisible = isVisible,
+                isActive = isActive,
                 isMounted = isMounted,
                 savedCamera = savedCamera,
                 onCameraSaved = onCameraSaved,

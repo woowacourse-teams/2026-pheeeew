@@ -107,7 +107,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
         pendingState = state
         mapView.isHidden = !state.isVisible
         mapView.isUserInteractionEnabled = state.isVisible
-        if state.isVisible {
+        if state.isActive {
             if let previousRate = preferredFramesPerSecondBeforePause {
                 mapView.preferredFramesPerSecond = previousRate
                 preferredFramesPerSecondBeforePause = nil
@@ -116,7 +116,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
             preferredFramesPerSecondBeforePause = mapView.preferredFramesPerSecond
             mapView.preferredFramesPerSecond = MLNMapViewPreferredFramesPerSecond(rawValue: 1)
         }
-        guard state.isVisible, styleIsReady else { return }
+        guard state.isActive, styleIsReady else { return }
         FoundationCurrentLocationLayer.update(currentLocation: state.currentLocation, source: currentLocationSource)
         recordRangeLayer.update(state: state)
         registerSymbolImages(state)
@@ -304,7 +304,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     func mapViewDidLayoutSubviews() {
         mapView.compassViewMargins = CGPoint(x: 16, y: 16)
         mapView.attributionButtonMargins = CGPoint(x: 16, y: 16)
-        if styleIsReady, let state = pendingState, state.isVisible {
+        if styleIsReady, let state = pendingState, state.isActive {
             applyInitialCameraIfNeeded(state)
         }
         publishViewportIfReady()
@@ -450,7 +450,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
 
     private func publishViewportIfReady() {
         publishHighlightedPinPosition()
-        guard pendingState?.isVisible == true, styleIsReady,
+        guard pendingState?.isActive == true, styleIsReady,
               mapView.bounds.width > 0, mapView.bounds.height > 0 else { return }
         let bounds = mapView.visibleCoordinateBounds
         let queryBounds = EmotionMapBounds(
