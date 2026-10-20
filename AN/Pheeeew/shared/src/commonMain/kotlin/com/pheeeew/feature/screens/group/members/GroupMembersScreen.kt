@@ -50,6 +50,7 @@ import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
 import com.pheeeew.domain.model.group.GroupRole
+import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.screens.group.component.GroupListSkeleton
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.stringResource
@@ -155,7 +156,13 @@ fun GroupMembersScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     state = listState,
-                    contentPadding = PaddingValues(start = 24.dp, end = 24.dp, bottom = 28.dp),
+                    contentPadding =
+                        PaddingValues(
+                            start = 24.dp,
+                            end = 24.dp,
+                            bottom =
+                                AppBottomNavigationBarOverlaySpace + 28.dp,
+                        ),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     item(key = "members-caption") {
