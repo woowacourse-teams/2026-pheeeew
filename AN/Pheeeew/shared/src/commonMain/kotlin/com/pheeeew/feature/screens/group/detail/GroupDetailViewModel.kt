@@ -60,7 +60,6 @@ class GroupDetailViewModel(
 
     private var loadJob: Job? = null
     private var loadingIndicatorDelayJob: Job? = null
-    private var loadingIndicatorMinimumJob: Job? = null
     private var loadingIndicatorRequestId: Long? = null
     private var leaveJob: Job? = null
     private var joinJob: Job? = null
@@ -607,7 +606,6 @@ class GroupDetailViewModel(
                 ++loadGeneration
                 loadJob?.cancelAndJoin()
                 loadingIndicatorDelayJob?.cancel()
-                loadingIndicatorMinimumJob?.cancel()
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -925,7 +923,7 @@ class GroupDetailViewModel(
                             .operation(
                                 "group_detail_load_finished",
                             ).observe(::resultLabel) { requestDetail() }
-                    awaitLoadingIndicatorMinimum(requestId)
+                    clearLoadingIndicator(requestId)
                     if (reconcileLeaveOutcome) {
                         telemetry.emit(
                             "operation_reconciled",
@@ -1122,25 +1120,13 @@ class GroupDetailViewModel(
                 _uiState.update { state ->
                     if (state.isLoading) state.copy(isLoadingIndicatorVisible = true) else state
                 }
-                loadingIndicatorMinimumJob =
-                    viewModelScope.launch {
-                        delay(LOADING_INDICATOR_MINIMUM_MILLIS)
-                    }
             }
-    }
-
-    private suspend fun awaitLoadingIndicatorMinimum(requestId: Long) {
-        if (loadingIndicatorRequestId != requestId) return
-        loadingIndicatorDelayJob?.cancelAndJoin()
-        if (_uiState.value.isLoadingIndicatorVisible) loadingIndicatorMinimumJob?.join()
     }
 
     private fun clearLoadingIndicator(requestId: Long? = null) {
         if (requestId != null && loadingIndicatorRequestId != requestId) return
         loadingIndicatorDelayJob?.cancel()
-        loadingIndicatorMinimumJob?.cancel()
         loadingIndicatorDelayJob = null
-        loadingIndicatorMinimumJob = null
         loadingIndicatorRequestId = null
     }
 
@@ -1305,4 +1291,3 @@ enum class GroupCopyCodeResult {
 }
 
 private const val LOADING_INDICATOR_DELAY_MILLIS = 150L
-private const val LOADING_INDICATOR_MINIMUM_MILLIS = 300L
