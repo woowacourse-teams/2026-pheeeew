@@ -503,4 +503,8 @@
     <string name="group_members_cursor_expired">목록을 다시 불러와야 해요.</string>
     <string name="group_members_reload">목록 다시 불러오기</string>
     <string name="group_detail_leave_public_body">그룹에서 나가도 전체 그룹에서 다시 참여할 수 있어요.</string>
+    <string name="group_join_confirm_title">그룹에 참여할까요?</string>
+    <string name="group_join_confirm_message">‘%1$s’ 그룹에 참여합니다.</string>
+    <string name="group_join_confirm_action">참여하기</string>
+    <string name="group_join_confirm_cancel">취소</string>
 </resources>

@@ -512,14 +512,35 @@ class GroupDetailViewModel(
     fun onJoinClick() {
         val state = _uiState.value
         val detail = state.detail ?: return
-        if (joinJob?.isActive == true || _isCodeJoinVisible.value || detail.role != GroupRole.NONE ||
+        if (state.isJoinConfirmationVisible || joinJob?.isActive == true || _isCodeJoinVisible.value ||
+            detail.role != GroupRole.NONE ||
             state.overlay != GroupDetailOverlay.None
         ) {
             return
         }
         if (state.join.phase == GroupDetailJoinPhase.VerificationRequired) {
             startJoinVerification(write = false)
-        } else if (detail.joinType == GroupJoinType.PRIVATE) {
+        } else {
+            _uiState.update { it.copy(isJoinConfirmationVisible = true) }
+        }
+    }
+
+    fun onCancelJoin() {
+        _uiState.update { it.copy(isJoinConfirmationVisible = false) }
+    }
+
+    fun onConfirmJoin() {
+        val state = _uiState.value
+        if (!state.isJoinConfirmationVisible) return
+        onCancelJoin()
+        val detail = state.detail ?: return
+        if (detail.role != GroupRole.NONE ||
+            state.overlay != GroupDetailOverlay.None || _isCodeJoinVisible.value ||
+            state.join.phase == GroupDetailJoinPhase.VerificationRequired
+        ) {
+            return
+        }
+        if (detail.joinType == GroupJoinType.PRIVATE) {
             codeJoinHolder?.open() ?: return
             _isCodeJoinVisible.value = true
         } else {
@@ -733,7 +754,10 @@ class GroupDetailViewModel(
 
     /** false면 화면 종료 대신 열린 팝업을 닫거나 제출을 유지합니다. */
     fun onBackRequested(): Boolean =
-        if (joinJob?.isActive == true || _isCodeJoinVisible.value) {
+        if (_uiState.value.isJoinConfirmationVisible) {
+            onCancelJoin()
+            false
+        } else if (joinJob?.isActive == true || _isCodeJoinVisible.value) {
             false
         } else {
             when (_uiState.value.overlay) {
