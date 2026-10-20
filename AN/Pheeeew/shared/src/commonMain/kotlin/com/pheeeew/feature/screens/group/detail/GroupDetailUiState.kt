@@ -16,6 +16,7 @@ data class GroupDetailUiState(
     val membershipEvent: GroupDetailMembershipEvent? = null,
     val join: GroupDetailJoinUiState = GroupDetailJoinUiState(),
     val joinConfirmed: GroupOperationKey? = null,
+    val isJoinConfirmationVisible: Boolean = false,
     val moodFeed: GroupMoodFeedUiState = GroupMoodFeedUiState.Loading,
 ) {
     val detail: GroupDetailUiModel?

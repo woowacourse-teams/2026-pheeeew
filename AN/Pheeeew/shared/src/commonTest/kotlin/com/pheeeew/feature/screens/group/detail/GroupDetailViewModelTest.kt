@@ -54,6 +54,7 @@ class GroupDetailViewModelTest {
                 runCurrent()
 
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
 
                 val loadedDetail = requireNotNull(viewModel.uiState.value.detail)
@@ -77,6 +78,7 @@ class GroupDetailViewModelTest {
                 runCurrent()
 
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 assertEquals(GroupDetailOverlay.None, viewModel.uiState.value.overlay)
                 assertNull(viewModel.uiState.value.join.failure)
                 val loadedDetail = requireNotNull(viewModel.uiState.value.detail)
@@ -616,7 +618,9 @@ class GroupDetailViewModelTest {
                     )
                 runCurrent()
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
                 assertEquals(1, writes)
                 assertEquals(2, reads)
@@ -667,6 +671,7 @@ class GroupDetailViewModelTest {
                     )
                 runCurrent()
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
                 assertEquals(GroupDetailJoinPhase.VerificationRequired, viewModel.uiState.value.join.phase)
                 assertEquals(
@@ -675,6 +680,7 @@ class GroupDetailViewModelTest {
                         ?.role,
                 )
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
                 assertEquals(1, writes)
                 assertEquals(3, reads)
@@ -706,6 +712,7 @@ class GroupDetailViewModelTest {
                     )
                 runCurrent()
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
                 assertEquals(
                     GroupJoinType.PRIVATE,
@@ -747,6 +754,7 @@ class GroupDetailViewModelTest {
                         )
                     runCurrent()
                     viewModel.onJoinClick()
+                    viewModel.onConfirmJoin()
                     runCurrent()
                     assertEquals(
                         GroupRole.MEMBER,
@@ -797,6 +805,15 @@ class GroupDetailViewModelTest {
                     )
                 runCurrent()
                 viewModel.onJoinClick()
+                assertTrue(viewModel.uiState.value.isJoinConfirmationVisible)
+                assertFalse(viewModel.isCodeJoinVisible.value)
+                assertEquals(0, writes)
+                viewModel.onCancelJoin()
+                assertFalse(viewModel.isCodeJoinVisible.value)
+                viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
+                assertTrue(viewModel.isCodeJoinVisible.value)
+                assertFalse(viewModel.uiState.value.isJoinConfirmationVisible)
                 viewModel.onJoinCodeChanged("ABC123")
                 viewModel.onJoinCodeSearch()
                 runCurrent()
@@ -806,10 +823,60 @@ class GroupDetailViewModelTest {
                 assertEquals(GroupDetailJoinPhase.VerificationRequired, viewModel.uiState.value.join.phase)
                 assertEquals("ABC123", viewModel.codeJoinUiState.value.input)
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
                 assertEquals(1, writes)
                 assertEquals(2, reads)
                 assertEquals(GroupDetailJoinPhase.Completed, viewModel.uiState.value.join.phase)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `public join requires confirmation and cancel sends no write`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var writes = 0
+                val viewModel =
+                    createViewModel(
+                        source = {
+                            GroupDetailLoadResult.Loaded(
+                                detail(GroupRole.NONE).copy(joinType = GroupJoinType.PUBLIC),
+                            )
+                        },
+                        joinAction =
+                            JoinPublicGroupAction {
+                                writes++
+                                GroupPublicJoinResult.Unavailable
+                            },
+                    )
+                runCurrent()
+                viewModel.onConfirmJoin()
+                viewModel.onJoinClick()
+                viewModel.onJoinClick()
+                runCurrent()
+                assertTrue(viewModel.uiState.value.isJoinConfirmationVisible)
+                assertEquals(0, writes)
+                assertFalse(viewModel.onBackRequested())
+                assertFalse(viewModel.uiState.value.isJoinConfirmationVisible)
+                viewModel.onConfirmJoin()
+                runCurrent()
+                assertEquals(0, writes)
+                viewModel.onJoinClick()
+                viewModel.onCancelJoin()
+                viewModel.onConfirmJoin()
+                runCurrent()
+                assertEquals(0, writes)
+                viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
+                viewModel.onConfirmJoin()
+                runCurrent()
+                assertEquals(1, writes)
+                assertFalse(viewModel.uiState.value.isJoinConfirmationVisible)
+                viewModel.onJoinClick()
+                assertTrue(viewModel.uiState.value.isJoinConfirmationVisible)
             } finally {
                 Dispatchers.resetMain()
             }
