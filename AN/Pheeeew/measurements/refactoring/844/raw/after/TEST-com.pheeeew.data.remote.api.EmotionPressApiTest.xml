@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.data.remote.api.EmotionPressApiTest" tests="2" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:50:55.849Z" hostname="MacBook-Pro.local" time="0.015">
+  <properties/>
+  <testcase name="loads my and all today summaries with relative day zero" classname="com.pheeeew.data.remote.api.EmotionPressApiTest" time="0.009"/>
+  <testcase name="posts only positive emotion counts and decodes the device daily aggregate" classname="com.pheeeew.data.remote.api.EmotionPressApiTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

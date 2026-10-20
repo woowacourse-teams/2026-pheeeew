@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.pheeeew.data.remote.api.PressRankingApiTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-10-20T13:43:36.462Z" hostname="MacBook-Pro.local" time="0.015">
+  <properties/>
+  <testcase name="전체 랭킹은 weeksAgo와 인증 토큰으로 요청한다" classname="com.pheeeew.data.remote.api.PressRankingApiTest" time="0.008"/>
+  <testcase name="알 수 없는 상태와 음수 주차는 요청하지 않는다" classname="com.pheeeew.data.remote.api.PressRankingApiTest" time="0.002"/>
+  <testcase name="감정 랭킹은 state path와 weeksAgo로 요청한다" classname="com.pheeeew.data.remote.api.PressRankingApiTest" time="0.005"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
