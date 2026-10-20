@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
@@ -52,8 +53,9 @@ import com.pheeeew.core.designsystem.component.AppModalBottomSheet
 import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
+import com.pheeeew.core.designsystem.input.NativeTextEditor
 import com.pheeeew.core.designsystem.input.rememberTextEditor
-import com.pheeeew.core.designsystem.input.rememberTextInputPlatformOptions
+import com.pheeeew.core.designsystem.input.usesNativeTextEditor
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.notoSansKrFontFamily
@@ -107,7 +109,6 @@ fun GroupJoinSheet(
     targetGroupName: String? = null,
     onVerifyMembership: (() -> Unit)? = null,
 ) {
-    val editor = rememberTextEditor(uiState.input, onCodeChanged)
     val scope = rememberCoroutineScope()
     val latestDismiss by rememberUpdatedState(onDismiss)
     val latestDismissBlocked by rememberUpdatedState(uiState.isDismissBlocked)
@@ -169,18 +170,13 @@ fun GroupJoinSheet(
             )
 
             Spacer(Modifier.height(22.dp))
-            OutlinedTextField(
-                state = editor.state,
-                inputTransformation = {
-                    val next = TextFieldValue(asCharSequence().toString(), selection).normalizeInviteCode()
-                    if (next.text != asCharSequence().toString()) {
-                        replace(0, length, next.text)
-                        selection = next.selection
-                    }
-                },
-                modifier =
+            if (usesNativeTextEditor) {
+                Box(
                     Modifier
                         .fillMaxWidth()
+                        .height(56.dp)
+                        .clip(JoinInputShape)
+                        .background(Color(0xFFF2F4F3))
                         .border(
                             AppBorders.Standard,
                             when {
@@ -189,40 +185,87 @@ fun GroupJoinSheet(
                                 else -> AppColors.GroupInk
                             },
                             JoinInputShape,
+                        ).padding(16.dp),
+                ) {
+                    NativeTextEditor(
+                        text = uiState.input,
+                        onTextChange = onCodeChanged,
+                        modifier = Modifier.fillMaxSize(),
+                        label = stringResource(Res.string.group_join_code_placeholder),
+                        singleLine = true,
+                        normalizeText = { it.normalizeInviteCode() },
+                        enabled =
+                            !uiState.isInteractionLocked && !isDismissing &&
+                                !(targetGroupName != null && uiState.needsMembershipVerification),
+                        onSearch = onSearchClick,
+                    )
+                }
+            } else {
+                val editor = rememberTextEditor(uiState.input, onCodeChanged)
+                OutlinedTextField(
+                    state = editor.state,
+                    inputTransformation = {
+                        val next = TextFieldValue(asCharSequence().toString(), selection).normalizeInviteCode()
+                        if (next.text != asCharSequence().toString()) {
+                            replace(0, length, next.text)
+                            selection = next.selection
+                        }
+                    },
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .border(
+                                AppBorders.Standard,
+                                when {
+                                    uiState.isInteractionLocked || isDismissing -> {
+                                        AppColors.GroupInk.copy(
+                                            alpha = 0.38f,
+                                        )
+                                    }
+
+                                    uiState.shouldShowCodeValidationError -> {
+                                        JoinErrorColor
+                                    }
+
+                                    else -> {
+                                        AppColors.GroupInk
+                                    }
+                                },
+                                JoinInputShape,
+                            ),
+                    enabled =
+                        !uiState.isInteractionLocked && !isDismissing &&
+                            !(targetGroupName != null && uiState.needsMembershipVerification),
+                    isError = uiState.shouldShowCodeValidationError,
+                    placeholder = { Text(stringResource(Res.string.group_join_code_placeholder)) },
+                    lineLimits = TextFieldLineLimits.SingleLine,
+                    shape = JoinInputShape,
+                    keyboardOptions =
+                        KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Characters,
+                            imeAction = ImeAction.Search,
+                            keyboardType = KeyboardType.Ascii,
                         ),
-                enabled =
-                    !uiState.isInteractionLocked && !isDismissing &&
-                        !(targetGroupName != null && uiState.needsMembershipVerification),
-                isError = uiState.shouldShowCodeValidationError,
-                placeholder = { Text(stringResource(Res.string.group_join_code_placeholder)) },
-                lineLimits = TextFieldLineLimits.SingleLine,
-                shape = JoinInputShape,
-                keyboardOptions =
-                    KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Characters,
-                        imeAction = ImeAction.Search,
-                        keyboardType = KeyboardType.Ascii,
-                        platformImeOptions = rememberTextInputPlatformOptions(),
-                    ),
-                onKeyboardAction = {
-                    keyboardController?.hide()
-                    onSearchClick()
-                },
-                colors =
-                    OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        disabledBorderColor = Color.Transparent,
-                        errorBorderColor = Color.Transparent,
-                        focusedContainerColor = Color(0xFFF2F4F3),
-                        unfocusedContainerColor = Color(0xFFF2F4F3),
-                        disabledContainerColor = Color(0xFFF2F4F3),
-                        focusedTextColor = AppColors.GroupInk,
-                        unfocusedTextColor = AppColors.GroupInk,
-                        disabledTextColor = AppColors.GroupInk,
-                        cursorColor = AppColors.GroupInk,
-                    ),
-            )
+                    onKeyboardAction = {
+                        keyboardController?.hide()
+                        onSearchClick()
+                    },
+                    colors =
+                        OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color.Transparent,
+                            unfocusedBorderColor = Color.Transparent,
+                            disabledBorderColor = Color.Transparent,
+                            errorBorderColor = Color.Transparent,
+                            focusedContainerColor = Color(0xFFF2F4F3),
+                            unfocusedContainerColor = Color(0xFFF2F4F3),
+                            disabledContainerColor = Color(0xFFF2F4F3),
+                            focusedTextColor = AppColors.GroupInk,
+                            unfocusedTextColor = AppColors.GroupInk,
+                            disabledTextColor = AppColors.GroupInk,
+                            cursorColor = AppColors.GroupInk,
+                        ),
+                )
+            }
 
             CodeInputFeedback(uiState = uiState)
             if (uiState.targetMismatch) {

@@ -14,29 +14,12 @@ internal class TextEditor(
     initialText: String,
 ) {
     val state = TextFieldState(initialText)
-    private var externalText = initialText
-    private var publishedText = initialText
-    private val pendingTexts = mutableListOf<String>()
+    private val synchronization = TextEditorSynchronization(initialText)
 
-    fun publish(text: String): Boolean {
-        if (text == publishedText) return false
-        publishedText = text
-        pendingTexts.add(text)
-        return true
-    }
+    fun publish(text: String): Boolean = synchronization.publish(text)
 
     fun synchronize(text: String) {
-        val echoedIndex = pendingTexts.lastIndexOf(text)
-        if (echoedIndex >= 0) {
-            pendingTexts.subList(0, echoedIndex + 1).clear()
-            externalText = text
-            return
-        }
-        if (text == externalText) return
-        pendingTexts.clear()
-        externalText = text
-        publishedText = text
-        if (text != state.text.toString()) {
+        if (synchronization.acceptExternal(text) && text != state.text.toString()) {
             state.edit {
                 val previous = selection
                 replace(0, length, text)

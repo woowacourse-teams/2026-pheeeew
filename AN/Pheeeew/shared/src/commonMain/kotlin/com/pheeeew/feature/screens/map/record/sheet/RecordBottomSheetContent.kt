@@ -66,8 +66,10 @@ import com.pheeeew.core.designsystem.component.AppModalBottomSheet
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
+import com.pheeeew.core.designsystem.input.NativeTextEditor
+import com.pheeeew.core.designsystem.input.limitMemoValue
 import com.pheeeew.core.designsystem.input.rememberTextEditor
-import com.pheeeew.core.designsystem.input.rememberTextInputPlatformOptions
+import com.pheeeew.core.designsystem.input.usesNativeTextEditor
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
@@ -411,55 +413,74 @@ private fun MemoPanel(
     onMemoChange: (String) -> Unit,
     modifier: Modifier,
 ) {
-    val editor = rememberTextEditor(memo, onMemoChange)
     Column {
-        BasicTextField(
-            state = editor.state,
-            inputTransformation = { if (length > 50) revertAllChanges() },
-            keyboardOptions =
-                KeyboardOptions(
-                    capitalization = KeyboardCapitalization.Sentences,
-                    platformImeOptions = rememberTextInputPlatformOptions(),
-                ),
-            modifier =
-                modifier
-                    .fillMaxWidth()
-                    .height(105.dp)
-                    .clip(AppShapes.Input)
-                    .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
-                    .padding(16.dp),
-            textStyle =
-                LocalTextStyle.current.copy(
-                    color = AppColors.TextPrimary,
-                    fontSize = 14.sp,
-                    lineHeight = 22.sp,
-                ),
-            decorator = { innerTextField ->
-                Box(modifier = Modifier.fillMaxSize()) {
-                    if (memo.isEmpty()) {
+        if (usesNativeTextEditor) {
+            Box(
+                modifier =
+                    modifier
+                        .fillMaxWidth()
+                        .height(105.dp)
+                        .clip(AppShapes.Input)
+                        .border(AppBorders.Standard, AppColors.Border, AppShapes.Input)
+                        .padding(16.dp),
+            ) {
+                NativeTextEditor(
+                    memo,
+                    onMemoChange,
+                    Modifier.fillMaxSize(),
+                    stringResource(Res.string.record_memo_prompt),
+                    normalizeText = { it.limitMemoValue() },
+                )
+            }
+        } else {
+            val editor = rememberTextEditor(memo, onMemoChange)
+            BasicTextField(
+                state = editor.state,
+                inputTransformation = { if (length > 50) revertAllChanges() },
+                keyboardOptions =
+                    KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                    ),
+                modifier =
+                    modifier
+                        .fillMaxWidth()
+                        .height(105.dp)
+                        .clip(AppShapes.Input)
+                        .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
+                        .padding(16.dp),
+                textStyle =
+                    LocalTextStyle.current.copy(
+                        color = AppColors.TextPrimary,
+                        fontSize = 14.sp,
+                        lineHeight = 22.sp,
+                    ),
+                decorator = { innerTextField ->
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (memo.isEmpty()) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 20.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(Res.string.record_memo_prompt),
+                                    color = AppColors.Border.copy(alpha = 0.45f),
+                                    fontSize = 16.sp,
+                                )
+                            }
+                        }
                         Box(
                             modifier =
                                 Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 20.dp),
+                                    .fillMaxWidth(),
                         ) {
-                            Text(
-                                text = stringResource(Res.string.record_memo_prompt),
-                                color = AppColors.Border.copy(alpha = 0.45f),
-                                fontSize = 16.sp,
-                            )
+                            innerTextField()
                         }
                     }
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth(),
-                    ) {
-                        innerTextField()
-                    }
-                }
-            },
-        )
+                },
+            )
+        }
         RecordInputSupportingText(
             text = "${memo.length}/50",
             textAlign = TextAlign.End,
