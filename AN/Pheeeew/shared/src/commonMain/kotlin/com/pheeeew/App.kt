@@ -143,6 +143,19 @@ import pheeeew.shared.generated.resources.app_update_store_error
 import pheeeew.shared.generated.resources.app_update_suggested_message
 import pheeeew.shared.generated.resources.app_update_suggested_title
 
+internal fun shouldShowMapFeedback(
+    mainFeaturesReady: Boolean,
+    selectedDestination: AppDestination,
+    nearbyVisible: Boolean,
+    detailState: EmotionDetailLoadUiModel,
+    settingsVisible: Boolean,
+    hasReportTarget: Boolean,
+): Boolean =
+    mainFeaturesReady && selectedDestination == AppDestination.Map &&
+        !nearbyVisible &&
+        (detailState == EmotionDetailLoadUiModel.Closed || detailState is EmotionDetailLoadUiModel.Failed) &&
+        !settingsVisible && !hasReportTarget
+
 @Composable
 fun App(
     appGraph: AppGraph,
@@ -552,9 +565,14 @@ private fun AppContent(
                                     detailState == EmotionDetailLoadUiModel.Closed &&
                                     !isSettingsVisible && reportTarget == null,
                             feedbackVisible =
-                                mainFeaturesReady && selectedDestination == AppDestination.Map &&
-                                    !nearbyState.visible && detailState == EmotionDetailLoadUiModel.Closed &&
-                                    !isSettingsVisible && reportTarget == null,
+                                shouldShowMapFeedback(
+                                    mainFeaturesReady = mainFeaturesReady,
+                                    selectedDestination = selectedDestination,
+                                    nearbyVisible = nearbyState.visible,
+                                    detailState = detailState,
+                                    settingsVisible = isSettingsVisible,
+                                    hasReportTarget = reportTarget != null,
+                                ),
                             onListClick = nearbyViewModel::toggle,
                             nearbyMapControlHeight = nearbyMapControlHeight,
                             isMapCameraMoving = isMapCameraMoving,

@@ -47,6 +47,18 @@ internal fun selectMapFeedback(
         else -> null
     }
 
+internal fun mapFeedbackPresentationKey(
+    source: MapFeedbackSource?,
+    noticeId: Long?,
+    messageId: Long?,
+    text: String?,
+): Any? =
+    when (source) {
+        MapFeedbackSource.Record -> source to noticeId
+        MapFeedbackSource.Message -> source to messageId
+        else -> source to text
+    }
+
 /** Mounted only in the foremost map/record surface, above its modal scrim. */
 @Composable
 internal fun MapFeedbackOverlay(
@@ -111,12 +123,7 @@ internal fun MapFeedbackOverlay(
                     },
                 onDismiss = dismiss,
                 maxLines = 3,
-                presentationKey =
-                    when (source) {
-                        MapFeedbackSource.Record -> notice?.id
-                        MapFeedbackSource.Message -> message?.id
-                        else -> source to text
-                    },
+                presentationKey = mapFeedbackPresentationKey(source, notice?.id, message?.id, text),
                 onShown = { if (source == MapFeedbackSource.Record) notice?.receipt?.shown() },
                 durationMillis = null,
                 actionLabel =
