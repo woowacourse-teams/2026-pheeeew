@@ -137,8 +137,8 @@ internal fun PressRankingScreen(
                         onPrevious = onPreviousWeek,
                         onNext = onNextWeek,
                         modifier = Modifier.padding(horizontal = 24.dp),
-                        canGoPrevious = uiState.status == PressRankingStatus.Ready && uiState.hasPrevious,
-                        canGoNext = uiState.status == PressRankingStatus.Ready && uiState.weeksAgo > 0,
+                        canGoPrevious = uiState.hasPrevious,
+                        canGoNext = uiState.weeksAgo > 0,
                     )
                     Spacer(Modifier.height(18.dp))
                     PressEmotionFilter(

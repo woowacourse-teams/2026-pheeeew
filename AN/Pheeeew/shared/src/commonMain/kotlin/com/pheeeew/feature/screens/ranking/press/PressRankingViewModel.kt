@@ -10,6 +10,7 @@ import com.pheeeew.feature.monitoring.product.resultLabel
 import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -45,6 +46,8 @@ internal class PressRankingViewModel(
     val uiState = _uiState.asStateFlow()
     private var requestJob: Job? = null
     private var requestGeneration = 0L
+    private val oldestKnownWeeks = mutableMapOf<PressEmotion, Int>()
+    private val loadedEmotions = mutableSetOf<PressEmotion>()
 
     init {
         load(PressEmotion.All, weeksAgo = 0)
@@ -56,15 +59,15 @@ internal class PressRankingViewModel(
 
     fun onPreviousWeek() {
         val state = _uiState.value
-        if (state.status == PressRankingStatus.Ready && state.hasPrevious) {
-            load(state.selectedEmotion, state.weeksAgo + 1)
+        if (state.hasPrevious && state.weeksAgo < 520) {
+            load(state.selectedEmotion, state.weeksAgo + 1, navigation = true)
         }
     }
 
     fun onNextWeek() {
         val state = _uiState.value
-        if (state.status == PressRankingStatus.Ready && state.weeksAgo > 0) {
-            load(state.selectedEmotion, state.weeksAgo - 1)
+        if (state.weeksAgo > 0) {
+            load(state.selectedEmotion, state.weeksAgo - 1, navigation = true)
         }
     }
 
@@ -83,6 +86,7 @@ internal class PressRankingViewModel(
         emotion: PressEmotion,
         weeksAgo: Int,
         preserveContent: Boolean = false,
+        navigation: Boolean = false,
     ) {
         requestJob?.cancel()
         val requestId = ++requestGeneration
@@ -96,14 +100,23 @@ internal class PressRankingViewModel(
                     hasRefreshError = false,
                 )
             } else {
-                PressRankingUiState(selectedEmotion = emotion, weeksAgo = weeksAgo, weekLabel = requestedWeekLabel)
+                PressRankingUiState(
+                    selectedEmotion = emotion,
+                    weeksAgo = weeksAgo,
+                    weekLabel = requestedWeekLabel,
+                    hasPrevious =
+                        weeksAgo < 520 &&
+                            (oldestKnownWeeks[emotion]?.let { weeksAgo < it } ?: (emotion in loadedEmotions)),
+                )
             }
         requestJob =
             viewModelScope.launch {
                 try {
+                    // Coalesce rapid date changes while updating the selected week immediately.
+                    if (navigation) delay(150L)
                     when (
                         val result =
-                            withMinimumLoadingTime {
+                            rankingLoad(navigation) {
                                 telemetry
                                     .operation(
                                         "press_ranking_load_finished",
@@ -117,6 +130,14 @@ internal class PressRankingViewModel(
                     ) {
                         is PressRankingLoadResult.Loaded -> {
                             if (requestId != requestGeneration) return@launch
+                            loadedEmotions += emotion
+                            if (!result.hasPrevious) {
+                                oldestKnownWeeks[emotion] = weeksAgo
+                            } else if (oldestKnownWeeks[emotion]?.let { weeksAgo >= it } ==
+                                true
+                            ) {
+                                oldestKnownWeeks.remove(emotion)
+                            }
                             _uiState.value =
                                 PressRankingUiState(
                                     selectedEmotion = emotion,
@@ -140,6 +161,12 @@ internal class PressRankingViewModel(
                                             weeksAgo = weeksAgo,
                                             weekLabel = requestedWeekLabel,
                                             status = PressRankingStatus.Failed,
+                                            hasPrevious =
+                                                weeksAgo < 520 &&
+                                                    (
+                                                        oldestKnownWeeks[emotion]?.let { weeksAgo < it }
+                                                            ?: (emotion in loadedEmotions)
+                                                    ),
                                         )
                                     }
                             }
@@ -158,6 +185,12 @@ internal class PressRankingViewModel(
                                     weeksAgo = weeksAgo,
                                     weekLabel = requestedWeekLabel,
                                     status = PressRankingStatus.Failed,
+                                    hasPrevious =
+                                        weeksAgo < 520 &&
+                                            (
+                                                oldestKnownWeeks[emotion]?.let { weeksAgo < it }
+                                                    ?: (emotion in loadedEmotions)
+                                            ),
                                 )
                             }
                     }
@@ -167,6 +200,11 @@ internal class PressRankingViewModel(
             }
     }
 }
+
+private suspend fun <T> rankingLoad(
+    navigation: Boolean,
+    block: suspend () -> T,
+): T = if (navigation) block() else withMinimumLoadingTime(block)
 
 private fun formatWeekRange(
     startAt: String,
