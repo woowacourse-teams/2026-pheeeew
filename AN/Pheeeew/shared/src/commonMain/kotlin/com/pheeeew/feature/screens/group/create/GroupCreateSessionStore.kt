@@ -26,7 +26,6 @@ data class GroupCreateSessionSnapshot(
 
     companion object {
         const val CURRENT_SCHEMA_VERSION = 2
-        const val DRAFT_TTL_MILLIS = 60L * 60 * 1000
         private const val MIN_SUPPORTED_SCHEMA_VERSION = 1
     }
 }

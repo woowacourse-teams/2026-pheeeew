@@ -44,6 +44,7 @@ import com.pheeeew.domain.repository.LastRecordedGroupRepository
 import com.pheeeew.domain.repository.LocationRepository
 import com.pheeeew.domain.repository.OnboardingStore
 import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
+import com.pheeeew.feature.screens.group.create.ProcessGroupCreateSessionStore
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
@@ -137,7 +138,8 @@ internal interface AndroidAppGraph :
 
     @Provides
     @SingleIn(AppScope::class)
-    fun groupDraft(context: Context): GroupCreateSessionStore = AndroidGroupCreateSessionStore(context)
+    fun groupDraft(context: Context): GroupCreateSessionStore =
+        ProcessGroupCreateSessionStore(AndroidGroupCreateSessionStore(context))
 
     @Provides
     @SingleIn(AppScope::class)

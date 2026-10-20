@@ -198,29 +198,30 @@ class GroupCreateViewModelTest {
         }
 
     @Test
-    fun `초안은 마지막 수정 후 1시간 동안 복원되고 만료되면 한 번 안내한 뒤 삭제된다`() =
+    fun `같은 프로세스의 초안은 하루가 지나 화면을 재생성해도 유지된다`() =
         runViewModelTest {
-            val store = InMemoryGroupCreateSessionStore()
+            val store = ProcessGroupCreateSessionStore(InMemoryGroupCreateSessionStore())
             var now = 1_000_000L
             val edited = createViewModel(sessionStore = store, nowMillis = { now })
             edited.onNameChanged("작성 중인 모임")
             runCurrent()
-            assertEquals(now, store.snapshot?.draftUpdatedAtEpochMillis)
-
-            now += GroupCreateSessionSnapshot.DRAFT_TTL_MILLIS - 1
+            now += 24L * 60 * 60 * 1000
             val restored = createViewModel(sessionStore = store, nowMillis = { now })
             assertEquals("작성 중인 모임", restored.uiState.value.draft.name)
-            assertFalse(restored.uiState.value.isDraftExpiredNoticeVisible)
+        }
 
-            now += 1
-            val expired = createViewModel(sessionStore = store, nowMillis = { now })
-            assertEquals(DEFAULT_GROUP_CREATE_DRAFT, expired.uiState.value.draft)
-            assertEquals(true, expired.uiState.value.isDraftExpiredNoticeVisible)
-            assertEquals(null, store.snapshot)
-
-            val reopened = createViewModel(sessionStore = store, nowMillis = { now })
-            assertFalse(reopened.uiState.value.isDraftExpiredNoticeVisible)
-            assertEquals(DEFAULT_GROUP_CREATE_DRAFT, reopened.uiState.value.draft)
+    @Test
+    fun `프로세스가 새로 시작되면 이전 작성 내용은 복원하지 않는다`() =
+        runViewModelTest {
+            val disk = InMemoryGroupCreateSessionStore()
+            val first = createViewModel(sessionStore = ProcessGroupCreateSessionStore(disk))
+            first.onNameChanged("이전 프로세스")
+            first.onDescriptionChanged("작성 중인 설명")
+            runCurrent()
+            val restarted = createViewModel(sessionStore = ProcessGroupCreateSessionStore(disk))
+            assertEquals(DEFAULT_GROUP_CREATE_DRAFT, restarted.uiState.value.draft)
+            assertEquals(GroupCreateRestorationState.Ready, restarted.uiState.value.restoration)
+            assertEquals(null, disk.snapshot)
         }
 
     @Test
@@ -326,7 +327,7 @@ class GroupCreateViewModelTest {
                     ),
                 )
             var createCalls = 0
-            val now = createdAt + GroupCreateSessionSnapshot.DRAFT_TTL_MILLIS + 1
+            val now = createdAt + 24L * 60 * 60 * 1000
             val restored =
                 createViewModel(
                     createAction =
@@ -345,7 +346,6 @@ class GroupCreateViewModelTest {
 
             assertEquals(0, createCalls)
             assertEquals("결과 미확정 모임", restored.uiState.value.draft.name)
-            assertFalse(restored.uiState.value.isDraftExpiredNoticeVisible)
             assertEquals(pending, store.snapshot?.pendingOperation)
             assertEquals(GroupCreateSessionSnapshot.CURRENT_SCHEMA_VERSION, store.snapshot?.schemaVersion)
         }
