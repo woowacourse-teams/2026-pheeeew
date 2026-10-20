@@ -14,6 +14,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import com.pheeeew.core.designsystem.component.AppPopup
 import com.pheeeew.core.designsystem.component.Snackbar
 import com.pheeeew.feature.screens.map.MapFeedbackAction
+import com.pheeeew.feature.screens.map.MapTransientNoticeUiModel
 import com.pheeeew.feature.screens.map.MapUiModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailLoadUiModel
 import com.pheeeew.feature.screens.map.primaryFeedback
@@ -52,8 +53,8 @@ internal fun MapFeedbackOverlay(
     uiModel: MapUiModel,
     notice: RecordNoticeUiModel?,
     onDismissNotice: () -> Unit,
-    message: String?,
-    onMessageDismiss: () -> Unit,
+    message: MapTransientNoticeUiModel?,
+    onMessageDismiss: (Long) -> Unit,
     detailError: EmotionDetailLoadUiModel.Failed?,
     onRetryDetail: () -> Unit,
     onDismissDetailError: () -> Unit,
@@ -62,13 +63,13 @@ internal fun MapFeedbackOverlay(
     connectionMessage: String?,
     top: Int,
 ) {
-    val source = selectMapFeedback(uiModel, recording, connectionMessage, notice, message, detailError)
+    val source = selectMapFeedback(uiModel, recording, connectionMessage, notice, message?.message, detailError)
     val mapFeedback = uiModel.primaryFeedback()
     val text =
         when (source) {
             MapFeedbackSource.Connection -> connectionMessage
             MapFeedbackSource.Record -> notice?.message
-            MapFeedbackSource.Message -> message
+            MapFeedbackSource.Message -> message?.message
             MapFeedbackSource.Detail -> detailError?.message
             MapFeedbackSource.Map -> mapFeedback?.message
             null -> null
@@ -76,8 +77,16 @@ internal fun MapFeedbackOverlay(
     val dismiss =
         when (source) {
             MapFeedbackSource.Record -> onDismissNotice
-            MapFeedbackSource.Message -> onMessageDismiss
+
+            MapFeedbackSource.Message -> (
+                {
+                    message?.let { onMessageDismiss(it.id) }
+                    Unit
+                }
+            )
+
             MapFeedbackSource.Detail -> onDismissDetailError
+
             else -> ({})
         }
     val action: (() -> Unit)? =
@@ -102,10 +111,14 @@ internal fun MapFeedbackOverlay(
                     },
                 onDismiss = dismiss,
                 maxLines = 3,
-                presentationKey = if (source == MapFeedbackSource.Record) notice else source to text,
+                presentationKey =
+                    when (source) {
+                        MapFeedbackSource.Record -> notice?.id
+                        MapFeedbackSource.Message -> message?.id
+                        else -> source to text
+                    },
                 onShown = { if (source == MapFeedbackSource.Record) notice?.receipt?.shown() },
-                durationMillis =
-                    if (source == MapFeedbackSource.Record || source == MapFeedbackSource.Message) 3_000L else null,
+                durationMillis = null,
                 actionLabel =
                     when {
                         action == null -> null
