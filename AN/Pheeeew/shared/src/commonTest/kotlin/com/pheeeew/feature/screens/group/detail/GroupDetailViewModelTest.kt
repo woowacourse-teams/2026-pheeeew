@@ -23,8 +23,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -185,7 +187,7 @@ class GroupDetailViewModelTest {
         }
 
     @Test
-    fun `slow initial response shows spinner after delay and keeps it visible for minimum duration`() =
+    fun `slow initial response shows delayed spinner and publishes content immediately when available`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
@@ -205,14 +207,6 @@ class GroupDetailViewModelTest {
                 response.complete(GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER)))
                 runCurrent()
 
-                assertEquals(GroupDetailContent.Loading, viewModel.uiState.value.content)
-                assertTrue(viewModel.uiState.value.isLoadingIndicatorVisible)
-                advanceTimeBy(299)
-                runCurrent()
-                assertTrue(viewModel.uiState.value.isLoadingIndicatorVisible)
-
-                advanceTimeBy(1)
-                runCurrent()
                 assertIs<GroupDetailContent.Ready>(viewModel.uiState.value.content)
                 assertFalse(viewModel.uiState.value.isLoadingIndicatorVisible)
             } finally {
@@ -250,10 +244,6 @@ class GroupDetailViewModelTest {
                 assertEquals(GroupDetailContent.LoadFailed, viewModel.uiState.value.content)
                 assertTrue(viewModel.uiState.value.isLoadingIndicatorVisible)
                 retryResponse.complete(GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER)))
-                runCurrent()
-                assertEquals(GroupDetailContent.LoadFailed, viewModel.uiState.value.content)
-
-                advanceTimeBy(300)
                 runCurrent()
                 assertIs<GroupDetailContent.Ready>(viewModel.uiState.value.content)
                 assertFalse(viewModel.uiState.value.isLoading)
@@ -877,6 +867,51 @@ class GroupDetailViewModelTest {
                 assertFalse(viewModel.uiState.value.isJoinConfirmationVisible)
                 viewModel.onJoinClick()
                 assertTrue(viewModel.uiState.value.isJoinConfirmationVisible)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun detailLoadingProbe() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                for (latency in listOf(0L, 50L, 200L, 1500L)) {
+                    repeat(3) { repetition ->
+                        var reads = 0
+                        var feedReads = 0
+                        var feedStart = -1L
+                        val start = testScheduler.currentTime
+                        val repo =
+                            object : EmotionRepository by TestEmotionRepository {
+                                override suspend fun feedPage(
+                                    groupId: String,
+                                    cursor: String?,
+                                ): EmotionResult<EmotionPage> {
+                                    feedReads++
+                                    feedStart = testScheduler.currentTime - start
+                                    return EmotionResult.Success(EmotionPage(emptyList(), null))
+                                }
+                            }
+                        val vm =
+                            createViewModel(source = {
+                                reads++
+                                delay(latency)
+                                GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER))
+                            }, emotionRepository = repo)
+                        advanceUntilIdle()
+                        assertIs<GroupDetailContent.Ready>(vm.uiState.value.content)
+                        assertEquals(latency, testScheduler.currentTime - start)
+                        assertEquals(latency, feedStart)
+                        assertEquals(1, reads)
+                        assertEquals(1, feedReads)
+                        println(
+                            "LOADING_PROBE,group_detail_initial,$latency,$repetition,${testScheduler.currentTime - start},$reads",
+                        )
+                        println("DETAIL_FEED_PROBE,$latency,$repetition,$feedStart,$feedReads")
+                    }
+                }
             } finally {
                 Dispatchers.resetMain()
             }

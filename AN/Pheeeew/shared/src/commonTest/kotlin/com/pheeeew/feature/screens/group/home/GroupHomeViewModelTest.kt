@@ -32,29 +32,28 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupHomeViewModelTest {
     @Test
-    fun `fast refresh keeps content and loading feedback for at least 1000 milliseconds`() =
+    fun `refresh keeps content while pending and publishes failure without a fixed wait`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 val initialGroup = group("initial")
+                val refreshResponse = CompletableDeferred<GroupListResult>()
                 val source =
                     QueuedGroupListSource(
                         CompletableDeferred(GroupListResult.Success(listOf(initialGroup))),
-                        CompletableDeferred(GroupListResult.Unavailable),
+                        refreshResponse,
                     )
                 val viewModel = createViewModel(source)
                 advanceUntilIdle()
 
                 viewModel.refresh()
                 runCurrent()
-                advanceTimeBy(999)
-                runCurrent()
                 assertEquals(GroupRefreshStatus.Refreshing, viewModel.uiState.value.refreshStatus)
                 assertEquals(GroupHomeContent.Ready(listOf(initialGroup)), viewModel.uiState.value.content)
                 viewModel.refresh()
                 assertEquals(2, source.calls)
 
-                advanceTimeBy(1)
+                refreshResponse.complete(GroupListResult.Unavailable)
                 runCurrent()
                 assertEquals(GroupRefreshStatus.Failed, viewModel.uiState.value.refreshStatus)
                 assertEquals(GroupHomeContent.Ready(listOf(initialGroup)), viewModel.uiState.value.content)

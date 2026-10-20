@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.NoOpMonitoring
-import com.pheeeew.core.utils.withMinimumLoadingTime
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.resultLabel
 import dev.zacsweers.metro.Inject
@@ -116,17 +115,15 @@ internal class PressRankingViewModel(
                     if (navigation) delay(150L)
                     when (
                         val result =
-                            rankingLoad(navigation) {
-                                telemetry
-                                    .operation(
-                                        "press_ranking_load_finished",
-                                        mapOf(
-                                            "weeks_ago" to
-                                                com.pheeeew.core.monitoring.EventValue
-                                                    .Integer(weeksAgo.toLong()),
-                                        ),
-                                    ).observe(::resultLabel) { source.load(emotion, weeksAgo) }
-                            }
+                            telemetry
+                                .operation(
+                                    "press_ranking_load_finished",
+                                    mapOf(
+                                        "weeks_ago" to
+                                            com.pheeeew.core.monitoring.EventValue
+                                                .Integer(weeksAgo.toLong()),
+                                    ),
+                                ).observe(::resultLabel) { source.load(emotion, weeksAgo) }
                     ) {
                         is PressRankingLoadResult.Loaded -> {
                             if (requestId != requestGeneration) return@launch
@@ -200,11 +197,6 @@ internal class PressRankingViewModel(
             }
     }
 }
-
-private suspend fun <T> rankingLoad(
-    navigation: Boolean,
-    block: suspend () -> T,
-): T = if (navigation) block() else withMinimumLoadingTime(block)
 
 private fun formatWeekRange(
     startAt: String,
