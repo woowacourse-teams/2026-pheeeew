@@ -4,6 +4,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.TextFieldValue
 
+internal actual fun dismissNativeTextKeyboard() = Unit
+
 internal actual val usesNativeTextEditor: Boolean = false
 
 @Composable

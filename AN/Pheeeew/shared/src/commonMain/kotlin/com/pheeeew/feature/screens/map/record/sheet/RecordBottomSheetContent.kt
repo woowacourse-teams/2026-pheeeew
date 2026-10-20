@@ -67,6 +67,7 @@ import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
 import com.pheeeew.core.designsystem.input.NativeTextEditor
+import com.pheeeew.core.designsystem.input.dismissNativeTextKeyboard
 import com.pheeeew.core.designsystem.input.limitMemoValue
 import com.pheeeew.core.designsystem.input.rememberTextEditor
 import com.pheeeew.core.designsystem.input.usesNativeTextEditor
@@ -112,9 +113,14 @@ fun RecordBottomSheet(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val currentKeyboardVisible by rememberUpdatedState(isKeyboardVisible)
+    val focusManager = LocalFocusManager.current
+    var gestureStartedWithKeyboard by remember { mutableStateOf(false) }
     var showOtherInputDialog by remember { mutableStateOf(false) }
     val handleDismissRequest by rememberUpdatedState<() -> Unit> {
         if (isKeyboardVisible) {
+            dismissNativeTextKeyboard()
+            focusManager.clearFocus()
             keyboardController?.hide()
         } else {
             onDismissRequest()
@@ -122,13 +128,26 @@ fun RecordBottomSheet(
     }
     AppModalBottomSheet(
         onDismissRequest = handleDismissRequest,
-        modifier = modifier,
+        modifier =
+            modifier.pointerInput(Unit) {
+                awaitEachGesture {
+                    // Remember before the content's outside-tap handler hides the keyboard.
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    gestureStartedWithKeyboard = currentKeyboardVisible
+                }
+            },
         sheetState =
             rememberModalBottomSheetState(
                 skipPartiallyExpanded = true,
                 confirmValueChange = { value ->
                     if (value == SheetValue.Hidden) {
-                        handleDismissRequest()
+                        if (gestureStartedWithKeyboard || currentKeyboardVisible) {
+                            dismissNativeTextKeyboard()
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        } else {
+                            handleDismissRequest()
+                        }
                         false
                     } else {
                         true
@@ -243,6 +262,7 @@ private fun RecordBottomSheetContent(
                             inputMode == RecordInputModeUiModel.Memo &&
                                 memoBounds.contains(down.position + sheetPosition)
                         if (!touchedMemo) {
+                            dismissNativeTextKeyboard()
                             focusManager.clearFocus()
                             keyboardController?.hide()
                         }

@@ -5,6 +5,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 
+internal expect fun dismissNativeTextKeyboard()
+
 internal expect val usesNativeTextEditor: Boolean
 
 @Composable

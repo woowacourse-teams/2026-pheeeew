@@ -15,6 +15,8 @@ import kotlinx.cinterop.useContents
 import platform.CoreGraphics.CGRectMake
 import platform.Foundation.NSMakeRange
 import platform.Foundation.NSRange
+import platform.Foundation.NSSelectorFromString
+import platform.UIKit.UIApplication
 import platform.UIKit.UIColor
 import platform.UIKit.UIEdgeInsetsMake
 import platform.UIKit.UIFont
@@ -34,6 +36,16 @@ import platform.UIKit.UITextView
 import platform.UIKit.UITextViewDelegateProtocol
 import platform.UIKit.accessibilityLabel
 import platform.darwin.NSObject
+
+@OptIn(ExperimentalForeignApi::class)
+internal actual fun dismissNativeTextKeyboard() {
+    UIApplication.sharedApplication.sendAction(
+        NSSelectorFromString("resignFirstResponder"),
+        to = null,
+        from = null,
+        forEvent = null,
+    )
+}
 
 internal actual val usesNativeTextEditor: Boolean = true
 
