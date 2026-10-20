@@ -23,6 +23,7 @@ import com.pheeeew.emotion.domain.Audio;
 import com.pheeeew.emotion.domain.Emotion;
 import com.pheeeew.emotion.domain.EmotionContent;
 import com.pheeeew.emotion.domain.EmotionState;
+import com.pheeeew.emotion.domain.repository.EmotionRepository;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchBounds;
 import com.pheeeew.emotion.domain.repository.query.EmotionSearchFilter;
 import com.pheeeew.emotion.domain.repository.query.EmotionContentFilter;
@@ -61,6 +62,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.aop.AopAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -79,6 +81,8 @@ class EmotionRegionCountIntegrationTest {
     private EmotionMapQueryService service;
     @Autowired
     private EntityManager entityManager;
+    @Autowired
+    private EmotionRepository emotionRepository;
     @Autowired
     private JdbcClient jdbc;
     @Autowired
@@ -400,16 +404,22 @@ class EmotionRegionCountIntegrationTest {
         assertThat(집계_준비_조회_수("error")).isEqualTo(errorCount + 1);
     }
 
-    @Test
-    void 집계_SQL_장애를_정상적인_빈_개수로_숨기지_않는다() throws Exception {
+    @ParameterizedTest
+    @EnumSource(RegionLevel.class)
+    void 집계_SQL_장애를_정상적인_빈_개수로_숨기지_않는다(RegionLevel level) throws Exception {
         // given: 테스트 트랜잭션 종료 시 DDL도 롤백된다.
         jdbc.sql("ALTER TABLE emotions RENAME TO unavailable_emotions").update();
 
         // when / then
         var timings = inRequest(() ->
-                assertThatThrownBy(() -> counts(RegionLevel.EMD, null)).isInstanceOf(DataAccessException.class));
-        assertThat(timings).containsOnlyKeys(PheeeewRequestTimingStage.REGIONS_SERVICE, PheeeewRequestTimingStage.REGIONS_BOUNDARIES,
-                PheeeewRequestTimingStage.REGIONS_INTERSECTION, PheeeewRequestTimingStage.REGIONS_AGGREGATION_READY, PheeeewRequestTimingStage.REGIONS_SUMMARY);
+                assertThatThrownBy(() -> counts(level, null)).isInstanceOf(DataAccessException.class));
+        var expected = level == RegionLevel.EMD
+                ? List.of(PheeeewRequestTimingStage.REGIONS_SERVICE, PheeeewRequestTimingStage.REGIONS_BOUNDARIES,
+                        PheeeewRequestTimingStage.REGIONS_INTERSECTION, PheeeewRequestTimingStage.REGIONS_AGGREGATION_READY,
+                        PheeeewRequestTimingStage.REGIONS_SUMMARY)
+                : List.of(PheeeewRequestTimingStage.REGIONS_SERVICE, PheeeewRequestTimingStage.REGIONS_AGGREGATION_READY,
+                        PheeeewRequestTimingStage.REGIONS_SUMMARY);
+        assertThat(timings).containsOnlyKeys(expected);
         assertThat(timings.get(PheeeewRequestTimingStage.REGIONS_SUMMARY).count()).isEqualTo(1);
         assertThat(timings.get(PheeeewRequestTimingStage.REGIONS_SUMMARY).totalNanos()).isGreaterThanOrEqualTo(0);
     }
@@ -722,6 +732,45 @@ class EmotionRegionCountIntegrationTest {
 
         // when / then
         assertThat(service.findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), RegionLevel.SIDO, requester.getPublicId(), filter)).isEmpty();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = RegionLevel.class, names = {"SIDO", "SIGUNGU"})
+    void 전국_조회_이후에도_지역_코드_지정_조회는_해당_지역만_집계한다(RegionLevel level) {
+        // given
+        addRegion("21", RegionLevel.SIDO, null);
+        addRegion("21010", RegionLevel.SIGUNGU, "21");
+        addRegion("21010530", RegionLevel.EMD, "21010");
+        save(classified().memo("선택 지역").state(EmotionState.ANGRY));
+        save(classified().regionCode("21010530").memo("다른 지역").state(EmotionState.IRRITATED));
+        entityManager.flush();
+        String code = level == RegionLevel.SIDO ? "11" : "11010";
+        var filter = EmotionSearchFilter.of(null, null, null, null, null);
+
+        // when / then: 서비스의 전국 결과와 기존 저장소의 부분 지역 계약을 함께 확인한다.
+        assertThat(findRegionMap(EmotionSearchBounds.of(130, 40, 132, 42), level, null)).hasSize(2);
+        assertThat(emotionRepository.findSummariesByRegionCodes(
+                List.of(code), level, filter, requester.getId(), Instant.now()))
+                .singleElement().satisfies(summary -> {
+                    assertThat(summary.regionCode()).isEqualTo(code);
+                    assertThat(summary.totalCount()).isEqualTo(1);
+                    assertThat(summary.representativeState()).isEqualTo(EmotionState.ANGRY);
+                });
+        assertThat(emotionRepository.findSummariesByRegionCodes(
+                List.of(), level, filter, requester.getId(), Instant.now())).isEmpty();
+    }
+
+    @Test
+    void 전국_집계_저장소는_읍면동의_지역_제한을_생략하지_않는다() {
+        // given
+        var filter = EmotionSearchFilter.of(null, null, null, null, null);
+
+        // when / then
+        assertThatThrownBy(() -> emotionRepository.findNationalSummaries(
+                RegionLevel.EMD, filter, requester.getId(), Instant.now()))
+                .isInstanceOf(InvalidDataAccessApiUsageException.class)
+                .hasCauseInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("전국 집계는 시도와 시군구만 지원합니다.");
     }
 
     @ParameterizedTest

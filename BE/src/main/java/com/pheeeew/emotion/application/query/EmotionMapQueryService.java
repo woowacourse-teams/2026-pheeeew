@@ -133,7 +133,11 @@ public class EmotionMapQueryService {
 
         Instant snapshotAt = Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
 
-        return emotionRepository.findSummariesByRegionCodes(regionCodes, level, filter, deviceId, snapshotAt).stream()
+        List<RegionEmotionSummaryProjection> summaries = switch (level) {
+            case SIDO, SIGUNGU -> emotionRepository.findNationalSummaries(level, filter, deviceId, snapshotAt);
+            case EMD -> emotionRepository.findSummariesByRegionCodes(regionCodes, level, filter, deviceId, snapshotAt);
+        };
+        return summaries.stream()
                 .collect(Collectors.toMap(RegionEmotionSummaryProjection::regionCode, RegionEmotionSummary::from));
     }
 
