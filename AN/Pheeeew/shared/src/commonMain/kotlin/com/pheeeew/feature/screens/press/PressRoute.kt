@@ -6,7 +6,6 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
