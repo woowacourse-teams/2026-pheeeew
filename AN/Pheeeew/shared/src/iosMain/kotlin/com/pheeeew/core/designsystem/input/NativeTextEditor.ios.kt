@@ -137,11 +137,11 @@ private class NativeEditorDelegate(
     override fun textViewDidChange(textView: UITextView) {
         (textView as? EditingTextView)?.updatePlaceholder()
         val raw = textView.text.orEmpty()
+        val selection = textView.selectedRange.useContents { TextRange(location.toInt(), (location + length).toInt()) }
         if (textView.markedTextRange != null) {
-            publish(normalizeText(TextFieldValue(raw)).text)
+            publish(normalizeText(TextFieldValue(raw, selection)).text)
             return
         }
-        val selection = textView.selectedRange.useContents { TextRange(location.toInt(), (location + length).toInt()) }
         val normalized = normalizeText(TextFieldValue(raw, selection))
         if (normalized.text != raw) {
             textView.text = normalized.text
