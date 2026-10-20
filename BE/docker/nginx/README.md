@@ -1,11 +1,12 @@
 # nginx 안내
 
 개발 서버와 운영 서버의 nginx 설정이에요. 두 서버 모두 API 주소는 Cloudflare 프록시를 거치지 않고 직접 받아요.
+개발 설정에는 기존 직접 연결을 유지하면서 ALB의 HTTP 전달을 시험하는 경로도 있어요.
 
 | 파일 | 서버 | 요청을 받는 방식 |
 | --- | --- | --- |
 | `api.conf` | 운영 | API 주소를 직접 받아요 |
-| `api-dev.conf` | 개발 | API 주소는 직접 받고, 문서용 주소는 Cloudflare 프록시를 거친 요청만 받아요 |
+| `api-dev.conf` | 개발 | API 주소는 직접 HTTPS 또는 ALB 경유 HTTP로 받고, 문서용 주소는 Cloudflare 프록시를 거친 요청만 받아요 |
 
 결정 배경은 [ADR-0035](../../docs/adr/0035-serve-dev-api-without-cloudflare-proxy.md)와 [ADR-0036](../../docs/adr/0036-serve-prod-api-without-cloudflare-proxy.md)에 있어요.
 
@@ -21,17 +22,21 @@
 - Access 애플리케이션의 대상은 `docs-dev.pheeeew.com` 전체로 잡아요. 스웨거의 실행 요청도 이 주소를 거쳐요.
 - 운영에는 문서용 주소가 없어요.
 
-## 개발 ALB 상태 검사
+## 개발 ALB HTTP 시험
 
-개발 대상 그룹의 상태 검사는 `HTTPS`, 트래픽 포트 `443`, 경로 `/actuator/health`, 성공 코드 `200`으로 설정해요.
-ALB가 대상의 IP를 Host로 보내므로 기본 HTTPS 서버에서 이 경로만 앱으로 전달해요. 앱의 장애 응답도 그대로 반환해요.
+기존 직접 HTTPS 연결을 유지하면서 `앱 → HTTPS:443 ALB → HTTP:80 Nginx → 앱 서버`를 시험해요.
+대상 그룹은 `HTTP:80`, `HTTP1`, 상태 검사는 `HTTP`, 트래픽 포트 `80`, 경로 `/actuator/health`, 성공 코드 `200`으로 설정해요.
+ALB의 HTTPS:443 리스너에는 개발 API 도메인을 포함한 ACM 인증서가 필요해요. HTTP 리스너도 추가한다면 HTTPS로 리디렉션해요.
 
-- 연결 주소가 `project-lb-a` (`10.0.10.0/24`), `project-lb-b` (`10.0.11.0/24`)인 GET 요청만 받아요. 전달 헤더나 User-Agent로 출처를 판단하지 않아요.
-- 이 제한은 LB 서브넷 전체에 적용돼요. 배포 전에 EC2 보안 그룹에서 해당 443 연결의 출처가 `project-lb`로 제한되는지 확인해야 해요.
-- API·문서 도메인의 Actuator 차단과 알 수 없는 Host의 다른 경로 차단은 유지해요. HTTP 상태 검사는 받지 않아요.
-- 이 변경은 상태 검사만 준비해요. 일반 API 트래픽을 ALB로 전환하기 전에는 실제 연결 주소와 요청 제한 정책을 별도로 확인해야 해요.
+- HTTP API는 원래 TCP 연결 주소가 `project-lb-a` (`10.0.10.0/24`), `project-lb-b` (`10.0.11.0/24`)이고 `X-Forwarded-Proto: https`인 요청만 전달해요. 다른 출처의 API HTTP 요청은 기존처럼 HTTPS로 리디렉션해요.
+- **배포 전 필수 확인:** ALB의 `routing.http.xff_header_processing.mode`는 기본값인 `append`여야 해요. HTTP API 경로에서만 ALB가 마지막에 추가한 실제 사용자 IP를 읽고, 요청 제한과 앱에 전달하는 IP에도 사용해요. `preserve`로 바꾸면 사용자 헤더를 신뢰하게 되므로 안 돼요.
+- **배포 전 필수 확인:** EC2의 80번 포트 출처는 ALB의 `project-lb` 보안 그룹으로 제한해요. Nginx의 CIDR 제한만으로는 같은 서브넷의 다른 발신자를 구별하지 못해요. 공유 보안 그룹의 규칙을 임의로 수정하지 않아요. 기존 직접 HTTPS:443과 문서용 연결은 유지해요.
+- IP Host로 오는 정확한 GET `/actuator/health`만 HTTP:80과 기존 HTTPS:443에서 받아 앱의 실제 정상·장애 응답을 반환해요. API·문서 도메인의 Actuator 차단과 알 수 없는 Host의 다른 경로 차단은 유지해요.
 
-로컬 Docker와 OpenSSL이 있으면 아래 명령으로 두 LB 서브넷의 정상·장애 응답, 다른 출처·헤더 위조 차단, 기존 경로 차단을 검증해요.
+설정 배포 뒤 실제 ALB에서 target healthy, API 응답, 사용자 IP별 요청 제한을 확인한 다음 DNS를 전환해요.
+시험을 끝내고 개발을 직접 연결만 쓰게 되돌릴 때는 ALB 연결과 HTTP API 시험 경로를 함께 정리해요. 운영 설정과 CD 워크플로는 이 시험에서 바꾸지 않아요.
+
+로컬 Docker와 OpenSSL이 있으면 아래 명령으로 두 LB 서브넷의 HTTP/HTTPS 상태 검사, HTTP API 전달, 실제 사용자 IP와 HTTPS 인식, 사용자별 요청 제한과 기존 접근 차단을 검증해요.
 임시 인증서·앱·내부 Docker 네트워크를 만들고 종료 시 정리해요. 실제 AWS 연결이나 보안 그룹은 검증하지 않아요.
 
 ```bash
@@ -44,7 +49,8 @@ python3 docker/nginx/test-alb-health.py
 
 ## 요청자 주소
 
-API 주소(`api`, `api-dev`)는 요청자 주소로 연결 주소(`$remote_addr`)만 써요. `CF-Connecting-IP` 헤더는 어디서 온 요청이든 믿지 않아요. 요청 제한이 이 값을 기준으로 하기 때문이에요.
+API 주소의 직접 HTTPS 연결은 요청자 주소로 연결 주소(`$remote_addr`)만 써요. `CF-Connecting-IP` 헤더는 어디서 온 요청이든 믿지 않아요. 요청 제한이 이 값을 기준으로 하기 때문이에요.
+개발의 ALB HTTP 경로만 원래 연결 출처를 확인한 뒤 `X-Forwarded-For`의 마지막 주소를 `$remote_addr`로 사용해요. 앱에는 정규화한 사용자 IP와 `https`, 포트 `443`, API Host를 전달하고 `Forwarded`, `CF-Connecting-IP`는 제거해요.
 
 - 직접 붙은 요청은 이 헤더에 아무 값이나 적을 수 있어요.
 - Cloudflare 대역에서 온 연결도 믿지 않아요. Cloudflare Workers가 이 헤더를 임의로 넣어 서버에 요청할 수 있어서, 대역만 보고 믿으면 요청 제한을 우회할 수 있어요.
