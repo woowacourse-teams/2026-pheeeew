@@ -1,5 +1,8 @@
 package com.pheeeew.feature.screens.group.join
 
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
+
 internal const val GROUP_INVITATION_CODE_LENGTH = 6
 
 /** 사용자가 입력한 초대 코드의 형식 검증 결과입니다. */
@@ -56,4 +59,25 @@ internal object GroupCodeRules {
     }
 
     private const val ALLOWED_CHARACTERS = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+}
+
+/** Apply the same code normalization to text and cursor offsets, including pasted text. */
+internal fun TextFieldValue.normalizeInviteCode(): TextFieldValue {
+    val normalized = GroupCodeRules.normalize(text).take(GROUP_INVITATION_CODE_LENGTH)
+    if (normalized == text) return this
+
+    val leadingWhitespace = text.length - text.trimStart().length
+
+    fun offset(position: Int): Int =
+        text
+            .drop(leadingWhitespace)
+            .take((position - leadingWhitespace).coerceAtLeast(0))
+            .uppercase()
+            .length
+            .coerceAtMost(normalized.length)
+    return copy(
+        text = normalized,
+        selection = TextRange(offset(selection.start), offset(selection.end)),
+        composition = composition?.let { TextRange(offset(it.start), offset(it.end)) }?.takeUnless { it.collapsed },
+    )
 }
