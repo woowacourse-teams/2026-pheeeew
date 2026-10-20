@@ -1441,6 +1441,154 @@ class MapViewModelViewportTest {
         }
 
     @Test
+    fun `실제 핀 줌의 지연 조회 중 클러스터를 유지하고 핀 성공 후 교체한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val area = bounds(127.0, 37.5)
+                val delayedPinPage = CompletableDeferred<EmotionMapPageResult>()
+                val pinRepository = QueuedEmotionMapRepository(delayedPinPage)
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pinRepository),
+                        FindEmotionMapSnapshotUseCase(pinRepository),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, _, _ ->
+                                    EmotionRegionResult.Success(
+                                        listOf(EmotionRegion("district", "강남구", 127.05, 37.55, 4, null)),
+                                    )
+                                },
+                            ),
+                    )
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
+                advanceTimeBy(700)
+                runCurrent()
+                assertEquals(EmotionRegionLevel.SIGUNGU, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(
+                    "강남구",
+                    viewModel.uiModel.value.regionClusters
+                        .single()
+                        .name,
+                )
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 15.5))
+                assertEquals(EmotionRegionLevel.SIGUNGU, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(
+                    "강남구",
+                    viewModel.uiModel.value.regionClusters
+                        .single()
+                        .name,
+                )
+
+                advanceTimeBy(700)
+                runCurrent()
+                assertTrue(viewModel.uiModel.value.isLoadingEmotionPins)
+                assertEquals(EmotionRegionLevel.SIGUNGU, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(
+                    "강남구",
+                    viewModel.uiModel.value.regionClusters
+                        .single()
+                        .name,
+                )
+
+                delayedPinPage.complete(page(listOf(pin(7, 127.02, 37.55))))
+                runCurrent()
+                assertEquals(listOf(7L), viewModel.pinIds())
+                assertEquals(null, viewModel.uiModel.value.displayedRegionLevel)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `핀 줌 조회 실패 뒤에도 클러스터를 남기지 않고 재시도 핀을 표시한다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val area = bounds(127.0, 37.5)
+                val pinRepository =
+                    QueuedEmotionMapRepository(
+                        CompletableDeferred(EmotionMapPageResult.Failure(EmotionMapFailure.Unavailable)),
+                        CompletableDeferred(page(listOf(pin(8, 127.02, 37.55)))),
+                    )
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pinRepository),
+                        FindEmotionMapSnapshotUseCase(pinRepository),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, _, _ ->
+                                    EmotionRegionResult.Success(
+                                        listOf(EmotionRegion("district", "강남구", 127.05, 37.55, 4, null)),
+                                    )
+                                },
+                            ),
+                    )
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
+                advanceTimeBy(700)
+                runCurrent()
+                viewModel.onViewportChanged(EmotionMapViewport(area, 15.5))
+                advanceTimeBy(700)
+                runCurrent()
+
+                assertEquals(null, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+                assertEquals("감정 핀을 불러오지 못했어요", viewModel.uiModel.value.emotionPinsError)
+
+                viewModel.retryEmotionPins()
+                runCurrent()
+                assertEquals(listOf(8L), viewModel.pinIds())
+                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+                assertEquals(null, viewModel.uiModel.value.emotionPinsError)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `핀 줌의 정상 빈 응답은 이전 클러스터를 복원하지 않는다`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val area = bounds(127.0, 37.5)
+                val pinRepository = QueuedEmotionMapRepository(CompletableDeferred(emptyPage()))
+                val viewModel =
+                    MapViewModel(
+                        noLocationRefreshUseCase(),
+                        FindEmotionMapPageUseCase(pinRepository),
+                        FindEmotionMapSnapshotUseCase(pinRepository),
+                        findRegions =
+                            FindEmotionRegionsUseCase(
+                                regionRepository { _, _, _ ->
+                                    EmotionRegionResult.Success(
+                                        listOf(EmotionRegion("district", "강남구", 127.05, 37.55, 4, null)),
+                                    )
+                                },
+                            ),
+                    )
+
+                viewModel.onViewportChanged(EmotionMapViewport(area, 10.0))
+                advanceTimeBy(700)
+                runCurrent()
+                viewModel.onViewportChanged(EmotionMapViewport(area, 15.5))
+                advanceTimeBy(700)
+                runCurrent()
+
+                assertEquals(emptyList(), viewModel.pinIds())
+                assertEquals(emptyList(), viewModel.uiModel.value.regionClusters)
+                assertEquals(null, viewModel.uiModel.value.displayedRegionLevel)
+                assertEquals(null, viewModel.uiModel.value.emotionPinsError)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `늦은 지역 응답은 새 계층을 덮지 않고 가까운 줌에서 핀으로 전환한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
