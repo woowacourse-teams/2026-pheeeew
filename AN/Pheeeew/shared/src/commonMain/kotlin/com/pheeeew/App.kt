@@ -89,6 +89,7 @@ import com.pheeeew.feature.screens.map.EmotionPinUiModel
 import com.pheeeew.feature.screens.map.HighlightedPinPosition
 import com.pheeeew.feature.screens.map.MapContentRenderState
 import com.pheeeew.feature.screens.map.MapScreen
+import com.pheeeew.feature.screens.map.MapTransientNoticeUiModel
 import com.pheeeew.feature.screens.map.MapViewModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailLoadUiModel
 import com.pheeeew.feature.screens.map.detail.EmotionDetailOverlay
@@ -141,6 +142,19 @@ import pheeeew.shared.generated.resources.app_update_retry
 import pheeeew.shared.generated.resources.app_update_store_error
 import pheeeew.shared.generated.resources.app_update_suggested_message
 import pheeeew.shared.generated.resources.app_update_suggested_title
+
+internal fun shouldShowMapFeedback(
+    mainFeaturesReady: Boolean,
+    selectedDestination: AppDestination,
+    nearbyVisible: Boolean,
+    detailState: EmotionDetailLoadUiModel,
+    settingsVisible: Boolean,
+    hasReportTarget: Boolean,
+): Boolean =
+    mainFeaturesReady && selectedDestination == AppDestination.Map &&
+        !nearbyVisible &&
+        (detailState == EmotionDetailLoadUiModel.Closed || detailState is EmotionDetailLoadUiModel.Failed) &&
+        !settingsVisible && !hasReportTarget
 
 @Composable
 fun App(
@@ -490,7 +504,8 @@ private fun AppContent(
 
         var isSettingsVisible by remember { mutableStateOf(false) }
         var reportTarget by remember { mutableStateOf<Triple<Long, DrawableResource, String>?>(null) }
-        var moderationMessage by remember { mutableStateOf<String?>(null) }
+        var moderationMessage by remember { mutableStateOf<MapTransientNoticeUiModel?>(null) }
+        var nextModerationMessageId by remember { mutableStateOf(0L) }
         var isGroupDetailVisible by remember { mutableStateOf(false) }
         var isGroupCreateVisible by remember { mutableStateOf(false) }
         var refreshGroup by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -549,6 +564,15 @@ private fun AppContent(
                                 mainFeaturesReady && !nearbyState.visible &&
                                     detailState == EmotionDetailLoadUiModel.Closed &&
                                     !isSettingsVisible && reportTarget == null,
+                            feedbackVisible =
+                                shouldShowMapFeedback(
+                                    mainFeaturesReady = mainFeaturesReady,
+                                    selectedDestination = selectedDestination,
+                                    nearbyVisible = nearbyState.visible,
+                                    detailState = detailState,
+                                    settingsVisible = isSettingsVisible,
+                                    hasReportTarget = reportTarget != null,
+                                ),
                             onListClick = nearbyViewModel::toggle,
                             nearbyMapControlHeight = nearbyMapControlHeight,
                             isMapCameraMoving = isMapCameraMoving,
@@ -558,7 +582,9 @@ private fun AppContent(
                             appSettingsLauncher = appSettingsLauncher,
                             modifier = Modifier.fillMaxSize(),
                             message = moderationMessage,
-                            onMessageDismiss = { moderationMessage = null },
+                            onMessageDismiss = { id ->
+                                if (moderationMessage?.id == id) moderationMessage = null
+                            },
                             detailError = detailState as? EmotionDetailLoadUiModel.Failed,
                             onRetryDetail = detailViewModel::retry,
                             onDismissDetailError = detailViewModel::dismiss,
@@ -599,13 +625,13 @@ private fun AppContent(
                             onBlockSucceeded = {
                                 detailViewModel.dismiss()
                                 mapViewModel.refreshEmotionPins()
-                                moderationMessage = "차단했어요."
+                                moderationMessage = MapTransientNoticeUiModel(++nextModerationMessageId, "차단했어요.")
                             },
                             monitoringVisible = !isSettingsVisible && reportTarget == null,
                             onDeleteSucceeded = {
                                 detailViewModel.dismiss()
                                 mapViewModel.onEmotionDeleted()
-                                moderationMessage = "삭제했어요."
+                                moderationMessage = MapTransientNoticeUiModel(++nextModerationMessageId, "삭제했어요.")
                             },
                         )
                     }
@@ -748,7 +774,7 @@ private fun AppContent(
                     onBack = { reportTarget = null },
                     onReportSucceeded = {
                         reportTarget = null
-                        moderationMessage = "신고가 접수됐어요."
+                        moderationMessage = MapTransientNoticeUiModel(++nextModerationMessageId, "신고가 접수됐어요.")
                     },
                 )
             }
