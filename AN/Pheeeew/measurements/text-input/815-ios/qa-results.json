@@ -1,0 +1,78 @@
+{
+  "date": "2026-10-20",
+  "baselineCommit": "be1fb073",
+  "app": "com.itda.pheeeew",
+  "device": "iPhone 17 / iOS 26.5 Simulator",
+  "method": "Actual app UI automation through Simulator; sequential software keyboard taps and hardware shortcuts; not simultaneous multi-touch.",
+  "versionsUnchanged": true,
+  "before": {
+    "memoRapidHangul": {
+      "expected": "가나다라마바사가나다라마바사가나다라마바사",
+      "actual": "가나다라마바사가ㄴㅏㄷㅏㄹㅏㅁㅏㅂㅏㅅㅏㄱㅏㄴㅏㄷㅏ라마바사",
+      "expectedLength": 21,
+      "actualLength": 30
+    },
+    "memoPaste": {
+      "input": "PASTE123",
+      "commands": 1,
+      "actual": "PASTE123PASTE123"
+    },
+    "nativeSpotlightPasteControl": "PASTE123"
+  },
+  "after": {
+    "implementation": "UIKit UITextView; no Compose text-input bridge on these two iOS controls",
+    "memoRapidHangul": [
+      {
+        "expectedLength": 21,
+        "actualLength": 21,
+        "exactMatch": true
+      },
+      {
+        "expectedLength": 49,
+        "actualLength": 49,
+        "exactMatch": true
+      }
+    ],
+    "memoCompositionLimit": {
+      "acceptedText": "가나다라마바사가나다라마바사가나다라마바사가나다라마바사가나다라마바사가나다라마바사가나다라마바사가",
+      "attemptedSuffix": "나",
+      "commitKey": "Return",
+      "actualLength": 50,
+      "preservedFiftiethCharacter": true
+    },
+    "memoPaste": {
+      "input": "PASTE123",
+      "oneCommand": "PASTE123",
+      "twoCommands": "PASTE123PASTE123"
+    },
+    "memoMultilinePaste": {
+      "input": "붙여넣기 테스트\n두 번째 줄",
+      "actual": "붙여넣기 테스트\n두 번째 줄"
+    },
+    "memoMiddleEdit": {
+      "before": "1234567890",
+      "actions": "Left x3, Backspace, type 999",
+      "actual": "123456999890"
+    },
+    "inviteRapidAndLimit": {
+      "input": "abc234xyz",
+      "actual": "ABC234"
+    },
+    "inviteMiddle": {
+      "before": "ABC234",
+      "actions": "Left x2, Backspace, type o",
+      "actual": "ABC034"
+    },
+    "invitePaste": {
+      "input": "  aoil23zz  ",
+      "actual": "A01123"
+    }
+  },
+  "limitations": [
+    "No physical iPhone manual confirmation of the final UIKit implementation yet.",
+    "No frame-by-frame proof that transient caret movement never occurs.",
+    "No server submission: no emotion record, group lookup, or group join.",
+    "Composing text may temporarily exceed the memo limit; committed/published text is limited to 50 UTF-16 code units without splitting a surrogate pair.",
+    "Native iOS controls use the system font, while Compose containers retain their existing border, spacing, and background."
+  ]
+}
