@@ -15,7 +15,12 @@ class GroupStampListApi(
 ) {
     suspend fun findMyStamps(): ApiResult<List<GroupStampItemResponseDto>> =
         requests.execute(
-            ApiRequest(HttpMethod.Get, "/api/v2/groups/stamps", RequestKind.READ, monitoringEndpoint = "group_stamps"),
+            ApiRequest(
+                HttpMethod.Get,
+                ApiEndpointPaths.GROUP_STAMPS,
+                RequestKind.READ,
+                monitoringEndpoint = "group_stamps",
+            ),
         ) { response ->
             response.body<List<GroupStampItemResponseDto>>()
         }

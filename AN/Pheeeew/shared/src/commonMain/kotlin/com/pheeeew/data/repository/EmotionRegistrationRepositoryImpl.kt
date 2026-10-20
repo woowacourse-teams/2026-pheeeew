@@ -10,7 +10,6 @@ import com.pheeeew.data.remote.api.AudioUploadApi
 import com.pheeeew.data.remote.api.EmotionApi
 import com.pheeeew.data.remote.mapper.toRequestDto
 import com.pheeeew.data.repository.MAX_AUDIO_UPLOAD_BYTES
-import com.pheeeew.data.repository.readRecordingAudioFile
 import com.pheeeew.domain.model.emotion.EmotionRegistration
 import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
@@ -28,6 +27,7 @@ import kotlin.time.TimeSource
 internal class EmotionRegistrationRepositoryImpl(
     private val api: EmotionApi,
     private val audioUploadApi: AudioUploadApi,
+    private val audioReader: RecordingAudioReader,
     private val monitoring: Monitoring = NoOpMonitoring,
 ) : EmotionRegistrationRepository {
     private data class UploadedAudio(
@@ -78,7 +78,7 @@ internal class EmotionRegistrationRepositoryImpl(
                         } else {
                             val bytes =
                                 try {
-                                    withContext(Dispatchers.Default) { readRecordingAudioFile(content.filePath) }
+                                    withContext(Dispatchers.Default) { audioReader.read(content.filePath) }
                                 } catch (cancelled: CancellationException) {
                                     throw cancelled
                                 } catch (_: Exception) {

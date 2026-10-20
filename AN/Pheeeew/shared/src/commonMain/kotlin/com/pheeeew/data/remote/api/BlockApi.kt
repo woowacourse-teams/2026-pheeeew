@@ -20,7 +20,7 @@ class BlockApi(
         return requests.execute(
             ApiRequest(
                 method = HttpMethod.Post,
-                path = "/api/v2/blocks/emotions",
+                path = ApiEndpointPaths.EMOTION_BLOCK,
                 kind = RequestKind.WRITE,
                 body = EmotionBlockRequestDto(emotionId),
                 monitoringEndpoint = "emotion_block",
@@ -34,7 +34,7 @@ class BlockApi(
         return requests.execute(
             ApiRequest(
                 method = HttpMethod.Post,
-                path = "/api/v2/blocks/devices",
+                path = ApiEndpointPaths.DEVICE_BLOCK,
                 kind = RequestKind.WRITE,
                 body = EmotionBlockRequestDto(emotionId),
                 monitoringEndpoint = "user_block",

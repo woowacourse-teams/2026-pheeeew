@@ -1,10 +1,12 @@
 package com.pheeeew.core.di
 
 import com.pheeeew.core.monitoring.Monitoring
+import com.pheeeew.core.network.ApiRequestExecutor
 import com.pheeeew.data.repository.BlockRepositoryImpl
 import com.pheeeew.data.repository.EmotionAudioRepositoryImpl
 import com.pheeeew.data.repository.EmotionDetailRepositoryImpl
 import com.pheeeew.data.repository.EmotionRegistrationRepositoryImpl
+import com.pheeeew.data.repository.RecordingAudioReader
 import com.pheeeew.data.repository.ReportRepositoryImpl
 import com.pheeeew.domain.repository.BlockRepository
 import com.pheeeew.domain.repository.EmotionAudioRepository
@@ -43,7 +45,11 @@ internal interface EmotionBindings {
 
     @Provides fun provideRegistration(impl: EmotionRegistrationRepositoryImpl): EmotionRegistrationRepository = impl
 
-    @Provides fun provideAudio(): EmotionAudioRepository = EmotionAudioRepositoryImpl()
+    @Provides fun provideRecordingAudioReader(services: AppServiceFactory): RecordingAudioReader =
+        services.createRecordingAudioReader()
+
+    @Provides fun provideAudio(services: AppServiceFactory): EmotionAudioRepository =
+        EmotionAudioRepositoryImpl(services::createApiEngine)
 
     @Provides fun provideMapDependencies(
         repository: EmotionMapRepository,

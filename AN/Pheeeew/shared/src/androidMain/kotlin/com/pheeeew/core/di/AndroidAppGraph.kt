@@ -17,7 +17,6 @@ import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.monitoring.MonitoringConfig
 import com.pheeeew.core.monitoring.StateDecoder
 import com.pheeeew.core.monitoring.createAndroidMonitoring
-import com.pheeeew.core.network.AndroidConnectivityObserver
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.permission.AndroidAppSettingsLauncher
@@ -36,12 +35,10 @@ import com.pheeeew.data.repository.EmotionRegionMapRepositoryImpl
 import com.pheeeew.data.repository.GroupDetailRepositoryImpl
 import com.pheeeew.data.repository.GroupListRepositoryImpl
 import com.pheeeew.data.repository.GroupStampListRepositoryImpl
-import com.pheeeew.data.repository.LocationRepositoryImpl
 import com.pheeeew.domain.model.device.DevicePlatform
 import com.pheeeew.domain.permission.LocationPermissionController
 import com.pheeeew.domain.repository.AppVersionRepository
 import com.pheeeew.domain.repository.LastRecordedGroupRepository
-import com.pheeeew.domain.repository.LocationRepository
 import com.pheeeew.domain.repository.OnboardingStore
 import com.pheeeew.feature.screens.group.create.GroupCreateSessionStore
 import com.pheeeew.feature.screens.group.model.GroupOperationKeyAllocator
@@ -72,6 +69,7 @@ internal interface AndroidAppGraph :
         fun create(
             @Provides context: Context,
             @Provides config: AndroidAppConfig,
+            @Provides services: AppServiceFactory,
         ): AndroidAppGraph
     }
 
@@ -109,7 +107,7 @@ internal interface AndroidAppGraph :
 
     @Provides
     @SingleIn(AppScope::class)
-    fun connectivity(context: Context): ConnectivityObserver = AndroidConnectivityObserver(context)
+    fun connectivity(services: AppServiceFactory): ConnectivityObserver = services.createConnectivityObserver()
 
     @Provides
     @SingleIn(AppScope::class)
@@ -195,29 +193,35 @@ internal interface ActivityRetainedGraph :
 
     @Provides
     @SingleIn(ActivityRetainedScope::class)
-    fun repository(
-        permission: LocationPermissionController,
-        provider: PlatformLocationProvider,
-    ): LocationRepository = LocationRepositoryImpl(permission, provider)
-
-    @Provides
-    @SingleIn(ActivityRetainedScope::class)
     fun location(
         owner: AttachedLocationPermission,
-        repository: LocationRepository,
-    ): LocationDependencies = LocationDependencies(owner.controller, repository, owner.controller::close)
+        permission: LocationPermissionController,
+        provider: PlatformLocationProvider,
+        services: AppServiceFactory,
+    ): LocationDependencies = services.createLocationDependencies(permission, provider, owner.controller::close)
 }
 
 fun createAndroidAppGraph(
     context: Context,
     config: AndroidAppConfig,
-): AppGraph = createGraphFactory<AndroidAppGraph.Factory>().create(context.applicationContext, config)
+    services: AppServiceFactory = AndroidAppServiceFactory(context),
+): AppGraph = createGraphFactory<AndroidAppGraph.Factory>().create(context.applicationContext, config, services)
 
 /** The only retained Android owner; it retains no Activity or View. */
 class ActivityRetainedGraphOwner private constructor(
     private val app: AndroidAppGraph,
 ) : ViewModel() {
     private var retained: ActivityRetainedGraph? = null
+    var uiSession = AppUiSession()
+        private set
+
+    /** Called only after the previous UI composition has been removed. */
+    fun clearUiSession() {
+        uiSession.close()
+        retained?.permissionOwner?.controller?.close()
+        retained = null
+        uiSession = AppUiSession()
+    }
 
     fun attach(activity: ComponentActivity): UiGraph {
         val existing = retained
@@ -232,6 +236,7 @@ class ActivityRetainedGraphOwner private constructor(
     }
 
     override fun onCleared() {
+        uiSession.close()
         retained?.permissionOwner?.controller?.close()
         retained = null
     }

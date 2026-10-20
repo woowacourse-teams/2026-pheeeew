@@ -10,6 +10,7 @@ data class MapUiModel(
     val hiddenEmotionIds: Set<Long> = emptySet(),
     val locationState: LocationState = LocationState.Loading,
     val mapError: MapErrorUiModel? = null,
+    val isRetryingMap: Boolean = false,
     val isOffline: Boolean = false,
     val locationError: LocationError? = null,
     val mapRevision: Int = 0,

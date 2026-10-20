@@ -36,5 +36,6 @@ internal expect fun NativeMap(
     onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
+    styleUrlOverride: String?,
     modifier: Modifier,
 )

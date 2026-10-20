@@ -42,9 +42,10 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private var recordCameraBounds: RecordCameraBounds?
     private var didConfigureKoreanFontFaces = false
 
-    init(eventSink: FoundationIosMapEventSink) {
+    init(eventSink: FoundationIosMapEventSink, styleURLOverride: String?) {
         self.eventSink = eventSink
-        mapView = MLNMapView(frame: .zero, styleURL: FoundationMapStyle.styleURL)
+        let styleURL = styleURLOverride.flatMap { URL(string: $0) } ?? FoundationMapStyle.styleURL
+        mapView = MLNMapView(frame: .zero, styleURL: styleURL)
         super.init()
         mapView.delegate = self
         mapView.showsLogoView = false
