@@ -21,6 +21,27 @@
 - Access 애플리케이션의 대상은 `docs-dev.pheeeew.com` 전체로 잡아요. 스웨거의 실행 요청도 이 주소를 거쳐요.
 - 운영에는 문서용 주소가 없어요.
 
+## 개발 ALB 상태 검사
+
+개발 대상 그룹의 상태 검사는 `HTTPS`, 트래픽 포트 `443`, 경로 `/actuator/health`, 성공 코드 `200`으로 설정해요.
+ALB가 대상의 IP를 Host로 보내므로 기본 HTTPS 서버에서 이 경로만 앱으로 전달해요. 앱의 장애 응답도 그대로 반환해요.
+
+- 연결 주소가 `project-lb-a` (`10.0.10.0/24`), `project-lb-b` (`10.0.11.0/24`)인 GET 요청만 받아요. 전달 헤더나 User-Agent로 출처를 판단하지 않아요.
+- 이 제한은 LB 서브넷 전체에 적용돼요. 배포 전에 EC2 보안 그룹에서 해당 443 연결의 출처가 `project-lb`로 제한되는지 확인해야 해요.
+- API·문서 도메인의 Actuator 차단과 알 수 없는 Host의 다른 경로 차단은 유지해요. HTTP 상태 검사는 받지 않아요.
+- 이 변경은 상태 검사만 준비해요. 일반 API 트래픽을 ALB로 전환하기 전에는 실제 연결 주소와 요청 제한 정책을 별도로 확인해야 해요.
+
+로컬 Docker와 OpenSSL이 있으면 아래 명령으로 두 LB 서브넷의 정상·장애 응답, 다른 출처·헤더 위조 차단, 기존 경로 차단을 검증해요.
+임시 인증서·앱·내부 Docker 네트워크를 만들고 종료 시 정리해요. 실제 AWS 연결이나 보안 그룹은 검증하지 않아요.
+
+```bash
+python3 docker/nginx/test-alb-health.py
+```
+
+`BE Nginx CI`도 같은 명령을 실행해요. `main`, `be/dev`, `develop` 대상 PR에서
+`BE/docker/nginx/**` 또는 `.github/workflows/be-nginx-ci.yml`이 바뀌면 실행되고, 검증 실패 시 CI도 실패해요.
+현재 스크립트는 개발 설정(`api-dev.conf`)을 검증해요. 운영 설정(`api.conf`)은 아직 검사하지 않아요.
+
 ## 요청자 주소
 
 API 주소(`api`, `api-dev`)는 요청자 주소로 연결 주소(`$remote_addr`)만 써요. `CF-Connecting-IP` 헤더는 어디서 온 요청이든 믿지 않아요. 요청 제한이 이 값을 기준으로 하기 때문이에요.
