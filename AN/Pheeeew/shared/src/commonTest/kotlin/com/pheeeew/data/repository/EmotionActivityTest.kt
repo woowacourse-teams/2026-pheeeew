@@ -56,6 +56,7 @@ class EmotionActivityTest {
                     EmotionRegistrationRepositoryImpl(
                         EmotionApi(client.requests),
                         AudioUploadApi(client.requests),
+                        PlatformRecordingAudioReader,
                         monitoring,
                     )
                 val input =

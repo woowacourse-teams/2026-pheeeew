@@ -1,6 +1,7 @@
 package com.pheeeew.core.di.group
 
 import com.pheeeew.core.di.ActivityRetainedScope
+import com.pheeeew.core.di.AppServiceFactory
 import com.pheeeew.core.di.AppVersion
 import com.pheeeew.core.di.LocationDependencies
 import com.pheeeew.core.di.UiBindings
@@ -9,6 +10,7 @@ import com.pheeeew.core.di.group.GroupDependencies
 import com.pheeeew.core.monitoring.Monitoring
 import com.pheeeew.core.network.ApiClient
 import com.pheeeew.core.network.ApiRequestExecutor
+import com.pheeeew.core.network.ConnectivityObserver
 import com.pheeeew.core.session.DeviceSessionManager
 import com.pheeeew.data.local.mapfilter.InMemoryMapFilterSettingsRepository
 import com.pheeeew.data.repository.EmotionMapRepositoryImpl
@@ -37,6 +39,7 @@ import dev.zacsweers.metro.Provides
 import dev.zacsweers.metro.SingleIn
 import dev.zacsweers.metro.createGraphFactory
 import dev.zacsweers.metrox.viewmodel.MetroViewModelFactory
+import io.ktor.client.engine.HttpClientEngine
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /** Exercises the actual production binding definitions against an isolated mock client. */
@@ -56,6 +59,13 @@ internal interface UiTestGraph : UiBindings {
             @Provides client: ApiClient,
         ): UiTestGraph
     }
+
+    @Provides fun platformServices(): AppServiceFactory =
+        object : AppServiceFactory() {
+            override fun createApiEngine(): HttpClientEngine = error("Not used by this test")
+
+            override fun createConnectivityObserver(): ConnectivityObserver = error("Not used by this test")
+        }
 
     @Provides fun requests(client: ApiClient): ApiRequestExecutor = client.requests
 

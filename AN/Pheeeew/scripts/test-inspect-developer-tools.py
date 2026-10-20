@@ -115,6 +115,26 @@ class InspectionTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Unexpected developer tools"):
             android.inspect(path, False)
 
+    def test_apple_swift_support_module_is_not_an_app_developer_tool(self):
+        system_module = b"/swift/iphonesimulator/prebuilt-modules/DeveloperToolsSupport.swiftmodule/arm64.swiftmodule"
+        self.assertFalse(any(marker in system_module for marker in ios.MARKERS))
+        self.assertTrue(any(marker in b"DeveloperToolsInitializationKt.initializeDeveloperTools" for marker in ios.MARKERS))
+
+    def test_new_location_adapter_is_rejected_by_ios_inspection(self):
+        for name in (b"DebugLocationProvider", b"DebugAppServiceFactory", b"DeveloperToolsMapStyleOverride"):
+            with self.subTest(name=name):
+                self.assertTrue(any(marker in name for marker in ios.MARKERS))
+
+    def test_release_containing_legacy_reproduction_or_preview_activity_is_rejected(self):
+        for marker in ("com/pheeeew/core/debug/ErrorSimulation", "LocationSimulationSettings", "DebugLocationProvider", "androidx.compose.ui.tooling.PreviewActivity"):
+            with self.subTest(marker=marker):
+                path = self.root / "legacy-leak.apk"
+                with zipfile.ZipFile(path, "w") as archive:
+                    archive.writestr("classes.dex", marker)
+                    archive.writestr("AndroidManifest.xml", "manifest")
+                with self.assertRaisesRegex(ValueError, "Unexpected developer tools"):
+                    android.inspect(path, False)
+
 
 if __name__ == "__main__":
     unittest.main()

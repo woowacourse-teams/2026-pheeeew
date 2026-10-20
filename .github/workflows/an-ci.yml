@@ -72,15 +72,17 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Unit test (shared), Android lint, and assemble debug APK
-        run: ./gradlew :shared:testAndroidHostTest :androidApp:lintDebug :androidApp:assembleDebug
+      - name: Unit test (shared and Debug adapters), Android lint, and assemble debug APK
+        run: ./gradlew :shared:testAndroidHostTest :developerTools:testAndroidHostTest :androidApp:lintDebug :androidApp:assembleDebug
 
       - name: Upload test report
         if: failure()
         uses: actions/upload-artifact@v5
         with:
           name: test-report
-          path: AN/Pheeeew/shared/build/reports/tests/
+          path: |
+            AN/Pheeeew/shared/build/reports/tests/
+            AN/Pheeeew/developerTools/build/reports/tests/
 
       - name: Upload lint report
         if: failure()
