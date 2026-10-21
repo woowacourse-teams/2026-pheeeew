@@ -25,6 +25,7 @@ import com.pheeeew.groups.exception.GroupException;
 import com.pheeeew.region.application.RegionClassifier;
 import com.pheeeew.emotion.application.mapcache.EmotionMapCacheCoordinator;
 import com.pheeeew.emotion.application.mapcache.EmotionMapContribution;
+import com.pheeeew.emotion.application.command.EmotionContentResolver.PreparedContent;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
@@ -72,8 +73,19 @@ public class EmotionCommandService {
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
             String memo, String audioUploadId, UUID groupPublicId, UUID devicePublicId, Boolean anonymous
     ) {
+        PreparedContent prepared = null;
+        if (audioUploadId != null) {
+            Long deviceId = deviceRepository.findByPublicId(devicePublicId)
+                    .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+            Optional<Emotion> existing = findRegisteredEmotion(requestId, deviceId);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+            prepared = contentResolver.prepare(memo, audioUploadId, deviceId, requestId);
+        }
+        PreparedContent checked = prepared;
         return mapCache.serialized(() -> saveSerialized(requestId, state, longitude, latitude, rotationDegrees,
-                memo, audioUploadId, groupPublicId, devicePublicId, anonymous));
+                memo, checked, groupPublicId, devicePublicId, anonymous));
     }
 
     @Transactional
@@ -93,8 +105,18 @@ public class EmotionCommandService {
 
     public void update(Long emotionId, UUID devicePublicId, EmotionState state, String memo, String audioUploadId,
             boolean keepAudio, UUID groupPublicId) {
+        PreparedContent prepared = null;
+        if (!keepAudio && audioUploadId != null) {
+            Emotion observed = findOwnedEmotion(emotionId, devicePublicId);
+            if (observed.getDeletedAt() != null) {
+                throw new EmotionException(EMOTION_NOT_VISIBLE);
+            }
+            prepared = contentResolver.prepare(memo, audioUploadId, observed.getDeviceId(), observed.getRequestId());
+        }
+        PreparedContent checked = prepared;
+
         mapCache.serialized(() -> new TransactionTemplate(transactionManager).execute(status -> {
-            updateInTransaction(emotionId, devicePublicId, state, memo, audioUploadId, keepAudio, groupPublicId);
+            updateInTransaction(emotionId, devicePublicId, state, memo, audioUploadId, keepAudio, groupPublicId, checked);
 
             return null;
         }));
@@ -116,7 +138,7 @@ public class EmotionCommandService {
 
     private Emotion saveSerialized(
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
-            String memo, String audioUploadId, UUID groupPublicId, UUID devicePublicId, Boolean anonymous
+            String memo, PreparedContent prepared, UUID groupPublicId, UUID devicePublicId, Boolean anonymous
     ) {
         Device device = deviceRepository.findByPublicId(devicePublicId)
                 .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
@@ -131,13 +153,15 @@ public class EmotionCommandService {
             throw new DeviceException(DEVICE_NICKNAME_REQUIRED);
         }
 
+        PreparedContent checked = prepared != null ? prepared
+                : contentResolver.prepare(memo, null, deviceId, requestId);
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
 
         try {
             return transaction.execute(status -> {
                 Emotion emotion = saveNewEmotion(requestId, state, longitude, latitude,
-                        rotationDegrees, memo, audioUploadId, groupPublicId, deviceId, anonymous);
+                        rotationDegrees, checked, groupPublicId, deviceId, anonymous);
 
                 mapCache.afterCommitChange(null, EmotionMapContribution.from(emotion));
 
@@ -150,7 +174,7 @@ public class EmotionCommandService {
     }
 
     private void updateInTransaction(Long emotionId, UUID devicePublicId, EmotionState state, String memo, String audioUploadId,
-            boolean keepAudio, UUID groupPublicId) {
+            boolean keepAudio, UUID groupPublicId, PreparedContent prepared) {
         Emotion emotion = findOwnedEmotion(emotionId, devicePublicId);
         if (emotion.getDeletedAt() != null) {
             throw new EmotionException(EMOTION_NOT_VISIBLE);
@@ -169,7 +193,9 @@ public class EmotionCommandService {
             }
             content = emotion.getContent();
         } else {
-            content = contentResolver.resolve(memo, audioUploadId, emotion.getDeviceId(), emotion.getRequestId());
+            PreparedContent checked = prepared != null ? prepared
+                    : contentResolver.prepare(memo, null, emotion.getDeviceId(), emotion.getRequestId());
+            content = contentResolver.resolve(checked, emotion.getDeviceId(), emotion.getRequestId());
         }
 
         emotion.update(state, content, stamp);
@@ -179,7 +205,7 @@ public class EmotionCommandService {
 
     private Emotion saveNewEmotion(
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
-            String memo, String audioUploadId, UUID groupPublicId, Long deviceId, Boolean anonymous
+            PreparedContent prepared, UUID groupPublicId, Long deviceId, Boolean anonymous
     ) {
         if (requestId == null || state == null) {
             throw new IllegalArgumentException("요청 식별자와 감정 상태는 필수입니다.");
@@ -195,7 +221,7 @@ public class EmotionCommandService {
             throw new EmotionException(EMOTION_LOCATION_OUT_OF_SERVICE_AREA);
         }
 
-        EmotionContent content = contentResolver.resolve(memo, audioUploadId, deviceId, requestId);
+        EmotionContent content = contentResolver.resolve(prepared, deviceId, requestId);
 
         return emotionRepository.saveAndFlush(Emotion.builder()
                 .requestId(requestId)
