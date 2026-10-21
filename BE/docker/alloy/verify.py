@@ -39,6 +39,12 @@ def verify_metrics(config):
                                  "acquire_seconds_count acquire_seconds_sum acquire_seconds_max "
                                  "usage_seconds_count usage_seconds_sum usage_seconds_max",
     }
+    accepted.extend(f"pheeeew_map_cache_{kind}_total" for kind in
+                    ("requests", "rebuilds", "failures", "maintenance_failures", "maintenance_busy"))
+    for kind in ("lock_wait", "maintenance", "rebuild", "pin_search"):
+        families[f"pheeeew_map_cache_{kind}_seconds_"] = "count sum max"
+    accepted.extend(["pheeeew_map_cache_pending_age_seconds", "pheeeew_map_cache_candidates"])
+    families["pheeeew_map_cache_pin_scanned_"] = "count sum max"
     for kind in ("list",):
         families[f"pheeeew_sigh_{kind}_query_seconds_"] = "count sum bucket max"
         families[f"pheeeew_sigh_{kind}_results_"] = "count sum max"
