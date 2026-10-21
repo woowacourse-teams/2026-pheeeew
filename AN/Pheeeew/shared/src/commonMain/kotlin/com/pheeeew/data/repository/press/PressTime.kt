@@ -1,5 +1,7 @@
 package com.pheeeew.data.repository.press
 
+import kotlin.jvm.JvmInline
+
 /** Monotonic time used for elapsed-time calculations; it is not a calendar timestamp. */
 @JvmInline
 internal value class PressMonotonicMillis(
