@@ -498,6 +498,8 @@ class MapViewModel(
     }
 
     private var hasStarted = false
+    private var hasPreloadedLocation = false
+    private var initialLocationStartJob: Job? = null
     private var locationRequestJob: Job? = null
     private var nextCameraCommandId = 0L
     private var viewportJob: Job? = null
@@ -531,7 +533,25 @@ class MapViewModel(
     fun start() {
         if (!dataLoadingEnabled || hasStarted) return
         hasStarted = true
-        requestCurrentLocation(moveCamera = false, requestPermission = true)
+        val preloaded = hasPreloadedLocation
+        val pendingLocation = locationRequestJob
+        initialLocationStartJob =
+            viewModelScope.launch {
+                pendingLocation?.join()
+                if (!dataLoadingEnabled) return@launch
+                val permissionDenied =
+                    _uiModel.value.locationState == LocationState.Unavailable(LocationError.PermissionDenied)
+                if (!preloaded || permissionDenied) {
+                    requestCurrentLocation(moveCamera = false, requestPermission = true)
+                }
+            }
+    }
+
+    /** Never opens an OS permission dialog underneath splash. */
+    fun prepareCurrentLocation() {
+        if (!dataLoadingEnabled || hasPreloadedLocation || hasStarted) return
+        hasPreloadedLocation = true
+        requestCurrentLocation(moveCamera = false, requestPermission = false)
     }
 
     fun updateReadiness(
@@ -561,6 +581,8 @@ class MapViewModel(
         emotionMapJob?.cancel()
         regionJob?.cancel()
         filterApplyJob?.cancel()
+        initialLocationStartJob?.cancel()
+        initialLocationStartJob = null
         locationRequestJob?.cancel()
         viewportJob = null
         emotionMapJob = null
@@ -568,6 +590,7 @@ class MapViewModel(
         filterApplyJob = null
         locationRequestJob = null
         hasStarted = false
+        hasPreloadedLocation = false
         pendingEmotionMapRequest = null
         activeRegionQuery = null
         activeRegionBounds = null
