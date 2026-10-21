@@ -176,6 +176,8 @@ jobs:
           ssh -F ~/.ssh/config target 'mkdir -p /opt/pheeeew/nginx /opt/pheeeew/alloy'
           ssh -F ~/.ssh/config target 'set -eu; cd /opt/pheeeew; if [ -f compose.yml ]; then cp compose.yml compose.yml.prev; fi'
           scp -F ~/.ssh/config BE/docker/compose.dev.yml target:/opt/pheeeew/compose.yml
+          scp -F ~/.ssh/config BE/docker/compose.nginx.dev.yml target:/opt/pheeeew/compose.nginx.yml
+          scp -F ~/.ssh/config BE/docker/compose.postgres.dev.yml target:/opt/pheeeew/compose.postgres.yml
           scp -F ~/.ssh/config BE/docker/nginx/api-dev.conf target:/opt/pheeeew/nginx/api-dev.conf
           scp -F ~/.ssh/config BE/docker/compose.monitoring.dev.yml target:/opt/pheeeew/compose.monitoring.yml
           scp -F ~/.ssh/config BE/docker/alloy/config.dev.alloy target:/opt/pheeeew/alloy/
@@ -217,6 +219,28 @@ jobs:
           ssh -F ~/.ssh/config target 'set -eu; umask 077; cd /opt/pheeeew; [ -f .env ] && cp .env .env.prev && chmod 600 .env.prev || true; chmod 600 .env.new; mv .env.new .env'
           rm -f env.tmp
 
+      - name: 공유 네트워크 준비
+        run: |
+          set -eu
+          ssh -F ~/.ssh/config target 'set -eu; docker network inspect pheeeew-dev >/dev/null 2>&1 || docker network create pheeeew-dev'
+
+      - name: nginx 배포
+        run: |
+          set -eu
+          ssh -F ~/.ssh/config target 'bash -s' <<'REMOTE'
+          set -eu
+          cd /opt/pheeeew
+
+          docker compose -f compose.nginx.yml up -d --wait --wait-timeout 60
+
+          if docker compose -f compose.nginx.yml exec -T nginx nginx -t; then
+            docker compose -f compose.nginx.yml exec -T nginx nginx -s reload
+            echo "nginx 설정을 다시 읽었습니다."
+          else
+            echo "nginx 설정이 올바르지 않아 reload 를 건너뜁니다. 이전 설정으로 계속 동작합니다."
+          fi
+          REMOTE
+
       - name: 배포
         env:
           IMAGE: ${{ secrets.DOCKERHUB_IMAGE }}:dev-${{ github.sha }}
@@ -249,13 +273,6 @@ jobs:
           fi
 
           if [ "$started" -eq 1 ]; then
-            if docker compose -f compose.yml exec -T nginx nginx -t; then
-              docker compose -f compose.yml exec -T nginx nginx -s reload
-              echo "nginx 설정을 다시 읽었습니다."
-            else
-              echo "nginx 설정이 올바르지 않아 reload 를 건너뜁니다. 이전 설정으로 계속 동작합니다."
-            fi
-
             if wait_healthy; then
               echo "배포 성공: $APP_IMAGE"
               docker image prune -f

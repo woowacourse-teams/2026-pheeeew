@@ -1,0 +1,33 @@
+name: pheeeew-postgres-dev
+
+services:
+  postgres:
+    container_name: pheeeew-dev-postgres
+    image: imresamu/postgis:17-3.5-alpine
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Seoul
+      POSTGRES_DB: pheeeew
+      POSTGRES_USER: ${DB_USERNAME:?}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "15432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    mem_limit: 512m
+    init: true
+
+networks:
+  default:
+    external: true
+    name: pheeeew-dev
+
+volumes:
+  postgres-data:
+    name: pheeeew-dev_postgres-data
