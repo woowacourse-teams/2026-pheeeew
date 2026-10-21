@@ -1,6 +1,6 @@
 package com.pheeeew.data.repository.press
 
-import com.pheeeew.core.monitoring.activityDate
+import com.pheeeew.core.time.koreaCalendarDate
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.PressBatch
 
@@ -31,7 +31,7 @@ internal class PressBatchAccumulator {
     ): Boolean {
         require(count > 0L)
         if (size > Long.MAX_VALUE - count) return false
-        val day = days.getOrPut(activityDate(occurredAt.value)) { Day(occurredAt) }
+        val day = days.getOrPut(koreaCalendarDate(occurredAt.value)) { Day(occurredAt) }
         day.counts[emotion] = day.counts.getValue(emotion) + count
         size += count
         return true

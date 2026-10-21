@@ -1,5 +1,6 @@
 package com.pheeeew.core.monitoring
 
+import com.pheeeew.core.time.koreaCalendarDate
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.time.Instant
@@ -15,8 +16,8 @@ internal const val DAY_MILLIS = 86_400_000L
 internal const val ACTIVITY_MAX_AGE = 35 * DAY_MILLIS
 internal const val ACTIVITY_KEY_RETENTION = 42 * DAY_MILLIS
 
-fun activityDate(timestamp: Long): String =
-    Instant.fromEpochMilliseconds(timestamp + 9 * 60 * 60 * 1000L).toString().substringBefore('T')
+/** Keeps the monitoring package API while sharing the timezone conversion with other core features. */
+fun activityDate(timestamp: Long): String = koreaCalendarDate(timestamp)
 
 object MeaningfulActivity {
     const val NAME = "meaningful_activity_day"

@@ -1,5 +1,6 @@
 package com.pheeeew.core.monitoring
 
+import com.pheeeew.core.time.koreaCalendarDate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -69,7 +70,7 @@ class MonitoringRuntime(
                             if (safe == null ||
                                 (
                                     event.name == MeaningfulActivity.NAME &&
-                                        safe["activity_date"] != JsonPrimitive(activityDate(event.timestamp))
+                                        safe["activity_date"] != JsonPrimitive(koreaCalendarDate(event.timestamp))
                                 ) ||
                                 safe["anonymous_id"] != JsonPrimitive(loaded.anonymousId) ||
                                 safe["environment"] != JsonPrimitive(config.environment)
@@ -175,7 +176,7 @@ class MonitoringRuntime(
                 return@enqueue
             }
             val current = state!!
-            val date = activityDate(occurredAt)
+            val date = koreaCalendarDate(occurredAt)
             val key = "$date:${type.wireValue}"
             if (key in current.meaningfulDays) return@enqueue
             if (current.pending.size >= config.queueCapacity) {
