@@ -27,6 +27,8 @@ class MonitoredDeviceSession(
 
     override suspend fun invalidateMissingDevice(generation: Long) = delegate.invalidateMissingDevice(generation)
 
+    override suspend fun saveNicknameDraft(nickname: String?) = delegate.saveNicknameDraft(nickname)
+
     override suspend fun register(nickname: String) =
         telemetry.operation("device_session_register_finished").observe(
             { if (it is DeviceSessionResult.Ready) "success" else "failed" },
