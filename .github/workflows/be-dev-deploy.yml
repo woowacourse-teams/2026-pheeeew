@@ -219,14 +219,17 @@ jobs:
           ssh -F ~/.ssh/config target 'set -eu; umask 077; cd /opt/pheeeew; [ -f .env ] && cp .env .env.prev && chmod 600 .env.prev || true; chmod 600 .env.new; mv .env.new .env'
           rm -f env.tmp
 
+      - name: 공유 네트워크 준비
+        run: |
+          set -eu
+          ssh -F ~/.ssh/config target 'set -eu; docker network inspect pheeeew-dev >/dev/null 2>&1 || docker network create pheeeew-dev'
+
       - name: nginx 배포
         run: |
           set -eu
           ssh -F ~/.ssh/config target 'bash -s' <<'REMOTE'
           set -eu
           cd /opt/pheeeew
-
-          docker network inspect pheeeew-dev >/dev/null 2>&1 || docker network create pheeeew-dev
 
           if ! docker compose -f compose.nginx.yml up -d; then
             echo "===== nginx 기동 실패 ====="
