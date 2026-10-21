@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.PriorityQueue;
@@ -27,7 +28,7 @@ class MapCacheTestTime {
     @Bean
     @Primary
     MutableClock mapCacheClock() {
-        return new MutableClock(Instant.now().plusSeconds(60));
+        return new MutableClock(Instant.now().plusSeconds(60).truncatedTo(ChronoUnit.MICROS));
     }
 
     @Bean
