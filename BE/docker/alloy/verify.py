@@ -30,6 +30,8 @@ def verify_metrics(config):
                 "hikaricp_connections"]
     families = {
         "http_server_requests_seconds_": "count sum bucket max",
+        "pheeeew_map_read_stage_seconds_": "count sum bucket max",
+        "pheeeew_map_response_write_seconds_": "count sum bucket max",
         "pheeeew_region_query_seconds_": "count sum bucket max",
         "pheeeew_emotion_press_query_seconds_": "count sum bucket max",
         "pheeeew_activity_": "dau mau last_aggregated_seconds collection_started_seconds "
