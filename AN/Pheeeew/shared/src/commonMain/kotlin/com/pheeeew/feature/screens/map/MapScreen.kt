@@ -336,6 +336,21 @@ fun MapScreen(
             }
         }
     }
+    val discardConfirmationContent: @Composable () -> Unit = {
+        if (showDiscardDialog) {
+            ConfirmDialog(
+                title = stringResource(Res.string.draft_exit_title),
+                content = stringResource(Res.string.draft_exit_body),
+                confirmText = stringResource(Res.string.draft_exit_confirm),
+                cancelText = stringResource(Res.string.app_cancel),
+                onConfirm = {
+                    showDiscardDialog = false
+                    leaveInput()
+                },
+                onCancel = { showDiscardDialog = false },
+            )
+        }
+    }
     val currentLocation = (uiModel.locationState as? LocationState.Available)?.location
 
     LaunchedEffect(recordUiModel.step) {
@@ -436,6 +451,7 @@ fun MapScreen(
             onMyLocationClick = viewModel::onMyLocationClick,
             onMapRefreshClick = viewModel::refreshEmotionPins,
             onRecordBottomSheetDismiss = requestInputBack,
+            recordDismissConfirmationContent = discardConfirmationContent,
             onRecordInputModeChange = recordFlowCoordinator::changeInputMode,
             onRecordAnonymousChange = recordViewModel::onAnonymousChange,
             onRecordMemoChange = recordViewModel::onMemoChange,
@@ -495,18 +511,8 @@ fun MapScreen(
         )
         if (recordUiModel.step == RecordFlowStepUiModel.Closed) MapFilterLayer(viewModel)
     }
-    if (showDiscardDialog) {
-        ConfirmDialog(
-            title = stringResource(Res.string.draft_exit_title),
-            content = stringResource(Res.string.draft_exit_body),
-            confirmText = stringResource(Res.string.draft_exit_confirm),
-            cancelText = stringResource(Res.string.app_cancel),
-            onConfirm = {
-                showDiscardDialog = false
-                leaveInput()
-            },
-            onCancel = { showDiscardDialog = false },
-        )
+    if (recordUiModel.step != RecordFlowStepUiModel.Input) {
+        discardConfirmationContent()
     }
     activePermissionDialog?.let { dialog ->
         ConfirmDialog(
@@ -619,6 +625,7 @@ internal fun MapScreenContent(
     onRecordCoordinateSelected: (Double, Double) -> Unit = { _, _ -> },
     onRecordPreviewScaleChanged: (Float) -> Unit = {},
     feedbackContent: @Composable () -> Unit = {},
+    recordDismissConfirmationContent: @Composable () -> Unit = {},
     nearbyMapControlHeight: Dp = 0.dp,
     isMapCameraMoving: Boolean = false,
 ) {
@@ -654,6 +661,7 @@ internal fun MapScreenContent(
             RecordFlowStepUiModel.Input -> {
                 RecordBottomSheet(
                     onDismissRequest = onRecordBottomSheetDismiss,
+                    dismissConfirmationContent = recordDismissConfirmationContent,
                     selectedEmotion = recordUiModel.selectedEmotion ?: EmotionTypeUiModel.FRUSTRATED,
                     inputMode = recordUiModel.inputMode,
                     memo = recordUiModel.memo,
