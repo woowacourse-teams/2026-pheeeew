@@ -22,7 +22,9 @@ class EmotionContentResolverWithoutUploadIntegrationTest {
     @Test
     void 업로드_구현체가_없어도_메모는_처리한다() {
         // when
-        EmotionContent content = resolver.resolve("  메모  ", null, 1L, UUID.randomUUID());
+        UUID requestId = UUID.randomUUID();
+        var prepared = resolver.prepare("  메모  ", null, 1L, requestId);
+        EmotionContent content = resolver.resolve(prepared, 1L, requestId);
 
         // then
         assertThat(content.getMemo()).isEqualTo("메모");
@@ -31,7 +33,9 @@ class EmotionContentResolverWithoutUploadIntegrationTest {
 
     @Test
     void 업로드_구현체가_없으면_녹음을_승인하지_않는다() {
-        assertThatThrownBy(() -> resolver.resolve(null, "upload-id", 1L, UUID.randomUUID()))
+        UUID requestId = UUID.randomUUID();
+        var prepared = resolver.prepare(null, "upload-id", 1L, requestId);
+        assertThatThrownBy(() -> resolver.resolve(prepared, 1L, requestId))
                 .isInstanceOfSatisfying(EmotionException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(EMOTION_AUDIO_UPLOAD_UNAVAILABLE));
     }

@@ -32,6 +32,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.ActiveProfiles;
 import tools.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.MeterRegistry;
 
 @Import({SharedPostgisTestConfiguration.class, SharedJwtTestConfiguration.class})
 @ActiveProfiles("test")
@@ -54,6 +55,12 @@ class RegionMapCompressionIntegrationTest {
     private AccessTokenIssuer tokens;
     @Autowired
     private ObjectMapper mapper;
+    @Autowired
+    private MeterRegistry meters;
+    @Autowired
+    private com.pheeeew.emotion.application.mapcache.EmotionMapCacheCoordinator mapCache;
+    @Autowired
+    private com.pheeeew.emotion.application.mapcache.RegionSummaryCache regionCache;
     @LocalServerPort
     private int port;
 
@@ -75,6 +82,9 @@ class RegionMapCompressionIntegrationTest {
             emotions.save(기본_한숨_빌더().regionCode(code + "001").deviceId(device.getId())
                     .memo("압축 검증용 메모").state(EmotionState.ANGRY).build());
         }
+        // 서비스 쓰기 경로를 거치지 않고 만든 fixture를 조회 시작 상태로 맞춘다.
+        mapCache.invalidate();
+        regionCache.rebuild();
     }
 
     @AfterEach
@@ -108,6 +118,28 @@ class RegionMapCompressionIntegrationTest {
         assertThat(mapper.readTree(decompress(response.body())).size()).isEqualTo(20);
         assertThat(response.headers().allValues("Content-Length"))
                 .allSatisfy(value -> assertThat(Long.parseLong(value)).isEqualTo(response.body().length));
+    }
+
+    @Test
+    void 캐시가_적중한_뒤에도_인증과_지역_준비_검증을_우회하지_않는다() throws Exception {
+        // given
+        var first = send(REGIONS, "GET", true, "identity");
+        var hits = meters.counter("pheeeew.map.cache.requests", "cache", "regions", "result", "hit");
+        double before = hits.count();
+
+        // when
+        var cached = send(REGIONS, "GET", true, "identity");
+        jdbc.sql("UPDATE region_datasets SET backfill_verified_at = NULL").update();
+        var unavailable = send(REGIONS, "GET", true, "identity");
+        var unauthenticated = send(REGIONS, "GET", false, "identity");
+
+        // then
+        assertThat(cached.statusCode()).isEqualTo(200);
+        assertThat(cached.body()).isEqualTo(first.body());
+        assertThat(hits.count() - before).isEqualTo(1);
+        assertThat(unavailable.statusCode()).isEqualTo(503);
+        assertThat(mapper.readTree(unavailable.body()).get("code").asString()).isEqualTo("EMOTION-013");
+        assertThat(unauthenticated.statusCode()).isEqualTo(401);
     }
 
     @ParameterizedTest
@@ -179,6 +211,8 @@ class RegionMapCompressionIntegrationTest {
     void 지역_요약의_실제_UTF8_바이트_크기로_압축_경계를_판단한다(int size) throws Exception {
         // given: 한글을 포함하는 실제 응답을 경계 크기로 맞춘다.
         jdbc.sql("DELETE FROM emotions WHERE region_code >= '11026001'").update();
+        mapCache.invalidate();
+        regionCache.rebuild();
         jdbc.sql("UPDATE regions SET name = '가' WHERE level = 'SIGUNGU'").update();
         int remaining = size - send(REGIONS, "GET", true, "identity").body().length;
         assertThat(remaining).isPositive();

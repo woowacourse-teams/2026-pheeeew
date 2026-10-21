@@ -12,7 +12,8 @@
 | 모듈 | 동기 Servlet 요청의 문맥과 시간 누적 | `RequestTiming`, `RequestTimingStage`, `RequestLoggingFilter` |
 | 모듈 | 연결 획득 성공·실패 계측과 DataSource 래핑 | `DataSourceTimingStage`, `RequestTimingDataSource`, `RequestTimingDataSourceConfiguration` |
 | 모듈 | 요청·예외·예약 작업 오류의 로그 형식 | `RequestLogPolicy`, `RequestLogWriter`, `ExceptionLogFormatter`, `ScheduledTaskErrorHandler` |
-| 모듈 | 도메인 타입에 독립적인 지표 등록·누적 | `EmotionMetrics`, `RegionQueryMetrics`, `DeviceChallengeMetrics`, `EmotionReportMetrics`, `EmotionPressMetrics`, `GroupPressMetrics` |
+| 모듈 | 도메인 타입에 독립적인 지표 등록·누적 | `EmotionMetrics`, `RegionQueryMetrics`, `DeviceChallengeMetrics`, `EmotionReportMetrics`, `EmotionPressMetrics`, `GroupPressMetrics`, `MapCacheMetrics` |
+| 모듈 | 지도 캐시의 쓰기 잠금 대기·보정 시간과 결과 기록 | `MapCacheLockMetrics`, `MapCacheMaintenanceMetrics` |
 | 모듈 | 활동 기록·집계의 실패 카운터 | `DeviceActivityRecordMetrics`, `DeviceActivityAggregationMetrics` |
 | 모듈 | 활동 지표용 불변 스냅샷과 고정 플랫폼 목록 | `DeviceActivityMetricSnapshot` |
 | 모듈 | 활동 DAU·MAU와 집계·수집 시각 Gauge | `DeviceActivityMetrics` |
