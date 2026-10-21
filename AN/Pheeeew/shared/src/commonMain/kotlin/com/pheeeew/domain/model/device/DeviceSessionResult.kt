@@ -3,10 +3,12 @@ package com.pheeeew.domain.model.device
 sealed interface DeviceSessionResult {
     data class NeedsRegistration(
         val pendingNickname: String? = null,
+        val nicknameDraft: String? = null,
     ) : DeviceSessionResult
 
     class Ready(
         val access: DeviceAccess,
+        val nicknameDraft: String? = null,
     ) : DeviceSessionResult
 
     data class Failed(

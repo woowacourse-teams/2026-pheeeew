@@ -77,7 +77,7 @@ internal fun AppEntryGate(
                 onConfirm = onSubmit,
                 canDismiss = false,
                 isBusy = state.isSubmitting,
-                inputEnabled = !state.nicknameLocked && !state.isVerificationPending,
+                inputEnabled = !state.isSubmitting,
                 title =
                     stringResource(
                         if (registration) {

@@ -34,6 +34,7 @@ class DeviceSessionManager(
 ) : RecoverableAccessTokenProvider {
     private val mutex = Mutex()
     private var cached: DeviceAccess? = null
+    private var cachedNicknameDraft: String? = null
     private var flight: Deferred<DeviceSessionResult>? = null
     private var flightMode: Mode? = null
     private var lastFailure: DeviceSessionResult.Failed? = null
@@ -46,6 +47,21 @@ class DeviceSessionManager(
     suspend fun restore(): DeviceSessionResult = obtain(null, Mode.Restore)
 
     suspend fun register(nickname: String): DeviceSessionResult = obtain(null, Mode.Register(nickname))
+
+    suspend fun saveNicknameDraft(nickname: String?): Boolean {
+        while (true) {
+            val running =
+                mutex.withLock {
+                    if (flight == null) {
+                        val saved = repository.saveNicknameDraft(nickname)
+                        if (saved) cachedNicknameDraft = nickname
+                        return saved
+                    }
+                    flight
+                }
+            running?.await()
+        }
+    }
 
     override suspend fun accessToken(): AccessToken = restore().tokenOrThrow()
 
@@ -82,7 +98,7 @@ class DeviceSessionManager(
                                 )
                         }
                     if (canReuse) {
-                        return DeviceSessionResult.Ready(access)
+                        return DeviceSessionResult.Ready(access, cachedNicknameDraft)
                     }
                 }
                 flight?.let {
@@ -91,9 +107,10 @@ class DeviceSessionManager(
                     return@withLock it to (mode is Mode.MissingDevice && flightMode != mode)
                 }
                 if (mode !is Mode.MissingDevice && now() < retryAt) {
-                    val rejectedNicknameCanChange =
-                        mode is Mode.Register && lastFailure?.reason?.code in setOf("DEVICE-008", "DEVICE-009")
-                    if (!rejectedNicknameCanChange) lastFailure?.let { return it }
+                    val manualRegistrationAllowed =
+                        mode is Mode.Register &&
+                            lastFailure?.reason?.retryAtMillis?.let { now() < it } != true
+                    if (!manualRegistrationAllowed) lastFailure?.let { return it }
                 }
                 // Clear a rejected/expired token before starting work so it cannot escape during refresh.
                 cached = null
@@ -122,6 +139,7 @@ class DeviceSessionManager(
                             when (result) {
                                 is DeviceSessionResult.Ready -> {
                                     cached = result.access
+                                    cachedNicknameDraft = result.nicknameDraft
                                     lastFailure = null
                                     retryAt = 0
                                 }

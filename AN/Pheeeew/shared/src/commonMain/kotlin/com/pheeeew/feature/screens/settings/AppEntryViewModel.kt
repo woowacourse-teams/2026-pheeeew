@@ -28,7 +28,7 @@ data class AppEntryUiState(
     val availability: NicknameAvailabilityState = NicknameAvailabilityState.IDLE,
     val isSubmitting: Boolean = false,
     val isLoadingIndicatorVisible: Boolean = false,
-    val nicknameLocked: Boolean = false,
+    val hasPendingRegistration: Boolean = false,
     val isVerificationPending: Boolean = false,
     val message: NicknameUiMessage? = null,
 ) {
@@ -106,16 +106,27 @@ class AppEntryViewModel(
                 )
             when (val result = session.restore()) {
                 is DeviceSessionResult.Ready -> {
-                    mutableUiState.value = resolveNickname(keepDraftWhenUnset = previousNickname.isNotEmpty())
+                    mutableUiState.value =
+                        if (result.nicknameDraft != null) {
+                            mutableUiState.value.copy(
+                                phase = AppEntryPhase.NICKNAME_REQUIRED,
+                                nickname = result.nicknameDraft,
+                                validation = DeviceNicknamePolicy.validate(result.nicknameDraft),
+                                isVerificationPending = true,
+                            )
+                        } else {
+                            resolveNickname(keepDraftWhenUnset = previousNickname.isNotEmpty())
+                        }
                 }
 
                 is DeviceSessionResult.NeedsRegistration -> {
+                    val draft = result.nicknameDraft ?: result.pendingNickname ?: previousNickname
                     mutableUiState.update {
                         it.copy(
                             phase = AppEntryPhase.REGISTRATION_REQUIRED,
-                            nickname = result.pendingNickname.orEmpty(),
-                            nicknameLocked = result.pendingNickname != null,
-                            validation = DeviceNicknamePolicy.validate(result.pendingNickname.orEmpty()),
+                            nickname = draft,
+                            hasPendingRegistration = result.pendingNickname != null,
+                            validation = DeviceNicknamePolicy.validate(draft),
                         )
                     }
                 }
@@ -132,8 +143,8 @@ class AppEntryViewModel(
     fun onNicknameChanged(value: String) {
         if (!DeviceNicknamePolicy.canAcceptInput(value)) return
         val state = mutableUiState.value
-        if (state.isSubmitting || state.phase == AppEntryPhase.READY || state.nicknameLocked ||
-            state.isVerificationPending
+        if (state.isSubmitting ||
+            state.phase !in setOf(AppEntryPhase.REGISTRATION_REQUIRED, AppEntryPhase.NICKNAME_REQUIRED)
         ) {
             return
         }
@@ -159,8 +170,8 @@ class AppEntryViewModel(
                         mutableUiState.update { it.copy(isLoadingIndicatorVisible = visible) }
                     },
                 ) {
-                    if (state.isVerificationPending) {
-                        resolveNickname(keepDraftWhenUnset = true, inlineFailure = true)
+                    if (!session.saveNicknameDraft(nickname)) {
+                        mutableUiState.value.copy(message = NicknameUiMessage.SAVE_FAILED)
                     } else {
                         submitNickname(state, nickname)
                     }
@@ -178,93 +189,136 @@ class AppEntryViewModel(
         state: AppEntryUiState,
         nickname: String,
     ): AppEntryUiState {
-        val reusePendingRegistration = state.phase == AppEntryPhase.REGISTRATION_REQUIRED && state.nicknameLocked
-        if (!reusePendingRegistration) {
-            when (val result = nicknameRepository.checkAvailability(nickname)) {
-                is DeviceNicknameAvailability.Checked -> {
-                    if (!result.available) {
-                        return mutableUiState.value.copy(
-                            availability = NicknameAvailabilityState.TAKEN,
-                            message = NicknameUiMessage.DUPLICATE,
+        if (state.phase == AppEntryPhase.REGISTRATION_REQUIRED) {
+            if (!state.hasPendingRegistration) checkAvailability(nickname)?.let { return it }
+            when (val result = session.register(nickname)) {
+                is DeviceSessionResult.Ready -> {
+                    mutableUiState.update {
+                        it.copy(
+                            phase = AppEntryPhase.NICKNAME_REQUIRED,
+                            hasPendingRegistration = false,
+                            isVerificationPending = true,
                         )
                     }
                 }
 
-                DeviceNicknameAvailability.Invalid -> {
-                    return mutableUiState.value.copy(
-                        availability = NicknameAvailabilityState.FAILED,
-                        message = NicknameUiMessage.INVALID,
-                    )
+                is DeviceSessionResult.NeedsRegistration -> {
+                    return mutableUiState.value.copy(message = NicknameUiMessage.REGISTRATION_FAILED)
                 }
 
-                DeviceNicknameAvailability.Failed -> {
+                is DeviceSessionResult.Failed -> {
+                    val duplicate = result.reason.statusCode == 409 && result.reason.code == "DEVICE-009"
+                    val invalid = result.reason.code == "DEVICE-008"
                     return mutableUiState.value.copy(
-                        availability = NicknameAvailabilityState.FAILED,
-                        message = NicknameUiMessage.AVAILABILITY_FAILED,
+                        hasPendingRegistration = !duplicate && !invalid,
+                        availability =
+                            if (duplicate) {
+                                NicknameAvailabilityState.TAKEN
+                            } else {
+                                NicknameAvailabilityState.IDLE
+                            },
+                        message =
+                            when {
+                                duplicate -> NicknameUiMessage.DUPLICATE
+                                invalid -> NicknameUiMessage.INVALID
+                                else -> NicknameUiMessage.REGISTRATION_FAILED
+                            },
                     )
                 }
             }
         }
-        return when (state.phase) {
-            AppEntryPhase.REGISTRATION_REQUIRED -> {
-                when (val result = session.register(nickname)) {
-                    is DeviceSessionResult.Ready -> {
-                        resolveNickname(keepDraftWhenUnset = true, inlineFailure = true)
+        // Resolve uncertain writes before availability checks: the requested name may already be ours.
+        val current =
+            when (val result = nicknameRepository.findMyNickname()) {
+                is DeviceNicknameLookup.Found -> result.nickname
+                DeviceNicknameLookup.Failed -> return unconfirmedNickname()
+            }
+        if (current?.let(DeviceNicknamePolicy::normalize) == nickname) return completeNickname(nickname)
+        if (!nickname.equals(current?.trim(), ignoreCase = true)) checkAvailability(nickname)?.let { return it }
+        return when (nicknameRepository.updateNickname(nickname)) {
+            DeviceNicknameUpdateResult.UPDATED, DeviceNicknameUpdateResult.OUTCOME_UNKNOWN -> {
+                when (val result = nicknameRepository.findMyNickname()) {
+                    is DeviceNicknameLookup.Found -> {
+                        if (result.nickname?.let(DeviceNicknamePolicy::normalize) ==
+                            nickname
+                        ) {
+                            completeNickname(nickname)
+                        } else {
+                            mutableUiState.value.copy(
+                                isVerificationPending = true,
+                                message = NicknameUiMessage.CHANGE_UNCONFIRMED,
+                            )
+                        }
                     }
 
-                    is DeviceSessionResult.NeedsRegistration -> {
-                        mutableUiState.value.copy(message = NicknameUiMessage.REGISTRATION_FAILED)
-                    }
-
-                    is DeviceSessionResult.Failed -> {
-                        val duplicate = result.reason.statusCode == 409 && result.reason.code == "DEVICE-009"
-                        val invalid = result.reason.code == "DEVICE-008"
-                        mutableUiState.value.copy(
-                            availability =
-                                if (duplicate) {
-                                    NicknameAvailabilityState.TAKEN
-                                } else {
-                                    mutableUiState.value.availability
-                                },
-                            nicknameLocked = !duplicate && !invalid,
-                            message =
-                                when {
-                                    duplicate -> NicknameUiMessage.DUPLICATE
-                                    invalid -> NicknameUiMessage.INVALID
-                                    else -> NicknameUiMessage.REGISTRATION_FAILED
-                                },
-                        )
+                    DeviceNicknameLookup.Failed -> {
+                        unconfirmedNickname()
                     }
                 }
             }
 
-            AppEntryPhase.NICKNAME_REQUIRED -> {
-                when (nicknameRepository.updateNickname(nickname)) {
-                    DeviceNicknameUpdateResult.UPDATED, DeviceNicknameUpdateResult.OUTCOME_UNKNOWN -> {
-                        resolveNickname(keepDraftWhenUnset = true, inlineFailure = true)
-                    }
-
-                    DeviceNicknameUpdateResult.DUPLICATE -> {
-                        mutableUiState.value.copy(
-                            availability = NicknameAvailabilityState.TAKEN,
-                            message = NicknameUiMessage.DUPLICATE,
-                        )
-                    }
-
-                    DeviceNicknameUpdateResult.INVALID -> {
-                        mutableUiState.value.copy(message = NicknameUiMessage.INVALID)
-                    }
-
-                    DeviceNicknameUpdateResult.FAILED -> {
-                        mutableUiState.value.copy(message = NicknameUiMessage.SAVE_FAILED)
-                    }
-                }
+            DeviceNicknameUpdateResult.DUPLICATE -> {
+                mutableUiState.value.copy(
+                    availability = NicknameAvailabilityState.TAKEN,
+                    message = NicknameUiMessage.DUPLICATE,
+                )
             }
 
-            else -> {
-                mutableUiState.value
+            DeviceNicknameUpdateResult.INVALID -> {
+                mutableUiState.value.copy(message = NicknameUiMessage.INVALID)
+            }
+
+            DeviceNicknameUpdateResult.FAILED -> {
+                mutableUiState.value.copy(message = NicknameUiMessage.SAVE_FAILED)
             }
         }
+    }
+
+    private fun unconfirmedNickname() =
+        mutableUiState.value.copy(
+            isVerificationPending = true,
+            message = NicknameUiMessage.RESULT_UNCONFIRMED,
+        )
+
+    private suspend fun checkAvailability(nickname: String): AppEntryUiState? =
+        when (val result = nicknameRepository.checkAvailability(nickname)) {
+            is DeviceNicknameAvailability.Checked -> {
+                if (result.available) {
+                    null
+                } else {
+                    mutableUiState.value.copy(
+                        availability = NicknameAvailabilityState.TAKEN,
+                        message = NicknameUiMessage.DUPLICATE,
+                    )
+                }
+            }
+
+            DeviceNicknameAvailability.Invalid -> {
+                mutableUiState.value.copy(
+                    availability = NicknameAvailabilityState.FAILED,
+                    message = NicknameUiMessage.INVALID,
+                )
+            }
+
+            DeviceNicknameAvailability.Failed -> {
+                mutableUiState.value.copy(
+                    availability = NicknameAvailabilityState.FAILED,
+                    message = NicknameUiMessage.AVAILABILITY_FAILED,
+                )
+            }
+        }
+
+    private suspend fun completeNickname(nickname: String): AppEntryUiState {
+        if (!session.saveNicknameDraft(null)) return mutableUiState.value.copy(message = NicknameUiMessage.SAVE_FAILED)
+        return mutableUiState.value.copy(
+            phase = AppEntryPhase.READY,
+            sessionGeneration = (session.state.value as? DeviceSessionResult.Ready)?.access?.generation,
+            nickname = nickname,
+            currentNickname = nickname,
+            isVerificationPending = false,
+            hasPendingRegistration = false,
+            message = null,
+        )
     }
 
     private suspend fun resolveNickname(
@@ -280,7 +334,7 @@ class AppEntryViewModel(
                         sessionGeneration = generation,
                         currentNickname = result.nickname,
                         nickname = result.nickname,
-                        nicknameLocked = false,
+                        hasPendingRegistration = false,
                         isVerificationPending = false,
                         message = null,
                     )
@@ -290,7 +344,7 @@ class AppEntryViewModel(
                         phase = AppEntryPhase.NICKNAME_REQUIRED,
                         nickname = draft,
                         currentNickname = null,
-                        nicknameLocked = false,
+                        hasPendingRegistration = false,
                         isVerificationPending = false,
                         validation = DeviceNicknamePolicy.validate(draft),
                         message = if (keepDraftWhenUnset) NicknameUiMessage.RESULT_UNSET else null,
