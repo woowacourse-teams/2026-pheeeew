@@ -120,6 +120,7 @@ fun RecordBottomSheet(
     modifier: Modifier = Modifier,
     voiceRecorder: VoiceRecorder? = null,
     feedbackContent: @Composable () -> Unit = {},
+    isDismissConfirmationVisible: Boolean = false,
     dismissConfirmationContent: @Composable () -> Unit = {},
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -127,12 +128,13 @@ fun RecordBottomSheet(
     var dismissRequested by remember { mutableStateOf(false) }
     var showOtherInputDialog by remember { mutableStateOf(false) }
     val currentOnDismissRequest by rememberUpdatedState(onDismissRequest)
+    val currentConfirmationVisible by rememberUpdatedState(isDismissConfirmationVisible)
     // Keep this callback stable: SheetState uses its identity as a rememberSaveable key.
     val confirmValueChange: (SheetValue) -> Boolean =
         remember {
             { value ->
                 if (value == SheetValue.Hidden) {
-                    dismissRequested = true
+                    if (!currentConfirmationVisible) dismissRequested = true
                     false
                 } else {
                     true
@@ -146,22 +148,19 @@ fun RecordBottomSheet(
         )
     LaunchedEffect(dismissRequested) {
         if (dismissRequested) {
+            // Consume this attempt without waiting for a cancellable sheet animation.
+            // Material restores the sheet when the Hidden transition is vetoed.
+            dismissRequested = false
             dismissNativeTextKeyboard()
             focusManager.clearFocus()
             keyboardController?.hide()
-            // Finish the swipe and restore the sheet before opening another modal window.
-            // Opening it from confirmValueChange can interrupt the gesture/settling coroutine.
-            try {
-                sheetState.expand()
-                currentOnDismissRequest()
-            } finally {
-                // A new gesture can cancel expansion; allow the next dismiss attempt to retry.
-                dismissRequested = false
-            }
+            currentOnDismissRequest()
         }
     }
     AppModalBottomSheet(
-        onDismissRequest = { dismissRequested = true },
+        onDismissRequest = {
+            if (!currentConfirmationVisible) dismissRequested = true
+        },
         modifier = modifier,
         sheetState = sheetState,
         // The default predictive back keeps its scale when Hidden is vetoed for confirmation.

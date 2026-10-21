@@ -452,6 +452,7 @@ fun MapScreen(
             onMapRefreshClick = viewModel::refreshEmotionPins,
             onRecordBottomSheetDismiss = requestInputBack,
             recordDismissConfirmationContent = discardConfirmationContent,
+            isRecordDismissConfirmationVisible = showDiscardDialog,
             onRecordInputModeChange = recordFlowCoordinator::changeInputMode,
             onRecordAnonymousChange = recordViewModel::onAnonymousChange,
             onRecordMemoChange = recordViewModel::onMemoChange,
@@ -626,6 +627,7 @@ internal fun MapScreenContent(
     onRecordPreviewScaleChanged: (Float) -> Unit = {},
     feedbackContent: @Composable () -> Unit = {},
     recordDismissConfirmationContent: @Composable () -> Unit = {},
+    isRecordDismissConfirmationVisible: Boolean = false,
     nearbyMapControlHeight: Dp = 0.dp,
     isMapCameraMoving: Boolean = false,
 ) {
@@ -662,6 +664,7 @@ internal fun MapScreenContent(
                 RecordBottomSheet(
                     onDismissRequest = onRecordBottomSheetDismiss,
                     dismissConfirmationContent = recordDismissConfirmationContent,
+                    isDismissConfirmationVisible = isRecordDismissConfirmationVisible,
                     selectedEmotion = recordUiModel.selectedEmotion ?: EmotionTypeUiModel.FRUSTRATED,
                     inputMode = recordUiModel.inputMode,
                     memo = recordUiModel.memo,
