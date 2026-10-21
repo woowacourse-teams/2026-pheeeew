@@ -103,7 +103,11 @@ internal fun GroupDetailReadyContent(
             feedRetrying ||
             loadState == GroupMoodFeedLoadState.Refreshing
     val showFeedLoading = rememberDelayedLoadingVisibility(feedLoading, isSuppressed = isGloballyRefreshing)
-    val showLoadMore = rememberDelayedLoadingVisibility(loadState == GroupMoodFeedLoadState.LoadingMore)
+    val showLoadMore =
+        rememberDelayedLoadingVisibility(
+            isLoading = loadState == GroupMoodFeedLoadState.LoadingMore,
+            isSuppressed = isGloballyRefreshing,
+        )
     val listState = rememberLazyListState()
     val feedPostIds = feedPosts.map { it.id }
     var openMenu by remember { mutableStateOf<Pair<String, EmotionActionsMenuMode>?>(null) }
