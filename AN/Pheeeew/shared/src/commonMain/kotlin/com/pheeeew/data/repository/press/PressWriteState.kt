@@ -9,7 +9,7 @@ internal enum class PressWritePhase { InFlight, RetryPending, AwaitingSnapshot }
 internal data class PressWriteState(
     val batch: PressBatch,
     val baseline: MyDailyPressSnapshot,
-    val createdAtMillis: Long,
+    val createdAtMonotonicMillis: PressMonotonicMillis,
     val phase: PressWritePhase = PressWritePhase.InFlight,
     val uncertain: Boolean = false,
     val reconciliationMisses: Int = 0,

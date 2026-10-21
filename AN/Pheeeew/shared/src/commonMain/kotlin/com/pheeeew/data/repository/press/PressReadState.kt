@@ -18,9 +18,9 @@ internal class PressReadState {
 
     fun isStale(generation: Long): Boolean = readCycle.isStale(generation)
 
-    fun personalWriteSucceeded(nowMillis: Long) {
+    fun personalWriteSucceeded(now: PressMonotonicMillis) {
         readCycle.advanceGeneration()
-        snapshots.markMySnapshotSuccessful(nowMillis)
+        snapshots.markMySnapshotSuccessful(now)
         aggregateRefresh.markDirty()
     }
 
@@ -34,12 +34,12 @@ internal class PressReadState {
         aggregateRefresh.clearDirty()
     }
 
-    fun recordMySnapshotSuccess(nowMillis: Long) {
-        snapshots.markMySnapshotSuccessful(nowMillis)
+    fun recordMySnapshotSuccess(now: PressMonotonicMillis) {
+        snapshots.markMySnapshotSuccessful(now)
     }
 
-    fun recordAllSnapshotSuccess(nowMillis: Long) {
-        snapshots.markAllSnapshotSuccessful(nowMillis)
+    fun recordAllSnapshotSuccess(now: PressMonotonicMillis) {
+        snapshots.markAllSnapshotSuccessful(now)
     }
 
     fun invalidateAllSnapshot() {
@@ -47,16 +47,17 @@ internal class PressReadState {
     }
 
     fun hasFreshMySnapshot(
-        nowMillis: Long,
-        ttlMillis: Long,
-    ): Boolean = snapshots.hasFreshMySnapshot(nowMillis, ttlMillis)
+        now: PressMonotonicMillis,
+        ttl: PressDelayMillis,
+    ): Boolean = snapshots.hasFreshMySnapshot(now, ttl)
 
     fun hasFreshAllSnapshot(
-        nowMillis: Long,
-        ttlMillis: Long,
-    ): Boolean = snapshots.hasFreshAllSnapshot(nowMillis, ttlMillis)
+        now: PressMonotonicMillis,
+        ttl: PressDelayMillis,
+    ): Boolean = snapshots.hasFreshAllSnapshot(now, ttl)
 
-    fun nextStatisticsRetryDelay(retryPolicy: PressRetryPolicy): Long = aggregateRefresh.nextRetryDelay(retryPolicy)
+    fun nextStatisticsRetryDelay(retryPolicy: PressRetryPolicy): PressDelayMillis =
+        aggregateRefresh.nextRetryDelay(retryPolicy)
 
     fun resetStatisticsFailures() {
         aggregateRefresh.resetFailures()
@@ -90,12 +91,12 @@ internal class PressReadState {
         private val mySnapshot = SnapshotTimestamp()
         private val allSnapshot = SnapshotTimestamp()
 
-        fun markMySnapshotSuccessful(nowMillis: Long) {
-            mySnapshot.markSuccessful(nowMillis)
+        fun markMySnapshotSuccessful(now: PressMonotonicMillis) {
+            mySnapshot.markSuccessful(now)
         }
 
-        fun markAllSnapshotSuccessful(nowMillis: Long) {
-            allSnapshot.markSuccessful(nowMillis)
+        fun markAllSnapshotSuccessful(now: PressMonotonicMillis) {
+            allSnapshot.markSuccessful(now)
         }
 
         fun invalidateAllSnapshot() {
@@ -103,31 +104,31 @@ internal class PressReadState {
         }
 
         fun hasFreshMySnapshot(
-            nowMillis: Long,
-            ttlMillis: Long,
-        ): Boolean = mySnapshot.isFresh(nowMillis, ttlMillis)
+            now: PressMonotonicMillis,
+            ttl: PressDelayMillis,
+        ): Boolean = mySnapshot.isFresh(now, ttl)
 
         fun hasFreshAllSnapshot(
-            nowMillis: Long,
-            ttlMillis: Long,
-        ): Boolean = allSnapshot.isFresh(nowMillis, ttlMillis)
+            now: PressMonotonicMillis,
+            ttl: PressDelayMillis,
+        ): Boolean = allSnapshot.isFresh(now, ttl)
     }
 
     private class SnapshotTimestamp {
-        private var lastSuccessfulReadAtMillis: Long? = null
+        private var lastSuccessfulReadAt: PressMonotonicMillis? = null
 
-        fun markSuccessful(nowMillis: Long) {
-            lastSuccessfulReadAtMillis = nowMillis
+        fun markSuccessful(now: PressMonotonicMillis) {
+            lastSuccessfulReadAt = now
         }
 
         fun invalidate() {
-            lastSuccessfulReadAtMillis = null
+            lastSuccessfulReadAt = null
         }
 
         fun isFresh(
-            nowMillis: Long,
-            ttlMillis: Long,
-        ): Boolean = lastSuccessfulReadAtMillis?.let { nowMillis - it < ttlMillis } == true
+            now: PressMonotonicMillis,
+            ttl: PressDelayMillis,
+        ): Boolean = lastSuccessfulReadAt?.let { now.value - it.value < ttl.value } == true
     }
 
     private class AggregateRefreshState {
@@ -144,7 +145,7 @@ internal class PressReadState {
             dirtyAfterWrite = false
         }
 
-        fun nextRetryDelay(retryPolicy: PressRetryPolicy): Long {
+        fun nextRetryDelay(retryPolicy: PressRetryPolicy): PressDelayMillis {
             statisticsFailures = (statisticsFailures + 1).coerceAtMost(64)
             return retryPolicy.delayMillis(statisticsFailures)
         }

@@ -16,8 +16,8 @@ class PressBatchAccumulatorTest {
                 .toEpochMilliseconds()
         val after = before + 120_000
         val queue = PressBatchAccumulator()
-        queue.add(EmotionState.ANGRY, 2, before)
-        queue.add(EmotionState.ANGRY, 3, after)
+        queue.add(EmotionState.ANGRY, 2, PressEpochMillis(before))
+        queue.add(EmotionState.ANGRY, 3, PressEpochMillis(after))
         val first = assertNotNull(queue.take(30, 100, 0, 1))
         val second = assertNotNull(queue.take(30, 100, 0, 2))
         assertEquals(2, first.totalCount)

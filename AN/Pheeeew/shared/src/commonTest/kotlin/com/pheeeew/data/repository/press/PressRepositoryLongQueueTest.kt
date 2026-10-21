@@ -52,9 +52,9 @@ class PressRepositoryLongQueueTest {
                     server,
                     sender,
                     backgroundScope,
-                    flushDelayMillis = 0,
+                    flushDelayMillis = PressDelayMillis.Zero,
                     monitoring = monitoring,
-                    wallClock = { time },
+                    wallClock = { PressEpochMillis(time) },
                 )
             repository.refreshToday()
             runCurrent()
@@ -83,7 +83,13 @@ class PressRepositoryLongQueueTest {
                     }
                 }
             val repository =
-                PressRepositoryImpl(server, sender, backgroundScope, flushDelayMillis = 0, monitoring = monitoring)
+                PressRepositoryImpl(
+                    server,
+                    sender,
+                    backgroundScope,
+                    flushDelayMillis = PressDelayMillis.Zero,
+                    monitoring = monitoring,
+                )
             repository.refreshToday()
             runCurrent()
             repository.accept(EmotionState.ANGRY)
@@ -141,7 +147,12 @@ class PressRepositoryLongQueueTest {
             val server = Server()
             val sender = Sender(server, PressSendResult.ContractPending)
             val repository =
-                PressRepositoryImpl(server, sender, backgroundScope, nowMillis = { testScheduler.currentTime })
+                PressRepositoryImpl(
+                    server,
+                    sender,
+                    backgroundScope,
+                    nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
+                )
             repository.refreshToday()
             runCurrent()
             repository.accept(EmotionState.ANGRY)
@@ -522,10 +533,10 @@ class PressRepositoryLongQueueTest {
         server,
         sender,
         backgroundScope,
-        flushDelayMillis = 0L,
+        flushDelayMillis = PressDelayMillis.Zero,
         connectivity = connectivity,
-        retryPolicy = PressRetryPolicy(minRequestIntervalMillis = 10L, jitter = { 1.0 }),
-        nowMillis = { testScheduler.currentTime },
+        retryPolicy = PressRetryPolicy(minRequestIntervalMillis = PressDelayMillis(10L), jitter = { 1.0 }),
+        nowMillis = { PressMonotonicMillis(testScheduler.currentTime) },
     )
 
     private class Server : PressStatisticsDataSource {

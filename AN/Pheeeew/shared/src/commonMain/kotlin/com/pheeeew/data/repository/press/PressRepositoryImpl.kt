@@ -39,16 +39,14 @@ internal class PressRepositoryImpl(
     private val sessionScope: CoroutineScope,
     batchMaxPerEmotion: Int = 30,
     batchMaxTotal: Int = 100,
-    flushDelayMillis: Long = 500L,
+    flushDelayMillis: PressDelayMillis = PressDelayMillis(500L),
     private val retryPolicy: PressRetryPolicy = PressRetryPolicy(),
-    private val aggregateRefreshMillis: Long = 1_000L,
+    private val aggregateRefreshMillis: PressDelayMillis = PressDelayMillis(1_000L),
     connectivity: Flow<Boolean>? = null,
-    private val nowMillis: () -> Long = monotonicClock(),
+    private val nowMillis: () -> PressMonotonicMillis = monotonicClock(),
     private val monitoring: Monitoring = NoOpMonitoring,
-    private val wallClock: () -> Long = {
-        Clock.System
-            .now()
-            .toEpochMilliseconds()
+    private val wallClock: () -> PressEpochMillis = {
+        PressEpochMillis(Clock.System.now().toEpochMilliseconds())
     },
 ) : PressRepository {
     private val mutableState = MutableStateFlow(PressSessionState())
@@ -65,11 +63,11 @@ internal class PressRepositoryImpl(
     private var pausedNotice: PressSessionNotice? = null
     private var connected: Boolean? = null
     private var failures = 0
-    private var retryNotBefore = 0L
+    private var retryNotBefore = PressMonotonicMillis(0L)
     private var aggregateRefreshJob: Job? = null
 
     init {
-        require(aggregateRefreshMillis > 0)
+        require(aggregateRefreshMillis.value > 0L)
         connectivity?.let { updates ->
             sessionScope.launch {
                 updates.distinctUntilChanged().collect { available ->
@@ -142,10 +140,14 @@ internal class PressRepositoryImpl(
             publish(mutableState.value.copy(notice = PressSessionNotice.OutcomeUnknown))
             return
         }
-        if (writeLedger.hasOutstanding()) scheduleSend(0L)
+        if (writeLedger.hasOutstanding()) scheduleSend(PressDelayMillis.Zero)
     }
 
-    private fun canRetryUnknown(): Boolean = writeLedger.canRetryUnknown(nowMillis(), sender.idempotencyWindowMillis)
+    private fun canRetryUnknown(): Boolean =
+        writeLedger.canRetryUnknown(
+            nowMillis(),
+            sender.idempotencyWindowMillis?.takeIf { it >= 0L }?.let { PressDelayMillis(it) },
+        )
 
     /** Completing a read is not a retry: fresh input keeps the wait established on acceptance. */
     private fun resumeQueuedWork() {
@@ -154,9 +156,10 @@ internal class PressRepositoryImpl(
         scheduleSend(wait)
     }
 
-    private fun remainingBatchWait(now: Long = nowMillis()): Long = inputQueue.remainingWait(now)
+    private fun remainingBatchWait(now: PressMonotonicMillis = nowMillis()): PressDelayMillis =
+        inputQueue.remainingWait(now)
 
-    private fun scheduleSend(delayMillis: Long) {
+    private fun scheduleSend(delayMillis: PressDelayMillis) {
         if (workerJob?.isActive == true || connected == false || !writeLedger.hasOutstanding()) return
         if (pausedNotice == PressSessionNotice.WaitingForApiContract) return
         if (writeLedger.isOutcomeUnknown() && !canRetryUnknown()) return
@@ -164,7 +167,7 @@ internal class PressRepositoryImpl(
         launchedWorker =
             sessionScope.launch(start = CoroutineStart.LAZY) {
                 try {
-                    delay(PressFlushPolicy.remainingWait(retryNotBefore, nowMillis()))
+                    delay(PressFlushPolicy.remainingWait(retryNotBefore, nowMillis()).value)
                     awaitFlush(delayMillis)
                     sendAvailable()
                 } finally {
@@ -244,7 +247,8 @@ internal class PressRepositoryImpl(
                     pausedNotice =
                         if (write.uncertain) PressSessionNotice.OutcomeUnknown else PressSessionNotice.RetryRequired
                     publish(mutableState.value.copy(isSending = false, notice = pausedNotice))
-                    scheduleRetry((result as? PressSendResult.RetryAfter)?.delayMillis ?: 0L)
+                    val retryAfterMillis = (result as? PressSendResult.RetryAfter)?.delayMillis
+                    scheduleRetry(retryAfterMillis?.let { PressDelayMillis(it) } ?: PressDelayMillis.Zero)
                     return
                 }
 
@@ -268,16 +272,16 @@ internal class PressRepositoryImpl(
                 }
             }
             if (writeLedger.hasOutstanding()) {
-                delay(retryPolicy.minRequestIntervalMillis)
+                delay(retryPolicy.minRequestIntervalMillis.value)
                 awaitFlush(remainingBatchWait())
             }
         }
         if (!writeLedger.hasOutstanding() && readState.hasAggregateRefreshPending()) scheduleAggregateRefresh()
     }
 
-    private suspend fun awaitFlush(delayMillis: Long) {
-        if (delayMillis > 0 && !inputQueue.isReadyToFlush()) {
-            withTimeoutOrNull(delayMillis) { flushRequests.receive() }
+    private suspend fun awaitFlush(delayMillis: PressDelayMillis) {
+        if (delayMillis.value > 0L && !inputQueue.isReadyToFlush()) {
+            withTimeoutOrNull(delayMillis.value) { flushRequests.receive() }
         }
         flushRequests.tryReceive()
     }
@@ -287,16 +291,16 @@ internal class PressRepositoryImpl(
         return PressWriteState(next, checkNotNull(mutableState.value.myToday), nowMillis())
     }
 
-    private fun scheduleRetry(retryAfterMillis: Long = 0L) {
+    private fun scheduleRetry(retryAfterMillis: PressDelayMillis = PressDelayMillis.Zero) {
         failures = (failures + 1).coerceAtMost(64)
         val wait = retryPolicy.delayMillis(failures, retryAfterMillis)
         retryNotBefore = PressFlushPolicy.deadline(nowMillis(), wait)
         retryJob?.cancel()
         retryJob =
             sessionScope.launch {
-                delay(wait)
+                delay(wait.value)
                 workerJob?.join()
-                scheduleSend(0L)
+                scheduleSend(PressDelayMillis.Zero)
             }
     }
 
@@ -402,7 +406,7 @@ internal class PressRepositoryImpl(
                     connected != false &&
                     !writeLedger.isOutcomeUnknown()
                 ) {
-                    delay(aggregateRefreshMillis)
+                    delay(aggregateRefreshMillis.value)
                     if (!writeLedger.isInFlight()) {
                         refreshAllAfterWrite(detached = true)
                     }
@@ -462,23 +466,17 @@ internal class PressRepositoryImpl(
         val wait = readState.nextStatisticsRetryDelay(retryPolicy)
         statisticsRetryJob =
             sessionScope.launch {
-                delay(wait)
+                delay(wait.value)
                 statisticsRetryJob = null
                 if (connected != false) launchRead()
             }
     }
 
     private fun hasFreshMySnapshot(): Boolean =
-        readState.hasFreshMySnapshot(
-            nowMillis(),
-            STATISTICS_TTL_MILLIS,
-        )
+        readState.hasFreshMySnapshot(nowMillis(), PressDelayMillis(STATISTICS_TTL_MILLIS))
 
     private fun hasFreshAllSnapshot(): Boolean =
-        readState.hasFreshAllSnapshot(
-            nowMillis(),
-            STATISTICS_TTL_MILLIS,
-        )
+        readState.hasFreshAllSnapshot(nowMillis(), PressDelayMillis(STATISTICS_TTL_MILLIS))
 
     private suspend fun fetchPair(): StatisticsPair =
         coroutineScope {
@@ -520,9 +518,9 @@ internal class PressRepositoryImpl(
     private companion object {
         const val STATISTICS_TTL_MILLIS = 5_000L
 
-        fun monotonicClock(): () -> Long {
+        fun monotonicClock(): () -> PressMonotonicMillis {
             val origin = TimeSource.Monotonic.markNow()
-            return { origin.elapsedNow().inWholeMilliseconds }
+            return { PressMonotonicMillis(origin.elapsedNow().inWholeMilliseconds) }
         }
     }
 }

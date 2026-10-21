@@ -83,7 +83,7 @@ class PressReconcilerTest {
         PressWriteState(
             batch = PressBatch(1, mapOf(EmotionState.ANGRY to 2), requestId = "same-request"),
             baseline = snapshot(),
-            createdAtMillis = 0,
+            createdAtMonotonicMillis = PressMonotonicMillis(0L),
             uncertain = true,
         )
 

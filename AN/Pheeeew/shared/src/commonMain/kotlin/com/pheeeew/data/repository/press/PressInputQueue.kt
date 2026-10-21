@@ -7,23 +7,22 @@ import com.pheeeew.domain.model.press.PressBatch
 internal class PressInputQueue(
     private val maxPerEmotion: Int,
     private val maxTotal: Int,
-    flushDelayMillis: Long,
+    flushDelayMillis: PressDelayMillis,
 ) {
     private val accumulator = PressBatchAccumulator()
     private val flushPolicy = PressFlushPolicy(flushDelayMillis)
-    private var flushDeadline: Long? = null
+    private var flushDeadline: PressMonotonicMillis? = null
     private var nextSequence = 1L
     private var firstEmotionIndex = 0
 
     init {
         require(maxPerEmotion > 0 && maxTotal > 0)
-        require(flushDelayMillis >= 0L)
     }
 
     fun accept(
         emotion: EmotionState,
-        occurredAt: Long,
-        now: Long,
+        occurredAt: PressEpochMillis,
+        now: PressMonotonicMillis,
     ): PressQueueAcceptance {
         val wasEmpty = !accumulator.isNotEmpty
         if (!accumulator.add(emotion, occurredAt = occurredAt)) return PressQueueAcceptance.NumericLimit
@@ -37,12 +36,12 @@ internal class PressInputQueue(
 
     fun isReadyToFlush(): Boolean = accumulator.isReadyToFlush(maxPerEmotion, maxTotal)
 
-    fun remainingWait(now: Long): Long = PressFlushPolicy.remainingWait(flushDeadline, now)
+    fun remainingWait(now: PressMonotonicMillis): PressDelayMillis = PressFlushPolicy.remainingWait(flushDeadline, now)
 
     fun resumeDelay(
         hasPendingWrite: Boolean,
-        now: Long,
-    ): Long = flushPolicy.resumeDelay(flushDeadline, hasPendingWrite, now)
+        now: PressMonotonicMillis,
+    ): PressDelayMillis = flushPolicy.resumeDelay(flushDeadline, hasPendingWrite, now)
 
     fun takeBatch(): PressBatch? {
         val next = accumulator.take(maxPerEmotion, maxTotal, firstEmotionIndex, nextSequence) ?: return null
@@ -58,6 +57,6 @@ internal sealed interface PressQueueAcceptance {
 
     data class Accepted(
         val isThresholdReached: Boolean,
-        val delayMillis: Long,
+        val delayMillis: PressDelayMillis,
     ) : PressQueueAcceptance
 }

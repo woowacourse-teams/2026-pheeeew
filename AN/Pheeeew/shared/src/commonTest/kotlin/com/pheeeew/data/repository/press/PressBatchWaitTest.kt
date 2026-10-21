@@ -433,9 +433,9 @@ class PressBatchWaitTest {
                 this,
                 scope.backgroundScope,
                 connectivity = connectivity,
-                aggregateRefreshMillis = aggregateRefreshMillis,
+                aggregateRefreshMillis = PressDelayMillis(aggregateRefreshMillis),
                 retryPolicy = PressRetryPolicy(jitter = { 1.0 }),
-                nowMillis = { scope.testScheduler.currentTime },
+                nowMillis = { PressMonotonicMillis(scope.testScheduler.currentTime) },
             )
 
         fun start() {

@@ -40,12 +40,12 @@ internal class PressWriteLedger {
     fun acceptedCoverageAtReadStart(): Long = if (isOutcomeUnknown()) 0L else acceptedSinceAllSnapshot
 
     fun canRetryUnknown(
-        nowMillis: Long,
-        idempotencyWindowMillis: Long?,
+        now: PressMonotonicMillis,
+        idempotencyWindow: PressDelayMillis?,
     ): Boolean {
         val write = pendingWrite ?: return false
-        val window = idempotencyWindowMillis ?: return false
-        return write.uncertain && window > 0L && nowMillis - write.createdAtMillis < window
+        val window = idempotencyWindow ?: return false
+        return write.uncertain && window.value > 0L && now.value - write.createdAtMonotonicMillis.value < window.value
     }
 
     fun prepareForSend(
