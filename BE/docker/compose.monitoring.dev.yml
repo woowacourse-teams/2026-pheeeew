@@ -50,7 +50,7 @@ services:
 networks:
   app:
     external: true
-    name: pheeeew-dev_default
+    name: pheeeew-dev
 
 volumes:
   app-logs:
