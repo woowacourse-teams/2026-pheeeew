@@ -12,7 +12,8 @@ internal sealed interface PressRankingLoadResult {
         val startAt: String,
         val endAt: String,
         val hasPrevious: Boolean,
-        val groups: List<PressGroupRank>,
+        val people: List<PressPersonRank>,
+        val me: PressPersonRank? = null,
     ) : PressRankingLoadResult
 
     data object Unavailable : PressRankingLoadResult

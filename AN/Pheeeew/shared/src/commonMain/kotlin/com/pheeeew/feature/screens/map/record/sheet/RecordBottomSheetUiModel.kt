@@ -19,6 +19,7 @@ data class RecordBottomSheetUiModel(
     val selectedEmotion: EmotionTypeUiModel? = null,
     val inputMode: RecordInputModeUiModel = RecordInputModeUiModel.Memo,
     val memo: String = "",
+    val isAnonymous: Boolean = false,
     val recordingFilePath: String? = null,
     val isGroupSelectorVisible: Boolean = false,
     val selectedGroupId: String = "none",

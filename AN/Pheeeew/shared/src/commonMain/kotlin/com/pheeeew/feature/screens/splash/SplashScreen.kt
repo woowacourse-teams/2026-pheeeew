@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
@@ -60,19 +62,31 @@ private val SplashBackground = Color(0xFFFFFDFD)
 
 /** Plays once, then holds the finished artwork while the startup checks finish. */
 @Composable
-internal fun SplashScreen(
+internal fun rememberSplashProgress(
     animationCompleted: Boolean,
     onAnimationCompleted: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val progress = remember { Animatable(if (animationCompleted) 1f else 0f) }
+    initialProgress: Float = if (animationCompleted) 1f else 0f,
+): State<Float> {
+    val progress = remember { Animatable(initialProgress) }
+    val progressState = remember(progress) { derivedStateOf { progress.value } }
     val currentOnCompleted = rememberUpdatedState(onAnimationCompleted)
     LaunchedEffect(Unit) {
         if (!animationCompleted) {
-            progress.animateTo(1f, tween(SPLASH_DURATION_MILLIS, easing = LinearEasing))
+            progress.animateTo(
+                1f,
+                tween(((1f - progress.value) * SPLASH_DURATION_MILLIS).toInt(), easing = LinearEasing),
+            )
             currentOnCompleted.value()
         }
     }
+    return progressState
+}
+
+@Composable
+internal fun SplashScreen(
+    progress: State<Float>,
+    modifier: Modifier = Modifier,
+) {
     SplashArtwork(progress = progress.value, modifier = modifier)
 }
 

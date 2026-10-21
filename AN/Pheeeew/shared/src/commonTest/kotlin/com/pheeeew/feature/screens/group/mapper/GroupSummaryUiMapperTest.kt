@@ -1,9 +1,9 @@
 package com.pheeeew.feature.screens.group.mapper
 
-import com.pheeeew.data.remote.group.dto.GroupPreviewResponseDto
-import com.pheeeew.data.remote.group.dto.GroupResponseDto
-import com.pheeeew.data.remote.group.dto.GroupStampResponseDto
-import com.pheeeew.data.remote.group.mapper.GroupResponseMapper
+import com.pheeeew.data.remote.dto.GroupPreviewResponseDto
+import com.pheeeew.data.remote.dto.GroupResponseDto
+import com.pheeeew.data.remote.dto.GroupStampResponseDto
+import com.pheeeew.data.remote.mapper.GroupResponseMapper
 import com.pheeeew.feature.screens.group.model.GroupJoinType
 import kotlin.test.Test
 import kotlin.test.assertEquals

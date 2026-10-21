@@ -1,6 +1,6 @@
 package com.pheeeew.data.local.group
 
-import com.pheeeew.domain.repository.group.LastRecordedGroupRepository
+import com.pheeeew.domain.repository.LastRecordedGroupRepository
 import platform.Foundation.NSUserDefaults
 
 class IosLastRecordedGroupRepository(

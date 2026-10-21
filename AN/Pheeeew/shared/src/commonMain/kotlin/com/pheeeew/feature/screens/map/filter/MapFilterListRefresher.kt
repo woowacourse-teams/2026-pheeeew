@@ -3,7 +3,7 @@ package com.pheeeew.feature.screens.map.filter
 import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionSearchFilter
 import com.pheeeew.domain.model.emotion.MapFilterSettings
-import com.pheeeew.domain.repository.emotion.EmotionResult
+import com.pheeeew.domain.repository.EmotionResult
 
 interface MapFilterListRefresher {
     fun isVisible(): Boolean

@@ -7,7 +7,9 @@ import com.pheeeew.feature.component.stamp.toUiShape
 import com.pheeeew.feature.screens.ranking.stamp.RankingMember
 import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingLoadResult
 import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingSource
+import dev.zacsweers.metro.Inject
 
+@Inject
 class ApiWeeklyRankingSource(
     private val repository: GroupRankingRepository,
 ) : WeeklyRankingSource {

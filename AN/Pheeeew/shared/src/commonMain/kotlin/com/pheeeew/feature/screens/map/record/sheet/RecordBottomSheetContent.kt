@@ -24,8 +24,11 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.SheetValue
@@ -52,6 +55,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +70,11 @@ import com.pheeeew.core.designsystem.component.AppModalBottomSheet
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.component.SheetDragHandle
 import com.pheeeew.core.designsystem.component.raisedButtonBorder
+import com.pheeeew.core.designsystem.input.NativeTextEditor
+import com.pheeeew.core.designsystem.input.dismissNativeTextKeyboard
+import com.pheeeew.core.designsystem.input.limitMemoValue
+import com.pheeeew.core.designsystem.input.rememberTextEditor
+import com.pheeeew.core.designsystem.input.usesNativeTextEditor
 import com.pheeeew.core.designsystem.theme.AppBorders
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppShapes
@@ -78,6 +87,7 @@ import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
+import pheeeew.shared.generated.resources.record_anonymous
 import pheeeew.shared.generated.resources.record_audio
 import pheeeew.shared.generated.resources.record_continue_editing
 import pheeeew.shared.generated.resources.record_discard_title
@@ -95,6 +105,8 @@ fun RecordBottomSheet(
     selectedEmotion: EmotionTypeUiModel,
     inputMode: RecordInputModeUiModel,
     memo: String,
+    isAnonymous: Boolean,
+    onAnonymousChange: (Boolean) -> Unit,
     selectedGroupStamp: StampAppearanceUiModel?,
     isGroupSelectionLoading: Boolean,
     onDismissRequest: () -> Unit,
@@ -108,9 +120,14 @@ fun RecordBottomSheet(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val isKeyboardVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
+    val currentKeyboardVisible by rememberUpdatedState(isKeyboardVisible)
+    val focusManager = LocalFocusManager.current
+    var gestureStartedWithKeyboard by remember { mutableStateOf(false) }
     var showOtherInputDialog by remember { mutableStateOf(false) }
     val handleDismissRequest by rememberUpdatedState<() -> Unit> {
         if (isKeyboardVisible) {
+            dismissNativeTextKeyboard()
+            focusManager.clearFocus()
             keyboardController?.hide()
         } else {
             onDismissRequest()
@@ -118,13 +135,26 @@ fun RecordBottomSheet(
     }
     AppModalBottomSheet(
         onDismissRequest = handleDismissRequest,
-        modifier = modifier,
+        modifier =
+            modifier.pointerInput(Unit) {
+                awaitEachGesture {
+                    // Remember before the content's outside-tap handler hides the keyboard.
+                    awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
+                    gestureStartedWithKeyboard = currentKeyboardVisible
+                }
+            },
         sheetState =
             rememberModalBottomSheetState(
                 skipPartiallyExpanded = true,
                 confirmValueChange = { value ->
                     if (value == SheetValue.Hidden) {
-                        handleDismissRequest()
+                        if (gestureStartedWithKeyboard || currentKeyboardVisible) {
+                            dismissNativeTextKeyboard()
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                        } else {
+                            handleDismissRequest()
+                        }
                         false
                     } else {
                         true
@@ -141,6 +171,8 @@ fun RecordBottomSheet(
             selectedEmotion = selectedEmotion,
             inputMode = inputMode,
             memo = memo,
+            isAnonymous = isAnonymous,
+            onAnonymousChange = onAnonymousChange,
             selectedGroupStamp = selectedGroupStamp,
             isGroupSelectionLoading = isGroupSelectionLoading,
             onInputModeChange = onInputModeChange,
@@ -205,6 +237,8 @@ private fun RecordBottomSheetContent(
     selectedEmotion: EmotionTypeUiModel,
     inputMode: RecordInputModeUiModel,
     memo: String,
+    isAnonymous: Boolean,
+    onAnonymousChange: (Boolean) -> Unit,
     selectedGroupStamp: StampAppearanceUiModel?,
     isGroupSelectionLoading: Boolean,
     onInputModeChange: (RecordInputModeUiModel) -> Unit,
@@ -239,6 +273,7 @@ private fun RecordBottomSheetContent(
                             inputMode == RecordInputModeUiModel.Memo &&
                                 memoBounds.contains(down.position + sheetPosition)
                         if (!touchedMemo) {
+                            dismissNativeTextKeyboard()
                             focusManager.clearFocus()
                             keyboardController?.hide()
                         }
@@ -247,27 +282,38 @@ private fun RecordBottomSheetContent(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Image(
-                painter = painterResource(selectedEmotion.icon),
-                contentDescription = stringResource(selectedEmotion.label),
-                modifier = Modifier.size(44.dp),
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text =
-                    stringResource(
-                        Res.string.record_emotion_prompt,
-                        stringResource(selectedEmotion.recordPhrase),
-                        stringResource(selectedEmotion.recordPrompt),
-                    ),
+            Row(
                 modifier = Modifier.weight(1f),
-                lineHeight = 22.sp,
-                color = AppColors.TextPrimary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(selectedEmotion.icon),
+                    contentDescription = stringResource(selectedEmotion.label),
+                    modifier = Modifier.size(44.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text =
+                        stringResource(
+                            Res.string.record_emotion_prompt,
+                            stringResource(selectedEmotion.recordPhrase),
+                            stringResource(selectedEmotion.recordPrompt),
+                        ),
+                    modifier = Modifier.weight(1f),
+                    lineHeight = 22.sp,
+                    color = AppColors.TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            GroupSelectionButton(
+                stamp = selectedGroupStamp,
+                loading = isGroupSelectionLoading,
+                onClick = onGroupClick,
             )
         }
 
@@ -281,7 +327,7 @@ private fun RecordBottomSheetContent(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(40.dp),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             RecordInputModeToggle(
@@ -289,11 +335,34 @@ private fun RecordBottomSheetContent(
                 onInputModeChange = onInputModeChange,
                 modifier = Modifier.weight(1f),
             )
-            GroupSelectionButton(
-                stamp = selectedGroupStamp,
-                loading = isGroupSelectionLoading,
-                onClick = onGroupClick,
-            )
+            Row(
+                modifier =
+                    Modifier.toggleable(
+                        value = isAnonymous,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        role = Role.Checkbox,
+                        onValueChange = onAnonymousChange,
+                    ),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(Res.string.record_anonymous),
+                    color = AppColors.TextPrimary,
+                    fontSize = 12.sp,
+                )
+                Checkbox(
+                    checked = isAnonymous,
+                    onCheckedChange = null,
+                    colors =
+                        CheckboxDefaults.colors(
+                            checkedColor = AppColors.RecordSheetAction,
+                            uncheckedColor = AppColors.TextSecondary,
+                            checkmarkColor = AppColors.Surface,
+                        ),
+                    modifier = Modifier.padding(start = 4.dp),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -410,53 +479,73 @@ private fun MemoPanel(
     modifier: Modifier,
 ) {
     Column {
-        BasicTextField(
-            value = memo,
-            onValueChange = { value ->
-                if (value.length <= 50) {
-                    onMemoChange(value)
-                }
-            },
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            modifier =
-                modifier
-                    .fillMaxWidth()
-                    .height(105.dp)
-                    .clip(AppShapes.Input)
-                    .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
-                    .padding(16.dp),
-            textStyle =
-                LocalTextStyle.current.copy(
-                    color = AppColors.TextPrimary,
-                    fontSize = 14.sp,
-                    lineHeight = 22.sp,
-                ),
-            decorationBox = { innerTextField ->
-                Box(modifier = Modifier.fillMaxSize()) {
-                    if (memo.isEmpty()) {
+        if (usesNativeTextEditor) {
+            Box(
+                modifier =
+                    modifier
+                        .fillMaxWidth()
+                        .height(105.dp)
+                        .clip(AppShapes.Input)
+                        .border(AppBorders.Standard, AppColors.Border, AppShapes.Input)
+                        .padding(16.dp),
+            ) {
+                NativeTextEditor(
+                    memo,
+                    onMemoChange,
+                    Modifier.fillMaxSize(),
+                    stringResource(Res.string.record_memo_prompt),
+                    normalizeText = { it.limitMemoValue() },
+                )
+            }
+        } else {
+            val editor = rememberTextEditor(memo, onMemoChange)
+            BasicTextField(
+                state = editor.state,
+                inputTransformation = { if (length > 50) revertAllChanges() },
+                keyboardOptions =
+                    KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Sentences,
+                    ),
+                modifier =
+                    modifier
+                        .fillMaxWidth()
+                        .height(105.dp)
+                        .clip(AppShapes.Input)
+                        .border(width = AppBorders.Standard, color = AppColors.Border, shape = AppShapes.Input)
+                        .padding(16.dp),
+                textStyle =
+                    LocalTextStyle.current.copy(
+                        color = AppColors.TextPrimary,
+                        fontSize = 14.sp,
+                        lineHeight = 22.sp,
+                    ),
+                decorator = { innerTextField ->
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        if (memo.isEmpty()) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 20.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(Res.string.record_memo_prompt),
+                                    color = AppColors.Border.copy(alpha = 0.45f),
+                                    fontSize = 16.sp,
+                                )
+                            }
+                        }
                         Box(
                             modifier =
                                 Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 20.dp),
+                                    .fillMaxWidth(),
                         ) {
-                            Text(
-                                text = stringResource(Res.string.record_memo_prompt),
-                                color = AppColors.Border.copy(alpha = 0.45f),
-                                fontSize = 16.sp,
-                            )
+                            innerTextField()
                         }
                     }
-                    Box(
-                        modifier =
-                            Modifier
-                                .fillMaxWidth(),
-                    ) {
-                        innerTextField()
-                    }
-                }
-            },
-        )
+                },
+            )
+        }
         RecordInputSupportingText(
             text = "${memo.length}/50",
             textAlign = TextAlign.End,
@@ -543,6 +632,8 @@ private fun RecordBottomSheetContentPreview() {
         selectedEmotion = EmotionTypeUiModel.ANGRY,
         inputMode = RecordInputModeUiModel.Memo,
         memo = "",
+        isAnonymous = false,
+        onAnonymousChange = {},
         selectedGroupStamp = null,
         isGroupSelectionLoading = false,
         onInputModeChange = {},
@@ -560,6 +651,8 @@ private fun RecordBottomSheetRecordingPreview() {
         selectedEmotion = EmotionTypeUiModel.EXHAUSTED,
         inputMode = RecordInputModeUiModel.Recording,
         memo = "",
+        isAnonymous = false,
+        onAnonymousChange = {},
         selectedGroupStamp = null,
         isGroupSelectionLoading = false,
         onInputModeChange = {},

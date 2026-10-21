@@ -40,8 +40,6 @@ import com.pheeeew.core.designsystem.component.LoadErrorContent
 import com.pheeeew.core.designsystem.component.RefreshErrorBanner
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
-import com.pheeeew.core.di.createWeeklyRankingViewModel
-import com.pheeeew.core.network.ApiClient
 import com.pheeeew.feature.component.AppBottomNavigationBarOverlaySpace
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.screens.ranking.components.RankingTopBarHeight
@@ -50,6 +48,7 @@ import com.pheeeew.feature.screens.ranking.components.WeekSelector
 import com.pheeeew.feature.screens.ranking.components.rememberRankingTopBarScrollBehavior
 import com.pheeeew.feature.screens.ranking.stamp.components.RankingRow
 import com.pheeeew.feature.screens.ranking.stamp.components.TopThreeRanking
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -59,12 +58,11 @@ import pheeeew.shared.generated.resources.ranking_stamp_title
 
 @Composable
 fun WeeklyRankingRoute(
-    apiClient: ApiClient,
     onGroupClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     onRefreshActionChanged: ((() -> Unit)?) -> Unit = {},
 ) {
-    val viewModel: WeeklyRankingViewModel = viewModel { createWeeklyRankingViewModel(apiClient) }
+    val viewModel: WeeklyRankingViewModel = metroViewModel()
     val currentOnRefreshActionChanged by rememberUpdatedState(onRefreshActionChanged)
     DisposableEffect(viewModel) {
         currentOnRefreshActionChanged(viewModel::onRefresh)
@@ -115,7 +113,7 @@ fun WeeklyRankingScreen(
     }
     val pullDistance = with(LocalDensity.current) { 56.dp.toPx() }
     Column(
-        modifier = modifier.fillMaxSize().background(AppColors.Background).statusBarsPadding(),
+        modifier = modifier.fillMaxSize().background(AppColors.GroupBackground).statusBarsPadding(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         PullToRefreshBox(

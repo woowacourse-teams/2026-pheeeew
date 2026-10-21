@@ -72,6 +72,8 @@ private fun SettingsActionRowPreview() {
         androidx.compose.foundation.layout.Column {
             SettingsActionRow("접근 권한 설정", SettingsIcon.Tune, highlighted = true, onClick = {})
             SettingsDivider()
+            SettingsActionRow("닉네임 변경", SettingsIcon.Person, onClick = {})
+            SettingsDivider()
             SettingsActionRow("앱 버전", SettingsIcon.Info, trailingText = "1.1.1")
         }
     }

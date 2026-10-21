@@ -2,13 +2,16 @@ package com.pheeeew.feature.screens.group.detail
 
 import com.pheeeew.domain.model.emotion.Emotion
 import com.pheeeew.domain.model.emotion.EmotionBounds
+import com.pheeeew.domain.model.emotion.EmotionContentType
 import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.group.GroupRole
-import com.pheeeew.domain.repository.emotion.EmotionFailure
-import com.pheeeew.domain.repository.emotion.EmotionRepository
-import com.pheeeew.domain.repository.emotion.EmotionResult
-import com.pheeeew.domain.repository.group.GroupPublicJoinResult
+import com.pheeeew.domain.repository.EmotionFailure
+import com.pheeeew.domain.repository.EmotionModerationResult
+import com.pheeeew.domain.repository.EmotionRepository
+import com.pheeeew.domain.repository.EmotionResult
+import com.pheeeew.domain.repository.GroupPublicJoinResult
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.detail.model.GroupDetailUiModel
@@ -22,8 +25,10 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -34,6 +39,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.time.Clock
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class GroupDetailViewModelTest {
@@ -53,6 +59,7 @@ class GroupDetailViewModelTest {
                 runCurrent()
 
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
 
                 val loadedDetail = requireNotNull(viewModel.uiState.value.detail)
@@ -76,6 +83,7 @@ class GroupDetailViewModelTest {
                 runCurrent()
 
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 assertEquals(GroupDetailOverlay.None, viewModel.uiState.value.overlay)
                 assertNull(viewModel.uiState.value.join.failure)
                 val loadedDetail = requireNotNull(viewModel.uiState.value.detail)
@@ -116,6 +124,104 @@ class GroupDetailViewModelTest {
 
                 assertEquals(2, feedRequests)
                 assertIs<GroupMoodFeedUiState.Available>(viewModel.uiState.value.moodFeed)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `initial feed failure leaves group detail ready and shows feed error`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val repository =
+                    object : EmotionRepository by TestEmotionRepository {
+                        override suspend fun feedPage(
+                            groupId: String,
+                            cursor: String?,
+                        ): EmotionResult<EmotionPage> = EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
+                    }
+                val viewModel =
+                    createViewModel(
+                        source = { GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER)) },
+                        emotionRepository = repository,
+                    )
+
+                runCurrent()
+
+                assertIs<GroupDetailContent.Ready>(viewModel.uiState.value.content)
+                assertEquals(GroupMoodFeedUiState.LoadFailed(isRetrying = false), viewModel.uiState.value.moodFeed)
+                assertFalse(viewModel.uiState.value.isLoading)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `refresh keeps one global loading phase until detail and feed finish`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var detailRequests = 0
+                var feedRequests = 0
+                val detailRefresh = CompletableDeferred<GroupDetailLoadResult>()
+                val feedRefresh = CompletableDeferred<EmotionResult<EmotionPage>>()
+                val repository =
+                    object : EmotionRepository by TestEmotionRepository {
+                        override suspend fun feedPage(
+                            groupId: String,
+                            cursor: String?,
+                        ): EmotionResult<EmotionPage> {
+                            feedRequests++
+                            return if (feedRequests == 1) {
+                                EmotionResult.Success(EmotionPage(emptyList(), null))
+                            } else {
+                                feedRefresh.await()
+                            }
+                        }
+                    }
+                val viewModel =
+                    createViewModel(
+                        source = {
+                            detailRequests++
+                            if (detailRequests == 1) {
+                                GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER))
+                            } else {
+                                detailRefresh.await()
+                            }
+                        },
+                        emotionRepository = repository,
+                    )
+                runCurrent()
+
+                viewModel.onRefresh()
+                runCurrent()
+
+                assertTrue(viewModel.uiState.value.isLoading)
+                assertTrue(viewModel.uiState.value.isRefreshing)
+                assertEquals(
+                    GroupMoodFeedLoadState.Refreshing,
+                    (viewModel.uiState.value.moodFeed as GroupMoodFeedUiState.Available).loadState,
+                )
+                viewModel.onRefresh()
+                runCurrent()
+                assertEquals(2, detailRequests)
+                assertEquals(2, feedRequests)
+
+                detailRefresh.complete(GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER)))
+                runCurrent()
+
+                assertTrue(viewModel.uiState.value.isLoading)
+                assertTrue(viewModel.uiState.value.isRefreshing)
+
+                feedRefresh.complete(EmotionResult.Success(EmotionPage(emptyList(), null)))
+                runCurrent()
+
+                assertFalse(viewModel.uiState.value.isLoading)
+                assertFalse(viewModel.uiState.value.isRefreshing)
+                assertEquals(GroupDetailRefreshStatus.Idle, viewModel.uiState.value.refreshStatus)
+                assertEquals(2, detailRequests)
+                assertEquals(2, feedRequests)
             } finally {
                 Dispatchers.resetMain()
             }
@@ -182,12 +288,20 @@ class GroupDetailViewModelTest {
         }
 
     @Test
-    fun `slow initial response shows spinner after delay and keeps it visible for minimum duration`() =
+    fun `slow initial detail and feed share one loading phase`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
             try {
                 val response = CompletableDeferred<GroupDetailLoadResult>()
-                val viewModel = createViewModel(source = { response.await() })
+                val feedResponse = CompletableDeferred<EmotionResult<EmotionPage>>()
+                val repository =
+                    object : EmotionRepository by TestEmotionRepository {
+                        override suspend fun feedPage(
+                            groupId: String,
+                            cursor: String?,
+                        ): EmotionResult<EmotionPage> = feedResponse.await()
+                    }
+                val viewModel = createViewModel(source = { response.await() }, emotionRepository = repository)
                 runCurrent()
 
                 assertEquals(GroupDetailContent.Loading, viewModel.uiState.value.content)
@@ -203,14 +317,15 @@ class GroupDetailViewModelTest {
                 runCurrent()
 
                 assertEquals(GroupDetailContent.Loading, viewModel.uiState.value.content)
-                assertTrue(viewModel.uiState.value.isLoadingIndicatorVisible)
-                advanceTimeBy(299)
-                runCurrent()
+                assertTrue(viewModel.uiState.value.isLoading)
                 assertTrue(viewModel.uiState.value.isLoadingIndicatorVisible)
 
-                advanceTimeBy(1)
+                feedResponse.complete(EmotionResult.Success(EmotionPage(emptyList(), null)))
                 runCurrent()
+
                 assertIs<GroupDetailContent.Ready>(viewModel.uiState.value.content)
+                assertIs<GroupMoodFeedUiState.Available>(viewModel.uiState.value.moodFeed)
+                assertFalse(viewModel.uiState.value.isLoading)
                 assertFalse(viewModel.uiState.value.isLoadingIndicatorVisible)
             } finally {
                 Dispatchers.resetMain()
@@ -248,10 +363,6 @@ class GroupDetailViewModelTest {
                 assertTrue(viewModel.uiState.value.isLoadingIndicatorVisible)
                 retryResponse.complete(GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER)))
                 runCurrent()
-                assertEquals(GroupDetailContent.LoadFailed, viewModel.uiState.value.content)
-
-                advanceTimeBy(300)
-                runCurrent()
                 assertIs<GroupDetailContent.Ready>(viewModel.uiState.value.content)
                 assertFalse(viewModel.uiState.value.isLoading)
             } finally {
@@ -266,7 +377,26 @@ class GroupDetailViewModelTest {
             try {
                 var reads = 0
                 var refreshCancelled = false
+                var feedRequests = 0
+                var feedRefreshCancelled = false
                 val refreshResponse = CompletableDeferred<GroupDetailLoadResult>()
+                val feedRefreshResponse = CompletableDeferred<EmotionResult<EmotionPage>>()
+                val repository =
+                    object : EmotionRepository by TestEmotionRepository {
+                        override suspend fun feedPage(
+                            groupId: String,
+                            cursor: String?,
+                        ): EmotionResult<EmotionPage> {
+                            feedRequests++
+                            if (feedRequests == 1) return EmotionResult.Success(EmotionPage(emptyList(), null))
+                            return try {
+                                feedRefreshResponse.await()
+                            } catch (cancelled: CancellationException) {
+                                feedRefreshCancelled = true
+                                throw cancelled
+                            }
+                        }
+                    }
                 val viewModel =
                     createViewModel(
                         source = {
@@ -283,6 +413,7 @@ class GroupDetailViewModelTest {
                             }
                         },
                         leave = { LeaveGroupResult.Left },
+                        emotionRepository = repository,
                     )
                 runCurrent()
                 viewModel.onRefresh()
@@ -297,8 +428,13 @@ class GroupDetailViewModelTest {
                 runCurrent()
 
                 assertTrue(refreshCancelled)
+                assertTrue(feedRefreshCancelled)
                 assertFalse(viewModel.uiState.value.isLoading)
                 assertFalse(viewModel.uiState.value.isLoadingIndicatorVisible)
+                assertEquals(
+                    GroupMoodFeedLoadState.Idle,
+                    (viewModel.uiState.value.moodFeed as GroupMoodFeedUiState.Available).loadState,
+                )
                 assertIs<GroupDetailOverlay.Left>(viewModel.uiState.value.overlay)
             } finally {
                 Dispatchers.resetMain()
@@ -592,6 +728,49 @@ class GroupDetailViewModelTest {
         }
 
     @Test
+    fun `feed refresh failure retains the previous posts`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var feedRequests = 0
+                val originalPost = emotion(id = 42L)
+                val repository =
+                    object : EmotionRepository by TestEmotionRepository {
+                        override suspend fun feedPage(
+                            groupId: String,
+                            cursor: String?,
+                        ): EmotionResult<EmotionPage> {
+                            feedRequests++
+                            return if (feedRequests == 1) {
+                                EmotionResult.Success(EmotionPage(listOf(originalPost), "next"))
+                            } else {
+                                EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
+                            }
+                        }
+                    }
+                val viewModel =
+                    createViewModel(
+                        source = { GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER)) },
+                        emotionRepository = repository,
+                    )
+                runCurrent()
+
+                val originalDetail = viewModel.uiState.value.detail
+                viewModel.onRefresh()
+                runCurrent()
+
+                assertEquals(originalDetail, viewModel.uiState.value.detail)
+                val refreshedFeed = assertIs<GroupMoodFeedUiState.Available>(viewModel.uiState.value.moodFeed)
+                assertEquals(listOf("42"), refreshedFeed.posts.map { it.id })
+                assertEquals(GroupMoodFeedLoadState.RefreshFailed(isRetrying = false), refreshedFeed.loadState)
+                assertTrue(refreshedFeed.hasMore)
+                assertEquals(GroupDetailRefreshStatus.Idle, viewModel.uiState.value.refreshStatus)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `public join writes once and completes only after server membership confirmation`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
@@ -615,7 +794,9 @@ class GroupDetailViewModelTest {
                     )
                 runCurrent()
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
                 assertEquals(1, writes)
                 assertEquals(2, reads)
@@ -666,6 +847,7 @@ class GroupDetailViewModelTest {
                     )
                 runCurrent()
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
                 assertEquals(GroupDetailJoinPhase.VerificationRequired, viewModel.uiState.value.join.phase)
                 assertEquals(
@@ -674,6 +856,7 @@ class GroupDetailViewModelTest {
                         ?.role,
                 )
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
                 assertEquals(1, writes)
                 assertEquals(3, reads)
@@ -705,6 +888,7 @@ class GroupDetailViewModelTest {
                     )
                 runCurrent()
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
                 assertEquals(
                     GroupJoinType.PRIVATE,
@@ -746,6 +930,7 @@ class GroupDetailViewModelTest {
                         )
                     runCurrent()
                     viewModel.onJoinClick()
+                    viewModel.onConfirmJoin()
                     runCurrent()
                     assertEquals(
                         GroupRole.MEMBER,
@@ -796,6 +981,15 @@ class GroupDetailViewModelTest {
                     )
                 runCurrent()
                 viewModel.onJoinClick()
+                assertTrue(viewModel.uiState.value.isJoinConfirmationVisible)
+                assertFalse(viewModel.isCodeJoinVisible.value)
+                assertEquals(0, writes)
+                viewModel.onCancelJoin()
+                assertFalse(viewModel.isCodeJoinVisible.value)
+                viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
+                assertTrue(viewModel.isCodeJoinVisible.value)
+                assertFalse(viewModel.uiState.value.isJoinConfirmationVisible)
                 viewModel.onJoinCodeChanged("ABC123")
                 viewModel.onJoinCodeSearch()
                 runCurrent()
@@ -805,10 +999,105 @@ class GroupDetailViewModelTest {
                 assertEquals(GroupDetailJoinPhase.VerificationRequired, viewModel.uiState.value.join.phase)
                 assertEquals("ABC123", viewModel.codeJoinUiState.value.input)
                 viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
                 runCurrent()
                 assertEquals(1, writes)
                 assertEquals(2, reads)
                 assertEquals(GroupDetailJoinPhase.Completed, viewModel.uiState.value.join.phase)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `public join requires confirmation and cancel sends no write`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var writes = 0
+                val viewModel =
+                    createViewModel(
+                        source = {
+                            GroupDetailLoadResult.Loaded(
+                                detail(GroupRole.NONE).copy(joinType = GroupJoinType.PUBLIC),
+                            )
+                        },
+                        joinAction =
+                            JoinPublicGroupAction {
+                                writes++
+                                GroupPublicJoinResult.Unavailable
+                            },
+                    )
+                runCurrent()
+                viewModel.onConfirmJoin()
+                viewModel.onJoinClick()
+                viewModel.onJoinClick()
+                runCurrent()
+                assertTrue(viewModel.uiState.value.isJoinConfirmationVisible)
+                assertEquals(0, writes)
+                assertFalse(viewModel.onBackRequested())
+                assertFalse(viewModel.uiState.value.isJoinConfirmationVisible)
+                viewModel.onConfirmJoin()
+                runCurrent()
+                assertEquals(0, writes)
+                viewModel.onJoinClick()
+                viewModel.onCancelJoin()
+                viewModel.onConfirmJoin()
+                runCurrent()
+                assertEquals(0, writes)
+                viewModel.onJoinClick()
+                viewModel.onConfirmJoin()
+                viewModel.onConfirmJoin()
+                runCurrent()
+                assertEquals(1, writes)
+                assertFalse(viewModel.uiState.value.isJoinConfirmationVisible)
+                viewModel.onJoinClick()
+                assertTrue(viewModel.uiState.value.isJoinConfirmationVisible)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun detailLoadingProbe() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                for (latency in listOf(0L, 50L, 200L, 1500L)) {
+                    repeat(3) { repetition ->
+                        var reads = 0
+                        var feedReads = 0
+                        var feedStart = -1L
+                        val start = testScheduler.currentTime
+                        val repo =
+                            object : EmotionRepository by TestEmotionRepository {
+                                override suspend fun feedPage(
+                                    groupId: String,
+                                    cursor: String?,
+                                ): EmotionResult<EmotionPage> {
+                                    feedReads++
+                                    feedStart = testScheduler.currentTime - start
+                                    return EmotionResult.Success(EmotionPage(emptyList(), null))
+                                }
+                            }
+                        val vm =
+                            createViewModel(source = {
+                                reads++
+                                delay(latency)
+                                GroupDetailLoadResult.Loaded(detail(GroupRole.MEMBER))
+                            }, emotionRepository = repo)
+                        advanceUntilIdle()
+                        assertIs<GroupDetailContent.Ready>(vm.uiState.value.content)
+                        assertEquals(latency, testScheduler.currentTime - start)
+                        assertEquals(latency, feedStart)
+                        assertEquals(1, reads)
+                        assertEquals(1, feedReads)
+                        println(
+                            "LOADING_PROBE,group_detail_initial,$latency,$repetition,${testScheduler.currentTime - start},$reads",
+                        )
+                        println("DETAIL_FEED_PROBE,$latency,$repetition,$feedStart,$feedReads")
+                    }
+                }
             } finally {
                 Dispatchers.resetMain()
             }
@@ -836,6 +1125,20 @@ class GroupDetailViewModelTest {
                 operationKeyAllocator = GroupOperationKeyAllocator("detail-test"),
             ),
     )
+
+    private fun emotion(id: Long) =
+        Emotion(
+            id = id,
+            state = EmotionState.ANGRY,
+            nickname = "member",
+            createdAt = Clock.System.now(),
+            isMine = false,
+            contentType = EmotionContentType.MEMO,
+            memo = "mood",
+            reactions = emptyList(),
+            groupStamp = null,
+            audio = null,
+        )
 
     private fun detail(role: GroupRole) =
         GroupDetailUiModel(
@@ -882,7 +1185,7 @@ class GroupDetailViewModelTest {
             selected: Boolean,
         ) = unavailable<Unit>()
 
-        override suspend fun block(id: Long) = unavailable<Unit>()
+        override suspend fun delete(emotionId: Long) = EmotionModerationResult.Unavailable
 
         private fun <T> unavailable() = EmotionResult.Failure(EmotionFailure.UNAVAILABLE)
     }

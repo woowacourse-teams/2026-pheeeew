@@ -17,6 +17,11 @@ internal data class MapFeedbackUiModel(
     val action: MapFeedbackAction? = null,
 )
 
+data class MapTransientNoticeUiModel(
+    val id: Long,
+    val message: String,
+)
+
 /** Show the underlying connection problem once instead of stacking its map/API symptoms. */
 internal fun MapUiModel.primaryFeedback(): MapFeedbackUiModel? =
     when {

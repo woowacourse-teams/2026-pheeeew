@@ -5,9 +5,9 @@ import androidx.lifecycle.viewModelScope
 import com.pheeeew.domain.model.emotion.EmotionPage
 import com.pheeeew.domain.model.emotion.EmotionReactionType
 import com.pheeeew.domain.model.group.GroupRole
-import com.pheeeew.domain.repository.emotion.EmotionFailure
-import com.pheeeew.domain.repository.emotion.EmotionResult
-import com.pheeeew.domain.repository.group.GroupPublicJoinResult
+import com.pheeeew.domain.repository.EmotionFailure
+import com.pheeeew.domain.repository.EmotionResult
+import com.pheeeew.domain.repository.GroupPublicJoinResult
 import com.pheeeew.feature.monitoring.product.ProductMonitoring
 import com.pheeeew.feature.monitoring.product.labels
 import com.pheeeew.feature.monitoring.product.resultLabel
@@ -20,6 +20,10 @@ import com.pheeeew.feature.screens.group.join.GroupJoinUiState
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupJoinType
 import com.pheeeew.feature.screens.group.model.GroupOperationKey
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
+import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
@@ -34,11 +38,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 
+@AssistedInject
 class GroupDetailViewModel(
-    val groupId: GroupId,
+    @Assisted val groupId: GroupId,
     private val dependencies: GroupDetailDependencies,
     initialGroupName: String? = null,
 ) : ViewModel() {
+    @AssistedFactory
+    interface Factory : ManualViewModelAssistedFactory {
+        fun create(groupId: GroupId): GroupDetailViewModel
+    }
+
     val telemetry = ProductMonitoring(dependencies.monitoring, "group_detail", labels("group_key" to groupId.value))
     private val _uiState =
         MutableStateFlow(
@@ -50,7 +60,6 @@ class GroupDetailViewModel(
 
     private var loadJob: Job? = null
     private var loadingIndicatorDelayJob: Job? = null
-    private var loadingIndicatorMinimumJob: Job? = null
     private var loadingIndicatorRequestId: Long? = null
     private var leaveJob: Job? = null
     private var joinJob: Job? = null
@@ -128,17 +137,10 @@ class GroupDetailViewModel(
         ) {
             return
         }
-        if (state.detail != null) refreshMoodFeed()
         if (loadJob?.isActive == true) {
-            if (showRefreshIndicator && state.detail != null) {
-                _uiState.update { current ->
-                    current.copy(refreshStatus = GroupDetailRefreshStatus.Refreshing, isLoading = true)
-                }
-                scheduleLoadingIndicator(loadGeneration)
-            }
             return
         }
-        loadDetail(showRefreshIndicator = showRefreshIndicator)
+        loadDetail(showRefreshIndicator = showRefreshIndicator, refreshFeed = state.detail != null)
     }
 
     fun onMoodFeedRetry() {
@@ -326,23 +328,21 @@ class GroupDetailViewModel(
         val currentFeed = _uiState.value.moodFeed
         val current = currentFeed as? GroupMoodFeedUiState.Available
         val posts = current?.posts.orEmpty()
-        val keepInitialError = posts.isEmpty() && currentFeed is GroupMoodFeedUiState.LoadFailed
+        val keepInitialError = current == null && currentFeed is GroupMoodFeedUiState.LoadFailed
         val requestId = beginMoodFeedRequest()
         _uiState.update { state ->
             state.copy(
                 moodFeed =
-                    if (posts.isEmpty()) {
-                        if (keepInitialError) {
-                            GroupMoodFeedUiState.LoadFailed(isRetrying = true)
-                        } else {
-                            GroupMoodFeedUiState.Loading
-                        }
-                    } else {
+                    if (current != null) {
                         GroupMoodFeedUiState.Available(
                             posts = posts,
                             hasMore = moodFeedNextCursor != null,
                             loadState = GroupMoodFeedLoadState.Refreshing,
                         )
+                    } else if (keepInitialError) {
+                        GroupMoodFeedUiState.LoadFailed(isRetrying = true)
+                    } else {
+                        GroupMoodFeedUiState.Loading
                     },
             )
         }
@@ -366,7 +366,7 @@ class GroupDetailViewModel(
                     }
 
                     is EmotionResult.Failure -> {
-                        if (posts.isEmpty()) {
+                        if (current == null) {
                             _uiState.update { it.copy(moodFeed = GroupMoodFeedUiState.LoadFailed(isRetrying = false)) }
                         } else {
                             _uiState.update { state ->
@@ -449,6 +449,41 @@ class GroupDetailViewModel(
         return moodFeedGeneration
     }
 
+    private fun invalidateMoodFeedRequest() {
+        moodFeedGeneration += 1
+        moodFeedJob?.cancel()
+        moodFeedJob = null
+    }
+
+    private fun cancelCoordinatedMoodFeedRefresh(job: Job) {
+        if (moodFeedJob !== job) {
+            job.cancel()
+            return
+        }
+        invalidateMoodFeedRequest()
+        _uiState.update { state ->
+            val feed =
+                when (val current = state.moodFeed) {
+                    is GroupMoodFeedUiState.Available -> {
+                        if (current.loadState == GroupMoodFeedLoadState.Refreshing) {
+                            current.copy(loadState = GroupMoodFeedLoadState.Idle)
+                        } else {
+                            current
+                        }
+                    }
+
+                    is GroupMoodFeedUiState.LoadFailed -> {
+                        if (current.isRetrying) current.copy(isRetrying = false) else current
+                    }
+
+                    GroupMoodFeedUiState.Loading -> {
+                        current
+                    }
+                }
+            if (feed == state.moodFeed) state else state.copy(moodFeed = feed)
+        }
+    }
+
     private suspend fun requestMoodFeedPage(cursor: String?): EmotionResult<EmotionPage> =
         try {
             dependencies.emotionRepository.feedPage(groupId.value, cursor)
@@ -502,14 +537,35 @@ class GroupDetailViewModel(
     fun onJoinClick() {
         val state = _uiState.value
         val detail = state.detail ?: return
-        if (joinJob?.isActive == true || _isCodeJoinVisible.value || detail.role != GroupRole.NONE ||
+        if (state.isJoinConfirmationVisible || joinJob?.isActive == true || _isCodeJoinVisible.value ||
+            detail.role != GroupRole.NONE ||
             state.overlay != GroupDetailOverlay.None
         ) {
             return
         }
         if (state.join.phase == GroupDetailJoinPhase.VerificationRequired) {
             startJoinVerification(write = false)
-        } else if (detail.joinType == GroupJoinType.PRIVATE) {
+        } else {
+            _uiState.update { it.copy(isJoinConfirmationVisible = true) }
+        }
+    }
+
+    fun onCancelJoin() {
+        _uiState.update { it.copy(isJoinConfirmationVisible = false) }
+    }
+
+    fun onConfirmJoin() {
+        val state = _uiState.value
+        if (!state.isJoinConfirmationVisible) return
+        onCancelJoin()
+        val detail = state.detail ?: return
+        if (detail.role != GroupRole.NONE ||
+            state.overlay != GroupDetailOverlay.None || _isCodeJoinVisible.value ||
+            state.join.phase == GroupDetailJoinPhase.VerificationRequired
+        ) {
+            return
+        }
+        if (detail.joinType == GroupJoinType.PRIVATE) {
             codeJoinHolder?.open() ?: return
             _isCodeJoinVisible.value = true
         } else {
@@ -576,7 +632,6 @@ class GroupDetailViewModel(
                 ++loadGeneration
                 loadJob?.cancelAndJoin()
                 loadingIndicatorDelayJob?.cancel()
-                loadingIndicatorMinimumJob?.cancel()
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -723,7 +778,10 @@ class GroupDetailViewModel(
 
     /** false면 화면 종료 대신 열린 팝업을 닫거나 제출을 유지합니다. */
     fun onBackRequested(): Boolean =
-        if (joinJob?.isActive == true || _isCodeJoinVisible.value) {
+        if (_uiState.value.isJoinConfirmationVisible) {
+            onCancelJoin()
+            false
+        } else if (joinJob?.isActive == true || _isCodeJoinVisible.value) {
             false
         } else {
             when (_uiState.value.overlay) {
@@ -859,6 +917,7 @@ class GroupDetailViewModel(
     private fun loadDetail(
         reconcileLeaveOutcome: Boolean = false,
         showRefreshIndicator: Boolean = true,
+        refreshFeed: Boolean = false,
     ) {
         if (loadJob?.isActive == true) return
         val requestId = ++loadGeneration
@@ -883,15 +942,22 @@ class GroupDetailViewModel(
         }
         if (showRefreshIndicator) scheduleLoadingIndicator(requestId)
 
+        var coordinatedFeedJob: Job? = null
         loadJob =
             viewModelScope.launch {
                 try {
+                    coordinatedFeedJob =
+                        if (hasSnapshot && refreshFeed) {
+                            refreshMoodFeed()
+                            moodFeedJob
+                        } else {
+                            null
+                        }
                     val result =
                         telemetry
                             .operation(
                                 "group_detail_load_finished",
                             ).observe(::resultLabel) { requestDetail() }
-                    awaitLoadingIndicatorMinimum(requestId)
                     if (reconcileLeaveOutcome) {
                         telemetry.emit(
                             "operation_reconciled",
@@ -900,6 +966,13 @@ class GroupDetailViewModel(
                                 "outcome" to resultLabel(result),
                             ),
                         )
+                    }
+                    if (requestId != loadGeneration) return@launch
+
+                    if (result is GroupDetailLoadResult.MembershipChanged || result == GroupDetailLoadResult.NotFound) {
+                        invalidateMoodFeedRequest()
+                    } else {
+                        coordinatedFeedJob?.join()
                     }
                     if (requestId != loadGeneration) return@launch
 
@@ -912,6 +985,18 @@ class GroupDetailViewModel(
                         (result as? GroupDetailLoadResult.Loaded)
                             ?.detail
                             ?.takeIf { it.group.id == groupId }
+
+                    val initialMoodFeed =
+                        if (!hasSnapshot && loadedDetail != null) {
+                            val feedRequestId = beginMoodFeedRequest()
+                            requestMoodFeedPage(cursor = null)
+                                .takeIf { feedRequestId == moodFeedGeneration }
+                                ?.toInitialFeed()
+                        } else {
+                            null
+                        }
+                    if (requestId != loadGeneration) return@launch
+                    clearLoadingIndicator(requestId)
 
                     val leaveOutcomeLeftKey =
                         if (reconcileLeaveOutcome && loadedDetail?.role == GroupRole.NONE &&
@@ -971,6 +1056,7 @@ class GroupDetailViewModel(
                                 } else {
                                     state.copy(
                                         content = GroupDetailContent.Ready(detail),
+                                        moodFeed = initialMoodFeed ?: state.moodFeed,
                                         groupName = detail.group.name,
                                         refreshStatus = GroupDetailRefreshStatus.Idle,
                                         isLoading = false,
@@ -1050,10 +1136,10 @@ class GroupDetailViewModel(
                             }
                         }
                     }
-                    if (loadedDetail != null && _uiState.value.moodFeed == GroupMoodFeedUiState.Loading) {
-                        loadInitialMoodFeed()
-                    }
                 } finally {
+                    if (requestId != loadGeneration && coordinatedFeedJob?.isActive == true) {
+                        coordinatedFeedJob?.let(::cancelCoordinatedMoodFeedRefresh)
+                    }
                     if (requestId == loadGeneration) {
                         clearLoadingIndicator(requestId)
                         _uiState.update { state ->
@@ -1088,25 +1174,13 @@ class GroupDetailViewModel(
                 _uiState.update { state ->
                     if (state.isLoading) state.copy(isLoadingIndicatorVisible = true) else state
                 }
-                loadingIndicatorMinimumJob =
-                    viewModelScope.launch {
-                        delay(LOADING_INDICATOR_MINIMUM_MILLIS)
-                    }
             }
-    }
-
-    private suspend fun awaitLoadingIndicatorMinimum(requestId: Long) {
-        if (loadingIndicatorRequestId != requestId) return
-        loadingIndicatorDelayJob?.cancelAndJoin()
-        if (_uiState.value.isLoadingIndicatorVisible) loadingIndicatorMinimumJob?.join()
     }
 
     private fun clearLoadingIndicator(requestId: Long? = null) {
         if (requestId != null && loadingIndicatorRequestId != requestId) return
         loadingIndicatorDelayJob?.cancel()
-        loadingIndicatorMinimumJob?.cancel()
         loadingIndicatorDelayJob = null
-        loadingIndicatorMinimumJob = null
         loadingIndicatorRequestId = null
     }
 
@@ -1271,4 +1345,3 @@ enum class GroupCopyCodeResult {
 }
 
 private const val LOADING_INDICATOR_DELAY_MILLIS = 150L
-private const val LOADING_INDICATOR_MINIMUM_MILLIS = 300L

@@ -6,8 +6,8 @@ import com.pheeeew.domain.model.emotion.EmotionRegistration
 import com.pheeeew.domain.model.emotion.EmotionRegistrationContent
 import com.pheeeew.domain.model.emotion.EmotionRegistrationResult
 import com.pheeeew.domain.repository.EmotionRegistrationRepository
-import com.pheeeew.domain.repository.group.GroupStampListLoadResult
-import com.pheeeew.domain.repository.group.GroupStampListRepository
+import com.pheeeew.domain.repository.GroupStampListLoadResult
+import com.pheeeew.domain.repository.GroupStampListRepository
 import com.pheeeew.domain.usecase.IsWithinEmotionRecordRadiusUseCase
 import com.pheeeew.feature.screens.map.record.location.RECORD_RADIUS_METERS
 import com.pheeeew.feature.screens.map.record.location.constrainToRecordRadius
@@ -116,6 +116,71 @@ class RecordLocationTest {
                 assertEquals(RecordFlowStepUiModel.LocationSelection, model.uiModel.value.step)
                 assertTrue(model.notice.value?.isError == true)
                 assertEquals(EmotionRegistrationContent.Audio("/tmp/voice.m4a"), repository.lastRegistration?.content)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun registrationKeepsAnonymousChoiceAndRequestIdOnUncertainRetry() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val registrations = mutableListOf<EmotionRegistration>()
+                val model =
+                    initializedModel(
+                        object : EmotionRegistrationRepository {
+                            override suspend fun register(
+                                registration: EmotionRegistration,
+                            ): EmotionRegistrationResult {
+                                registrations += registration
+                                return if (registrations.size == 1) {
+                                    EmotionRegistrationResult.Unavailable
+                                } else {
+                                    EmotionRegistrationResult.Success(42)
+                                }
+                            }
+                        },
+                    )
+                advanceUntilIdle()
+                model.onAnonymousChange(false)
+                model.onMemoChange("기록")
+                model.onNext(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L), null)
+                model.onConfirmLocation()
+                advanceUntilIdle()
+                assertFalse(registrations.single().anonymous)
+                assertFalse(model.uiModel.value.isSubmitting)
+                model.onConfirmLocation()
+                advanceUntilIdle()
+                assertEquals(2, registrations.size)
+                assertEquals(registrations[0], registrations[1])
+                assertEquals(RecordFlowStepUiModel.Closed, model.uiModel.value.step)
+                assertFalse(model.uiModel.value.isAnonymous)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun anonymousSelectionSurvivesLocationStepAndResetsForNewRecord() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                val model = initializedModel(FakeRegistrationRepository())
+                advanceUntilIdle()
+                assertFalse(model.uiModel.value.isAnonymous)
+                model.onAnonymousChange(true)
+                model.onMemoChange("기록")
+                model.onNext(CurrentLocation(origin.latitude, origin.longitude, 1f, 0L), null)
+                assertTrue(model.uiModel.value.isAnonymous)
+                model.onAnonymousChange(false)
+                assertTrue(model.uiModel.value.isAnonymous)
+                model.onBackToInput()
+                assertTrue(model.uiModel.value.isAnonymous)
+                model.dismiss()
+                model.open(EmotionTypeUiModel.ANGRY)
+                advanceUntilIdle()
+                assertFalse(model.uiModel.value.isAnonymous)
             } finally {
                 Dispatchers.resetMain()
             }

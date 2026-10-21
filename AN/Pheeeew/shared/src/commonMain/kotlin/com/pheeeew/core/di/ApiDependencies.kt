@@ -1,46 +1,44 @@
 package com.pheeeew.core.di
 
 import com.pheeeew.core.di.device.DeviceSessionBuildConfig
-import com.pheeeew.core.monitoring.DefinedEvent
-import com.pheeeew.core.monitoring.EventValue
-import com.pheeeew.core.monitoring.Monitoring
-import com.pheeeew.core.monitoring.NoOpMonitoring
 import com.pheeeew.core.network.ApiClient
 import com.pheeeew.core.network.ApiConfig
-import com.pheeeew.core.network.ApiResponseObserver
 import com.pheeeew.core.network.ConnectivityObserver
-import com.pheeeew.core.network.createPlatformApiClient
 import com.pheeeew.core.session.DeviceSessionManager
-import com.pheeeew.data.local.device.DeviceCredentialStorage
-import com.pheeeew.data.remote.device.api.KtorDeviceSessionApi
-import com.pheeeew.data.remote.device.attestation.DeviceProofProvider
-import com.pheeeew.data.repository.device.DeviceSessionRepositoryImpl
-import com.pheeeew.domain.model.device.DeviceDiagnosticOutcome
-import com.pheeeew.domain.model.device.DevicePlatform
-import com.pheeeew.domain.model.device.DeviceSessionDiagnostic
-import com.pheeeew.domain.model.device.DeviceSessionDiagnostics
-import com.pheeeew.domain.model.device.DeviceSessionStage
-import com.pheeeew.domain.model.device.recordSafely
-import com.pheeeew.feature.monitoring.network.ApiMonitoringEvents
-import com.pheeeew.feature.monitoring.network.MonitoringApiObserver
+import com.pheeeew.data.repository.DeviceNicknameRepositoryImpl
+import com.pheeeew.domain.model.device.DeviceSessionResult
+import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
 
-/** App/process owner. Feature dependencies borrow [client] and must not close it. */
-class ApiDependencies private constructor(
-    private val bootstrap: ApiClient,
+/** Owns process resources; features borrow them and must never close them. */
+@Inject
+class ApiDependencies(
+    val buildConfig: DeviceSessionBuildConfig,
+    @Bootstrap private val bootstrap: ApiClient,
     val client: ApiClient,
     val session: DeviceSessionManager,
+    val nicknameRepository: DeviceNicknameRepositoryImpl,
     val connectivityObserver: ConnectivityObserver,
     val appSession: AppSession,
-    private val scope: CoroutineScope,
+    @SessionWork private val scope: CoroutineScope,
 ) {
-    fun prepareSession() {
-        scope.launch { session.prepare() }
+    init {
+        scope.launch(start = CoroutineStart.UNDISPATCHED) {
+            var generation: Long? = null
+            session.state.collect { state ->
+                val nextGeneration =
+                    when (state) {
+                        is DeviceSessionResult.Ready -> state.access.generation
+                        is DeviceSessionResult.NeedsRegistration -> null
+                        else -> return@collect
+                    }
+                if (generation != null && generation != nextGeneration) nicknameRepository.invalidate()
+                generation = nextGeneration
+            }
+        }
     }
 
     fun close() {
@@ -48,92 +46,6 @@ class ApiDependencies private constructor(
         scope.cancel()
         client.close()
         bootstrap.close()
-    }
-
-    companion object {
-        fun create(
-            build: DeviceSessionBuildConfig,
-            storage: DeviceCredentialStorage,
-            platform: DevicePlatform,
-            createProofProvider: () -> DeviceProofProvider,
-            connectivityObserver: ConnectivityObserver,
-            diagnostics: DeviceSessionDiagnostics = DeviceSessionDiagnostics {},
-            monitoring: Monitoring = NoOpMonitoring,
-        ): ApiDependencies {
-            val attestationPolicy = build.policy(createProofProvider)
-            val config = ApiConfig(build.baseUrl)
-            val attemptObserver = MonitoringApiObserver(monitoring)
-            val bootstrap = createPlatformApiClient(config, attemptObserver = attemptObserver, monitoring = monitoring)
-            val diagnosticContext = monitoring.context("network")
-            val sessionDiagnostics =
-                DeviceSessionDiagnostics { event ->
-                    diagnostics.recordSafely(event)
-                    if (event.outcome == DeviceDiagnosticOutcome.FAILED &&
-                        (event.failureKind != null || event.serverCode != null)
-                    ) {
-                        monitoring.track(
-                            DefinedEvent(
-                                ApiMonitoringEvents.deviceSessionDiagnostic,
-                                buildMap {
-                                    put("stage", EventValue.Text(event.stage.name.lowercase()))
-                                    put("outcome", EventValue.Text(event.outcome.name.lowercase()))
-                                    event.failureKind?.let {
-                                        put("failure_kind", EventValue.Text(it.name.lowercase()))
-                                    }
-                                    event.statusCode?.let { put("status_code", EventValue.Integer(it.toLong())) }
-                                    event.serverCode?.let { put("server_code", EventValue.Text(it)) }
-                                    event.sdkCode?.let { put("sdk_code", EventValue.Integer(it.toLong())) }
-                                    event.exceptionType?.let { put("exception_type", EventValue.Text(it)) }
-                                },
-                            ),
-                            diagnosticContext,
-                        )
-                    }
-                }
-            val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-            val now = { Clock.System.now().toEpochMilliseconds() }
-            val session =
-                DeviceSessionManager(
-                    com.pheeeew.feature.monitoring.product.MonitoredDeviceSession(
-                        DeviceSessionRepositoryImpl(
-                            KtorDeviceSessionApi(bootstrap.requests, sessionDiagnostics),
-                            storage,
-                            platform,
-                            attestationPolicy,
-                            now,
-                            sessionDiagnostics,
-                        ),
-                        monitoring,
-                    ),
-                    scope,
-                    now,
-                )
-            val observer =
-                ApiResponseObserver { status ->
-                    diagnostics.recordSafely(
-                        DeviceSessionDiagnostic(
-                            DeviceSessionStage.AUTHENTICATED_REQUEST,
-                            if (status != null &&
-                                status in 200..299
-                            ) {
-                                DeviceDiagnosticOutcome.SUCCEEDED
-                            } else {
-                                DeviceDiagnosticOutcome.FAILED
-                            },
-                            statusCode = status,
-                        ),
-                    )
-                }
-            val client = createPlatformApiClient(config, session, observer, attemptObserver, monitoring)
-            return ApiDependencies(
-                bootstrap,
-                client,
-                session,
-                connectivityObserver,
-                AppSession(client, connectivityObserver),
-                scope,
-            )
-        }
     }
 }
 

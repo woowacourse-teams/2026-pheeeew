@@ -29,5 +29,4 @@ dependencyResolutionManagement {
 
 include(":androidApp")
 include(":shared")
-include(":groupDetailBenchmarkTarget")
-include(":groupDetailBenchmark")
+include(":developerTools")

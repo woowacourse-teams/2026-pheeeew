@@ -75,7 +75,7 @@
     <string name="record_recording">녹음 중</string>
     <string name="record_again">다시 녹음</string>
     <string name="record_discard_title">작성한 내용이 제외돼요.</string>
-    <string name="record_single_attachment_hint">메모 또는 녹음 중 하나는 필수예요. 한 가지만 등록할 수 있어요.</string>
+    <string name="record_single_attachment_hint">메모 또는 녹음 중 하나를 선택해주세요.</string>
     <string name="record_excluded_input_dialog">이번 등록에는 %1$s만 포함되고 %2$s%3$s 저장되지 않아요.
 계속할까요?</string>
     <string name="record_submit_selected_input">%1$s만 등록</string>
@@ -83,6 +83,7 @@
     <string name="record_next">다음</string>
     <string name="record_memo_prompt">지금 감정을 짧게 적어보세요</string>
     <string name="record_memo">메모</string>
+    <string name="record_anonymous">익명</string>
     <string name="record_audio">녹음</string>
     <string name="record_drag_stamp">끌어서 이동</string>
     <string name="record_choose_stamp_title">스탬프를 눌러서 옮겨주세요</string>
@@ -96,11 +97,11 @@
     <string name="record_emotion_phrase_annoyed">짜증난</string>
     <string name="record_emotion_prompt_annoyed">에잇! 짜증나!!</string>
     <string name="record_emotion_phrase_tired">지친</string>
-    <string name="record_emotion_prompt_tired">아무것도 하기 싫다… 아무것도 안 하는 것도 힘들다…</string>
+    <string name="record_emotion_prompt_tired">아무것도 하기 싫다…</string>
     <string name="record_emotion_phrase_defeated">좌절한</string>
     <string name="record_emotion_prompt_defeated">오늘도 왜 나만 힘들지!?</string>
     <string name="record_emotion_phrase_angry">분노한</string>
-    <string name="record_emotion_prompt_angry">아니, 이건 아니지… 아아아아악!!!!!!</string>
+    <string name="record_emotion_prompt_angry">아아아아악!!!!!!</string>
     <string name="record_emotion_choose">%1$s 선택</string>
     <string name="tap_reaction_blocked_1">아오!!</string>
     <string name="tap_reaction_blocked_2">으아아</string>
@@ -135,9 +136,8 @@
     <string name="ranking_weekly_title">주간 랭킹</string>
     <string name="ranking_press_title">프레스 주간 랭킹</string>
     <string name="press_ranking_headline">지금, 어떤 마음이 모였을까?</string>
-    <string name="press_ranking_subtitle">그룹별 누적 누름 수</string>
-    <string name="press_ranking_group">프레스 그룹</string>
-    <string name="press_ranking_my_group">내 그룹</string>
+    <string name="press_ranking_subtitle">개인별 전국 주간 프레스 수</string>
+    <string name="press_ranking_person">프레스 랭킹</string>
     <string name="ranking_stamp_label">감정 스탬프</string>
     <string name="ranking_score_count">%1$d개</string>
 
@@ -161,6 +161,36 @@
     <string name="legal_external_page_unavailable">이 화면에서는 다른 페이지를 열 수 없어요.</string>
     <string name="legal_confirm">확인</string>
     <string name="settings_app_section">앱 설정</string>
+    <string name="settings_profile_section">내 정보</string>
+    <string name="settings_nickname_change">변경하기</string>
+    <string name="settings_nickname_changed">닉네임을 변경했어요.</string>
+    <string name="settings_nickname_dialog_title">닉네임을 알려주세요</string>
+    <string name="settings_nickname_hint">닉네임 입력</string>
+    <string name="settings_nickname_character_count">%1$d/%2$d</string>
+    <string name="settings_nickname_cancel">취소</string>
+    <string name="settings_nickname_confirm">확인</string>
+    <string name="settings_nickname_default">닉네임</string>
+    <string name="settings_nickname_loading">닉네임 확인 중…</string>
+    <string name="settings_nickname_load_failed">닉네임 확인 필요</string>
+    <string name="settings_nickname_required_title">닉네임을 입력해주세요</string>
+    <string name="settings_nickname_registration_title">닉네임을 설정해주세요</string>
+    <string name="settings_nickname_retry">다시 시도</string>
+    <string name="settings_nickname_empty_error">닉네임을 입력해주세요.</string>
+    <string name="settings_nickname_too_long_error">닉네임은 10자 이하여야 해요.</string>
+    <string name="settings_nickname_reserved_error">‘익명’은 닉네임으로 사용할 수 없어요.</string>
+    <string name="settings_nickname_checking">사용 가능 여부 확인 중…</string>
+    <string name="settings_nickname_available">사용할 수 있는 닉네임이에요.</string>
+    <string name="settings_nickname_taken">이미 사용 중인 닉네임이에요.</string>
+    <string name="settings_nickname_availability_failed">사용 가능 여부를 확인하지 못했어요. 다시 시도해주세요.</string>
+    <string name="settings_nickname_device_prepare_failed">앱을 시작하는 중 문제가 생겼어요. 다시 시도해주세요.</string>
+    <string name="settings_nickname_lookup_failed">닉네임을 확인하지 못했어요. 네트워크 연결을 확인하고 다시 시도해주세요.</string>
+    <string name="settings_nickname_registration_failed">설정을 완료하지 못했어요. 다시 시도해주세요.</string>
+    <string name="settings_nickname_save_failed">닉네임을 저장하지 못했어요. 다시 시도해주세요.</string>
+    <string name="settings_nickname_invalid_error">닉네임 형식을 확인해주세요.</string>
+    <string name="settings_nickname_result_unconfirmed">저장 결과를 확인하지 못했어요. 다시 확인해주세요.</string>
+    <string name="settings_nickname_change_unconfirmed">닉네임 변경을 확인하지 못했어요. 다시 저장해주세요.</string>
+    <string name="settings_nickname_saved_unconfirmed">저장된 닉네임을 확인하지 못했어요.</string>
+    <string name="settings_nickname_result_unset">닉네임 저장 여부를 확인하지 못했어요. 다시 시도해주세요.</string>
     <string name="settings_help_section">이용 안내</string>
     <string name="settings_app_version">앱 버전</string>
 
@@ -197,7 +227,6 @@
     <!-- 그룹 생성 -->
     <string name="group_create_title">그룹 만들기</string>
     <string name="group_create_back">뒤로</string>
-    <string name="group_create_draft_expired">1시간 동안 수정하지 않은 그룹 작성 내용은 삭제했어요.</string>
     <string name="group_create_draft_reset">저장한 그룹 작성 내용을 복원하지 못해 삭제했어요. 다시 작성해 주세요.</string>
     <string name="group_create_discard_title">작성 중인 그룹이 있어요.</string>
     <string name="group_create_discard_body">입력한 내용을 버리고 그룹 만들기를 나갈까요? 이 작업은 되돌릴 수 없어요.</string>
@@ -474,4 +503,8 @@
     <string name="group_members_cursor_expired">목록을 다시 불러와야 해요.</string>
     <string name="group_members_reload">목록 다시 불러오기</string>
     <string name="group_detail_leave_public_body">그룹에서 나가도 전체 그룹에서 다시 참여할 수 있어요.</string>
+    <string name="group_join_confirm_title">그룹에 참여할까요?</string>
+    <string name="group_join_confirm_message">‘%1$s’ 그룹에 참여합니다.</string>
+    <string name="group_join_confirm_action">참여하기</string>
+    <string name="group_join_confirm_cancel">취소</string>
 </resources>

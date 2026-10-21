@@ -16,6 +16,7 @@ import com.pheeeew.domain.model.group.GroupRole
 import com.pheeeew.feature.monitoring.product.ProductScreen
 import com.pheeeew.feature.monitoring.product.rememberObservedEmotionPlayer
 import com.pheeeew.feature.screens.group.join.GroupInviteLinkCodec
+import com.pheeeew.feature.screens.group.join.GroupJoinConfirmationDialog
 import com.pheeeew.feature.screens.group.join.GroupJoinSheet
 import com.pheeeew.feature.screens.group.join.GroupJoinSubmissionState
 import com.pheeeew.feature.screens.group.model.GroupId
@@ -66,6 +67,11 @@ fun GroupDetailRoute(
             (codeState.submission as? GroupJoinSubmissionState.Succeeded)?.let {
                 viewModel.onCodeJoinSucceeded(it.groupId, it.operationKey)
             }
+        }
+    }
+    if (isCurrentDestination && uiState.isJoinConfirmationVisible) {
+        uiState.detail?.let { detail ->
+            GroupJoinConfirmationDialog(detail.group.name, viewModel::onConfirmJoin, viewModel::onCancelJoin)
         }
     }
     if (codeVisible) {

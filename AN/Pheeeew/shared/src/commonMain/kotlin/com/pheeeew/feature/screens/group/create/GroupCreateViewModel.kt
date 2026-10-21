@@ -511,7 +511,6 @@ class GroupCreateViewModel(
                 submission = GroupCreateSubmissionState.Editing,
                 recovery = GroupCreateRecoveryState.Idle,
                 isDiscardInProgress = true,
-                isDraftExpiredNoticeVisible = false,
                 discardFailed = false,
             )
         }
@@ -689,21 +688,6 @@ class GroupCreateViewModel(
                     snapshot?.draftUpdatedAtEpochMillis?.coerceAtMost(now)
                         ?: now.takeIf { restoredDraft != null && restoredDraft != DEFAULT_GROUP_CREATE_DRAFT }
                 val hasDraft = restoredDraft != null && restoredDraft != DEFAULT_GROUP_CREATE_DRAFT
-
-                if (restoredOperation == null && hasDraft && restoredTimestamp != null &&
-                    now >= restoredTimestamp && now - restoredTimestamp >= GroupCreateSessionSnapshot.DRAFT_TTL_MILLIS
-                ) {
-                    sessionWriteMutex.withLock { sessionStore.write(null) }
-                    draftUpdatedAtEpochMillis = null
-                    _uiState.update { state ->
-                        state.copy(
-                            draft = DEFAULT_GROUP_CREATE_DRAFT,
-                            restoration = GroupCreateRestorationState.Ready,
-                            isDraftExpiredNoticeVisible = true,
-                        )
-                    }
-                    return@launch
-                }
 
                 val migratedSnapshot =
                     snapshot?.copy(

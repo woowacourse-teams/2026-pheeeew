@@ -25,6 +25,7 @@ object ProductEvents {
         group_create_confirmation_resolved group_join_started group_lookup_finished
         group_join_submit_started group_join_finished group_flow_closed group_detail_load_finished
         group_invite_copy_finished group_leave_finished ranking_viewed ranking_load_finished ranking_week_changed
+        app_startup_finished app_startup_step_finished
         device_session_prepare_finished location_acquire_finished map_load_finished map_location_requested
         onboarding_step_viewed onboarding_finished operation_reconciled
         settings_action_selected settings_external_open_finished

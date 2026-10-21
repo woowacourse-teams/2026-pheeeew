@@ -1,7 +1,7 @@
 package com.pheeeew.feature.screens.group.adapter
 
-import com.pheeeew.domain.repository.group.GroupExploreRepository
-import com.pheeeew.domain.repository.group.GroupExploreResult
+import com.pheeeew.domain.repository.GroupExploreRepository
+import com.pheeeew.domain.repository.GroupExploreResult
 import com.pheeeew.feature.screens.group.home.explore.GroupExploreItemUiModel
 import com.pheeeew.feature.screens.group.home.explore.GroupExplorePage
 import com.pheeeew.feature.screens.group.home.explore.GroupExplorePageResult
@@ -11,7 +11,9 @@ import com.pheeeew.feature.screens.group.mapper.toAppearanceUiModel
 import com.pheeeew.feature.screens.group.mapper.toUiJoinType
 import com.pheeeew.feature.screens.group.model.GroupId
 import com.pheeeew.feature.screens.group.model.GroupSummaryUiModel
+import dev.zacsweers.metro.Inject
 
+@Inject
 class ApiGroupExploreSource(
     private val repository: GroupExploreRepository,
 ) : GroupExploreSource {

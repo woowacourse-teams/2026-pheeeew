@@ -22,12 +22,14 @@ data class MapCameraSnapshotUiModel(
 internal expect fun NativeMap(
     state: MapUiModel,
     isVisible: Boolean,
+    isActive: Boolean,
     isMounted: Boolean,
     savedCamera: MapCameraSnapshotUiModel?,
     onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
     onMemoryPressure: () -> Unit,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
+    onFirstFrameReady: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapViewport) -> Unit,
     onCameraMovingChanged: (Boolean) -> Unit,
@@ -36,5 +38,6 @@ internal expect fun NativeMap(
     onMapBackgroundClick: () -> Unit,
     onHighlightedPinPositionChanged: (HighlightedPinPosition?) -> Unit,
     onContentPresented: (String, List<String>) -> Unit,
+    styleUrlOverride: String?,
     modifier: Modifier,
 )

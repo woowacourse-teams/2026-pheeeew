@@ -18,7 +18,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
-import com.pheeeew.core.di.group.GroupDependencies
 import com.pheeeew.feature.screens.group.create.GroupCreateRoute
 import com.pheeeew.feature.screens.group.create.GroupCreateViewModel
 import com.pheeeew.feature.screens.group.detail.GroupCopyCodeResult
@@ -29,11 +28,12 @@ import com.pheeeew.feature.screens.group.home.GroupHomeViewModel
 import com.pheeeew.feature.screens.group.members.GroupMembersRoute
 import com.pheeeew.feature.screens.group.members.GroupMembersViewModel
 import com.pheeeew.feature.screens.group.model.GroupId
+import dev.zacsweers.metrox.viewmodel.assistedMetroViewModel
+import dev.zacsweers.metrox.viewmodel.metroViewModel
 
 @Composable
 @Suppress("DEPRECATION")
 fun GroupFeatureHost(
-    dependencies: GroupDependencies,
     modifier: Modifier = Modifier,
     onGroupDetailVisibilityChanged: (Boolean) -> Unit = {},
     onGroupCreateVisibilityChanged: (Boolean) -> Unit = {},
@@ -57,7 +57,7 @@ fun GroupFeatureHost(
         modifier = modifier,
     ) {
         composable<GroupHomeDestination> { entry ->
-            val homeViewModel = rememberGroupHomeViewModel(entry, dependencies)
+            val homeViewModel = rememberGroupHomeViewModel(entry)
             DisposableEffect(homeViewModel) {
                 currentOnRefreshActionChanged(homeViewModel::refresh)
                 onDispose { currentOnRefreshActionChanged(null) }
@@ -85,18 +85,9 @@ fun GroupFeatureHost(
 
         composable<GroupCreateDestination> { entry ->
             val homeBackStackEntry = remember(navController) { navController.getBackStackEntry<GroupHomeDestination>() }
-            val homeViewModel = rememberGroupHomeViewModel(homeBackStackEntry, dependencies)
+            val homeViewModel = rememberGroupHomeViewModel(homeBackStackEntry)
             val createViewModel: GroupCreateViewModel =
-                viewModel {
-                    GroupCreateViewModel(
-                        monitoring = dependencies.join.monitoring,
-                        createGroupAction = dependencies.createActions.create,
-                        errorReporter = dependencies.createErrorReporter,
-                        operationKeyAllocator = dependencies.operationKeyAllocator,
-                        findCandidatesAction = dependencies.createActions.findCandidates,
-                        sessionStore = dependencies.createSessionStore,
-                    )
-                }
+                metroViewModel()
             GroupCreateRoute(
                 viewModel = createViewModel,
                 isCurrentDestination = currentBackStackEntry == entry,
@@ -115,15 +106,12 @@ fun GroupFeatureHost(
             val destination = entry.toRoute<GroupDetailDestination>()
             val groupId = GroupId(destination.groupId)
             val homeBackStackEntry = remember(navController) { navController.getBackStackEntry<GroupHomeDestination>() }
-            val homeViewModel = rememberGroupHomeViewModel(homeBackStackEntry, dependencies)
+            val homeViewModel = rememberGroupHomeViewModel(homeBackStackEntry)
             val detailViewModel: GroupDetailViewModel =
-                viewModel(
+                assistedMetroViewModel<GroupDetailViewModel, GroupDetailViewModel.Factory>(
                     viewModelStoreOwner = entry,
                 ) {
-                    GroupDetailViewModel(
-                        groupId = groupId,
-                        dependencies = dependencies.detail,
-                    )
+                    create(groupId)
                 }
 
             fun returnHomeAndRefresh(removedGroupId: GroupId) {
@@ -162,11 +150,10 @@ fun GroupFeatureHost(
             val destination = entry.toRoute<GroupMembersDestination>()
             val groupId = GroupId(destination.groupId)
             val membersViewModel: GroupMembersViewModel =
-                viewModel(viewModelStoreOwner = entry) {
-                    GroupMembersViewModel(
-                        groupId = groupId,
-                        source = dependencies.membersSource,
-                    )
+                assistedMetroViewModel<GroupMembersViewModel, GroupMembersViewModel.Factory>(
+                    viewModelStoreOwner = entry,
+                ) {
+                    create(groupId)
                 }
             GroupMembersRoute(
                 viewModel = membersViewModel,
@@ -177,22 +164,8 @@ fun GroupFeatureHost(
 }
 
 @Composable
-private fun rememberGroupHomeViewModel(
-    entry: NavBackStackEntry,
-    dependencies: GroupDependencies,
-): GroupHomeViewModel =
-    viewModel(
-        viewModelStoreOwner = entry,
-        key = GROUP_HOME_VIEW_MODEL_KEY,
-    ) {
-        GroupHomeViewModel(
-            groupListSource = dependencies.groupListSource,
-            groupJoinDependencies = dependencies.join,
-            groupExploreSource = dependencies.exploreSource,
-            membershipChanges = dependencies.membershipChanges,
-            invalidateSharedMembership = dependencies.invalidateSharedMembership,
-        )
-    }
+private fun rememberGroupHomeViewModel(entry: NavBackStackEntry): GroupHomeViewModel =
+    metroViewModel(viewModelStoreOwner = entry, key = GROUP_HOME_VIEW_MODEL_KEY)
 
 private fun NavController.popBackStackIfCurrent(entry: NavBackStackEntry) {
     if (currentBackStackEntry == entry) popBackStack()

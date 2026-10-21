@@ -1,8 +1,8 @@
 package com.pheeeew.core.di.device
 
 import com.pheeeew.data.local.device.LegacyCredentialPolicy
-import com.pheeeew.data.remote.device.attestation.DeviceAttestationPolicy
-import com.pheeeew.data.remote.device.attestation.DeviceProofProvider
+import com.pheeeew.data.remote.attestation.DeviceAttestationPolicy
+import com.pheeeew.data.remote.attestation.DeviceProofProvider
 
 /** Build settings are checked again before creating a client or a platform proof provider. */
 data class DeviceSessionBuildConfig(

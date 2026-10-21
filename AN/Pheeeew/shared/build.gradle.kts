@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    alias(libs.plugins.metro)
 }
 
 kotlin {
@@ -52,7 +53,6 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.security.crypto)
             implementation(libs.compose.uiToolingPreview)
-            implementation(libs.compose.uiTooling)
             implementation(libs.ktor.client.okhttp)
             implementation(libs.kotlinx.coroutines.android)
             implementation(libs.maplibre.android)
@@ -63,6 +63,7 @@ kotlin {
             implementation(libs.ktor.client.darwin)
         }
         commonMain.dependencies {
+            implementation(libs.metro.viewmodel.compose)
             implementation(libs.sentry)
             implementation(libs.posthog)
             implementation(libs.compose.runtime)
@@ -95,6 +96,68 @@ kotlin {
     }
 }
 
-dependencies {
-    androidRuntimeClasspath(libs.compose.uiTooling)
+// Resolve both graphs without relying on dead-code elimination or stripped symbols.
+val verifyDeveloperToolsIsolation by tasks.registering {
+    group = "verification"
+    description = "Verify product sources and shared iOS graphs exclude developer tooling."
+    inputs
+        .files(
+            kotlin.targets
+                .flatMap { target ->
+                    target.compilations.filter { it.name == "main" }.flatMap { it.allKotlinSourceSets }
+                }.distinct()
+                .map { it.kotlin },
+        ).withPropertyName("productSources")
+    kotlin.targets.withType<org.jetbrains.kotlin.gradle.plugin.mpp.KotlinNativeTarget>().forEach { target ->
+        listOf("main").forEach { name ->
+            val compilation = target.compilations.getByName(name)
+            val graph =
+                configurations
+                    .named(compilation.compileDependencyConfigurationName)
+                    .flatMap { it.incoming.resolutionResult.rootComponent }
+                    .map { root ->
+                        val visited = mutableSetOf<String>()
+
+                        fun visit(component: org.gradle.api.artifacts.result.ResolvedComponentResult) {
+                            if (!visited.add(component.id.displayName)) return
+                            component.dependencies
+                                .filterIsInstance<org.gradle.api.artifacts.result.ResolvedDependencyResult>()
+                                .forEach { visit(it.selected) }
+                        }
+                        visit(root)
+                        visited.sorted()
+                    }
+            inputs.property("${target.name}.$name", graph)
+        }
+        target.binaries.withType<org.jetbrains.kotlin.gradle.plugin.mpp.Framework>().forEach { binary ->
+            inputs.property("${target.name}.${binary.name}.compilation", binary.compilation.name)
+        }
+    }
+    doLast {
+        val forbidden =
+            Regex(
+                "DeveloperTools|DebugLocationProvider|DebugNetworkEngine|DebugAppServiceFactory|DeveloperToolsMapStyleOverride|NetworkRecoveryController|NetworkRecoveryRun|SimulationDraft|ErrorSimulation|LocationSimulation|NetworkRequestConditions|SimulatedLocation|com\\.pheeeew\\.developertools",
+            )
+        val leaks =
+            inputs.files.files.filter {
+                it.isFile && it.extension == "kt" &&
+                    forbidden.containsMatchIn(it.readText())
+            }
+        check(leaks.isEmpty()) { "Developer reproduction code in product compilation inputs: ${leaks.joinToString()}" }
+        inputs.properties.toSortedMap().forEach { (name, value) ->
+            if (name.endsWith(".compilation")) {
+                val expected = "main"
+                check(value == expected) { "Unexpected framework compilation: $name = $value" }
+            } else {
+                val components = value as List<*>
+                val includesTools = components.contains("project :developerTools")
+                check(!includesTools) { "Developer tools isolation failed: $name" }
+                println("$name developerTools=$includesTools")
+            }
+        }
+    }
+}
+
+tasks.matching { it.name.startsWith("link") && it.name.contains("FrameworkIos") }.configureEach {
+    dependsOn(verifyDeveloperToolsIsolation)
 }

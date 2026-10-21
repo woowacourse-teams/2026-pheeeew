@@ -4,13 +4,13 @@ import com.pheeeew.core.network.AccessToken
 import com.pheeeew.core.network.AccessTokenProvider
 import com.pheeeew.core.network.ApiConfig
 import com.pheeeew.core.network.createApiClient
-import com.pheeeew.core.permission.LocationPermissionController
-import com.pheeeew.core.permission.LocationPermissionStatus
-import com.pheeeew.data.remote.emotion.EmotionMapApi
+import com.pheeeew.data.remote.api.EmotionMapApi
 import com.pheeeew.data.repository.EmotionMapRepositoryImpl
 import com.pheeeew.domain.model.GeoCoordinate
 import com.pheeeew.domain.model.LocationState
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
+import com.pheeeew.domain.permission.LocationPermissionController
+import com.pheeeew.domain.permission.LocationPermissionStatus
 import com.pheeeew.domain.repository.LocationRepository
 import com.pheeeew.domain.usecase.FindEmotionMapPageUseCase
 import com.pheeeew.domain.usecase.FindEmotionMapSnapshotUseCase

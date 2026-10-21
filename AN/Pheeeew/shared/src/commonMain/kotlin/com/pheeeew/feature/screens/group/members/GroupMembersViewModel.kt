@@ -3,16 +3,26 @@ package com.pheeeew.feature.screens.group.members
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pheeeew.feature.screens.group.model.GroupId
+import dev.zacsweers.metro.Assisted
+import dev.zacsweers.metro.AssistedFactory
+import dev.zacsweers.metro.AssistedInject
+import dev.zacsweers.metrox.viewmodel.ManualViewModelAssistedFactory
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+@AssistedInject
 class GroupMembersViewModel(
-    private val groupId: GroupId,
+    @Assisted private val groupId: GroupId,
     private val source: GroupMembersSource,
 ) : ViewModel() {
+    @AssistedFactory
+    interface Factory : ManualViewModelAssistedFactory {
+        fun create(groupId: GroupId): GroupMembersViewModel
+    }
+
     private val _uiState = MutableStateFlow(GroupMembersUiState())
     val uiState = _uiState.asStateFlow()
     private var generation = 0L

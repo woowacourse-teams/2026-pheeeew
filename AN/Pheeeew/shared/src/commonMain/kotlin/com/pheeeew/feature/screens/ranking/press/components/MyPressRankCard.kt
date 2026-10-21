@@ -21,8 +21,8 @@ import androidx.compose.ui.unit.sp
 import com.pheeeew.core.designsystem.theme.AppColors
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.feature.screens.ranking.press.PressEmotion
-import com.pheeeew.feature.screens.ranking.press.PressGroupRank
-import com.pheeeew.feature.screens.ranking.press.samplePressGroupRanks
+import com.pheeeew.feature.screens.ranking.press.PressPersonRank
+import com.pheeeew.feature.screens.ranking.press.samplePressPersonRanks
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import pheeeew.shared.generated.resources.Res
@@ -36,10 +36,9 @@ import pheeeew.shared.generated.resources.press_all_emotions
 
 @Composable
 internal fun MyPressRankCard(
-    group: PressGroupRank,
+    person: PressPersonRank,
     emotion: PressEmotion,
     modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = null,
 ) {
     val faceResource =
         when (emotion) {
@@ -67,7 +66,6 @@ internal fun MyPressRankCard(
         shape =
             androidx.compose.foundation.shape
                 .RoundedCornerShape(24.dp),
-        onClick = onClick,
         restingOffset = (-1).dp,
         pressedOffset = 2.dp,
     ) {
@@ -83,13 +81,15 @@ internal fun MyPressRankCard(
             Spacer(Modifier.width(16.dp))
             Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                 Text(
-                    text = group.groupName,
+                    text = "내 순위 · ${person.nickname}",
                     color = AppColors.RankingContent,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    text = stringResource(Res.string.group_detail_rank_number, group.rank),
+                    text = stringResource(Res.string.group_detail_rank_number, person.rank),
                     color = AppColors.RankingContent,
                     fontSize = 36.sp,
                     lineHeight = 42.sp,
@@ -98,9 +98,9 @@ internal fun MyPressRankCard(
                 Text(
                     text =
                         if (emotion == PressEmotion.All) {
-                            "${group.count}번의 마음"
+                            "${person.count}번의 마음"
                         } else {
-                            "${group.count}번의 ${emotion.phrase} 마음"
+                            "${person.count}번의 ${emotion.phrase} 마음"
                         },
                     color = AppColors.RankingContent,
                     fontSize = 13.sp,
@@ -115,6 +115,6 @@ internal fun MyPressRankCard(
 @Composable
 private fun MyPressRankCardPreview() {
     AppTheme {
-        MyPressRankCard(samplePressGroupRanks[1], PressEmotion.Frustrated, Modifier.padding(20.dp))
+        MyPressRankCard(samplePressPersonRanks[1], PressEmotion.Frustrated, Modifier.padding(20.dp))
     }
 }

@@ -15,6 +15,10 @@ data class AudioPlayerState(
 
 /** Shared playback for a recorded local file or a remote audio URL. */
 interface AudioPlayer {
+    fun interface Factory {
+        fun create(): AudioPlayer
+    }
+
     val state: StateFlow<AudioPlayerState>
 
     fun play(source: String)

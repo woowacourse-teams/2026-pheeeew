@@ -4,10 +4,6 @@ import com.pheeeew.domain.model.emotion.MapFilterSettings
 import com.pheeeew.domain.repository.MapFilterSettingsRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 
-object SessionMapFilterSettings {
-    val repository: MapFilterSettingsRepository = InMemoryMapFilterSettingsRepository()
-}
-
 class InMemoryMapFilterSettingsRepository : MapFilterSettingsRepository {
     private val settings = MutableStateFlow(MapFilterSettings.DEFAULT)
 

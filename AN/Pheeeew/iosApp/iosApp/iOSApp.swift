@@ -11,6 +11,7 @@ struct iOSApp: App {
     init() {
 #if DEBUG
         if !ProcessInfo.processInfo.arguments.contains("-group-detail-profile") {
+            DeveloperToolsInitializationKt.initializeDeveloperTools()
             _ = IosMonitoring.shared.instance
         }
 #else

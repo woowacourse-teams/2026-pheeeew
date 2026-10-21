@@ -1,8 +1,8 @@
 package com.pheeeew.feature.screens.group.adapter
 
-import com.pheeeew.domain.repository.group.GroupCreateCommand
-import com.pheeeew.domain.repository.group.GroupCreateRepository
-import com.pheeeew.domain.repository.group.GroupCreateRepositoryResult
+import com.pheeeew.domain.repository.GroupCreateCommand
+import com.pheeeew.domain.repository.GroupCreateRepository
+import com.pheeeew.domain.repository.GroupCreateRepositoryResult
 import com.pheeeew.feature.component.stamp.StampAppearanceUiModel
 import com.pheeeew.feature.component.stamp.StampShapeId
 import com.pheeeew.feature.screens.group.create.CreateGroupResult

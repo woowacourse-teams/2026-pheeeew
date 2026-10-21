@@ -61,6 +61,7 @@ import pheeeew.shared.generated.resources.group_detail_refresh_error_pull
 internal fun GroupDetailReadyContent(
     detail: GroupDetailReadyUiModel,
     hasRefreshError: Boolean,
+    isGloballyRefreshing: Boolean = false,
     onRetry: () -> Unit,
     onInviteClick: () -> Unit,
     onJoinClick: () -> Unit,
@@ -101,8 +102,12 @@ internal fun GroupDetailReadyContent(
         feed is GroupMoodFeedUiState.Loading ||
             feedRetrying ||
             loadState == GroupMoodFeedLoadState.Refreshing
-    val showFeedLoading = rememberDelayedLoadingVisibility(feedLoading)
-    val showLoadMore = rememberDelayedLoadingVisibility(loadState == GroupMoodFeedLoadState.LoadingMore)
+    val showFeedLoading = rememberDelayedLoadingVisibility(feedLoading, isSuppressed = isGloballyRefreshing)
+    val showLoadMore =
+        rememberDelayedLoadingVisibility(
+            isLoading = loadState == GroupMoodFeedLoadState.LoadingMore,
+            isSuppressed = isGloballyRefreshing,
+        )
     val listState = rememberLazyListState()
     val feedPostIds = feedPosts.map { it.id }
     var openMenu by remember { mutableStateOf<Pair<String, EmotionActionsMenuMode>?>(null) }

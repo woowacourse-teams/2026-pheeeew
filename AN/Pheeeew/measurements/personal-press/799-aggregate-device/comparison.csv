@@ -1,0 +1,25 @@
+variant,repetition,pattern,requested,accepted,server_delta,posts,all_gets,personal_gets,http_total,http_endpoints,batches,batch_sizes,confirmation_p50_ms,confirmation_p95_ms,peak_pending,local_state_p95_us
+before,1,single,1,1,1,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,1,608.0,608.0,1,21709.0
+before,1,burst5,5,5,5,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,5,386.0,587.0,5,7589.0
+before,1,same,100,100,100,17,14,1,32,"{""emotion_press_all_daily"": 14, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 17}",17,6/6/6/6/5/6/6/5/6/6/6/6/6/6/6/6/6,365.0,577.0,8,3197.0
+before,1,mixed,100,100,100,18,12,1,31,"{""emotion_press_all_daily"": 12, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 18}",18,6/5/6/6/5/6/6/6/6/6/6/6/5/6/6/6/5/2,366.0,592.0,7,2250.0
+before,2,single,1,1,1,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,1,557.0,557.0,1,20657.0
+before,2,burst5,5,5,5,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,5,372.0,574.0,5,9036.0
+before,2,same,100,100,100,17,13,1,31,"{""emotion_press_all_daily"": 13, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 17}",17,6/5/6/6/6/6/6/6/6/6/6/6/5/6/6/6/6,365.0,581.0,8,3883.0
+before,2,mixed,100,100,100,17,10,1,28,"{""emotion_press_all_daily"": 10, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 17}",17,6/6/6/5/6/6/6/6/5/6/6/6/6/6/6/6/6,363.0,599.0,7,3080.0
+before,3,single,1,1,1,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,1,624.0,624.0,1,20966.0
+before,3,burst5,5,5,5,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,5,371.0,572.0,5,9371.0
+before,3,same,100,100,100,17,13,1,31,"{""emotion_press_all_daily"": 13, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 17}",17,6/6/6/6/5/6/6/6/6/6/6/6/6/6/6/6/5,360.0,586.0,7,3328.0
+before,3,mixed,100,100,100,18,10,1,29,"{""emotion_press_all_daily"": 10, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 18}",18,6/6/5/6/5/6/6/6/6/6/5/6/6/5/6/6/5/3,369.0,600.0,8,2796.0
+after,1,single,1,1,1,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,1,703.0,703.0,1,24500.0
+after,1,burst5,5,5,5,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,5,369.0,571.0,5,8169.0
+after,1,same,100,100,100,17,10,1,28,"{""emotion_press_all_daily"": 10, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 17}",17,6/6/6/6/6/6/6/6/6/6/6/6/6/6/6/6/4,360.0,572.0,8,3754.0
+after,1,mixed,100,100,100,17,9,1,27,"{""emotion_press_all_daily"": 9, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 17}",17,6/6/6/6/6/6/6/6/6/6/6/6/6/6/6/6/4,362.0,574.0,8,2679.0
+after,2,single,1,1,1,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,1,609.0,609.0,1,25007.0
+after,2,burst5,5,5,5,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,5,376.0,577.0,5,7394.0
+after,2,same,100,100,100,17,10,1,28,"{""emotion_press_all_daily"": 10, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 17}",17,6/6/6/6/6/6/6/6/6/5/6/6/6/6/6/6/5,356.0,575.0,7,3817.0
+after,2,mixed,100,100,100,17,9,1,27,"{""emotion_press_all_daily"": 9, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 17}",17,6/6/6/6/6/6/6/6/6/6/6/6/6/6/6/6/4,363.0,575.0,7,3341.0
+after,3,single,1,1,1,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,1,620.0,620.0,1,22618.0
+after,3,burst5,5,5,5,1,2,1,4,"{""emotion_press_all_daily"": 2, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 1}",1,5,371.0,572.0,5,7886.0
+after,3,same,100,100,100,17,10,1,28,"{""emotion_press_all_daily"": 10, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 17}",17,6/6/6/6/6/6/6/6/6/6/6/6/6/6/6/6/4,360.0,577.0,8,3676.0
+after,3,mixed,100,100,100,17,9,1,27,"{""emotion_press_all_daily"": 9, ""emotion_press_me_daily"": 1, ""emotion_press_write"": 17}",17,6/6/6/6/6/6/6/6/6/6/6/6/6/6/6/6/4,359.0,576.0,7,3457.0

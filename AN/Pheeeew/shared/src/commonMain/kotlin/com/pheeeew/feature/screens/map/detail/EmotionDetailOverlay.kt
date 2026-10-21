@@ -25,9 +25,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.pheeeew.core.audio.rememberAudioPlayback
 import com.pheeeew.core.designsystem.component.ConfirmDialog
-import com.pheeeew.domain.repository.EmotionModerationRepository
+import com.pheeeew.domain.model.emotion.EmotionBounds
+import com.pheeeew.domain.model.emotion.EmotionReactionType
+import com.pheeeew.domain.repository.BlockRepository
+import com.pheeeew.domain.repository.EmotionAudioRepository
 import com.pheeeew.domain.repository.EmotionModerationResult
-import com.pheeeew.domain.repository.audio.EmotionAudioRepository
+import com.pheeeew.domain.repository.EmotionRepository
 import com.pheeeew.domain.usecase.BlockUserUseCase
 import com.pheeeew.domain.usecase.DeleteEmotionUseCase
 import kotlinx.coroutines.CancellationException
@@ -304,23 +307,38 @@ private fun EmotionDetailOverlayPreview() {
         onRetry = {},
         audioRepository = EmotionAudioRepository { error("Preview does not fetch audio") },
         onReactionClick = {},
-        blockUser = BlockUserUseCase(PreviewModerationRepository),
-        deleteEmotion = DeleteEmotionUseCase(PreviewModerationRepository),
+        blockUser = BlockUserUseCase(PreviewActionRepositories),
+        deleteEmotion = DeleteEmotionUseCase(PreviewActionRepositories),
         onReportClick = { _, _ -> },
         onBlockSucceeded = {},
         onDeleteSucceeded = {},
     )
 }
 
-private object PreviewModerationRepository : EmotionModerationRepository {
-    override suspend fun report(
-        emotionId: Long,
-        reason: String,
-    ) = EmotionModerationResult.Success
-
+private object PreviewActionRepositories : BlockRepository, EmotionRepository {
     override suspend fun blockEmotion(emotionId: Long) = EmotionModerationResult.Success
 
     override suspend fun blockUser(emotionId: Long) = EmotionModerationResult.Success
 
     override suspend fun delete(emotionId: Long) = EmotionModerationResult.Success
+
+    override suspend fun firstPage(
+        bounds: EmotionBounds,
+        groupId: String?,
+    ): Nothing = error("Preview does not load data")
+
+    override suspend fun nextPage(cursor: String): Nothing = error("Preview does not load data")
+
+    override suspend fun feedPage(
+        groupId: String,
+        cursor: String?,
+    ): Nothing = error("Preview does not load data")
+
+    override suspend fun detail(id: Long): Nothing = error("Preview does not load data")
+
+    override suspend fun react(
+        id: Long,
+        type: EmotionReactionType,
+        selected: Boolean,
+    ): Nothing = error("Preview does not load data")
 }

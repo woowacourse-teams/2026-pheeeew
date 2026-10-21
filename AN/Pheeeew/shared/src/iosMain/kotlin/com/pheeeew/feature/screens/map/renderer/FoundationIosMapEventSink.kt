@@ -26,6 +26,8 @@ interface FoundationIosMapEventSink {
 
     fun onStyleLoadFailed()
 
+    fun onFirstFrameReady()
+
     fun onMapRecovered()
 
     fun onMemoryPressure()

@@ -12,9 +12,11 @@ import com.pheeeew.domain.model.emotion.MapFilterContent
 import com.pheeeew.domain.model.emotion.MapFilterScope
 import com.pheeeew.domain.model.emotion.MapFilterSettings
 import com.pheeeew.domain.model.emotion.ReactionCount
-import com.pheeeew.domain.repository.emotion.EmotionFailure
-import com.pheeeew.domain.repository.emotion.EmotionRepository
-import com.pheeeew.domain.repository.emotion.EmotionResult
+import com.pheeeew.domain.repository.BlockRepository
+import com.pheeeew.domain.repository.EmotionFailure
+import com.pheeeew.domain.repository.EmotionModerationResult
+import com.pheeeew.domain.repository.EmotionRepository
+import com.pheeeew.domain.repository.EmotionResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -269,9 +271,11 @@ class NearbyEmotionViewModelTest {
             }
         }
 
-    private fun viewModel(repo: FakeRepository) = NearbyEmotionViewModel(repo)
+    private fun viewModel(repo: FakeRepository) = NearbyEmotionViewModel(repo, repo)
 
-    private class FakeRepository : EmotionRepository {
+    private class FakeRepository :
+        EmotionRepository,
+        BlockRepository {
         val bounds = mutableListOf<EmotionBounds>()
         val groupIds = mutableListOf<String?>()
         val filters = mutableListOf<EmotionSearchFilter>()
@@ -309,7 +313,11 @@ class NearbyEmotionViewModelTest {
             selected: Boolean,
         ) = EmotionResult.Success(Unit)
 
-        override suspend fun block(id: Long) = EmotionResult.Success(Unit)
+        override suspend fun blockEmotion(emotionId: Long) = EmotionModerationResult.Success
+
+        override suspend fun blockUser(emotionId: Long) = EmotionModerationResult.Success
+
+        override suspend fun delete(emotionId: Long) = EmotionModerationResult.Success
     }
 
     private companion object {

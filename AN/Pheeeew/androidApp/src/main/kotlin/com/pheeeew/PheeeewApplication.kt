@@ -5,19 +5,19 @@ import android.os.Build
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
-import com.pheeeew.core.di.AppMonitoring
+import com.pheeeew.core.di.AndroidAppConfig
+import com.pheeeew.core.di.AppGraph
 import com.pheeeew.core.di.appCollectionMetadata
-import com.pheeeew.core.di.appMonitoringRegistry
-import com.pheeeew.core.di.decodeAppMonitoringState
+import com.pheeeew.core.di.device.DeviceSessionBuildConfig
 import com.pheeeew.core.di.monitoringActiveDay
 import com.pheeeew.core.monitoring.MonitoringConfig
-import com.pheeeew.core.monitoring.StateDecoder
-import com.pheeeew.core.monitoring.createAndroidMonitoring
 
 class PheeeewApplication :
     Application(),
     DefaultLifecycleObserver {
-    private lateinit var owner: AppMonitoring
+    lateinit var appGraph: AppGraph
+        private set
+    private val owner get() = appGraph.monitoringOwner
     val monitoring get() = owner.runtime
 
     suspend fun compatibilityMonitoring() = owner.compatibility()
@@ -38,16 +38,24 @@ class PheeeewApplication :
                 activeDay = ::monitoringActiveDay,
                 collection = appCollectionMetadata(BuildConfig.MONITORING_ENVIRONMENT),
             )
-        owner =
-            AppMonitoring(
-                createAndroidMonitoring(
-                    this,
+        appGraph =
+            createApplicationGraph(
+                this,
+                AndroidAppConfig(
+                    DeviceSessionBuildConfig(
+                        BuildConfig.DEBUG,
+                        BuildConfig.DEVICE_ENVIRONMENT,
+                        BuildConfig.API_BASE_URL,
+                        BuildConfig.DEVICE_ATTESTATION_MODE,
+                        "${BuildConfig.VERSION_NAME}+${BuildConfig.VERSION_CODE}",
+                    ),
+                    BuildConfig.APPLICATION_ID,
+                    BuildConfig.DEVICE_CLOUD_PROJECT_NUMBER,
                     config,
-                    appMonitoringRegistry(),
-                    StateDecoder(::decodeAppMonitoringState),
+                    BuildConfig.VERSION_NAME,
                 ),
-                config,
             )
+        appGraph.monitoringOwner
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
     }
 
