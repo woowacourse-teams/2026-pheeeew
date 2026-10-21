@@ -5,12 +5,12 @@ import kotlin.test.assertEquals
 
 class AppStartupPresentationTest {
     @Test
-    fun `버전 확인 전에는 메인 화면을 준비하지 않는다`() {
+    fun `기존 사용자는 버전 확인 중에도 메인 지도를 준비한다`() {
         assertEquals(
-            AppStartupPresentation.SPLASH,
+            AppStartupPresentation.MAIN,
             resolveAppStartupPresentation(
                 initialVersionCheckComplete = false,
-                splashAnimationCompleted = true,
+                splashDismissed = true,
                 requiredUpdate = false,
                 onboardingCompleted = true,
             ),
@@ -23,7 +23,7 @@ class AppStartupPresentationTest {
             AppStartupPresentation.SPLASH,
             resolveAppStartupPresentation(
                 initialVersionCheckComplete = true,
-                splashAnimationCompleted = false,
+                splashDismissed = false,
                 requiredUpdate = true,
                 onboardingCompleted = true,
             ),
@@ -32,7 +32,7 @@ class AppStartupPresentationTest {
             AppStartupPresentation.SPLASH,
             resolveAppStartupPresentation(
                 initialVersionCheckComplete = true,
-                splashAnimationCompleted = false,
+                splashDismissed = false,
                 requiredUpdate = false,
                 onboardingCompleted = false,
             ),
@@ -45,7 +45,7 @@ class AppStartupPresentationTest {
             AppStartupPresentation.REQUIRED_UPDATE,
             resolveAppStartupPresentation(
                 initialVersionCheckComplete = true,
-                splashAnimationCompleted = true,
+                splashDismissed = true,
                 requiredUpdate = true,
                 onboardingCompleted = true,
             ),
@@ -54,7 +54,7 @@ class AppStartupPresentationTest {
             AppStartupPresentation.ONBOARDING,
             resolveAppStartupPresentation(
                 initialVersionCheckComplete = true,
-                splashAnimationCompleted = true,
+                splashDismissed = true,
                 requiredUpdate = false,
                 onboardingCompleted = false,
             ),
@@ -67,9 +67,22 @@ class AppStartupPresentationTest {
             AppStartupPresentation.MAIN,
             resolveAppStartupPresentation(
                 initialVersionCheckComplete = true,
-                splashAnimationCompleted = false,
+                splashDismissed = false,
                 requiredUpdate = false,
                 onboardingCompleted = true,
+            ),
+        )
+    }
+
+    @Test
+    fun `버전 확인이 늦은 신규 사용자도 최대 시간 이후 splash를 닫는다`() {
+        assertEquals(
+            AppStartupPresentation.VERSION_CHECK,
+            resolveAppStartupPresentation(
+                initialVersionCheckComplete = false,
+                splashDismissed = true,
+                requiredUpdate = false,
+                onboardingCompleted = false,
             ),
         )
     }

@@ -32,6 +32,7 @@ internal actual fun NativeMap(
     onMemoryPressure: () -> Unit,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
+    onFirstFrameReady: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapViewport) -> Unit,
     onCameraMovingChanged: (Boolean) -> Unit,
@@ -56,6 +57,7 @@ internal actual fun NativeMap(
     val currentOnMapBackgroundClick by rememberUpdatedState(onMapBackgroundClick)
     val currentOnMapError by rememberUpdatedState(onMapError)
     val currentOnMapRecovered by rememberUpdatedState(onMapRecovered)
+    val currentOnFirstFrameReady by rememberUpdatedState(onFirstFrameReady)
     val currentOnCameraSaved by rememberUpdatedState(onCameraSaved)
     val currentOnMemoryPressure by rememberUpdatedState(onMemoryPressure)
     val currentOnRecordViewportChanged by rememberUpdatedState(onRecordViewportChanged)
@@ -113,6 +115,8 @@ internal actual fun NativeMap(
                 override fun onStyleLoadFailed() = currentOnMapError(MapErrorUiModel.StyleLoadFailed)
 
                 override fun onMapRecovered() = currentOnMapRecovered()
+
+                override fun onFirstFrameReady() = currentOnFirstFrameReady()
 
                 override fun onMemoryPressure() = currentOnMemoryPressure()
 

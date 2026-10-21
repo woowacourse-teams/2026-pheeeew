@@ -54,6 +54,100 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class MapViewModelViewportTest {
     @Test
+    fun `splash preloads location without prompting and defers denied permission until start`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var requests = 0
+                val refreshCompleted = CompletableDeferred<Unit>()
+                val permission =
+                    object : LocationPermissionController {
+                        override suspend fun currentStatus() = LocationPermissionStatus.Denied
+
+                        override suspend fun requestPermission(): LocationPermissionStatus {
+                            requests++
+                            return LocationPermissionStatus.Denied
+                        }
+                    }
+                val location =
+                    object : LocationRepository {
+                        override val state =
+                            MutableStateFlow<LocationState>(LocationState.Unavailable(LocationError.PermissionDenied))
+
+                        override suspend fun refresh() {
+                            refreshCompleted.await()
+                        }
+                    }
+                val pins = QueuedEmotionMapRepository()
+                val vm =
+                    MapViewModel(
+                        RefreshLocationUseCase(permission, location),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                    )
+                vm.prepareCurrentLocation()
+                vm.prepareCurrentLocation()
+                runCurrent()
+                assertEquals(0, requests)
+                assertFalse(vm.uiModel.value.showLocationPermissionDialog)
+                // Even when splash expires during the silent request, permission waits for that request.
+                vm.start()
+                runCurrent()
+                assertEquals(0, requests)
+                refreshCompleted.complete(Unit)
+                runCurrent()
+                assertEquals(1, requests)
+                assertTrue(vm.uiModel.value.showLocationPermissionDialog)
+                vm.start()
+                runCurrent()
+                assertEquals(1, requests)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
+    fun `location acquired during splash is reused after splash without a duplicate request`() =
+        runTest {
+            Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+            try {
+                var refreshes = 0
+                val acquired = LocationState.Available(CurrentLocation(37.5, 127.0, 5f, 0))
+                val permission =
+                    object : LocationPermissionController {
+                        override suspend fun currentStatus() = LocationPermissionStatus.Granted
+
+                        override suspend fun requestPermission(): LocationPermissionStatus = error("Unexpected prompt")
+                    }
+                val location =
+                    object : LocationRepository {
+                        override val state = MutableStateFlow<LocationState>(LocationState.Loading)
+
+                        override suspend fun refresh() {
+                            refreshes++
+                            state.value = acquired
+                        }
+                    }
+                val pins = QueuedEmotionMapRepository()
+                val vm =
+                    MapViewModel(
+                        RefreshLocationUseCase(permission, location),
+                        FindEmotionMapPageUseCase(pins),
+                        FindEmotionMapSnapshotUseCase(pins),
+                    )
+                vm.prepareCurrentLocation()
+                runCurrent()
+                vm.start()
+                runCurrent()
+                assertEquals(1, refreshes)
+                assertEquals(acquired, vm.uiModel.value.locationState)
+                assertFalse(vm.uiModel.value.showLocationPermissionDialog)
+            } finally {
+                Dispatchers.resetMain()
+            }
+        }
+
+    @Test
     fun `지도 재시도는 복구까지 같은 안내를 유지하고 중복 및 오래된 콜백을 무시한다`() =
         runTest {
             Dispatchers.setMain(StandardTestDispatcher(testScheduler))
