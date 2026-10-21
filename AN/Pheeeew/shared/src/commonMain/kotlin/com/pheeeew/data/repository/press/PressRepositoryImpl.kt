@@ -7,7 +7,6 @@ import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
 import com.pheeeew.domain.model.press.PressAcceptance
-import com.pheeeew.domain.model.press.PressBatch
 import com.pheeeew.domain.model.press.PressSendResult
 import com.pheeeew.domain.model.press.PressSessionNotice
 import com.pheeeew.domain.model.press.PressSessionState
@@ -33,7 +32,7 @@ import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.time.Clock
 import kotlin.time.TimeSource
 
-/** Session-owned counters and one fixed write; all mutations run on the owner dispatcher. */
+/** Coordinates queue, writes, reads, and public session-state publication on the owner dispatcher. */
 internal class PressRepositoryImpl(
     private val statistics: PressStatisticsDataSource,
     private val sender: PressSender,
@@ -55,12 +54,8 @@ internal class PressRepositoryImpl(
     private val mutableState = MutableStateFlow(PressSessionState())
     override val state = mutableState.asStateFlow()
     private val inputQueue = PressInputQueue(batchMaxPerEmotion, batchMaxTotal, flushDelayMillis)
+    private val writeLedger = PressWriteLedger()
     private val flushRequests = Channel<Unit>(Channel.CONFLATED)
-    private val optimisticCounts = EmotionState.entries.associateWith { 0L }.toMutableMap()
-    private var outstanding = 0L
-    private var optimisticAllPressCount = 0L
-    private var acceptedSinceAllSnapshot = 0L
-    private var pendingWrite: PressWriteState? = null
     private var workerJob: Job? = null
     private var readJob: Job? = null
     private var retryJob: Job? = null
@@ -88,7 +83,7 @@ internal class PressRepositoryImpl(
                     connected = available
                     if (available) {
                         onForeground()
-                    } else if (outstanding > 0 && pausedNotice == null) {
+                    } else if (writeLedger.hasOutstanding() && pausedNotice == null) {
                         publish(mutableState.value.copy(notice = PressSessionNotice.RetryRequired))
                     }
                 }
@@ -99,9 +94,7 @@ internal class PressRepositoryImpl(
     override fun accept(emotion: EmotionState): PressAcceptance {
         val serverTotal = mutableState.value.myToday?.total ?: 0L
         val allServerTotal = mutableState.value.allToday?.total ?: 0L
-        if (outstanding >= Long.MAX_VALUE - serverTotal ||
-            optimisticAllPressCount >= Long.MAX_VALUE - allServerTotal
-        ) {
+        if (writeLedger.exceedsAcceptanceLimit(serverTotal, allServerTotal)) {
             mutableState.update { it.copy(notice = PressSessionNotice.NumericLimit) }
             return PressAcceptance.NumericLimit
         }
@@ -116,15 +109,13 @@ internal class PressRepositoryImpl(
                     result
                 }
             }
-        outstanding++
-        optimisticAllPressCount++
-        optimisticCounts[emotion] = optimisticCounts.getValue(emotion) + 1L
+        writeLedger.accept(emotion)
         if (pausedNotice == PressSessionNotice.Rejected) pausedNotice = null
         publish(
             mutableState.value.copy(
                 notice =
                     when {
-                        pendingWrite?.uncertain == true -> PressSessionNotice.OutcomeUnknown
+                        writeLedger.isOutcomeUnknown() -> PressSessionNotice.OutcomeUnknown
                         pausedNotice != null -> pausedNotice
                         connected == false -> PressSessionNotice.RetryRequired
                         else -> null
@@ -137,7 +128,7 @@ internal class PressRepositoryImpl(
     }
 
     override fun onForeground() {
-        if (!hasStarted && outstanding == 0L) return
+        if (!hasStarted && !writeLedger.hasOutstanding()) return
         refreshToday()
         retryUnsent()
     }
@@ -154,32 +145,28 @@ internal class PressRepositoryImpl(
 
     override fun retryUnsent() {
         if (pausedNotice == PressSessionNotice.WaitingForApiContract) return
-        if (pendingWrite?.uncertain == true && !canRetryUnknown()) {
+        if (writeLedger.isOutcomeUnknown() && !canRetryUnknown()) {
             publish(mutableState.value.copy(notice = PressSessionNotice.OutcomeUnknown))
             return
         }
-        if (outstanding > 0) scheduleSend(0L)
+        if (writeLedger.hasOutstanding()) scheduleSend(0L)
     }
 
-    private fun canRetryUnknown(): Boolean {
-        val write = pendingWrite ?: return false
-        val window = sender.idempotencyWindowMillis ?: return false
-        return window > 0 && nowMillis() - write.createdAtMillis < window
-    }
+    private fun canRetryUnknown(): Boolean = writeLedger.canRetryUnknown(nowMillis(), sender.idempotencyWindowMillis)
 
     /** Completing a read is not a retry: fresh input keeps the wait established on acceptance. */
     private fun resumeQueuedWork() {
         val now = nowMillis()
-        val wait = inputQueue.resumeDelay(pendingWrite != null, now)
+        val wait = inputQueue.resumeDelay(writeLedger.hasPendingWrite(), now)
         scheduleSend(wait)
     }
 
     private fun remainingBatchWait(now: Long = nowMillis()): Long = inputQueue.remainingWait(now)
 
     private fun scheduleSend(delayMillis: Long) {
-        if (workerJob?.isActive == true || connected == false || outstanding == 0L) return
+        if (workerJob?.isActive == true || connected == false || !writeLedger.hasOutstanding()) return
         if (pausedNotice == PressSessionNotice.WaitingForApiContract) return
-        if (pendingWrite?.uncertain == true && !canRetryUnknown()) return
+        if (writeLedger.isOutcomeUnknown() && !canRetryUnknown()) return
         lateinit var launchedWorker: Job
         launchedWorker =
             sessionScope.launch(start = CoroutineStart.LAZY) {
@@ -192,7 +179,7 @@ internal class PressRepositoryImpl(
                     if (refreshAgain && sessionScope.coroutineContext[Job]?.isActive != false) {
                         refreshAgain = false
                         launchRead()
-                    } else if (outstanding > 0L && sessionScope.coroutineContext[Job]?.isActive != false) {
+                    } else if (writeLedger.hasOutstanding() && sessionScope.coroutineContext[Job]?.isActive != false) {
                         resumeQueuedWork()
                     }
                 }
@@ -202,35 +189,26 @@ internal class PressRepositoryImpl(
     }
 
     private suspend fun sendAvailable() {
-        while (outstanding > 0 && connected != false) {
-            if (pendingWrite?.uncertain == true && !canRetryUnknown()) return
+        while (writeLedger.hasOutstanding() && connected != false) {
+            if (writeLedger.isOutcomeUnknown() && !canRetryUnknown()) return
             readJob?.join()
-            if (pendingWrite?.phase == PressWritePhase.AwaitingSnapshot || mutableState.value.myToday == null) {
+            if (writeLedger.isAwaitingSnapshot() || mutableState.value.myToday == null) {
                 readAndReconcile()
-                if (pendingWrite?.phase == PressWritePhase.AwaitingSnapshot || mutableState.value.myToday == null) {
+                if (writeLedger.isAwaitingSnapshot() || mutableState.value.myToday == null) {
                     scheduleRetry()
                     return
                 }
             }
             if (connected == false) return
             val write =
-                pendingWrite?.let { existing ->
-                    if (existing.uncertain) {
-                        existing
-                    } else {
-                        existing.copy(
-                            baseline = checkNotNull(mutableState.value.myToday),
-                        )
-                    }
-                } ?: newWrite() ?: return
-            pendingWrite = write.copy(phase = PressWritePhase.InFlight)
+                writeLedger.prepareForSend(checkNotNull(mutableState.value.myToday), ::newWrite) ?: return
             publish(mutableState.value.copy(isSending = true))
             val result =
                 try {
                     sender.send(write.batch)
                 } catch (cancelled: CancellationException) {
                     // Cancellation does not prove the server didn't apply the request.
-                    pendingWrite = write.copy(phase = PressWritePhase.RetryPending, uncertain = true)
+                    writeLedger.markRetryPending(write, uncertain = true)
                     pausedNotice = PressSessionNotice.OutcomeUnknown
                     publish(mutableState.value.copy(isSending = false, notice = pausedNotice))
                     if (canRetryUnknown()) scheduleRetry()
@@ -249,9 +227,7 @@ internal class PressRepositoryImpl(
                     val current = checkNotNull(mutableState.value.myToday)
                     val updated = current.copy(counts = result.today.counts, total = result.today.total)
                     readGeneration++
-                    removeOptimistic(write.batch)
-                    acceptedSinceAllSnapshot += write.batch.totalCount
-                    pendingWrite = null
+                    writeLedger.confirm(write)
                     failures = 0
                     pausedNotice = null
                     hasMySuccessfulRead = true
@@ -268,16 +244,14 @@ internal class PressRepositoryImpl(
                 }
 
                 PressSendResult.Rejected -> {
-                    removeOptimistic(write.batch)
-                    removeOptimisticAll(write.batch.totalCount.toLong())
-                    pendingWrite = null
+                    writeLedger.reject(write)
                     failures = 0
                     pausedNotice = PressSessionNotice.Rejected
                     publish(mutableState.value.copy(isSending = false, notice = pausedNotice))
                 }
 
                 PressSendResult.NotSent, is PressSendResult.RetryAfter -> {
-                    pendingWrite = write.copy(phase = PressWritePhase.RetryPending)
+                    writeLedger.markRetryPending(write)
                     pausedNotice =
                         if (write.uncertain) PressSessionNotice.OutcomeUnknown else PressSessionNotice.RetryRequired
                     publish(mutableState.value.copy(isSending = false, notice = pausedNotice))
@@ -286,7 +260,7 @@ internal class PressRepositoryImpl(
                 }
 
                 PressSendResult.ContractPending -> {
-                    pendingWrite = write.copy(phase = PressWritePhase.RetryPending)
+                    writeLedger.markRetryPending(write)
                     pausedNotice = PressSessionNotice.WaitingForApiContract
                     publish(mutableState.value.copy(isSending = false, notice = pausedNotice))
                     return
@@ -295,21 +269,21 @@ internal class PressRepositoryImpl(
                 PressSendResult.OutcomeUnknown -> {
                     // The server may have committed this write. Reconcile with the aggregate API, but
                     // never replay it without a server-supported idempotency key.
-                    pendingWrite = write.copy(phase = PressWritePhase.AwaitingSnapshot, uncertain = true)
+                    writeLedger.markAwaitingSnapshot(write)
                     pausedNotice = PressSessionNotice.OutcomeUnknown
                     publish(mutableState.value.copy(isSending = false, notice = pausedNotice))
                     readAndReconcile()
-                    if (pendingWrite == null && allStatsDirtyAfterWrite) refreshAllAfterWrite()
-                    if (pendingWrite?.uncertain == true && canRetryUnknown()) scheduleRetry()
+                    if (!writeLedger.hasPendingWrite() && allStatsDirtyAfterWrite) refreshAllAfterWrite()
+                    if (writeLedger.isOutcomeUnknown() && canRetryUnknown()) scheduleRetry()
                     return
                 }
             }
-            if (outstanding > 0) {
+            if (writeLedger.hasOutstanding()) {
                 delay(retryPolicy.minRequestIntervalMillis)
                 awaitFlush(remainingBatchWait())
             }
         }
-        if (outstanding == 0L && allStatsDirtyAfterWrite) scheduleAggregateRefresh()
+        if (!writeLedger.hasOutstanding() && allStatsDirtyAfterWrite) scheduleAggregateRefresh()
     }
 
     private suspend fun awaitFlush(delayMillis: Long) {
@@ -352,7 +326,7 @@ internal class PressRepositoryImpl(
                     if (refreshAgain && sessionScope.coroutineContext[Job]?.isActive != false) {
                         refreshAgain = false
                         launchRead()
-                    } else if (outstanding > 0) {
+                    } else if (writeLedger.hasOutstanding()) {
                         resumeQueuedWork()
                     }
                 }
@@ -362,8 +336,8 @@ internal class PressRepositoryImpl(
     }
 
     private suspend fun readAndReconcile() {
-        val uncertainAtReadStart = pendingWrite?.uncertain == true
-        val acceptedCoveredAtReadStart = if (uncertainAtReadStart) 0L else acceptedSinceAllSnapshot
+        val uncertainAtReadStart = writeLedger.isOutcomeUnknown()
+        val acceptedCoveredAtReadStart = writeLedger.acceptedCoverageAtReadStart()
         val generation = ++readGeneration
         mutableState.update {
             it.copy(isLoadingMy = true, isLoadingAll = true, hasMyError = false, hasAllError = false)
@@ -374,14 +348,10 @@ internal class PressRepositoryImpl(
         val datesMatch = !pair.hasDifferentDates()
         val my = (pair.my as? PressReadResult.Loaded)?.value?.takeIf { datesMatch }
         val all = (pair.all as? PressReadResult.Loaded)?.value?.takeIf { datesMatch }
-        val write = pendingWrite
-        if (write?.uncertain == true && my != null) {
-            when (val decision = PressReconciler.resolveUnknown(write, my, canRetryUnknown())) {
+        if (uncertainAtReadStart && my != null) {
+            when (writeLedger.resolveUnknown(my, canRetryUnknown())) {
                 PressWriteResolution.Confirmed -> {
-                    removeOptimistic(write.batch)
-                    acceptedSinceAllSnapshot += write.batch.totalCount
                     allStatsDirtyAfterWrite = true
-                    pendingWrite = null
                     failures = 0
                     retryJob?.cancel()
                     pausedNotice = null
@@ -389,32 +359,25 @@ internal class PressRepositoryImpl(
 
                 PressWriteResolution.Retired -> {
                     // Drop only the ambiguous batch without replay; new input may proceed.
-                    removeOptimistic(write.batch)
-                    removeOptimisticAll(write.batch.totalCount.toLong())
-                    pendingWrite = null
                     pausedNotice = null
                     failures = 0
                     retryJob?.cancel()
                 }
 
-                is PressWriteResolution.Pending -> {
-                    pendingWrite = decision.write
+                is PressWriteResolution.Pending, null -> {
                 }
             }
         }
         // Freeze the personal baseline until a pending write is covered; partial/stale reads must not double-count it.
         val readableMy =
             my?.takeIf {
-                pendingWrite?.uncertain != true &&
-                    pendingWrite?.phase != PressWritePhase.AwaitingSnapshot
+                !writeLedger.isOutcomeUnknown() && !writeLedger.isAwaitingSnapshot()
             }
-        val safeMy = readableMy?.takeIf { it.total <= Long.MAX_VALUE - outstanding }
+        val safeMy = readableMy?.takeIf { writeLedger.canDisplayMyTotal(it.total) }
         val safeAll = if (uncertainAtReadStart) null else all
         if (safeAll != null) reconcileAllSnapshot(safeAll, acceptedCoveredAtReadStart)
         val displayableAll =
-            safeAll?.takeIf {
-                it.total <= Long.MAX_VALUE - optimisticAllPressCount
-            }
+            safeAll?.takeIf { writeLedger.canDisplayAllTotal(it.total) }
         publish(
             mutableState.value.copy(
                 myToday = safeMy ?: mutableState.value.myToday,
@@ -422,8 +385,8 @@ internal class PressRepositoryImpl(
                 isLoadingMy = false,
                 isLoadingAll = false,
                 hasMyError = my == null || (readableMy != null && safeMy == null),
-                hasAllError = safeAll == null || safeAll.total > Long.MAX_VALUE - optimisticAllPressCount,
-                notice = if (pendingWrite?.uncertain == true) PressSessionNotice.OutcomeUnknown else pausedNotice,
+                hasAllError = safeAll == null || !writeLedger.canDisplayAllTotal(safeAll.total),
+                notice = if (writeLedger.isOutcomeUnknown()) PressSessionNotice.OutcomeUnknown else pausedNotice,
             ),
         )
         val readAt = nowMillis()
@@ -431,7 +394,7 @@ internal class PressRepositoryImpl(
             lastMySuccessfulRead = readAt
             hasMySuccessfulRead = true
         }
-        if (safeAll != null && safeAll.total <= Long.MAX_VALUE - optimisticAllPressCount) {
+        if (safeAll != null && writeLedger.canDisplayAllTotal(safeAll.total)) {
             lastAllSuccessfulRead = readAt
             hasAllSuccessfulRead = true
         }
@@ -448,9 +411,9 @@ internal class PressRepositoryImpl(
         if (aggregateRefreshJob?.isActive == true) return
         aggregateRefreshJob =
             sessionScope.launch {
-                while (allStatsDirtyAfterWrite && connected != false && pendingWrite?.uncertain != true) {
+                while (allStatsDirtyAfterWrite && connected != false && !writeLedger.isOutcomeUnknown()) {
                     delay(aggregateRefreshMillis)
-                    if (pendingWrite?.phase != PressWritePhase.InFlight) {
+                    if (!writeLedger.isInFlight()) {
                         refreshAllAfterWrite(detached = true)
                     }
                 }
@@ -459,13 +422,13 @@ internal class PressRepositoryImpl(
 
     private suspend fun refreshAllAfterWrite(detached: Boolean = false) {
         allStatsDirtyAfterWrite = false
-        val acceptedCoveredAtReadStart = acceptedSinceAllSnapshot
+        val acceptedCoveredAtReadStart = writeLedger.acceptedCoverageAtReadStart()
         val generation = readGeneration
         publish(mutableState.value.copy(isLoadingAll = true, hasAllError = false))
         when (val result = readSafely(statistics::findAllToday)) {
             is PressReadResult.Loaded -> {
                 val all = result.value
-                if (detached && !PressReconciler.canApplyAggregate(generation, readGeneration, pendingWrite)) {
+                if (detached && !writeLedger.canApplyAggregate(generation, readGeneration)) {
                     // A write or paired read superseded this snapshot. Never subtract its old coverage.
                     allStatsDirtyAfterWrite = true
                     publish(mutableState.value.copy(isLoadingAll = false))
@@ -481,7 +444,7 @@ internal class PressRepositoryImpl(
                     }
                 } else {
                     if (reconcileAllSnapshot(all, acceptedCoveredAtReadStart) &&
-                        all.total <= Long.MAX_VALUE - optimisticAllPressCount
+                        writeLedger.canDisplayAllTotal(all.total)
                     ) {
                         publish(mutableState.value.copy(allToday = all, isLoadingAll = false, hasAllError = false))
                         lastAllSuccessfulRead = nowMillis()
@@ -546,44 +509,14 @@ internal class PressRepositoryImpl(
     }
 
     private fun publish(base: PressSessionState) {
-        mutableState.value =
-            base.copy(
-                optimisticCounts = optimisticCounts.filterValues { it > 0L },
-                optimisticAllPressCount = optimisticAllPressCount,
-                pendingPressCount = outstanding,
-                isOutcomeUnknown = pendingWrite?.uncertain == true,
-            )
+        mutableState.value = writeLedger.applyTo(base)
     }
 
     /** Moves only acknowledged writes covered by this snapshot into the server baseline. */
     private fun reconcileAllSnapshot(
         snapshot: AllDailyPressSnapshot,
         acceptedCoveredAtReadStart: Long,
-    ): Boolean {
-        val counts =
-            PressReconciler.reconcileAll(
-                snapshot.total,
-                acceptedSinceAllSnapshot,
-                optimisticAllPressCount,
-                acceptedCoveredAtReadStart,
-            ) ?: return false
-        acceptedSinceAllSnapshot = counts.acceptedSinceSnapshot
-        optimisticAllPressCount = counts.optimisticCount
-        return true
-    }
-
-    private fun removeOptimistic(accepted: PressBatch) {
-        accepted.counts.forEach { (emotion, count) ->
-            check(optimisticCounts.getValue(emotion) >= count)
-            optimisticCounts[emotion] = optimisticCounts.getValue(emotion) - count
-        }
-        outstanding -= accepted.totalCount
-    }
-
-    private fun removeOptimisticAll(rejectedCount: Long) {
-        check(optimisticAllPressCount >= rejectedCount)
-        optimisticAllPressCount -= rejectedCount
-    }
+    ): Boolean = writeLedger.reconcileAllSnapshot(snapshot, acceptedCoveredAtReadStart)
 
     private data class StatisticsPair(
         val my: PressReadResult<MyDailyPressSnapshot>,
