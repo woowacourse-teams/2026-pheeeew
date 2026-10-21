@@ -71,6 +71,7 @@ private const val FALLBACK_LONGITUDE = 127.147538132656
 internal actual fun NativeMap(
     state: MapUiModel,
     isVisible: Boolean,
+    isActive: Boolean,
     isMounted: Boolean,
     savedCamera: MapCameraSnapshotUiModel?,
     onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
@@ -94,7 +95,7 @@ internal actual fun NativeMap(
     val statusBarInset = WindowInsets.statusBars.getTop(density)
     val navigationBarInset = WindowInsets.navigationBars.getBottom(density)
     val currentOnCameraMovingChanged by rememberUpdatedState(onCameraMovingChanged)
-    DisposableEffect(isVisible, isMounted) {
+    DisposableEffect(isVisible, isActive, isMounted) {
         if (!isVisible || !isMounted) currentOnCameraMovingChanged(false)
         onDispose { currentOnCameraMovingChanged(false) }
     }
@@ -130,7 +131,7 @@ internal actual fun NativeMap(
                         onMapRecovered = currentOnMapRecovered,
                         onRecordViewportChanged = onRecordViewportChanged,
                         onViewportChanged = onViewportChanged,
-                        onCameraMovingChanged = { currentOnCameraMovingChanged(it) },
+                        onCameraMovingChanged = { if (currentIsVisible) currentOnCameraMovingChanged(it) },
                         onEmotionPinClick = { currentOnEmotionPinClick(it) },
                         onRegionClusterClick = { currentOnRegionClusterClick(it) },
                         onMapBackgroundClick = { currentOnMapBackgroundClick() },
@@ -151,7 +152,7 @@ internal actual fun NativeMap(
     }
 
     SideEffect {
-        host.synchronizeLifecycle(isVisible, appLifecycleState)
+        host.synchronizeLifecycle(isActive, appLifecycleState)
     }
     DisposableEffect(host) {
         onDispose { host.release() }
@@ -180,7 +181,7 @@ internal actual fun NativeMap(
         modifier = modifier,
         update = { view ->
             view.visibility = if (isVisible) View.VISIBLE else View.INVISIBLE
-            if (isVisible) host.render(state, statusBarInset, navigationBarInset)
+            if (isActive) host.render(state, statusBarInset, navigationBarInset)
         },
     )
 }
@@ -383,12 +384,12 @@ private class AndroidFoundationMapHost(
     }
 
     fun synchronizeLifecycle(
-        visible: Boolean,
+        active: Boolean,
         lifecycleState: Lifecycle.State,
     ) {
         if (released) return
-        val shouldStart = visible && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
-        val shouldResume = visible && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+        val shouldStart = active && lifecycleState.isAtLeast(Lifecycle.State.STARTED)
+        val shouldResume = active && lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
         if (shouldStart && !started) {
             mapView.onStart()
             started = true
@@ -412,7 +413,7 @@ private class AndroidFoundationMapHost(
         saveCamera()
         mapView.removeOnDidFailLoadingMapListener(mapLoadFailureListener)
         mapView.removeOnDidBecomeIdleListener(idleListener)
-        synchronizeLifecycle(visible = false, lifecycleState = Lifecycle.State.DESTROYED)
+        synchronizeLifecycle(active = false, lifecycleState = Lifecycle.State.DESTROYED)
         released = true
         mapView.onDestroy()
         map = null

@@ -537,6 +537,7 @@ class MapViewModel(
     fun updateReadiness(
         ready: Boolean,
         generation: Long?,
+        startInitialLocationRequest: Boolean = true,
     ) {
         val sessionChanged = sessionGeneration != generation
         if (sessionChanged || (!ready && dataLoadingEnabled)) {
@@ -546,7 +547,7 @@ class MapViewModel(
         sessionGeneration = generation
         if (ready) {
             enableDataLoading()
-            start()
+            if (startInitialLocationRequest) start()
         }
     }
 
@@ -1055,6 +1056,7 @@ class MapViewModel(
                                         )
                                     partialPageBounds = request.bounds
                                     partialPagePins = LinkedHashMap(pins)
+                                    clearDisplayedRegionModeAfterPinFailure()
                                     _uiModel.value =
                                         _uiModel.value.copy(
                                             isLoadingEmotionPins = false,
@@ -1152,6 +1154,7 @@ class MapViewModel(
                                             searchFilter,
                                             null,
                                         )
+                                    clearDisplayedRegionModeAfterPinFailure()
                                     _uiModel.value =
                                         _uiModel.value.copy(
                                             isLoadingMoreEmotionPins = false,
@@ -1176,6 +1179,7 @@ class MapViewModel(
                         failedEmotionPinsRequestKey = EmotionPinsFailureKey(request.bounds, searchFilter, cursor)
                         partialPageBounds = request.bounds
                         partialPagePins = LinkedHashMap(pins)
+                        clearDisplayedRegionModeAfterPinFailure()
                         _uiModel.value =
                             _uiModel.value.copy(
                                 isLoadingEmotionPins = false,
@@ -1204,6 +1208,16 @@ class MapViewModel(
             }
         emotionMapJob = job
         job.start()
+    }
+
+    private fun clearDisplayedRegionModeAfterPinFailure() {
+        if (latestViewport?.zoom?.let(MapZoomPolicy::regionLevelForZoom) != null) return
+        if (_uiModel.value.displayedRegionLevel == null && _uiModel.value.regionClusters.isEmpty()) return
+        _uiModel.value =
+            _uiModel.value.copy(
+                regionClusters = emptyList(),
+                displayedRegionLevel = null,
+            )
     }
 
     private fun publishSnapshot(
