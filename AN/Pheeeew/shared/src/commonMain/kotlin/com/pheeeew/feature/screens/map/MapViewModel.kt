@@ -702,7 +702,7 @@ class MapViewModel(
             action = MapCameraActionUiModel.MoveToCoordinate,
             latitude = coordinate.latitude,
             longitude = coordinate.longitude,
-            value = LOCATION_FOCUS_ZOOM,
+            value = FOCUSED_COORDINATE_ZOOM,
             verticalPosition = verticalPosition,
         )
     }
@@ -1378,7 +1378,7 @@ class MapViewModel(
                             action = MapCameraActionUiModel.MoveToCoordinate,
                             latitude = location.latitude,
                             longitude = location.longitude,
-                            value = LOCATION_FOCUS_ZOOM,
+                            value = CURRENT_LOCATION_ZOOM,
                         )
                     }
                 } catch (cancellation: CancellationException) {
@@ -1417,7 +1417,8 @@ class MapViewModel(
     }
 
     companion object {
-        private const val LOCATION_FOCUS_ZOOM = 15.5
+        private const val FOCUSED_COORDINATE_ZOOM = 15.5
+        private const val CURRENT_LOCATION_ZOOM = 16.0
 
         private const val VIEWPORT_DEBOUNCE_MILLIS = 700L
     }
