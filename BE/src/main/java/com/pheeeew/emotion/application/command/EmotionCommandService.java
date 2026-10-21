@@ -23,6 +23,8 @@ import com.pheeeew.groups.domain.GroupStamp;
 import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.exception.GroupException;
 import com.pheeeew.region.application.RegionClassifier;
+import com.pheeeew.emotion.application.mapcache.EmotionMapCacheCoordinator;
+import com.pheeeew.emotion.application.mapcache.EmotionMapContribution;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
@@ -52,6 +54,7 @@ public class EmotionCommandService {
     private final EmotionContentResolver contentResolver;
     private final PlatformTransactionManager transactionManager;
     private final RegionClassifier regionClassifier;
+    private final EmotionMapCacheCoordinator mapCache;
 
     public Emotion save(
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
@@ -69,26 +72,8 @@ public class EmotionCommandService {
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
             String memo, String audioUploadId, UUID groupPublicId, UUID devicePublicId, Boolean anonymous
     ) {
-        Device device = deviceRepository.findByPublicId(devicePublicId)
-                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
-        Long deviceId = device.getId();
-        Optional<Emotion> existing = findRegisteredEmotion(requestId, deviceId);
-        if (existing.isPresent()) {
-            return existing.get();
-        }
-        if (Boolean.FALSE.equals(anonymous) && device.getNickname() == null) {
-            throw new DeviceException(DEVICE_NICKNAME_REQUIRED);
-        }
-
-        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
-        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        try {
-            return transaction.execute(status -> saveNewEmotion(requestId, state, longitude, latitude,
-                    rotationDegrees, memo, audioUploadId, groupPublicId, deviceId, anonymous));
-        } catch (DataIntegrityViolationException cause) {
-            return findRegisteredEmotion(requestId, deviceId)
-                    .orElseThrow(() -> new EmotionException(EMOTION_SAVE_FAILED, cause));
-        }
+        return mapCache.serialized(() -> saveSerialized(requestId, state, longitude, latitude, rotationDegrees,
+                memo, audioUploadId, groupPublicId, devicePublicId, anonymous));
     }
 
     @Transactional
@@ -106,14 +91,74 @@ public class EmotionCommandService {
         }
     }
 
-    @Transactional
     public void update(Long emotionId, UUID devicePublicId, EmotionState state, String memo, String audioUploadId,
+            boolean keepAudio, UUID groupPublicId) {
+        mapCache.serialized(() -> new TransactionTemplate(transactionManager).execute(status -> {
+            updateInTransaction(emotionId, devicePublicId, state, memo, audioUploadId, keepAudio, groupPublicId);
+
+            return null;
+        }));
+    }
+
+    public void delete(Long emotionId, UUID devicePublicId) {
+        mapCache.serialized(() -> new TransactionTemplate(transactionManager).execute(status -> {
+            Emotion emotion = findOwnedEmotion(emotionId, devicePublicId);
+
+            if (emotion.getDeletedAt() == null) {
+                EmotionMapContribution before = EmotionMapContribution.from(emotion);
+                emotion.delete();
+                mapCache.afterCommitChange(before, EmotionMapContribution.from(emotion));
+            }
+
+            return null;
+        }));
+    }
+
+    private Emotion saveSerialized(
+            UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
+            String memo, String audioUploadId, UUID groupPublicId, UUID devicePublicId, Boolean anonymous
+    ) {
+        Device device = deviceRepository.findByPublicId(devicePublicId)
+                .orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
+        Long deviceId = device.getId();
+
+        Optional<Emotion> existing = findRegisteredEmotion(requestId, deviceId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        if (Boolean.FALSE.equals(anonymous) && device.getNickname() == null) {
+            throw new DeviceException(DEVICE_NICKNAME_REQUIRED);
+        }
+
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+
+        try {
+            return transaction.execute(status -> {
+                Emotion emotion = saveNewEmotion(requestId, state, longitude, latitude,
+                        rotationDegrees, memo, audioUploadId, groupPublicId, deviceId, anonymous);
+
+                mapCache.afterCommitChange(null, EmotionMapContribution.from(emotion));
+
+                return emotion;
+            });
+        } catch (DataIntegrityViolationException cause) {
+            return findRegisteredEmotion(requestId, deviceId)
+                    .orElseThrow(() -> new EmotionException(EMOTION_SAVE_FAILED, cause));
+        }
+    }
+
+    private void updateInTransaction(Long emotionId, UUID devicePublicId, EmotionState state, String memo, String audioUploadId,
             boolean keepAudio, UUID groupPublicId) {
         Emotion emotion = findOwnedEmotion(emotionId, devicePublicId);
         if (emotion.getDeletedAt() != null) {
             throw new EmotionException(EMOTION_NOT_VISIBLE);
         }
+
+        EmotionMapContribution before = EmotionMapContribution.from(emotion);
         GroupStamp stamp = resolveGroupStamp(groupPublicId, emotion.getDeviceId(), emotion.getGroupStamp());
+
         EmotionContent content;
         if (keepAudio) {
             if (memo != null || audioUploadId != null) {
@@ -126,12 +171,10 @@ public class EmotionCommandService {
         } else {
             content = contentResolver.resolve(memo, audioUploadId, emotion.getDeviceId(), emotion.getRequestId());
         }
-        emotion.update(state, content, stamp);
-    }
 
-    @Transactional
-    public void delete(Long emotionId, UUID devicePublicId) {
-        findOwnedEmotion(emotionId, devicePublicId).delete();
+        emotion.update(state, content, stamp);
+
+        mapCache.afterCommitChange(before, EmotionMapContribution.from(emotion));
     }
 
     private Emotion saveNewEmotion(

@@ -22,4 +22,9 @@ public record EmotionMapItemView(
                 emotion.getCreatedAt(), emotion.getState(), emotion.getRotationDegrees(), stamp,
                 emotion.getGroupStamp() == null ? null : emotion.getGroupStamp().getGroup().getPublicId());
     }
+
+    public static EmotionMapItemView of(Long id, double longitude, double latitude, Instant createdAt,
+            EmotionState state, double rotationDegrees, GroupStampResult stamp, UUID groupId) {
+        return new EmotionMapItemView(id, longitude, latitude, createdAt, state, rotationDegrees, stamp, groupId);
+    }
 }

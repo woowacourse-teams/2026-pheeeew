@@ -62,6 +62,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -72,6 +74,8 @@ class EmotionRegistrationIntegrationTest {
 
     @Autowired
     private EmotionCommandService service;
+    @Autowired
+    private PlatformTransactionManager transactions;
     @Autowired
     private EmotionRepository emotions;
     @Autowired
@@ -254,7 +258,7 @@ class EmotionRegistrationIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {false, true})
-    void 동시_삽입_실패_후_최초_감정을_조회하고_작성자를_검증한다(boolean differentDevice) throws Exception {
+    void 외부_트랜잭션의_동시_삽입_실패_후_최초_감정과_작성자를_검증한다(boolean differentDevice) throws Exception {
         // 두 요청 모두 선조회를 통과한 뒤 실제 DB 유니크 제약에서 경합하도록 한다.
         UUID requestId = UUID.randomUUID();
         Device second = differentDevice ? devices.save(기본_기기_빌더().build()) : device;
@@ -301,7 +305,7 @@ class EmotionRegistrationIntegrationTest {
 
     @ParameterizedTest
     @ValueSource(booleans = {true, false})
-    void 같은_업로드의_동시_연결은_잠금_후_최초_요청에만_허용한다(boolean sameRequest) throws Exception {
+    void 외부_트랜잭션에서_같은_업로드의_동시_연결은_최초_요청에만_허용한다(boolean sameRequest) throws Exception {
         // given: 첫 요청이 객체를 검증하는 동안 업로드 행 잠금을 유지한다.
         UUID requestId = UUID.randomUUID();
         UUID secondRequestId = sameRequest ? requestId : UUID.randomUUID();
@@ -395,8 +399,10 @@ class EmotionRegistrationIntegrationTest {
 
     private Object outcome(UUID requestId, Device author, String uploadId, Boolean anonymous) {
         try {
-            return service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
-                    null, uploadId, null, author.getPublicId(), anonymous);
+            // 이미 열린 외부 트랜잭션은 JVM 쓰기 잠금을 우회한다. DB의 경합 방어는 계속 검증한다.
+            return new TransactionTemplate(transactions).execute(status ->
+                    service.save(requestId, EmotionState.FRUSTRATED, 126.97, 37.56, 35.5,
+                            null, uploadId, null, author.getPublicId(), anonymous));
         } catch (EmotionException exception) {
             return exception;
         }
