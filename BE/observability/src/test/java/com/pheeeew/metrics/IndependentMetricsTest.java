@@ -49,12 +49,13 @@ class IndependentMetricsTest {
                     .filter(meter -> meter instanceof Timer || meter instanceof Counter
                             || meter instanceof DistributionSummary)
                     .toList();
-            assertThat(definedMeters).hasSize(17);
+            assertThat(definedMeters).hasSize(39);
+            assertThat(registry.get("pheeeew.map.read.stage").timers()).hasSize(22);
             assertThat(definedMeters).extracting(meter -> meter.getId().getName())
                     .containsOnly("pheeeew.sigh.list.query", "pheeeew.sigh.list.results",
                             "pheeeew.emotion.create.throttled", "pheeeew.region.query",
                             "pheeeew.device.challenge.issued", "pheeeew.device.challenge.deleted",
-                            "pheeeew.report.sigh.auto_deleted");
+                            "pheeeew.report.sigh.auto_deleted", "pheeeew.map.read.stage");
             assertCounter(registry, "pheeeew.emotion.create.throttled", 1);
             assertCounter(registry, "pheeeew.device.challenge.issued", 2);
             assertCounter(registry, "pheeeew.device.challenge.deleted", 7);

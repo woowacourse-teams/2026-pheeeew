@@ -1,5 +1,6 @@
 package com.pheeeew.common.logging;
 
+import com.pheeeew.emotion.infra.metrics.MapReadMetrics;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.List;
@@ -18,8 +19,9 @@ public final class PheeeewRequestLogPolicy implements RequestLogPolicy {
             "emotionId", "groupId", "blockId", "emojiType", "state", "weeksAgo", "platform"
     );
     private static final Pattern VALUE_SHAPE = Pattern.compile("^[A-Za-z0-9_-]{1,36}$");
-    private static final List<RequestTimingStage> TIMING_STAGES = Stream.<RequestTimingStage>concat(
-            Arrays.stream(DataSourceTimingStage.values()), Arrays.stream(PheeeewRequestTimingStage.values())).toList();
+    private static final List<RequestTimingStage> TIMING_STAGES = Stream.of(
+            Arrays.stream(DataSourceTimingStage.values()), Arrays.stream(PheeeewRequestTimingStage.values()),
+            Arrays.stream(MapReadMetrics.Stage.values())).flatMap(stream -> stream.map(stage -> (RequestTimingStage) stage)).toList();
 
     @Override
     public Map<String, String> requestValues(HttpServletRequest request) {
