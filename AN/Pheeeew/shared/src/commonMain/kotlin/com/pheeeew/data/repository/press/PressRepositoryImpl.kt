@@ -38,8 +38,8 @@ internal class PressRepositoryImpl(
     private val statistics: PressStatisticsDataSource,
     private val sender: PressSender,
     private val sessionScope: CoroutineScope,
-    private val batchMaxPerEmotion: Int = 30,
-    private val batchMaxTotal: Int = 100,
+    batchMaxPerEmotion: Int = 30,
+    batchMaxTotal: Int = 100,
     flushDelayMillis: Long = 500L,
     private val retryPolicy: PressRetryPolicy = PressRetryPolicy(),
     private val aggregateRefreshMillis: Long = 1_000L,
@@ -54,16 +54,13 @@ internal class PressRepositoryImpl(
 ) : PressRepository {
     private val mutableState = MutableStateFlow(PressSessionState())
     override val state = mutableState.asStateFlow()
-    private val batch = PressBatchAccumulator()
-    private val flushPolicy = PressFlushPolicy(flushDelayMillis)
+    private val inputQueue = PressInputQueue(batchMaxPerEmotion, batchMaxTotal, flushDelayMillis)
     private val flushRequests = Channel<Unit>(Channel.CONFLATED)
     private val optimisticCounts = EmotionState.entries.associateWith { 0L }.toMutableMap()
     private var outstanding = 0L
     private var optimisticAllPressCount = 0L
     private var acceptedSinceAllSnapshot = 0L
     private var pendingWrite: PressWriteState? = null
-    private var nextSequence = 1L
-    private var lastEmotionIndex = 0
     private var workerJob: Job? = null
     private var readJob: Job? = null
     private var retryJob: Job? = null
@@ -81,12 +78,9 @@ internal class PressRepositoryImpl(
     private var failures = 0
     private var statisticsFailures = 0
     private var retryNotBefore = 0L
-    private var batchFlushNotBefore: Long? = null
     private var aggregateRefreshJob: Job? = null
 
     init {
-        require(batchMaxPerEmotion > 0 && batchMaxTotal > 0)
-        require(flushDelayMillis >= 0)
         require(aggregateRefreshMillis > 0)
         connectivity?.let { updates ->
             sessionScope.launch {
@@ -103,17 +97,25 @@ internal class PressRepositoryImpl(
     }
 
     override fun accept(emotion: EmotionState): PressAcceptance {
-        val wasEmpty = !batch.isNotEmpty
         val serverTotal = mutableState.value.myToday?.total ?: 0L
         val allServerTotal = mutableState.value.allToday?.total ?: 0L
         if (outstanding >= Long.MAX_VALUE - serverTotal ||
-            optimisticAllPressCount >= Long.MAX_VALUE - allServerTotal ||
-            !batch.add(emotion, occurredAt = wallClock())
+            optimisticAllPressCount >= Long.MAX_VALUE - allServerTotal
         ) {
             mutableState.update { it.copy(notice = PressSessionNotice.NumericLimit) }
             return PressAcceptance.NumericLimit
         }
-        if (wasEmpty) batchFlushNotBefore = flushPolicy.firstInputDeadline(nowMillis())
+        val acceptance =
+            when (val result = inputQueue.accept(emotion, wallClock(), nowMillis())) {
+                PressQueueAcceptance.NumericLimit -> {
+                    mutableState.update { it.copy(notice = PressSessionNotice.NumericLimit) }
+                    return PressAcceptance.NumericLimit
+                }
+
+                is PressQueueAcceptance.Accepted -> {
+                    result
+                }
+            }
         outstanding++
         optimisticAllPressCount++
         optimisticCounts[emotion] = optimisticCounts.getValue(emotion) + 1L
@@ -129,9 +131,8 @@ internal class PressRepositoryImpl(
                     },
             ),
         )
-        val ready = batch.isReadyToFlush(batchMaxPerEmotion, batchMaxTotal)
-        if (ready) flushRequests.trySend(Unit)
-        scheduleSend(flushPolicy.delayAfterAcceptance(ready))
+        if (acceptance.isThresholdReached) flushRequests.trySend(Unit)
+        scheduleSend(acceptance.delayMillis)
         return PressAcceptance.Accepted
     }
 
@@ -169,12 +170,11 @@ internal class PressRepositoryImpl(
     /** Completing a read is not a retry: fresh input keeps the wait established on acceptance. */
     private fun resumeQueuedWork() {
         val now = nowMillis()
-        val wait = flushPolicy.resumeDelay(batchFlushNotBefore, pendingWrite != null, now)
+        val wait = inputQueue.resumeDelay(pendingWrite != null, now)
         scheduleSend(wait)
     }
 
-    private fun remainingBatchWait(now: Long = nowMillis()): Long =
-        PressFlushPolicy.remainingWait(batchFlushNotBefore, now)
+    private fun remainingBatchWait(now: Long = nowMillis()): Long = inputQueue.remainingWait(now)
 
     private fun scheduleSend(delayMillis: Long) {
         if (workerJob?.isActive == true || connected == false || outstanding == 0L) return
@@ -313,17 +313,14 @@ internal class PressRepositoryImpl(
     }
 
     private suspend fun awaitFlush(delayMillis: Long) {
-        if (delayMillis > 0 && !batch.isReadyToFlush(batchMaxPerEmotion, batchMaxTotal)) {
+        if (delayMillis > 0 && !inputQueue.isReadyToFlush()) {
             withTimeoutOrNull(delayMillis) { flushRequests.receive() }
         }
         flushRequests.tryReceive()
     }
 
     private fun newWrite(): PressWriteState? {
-        val next = batch.take(batchMaxPerEmotion, batchMaxTotal, lastEmotionIndex, nextSequence) ?: return null
-        if (!batch.isNotEmpty) batchFlushNotBefore = null
-        nextSequence = if (nextSequence == Long.MAX_VALUE) 1L else nextSequence + 1L
-        lastEmotionIndex = (lastEmotionIndex + 1) % EmotionState.entries.size
+        val next = inputQueue.takeBatch() ?: return null
         return PressWriteState(next, checkNotNull(mutableState.value.myToday), nowMillis())
     }
 
