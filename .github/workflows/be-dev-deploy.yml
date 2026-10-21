@@ -230,8 +230,11 @@ jobs:
 
           if ! docker compose -f compose.nginx.yml up -d; then
             echo "===== nginx 기동 실패 ====="
-            echo "80, 443 을 점유한 컨테이너와 소속 프로젝트"
-            docker ps --filter publish=443 --format '{{.Names}} ({{.Label "com.docker.compose.project"}})'
+            echo "-- 같은 이름을 쓰는 컨테이너"
+            docker ps -a --filter name=pheeeew-dev-nginx --format '{{.Names}} project={{.Label "com.docker.compose.project"}} {{.State}}'
+            echo "-- 80, 443 을 점유한 컨테이너"
+            docker ps --filter publish=80 --filter publish=443 --format '{{.Names}} project={{.Label "com.docker.compose.project"}}'
+            echo "-- 위가 이전 프로젝트의 컨테이너라면 docker rm -f 로 지운 뒤 다시 배포하세요"
             exit 1
           fi
 
