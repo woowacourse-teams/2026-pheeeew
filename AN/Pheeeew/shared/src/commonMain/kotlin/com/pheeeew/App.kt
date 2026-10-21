@@ -941,7 +941,7 @@ private fun AppContent(
                 )
             }
         }
-        if (!shouldPrepareMapDuringSplash && mainFeaturesReady && !firstMapFrameReady.value &&
+        if (!shouldPrepareMapDuringSplash && mainFeaturesReady && mapVisible && !firstMapFrameReady.value &&
             mapUiModel.mapError == null
         ) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
