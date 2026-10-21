@@ -537,6 +537,7 @@ class MapViewModel(
     fun updateReadiness(
         ready: Boolean,
         generation: Long?,
+        startInitialLocationRequest: Boolean = true,
     ) {
         val sessionChanged = sessionGeneration != generation
         if (sessionChanged || (!ready && dataLoadingEnabled)) {
@@ -546,7 +547,7 @@ class MapViewModel(
         sessionGeneration = generation
         if (ready) {
             enableDataLoading()
-            start()
+            if (startInitialLocationRequest) start()
         }
     }
 

@@ -25,6 +25,7 @@ private const val FALLBACK_LONGITUDE = 127.147538132656
 internal actual fun NativeMap(
     state: MapUiModel,
     isVisible: Boolean,
+    isActive: Boolean,
     isMounted: Boolean,
     savedCamera: MapCameraSnapshotUiModel?,
     onCameraSaved: (MapCameraSnapshotUiModel) -> Unit,
@@ -42,8 +43,9 @@ internal actual fun NativeMap(
     styleUrlOverride: String?,
     modifier: Modifier,
 ) {
+    val currentIsVisible by rememberUpdatedState(isVisible)
     val currentOnCameraMovingChanged by rememberUpdatedState(onCameraMovingChanged)
-    DisposableEffect(isVisible, isMounted) {
+    DisposableEffect(isVisible, isActive, isMounted) {
         if (!isVisible || !isMounted) currentOnCameraMovingChanged(false)
         onDispose { currentOnCameraMovingChanged(false) }
     }
@@ -85,7 +87,9 @@ internal actual fun NativeMap(
     val eventSink =
         remember {
             object : FoundationIosMapEventSink {
-                override fun onCameraMovingChanged(isMoving: Boolean) = currentOnCameraMovingChanged(isMoving)
+                override fun onCameraMovingChanged(isMoving: Boolean) {
+                    if (currentIsVisible) currentOnCameraMovingChanged(isMoving)
+                }
 
                 override fun onCameraSaved(camera: MapCameraSnapshotUiModel) = currentOnCameraSaved(camera)
 
@@ -137,6 +141,7 @@ internal actual fun NativeMap(
                 state =
                     state.toFoundationIosRenderUiModel(
                         isVisible = isVisible,
+                        isActive = isActive,
                         savedCamera = savedCamera,
                         emotionPinCoordinates = emotionPinCoordinates,
                         regionClusterCoordinates = regionClusterCoordinates,
@@ -155,6 +160,7 @@ internal actual fun NativeMap(
 
 private fun MapUiModel.toFoundationIosRenderUiModel(
     isVisible: Boolean,
+    isActive: Boolean,
     savedCamera: MapCameraSnapshotUiModel?,
     emotionPinCoordinates: List<FoundationIosEmotionPinCoordinateUiModel>,
     regionClusterCoordinates: List<FoundationIosRegionClusterCoordinateUiModel>,
@@ -165,6 +171,7 @@ private fun MapUiModel.toFoundationIosRenderUiModel(
     val longitude = currentLocation?.longitude ?: FALLBACK_LONGITUDE
     return FoundationIosMapRenderUiModel(
         isVisible = isVisible,
+        isActive = isActive,
         restoredCamera = savedCamera,
         monitoringLoadId = emotionContentLoad?.loadId,
         currentLocation =
