@@ -177,6 +177,7 @@ jobs:
           ssh -F ~/.ssh/config target 'set -eu; cd /opt/pheeeew; if [ -f compose.yml ]; then cp compose.yml compose.yml.prev; fi'
           scp -F ~/.ssh/config BE/docker/compose.dev.yml target:/opt/pheeeew/compose.yml
           scp -F ~/.ssh/config BE/docker/compose.nginx.dev.yml target:/opt/pheeeew/compose.nginx.yml
+          scp -F ~/.ssh/config BE/docker/compose.postgres.dev.yml target:/opt/pheeeew/compose.postgres.yml
           scp -F ~/.ssh/config BE/docker/nginx/api-dev.conf target:/opt/pheeeew/nginx/api-dev.conf
           scp -F ~/.ssh/config BE/docker/compose.monitoring.dev.yml target:/opt/pheeeew/compose.monitoring.yml
           scp -F ~/.ssh/config BE/docker/alloy/config.dev.alloy target:/opt/pheeeew/alloy/
