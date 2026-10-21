@@ -65,13 +65,17 @@ private val SplashBackground = Color(0xFFFFFDFD)
 internal fun rememberSplashProgress(
     animationCompleted: Boolean,
     onAnimationCompleted: () -> Unit,
+    initialProgress: Float = if (animationCompleted) 1f else 0f,
 ): State<Float> {
-    val progress = remember { Animatable(if (animationCompleted) 1f else 0f) }
+    val progress = remember { Animatable(initialProgress) }
     val progressState = remember(progress) { derivedStateOf { progress.value } }
     val currentOnCompleted = rememberUpdatedState(onAnimationCompleted)
     LaunchedEffect(Unit) {
         if (!animationCompleted) {
-            progress.animateTo(1f, tween(SPLASH_DURATION_MILLIS, easing = LinearEasing))
+            progress.animateTo(
+                1f,
+                tween(((1f - progress.value) * SPLASH_DURATION_MILLIS).toInt(), easing = LinearEasing),
+            )
             currentOnCompleted.value()
         }
     }

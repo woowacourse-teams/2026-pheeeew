@@ -3,6 +3,7 @@ package com.pheeeew.feature.screens.map.renderer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import com.pheeeew.domain.model.emotion.EmotionMapBounds
@@ -24,6 +25,7 @@ interface MapRenderer {
         onMemoryPressure: () -> Unit,
         onMapError: (MapErrorUiModel) -> Unit,
         onMapRecovered: () -> Unit,
+        onFirstFrameReady: () -> Unit,
         onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
         onViewportChanged: (EmotionMapViewport) -> Unit,
         onCameraMovingChanged: (Boolean) -> Unit,
@@ -50,6 +52,7 @@ object NativeMapRenderer : MapRenderer {
         onMemoryPressure: () -> Unit,
         onMapError: (MapErrorUiModel) -> Unit,
         onMapRecovered: () -> Unit,
+        onFirstFrameReady: () -> Unit,
         onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
         onViewportChanged: (EmotionMapViewport) -> Unit,
         onCameraMovingChanged: (Boolean) -> Unit,
@@ -61,21 +64,24 @@ object NativeMapRenderer : MapRenderer {
         modifier: Modifier,
     ) {
         val provider = LocalMapStyleOverrideProvider.current
+        val request = remember(provider, state.mapRevision, isMounted) { Any() }
         val styleUrlOverride =
             produceState<StyleUrlOverrideState>(
                 initialValue = StyleUrlOverrideState.Loading,
-                provider,
-                state.mapRevision,
-                isMounted,
+                request,
             ) {
                 value =
                     StyleUrlOverrideState.Loaded(
+                        request,
                         if (isMounted) provider.consumeForNextLoad() else null,
                     )
             }.value
 
-        if (isMounted && styleUrlOverride == StyleUrlOverrideState.Loading) return
-        val styleUrl = (styleUrlOverride as? StyleUrlOverrideState.Loaded)?.url
+        val loaded = styleUrlOverride as? StyleUrlOverrideState.Loaded
+        // produceState retains its previous value when keys change. Never mount the previous style
+        // while the next input is being consumed, or its frame could resolve startup prematurely.
+        if (isMounted && loaded?.request !== request) return
+        val styleUrl = loaded?.url
         key(styleUrl) {
             NativeMap(
                 state = state,
@@ -87,6 +93,7 @@ object NativeMapRenderer : MapRenderer {
                 onMemoryPressure = onMemoryPressure,
                 onMapError = onMapError,
                 onMapRecovered = onMapRecovered,
+                onFirstFrameReady = onFirstFrameReady,
                 onRecordViewportChanged = onRecordViewportChanged,
                 onViewportChanged = onViewportChanged,
                 onCameraMovingChanged = onCameraMovingChanged,
@@ -106,6 +113,7 @@ private sealed interface StyleUrlOverrideState {
     data object Loading : StyleUrlOverrideState
 
     data class Loaded(
+        val request: Any,
         val url: String?,
     ) : StyleUrlOverrideState
 }

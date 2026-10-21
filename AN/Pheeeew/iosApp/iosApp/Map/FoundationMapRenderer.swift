@@ -14,6 +14,7 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     private var preferredFramesPerSecondBeforePause: MLNMapViewPreferredFramesPerSecond?
     private var styleIsReady = false
     private var didSetInitialCamera = false
+    private var firstFramePublished = false
     private var initialCameraUsedFallback = false
     private var lastAppliedCameraCommandId: Int64 = 0
     private var currentLocationSource: MLNShapeSource?
@@ -105,8 +106,10 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
 
     func update(state: FoundationIosMapRenderUiModel) {
         pendingState = state
-        mapView.isHidden = !state.isVisible
+        // Keep rendering underneath splash; logical presentation still controls interaction.
+        mapView.isHidden = !state.isActive
         mapView.isUserInteractionEnabled = state.isVisible
+        mapView.accessibilityElementsHidden = !state.isVisible
         if state.isActive {
             if let previousRate = preferredFramesPerSecondBeforePause {
                 mapView.preferredFramesPerSecond = previousRate
@@ -353,6 +356,11 @@ final class FoundationMapRenderer: NSObject, MLNMapViewDelegate, UIGestureRecogn
     }
 
     func mapViewDidFinishRenderingFrame(_ mapView: MLNMapView, fullyRendered: Bool) {
+        if !firstFramePublished, styleIsReady, didSetInitialCamera,
+           pendingState?.isActive == true, !mapView.bounds.isEmpty {
+            firstFramePublished = true
+            eventSink.onFirstFrameReady()
+        }
         if let state = pendingState, state.isVisible, state.isRecordLocationPicking {
             _ = applyRecordCamera(state)
         }

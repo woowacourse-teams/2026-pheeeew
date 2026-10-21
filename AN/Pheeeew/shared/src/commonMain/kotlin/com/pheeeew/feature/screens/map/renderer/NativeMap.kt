@@ -29,6 +29,7 @@ internal expect fun NativeMap(
     onMemoryPressure: () -> Unit,
     onMapError: (MapErrorUiModel) -> Unit,
     onMapRecovered: () -> Unit,
+    onFirstFrameReady: () -> Unit,
     onRecordViewportChanged: (centerX: Float, centerY: Float, radius: Float) -> Unit,
     onViewportChanged: (EmotionMapViewport) -> Unit,
     onCameraMovingChanged: (Boolean) -> Unit,

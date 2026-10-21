@@ -32,7 +32,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +40,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -64,6 +64,7 @@ import com.pheeeew.core.audio.LocalAudioFactories
 import com.pheeeew.core.audio.rememberVoiceRecorder
 import com.pheeeew.core.designsystem.component.AppAlertDialog
 import com.pheeeew.core.designsystem.component.AppDialog
+import com.pheeeew.core.designsystem.component.CircularLoadingIndicator
 import com.pheeeew.core.designsystem.component.ConfirmDialog
 import com.pheeeew.core.designsystem.theme.AppTheme
 import com.pheeeew.core.di.AppGraph
@@ -117,6 +118,7 @@ import com.pheeeew.feature.screens.ranking.stamp.WeeklyRankingRoute
 import com.pheeeew.feature.screens.report.ReportRoute
 import com.pheeeew.feature.screens.settings.AppEntryGate
 import com.pheeeew.feature.screens.settings.AppEntryPhase
+import com.pheeeew.feature.screens.settings.AppEntryUiState
 import com.pheeeew.feature.screens.settings.AppEntryViewModel
 import com.pheeeew.feature.screens.settings.AppStartupViewModel
 import com.pheeeew.feature.screens.settings.SettingsScreen
@@ -163,6 +165,7 @@ internal fun shouldShowMapFeedback(
 
 internal enum class AppStartupPresentation {
     SPLASH,
+    VERSION_CHECK,
     REQUIRED_UPDATE,
     ONBOARDING,
     MAIN,
@@ -170,16 +173,26 @@ internal enum class AppStartupPresentation {
 
 internal fun resolveAppStartupPresentation(
     initialVersionCheckComplete: Boolean,
-    splashAnimationCompleted: Boolean,
+    splashDismissed: Boolean,
     requiredUpdate: Boolean,
     onboardingCompleted: Boolean,
 ): AppStartupPresentation =
     when {
-        !initialVersionCheckComplete -> AppStartupPresentation.SPLASH
-        !splashAnimationCompleted && (requiredUpdate || !onboardingCompleted) -> AppStartupPresentation.SPLASH
-        requiredUpdate -> AppStartupPresentation.REQUIRED_UPDATE
-        !onboardingCompleted -> AppStartupPresentation.ONBOARDING
-        else -> AppStartupPresentation.MAIN
+        !initialVersionCheckComplete && !onboardingCompleted -> {
+            if (splashDismissed) AppStartupPresentation.VERSION_CHECK else AppStartupPresentation.SPLASH
+        }
+
+        requiredUpdate -> {
+            if (splashDismissed) AppStartupPresentation.REQUIRED_UPDATE else AppStartupPresentation.SPLASH
+        }
+
+        !onboardingCompleted -> {
+            if (splashDismissed) AppStartupPresentation.ONBOARDING else AppStartupPresentation.SPLASH
+        }
+
+        else -> {
+            AppStartupPresentation.MAIN
+        }
     }
 
 @Composable
@@ -216,24 +229,32 @@ private fun AppContent(
     val initialVersionCheckComplete = startupState.checked
     val versionDecision = startupState.decision
     val checkedForResume by rememberUpdatedState(initialVersionCheckComplete)
-    var splashAnimationCompleted by rememberSaveable { mutableStateOf(false) }
     var suggestionDismissed by remember { mutableStateOf(false) }
     var storeOpenError by remember { mutableStateOf(false) }
     var onboardingCompleted by remember { mutableStateOf(onboardingStore.isCompleted()) }
     var mapVisible by remember { mutableStateOf(false) }
     var mapMounted by remember { mutableStateOf(false) }
     var savedMapCamera by remember { mutableStateOf<MapCameraSnapshotUiModel?>(null) }
-    val splashProgress = rememberSplashProgress(splashAnimationCompleted) { splashAnimationCompleted = true }
+    val splashAnimationDuration = AppStartupViewModel.MINIMUM_SPLASH_MILLIS.toFloat()
+    val splashProgress =
+        rememberSplashProgress(
+            animationCompleted = startupState.minimumSplashElapsed,
+            initialProgress = (startupViewModel.splashElapsedMillis() / splashAnimationDuration).coerceIn(0f, 1f),
+            onAnimationCompleted = {},
+        )
 
     LaunchedEffect(startupViewModel) {
+        startupViewModel.startSplash()
+        startupViewModel.refreshSplashDeadline()
         if (!startupViewModel.state.value.checked) startupViewModel.checkVersion()
     }
 
     DisposableEffect(lifecycleOwner) {
         val observer =
             LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_RESUME && checkedForResume) {
-                    startupViewModel.checkVersion()
+                if (event == Lifecycle.Event.ON_RESUME) {
+                    startupViewModel.refreshSplashDeadline()
+                    if (checkedForResume) startupViewModel.checkVersion()
                 }
             }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -241,10 +262,21 @@ private fun AppContent(
     }
 
     val requiredUpdate = versionDecision as? AppVersionDecision.UpdateRequired
+    // Restore the existing identity concurrently with the public version lookup.
+    val appEntryViewModel = if (onboardingCompleted) metroViewModel<AppEntryViewModel>() else null
+    val appEntryState = appEntryViewModel?.uiState?.collectAsStateWithLifecycle()?.value ?: AppEntryUiState()
+    val sessionState by apiDependencies.session.state.collectAsStateWithLifecycle()
+    val sessionGeneration = (sessionState as? DeviceSessionResult.Ready)?.access?.generation
+    val entryReady =
+        appEntryState.phase == AppEntryPhase.READY && sessionGeneration != null &&
+            appEntryState.sessionGeneration == sessionGeneration
+    LaunchedEffect(startupViewModel, onboardingCompleted, appEntryState.phase, entryReady) {
+        startupViewModel.updateEntryPreparation(onboardingCompleted, appEntryState.phase, entryReady)
+    }
     val startupPresentation =
         resolveAppStartupPresentation(
             initialVersionCheckComplete = initialVersionCheckComplete,
-            splashAnimationCompleted = splashAnimationCompleted,
+            splashDismissed = startupState.splashDismissed,
             requiredUpdate = requiredUpdate != null,
             onboardingCompleted = onboardingCompleted,
         )
@@ -252,6 +284,13 @@ private fun AppContent(
     if (startupPresentation == AppStartupPresentation.SPLASH) {
         Box(Modifier.fillMaxSize()) {
             SplashScreen(progress = splashProgress)
+        }
+        return
+    }
+
+    if (startupPresentation == AppStartupPresentation.VERSION_CHECK) {
+        Box(Modifier.fillMaxSize()) {
+            AppEntryGate(AppEntryUiState(), {}, {}, {})
         }
         return
     }
@@ -319,17 +358,9 @@ private fun AppContent(
         return
     }
 
-    val shouldPrepareMapDuringSplash = !splashAnimationCompleted
-
-    val appEntryViewModel: AppEntryViewModel =
-        metroViewModel()
-    val appEntryState by appEntryViewModel.uiState.collectAsStateWithLifecycle()
-    val sessionState by apiDependencies.session.state.collectAsStateWithLifecycle()
-    val sessionGeneration =
-        (sessionState as? DeviceSessionResult.Ready)?.access?.generation
-    val mainFeaturesReady =
-        appEntryState.phase == AppEntryPhase.READY && sessionGeneration != null &&
-            appEntryState.sessionGeneration == sessionGeneration
+    val shouldPrepareMapDuringSplash = !startupState.splashDismissed
+    val entryViewModel = requireNotNull(appEntryViewModel)
+    val mainFeaturesReady = initialVersionCheckComplete && requiredUpdate == null && entryReady
 
     if (mainFeaturesReady) {
         LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { apiDependencies.appSession.onForeground() }
@@ -347,6 +378,7 @@ private fun AppContent(
             generation = sessionGeneration,
             startInitialLocationRequest = !shouldPrepareMapDuringSplash,
         )
+        if (mainFeaturesReady && shouldPrepareMapDuringSplash) mapViewModel.prepareCurrentLocation()
     }
     LaunchedEffect(mapViewModel, mainFeaturesReady, sessionGeneration) {
         if (mainFeaturesReady) mapViewModel.onMapRendererAttached()
@@ -372,14 +404,16 @@ private fun AppContent(
     val detailViewModel: EmotionDetailViewModel = metroViewModel()
     val detailState by detailViewModel.uiModel.collectAsStateWithLifecycle()
 
-    val mapReady = true
-    LaunchedEffect(mapReady, mapVisible) {
-        if (!mapReady) {
-            mapMounted = false
-            return@LaunchedEffect
-        }
+    val firstMapFrameReady = remember(mapUiModel.mapRevision) { mutableStateOf(false) }
+    DisposableEffect(firstMapFrameReady) {
+        onDispose { startupViewModel.updateMapPreparation(false) }
+    }
+    LaunchedEffect(firstMapFrameReady.value, mapUiModel.mapError, mapUiModel.mapRevision) {
+        startupViewModel.updateMapPreparation(firstMapFrameReady.value || mapUiModel.mapError != null)
+    }
+    LaunchedEffect(mapVisible, shouldPrepareMapDuringSplash) {
         mapMounted = true
-        if (!mapVisible) {
+        if (!mapVisible && !shouldPrepareMapDuringSplash) {
             delay(MAP_INACTIVE_RELEASE_DELAY_MILLIS)
             if (!mapVisible) mapMounted = false
         }
@@ -467,9 +501,10 @@ private fun AppContent(
                 isMounted = mapMounted,
                 savedCamera = savedMapCamera,
                 onCameraSaved = { savedMapCamera = it },
-                onMemoryPressure = { if (!mapVisible) mapMounted = false },
+                onMemoryPressure = { if (!mapVisible && !shouldPrepareMapDuringSplash) mapMounted = false },
                 onMapError = { mapViewModel.onMapError(it, mapRevision) },
                 onMapRecovered = { mapViewModel.onMapRecovered(mapRevision) },
+                onFirstFrameReady = { firstMapFrameReady.value = true },
                 onRecordViewportChanged = { centerX, centerY, radius ->
                     val viewport = RecordMapViewport(centerX, centerY, radius)
                     if (recordViewport.value != viewport) recordViewport.value = viewport
@@ -576,7 +611,12 @@ private fun AppContent(
         // Register the exit fallback before navigation and screen-specific back handlers.
         DoubleBackToExitHandler()
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier =
+                Modifier.fillMaxSize().then(
+                    if (shouldPrepareMapDuringSplash) Modifier.clearAndSetSemantics {} else Modifier,
+                ),
+        ) {
             NavHost(
                 navController = navController,
                 startDestination = MapRootDestination,
@@ -597,7 +637,7 @@ private fun AppContent(
                     Box(modifier = Modifier.fillMaxSize()) {
                         MapScreen(
                             viewModel = mapViewModel,
-                            featuresEnabled = mainFeaturesReady,
+                            featuresEnabled = mainFeaturesReady && !shouldPrepareMapDuringSplash,
                             recordViewModel = mapRecordViewModel,
                             highlightedEmotion = highlightedEmotion,
                             onHighlightedEmotionChanged = { highlightedEmotion = it },
@@ -901,12 +941,26 @@ private fun AppContent(
                 )
             }
         }
+        if (!shouldPrepareMapDuringSplash && mainFeaturesReady && !firstMapFrameReady.value &&
+            mapUiModel.mapError == null
+        ) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularLoadingIndicator()
+            }
+        }
         if (!shouldPrepareMapDuringSplash) {
             AppEntryGate(
-                state = appEntryState,
-                onNicknameChanged = appEntryViewModel::onNicknameChanged,
-                onSubmit = appEntryViewModel::submitNickname,
-                onRetry = appEntryViewModel::retry,
+                state =
+                    if (!initialVersionCheckComplete ||
+                        (appEntryState.phase == AppEntryPhase.READY && !entryReady)
+                    ) {
+                        AppEntryUiState()
+                    } else {
+                        appEntryState
+                    },
+                onNicknameChanged = entryViewModel::onNicknameChanged,
+                onSubmit = entryViewModel::submitNickname,
+                onRetry = entryViewModel::retry,
             )
         }
         if (shouldPrepareMapDuringSplash) {
