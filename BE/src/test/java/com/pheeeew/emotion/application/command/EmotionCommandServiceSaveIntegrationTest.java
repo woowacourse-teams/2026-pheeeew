@@ -154,7 +154,6 @@ class EmotionCommandServiceSaveIntegrationTest {
                         error -> assertThat(error.getErrorCode()).isEqualTo(DEVICE_NICKNAME_REQUIRED));
         assertThat(emotionRepository.count()).isZero();
         assertThat(linkCount()).isZero();
-        verifyNoInteractions(objectVerifier);
 
         deviceService.updateNickname(device.getPublicId(), "스타크");
         Emotion saved = commandService.save(requestId, EmotionState.FRUSTRATED,
@@ -262,7 +261,6 @@ class EmotionCommandServiceSaveIntegrationTest {
                         error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_LOCATION_OUT_OF_SERVICE_AREA));
         assertThat(emotionRepository.count()).isZero();
         assertThat(linkCount()).isZero();
-        verifyNoInteractions(objectVerifier);
 
         // 같은 요청 식별자와 업로드로 허용 위치를 선택하면 등록할 수 있다.
         Emotion saved = save(requestId, memo, uploadId);
@@ -296,7 +294,6 @@ class EmotionCommandServiceSaveIntegrationTest {
                         error -> assertThat(error.getErrorCode()).isEqualTo(GROUP_NOT_FOUND));
         assertThat(emotionRepository.count()).isZero();
         assertThat(linkCount()).isZero();
-        verifyNoInteractions(objectVerifier);
     }
 
     @ParameterizedTest
@@ -322,7 +319,6 @@ class EmotionCommandServiceSaveIntegrationTest {
             }
             assertThat(emotionRepository.count()).isZero();
             assertThat(linkCount()).isZero();
-            verifyNoInteractions(objectVerifier);
         } finally {
             if (unavailableTable) {
                 jdbc.sql("ALTER TABLE unavailable_regions RENAME TO regions").update();

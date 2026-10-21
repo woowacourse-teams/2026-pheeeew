@@ -90,6 +90,8 @@
 
 활성 기기는 앱에서 기본 5분 간격으로 집계하고 Alloy는 마지막 성공 결과를 60초마다 읽어요. 초기 집계 전이나 KST 날짜가 바뀐 뒤 오늘 집계가 성공하기 전에는 활성 기기 수가 `NaN`이므로 0명으로 해석하지 않아요. 집계 시각 지표는 epoch 초 단위이며 갱신 지연을 판단할 때 사용해요.
 
+기본 지도 캐시는 `pheeeew_map_cache_requests_total`의 `cache=regions|pins`, `result`로 적중·SQL 대체 경로를 구분해요. `lock_wait_seconds`는 쓰기 잠금 대기, `rebuild_seconds`는 캐시별 원본 재생성 시간, `maintenance_seconds`는 복구·보정 작업 시간이에요. `maintenance_busy_total`은 잠금을 얻지 못한 횟수이며 `maintenance_failures_total`은 재생성·예약 실패예요. `pending_age_seconds`는 아직 공개하지 않은 등록 배치의 나이이며 없거나 무효화된 경우 0이에요. `candidates{cache="pins"}`는 현재 메모리에 보관한 후보 수이며 상한 초과·미준비·무효화 시 0이에요. DB 전체 건수를 뜻하지 않아요. 핀 `pin_search_seconds`와 `pin_scanned`는 영역 탐색 시간과 검사 후보 수예요. 횟수·합계·최댓값을 제공하며 히스토그램을 켜지 않으면 p95·p99를 계산할 수 없어요.
+
 V2 목록 조회 시간은 현재 횟수·합계·최댓값을 제공해요. 허용 목록에 `_bucket`이 있어도 앱에서 히스토그램을 생성하지 않으면 이 지표로 p95·p99를 계산할 수 없어요. 활동 원본은 앱 DB에 보관하며 자동 삭제하지 않아요. 아래 Alloy WAL·로그 파일 보관 설정과는 별개예요.
 
 ## 재시작과 보관 한계

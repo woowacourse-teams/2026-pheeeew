@@ -128,7 +128,7 @@ class EmotionMapPlanScopeIntegrationTest {
     }
 
     @Test
-    void v2_지도는_custom으로_조회하고_정상_종료_후_동일_연결의_지역_조회에_전파하지_않는다() {
+    void v2_필터_지도는_custom으로_조회하고_정상_종료_후_동일_연결의_지역_조회에_전파하지_않는다() {
         // when
         var page = findMap(viewer.getPublicId());
 
@@ -300,7 +300,8 @@ class EmotionMapPlanScopeIntegrationTest {
     }
 
     private EmotionMapPageView findMap(UUID deviceId) {
-        return service.findContentMapWithinBounds(BOUNDS, deviceId, null, null, null, null, null, null);
+        // SQL 계획 범위 검증은 캐시 대상이 아닌 MEMO 조회에서 수행한다.
+        return service.findContentMapWithinBounds(BOUNDS, deviceId, null, null, null, EmotionContentFilter.MEMO, null, null);
     }
 
     private String currentMode() {

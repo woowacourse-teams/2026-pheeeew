@@ -123,6 +123,7 @@ Accepted (YYYY-MM-DD)
 | [0036](0036-serve-prod-api-without-cloudflare-proxy.md) | 운영 서버 API의 직접 연결 | Proposed: 개발 서버 구성을 운영에 옮겨 프록시를 끄고 nginx가 공인 인증서로 직접 받아요 |
 | [0037](0037-allow-multiple-app-attest-app-ids.md) | App Attest App ID 허용 목록 | 개발자 계정 이전 동안 두 App ID prefix 를 모두 받고, 구버전 지원이 끝나면 이전 것을 지워요 |
 | [0039](0039-use-national-region-map-summaries.md) | v2 시도·시군구 전국 요약 | bbox 검증과 요청 계약을 유지하며 SIDO·SIGUNGU는 전국 집계, EMD는 기존 공간 조회로 처리해요 |
+| [0040](0040-cache-default-emotion-map-queries.md) | 기본 지도 캐시와 쓰기·재집계 직렬화 | DB 커밋 후 기여분을 반영하고 쓰기·재집계를 직렬화해요. 기본 요약·경량 핀을 재사용하며 실패 시 SQL로 대체해요 |
 
 ## AI 사용
 
