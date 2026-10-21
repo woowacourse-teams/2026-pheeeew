@@ -133,7 +133,7 @@ class PressRepositoryLongQueueTest {
             assertEquals(
                 sender.batches.size,
                 sender.batches
-                    .map { it.requestId }
+                    .map { it.batchId }
                     .distinct()
                     .size,
             )
@@ -211,7 +211,7 @@ class PressRepositoryLongQueueTest {
             runCurrent()
             assertEquals(3, sender.batches.size)
             assertEquals(sender.batches[0], sender.batches[1])
-            assertNotEquals(sender.batches[1].requestId, sender.batches[2].requestId)
+            assertNotEquals(sender.batches[1].batchId, sender.batches[2].batchId)
             assertEquals(mapOf(EmotionState.ANGRY to 1), sender.batches[1].counts)
             assertEquals(mapOf(EmotionState.FRUSTRATED to 2), sender.batches[2].counts)
             assertEquals(3L, server.counts.values.sum())
@@ -219,7 +219,7 @@ class PressRepositoryLongQueueTest {
         }
 
     @Test
-    fun `lost response retries identical id inside server window and applies the batch once`() =
+    fun `lost response retries the same batch inside server idempotency window and applies it once`() =
         runTest {
             val server = Server()
             val sender = Sender(server, PressSendResult.OutcomeUnknown, window = 10_000L, applyBeforeUnknown = false)
@@ -252,7 +252,7 @@ class PressRepositoryLongQueueTest {
             repository.retryUnsent()
             advanceTimeBy(120_000)
             runCurrent()
-            assertEquals(1, sender.batches.count { it.requestId == sender.batches.first().requestId })
+            assertEquals(1, sender.batches.count { it.batchId == sender.batches.first().batchId })
             assertEquals(0L, repository.state.value.pendingPressCount)
             assertEquals(
                 10_000L,
@@ -305,7 +305,7 @@ class PressRepositoryLongQueueTest {
             advanceTimeBy(1_100)
             runCurrent()
             assertEquals(2, sender.batches.size)
-            assertNotEquals(sender.batches[0].requestId, sender.batches[1].requestId)
+            assertNotEquals(sender.batches[0].batchId, sender.batches[1].batchId)
             assertEquals(
                 2L,
                 repository.state.value.myToday
@@ -439,7 +439,7 @@ class PressRepositoryLongQueueTest {
             advanceTimeBy(100)
             runCurrent()
             assertEquals(2, sender.batches.size)
-            assertNotEquals(sender.batches[0].requestId, sender.batches[1].requestId)
+            assertNotEquals(sender.batches[0].batchId, sender.batches[1].batchId)
             assertEquals(3L, server.counts.values.sum())
             assertEquals(0L, repository.state.value.pendingPressCount)
         }
@@ -576,7 +576,7 @@ class PressRepositoryLongQueueTest {
     ) : PressSender {
         override val idempotencyWindowMillis: Long? = window
         private val scripted = ArrayDeque(results.toList())
-        private val applied = mutableSetOf<String>()
+        private val appliedBatchIds = mutableSetOf<String>()
         val batches = mutableListOf<PressBatch>()
         val times = mutableListOf<Long>()
         private var concurrent = 0
@@ -594,7 +594,7 @@ class PressRepositoryLongQueueTest {
                         result is PressSendResult.Accepted ||
                             (result == PressSendResult.OutcomeUnknown && applyBeforeUnknown)
                     ) &&
-                    applied.add(batch.requestId)
+                    appliedBatchIds.add(batch.batchId)
                 ) {
                     server.apply(batch)
                 }

@@ -15,11 +15,11 @@ internal class PressRetryPolicy(
     }
 
     fun delayMillis(
-        failures: Int,
+        consecutiveFailures: Int,
         retryAfterMillis: PressDelayMillis = PressDelayMillis.Zero,
     ): PressDelayMillis {
         var ceiling = initialDelayMillis
-        repeat((failures - 1).coerceIn(0, 63)) {
+        repeat((consecutiveFailures - 1).coerceIn(0, 63)) {
             ceiling =
                 if (ceiling.value > maxDelayMillis.value / 2L) {
                     maxDelayMillis

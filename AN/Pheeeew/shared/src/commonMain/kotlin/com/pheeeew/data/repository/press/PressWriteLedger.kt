@@ -37,7 +37,7 @@ internal class PressWriteLedger {
 
     fun isInFlight(): Boolean = pendingWrite?.phase == PressWritePhase.InFlight
 
-    fun acceptedCoverageAtReadStart(): Long = if (isOutcomeUnknown()) 0L else acceptedSinceAllSnapshot
+    fun acceptedPressCoverageAtReadStart(): Long = if (isOutcomeUnknown()) 0L else acceptedSinceAllSnapshot
 
     fun canRetryUnknown(
         now: PressMonotonicMillis,
@@ -102,17 +102,17 @@ internal class PressWriteLedger {
 
     fun reconcileAllSnapshot(
         snapshot: AllDailyPressSnapshot,
-        acceptedCoveredAtReadStart: Long,
+        acceptedPressesCoveredAtReadStart: Long,
     ): Boolean {
         val counts =
             PressReconciler.reconcileAll(
                 snapshot.total,
                 acceptedSinceAllSnapshot,
                 optimisticAllCount,
-                acceptedCoveredAtReadStart,
+                acceptedPressesCoveredAtReadStart,
             ) ?: return false
-        acceptedSinceAllSnapshot = counts.acceptedSinceSnapshot
-        optimisticAllCount = counts.optimisticCount
+        acceptedSinceAllSnapshot = counts.acceptedPressesSinceSnapshot
+        optimisticAllCount = counts.optimisticAggregateCount
         return true
     }
 

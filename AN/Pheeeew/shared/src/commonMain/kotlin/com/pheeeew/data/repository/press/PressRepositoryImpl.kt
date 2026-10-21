@@ -62,8 +62,8 @@ internal class PressRepositoryImpl(
     private var hasStarted = false
     private var pausedNotice: PressSessionNotice? = null
     private var connected: Boolean? = null
-    private var failures = 0
-    private var retryNotBefore = PressMonotonicMillis(0L)
+    private var sendFailureCount = 0
+    private var sendRetryDeadline = PressMonotonicMillis(0L)
     private var aggregateRefreshJob: Job? = null
 
     init {
@@ -167,7 +167,7 @@ internal class PressRepositoryImpl(
         launchedWorker =
             sessionScope.launch(start = CoroutineStart.LAZY) {
                 try {
-                    delay(PressFlushPolicy.remainingWait(retryNotBefore, nowMillis()).value)
+                    delay(PressFlushPolicy.remainingWait(sendRetryDeadline, nowMillis()).value)
                     awaitFlush(delayMillis)
                     sendAvailable()
                 } finally {
@@ -219,15 +219,16 @@ internal class PressRepositoryImpl(
                             write.batch.occurredAt,
                         )
                     }
-                    val current = checkNotNull(mutableState.value.myToday)
-                    val updated = current.copy(counts = result.today.counts, total = result.today.total)
+                    val currentPersonalSnapshot = checkNotNull(mutableState.value.myToday)
+                    val updatedPersonalSnapshot =
+                        currentPersonalSnapshot.copy(counts = result.today.counts, total = result.today.total)
                     writeLedger.confirm(write)
-                    failures = 0
+                    sendFailureCount = 0
                     pausedNotice = null
                     readState.personalWriteSucceeded(nowMillis())
                     publish(
                         mutableState.value.copy(
-                            myToday = updated,
+                            myToday = updatedPersonalSnapshot,
                             isSending = false,
                             hasMyError = false,
                             notice = null,
@@ -237,7 +238,7 @@ internal class PressRepositoryImpl(
 
                 PressSendResult.Rejected -> {
                     writeLedger.reject(write)
-                    failures = 0
+                    sendFailureCount = 0
                     pausedNotice = PressSessionNotice.Rejected
                     publish(mutableState.value.copy(isSending = false, notice = pausedNotice))
                 }
@@ -287,14 +288,14 @@ internal class PressRepositoryImpl(
     }
 
     private fun newWrite(): PressWriteState? {
-        val next = inputQueue.takeBatch() ?: return null
-        return PressWriteState(next, checkNotNull(mutableState.value.myToday), nowMillis())
+        val nextBatch = inputQueue.takeBatch() ?: return null
+        return PressWriteState(nextBatch, checkNotNull(mutableState.value.myToday), nowMillis())
     }
 
     private fun scheduleRetry(retryAfterMillis: PressDelayMillis = PressDelayMillis.Zero) {
-        failures = (failures + 1).coerceAtMost(64)
-        val wait = retryPolicy.delayMillis(failures, retryAfterMillis)
-        retryNotBefore = PressFlushPolicy.deadline(nowMillis(), wait)
+        sendFailureCount = (sendFailureCount + 1).coerceAtMost(64)
+        val wait = retryPolicy.delayMillis(sendFailureCount, retryAfterMillis)
+        sendRetryDeadline = PressFlushPolicy.deadline(nowMillis(), wait)
         retryJob?.cancel()
         retryJob =
             sessionScope.launch {
@@ -328,23 +329,26 @@ internal class PressRepositoryImpl(
     }
 
     private suspend fun readAndReconcile() {
-        val uncertainAtReadStart = writeLedger.isOutcomeUnknown()
-        val acceptedCoveredAtReadStart = writeLedger.acceptedCoverageAtReadStart()
-        val generation = readState.beginRead()
+        val writeOutcomeUnknownAtReadStart = writeLedger.isOutcomeUnknown()
+        val acceptedPressesCoveredAtReadStart = writeLedger.acceptedPressCoverageAtReadStart()
+        val readGeneration = readState.beginRead()
         mutableState.update {
             it.copy(isLoadingMy = true, isLoadingAll = true, hasMyError = false, hasAllError = false)
         }
-        val first = fetchPair()
-        val pair = if (first.hasDifferentDates()) fetchPair() else first
-        if (readState.isStale(generation)) return
-        val datesMatch = !pair.hasDifferentDates()
-        val my = (pair.my as? PressReadResult.Loaded)?.value?.takeIf { datesMatch }
-        val all = (pair.all as? PressReadResult.Loaded)?.value?.takeIf { datesMatch }
-        if (uncertainAtReadStart && my != null) {
-            when (writeLedger.resolveUnknown(my, canRetryUnknown())) {
+        val initialStatisticsPair = fetchStatisticsPair()
+        val consistentStatisticsPair =
+            if (initialStatisticsPair.hasDifferentDates()) fetchStatisticsPair() else initialStatisticsPair
+        if (readState.isStale(readGeneration)) return
+        val statisticsDatesMatch = !consistentStatisticsPair.hasDifferentDates()
+        val personalSnapshot =
+            (consistentStatisticsPair.personal as? PressReadResult.Loaded)?.value?.takeIf { statisticsDatesMatch }
+        val aggregateSnapshot =
+            (consistentStatisticsPair.aggregate as? PressReadResult.Loaded)?.value?.takeIf { statisticsDatesMatch }
+        if (writeOutcomeUnknownAtReadStart && personalSnapshot != null) {
+            when (writeLedger.resolveUnknown(personalSnapshot, canRetryUnknown())) {
                 PressWriteResolution.Confirmed -> {
                     readState.markAggregateRefreshPending()
-                    failures = 0
+                    sendFailureCount = 0
                     retryJob?.cancel()
                     pausedNotice = null
                 }
@@ -352,7 +356,7 @@ internal class PressRepositoryImpl(
                 PressWriteResolution.Retired -> {
                     // Drop only the ambiguous batch without replay; new input may proceed.
                     pausedNotice = null
-                    failures = 0
+                    sendFailureCount = 0
                     retryJob?.cancel()
                 }
 
@@ -361,34 +365,43 @@ internal class PressRepositoryImpl(
             }
         }
         // Freeze the personal baseline until a pending write is covered; partial/stale reads must not double-count it.
-        val readableMy =
-            my?.takeIf {
+        val readablePersonalSnapshot =
+            personalSnapshot?.takeIf {
                 !writeLedger.isOutcomeUnknown() && !writeLedger.isAwaitingSnapshot()
             }
-        val safeMy = readableMy?.takeIf { writeLedger.canDisplayMyTotal(it.total) }
-        val safeAll = if (uncertainAtReadStart) null else all
-        if (safeAll != null) reconcileAllSnapshot(safeAll, acceptedCoveredAtReadStart)
-        val displayableAll =
-            safeAll?.takeIf { writeLedger.canDisplayAllTotal(it.total) }
+        val displayablePersonalSnapshot =
+            readablePersonalSnapshot?.takeIf { writeLedger.canDisplayMyTotal(it.total) }
+        val reconcilableAggregateSnapshot = if (writeOutcomeUnknownAtReadStart) null else aggregateSnapshot
+        if (reconcilableAggregateSnapshot != null) {
+            reconcileAllSnapshot(reconcilableAggregateSnapshot, acceptedPressesCoveredAtReadStart)
+        }
+        val displayableAggregateSnapshot =
+            reconcilableAggregateSnapshot?.takeIf { writeLedger.canDisplayAllTotal(it.total) }
         publish(
             mutableState.value.copy(
-                myToday = safeMy ?: mutableState.value.myToday,
-                allToday = displayableAll ?: mutableState.value.allToday,
+                myToday = displayablePersonalSnapshot ?: mutableState.value.myToday,
+                allToday = displayableAggregateSnapshot ?: mutableState.value.allToday,
                 isLoadingMy = false,
                 isLoadingAll = false,
-                hasMyError = my == null || (readableMy != null && safeMy == null),
-                hasAllError = safeAll == null || !writeLedger.canDisplayAllTotal(safeAll.total),
+                hasMyError =
+                    personalSnapshot == null ||
+                        (readablePersonalSnapshot != null && displayablePersonalSnapshot == null),
+                hasAllError =
+                    reconcilableAggregateSnapshot == null ||
+                        !writeLedger.canDisplayAllTotal(reconcilableAggregateSnapshot.total),
                 notice = if (writeLedger.isOutcomeUnknown()) PressSessionNotice.OutcomeUnknown else pausedNotice,
             ),
         )
-        val readAt = nowMillis()
-        if (safeMy != null) {
-            readState.recordMySnapshotSuccess(readAt)
+        val snapshotReadCompletedAt = nowMillis()
+        if (displayablePersonalSnapshot != null) {
+            readState.recordMySnapshotSuccess(snapshotReadCompletedAt)
         }
-        if (safeAll != null && writeLedger.canDisplayAllTotal(safeAll.total)) {
-            readState.recordAllSnapshotSuccess(readAt)
+        if (reconcilableAggregateSnapshot != null &&
+            writeLedger.canDisplayAllTotal(reconcilableAggregateSnapshot.total)
+        ) {
+            readState.recordAllSnapshotSuccess(snapshotReadCompletedAt)
         }
-        if (safeMy != null && displayableAll != null) {
+        if (displayablePersonalSnapshot != null && displayableAggregateSnapshot != null) {
             readState.resetStatisticsFailures()
             statisticsRetryJob?.cancel()
             statisticsRetryJob = null
@@ -416,20 +429,20 @@ internal class PressRepositoryImpl(
 
     private suspend fun refreshAllAfterWrite(detached: Boolean = false) {
         readState.clearAggregateRefreshPending()
-        val acceptedCoveredAtReadStart = writeLedger.acceptedCoverageAtReadStart()
-        val generation = readState.currentGeneration()
+        val acceptedPressesCoveredAtReadStart = writeLedger.acceptedPressCoverageAtReadStart()
+        val readGeneration = readState.currentGeneration()
         publish(mutableState.value.copy(isLoadingAll = true, hasAllError = false))
-        when (val result = readSafely(statistics::findAllToday)) {
+        when (val aggregateRead = readSafely(statistics::findAllToday)) {
             is PressReadResult.Loaded -> {
-                val all = result.value
-                if (detached && !writeLedger.canApplyAggregate(generation, readState.currentGeneration())) {
+                val aggregateSnapshot = aggregateRead.value
+                if (detached && !writeLedger.canApplyAggregate(readGeneration, readState.currentGeneration())) {
                     // A write or paired read superseded this snapshot. Never subtract its old coverage.
                     readState.markAggregateRefreshPending()
                     publish(mutableState.value.copy(isLoadingAll = false))
                     return
                 }
-                val myDate = mutableState.value.myToday?.pressDate
-                if (myDate != null && myDate != all.pressDate) {
+                val personalPressDate = mutableState.value.myToday?.pressDate
+                if (personalPressDate != null && personalPressDate != aggregateSnapshot.pressDate) {
                     if (detached) {
                         publish(mutableState.value.copy(isLoadingAll = false))
                         refreshToday(force = true)
@@ -437,10 +450,16 @@ internal class PressRepositoryImpl(
                         readAndReconcile()
                     }
                 } else {
-                    if (reconcileAllSnapshot(all, acceptedCoveredAtReadStart) &&
-                        writeLedger.canDisplayAllTotal(all.total)
+                    if (reconcileAllSnapshot(aggregateSnapshot, acceptedPressesCoveredAtReadStart) &&
+                        writeLedger.canDisplayAllTotal(aggregateSnapshot.total)
                     ) {
-                        publish(mutableState.value.copy(allToday = all, isLoadingAll = false, hasAllError = false))
+                        publish(
+                            mutableState.value.copy(
+                                allToday = aggregateSnapshot,
+                                isLoadingAll = false,
+                                hasAllError = false,
+                            ),
+                        )
                         readState.recordAllSnapshotSuccess(nowMillis())
                         readState.resetStatisticsFailures()
                         statisticsRetryJob?.cancel()
@@ -478,11 +497,11 @@ internal class PressRepositoryImpl(
     private fun hasFreshAllSnapshot(): Boolean =
         readState.hasFreshAllSnapshot(nowMillis(), PressDelayMillis(STATISTICS_TTL_MILLIS))
 
-    private suspend fun fetchPair(): StatisticsPair =
+    private suspend fun fetchStatisticsPair(): StatisticsPair =
         coroutineScope {
-            val my = async { readSafely(statistics::findMyToday) }
-            val all = async { readSafely(statistics::findAllToday) }
-            StatisticsPair(my.await(), all.await())
+            val personalRead = async { readSafely(statistics::findMyToday) }
+            val aggregateRead = async { readSafely(statistics::findAllToday) }
+            StatisticsPair(personalRead.await(), aggregateRead.await())
         }
 
     private suspend fun <T> readSafely(read: suspend () -> PressReadResult<T>): PressReadResult<T> =
@@ -495,9 +514,9 @@ internal class PressRepositoryImpl(
         }
 
     private fun StatisticsPair.hasDifferentDates(): Boolean {
-        val myDate = (my as? PressReadResult.Loaded)?.value?.pressDate ?: return false
-        val allDate = (all as? PressReadResult.Loaded)?.value?.pressDate ?: return false
-        return myDate != allDate
+        val personalPressDate = (personal as? PressReadResult.Loaded)?.value?.pressDate ?: return false
+        val aggregatePressDate = (aggregate as? PressReadResult.Loaded)?.value?.pressDate ?: return false
+        return personalPressDate != aggregatePressDate
     }
 
     private fun publish(base: PressSessionState) {
@@ -507,12 +526,12 @@ internal class PressRepositoryImpl(
     /** Moves only acknowledged writes covered by this snapshot into the server baseline. */
     private fun reconcileAllSnapshot(
         snapshot: AllDailyPressSnapshot,
-        acceptedCoveredAtReadStart: Long,
-    ): Boolean = writeLedger.reconcileAllSnapshot(snapshot, acceptedCoveredAtReadStart)
+        acceptedPressesCoveredAtReadStart: Long,
+    ): Boolean = writeLedger.reconcileAllSnapshot(snapshot, acceptedPressesCoveredAtReadStart)
 
     private data class StatisticsPair(
-        val my: PressReadResult<MyDailyPressSnapshot>,
-        val all: PressReadResult<AllDailyPressSnapshot>,
+        val personal: PressReadResult<MyDailyPressSnapshot>,
+        val aggregate: PressReadResult<AllDailyPressSnapshot>,
     )
 
     private companion object {

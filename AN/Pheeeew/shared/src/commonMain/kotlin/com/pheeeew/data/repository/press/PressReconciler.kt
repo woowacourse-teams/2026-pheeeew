@@ -33,16 +33,16 @@ internal object PressReconciler {
     /** Only successful writes already covered at read start may leave the optimistic total. */
     fun reconcileAll(
         serverTotal: Long,
-        acceptedSinceSnapshot: Long,
-        optimisticCount: Long,
-        coveredAtReadStart: Long,
+        acceptedPressesSinceSnapshot: Long,
+        optimisticAggregateCount: Long,
+        acceptedPressesCoveredAtReadStart: Long,
     ): PressAggregateCounts? {
-        if (serverTotal > Long.MAX_VALUE - (optimisticCount - coveredAtReadStart)) return null
-        check(acceptedSinceSnapshot >= coveredAtReadStart)
-        check(optimisticCount >= coveredAtReadStart)
+        if (serverTotal > Long.MAX_VALUE - (optimisticAggregateCount - acceptedPressesCoveredAtReadStart)) return null
+        check(acceptedPressesSinceSnapshot >= acceptedPressesCoveredAtReadStart)
+        check(optimisticAggregateCount >= acceptedPressesCoveredAtReadStart)
         return PressAggregateCounts(
-            acceptedSinceSnapshot - coveredAtReadStart,
-            optimisticCount - coveredAtReadStart,
+            acceptedPressesSinceSnapshot - acceptedPressesCoveredAtReadStart,
+            optimisticAggregateCount - acceptedPressesCoveredAtReadStart,
         )
     }
 
@@ -73,6 +73,6 @@ internal sealed interface PressWriteResolution {
 }
 
 internal data class PressAggregateCounts(
-    val acceptedSinceSnapshot: Long,
-    val optimisticCount: Long,
+    val acceptedPressesSinceSnapshot: Long,
+    val optimisticAggregateCount: Long,
 )

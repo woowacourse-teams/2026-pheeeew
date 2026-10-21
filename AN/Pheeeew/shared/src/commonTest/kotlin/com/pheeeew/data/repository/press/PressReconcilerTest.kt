@@ -21,7 +21,7 @@ class PressReconcilerTest {
         assertEquals(0, write.reconciliationMisses)
         assertEquals(PressWritePhase.RetryPending, decision.write.phase)
         assertTrue(decision.write.uncertain)
-        assertEquals("same-request", decision.write.batch.requestId)
+        assertEquals(write.batch, decision.write.batch)
         assertEquals(
             PressWriteResolution.Confirmed,
             PressReconciler.resolveUnknown(write, snapshot(mapOf(EmotionState.ANGRY to 2L)), false),
@@ -56,9 +56,9 @@ class PressReconcilerTest {
         val result =
             PressReconciler.reconcileAll(
                 100,
-                acceptedSinceSnapshot = 7,
-                optimisticCount = 10,
-                coveredAtReadStart = 5,
+                acceptedPressesSinceSnapshot = 7,
+                optimisticAggregateCount = 10,
+                acceptedPressesCoveredAtReadStart = 5,
             )
         assertEquals(PressAggregateCounts(2, 5), result)
         assertNull(PressReconciler.reconcileAll(Long.MAX_VALUE, 7, 10, 5))
@@ -81,7 +81,7 @@ class PressReconcilerTest {
 
     private fun write() =
         PressWriteState(
-            batch = PressBatch(1, mapOf(EmotionState.ANGRY to 2), requestId = "same-request"),
+            batch = PressBatch(1, mapOf(EmotionState.ANGRY to 2)),
             baseline = snapshot(),
             createdAtMonotonicMillis = PressMonotonicMillis(0L),
             uncertain = true,

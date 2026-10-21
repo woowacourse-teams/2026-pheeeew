@@ -6,7 +6,8 @@ import kotlin.uuid.Uuid
 data class PressBatch(
     val sequence: Long,
     val counts: Map<EmotionState, Int>,
-    val requestId: String = Uuid.random().toString(),
+    /** Local identity retained when this batch is retried; it is not sent as a server idempotency key. */
+    val batchId: String = Uuid.random().toString(),
     val occurredAt: Long = 0L,
 ) {
     val totalCount: Int = counts.values.sum()
