@@ -8,6 +8,7 @@ class DeviceCredentials(
     val pendingRequestId: String? = null,
     val pendingStartedAtMillis: Long? = null,
     val pendingNickname: String? = null,
+    val nicknameDraft: String? = null,
     val generation: Long = 0,
     val preservesLegacyIdentity: Boolean = false,
 ) {

@@ -12,6 +12,9 @@ interface DeviceSessionRepository {
     /** Invalidates a server-rejected identity before prompting the user to register again. */
     suspend fun invalidateMissingDevice(generation: Long): DeviceSessionResult = DeviceSessionResult.NeedsRegistration()
 
+    /** Persists the desired nickname independently of an immutable registration request. */
+    suspend fun saveNicknameDraft(nickname: String?): Boolean = true
+
     /** Registers a new device only after the user has supplied a nickname. */
     suspend fun register(nickname: String): DeviceSessionResult = prepare()
 }
