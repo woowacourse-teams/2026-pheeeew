@@ -1,6 +1,9 @@
 package com.pheeeew.emotion.domain;
 
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_STATE_CHANGE_NOT_ALLOWED;
+
 import com.pheeeew.common.domain.BaseEntity;
+import com.pheeeew.emotion.exception.EmotionException;
 import com.pheeeew.groups.domain.GroupStamp;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embedded;
@@ -102,9 +105,18 @@ public class Emotion extends BaseEntity {
         if (state == null || content == null) {
             throw new IllegalArgumentException("감정 상태와 내용은 필수입니다.");
         }
-        this.state = state;
+        validateStateUnchanged(state);
         this.content = content;
         this.groupStamp = groupStamp;
+    }
+
+    public void validateStateUnchanged(EmotionState state) {
+        if (state == null) {
+            throw new IllegalArgumentException("감정 상태는 필수입니다.");
+        }
+        if (this.state != state) {
+            throw new EmotionException(EMOTION_STATE_CHANGE_NOT_ALLOWED);
+        }
     }
 
     public void delete() {

@@ -13,6 +13,9 @@ import static com.pheeeew.region.fixture.RegionFixture.검증용_지역_계층�
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.ArgumentMatchers.any;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_STATE_CHANGE_NOT_ALLOWED;
 
 import com.pheeeew.device.application.DeviceService;
 import com.pheeeew.device.domain.Device;
@@ -103,6 +106,7 @@ class EmotionCommandServiceSaveIntegrationTest {
         uploads.deleteAllInBatch();
         stamps.deleteAllInBatch();
         groups.deleteAllInBatch();
+        jdbc.sql("DELETE FROM device_daily_stamps").update();
         deviceRepository.deleteAllInBatch();
         jdbc.sql("ALTER TABLE emotions DROP CONSTRAINT IF EXISTS test_emotion_insert_failure").update();
         jdbc.sql("ALTER TABLE emotions DROP CONSTRAINT IF EXISTS test_emotion_update_failure").update();
@@ -391,10 +395,10 @@ class EmotionCommandServiceSaveIntegrationTest {
         Emotion original = save(UUID.randomUUID(), "기존 메모", null);
         Emotion stored = emotionRepository.findById(original.getId()).orElseThrow();
         jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL").update();
-        jdbc.sql("ALTER TABLE emotions ADD CONSTRAINT test_emotion_update_failure CHECK (state <> 'ANGRY')").update();
+        jdbc.sql("ALTER TABLE emotions ADD CONSTRAINT test_emotion_update_failure CHECK (audio_object_key IS NULL)").update();
 
         // when / then
-        assertThatThrownBy(() -> commandService.update(original.getId(), device.getPublicId(), EmotionState.ANGRY,
+        assertThatThrownBy(() -> commandService.update(original.getId(), device.getPublicId(), EmotionState.FRUSTRATED,
                 null, upload.getUploadId(), false, null)).isInstanceOf(DataIntegrityViolationException.class);
         assertThat(linkCount()).isZero();
         Emotion unchanged = emotionRepository.findById(original.getId()).orElseThrow();
@@ -402,7 +406,8 @@ class EmotionCommandServiceSaveIntegrationTest {
         assertThat(unchanged.getState()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(unchanged.getRegionCode()).isEqualTo(stored.getRegionCode());
         assertThat(unchanged.getRegionClassifiedAt()).isEqualTo(stored.getRegionClassifiedAt());
-        commandService.update(original.getId(), device.getPublicId(), EmotionState.EXHAUSTED,
+        jdbc.sql("ALTER TABLE emotions DROP CONSTRAINT test_emotion_update_failure").update();
+        commandService.update(original.getId(), device.getPublicId(), EmotionState.FRUSTRATED,
                 null, upload.getUploadId(), false, null);
         assertThat(linkCount()).isOne();
         Emotion updated = emotionRepository.findById(original.getId()).orElseThrow();
@@ -423,7 +428,7 @@ class EmotionCommandServiceSaveIntegrationTest {
                 .objectKey("recordings/replacement.m4a").expiresAt(Instant.now().plusSeconds(3600)).build());
 
         // when
-        commandService.update(original.getId(), device.getPublicId(), EmotionState.ANGRY,
+        commandService.update(original.getId(), device.getPublicId(), EmotionState.FRUSTRATED,
                 null, replacement.getUploadId(), false, null);
 
         // then
@@ -445,13 +450,13 @@ class EmotionCommandServiceSaveIntegrationTest {
         Long stampId = grouped ? attachStamp(original, deletedGroup) : null;
 
         // when
-        commandService.updateWithoutGroupChange(original.getId(), device.getPublicId(), EmotionState.ANGRY,
+        commandService.updateWithoutGroupChange(original.getId(), device.getPublicId(), EmotionState.FRUSTRATED,
                 "  수정 메모  ", null, false);
 
         // then: 서비스 트랜잭션 종료 후 DB에서 연결을 다시 읽는다.
         Emotion loaded = emotionRepository.findById(original.getId()).orElseThrow();
         assertThat(loaded.getMemo()).isEqualTo("수정 메모");
-        assertThat(loaded.getState()).isEqualTo(EmotionState.ANGRY);
+        assertThat(loaded.getState()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(loaded.getGroupStamp() == null ? null : loaded.getGroupStamp().getId()).isEqualTo(stampId);
     }
 
@@ -462,14 +467,14 @@ class EmotionCommandServiceSaveIntegrationTest {
         Long stampId = attachStamp(original, true);
 
         // when / then
-        commandService.updateWithoutGroupChange(original.getId(), device.getPublicId(), EmotionState.ANGRY, null, null, true);
+        commandService.updateWithoutGroupChange(original.getId(), device.getPublicId(), EmotionState.FRUSTRATED, null, null, true);
         var kept = emotionRepository.findById(original.getId()).orElseThrow();
         assertThat(kept.getGroupStamp().getId()).isEqualTo(stampId);
         assertThat(kept.getContent().getAudio().getObjectKey()).isEqualTo(upload.getObjectKey());
 
         var replacement = uploads.save(기본_업로드_빌더().deviceId(device.getId()).objectKey("recordings/v4-replacement.m4a")
                 .expiresAt(Instant.now().plusSeconds(3600)).build());
-        commandService.updateWithoutGroupChange(original.getId(), device.getPublicId(), EmotionState.EXHAUSTED,
+        commandService.updateWithoutGroupChange(original.getId(), device.getPublicId(), EmotionState.FRUSTRATED,
                 null, replacement.getUploadId(), false);
         var changed = emotionRepository.findById(original.getId()).orElseThrow();
         assertThat(changed.getGroupStamp().getId()).isEqualTo(stampId);
@@ -502,18 +507,18 @@ class EmotionCommandServiceSaveIntegrationTest {
         // given
         Emotion original = save(UUID.randomUUID(), "기존 메모", null);
         Long stampId = attachStamp(original, false);
-        jdbc.sql("ALTER TABLE emotions ADD CONSTRAINT test_emotion_update_failure CHECK (state <> 'ANGRY')").update();
+        jdbc.sql("ALTER TABLE emotions ADD CONSTRAINT test_emotion_update_failure CHECK (audio_object_key IS NULL)").update();
 
         // when / then
         assertThatThrownBy(() -> commandService.updateWithoutGroupChange(original.getId(), device.getPublicId(),
-                EmotionState.ANGRY, null, upload.getUploadId(), false)).isInstanceOf(DataIntegrityViolationException.class);
+                EmotionState.FRUSTRATED, null, upload.getUploadId(), false)).isInstanceOf(DataIntegrityViolationException.class);
         var unchanged = emotionRepository.findById(original.getId()).orElseThrow();
         assertThat(unchanged.getMemo()).isEqualTo("기존 메모");
         assertThat(unchanged.getState()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(unchanged.getGroupStamp().getId()).isEqualTo(stampId);
         assertThat(linkCount()).isZero();
 
-        commandService.update(original.getId(), device.getPublicId(), EmotionState.EXHAUSTED, "기존 API 수정", null, false, null);
+        commandService.update(original.getId(), device.getPublicId(), EmotionState.FRUSTRATED, "기존 API 수정", null, false, null);
         assertThat(emotionRepository.findById(original.getId()).orElseThrow().getGroupStamp()).isNull();
     }
 
@@ -532,6 +537,61 @@ class EmotionCommandServiceSaveIntegrationTest {
         assertThatThrownBy(() -> commandService.updateWithoutGroupChange(original.getId(), device.getPublicId(),
                 EmotionState.ANGRY, "삭제 후 수정", null, false)).isInstanceOfSatisfying(EmotionException.class,
                         error -> assertThat(error.getErrorCode()).isEqualTo(com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_NOT_VISIBLE));
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 감정_변경을_녹음_확인_전에_거부한다(boolean preserveGroup) {
+        // given
+        Emotion original = save(UUID.randomUUID(), "기존 메모", null);
+
+        // when / then
+        assertThatThrownBy(() -> {
+            if (preserveGroup) {
+                commandService.updateWithoutGroupChange(original.getId(), device.getPublicId(),
+                        EmotionState.ANGRY, null, upload.getUploadId(), false);
+            } else {
+                commandService.update(original.getId(), device.getPublicId(),
+                        EmotionState.ANGRY, null, upload.getUploadId(), false, null);
+            }
+        }).isInstanceOfSatisfying(EmotionException.class,
+                error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_STATE_CHANGE_NOT_ALLOWED));
+        verifyNoInteractions(objectVerifier);
+        assertThat(emotionRepository.findById(original.getId()).orElseThrow().getState())
+                .isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(linkCount()).isZero();
+    }
+
+    @Test
+    void 감정_종류_변경은_그룹과_내용을_변경하기_전에_거부한다() {
+        // given
+        Emotion original = save(UUID.randomUUID(), "기존 메모", null);
+
+        // when / then
+        assertThatThrownBy(() -> commandService.update(original.getId(), device.getPublicId(),
+                EmotionState.ANGRY, "수정 메모", null, false, UUID.randomUUID()))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_STATE_CHANGE_NOT_ALLOWED));
+        assertThat(emotionRepository.findById(original.getId()).orElseThrow().getMemo()).isEqualTo("기존 메모");
+    }
+
+    @Test
+    void 녹음_확인_중_감정_종류가_달라지면_트랜잭션에서_재검사하고_연결하지_않는다() {
+        // given
+        Emotion original = save(UUID.randomUUID(), "기존 메모", null);
+        doAnswer(invocation -> {
+            // 구버전 서버 등의 동시 변경을 모사한다. 선검사 뒤에도 트랜잭션에서 다시 확인해야 한다.
+            jdbc.sql("UPDATE emotions SET state = 'ANGRY' WHERE id = :id").param("id", original.getId()).update();
+            return null;
+        }).when(objectVerifier).verify(any());
+
+        // when / then
+        assertThatThrownBy(() -> commandService.update(original.getId(), device.getPublicId(),
+                EmotionState.FRUSTRATED, null, upload.getUploadId(), false, null))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_STATE_CHANGE_NOT_ALLOWED));
+        assertThat(emotionRepository.findById(original.getId()).orElseThrow().getMemo()).isEqualTo("기존 메모");
+        assertThat(linkCount()).isZero();
     }
 
     private Long attachStamp(Emotion target, boolean deletedGroup) {

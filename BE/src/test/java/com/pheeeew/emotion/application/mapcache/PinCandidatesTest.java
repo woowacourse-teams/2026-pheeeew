@@ -1,12 +1,11 @@
 package com.pheeeew.emotion.application.mapcache;
 
-import static com.pheeeew.emotion.fixture.EmotionFixture.저장된_기본_한숨;
+import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.pheeeew.emotion.application.dto.EmotionCursor;
 import com.pheeeew.emotion.domain.Emotion;
-import com.pheeeew.emotion.domain.EmotionContent;
 import com.pheeeew.emotion.domain.EmotionState;
 import com.pheeeew.emotion.domain.repository.projection.EmotionMapBlocks;
 import com.pheeeew.emotion.domain.repository.projection.EmotionMapPin;
@@ -17,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class PinCandidatesTest {
 
@@ -184,8 +184,12 @@ class PinCandidatesTest {
     }
 
     private EmotionMapContribution contribution(long id, EmotionState state, String memo, Instant at, boolean deleted) {
-        Emotion emotion = 저장된_기본_한숨(id, at);
-        emotion.update(state, EmotionContent.builder().memo(memo).build(), null);
+        Emotion emotion = 기본_한숨_빌더()
+                .state(state)
+                .memo(memo)
+                .build();
+        ReflectionTestUtils.setField(emotion, "id", id);
+        ReflectionTestUtils.setField(emotion, "createdAt", at);
         if (deleted) {
             emotion.delete();
         }

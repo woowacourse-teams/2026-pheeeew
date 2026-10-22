@@ -97,14 +97,14 @@ class EmotionEditIntegrationTest {
                 .objectKey("recordings/new.m4a").expiresAt(Instant.now().plusSeconds(3600)).build());
 
         // when
-        command.update(original.getId(), owner.getPublicId(), EmotionState.ANGRY,
+        command.update(original.getId(), owner.getPublicId(), EmotionState.FRUSTRATED,
                 after.equals("MEMO") ? " 새 메모 " : null, after.equals("AUDIO") ? upload.getUploadId() : null, false, null);
         em.flush();
         em.clear();
 
         // then
         Emotion loaded = emotions.findById(original.getId()).orElseThrow();
-        assertThat(loaded.getState()).isEqualTo(EmotionState.ANGRY);
+        assertThat(loaded.getState()).isEqualTo(EmotionState.FRUSTRATED);
         assertThat(loaded.getMemo()).isEqualTo(after.equals("MEMO") ? "새 메모" : null);
         assertThat(loaded.getContent().getAudio()).isEqualTo(after.equals("AUDIO")
                 ? Audio.builder().objectKey("recordings/new.m4a").build() : null);
@@ -128,7 +128,7 @@ class EmotionEditIntegrationTest {
         Emotion emotion = save("AUDIO");
 
         // when
-        command.update(emotion.getId(), owner.getPublicId(), EmotionState.ANGRY, null, null, true, null);
+        command.update(emotion.getId(), owner.getPublicId(), EmotionState.FRUSTRATED, null, null, true, null);
         em.flush();
         em.clear();
 
@@ -141,7 +141,7 @@ class EmotionEditIntegrationTest {
     @Test
     void 녹음이_없는_감정에_녹음_유지를_요청하면_거부한다() {
         Emotion emotion = save("MEMO");
-        assertThatThrownBy(() -> command.update(emotion.getId(), owner.getPublicId(), EmotionState.ANGRY,
+        assertThatThrownBy(() -> command.update(emotion.getId(), owner.getPublicId(), EmotionState.FRUSTRATED,
                 null, null, true, null)).isInstanceOfSatisfying(EmotionException.class,
                 error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_AUDIO_REQUIRED));
     }
@@ -155,7 +155,7 @@ class EmotionEditIntegrationTest {
         // when / then
         assertThatThrownBy(() -> {
             if (update) {
-                command.update(emotion.getId(), other.getPublicId(), EmotionState.ANGRY, null, "upload", false, null);
+                command.update(emotion.getId(), other.getPublicId(), EmotionState.FRUSTRATED, null, "upload", false, null);
             } else {
                 command.delete(emotion.getId(), other.getPublicId());
             }
@@ -171,7 +171,7 @@ class EmotionEditIntegrationTest {
         Emotion emotion = save("NONE");
         assertThatThrownBy(() -> command.delete(emotion.getId(), UUID.randomUUID())).isInstanceOf(DeviceException.class);
         assertThatThrownBy(() -> command.delete(Long.MAX_VALUE, owner.getPublicId())).isInstanceOf(EmotionException.class);
-        assertThatThrownBy(() -> command.update(Long.MAX_VALUE, owner.getPublicId(), EmotionState.ANGRY,
+        assertThatThrownBy(() -> command.update(Long.MAX_VALUE, owner.getPublicId(), EmotionState.FRUSTRATED,
                 null, "upload", false, null)).isInstanceOf(EmotionException.class);
         verifyNoInteractions(objectVerifier);
     }
@@ -199,7 +199,7 @@ class EmotionEditIntegrationTest {
         assertThat(reports.existsById(report.getId())).isTrue();
         assertThat(query.findListWithinBounds(EmotionSearchBounds.of(126, 37, 128, 38), owner.getPublicId(), null, null).items()).isEmpty();
         assertThatThrownBy(() -> query.findById(emotion.getId(), owner.getPublicId())).isInstanceOf(EmotionException.class);
-        assertThatThrownBy(() -> command.update(emotion.getId(), owner.getPublicId(), EmotionState.ANGRY,
+        assertThatThrownBy(() -> command.update(emotion.getId(), owner.getPublicId(), EmotionState.FRUSTRATED,
                 "수정", null, false, null)).isInstanceOf(EmotionException.class);
         verifyNoInteractions(objectVerifier);
     }
@@ -216,17 +216,17 @@ class EmotionEditIntegrationTest {
         em.persist(member);
 
         // when / then
-        command.update(emotion.getId(), owner.getPublicId(), EmotionState.ANGRY, "메모", null, false, group.getPublicId());
+        command.update(emotion.getId(), owner.getPublicId(), EmotionState.FRUSTRATED, "메모", null, false, group.getPublicId());
         em.flush();
         em.clear();
         assertThat(emotions.findById(emotion.getId()).orElseThrow().getGroupStamp().getId()).isEqualTo(stamp.getId());
         em.find(GroupMember.class, member.getId()).leave(Instant.now());
-        command.update(emotion.getId(), owner.getPublicId(), EmotionState.ANGRY, "변경", null, false, group.getPublicId());
-        command.update(emotion.getId(), owner.getPublicId(), EmotionState.ANGRY, "변경", null, false, null);
+        command.update(emotion.getId(), owner.getPublicId(), EmotionState.FRUSTRATED, "변경", null, false, group.getPublicId());
+        command.update(emotion.getId(), owner.getPublicId(), EmotionState.FRUSTRATED, "변경", null, false, null);
         em.flush();
         em.clear();
         assertThat(emotions.findById(emotion.getId()).orElseThrow().getGroupStamp()).isNull();
-        assertThatThrownBy(() -> command.update(emotion.getId(), owner.getPublicId(), EmotionState.ANGRY,
+        assertThatThrownBy(() -> command.update(emotion.getId(), owner.getPublicId(), EmotionState.FRUSTRATED,
                 "메모", null, false, group.getPublicId())).isInstanceOf(GroupException.class);
     }
 

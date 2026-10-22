@@ -21,7 +21,8 @@ services:
       GOMEMLIMIT: 192MiB
     volumes:
       - ./alloy/config.dev.alloy:/etc/alloy/config.alloy:ro
-      - app-logs:/var/log/pheeeew:ro
+      - app-logs-blue:/var/log/pheeeew-blue:ro
+      - app-logs-green:/var/log/pheeeew-green:ro
       - alloy-data:/var/lib/alloy/data
     networks:
       - app
@@ -53,7 +54,10 @@ networks:
     name: pheeeew-dev
 
 volumes:
-  app-logs:
+  app-logs-blue:
     external: true
-    name: pheeeew-dev_app-logs
+    name: pheeeew-dev_app-logs-blue
+  app-logs-green:
+    external: true
+    name: pheeeew-dev_app-logs-green
   alloy-data:
