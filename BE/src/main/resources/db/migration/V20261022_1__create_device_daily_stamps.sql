@@ -8,7 +8,7 @@ CREATE TABLE device_daily_stamps
     created_at  TIMESTAMPTZ NOT NULL,
     updated_at  TIMESTAMPTZ NOT NULL,
     CONSTRAINT uk_device_daily_stamps_date_state_device
-        UNIQUE (stamp_date, state, device_id),
+        UNIQUE (device_id, stamp_date, state),
     CONSTRAINT ck_device_daily_stamps_count CHECK (stamp_count > 0),
     CONSTRAINT fk_device_daily_stamps_device
         FOREIGN KEY (device_id) REFERENCES devices (id)
