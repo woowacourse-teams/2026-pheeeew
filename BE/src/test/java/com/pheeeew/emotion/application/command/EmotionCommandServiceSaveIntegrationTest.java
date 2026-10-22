@@ -103,6 +103,7 @@ class EmotionCommandServiceSaveIntegrationTest {
         uploads.deleteAllInBatch();
         stamps.deleteAllInBatch();
         groups.deleteAllInBatch();
+        jdbc.sql("DELETE FROM device_daily_stamps").update();
         deviceRepository.deleteAllInBatch();
         jdbc.sql("ALTER TABLE emotions DROP CONSTRAINT IF EXISTS test_emotion_insert_failure").update();
         jdbc.sql("ALTER TABLE emotions DROP CONSTRAINT IF EXISTS test_emotion_update_failure").update();

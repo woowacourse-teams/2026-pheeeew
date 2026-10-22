@@ -127,6 +127,7 @@ class SecurityAuthorizationIntegrationTest {
         emotionReportRepository.deleteAll();
         emotionRepository.deleteAll();
         deviceRefreshTokenRepository.deleteAll();
+        jdbcClient.sql("DELETE FROM device_daily_stamps").update();
         deviceRepository.deleteAll();
         deviceChallengeRepository.deleteAll();
         jdbcClient.sql("DELETE FROM regions").update();

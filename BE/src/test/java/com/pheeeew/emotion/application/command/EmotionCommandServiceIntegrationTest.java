@@ -76,6 +76,7 @@ class EmotionCommandServiceIntegrationTest {
     void tearDown() {
         emotionEmojiRepository.deleteAllInBatch();
         emotionRepository.deleteAllInBatch();
+        jdbc.sql("DELETE FROM device_daily_stamps").update();
         deviceRepository.deleteAllInBatch();
         jdbc.sql("DELETE FROM regions").update();
     }

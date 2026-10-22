@@ -9,6 +9,7 @@ import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_AUDIO_REQUI
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_LOCATION_OUT_OF_SERVICE_AREA;
 import static com.pheeeew.groups.exception.GroupErrorCode.GROUP_NOT_FOUND;
 
+import com.pheeeew.collection.domain.repository.DeviceDailyStampRepository;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.device.exception.DeviceException;
@@ -26,7 +27,9 @@ import com.pheeeew.region.application.RegionClassifier;
 import com.pheeeew.emotion.application.mapcache.EmotionMapCacheCoordinator;
 import com.pheeeew.emotion.application.mapcache.EmotionMapContribution;
 import com.pheeeew.emotion.application.command.EmotionContentResolver.PreparedContent;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -56,6 +59,8 @@ public class EmotionCommandService {
     private final PlatformTransactionManager transactionManager;
     private final RegionClassifier regionClassifier;
     private final EmotionMapCacheCoordinator mapCache;
+    private final DeviceDailyStampRepository deviceDailyStampRepository;
+    private final Clock clock;
 
     public Emotion save(
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
@@ -67,7 +72,7 @@ public class EmotionCommandService {
 
     /**
      * ADR-0004에 따라 선조회와 실패 후 재조회를 저장 트랜잭션 밖에서 수행한다.
-     * 녹음 연결, 지역 분류와 감정 삽입을 독립 트랜잭션으로 묶어 함께 커밋하거나 롤백한다.
+     * 녹음 연결, 지역 분류, 감정 삽입과 일별 스탬프 집계를 독립 트랜잭션으로 묶어 함께 커밋하거나 롤백한다.
      */
     public Emotion save(
             UUID requestId, EmotionState state, double longitude, double latitude, double rotationDegrees,
@@ -172,6 +177,10 @@ public class EmotionCommandService {
             return transaction.execute(status -> {
                 Emotion emotion = saveNewEmotion(requestId, state, longitude, latitude,
                         rotationDegrees, checked, groupPublicId, deviceId, anonymous);
+
+                Instant now = clock.instant();
+                LocalDate stampDate = LocalDate.ofInstant(now, clock.getZone());
+                deviceDailyStampRepository.increase(stampDate, emotion.getState(), deviceId, now);
 
                 mapCache.afterCommitChange(null, EmotionMapContribution.from(emotion));
 

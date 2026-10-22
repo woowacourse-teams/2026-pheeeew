@@ -81,6 +81,7 @@ class EmotionRegionCacheIntegrationTest {
     void tearDown() {
         jdbc.sql("DELETE FROM emotion_reports").update();
         emotions.deleteAllInBatch();
+        jdbc.sql("DELETE FROM device_daily_stamps").update();
         devices.deleteAllInBatch();
         jdbc.sql("DELETE FROM regions").update();
         jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL, backfill_verified_at = NULL").update();
