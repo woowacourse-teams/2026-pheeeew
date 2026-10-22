@@ -171,6 +171,15 @@ probe('10.0.12.3', secure=True, host='api-dev.pheeeew.com',
 print(count)
 """
 
+# reload 반영을 기다릴 때 쓴다. 단언하지 않고 지금 응답하는 백엔드만 돌려준다.
+SERVED_UPSTREAM = PROBE_HELPERS + """
+body, _ = probe('10.0.10.3', host='api-dev.pheeeew.com',
+                path='/api/v2/emotions/map?groupId=one&groupId=two',
+                headers={'X-Forwarded-For': '198.51.100.7', 'X-Forwarded-Proto': 'https'},
+                secure=False)
+print(json.loads(body)['target'])
+"""
+
 BACKENDS = (('app', '10.0.10.4'), ('app-blue', '10.0.10.5'), ('app-green', '10.0.10.6'))
 
 
@@ -244,10 +253,18 @@ http {
             def select(name):
                 write_active(f'set $upstream_app {name};\n')
 
-            def reload_nginx():
+            def reload_nginx(expect):
                 run('docker', 'exec', nginx, 'nginx', '-t')
+                # reload 는 신호만 보내고 반환한다. 새 워커가 받기 시작할 때까지 기다린다.
                 run('docker', 'exec', nginx, 'nginx', '-s', 'reload')
-                time.sleep(0.5)
+                seen = None
+                for _ in range(100):
+                    seen = run('docker', 'exec', '-i', client, 'python', '-',
+                               input=SERVED_UPSTREAM).stdout.strip()
+                    if seen == expect:
+                        return
+                    time.sleep(0.1)
+                raise AssertionError(f'reload 뒤 {expect} 로 바뀌지 않았다: {seen!r}')
 
             def routed_to(name):
                 result = run('docker', 'exec', '-i', client, 'python', '-', name,
@@ -262,10 +279,10 @@ http {
             routed_to('app')
             print('PASS: switch file change alone does not move live traffic')
 
-            reload_nginx()
+            reload_nginx('app-blue')
             routed_to('app-blue')
             select('app-green')
-            reload_nginx()
+            reload_nginx('app-green')
             routed_to('app-green')
             print(f'PASS: app -> app-blue -> app-green reaches the matching backend on {routes} paths')
 
@@ -278,7 +295,7 @@ http {
             print('PASS: upstream 503 keeps reporting the switched backend')
 
             select('app-blue')
-            reload_nginx()
+            reload_nginx('app-blue')
             routed_to('app-blue')
             print('PASS: app-green -> app-blue reverse switch reaches the matching backend')
 
@@ -297,7 +314,7 @@ http {
             print('PASS: empty switch file fails nginx -t instead of serving an unset upstream')
 
             select('app')
-            reload_nginx()
+            reload_nginx('app')
             routed_to('app')
             (fixtures / 'status-app').write_text('503')
             failure_probes = "\nfor source in ['10.0.10.3', '10.0.11.3']:\n"
