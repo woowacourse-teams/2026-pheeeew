@@ -149,7 +149,7 @@ Prometheus의 HTTP/Hikari 지표를 함께 확인합니다. SQL 실패·잠금 �
 
 [#736](https://github.com/woowacourse-teams/2026-pheeeew/issues/736)에서 서버 활동 수집·집계와 전용 DTO·변환기·메트릭을 제거했습니다.
 앱 버전 호출 계측, HTTP·JVM·Hikari·지도 캐시 지표와 공통 요청·예약 작업 오류 로그는 유지합니다.
-활동 테이블·과거 데이터·기존 Flyway는 보존합니다. 코드 제거는 운영 PostHog 수신이나 통계 전환 완료의 증거가 아닙니다.
+활동 엔티티·Repository·projection과 전용 fixture·매핑 테스트도 제거했습니다. 활동 테이블·과거 데이터·기존 Flyway는 보존하며 DROP migration은 추가하지 않습니다. 코드 제거는 운영 PostHog 수신이나 통계 전환 완료의 증거가 아닙니다.
 
 아래 검증 기록은 당시 커밋에 대한 이력입니다. 삭제된 클래스·설정·활동 지표의 검증 결과는 현재 기능 설명이 아닙니다.
 
