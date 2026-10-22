@@ -70,11 +70,11 @@
    {job="pheeeew-api",environment="prod"} | json
    ```
 
-   HTTP 오류·1초 이상 걸린 요청과 기기 활동 기록·집계 오류가 없다면 로그 결과가 비어 있는 것이 정상이에요. 확인하려고 운영 서버에 의도적으로 오류·부하를 만들지는 않아요.
+   HTTP 오류·1초 이상 걸린 요청과 예약 작업 오류가 없다면 로그 결과가 비어 있는 것이 정상이에요. 확인하려고 운영 서버에 의도적으로 오류·부하를 만들지는 않아요.
 
 ## 수집 범위와 자원
 
-- 지표: HTTP 요청 시간·횟수, 지도·V2 목록 조회 시간·결과, 플랫폼별 앱 버전 확인 횟수와 DAU·MAU, 활동 수집 시작·마지막 집계 성공 시각과 기록·집계 실패 횟수, JVM 메모리·GC·스레드, 톰캣 요청 처리 스레드(사용 중, 생성됨, 최대), 앱 프로세스 CPU·가동 시간, DB 커넥션 풀, 수집 상태. `config.alloy`의 이름 허용 목록 밖 지표는 보내지 않아요.
+- 지표: HTTP 요청 시간·횟수, 지도·V2 목록 조회 시간·결과, 플랫폼별 앱 버전 확인 횟수, JVM 메모리·GC·스레드, 톰캣 요청 처리 스레드(사용 중, 생성됨, 최대), 앱 프로세스 CPU·가동 시간, DB 커넥션 풀, 수집 상태. `config.alloy`의 이름 허용 목록 밖 지표는 보내지 않아요.
 - 톰캣 스레드 지표는 `application-dev.yml`, `application-prod.yml`의 `server.tomcat.mbeanregistry.enabled`가 켜져 있어야 앱이 내보내요. 이 설정을 끄면 허용 목록에 있어도 값이 없어요.
 - 로그: 아래 클래스와 이벤트 조합만 전송해요. 다른 logger, 다른 event, 잘못된 JSON은 제외해요. `correlationId`와 오류 위치 등은 JSON 본문에 유지하며 라벨로 승격하지 않아요.
 - 앱에서 제공하는 JVM·프로세스 지표가 중심이에요. EC2 전체 메모리·디스크, CPU 크레딧, RDS 내부 상태, nginx·Cloudflare 로그, traces·profiles는 이번 수집 범위에 없어요. HTTP 지표 또한 앱에 도달한 요청만 반영해요.
@@ -84,15 +84,13 @@
 | 로그 클래스 | 허용 이벤트 | 수준 |
 | --- | --- | --- |
 | `com.pheeeew.common.logging.RequestLogWriter` | `http_request_failed`, `http_request_slow` | 기존 HTTP 로그 정책 유지 |
-| `com.pheeeew.activity.infra.DeviceActivityRecorder` | `device_activity_record_failed` | `ERROR`만 허용 |
-| `com.pheeeew.activity.infra.DeviceActivityAggregationScheduler` | `device_activity_aggregation_failed` | `ERROR`만 허용 |
 | `com.pheeeew.common.logging.ScheduledTaskErrorHandler` | `scheduled_task_failed` | `ERROR`만 허용 |
 
-활성 기기는 앱에서 기본 5분 간격으로 집계하고 Alloy는 마지막 성공 결과를 60초마다 읽어요. 초기 집계 전이나 KST 날짜가 바뀐 뒤 오늘 집계가 성공하기 전에는 활성 기기 수가 `NaN`이므로 0명으로 해석하지 않아요. 집계 시각 지표는 epoch 초 단위이며 갱신 지연을 판단할 때 사용해요.
+BE 활동 통계 제거에 따라 활동 지표와 기록·집계 오류 로그는 더 이상 전송하지 않아요. 기존 활동 지표와 삭제한 logger/event 조합이 차단되는지도 검증해요. 앱 버전 호출량과 서버 모니터링은 유지해요.
 
 기본 지도 캐시는 `pheeeew_map_cache_requests_total`의 `cache=regions|pins`, `result`로 적중·SQL 대체 경로를 구분해요. `lock_wait_seconds`는 쓰기 잠금 대기, `rebuild_seconds`는 캐시별 원본 재생성 시간, `maintenance_seconds`는 복구·보정 작업 시간이에요. `maintenance_busy_total`은 잠금을 얻지 못한 횟수이며 `maintenance_failures_total`은 재생성·예약 실패예요. `pending_age_seconds`는 아직 공개하지 않은 등록 배치의 나이이며 없거나 무효화된 경우 0이에요. `candidates{cache="pins"}`는 현재 메모리에 보관한 후보 수이며 상한 초과·미준비·무효화 시 0이에요. DB 전체 건수를 뜻하지 않아요. 핀 `pin_search_seconds`와 `pin_scanned`는 영역 탐색 시간과 검사 후보 수예요. 횟수·합계·최댓값을 제공하며 히스토그램을 켜지 않으면 p95·p99를 계산할 수 없어요.
 
-V2 목록 조회 시간은 현재 횟수·합계·최댓값을 제공해요. 허용 목록에 `_bucket`이 있어도 앱에서 히스토그램을 생성하지 않으면 이 지표로 p95·p99를 계산할 수 없어요. 활동 원본은 앱 DB에 보관하며 자동 삭제하지 않아요. 아래 Alloy WAL·로그 파일 보관 설정과는 별개예요.
+V2 목록 조회 시간은 현재 횟수·합계·최댓값을 제공해요. 허용 목록에 `_bucket`이 있어도 앱에서 히스토그램을 생성하지 않으면 이 지표로 p95·p99를 계산할 수 없어요. 기존 활동 원본은 앱 DB에 보존하며 이번 정리에서 삭제하지 않아요. 아래 Alloy WAL·로그 파일 보관 설정과는 별개예요.
 
 ## 재시작과 보관 한계
 
@@ -144,7 +142,7 @@ SSH를 위한 Cloudflare 터널은 그대로 사용해요. 수집은 `Alloy → 
 python3 docker/alloy/verify.py
 ```
 
-2026-09-17 검증은 전체 Alloy 설정 문법, 지표 이름 허용·차단, 실제 Loki 파이프라인의 로그 허용·차단과 최종 라벨을 확인해요. logger와 event의 잘못된 조합, 필수 필드 누락, 활동 로그의 잘못된 수준, 잘못된 JSON도 검사해요. 가짜 로그와 자격 증명만 사용하고 컨테이너 외부 네트워크를 차단해요. 지표 이름 검사는 정규식 검사이며 실제 scrape·remote write나 Cloud 수신을 검증하지 않아요.
+검증 스크립트는 전체 Alloy 설정 문법, 지표 이름 허용·차단, 실제 Loki 파이프라인의 로그 허용·차단과 최종 라벨을 확인해요. logger와 event의 잘못된 조합, 필수 필드 누락, 삭제한 활동 로그 조합, 예약 작업 로그의 잘못된 수준, 잘못된 JSON도 검사해요. 가짜 로그와 자격 증명만 사용하고 컨테이너 외부 네트워크를 차단해요. 지표 이름 검사는 정규식 검사이며 실제 scrape·remote write나 Cloud 수신을 검증하지 않아요.
 
 2026-09-11, ARM64의 Alloy v1.19.2와 격리된 Docker 가짜 앱·수신 서버로 아래를 확인했어요. 실제 토큰과 Grafana Cloud는 사용하지 않았어요.
 
