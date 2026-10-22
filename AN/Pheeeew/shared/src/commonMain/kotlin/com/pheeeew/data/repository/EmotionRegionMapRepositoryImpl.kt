@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -48,9 +50,14 @@ class EmotionRegionMapRepositoryImpl(
         val generation: Generation,
     )
 
+    private class InFlightRequest(
+        val deferred: Deferred<EmotionRegionResult>,
+        var waiterCount: Int,
+    )
+
     private val requestsScope = MutableStateFlow(newRequestsScope())
     private val requestsMutex = Mutex()
-    private val inFlight = mutableMapOf<RequestKey, Deferred<EmotionRegionResult>>()
+    private val inFlight = mutableMapOf<RequestKey, InFlightRequest>()
 
     fun invalidateSession() {
         cache.clear()
@@ -76,45 +83,63 @@ class EmotionRegionMapRepositoryImpl(
         filter: EmotionSearchFilter?,
     ): EmotionRegionResult {
         val key = EmotionRegionQueryKey.create(level, groupId, filter)
-        var shouldStart = false
-        val request =
+        val (requestKey, request, shouldStart) =
             requestsMutex.withLock {
                 if (forceRefresh) {
                     cache.invalidateGroup(key.groupId)
                     inFlight.keys.filter { it.query.groupId == key.groupId }.forEach { staleKey ->
-                        inFlight.remove(staleKey)?.cancel()
+                        inFlight.remove(staleKey)?.deferred?.cancel()
                     }
                 } else {
                     cache.snapshot(key)?.let { return EmotionRegionResult.Success(it) }
                 }
                 val generation = cache.generation(key.groupId)
                 val activeRequestKey = RequestKey(key, generation)
-                inFlight[activeRequestKey]?.takeIf { it.isActive }?.let { return@withLock it }
-                inFlight.remove(activeRequestKey)
-                val queryBounds = bounds.expandedForRegionQuery(level)
-                shouldStart = true
-                requestsScope.value
-                    .async(start = CoroutineStart.LAZY) {
-                        fetchAndCache(key, queryBounds, level, groupId, filter, generation)
-                    }.also { created ->
-                        inFlight[activeRequestKey] = created
-                        created.invokeOnCompletion {
-                            requestsScope.value.launch {
-                                requestsMutex.withLock {
-                                    if (inFlight[activeRequestKey] === created) inFlight.remove(activeRequestKey)
-                                }
-                            }
-                        }
-                    }
+                val existing = inFlight[activeRequestKey]?.takeIf { it.deferred.isActive }
+                if (existing != null) {
+                    existing.waiterCount++
+                    Triple(activeRequestKey, existing, false)
+                } else {
+                    inFlight.remove(activeRequestKey)
+                    val queryBounds = bounds.expandedForRegionQuery(level)
+                    val created =
+                        InFlightRequest(
+                            deferred =
+                                requestsScope.value.async(start = CoroutineStart.LAZY) {
+                                    fetchAndCache(key, queryBounds, level, groupId, filter, generation)
+                                },
+                            waiterCount = 1,
+                        )
+                    inFlight[activeRequestKey] = created
+                    Triple(activeRequestKey, created, true)
+                }
             }
-        if (shouldStart) request.start()
+        if (shouldStart) request.deferred.start()
         return try {
-            request.await()
+            request.deferred.await()
         } catch (_: CancellationException) {
             currentCoroutineContext().ensureActive()
             EmotionRegionResult.Failure
         } catch (_: Exception) {
             EmotionRegionResult.Failure
+        } finally {
+            releaseWaiter(requestKey, request)
+        }
+    }
+
+    private suspend fun releaseWaiter(
+        key: RequestKey,
+        request: InFlightRequest,
+    ) {
+        withContext(NonCancellable) {
+            requestsMutex.withLock {
+                if (inFlight[key] !== request) return@withLock
+                request.waiterCount--
+                if (request.waiterCount == 0) {
+                    inFlight.remove(key)
+                    request.deferred.cancel()
+                }
+            }
         }
     }
 
