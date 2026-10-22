@@ -19,7 +19,7 @@ services:
       S3_BUCKET: ${S3_BUCKET:?}
       S3_KEY_PREFIX: ${S3_KEY_PREFIX:?}
       S3_REGION: ${S3_REGION:?}
-      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=60"
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=${APP_RAM_PCT:-40}"
     volumes:
       - app-logs:/app/logs
     logging:
@@ -33,7 +33,8 @@ services:
       timeout: 5s
       retries: 12
       start_period: 60s
-    mem_limit: 1024m
+    mem_limit: ${APP_MEM_LIMIT:-640m}
+    stop_grace_period: 30s
     init: true
 
 networks:
