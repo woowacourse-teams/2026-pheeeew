@@ -5,6 +5,9 @@ on:
     branches: [main, be/dev, develop]
     paths:
       - 'BE/docker/nginx/**'
+      - 'BE/docker/compose.nginx.dev.yml'
+      - 'BE/docker/test-deploy-switch.py'
+      - '.github/workflows/be-dev-deploy.yml'
       - '.github/workflows/be-nginx-ci.yml'
 
 permissions:
@@ -23,3 +26,17 @@ jobs:
       - name: Nginx 접근 제어 및 장애 응답 검증
         working-directory: BE
         run: python3 docker/nginx/test-alb-health.py
+
+  deploy-switch:
+    name: 개발 배포 전환과 복구 검사
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: 전환과 롤백 분기 검증
+        run: |
+          pip install --quiet pyyaml
+          python3 BE/docker/test-deploy-switch.py

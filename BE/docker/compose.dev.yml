@@ -1,41 +1,52 @@
 name: pheeeew-dev
 
+x-app: &app
+  image: ${APP_IMAGE:?}
+  restart: unless-stopped
+  environment:
+    SPRING_PROFILES_ACTIVE: dev
+    TZ: Asia/Seoul
+    DB_URL: ${DB_URL:?}
+    DB_USERNAME: ${DB_USERNAME:?}
+    DB_PASSWORD: ${DB_PASSWORD:?}
+    JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64:?}
+    JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?}
+    PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64: ${PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64:-}
+    PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER:-}
+    PLAY_INTEGRITY_SKIP_VERIFICATION: ${PLAY_INTEGRITY_SKIP_VERIFICATION:-false}
+    S3_BUCKET: ${S3_BUCKET:?}
+    S3_KEY_PREFIX: ${S3_KEY_PREFIX:?}
+    S3_REGION: ${S3_REGION:?}
+    JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=${APP_RAM_PCT:-40}"
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+  healthcheck:
+    test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 60s
+  mem_limit: ${APP_MEM_LIMIT:-640m}
+  stop_grace_period: 30s
+  init: true
+
 services:
-  app:
-    container_name: pheeeew-dev-app
-    image: ${APP_IMAGE:?}
-    restart: unless-stopped
-    environment:
-      SPRING_PROFILES_ACTIVE: dev
-      TZ: Asia/Seoul
-      DB_URL: ${DB_URL:?}
-      DB_USERNAME: ${DB_USERNAME:?}
-      DB_PASSWORD: ${DB_PASSWORD:?}
-      JWT_PRIVATE_KEY_BASE64: ${JWT_PRIVATE_KEY_BASE64:?}
-      JWT_PUBLIC_KEY_BASE64: ${JWT_PUBLIC_KEY_BASE64:?}
-      PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64: ${PLAY_INTEGRITY_SERVICE_ACCOUNT_BASE64:-}
-      PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER: ${PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER:-}
-      PLAY_INTEGRITY_SKIP_VERIFICATION: ${PLAY_INTEGRITY_SKIP_VERIFICATION:-false}
-      S3_BUCKET: ${S3_BUCKET:?}
-      S3_KEY_PREFIX: ${S3_KEY_PREFIX:?}
-      S3_REGION: ${S3_REGION:?}
-      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=${APP_RAM_PCT:-40}"
+  app-blue:
+    <<: *app
+    container_name: pheeeew-dev-app-blue
+    profiles: ["blue"]
     volumes:
-      - app-logs:/app/logs
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "http://localhost:8080/actuator/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 60s
-    mem_limit: ${APP_MEM_LIMIT:-640m}
-    stop_grace_period: 30s
-    init: true
+      - app-logs-blue:/app/logs
+
+  app-green:
+    <<: *app
+    container_name: pheeeew-dev-app-green
+    profiles: ["green"]
+    volumes:
+      - app-logs-green:/app/logs
 
 networks:
   default:
@@ -43,4 +54,5 @@ networks:
     name: pheeeew-dev
 
 volumes:
-  app-logs:
+  app-logs-blue:
+  app-logs-green:
