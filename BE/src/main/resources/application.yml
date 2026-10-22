@@ -25,6 +25,8 @@ spring:
         enabled: false
 
 pheeeew:
+  emotion-map:
+    max-page-size: 200
   rate-limit:
     emotion-create:
       enabled: true

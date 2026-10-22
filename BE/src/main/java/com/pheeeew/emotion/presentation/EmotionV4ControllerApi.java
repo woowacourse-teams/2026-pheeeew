@@ -109,7 +109,9 @@ public interface EmotionV4ControllerApi {
     );
 
     @Operation(summary = "그룹 없는 감정 지도 핀 조회", description = """
-            화면 안의 내용 있는 감정을 최신 작성 시각·ID 내림차순으로 최대 200개 반환합니다.
+            화면 안의 내용 있는 감정을 최신 작성 시각·ID 내림차순으로 반환합니다.
+            limit을 생략하면 최대 200개이며 개발 환경은 1~1000개, 그 외 환경은 1~200개를 허용합니다.
+            limit의 빈 값·잘못된 숫자·0·음수·환경별 상한 초과는 400이며 개수를 자동으로 줄이지 않습니다.
             그룹 감정도 포함하지만 groupId·groupStamp는 반환하지 않습니다. 삭제·차단된 감정은 제외합니다.
             첫 페이지에는 bbox 네 값을 모두 전달하며 날짜변경선을 넘는 경도 범위를 허용합니다.
 
@@ -117,13 +119,14 @@ public interface EmotionV4ControllerApi {
             KST 시작일·종료일은 함께 전달하고 둘 다 생략하면 전체 기간입니다.
             groupId는 빈 값도 400으로 거부하며 scope=GROUP도 400입니다.
 
-            다음 페이지에는 v4 핀이 발급한 nextCursor만 전달하고 bbox는 생략합니다.
+            다음 페이지에는 v4 핀이 발급한 nextCursor를 cursor로 전달하고 bbox는 생략합니다.
+            limit은 커서에 저장하지 않으며 다음 요청에서 변경할 수 있습니다. 생략하면 다시 200개를 적용합니다.
             기존 API·v4 목록 커서는 400입니다. 필터는 생략하거나 커서와 같게 전달합니다.
             커서의 기준 시각 이후 등록은 제외하지만 삭제·차단은 조회 시점에 다시 반영합니다.
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "GeoJSON 핀 목록과 다음 페이지 정보"),
-            @ApiResponse(responseCode = "400", description = "잘못된 좌표·필터·커서 또는 금지된 그룹 입력",
+            @ApiResponse(responseCode = "400", description = "잘못된 좌표·필터·커서·limit 또는 금지된 그룹 입력",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증 실패 또는 유효하지 않은 기기",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

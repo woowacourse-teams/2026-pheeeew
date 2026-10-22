@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.stream.Stream;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.springframework.test.context.TestPropertySource;
 import com.pheeeew.emotion.application.command.EmotionContentResolver;
 import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.application.dto.EmotionRegionMapItemView;
@@ -50,6 +52,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
+@TestPropertySource(properties = "pheeeew.emotion-map.max-page-size=1000")
 @PostgisDataJpaTest
 @Import({EmotionMapQueryService.class, EmotionCommandService.class, EmotionContentResolver.class, MapCacheTestTime.class})
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -179,11 +182,11 @@ class EmotionMapCacheHandoffIntegrationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void v4_핀은_캐시와_SQL을_오가도_커서와_차단을_유지한다(boolean cacheFirst) {
+    @CsvSource({"false,1", "true,1", "false,200", "true,200", "false,400", "true,400", "false,1000", "true,1000"})
+    void v4_핀은_캐시와_SQL을_오가며_개수를_바꿔도_커서와_차단을_유지한다(boolean cacheFirst, int pageSize) {
         // given
         List<Long> expected = new ArrayList<>();
-        for (int index = 0; index < 201; index++) {
+        for (int index = 0; index < pageSize + 1; index++) {
             expected.add(emotions.save(기본_한숨_빌더().deviceId(requester.getId()).memo("페이지 기록")
                     .state(EmotionState.ANGRY).build()).getId());
         }
@@ -195,9 +198,9 @@ class EmotionMapCacheHandoffIntegrationTest {
 
         // when: 첫 페이지와 다음 페이지의 조회 원천을 바꾼다.
         var first = cacheFirst
-                ? queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null, null, null, null)
+                ? queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null, null, null, null, pageSize)
                 : new TransactionTemplate(transactions).execute(status ->
-                        queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null, null, null, null));
+                        queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null, null, null, null, pageSize));
         assertThat(hits("pins") - before).isEqualTo(cacheFirst ? 1 : 0);
         emotionBlocks.save(EmotionBlock.builder().blockerDeviceId(requester.getId()).emotionId(originalId).build());
         if (cacheFirst) {
@@ -208,17 +211,64 @@ class EmotionMapCacheHandoffIntegrationTest {
         }
         before = hits("pins");
         double fallbackBefore = pinFallbacks();
-        var next = queries.findContentMapWithinBoundsV4(null, requester.getPublicId(), null, null, null, null, first.nextCursor());
+        var next = queries.findContentMapWithinBoundsV4(null, requester.getPublicId(), null, null, null, null, first.nextCursor(), 1);
 
-        // then: 오래된 originalId는 새 차단으로 제외하고 나머지 201개는 누락·중복 없이 이어진다.
+        // then: 오래된 originalId는 새 차단으로 제외하고 나머지는 누락·중복 없이 이어진다.
         assertThat(hits("pins") - before).isEqualTo(cacheFirst ? 0 : 1);
         assertThat(pinFallbacks() - fallbackBefore).isEqualTo(cacheFirst ? 1 : 0);
-        assertThat(first.items()).hasSize(200);
+        assertThat(first.items()).hasSize(pageSize);
+        assertThat(first.hasNext()).isTrue();
+        assertThat(next.items()).hasSize(1);
         assertThat(EmotionCursorCodec.decodeV4WithinBounds(first.nextCursor()).groupIds()).isEmpty();
         assertThat(Stream.concat(first.items().stream(), next.items().stream()).map(EmotionMapItemView::id).toList())
                 .containsExactlyElementsOf(expected.reversed());
         assertThat(next.hasNext()).isFalse();
         assertThat(next.nextCursor()).isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void 요청_개수와_일치하면_마지막_페이지이고_생략과_기존_API는_200개를_유지한다(boolean sql) {
+        // given
+        for (int index = 0; index < 399; index++) {
+            emotions.save(기본_한숨_빌더().deviceId(requester.getId()).memo("경계 기록")
+                    .state(EmotionState.ANGRY).build());
+        }
+        maintenance.requestRebuild();
+        tasks.runDueTasks();
+        Runnable assertions = () -> {
+            // when
+            var exact = queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(),
+                    null, null, null, null, null, 400);
+            var omitted = queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(),
+                    null, null, null, null, null);
+            var legacyContent = pins();
+            var legacy = queries.findMapWithinBounds(BOUNDS, requester.getPublicId(), null, null);
+
+            // then
+            assertThat(exact.items()).hasSize(400);
+            assertThat(exact.hasNext()).isFalse();
+            assertThat(exact.nextCursor()).isNull();
+            for (var page : List.of(omitted, legacyContent, legacy)) {
+                assertThat(page.items()).hasSize(200);
+                assertThat(page.hasNext()).isTrue();
+                assertThat(page.nextCursor()).isNotNull();
+            }
+            var next = queries.findContentMapWithinBoundsV4(null, requester.getPublicId(),
+                    null, null, null, null, omitted.nextCursor(), null);
+            assertThat(next.items()).hasSize(200);
+            assertThat(next.hasNext()).isFalse();
+            assertThat(next.nextCursor()).isNull();
+            assertThat(Stream.concat(omitted.items().stream(), next.items().stream())
+                    .map(EmotionMapItemView::id).distinct().count()).isEqualTo(400);
+        };
+
+        // when / then
+        if (sql) {
+            new TransactionTemplate(transactions).executeWithoutResult(status -> assertions.run());
+        } else {
+            assertions.run();
+        }
     }
 
     private void awaitBaselineSelectBlockedBy(int lockerPid) throws InterruptedException {

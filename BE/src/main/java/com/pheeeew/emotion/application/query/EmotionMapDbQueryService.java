@@ -123,11 +123,12 @@ public class EmotionMapDbQueryService {
     }
 
     public EmotionMapPageView findMap(EmotionCursor cursor, UUID devicePublicId, boolean contentOnly) {
-        return findMap(cursor, devicePublicId, contentOnly, EmotionCursorCodec::encode);
+        return findMap(cursor, devicePublicId, contentOnly, MAP_PAGE_SIZE, EmotionCursorCodec::encode);
     }
 
     public EmotionMapPageView findMap(
-            EmotionCursor cursor, UUID devicePublicId, boolean contentOnly, Function<EmotionCursor, String> encoder
+            EmotionCursor cursor, UUID devicePublicId, boolean contentOnly, int pageSize,
+            Function<EmotionCursor, String> encoder
     ) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
@@ -136,10 +137,10 @@ public class EmotionMapDbQueryService {
             validateGroups(cursor.groupIds());
         }
 
-        List<Emotion> found = findMapEmotions(cursor, deviceId, contentOnly);
+        List<Emotion> found = findMapEmotions(cursor, deviceId, contentOnly, pageSize);
 
-        boolean hasNext = found.size() > MAP_PAGE_SIZE;
-        List<Emotion> page = hasNext ? found.subList(0, MAP_PAGE_SIZE) : found;
+        boolean hasNext = found.size() > pageSize;
+        List<Emotion> page = hasNext ? found.subList(0, pageSize) : found;
 
         Map<Long, GroupStampResult> stamps = findStamps(page);
         List<EmotionMapItemView> items = page.stream().map(emotion -> {
@@ -160,13 +161,11 @@ public class EmotionMapDbQueryService {
         return EmotionMapPageView.of(items, true, nextCursor);
     }
 
-    public EmotionMapPageView findPinPage(PinCandidateCache.Page cached) {
-        return findPinPage(cached, EmotionCursorCodec::encode);
-    }
-
-    public EmotionMapPageView findPinPage(PinCandidateCache.Page cached, Function<EmotionCursor, String> encoder) {
-        boolean hasNext = cached.pins().size() > MAP_PAGE_SIZE;
-        List<EmotionMapPin> page = hasNext ? cached.pins().subList(0, MAP_PAGE_SIZE) : cached.pins();
+    public EmotionMapPageView findPinPage(
+            PinCandidateCache.Page cached, int pageSize, Function<EmotionCursor, String> encoder
+    ) {
+        boolean hasNext = cached.pins().size() > pageSize;
+        List<EmotionMapPin> page = hasNext ? cached.pins().subList(0, pageSize) : cached.pins();
 
         List<Long> stampIds = page.stream().map(EmotionMapPin::stampId).filter(Objects::nonNull).distinct().toList();
         Map<Long, GroupStamp> stamps = stampIds.isEmpty() ? Map.of()
@@ -195,14 +194,14 @@ public class EmotionMapDbQueryService {
         }
     }
 
-    private List<Emotion> findMapEmotions(EmotionCursor cursor, Long deviceId, boolean contentOnly) {
+    private List<Emotion> findMapEmotions(EmotionCursor cursor, Long deviceId, boolean contentOnly, int pageSize) {
         if (contentOnly) {
             return emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                    cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.filter(), MAP_PAGE_SIZE + 1);
+                    cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.filter(), pageSize + 1);
         }
 
         return emotionRepository.findVisiblePageWithinBounds(cursor.bounds(), cursor.snapshotAt(),
-                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.filter(), false, MAP_PAGE_SIZE + 1);
+                cursor.lastItemCreatedAt(), cursor.lastId(), deviceId, cursor.filter(), false, pageSize + 1);
     }
 
     private Map<Long, GroupStampResult> findStamps(List<Emotion> page) {

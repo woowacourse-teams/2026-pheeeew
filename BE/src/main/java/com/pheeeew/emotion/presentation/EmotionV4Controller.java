@@ -96,8 +96,11 @@ public class EmotionV4Controller implements EmotionV4ControllerApi {
             @RequestParam MultiValueMap<String, String> parameters
     ) {
         rejectGroupParameters(parameters);
+        if (parameters.containsKey("limit") && request.limit() == null) {
+            throw new PheeeewException(CommonErrorCode.INVALID_REQUEST, null);
+        }
         var page = emotionMapQueryService.findContentMapWithinBoundsV4(request.toBounds(), devicePublicId,
-                request.startDate(), request.endDate(), request.contentType(), request.scope(), request.cursor());
+                request.startDate(), request.endDate(), request.contentType(), request.scope(), request.cursor(), request.limit());
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(CursorResponse.of(page.items().stream().map(EmotionV4MapResponse::from).toList(),
                         page.hasNext(), page.nextCursor()));

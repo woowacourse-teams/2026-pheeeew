@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Min;
 import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
 
@@ -48,7 +49,12 @@ public record EmotionV4MapRequest(
         EmotionContentFilter contentType,
 
         @Schema(description = "조회 범위. ALL·MY만 허용하며 첫 페이지에서 생략하면 ALL입니다. 다음 페이지에서는 생략 시 커서의 조건을 유지합니다.", allowableValues = {"ALL", "MY"})
-        EmotionSearchScope scope
+        EmotionSearchScope scope,
+
+        @Min(1)
+        @Schema(description = "한 페이지의 최대 핀 수. 생략하면 200개이며 개발 상한은 1000개, 그 외 환경은 200개입니다. 커서에 저장되지 않으므로 다음 페이지에도 원하는 값을 전달합니다.",
+                minimum = "1", defaultValue = "200", example = "400")
+        Integer limit
 ) {
 
     @AssertTrue

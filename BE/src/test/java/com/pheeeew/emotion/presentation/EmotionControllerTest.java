@@ -18,6 +18,8 @@ import com.pheeeew.auth.infra.security.SecurityConfig;
 import com.pheeeew.auth.presentation.config.AuthWebMvcConfig;
 import com.pheeeew.auth.presentation.resolver.CurrentDeviceArgumentResolver;
 import com.pheeeew.common.exception.GlobalExceptionHandler;
+import com.pheeeew.common.exception.CommonErrorCode;
+import com.pheeeew.common.exception.PheeeewException;
 import com.pheeeew.device.exception.DeviceErrorCode;
 import com.pheeeew.device.exception.DeviceException;
 import com.pheeeew.emotion.application.dto.EmotionEmojiResult;
@@ -278,14 +280,14 @@ class EmotionControllerTest {
         // given
         var date = LocalDate.of(2026, 10, 1);
         when(emotionMapQueryService.findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID, date, date,
-                EmotionContentFilter.MEMO, scope, "v4-pin-next")).thenReturn(EmotionMapPageView.of(List.of(), false, null));
+                EmotionContentFilter.MEMO, scope, "v4-pin-next", null)).thenReturn(EmotionMapPageView.of(List.of(), false, null));
 
         // when / then
         request(HttpMethod.GET, "/api/v4/emotions/map?cursor=v4-pin-next&startDate=" + date + "&endDate=" + date
                 + "&contentType=MEMO&scope=" + scope + "&devicePublicId=" + UUID.randomUUID(), "access-token")
                 .expectStatus().isOk().expectBody().json("{\"items\":[],\"hasNext\":false,\"nextCursor\":null}", JsonCompareMode.STRICT);
         verify(emotionMapQueryService).findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID, date, date,
-                EmotionContentFilter.MEMO, scope, "v4-pin-next");
+                EmotionContentFilter.MEMO, scope, "v4-pin-next", null);
     }
 
     @ParameterizedTest
@@ -301,10 +303,53 @@ class EmotionControllerTest {
         verifyNoInteractions(emotionMapQueryService);
     }
 
+    @ParameterizedTest
+    @ValueSource(ints = {1, 200, 400, 1000})
+    void v4_핀은_첫_페이지와_다음_페이지의_limit을_서비스에_전달한다(int limit) {
+        // given
+        var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
+        when(emotionMapQueryService.findContentMapWithinBoundsV4(bounds, DEVICE_PUBLIC_ID,
+                null, null, null, null, null, limit)).thenReturn(EmotionMapPageView.of(List.of(), true, "next"));
+        when(emotionMapQueryService.findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID,
+                null, null, null, null, "next", limit)).thenReturn(EmotionMapPageView.of(List.of(), false, null));
+
+        // when / then
+        request(HttpMethod.GET, "/api/v4/emotions/map" + REGION_BOUNDS_QUERY + "&limit=" + limit, "access-token")
+                .expectStatus().isOk().expectBody().jsonPath("$.nextCursor").isEqualTo("next");
+        request(HttpMethod.GET, "/api/v4/emotions/map?cursor=next&limit=" + limit, "access-token")
+                .expectStatus().isOk().expectBody().jsonPath("$.hasNext").isEqualTo(false);
+        verify(emotionMapQueryService).findContentMapWithinBoundsV4(bounds, DEVICE_PUBLIC_ID,
+                null, null, null, null, null, limit);
+        verify(emotionMapQueryService).findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID,
+                null, null, null, null, "next", limit);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "abc", "1.5", "2147483648", "0", "-1"})
+    void v4_핀은_빈값과_숫자_형식_오류와_양수가_아닌_limit을_거부한다(String limit) {
+        // when / then
+        request(HttpMethod.GET, "/api/v4/emotions/map" + REGION_BOUNDS_QUERY + "&limit=" + limit, "access-token")
+                .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+        verifyNoInteractions(emotionMapQueryService);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {201, 1001})
+    void v4_핀은_서비스의_환경별_limit_상한_오류를_400으로_전달한다(int limit) {
+        // given
+        var bounds = EmotionSearchBounds.of(127.8, 37.2, 128.2, 37.8);
+        when(emotionMapQueryService.findContentMapWithinBoundsV4(bounds, DEVICE_PUBLIC_ID,
+                null, null, null, null, null, limit)).thenThrow(new PheeeewException(CommonErrorCode.INVALID_REQUEST, null));
+
+        // when / then
+        request(HttpMethod.GET, "/api/v4/emotions/map" + REGION_BOUNDS_QUERY + "&limit=" + limit, "access-token")
+                .expectStatus().isBadRequest().expectBody().jsonPath("$.code").isEqualTo("COMMON-001");
+    }
+
     @Test
     void v4_핀도_잘못된_커서를_400으로_전달한다() {
         // given
-        when(emotionMapQueryService.findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID, null, null, null, null, "legacy"))
+        when(emotionMapQueryService.findContentMapWithinBoundsV4(null, DEVICE_PUBLIC_ID, null, null, null, null, "legacy", null))
                 .thenThrow(new EmotionException(EmotionErrorCode.EMOTION_INVALID_CURSOR));
 
         // when / then
@@ -321,7 +366,7 @@ class EmotionControllerTest {
         var emotion = 기본_한숨_빌더().groupStamp(stamp).state(EmotionState.FRUSTRATED).build();
         ReflectionTestUtils.setField(emotion, "id", 42L);
         var pin = EmotionMapItemView.of(emotion, GroupStampResult.from(stamp));
-        when(emotionMapQueryService.findContentMapWithinBoundsV4(bounds, DEVICE_PUBLIC_ID, null, null, null, null, null))
+        when(emotionMapQueryService.findContentMapWithinBoundsV4(bounds, DEVICE_PUBLIC_ID, null, null, null, null, null, null))
                 .thenReturn(EmotionMapPageView.of(List.of(pin), true, "v4-pin-next"));
 
         // when / then
