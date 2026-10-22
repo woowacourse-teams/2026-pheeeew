@@ -10,6 +10,7 @@ import com.pheeeew.core.monitoring.MeaningfulActivity
 import com.pheeeew.core.monitoring.MonitoringConfig
 import com.pheeeew.core.monitoring.MonitoringRuntime
 import com.pheeeew.core.monitoring.monitoringJson
+import com.pheeeew.core.time.koreaCalendarDate
 import com.pheeeew.feature.monitoring.compat.MonitoringTicker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -181,11 +182,7 @@ class AppMonitoring(
 }
 
 /** The application's active-day policy; reusable core defaults to UTC. */
-fun monitoringActiveDay(timestamp: Long): String =
-    kotlin.time.Instant
-        .fromEpochMilliseconds(timestamp + 9 * 60 * 60 * 1000)
-        .toString()
-        .substringBefore('T')
+fun monitoringActiveDay(timestamp: Long): String = koreaCalendarDate(timestamp)
 
 /** Release builds may still be used by QA; production membership stays unknown until classified. */
 fun appCollectionMetadata(environment: String) =

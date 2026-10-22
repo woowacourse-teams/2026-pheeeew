@@ -19,10 +19,10 @@ cd ../pheeeew-644-reproduction/AN/Pheeeew
 저장된 로그의 재분석은 실험 코드를 체크아웃하거나 기기를 연결하지 않아도 가능하다. 이 자료 브랜치의 AN/Pheeeew에서 실행한다. 두 스크립트는 Python 표준 라이브러리만 사용한다.
 
 ```sh
-python3 measurements/personal-press/summarize_device.py \
-  measurements/personal-press/2026-10-14-device.log --start-run 2 > /tmp/pheeeew-644-device.csv
-python3 measurements/personal-press/summarize_failure_ui.py \
-  measurements/personal-press/2026-10-14-failure-ui.log
+python3 measurements/personal-press/644-baseline/summarize_device.py \
+  measurements/personal-press/644-baseline/2026-10-14-device.log --start-run 2 > /tmp/pheeeew-644-device.csv
+python3 measurements/personal-press/644-baseline/summarize_failure_ui.py \
+  measurements/personal-press/644-baseline/2026-10-14-failure-ui.log
 ```
 
 정상 분석기는 전체 로그의 시작·종료를 먼저 연결하고 모든 회차의 완료·중단 상태를 stderr로 보고한다. 기본값은 첫 회차부터 분석하며 이후 회차가 정확히 9개여야 한다. 보관 로그에는 중단된 예비 실행 1회가 있어 `--start-run 2`로 명시적으로 제외한다. 로그 앞의 시작 없는 종료 기록도 별도로 보고한다.
@@ -125,7 +125,7 @@ UiAutomation의 touchscreen DOWN/UP 이벤트를 100ms 간격으로 주입했다
   -Pandroid.testInstrumentationRunnerArguments.class=com.pheeeew.measurement.PersonalPressDeviceProbeTest \
   -Pandroid.testInstrumentationRunnerArguments.personalPressProbe=true
 adb logcat -d -v epoch -s PressMeasurement:I '*:S' > measurements/personal-press/device.log
-python3 measurements/personal-press/summarize_device.py measurements/personal-press/device.log > measurements/personal-press/device.csv
+python3 measurements/personal-press/644-baseline/summarize_device.py measurements/personal-press/device.log > measurements/personal-press/device.csv
 ```
 
 PressMeasurement는 debug Android에서만 활성화되며 입력 감정·대기 수·묶음 sequence·감정별 횟수·개인 집계·HTTP endpoint/method/status/duration을 기록한다. 토큰·헤더·원문 응답·기기 식별자는 기록하지 않는다. 관측 콜백 예외는 전송을 중단하지 않으며 가상 실험에서 예외 콜백을 주입해 검증했다.
@@ -186,7 +186,7 @@ PressMeasurement는 debug Android에서만 활성화되며 입력 감정·대기
   -Pandroid.testInstrumentationRunnerArguments.class=com.pheeeew.measurement.PersonalPressFailureAndUiProbeTest \
   -Pandroid.testInstrumentationRunnerArguments.personalPressFailureProbe=true
 adb logcat -d -v epoch -s PressMeasurement:I '*:S' > measurements/personal-press/failure-ui.log
-python3 measurements/personal-press/summarize_failure_ui.py measurements/personal-press/failure-ui.log
+python3 measurements/personal-press/644-baseline/summarize_failure_ui.py measurements/personal-press/failure-ui.log
 ```
 
 DebugPressFaultInjection은 dev debug에서만 엔진에 설치되며 api-dev의 정확한 개인 프레스 POST 경로에만 적용된다. 테스트가 run-as로 files/press-probe-fault-MODE 파일을 만들면 첫 해당 POST가 파일을 소비한다. 테스트 finally에서도 파일을 제거한다. UI 그리기 훅은 관측 콜백이 없는 앱에서 추가 draw 의존성을 만들지 않는다.
@@ -195,12 +195,12 @@ DebugPressFaultInjection은 dev debug에서만 엔진에 설치되며 api-dev의
 
 ## #799 묶음 대기 일관성 개선
 
-집계 조회 중 들어온 입력의 묶음 대기 유지 수정과 직접 전후 비교는 [#799 결과 및 재실행 절차](799-batch-wait.md)에 기록했다. 기존 500ms·감정별 30개·전체 100개 설정에서 비교했다. 대기 시간·상한 후보 비교와 종료·복구 후속 실험은 #802 및 #801의 별도 자료로 분리했다.
+집계 조회 중 들어온 입력의 묶음 대기 유지 수정과 직접 전후 비교는 [#799 결과 및 재실행 절차](../799/batch-wait/README.md)에 기록했다. 기존 500ms·감정별 30개·전체 100개 설정에서 비교했다. 대기 시간·상한 후보 비교와 종료·복구 후속 실험은 #802 및 #801의 별도 자료로 분리했다.
 
 ### 2026-10-18 POST 후 대기 보완
 
-[POST 중 유입 입력의 대기 보완과 비교](799-post-wait.md). 이전 iPhone 결과는 과거 구현 측정이며 이번 보완의 실기기 측정 결과가 아니다.
+[POST 중 유입 입력의 대기 보완과 비교](../799/post-wait/README.md). 이전 iPhone 결과는 과거 구현 측정이며 이번 보완의 실기기 측정 결과가 아니다.
 
 ### 집계 조회 합치기
 
-[동일 USB 실기기 전후 비교와 원본 증거](799-aggregate-device/README.md). 현재 제품 후보는 POST 대기 보완과 집계 조회 합치기를 함께 포함한다.
+[동일 USB 실기기 전후 비교와 원본 증거](../799/aggregate-device/README.md). 현재 제품 후보는 POST 대기 보완과 집계 조회 합치기를 함께 포함한다.

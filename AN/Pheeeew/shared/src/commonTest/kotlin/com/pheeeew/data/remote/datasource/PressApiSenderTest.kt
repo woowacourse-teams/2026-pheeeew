@@ -142,7 +142,6 @@ class PressApiSenderTest {
 
     private fun batch() =
         PressBatch(
-            sequence = 7L,
             counts = linkedMapOf(EmotionState.ANGRY to 2, EmotionState.EXHAUSTED to 1),
         )
 

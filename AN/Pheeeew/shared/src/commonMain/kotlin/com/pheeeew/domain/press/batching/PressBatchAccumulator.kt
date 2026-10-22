@@ -1,13 +1,14 @@
-package com.pheeeew.data.repository
+package com.pheeeew.domain.press.batching
 
-import com.pheeeew.core.monitoring.activityDate
+import com.pheeeew.core.time.koreaCalendarDate
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.PressBatch
+import com.pheeeew.domain.press.time.PressEpochMillis
 
 /** Five counters per input day, not per tap. A request never mixes KST dates. */
 internal class PressBatchAccumulator {
     private class Day(
-        val occurredAt: Long,
+        val occurredAt: PressEpochMillis,
     ) {
         val counts = EmotionState.entries.associateWith { 0L }.toMutableMap()
     }
@@ -27,11 +28,11 @@ internal class PressBatchAccumulator {
     fun add(
         emotion: EmotionState,
         count: Long = 1L,
-        occurredAt: Long = 0L,
+        occurredAt: PressEpochMillis = PressEpochMillis(0L),
     ): Boolean {
         require(count > 0L)
         if (size > Long.MAX_VALUE - count) return false
-        val day = days.getOrPut(activityDate(occurredAt)) { Day(occurredAt) }
+        val day = days.getOrPut(koreaCalendarDate(occurredAt.value)) { Day(occurredAt) }
         day.counts[emotion] = day.counts.getValue(emotion) + count
         size += count
         return true
@@ -41,7 +42,6 @@ internal class PressBatchAccumulator {
         maxPerEmotion: Int,
         maxTotal: Int,
         firstEmotionIndex: Int,
-        sequence: Long,
     ): PressBatch? {
         require(maxPerEmotion > 0 && maxTotal > 0)
         val entry = days.entries.firstOrNull() ?: return null
@@ -60,6 +60,6 @@ internal class PressBatchAccumulator {
             if (remaining == 0) break
         }
         if (day.counts.values.all { it == 0L }) days.remove(entry.key)
-        return PressBatch(sequence, drained.toMap(), occurredAt = day.occurredAt)
+        return PressBatch(drained.toMap(), occurredAt = day.occurredAt)
     }
 }

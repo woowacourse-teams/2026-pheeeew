@@ -1,0 +1,23 @@
+package com.pheeeew.feature.screens.press
+
+import com.pheeeew.domain.model.press.AllDailyPressSnapshot
+import com.pheeeew.domain.model.press.MyDailyPressSnapshot
+import com.pheeeew.feature.emotion.model.EmotionKind
+
+internal data class PressUiState(
+    val myToday: MyDailyPressSnapshot? = null,
+    val allToday: AllDailyPressSnapshot? = null,
+    val isLoadingMy: Boolean = true,
+    val isLoadingAll: Boolean = true,
+    val isSending: Boolean = false,
+    val pendingPressCount: Long = 0L,
+    val optimisticPressCounts: Map<EmotionKind, Long> = emptyMap(),
+    val optimisticAllPressCount: Long = 0L,
+) {
+    val optimisticMyTotalCount: Long
+        get() = optimisticPressCounts.values.sum()
+
+    val myEmotionCounts: Map<EmotionKind, Long>
+        get() =
+            myToday?.counts?.mapKeys { (emotion, _) -> emotion.toUiKind() }.orEmpty()
+}

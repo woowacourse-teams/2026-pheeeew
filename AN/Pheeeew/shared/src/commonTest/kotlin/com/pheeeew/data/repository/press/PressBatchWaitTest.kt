@@ -1,11 +1,15 @@
-package com.pheeeew.data.repository
+package com.pheeeew.data.repository.press
 
+import com.pheeeew.data.press.retry.PressRetryPolicy
+import com.pheeeew.data.repository.PressRepositoryImpl
 import com.pheeeew.domain.model.emotion.EmotionState
 import com.pheeeew.domain.model.press.AllDailyPressSnapshot
 import com.pheeeew.domain.model.press.MyDailyPressSnapshot
 import com.pheeeew.domain.model.press.MyDailyPressTotals
 import com.pheeeew.domain.model.press.PressBatch
 import com.pheeeew.domain.model.press.PressSendResult
+import com.pheeeew.domain.press.time.PressDelayMillis
+import com.pheeeew.domain.press.time.PressMonotonicMillis
 import com.pheeeew.domain.repository.PressReadResult
 import com.pheeeew.domain.repository.PressSender
 import com.pheeeew.domain.repository.PressStatisticsDataSource
@@ -207,7 +211,7 @@ class PressBatchWaitTest {
         runTest {
             val f = Fixture(this, 200)
             f.start()
-            f.nextFailure = PressSendResult.RetryAfter(1_000L)
+            f.nextFailure = PressSendResult.RetryAfter(PressDelayMillis(1_000L))
             f.tap()
             advanceTimeBy(1_599)
             runCurrent()
@@ -433,9 +437,9 @@ class PressBatchWaitTest {
                 this,
                 scope.backgroundScope,
                 connectivity = connectivity,
-                aggregateRefreshMillis = aggregateRefreshMillis,
+                aggregateRefreshMillis = PressDelayMillis(aggregateRefreshMillis),
                 retryPolicy = PressRetryPolicy(jitter = { 1.0 }),
-                nowMillis = { scope.testScheduler.currentTime },
+                nowMillis = { PressMonotonicMillis(scope.testScheduler.currentTime) },
             )
 
         fun start() {
