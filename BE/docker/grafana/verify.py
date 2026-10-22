@@ -172,6 +172,10 @@ def verify():
         dashboard = json.loads((DIRECTORY / f"pheeeew-{environment}-v2.json").read_text())
         panels = {panel["id"]: panel for panel in dashboard["panels"]}
         assert len(panels) == len(dashboard["panels"])
+        assert not ({24, 25, 30, 31, 32, 33} & panels.keys())
+        assert "pheeeew_activity_" not in json.dumps(dashboard, ensure_ascii=False)
+        for panel_id in (18, 19):
+            assert "pheeeew_app_version_checks_total" in json.dumps(panels[panel_id])
         tests.extend(connection_time_tests(panels[141], environment))
         tests.extend(connection_timeout_tests(panels[142], environment))
         tests.extend(sample_count_tests(panels[130], environment))

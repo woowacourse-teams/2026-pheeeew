@@ -5,6 +5,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import time
 import uuid
 
 
@@ -16,13 +17,17 @@ APP = """
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 import json
+import sys
+
+target = sys.argv[1]
+status = Path('/fixtures/status-' + target)
 
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        code = int(Path('/fixtures/status').read_text())
+        code = int(status.read_text())
         self.send_response(code)
         self.end_headers()
-        self.wfile.write(json.dumps({'path': self.path, 'status': code,
+        self.wfile.write(json.dumps({'path': self.path, 'status': code, 'target': target,
                                     'headers': dict(self.headers)}).encode())
 
     do_POST = do_GET
@@ -39,7 +44,7 @@ context = ssl.create_default_context(cafile='/fixtures/origin.pem')
 count = 0
 
 def probe(source, path='/actuator/health', method='GET', host=None,
-          headers=None, expected=200, secure=True):
+          headers=None, expected=200, secure=True, upstream=None, upstream_header=True):
     global count
     target = source.rsplit('.', 1)[0] + '.2'
     cls = http.client.HTTPSConnection if secure else http.client.HTTPConnection
@@ -53,8 +58,9 @@ def probe(source, path='/actuator/health', method='GET', host=None,
         response = connection.getresponse()
         code, body = response.status, response.read()
         location = response.getheader('Location')
+        served = response.getheader('X-Upstream')
     except http.client.RemoteDisconnected:
-        code, body, location = 444, b'', None
+        code, body, location, served = 444, b'', None, None
     finally:
         connection.close()
     allowed = (expected,) if isinstance(expected, int) else expected
@@ -62,6 +68,14 @@ def probe(source, path='/actuator/health', method='GET', host=None,
     if expected in (200, 503):
         upstream_path = '/actuator/health' if path.split('?')[0] == '/actuator/health' else path
         assert json.loads(body)['path'] == upstream_path, body
+    if upstream is not None:
+        # 전환이 실제로 반영됐는지는 헤더와 응답한 백엔드가 둘 다 같아야 확인된다.
+        if upstream_header:
+            assert served == upstream, (source, path, served, upstream)
+        else:
+            assert served is None, (source, path, served)
+        if code in (200, 503):
+            assert json.loads(body)['target'] == upstream, body
     count += 1
     return body, location
 """
@@ -139,14 +153,52 @@ print(f'PASS: {count} HTTP/HTTPS health, API, forwarding, rate-limit and access-
 """
 
 
+# 전환 대상이 실제로 바뀌었는지 프록시하는 경로마다 확인한다.
+SWITCH_PROBES = PROBE_HELPERS + """
+import sys
+upstream = sys.argv[1]
+for source in ['10.0.10.3', '10.0.11.3']:
+    for secure in [False, True]:
+        probe(source, host='api-dev.pheeeew.com',
+              path='/api/v2/emotions/map?groupId=one&groupId=two',
+              headers={'X-Forwarded-For': '198.51.100.7', 'X-Forwarded-Proto': 'https'},
+              secure=secure, upstream=upstream)
+        probe(source, secure=secure, upstream=upstream, upstream_header=False)
+probe('10.0.12.3', secure=True, host='api-dev.pheeeew.com',
+      path='/api/v2/emotions/map?groupId=one&groupId=two',
+      headers={'X-Forwarded-For': '198.51.100.7', 'X-Forwarded-Proto': 'http'},
+      upstream=upstream)
+print(count)
+"""
+
+# reload 반영을 기다릴 때 쓴다. 단언하지 않고 지금 응답하는 백엔드만 돌려준다.
+SERVED_UPSTREAM = PROBE_HELPERS + """
+body, _ = probe('10.0.10.3', host='api-dev.pheeeew.com',
+                path='/api/v2/emotions/map?groupId=one&groupId=two',
+                headers={'X-Forwarded-For': '198.51.100.7', 'X-Forwarded-Proto': 'https'},
+                secure=False)
+print(json.loads(body)['target'])
+"""
+
+BACKENDS = (('app', '10.0.10.4'), ('app-blue', '10.0.10.5'), ('app-green', '10.0.10.6'))
+
+
 def main():
     prefix = 'pheeeew-alb-health-' + uuid.uuid4().hex[:8]
     networks = [prefix + suffix for suffix in ('-a', '-b', '-outside')]
-    app, nginx, client = (prefix + suffix for suffix in ('-app', '-nginx', '-client'))
+    nginx, client = (prefix + suffix for suffix in ('-nginx', '-client'))
+    apps = {name: f'{prefix}-{name}' for name, _ in BACKENDS}
     config = Path(__file__).with_name('api-dev.conf').resolve()
     with tempfile.TemporaryDirectory(prefix=prefix) as directory:
         fixtures = Path(directory)
-        (fixtures / 'status').write_text('200')
+        for name, _ in BACKENDS:
+            (fixtures / f'status-{name}').write_text('200')
+        # 저장소가 내보내는 초기 전환 파일을 그대로 복사해 쓰기 가능한 자리에 둔다.
+        upstream = fixtures / 'upstream'
+        upstream.mkdir()
+        active = upstream / 'active.conf'
+        shutil.copy(config.parent / 'upstream' / 'active.conf', active)
+        assert 'set $upstream_app app;' in active.read_text(), active.read_text()
         (fixtures / 'app.py').write_text(APP)
         (fixtures / 'probes.py').write_text(PROBES)
         (fixtures / 'nginx.conf').write_text('''
@@ -165,12 +217,14 @@ http {
         try:
             for network, subnet in zip(networks, ('10.0.10.0/24', '10.0.11.0/24', '10.0.12.0/24')):
                 run('docker', 'network', 'create', '--internal', '--subnet', subnet, network)
-            run('docker', 'run', '-d', '--name', app, '--network', networks[0],
-                '--network-alias', 'app', '--ip', '10.0.10.4',
-                '-v', f'{fixtures}:/fixtures:ro',
-                'python:3.13-alpine', 'python', '/fixtures/app.py')
+            for name, address in BACKENDS:
+                run('docker', 'run', '-d', '--name', apps[name], '--network', networks[0],
+                    '--network-alias', name, '--ip', address,
+                    '-v', f'{fixtures}:/fixtures:ro',
+                    'python:3.13-alpine', 'python', '/fixtures/app.py', name)
             run('docker', 'create', '--name', nginx, '--network', networks[0], '--ip', '10.0.10.2',
                 '-v', f'{config}:/etc/nginx/conf.d/default.conf:ro',
+                '-v', f'{upstream}:/etc/nginx/upstream:ro',
                 '-v', f'{fixtures / "nginx.conf"}:/etc/nginx/nginx.conf:ro',
                 '-v', f'{fixtures}:/etc/ssl/cloudflare:ro',
                 '-v', f'{fixtures}:/etc/letsencrypt/live/api-dev.pheeeew.com:ro',
@@ -184,7 +238,85 @@ http {
             result = run('docker', 'exec', nginx, 'nginx', '-t')
             print(result.stderr.strip())
             print(run('docker', 'exec', client, 'python', '/fixtures/probes.py').stdout.strip())
-            (fixtures / 'status').write_text('503')
+
+            def write_active(text):
+                active.write_text(text)
+                # 바인드 마운트 반영을 기다린다. 기다리지 않으면 이전 내용으로 검사된다.
+                for _ in range(50):
+                    seen = run('docker', 'exec', nginx,
+                               'cat', '/etc/nginx/upstream/active.conf').stdout
+                    if seen == text:
+                        return
+                    time.sleep(0.1)
+                raise AssertionError(f'전환 파일이 컨테이너에 반영되지 않았다: {seen!r}')
+
+            def select(name):
+                write_active(f'set $upstream_app {name};\n')
+
+            def reload_nginx(expect):
+                run('docker', 'exec', nginx, 'nginx', '-t')
+                # reload 는 신호만 보내고 반환한다. 새 워커가 받기 시작할 때까지 기다린다.
+                run('docker', 'exec', nginx, 'nginx', '-s', 'reload')
+                seen = None
+                for _ in range(100):
+                    seen = run('docker', 'exec', '-i', client, 'python', '-',
+                               input=SERVED_UPSTREAM).stdout.strip()
+                    if seen == expect:
+                        return
+                    time.sleep(0.1)
+                raise AssertionError(f'reload 뒤 {expect} 로 바뀌지 않았다: {seen!r}')
+
+            def routed_to(name):
+                result = run('docker', 'exec', '-i', client, 'python', '-', name,
+                             input=SWITCH_PROBES)
+                return int(result.stdout.strip())
+
+            routes = routed_to('app')
+            print(f'PASS: shipped active.conf routes {routes} proxy paths to the app backend')
+
+            # 파일만 바꾸고 reload 하지 않으면 살아 있는 설정이 바뀌지 않아야 한다.
+            select('app-blue')
+            routed_to('app')
+            print('PASS: switch file change alone does not move live traffic')
+
+            reload_nginx('app-blue')
+            routed_to('app-blue')
+            select('app-green')
+            reload_nginx('app-green')
+            routed_to('app-green')
+            print(f'PASS: app -> app-blue -> app-green reaches the matching backend on {routes} paths')
+
+            (fixtures / 'status-app-green').write_text('503')
+            run('docker', 'exec', '-i', client, 'python', '-', input=PROBE_HELPERS
+                + "\nfor secure in [False, True]:\n"
+                + "    probe('10.0.10.3', expected=503, secure=secure,\n"
+                + "          upstream='app-green', upstream_header=False)\n")
+            (fixtures / 'status-app-green').write_text('200')
+            print('PASS: upstream 503 keeps reporting the switched backend')
+
+            select('app-blue')
+            reload_nginx('app-blue')
+            routed_to('app-blue')
+            print('PASS: app-green -> app-blue reverse switch reaches the matching backend')
+
+            # 전환 파일이 깨지면 nginx -t 가 실패해야 한다. 배포는 이 신호로 멈춘다.
+            write_active('set $upstream_app;\n')
+            broken = subprocess.run(['docker', 'exec', nginx, 'nginx', '-t'],
+                                    text=True, capture_output=True)
+            assert broken.returncode != 0, broken.stdout + broken.stderr
+            routed_to('app-blue')
+            print('PASS: invalid switch file fails nginx -t while live traffic keeps the old target')
+
+            write_active('')
+            empty = subprocess.run(['docker', 'exec', nginx, 'nginx', '-t'],
+                                   text=True, capture_output=True)
+            assert empty.returncode != 0, empty.stdout + empty.stderr
+            print('PASS: empty switch file fails nginx -t instead of serving an unset upstream')
+
+            select('app')
+            reload_nginx('app')
+            routed_to('app')
+            (fixtures / 'status-app').write_text('503')
             failure_probes = "\nfor source in ['10.0.10.3', '10.0.11.3']:\n"
             failure_probes += "    for secure in [False, True]:\n"
             failure_probes += "        probe(source, expected=503, secure=secure)\n"
@@ -192,7 +324,8 @@ http {
             failure_probes += "          headers={'X-Forwarded-Proto': 'https', 'X-Forwarded-For': '198.51.100.7'}, expected=503, secure=False)\n"
             run('docker', 'exec', '-i', client, 'python', '-', input=PROBE_HELPERS + failure_probes)
             print('PASS: upstream 503 is preserved for HTTP API and HTTP/HTTPS health on both LB subnets')
-            run('docker', 'stop', '--time', '1', app)
+            for container in apps.values():
+                run('docker', 'stop', '--time', '1', container)
             run('docker', 'exec', '-i', client, 'python', '-',
                 input=PROBE_HELPERS + "\nfor secure in [False, True]:\n"
                 + "    probe('10.0.10.3', expected=(502, 504), secure=secure)\n")
@@ -203,7 +336,7 @@ http {
             print(subprocess.run(['docker', 'logs', nginx], text=True, capture_output=True).stderr)
             raise
         finally:
-            for container in (client, nginx, app):
+            for container in (client, nginx, *apps.values()):
                 subprocess.run(['docker', 'rm', '-f', container], capture_output=True)
             for network in reversed(networks):
                 subprocess.run(['docker', 'network', 'rm', network], capture_output=True)
