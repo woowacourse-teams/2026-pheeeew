@@ -81,6 +81,7 @@ class EmotionRegionBatchCacheIntegrationTest {
     void tearDown() {
         jdbc.sql("DELETE FROM emotion_reports").update();
         emotions.deleteAllInBatch();
+        jdbc.sql("DELETE FROM device_daily_stamps").update();
         devices.deleteAllInBatch();
         jdbc.sql("DELETE FROM regions").update();
         jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL, backfill_verified_at = NULL").update();
@@ -242,10 +243,10 @@ class EmotionRegionBatchCacheIntegrationTest {
         register();
 
         // when
-        commands.update(emotionId, requester.getPublicId(), EmotionState.EXHAUSTED, "수정 기록", null, false, null);
+        commands.update(emotionId, requester.getPublicId(), EmotionState.ANGRY, null, null, false, null);
 
         // then
-        assertThat(regions().getFirst().summary().totalCount()).isEqualTo(2);
+        assertThat(regions().getFirst().summary().totalCount()).isEqualTo(1);
         assertThat(regions().getFirst().summary().representativeState()).isEqualTo(EmotionState.DISCOURAGED);
     }
 

@@ -89,6 +89,7 @@ class EmotionPinSnapshotIntegrationTest {
         jdbc.sql("DELETE FROM emotion_blocks").update();
         jdbc.sql("DELETE FROM device_blocks").update();
         emotions.deleteAllInBatch();
+        jdbc.sql("DELETE FROM device_daily_stamps").update();
         devices.deleteAllInBatch();
         jdbc.sql("DELETE FROM regions").update();
         jdbc.sql("UPDATE region_datasets SET boundaries_verified_at = NULL, backfill_verified_at = NULL").update();
@@ -102,9 +103,9 @@ class EmotionPinSnapshotIntegrationTest {
 
         // when
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
-            commands.update(originalId, requester.getPublicId(), EmotionState.EXHAUSTED,
-                    "외부 TX 롤백", null, false, null);
-            assertThat(page().items()).singleElement().satisfies(item -> assertThat(item.state()).isEqualTo(EmotionState.EXHAUSTED));
+            commands.update(originalId, requester.getPublicId(), EmotionState.ANGRY,
+                    null, null, false, null);
+            assertThat(page().items()).isEmpty();
             var other = CompletableFuture.supplyAsync(this::page).orTimeout(5, TimeUnit.SECONDS).join();
             assertThat(other.items()).singleElement().satisfies(item -> assertThat(item.state()).isEqualTo(EmotionState.ANGRY));
             assertThat(previousPins.getFirst().state()).isEqualTo(EmotionState.ANGRY);
@@ -122,13 +123,13 @@ class EmotionPinSnapshotIntegrationTest {
 
         // when
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
-            commands.update(originalId, requester.getPublicId(), EmotionState.EXHAUSTED,
-                    "외부 TX 커밋", null, false, null);
-            assertThat(page().items()).singleElement().satisfies(item -> assertThat(item.state()).isEqualTo(EmotionState.EXHAUSTED));
+            commands.update(originalId, requester.getPublicId(), EmotionState.ANGRY,
+                    null, null, false, null);
+            assertThat(page().items()).isEmpty();
         });
 
         // then
-        assertThat(page().items()).singleElement().satisfies(item -> assertThat(item.state()).isEqualTo(EmotionState.EXHAUSTED));
+        assertThat(page().items()).isEmpty();
         assertThat(previousPins.getFirst().state()).isEqualTo(EmotionState.ANGRY);
     }
 
@@ -141,7 +142,7 @@ class EmotionPinSnapshotIntegrationTest {
         // when
         commands.save(UUID.randomUUID(), EmotionState.ANGRY, 127, 38, 0, "대기 등록", null, null, requester.getPublicId());
         assertThat(meters.get("pheeeew.map.cache.candidates").tag("cache", "pins").gauge().value()).isEqualTo(2);
-        commands.update(originalId, requester.getPublicId(), EmotionState.EXHAUSTED, "수정", null, false, null);
+        commands.update(originalId, requester.getPublicId(), EmotionState.ANGRY, "수정", null, false, null);
         commands.delete(originalId, requester.getPublicId());
 
         // then: 이미 공개한 객체의 내용은 유지되고 새 조회만 최신 상태를 읽는다.
@@ -158,7 +159,7 @@ class EmotionPinSnapshotIntegrationTest {
         var release = new CountDownLatch(1);
         Function<Object, Object> original = blockRender(publication, entered, release);
         CompletableFuture<Void> updating = CompletableFuture.runAsync(() -> commands.update(originalId,
-                requester.getPublicId(), EmotionState.EXHAUSTED, "경합 수정", null, false, null));
+                requester.getPublicId(), EmotionState.ANGRY, null, null, false, null));
         try {
             assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
 
@@ -173,7 +174,7 @@ class EmotionPinSnapshotIntegrationTest {
 
         // then
         assertThat(snapshot()).isNull();
-        assertThat(page().items()).singleElement().satisfies(pin -> assertThat(pin.state()).isEqualTo(EmotionState.EXHAUSTED));
+        assertThat(page().items()).isEmpty();
     }
 
     @Test
@@ -186,13 +187,13 @@ class EmotionPinSnapshotIntegrationTest {
         var release = new CountDownLatch(1);
         Function<Object, Object> original = blockRender(publication, entered, release);
         CompletableFuture<Void> updating = CompletableFuture.runAsync(() -> commands.update(originalId,
-                requester.getPublicId(), EmotionState.EXHAUSTED, "기한 경합", null, false, null));
+                requester.getPublicId(), EmotionState.ANGRY, null, null, false, null));
         try {
             assertThat(entered.await(5, TimeUnit.SECONDS)).isTrue();
 
             // when: 이 조회는 오래된 snapshot을 버리고 SQL로 응답한다.
             clock.advance(Duration.ofSeconds(3));
-            assertThat(page().items()).hasSize(2);
+            assertThat(page().items()).hasSize(1);
             long currentEpoch = coordinator.read(value -> value);
             assertThat(currentEpoch).isEqualTo(epoch);
             assertThat(snapshot()).isNull();
@@ -204,8 +205,7 @@ class EmotionPinSnapshotIntegrationTest {
 
         // then: epoch가 같아도 Current identity가 달라졌으므로 게시를 거부한다.
         assertThat(snapshot()).isNull();
-        assertThat(page().items()).filteredOn(pin -> pin.id().equals(originalId)).singleElement()
-                .satisfies(pin -> assertThat(pin.state()).isEqualTo(EmotionState.EXHAUSTED));
+        assertThat(page().items()).hasSize(1).noneSatisfy(pin -> assertThat(pin.id()).isEqualTo(originalId));
     }
 
     private com.pheeeew.emotion.application.dto.EmotionMapPageView page() {

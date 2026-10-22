@@ -1,5 +1,6 @@
 package com.pheeeew.support;
 
+import com.pheeeew.collection.domain.repository.DeviceDailyStampRepository;
 import com.pheeeew.auth.infra.jwt.AccessTokenJwtValidator;
 import com.pheeeew.auth.infra.jwt.JwtConfig;
 import com.pheeeew.auth.infra.jwt.JwtTokenEncoder;
@@ -58,6 +59,7 @@ import org.springframework.test.context.ActiveProfiles;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({
         SharedPostgisTestConfiguration.class,
+        DeviceDailyStampRepository.class,
         SharedJwtTestConfiguration.class,
         SharedMetricsTestConfiguration.class,
         ClockConfig.class,

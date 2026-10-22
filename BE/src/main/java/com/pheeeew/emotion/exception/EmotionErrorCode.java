@@ -22,7 +22,8 @@ public enum EmotionErrorCode implements ErrorCode {
     EMOTION_NOT_FOUND("EMOTION-011", "감정을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     EMOTION_CREATE_RATE_LIMITED("EMOTION-012", "감정은 1초에 한 번만 남길 수 있습니다.", HttpStatus.TOO_MANY_REQUESTS),
     EMOTION_REGION_DATA_UNAVAILABLE("EMOTION-013", "지역 분류 자료를 사용할 수 없습니다.", HttpStatus.SERVICE_UNAVAILABLE),
-    EMOTION_LOCATION_OUT_OF_SERVICE_AREA("EMOTION-014", "이 위치에서는 기록할 수 없습니다. 다른 위치를 선택해 주세요.", HttpStatus.BAD_REQUEST);
+    EMOTION_LOCATION_OUT_OF_SERVICE_AREA("EMOTION-014", "이 위치에서는 기록할 수 없습니다. 다른 위치를 선택해 주세요.", HttpStatus.BAD_REQUEST),
+    EMOTION_STATE_CHANGE_NOT_ALLOWED("EMOTION-015", "등록한 감정의 종류는 변경할 수 없습니다.", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;

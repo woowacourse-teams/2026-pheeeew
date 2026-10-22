@@ -779,21 +779,21 @@ class EmotionRegionCountIntegrationTest {
         // given: DataJpaTest의 외부 쓰기 트랜잭션에 서비스가 참여한다.
         Emotion emotion = save(classified().memo("변경 전").state(EmotionState.ANGRY));
         entityManager.flush();
-        emotion.update(EmotionState.DISCOURAGED, EmotionContent.builder().audio(
+        emotion.update(EmotionState.ANGRY, EmotionContent.builder().audio(
                 Audio.builder().objectKey("changed.m4a").build()).build(), null);
-        assertThat(jdbc.sql("SELECT state FROM emotions WHERE id = :id").param("id", emotion.getId())
-                .query(String.class).single()).isEqualTo("ANGRY");
+        assertThat(jdbc.sql("SELECT audio_object_key IS NULL FROM emotions WHERE id = :id").param("id", emotion.getId())
+                .query(Boolean.class).single()).isTrue();
         var filter = EmotionSearchFilter.of(null, null, EmotionContentFilter.AUDIO, null, null);
 
-        // when: 명시적인 flush 없이 내용 필터와 대표 감정 모두 변경분을 읽는다.
+        // when: 명시적인 flush 없이 내용 필터가 녹음으로 바뀐 내용을 읽는다.
         var result = service.findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), level,
                 requester.getPublicId(), filter);
 
         // then
         assertThat(result).singleElement().satisfies(item ->
-                assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(1, EmotionState.DISCOURAGED)));
-        assertThat(jdbc.sql("SELECT state FROM emotions WHERE id = :id").param("id", emotion.getId())
-                .query(String.class).single()).isEqualTo("DISCOURAGED");
+                assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(1, EmotionState.ANGRY)));
+        assertThat(jdbc.sql("SELECT audio_object_key FROM emotions WHERE id = :id").param("id", emotion.getId())
+                .query(String.class).single()).isEqualTo("changed.m4a");
     }
 
     @ParameterizedTest
@@ -820,12 +820,12 @@ class EmotionRegionCountIntegrationTest {
         entityManager.persist(stamp);
         Emotion emotion = save(classified().memo("메모").state(EmotionState.ANGRY));
         entityManager.flush();
-        emotion.update(EmotionState.DISCOURAGED, emotion.getContent(), stamp);
+        emotion.update(EmotionState.ANGRY, emotion.getContent(), stamp);
 
         // when / then: 기존 행의 연관 변경이 그룹 필터에 반영된다.
         assertThat(findRegionMap(EmotionSearchBounds.of(126, 37, 128, 39), level, group.getPublicId()))
                 .singleElement().satisfies(item ->
-                        assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(1, EmotionState.DISCOURAGED)));
+                        assertThat(item.summary()).isEqualTo(RegionEmotionSummary.of(1, EmotionState.ANGRY)));
 
         // 감정 변경 없이 스탬프만 수정해도 GROUP 쿼리의 동기화 대상에 포함한다.
         stamp.change("수정", stamp.getTextColor(), stamp.getBackgroundColor(), stamp.getFrame());
