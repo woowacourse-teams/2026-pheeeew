@@ -442,3 +442,63 @@ V20260831_3__create_sigh_status_index.sql
 - 공유 브랜치에 병합되었거나 어느 환경에 적용된 migration은 파일명과 내용을 수정하지 않는다.
 - 적용된 migration을 변경해야 하면 새로운 버전의 migration을 추가한다.
 - 같은 버전이 충돌하면 먼저 공유 브랜치에 병합된 파일을 유지하고, 후속 변경의 순번을 조정한다.
+
+### 9.3 스키마 호환성
+
+배포 중에는 **새 스키마 위에서 구버전 코드가 돈다.** 무중단 배포에서 교체 구간이 겹치고, 롤백에서는
+구버전이 새 스키마를 만난다. `ddl-auto: validate`라서 엔티티가 요구하는 것이 없으면 부팅 자체가 실패한다.
+
+#### 그대로 추가해도 되는 것
+
+- nullable 컬럼 추가
+- DEFAULT가 있는 NOT NULL 컬럼 추가
+- 테이블 추가, 인덱스 추가
+- 기존 데이터가 통과하는 CHECK 제약 추가
+
+구버전은 모르는 컬럼을 쓰지 않고, `validate`는 엔티티에 없는 컬럼을 허용한다.
+
+#### 두 배포로 나눠야 하는 것
+
+- `DROP COLUMN`, `DROP TABLE`
+- `RENAME` (테이블, 컬럼, 제약, 시퀀스)
+- DEFAULT 없는 NOT NULL 컬럼 추가
+
+구버전이 그 컬럼 없이 INSERT하거나, 사라진 컬럼을 엔티티에 매핑하고 있기 때문이다.
+
+컬럼 이름을 바꾸는 경우의 순서다.
+
+| 배포 | migration | 코드 |
+| --- | --- | --- |
+| 1 (확장) | 새 컬럼 추가 (nullable) | 양쪽에 쓰고 옛 컬럼을 읽는다 |
+| 2 (전환) | 백필 | 새 컬럼을 읽는다 |
+| 3 (수축) | 옛 컬럼 `DROP` | 옛 컬럼 참조를 제거한다 |
+
+배포 3을 지나면 그 이전 버전으로 롤백할 수 없다. 1과 2 사이, 2와 3 사이에서는 어느 지점으로든 돌아갈 수 있다.
+
+#### 선례
+
+`V20261009_1__add_group_join_type.sql`이 이 규칙을 지킨 예다. DEFAULT를 영구히 남기는 이유를
+migration 안에 적어 두었다.
+
+```sql
+-- join_type 없이 INSERT 하므로, 지우면 그 INSERT 가 NOT NULL 위반으로 실패합니다.
+ADD COLUMN join_type VARCHAR(20) NOT NULL DEFAULT 'PRIVATE',
+```
+
+반대 예도 있다. `V20260923_2__create_emotions_and_remove_sighs.sql`(`DROP TABLE sighs`와 RENAME 18개)과
+`V20261008_1__create_device_daily_presses_and_drop_device_region_daily_presses.sql`(`DROP TABLE`)은
+그 지점을 지난 뒤 구버전으로 롤백할 수 없다. **되돌릴 수 없다는 사실을 PR에 적는다.**
+
+#### 큰 테이블의 ALTER
+
+`ALTER TABLE`은 `ACCESS EXCLUSIVE` 락을 잡는다. 무중단 배포에서 새 버전이 migration을 돌리는 동안
+구버전이 그 테이블을 조회하면 락을 기다린다. 큰 테이블이면 교체 전인데 사용자가 영향을 받는다.
+
+#### PR 체크리스트
+
+migration이 있는 PR에서 확인한다.
+
+- [ ] 추가한 컬럼이 nullable이거나 DEFAULT가 있다
+- [ ] `DROP`, `RENAME`이 없다. 있으면 확장-수축으로 나눴다
+- [ ] 이 지점을 지난 뒤 구버전으로 롤백할 수 있는지 판단했고, 불가능하면 PR에 명시했다
+- [ ] 큰 테이블의 `ALTER`라면 교체 구간에 구버전 조회가 막힐 수 있다는 것을 확인했다
