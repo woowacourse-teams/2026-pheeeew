@@ -20,6 +20,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -91,16 +92,40 @@ public class EmotionMapQueryService {
         cursor.validateSnapshotAt(Instant.now(clock));
         cursor.validateRequestedFilter(startDate, endDate, contentType, scope, groupIds);
 
+        return findContentMap(cursor, devicePublicId, encodedCursor == null, EmotionCursorCodec::encode);
+    }
+
+    public EmotionMapPageView findContentMapWithinBoundsV4(
+            EmotionSearchBounds bounds,
+            UUID devicePublicId,
+            LocalDate startDate,
+            LocalDate endDate,
+            EmotionContentFilter contentType,
+            EmotionSearchScope scope,
+            String encodedCursor
+    ) {
+        EmotionCursor cursor = encodedCursor == null
+                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(),
+                        EmotionSearchFilter.of(startDate, endDate, contentType, scope, null))
+                : EmotionCursorCodec.decodeV4WithinBounds(encodedCursor);
+        cursor.validateSnapshotAt(Instant.now(clock));
+        cursor.validateRequestedFilter(startDate, endDate, contentType, scope, null);
+        return findContentMap(cursor, devicePublicId, encodedCursor == null, EmotionCursorCodec::encodeV4);
+    }
+
+    private EmotionMapPageView findContentMap(
+            EmotionCursor cursor, UUID devicePublicId, boolean firstPage, Function<EmotionCursor, String> encoder
+    ) {
         if (!TransactionSynchronizationManager.isActualTransactionActive() && cacheable(RegionLevel.SIDO, cursor.filter())) {
             Long deviceId = dbQueries.findValidatedDeviceId(devicePublicId, cursor.groupIds());
 
-            PinCandidateCache.Page cached = pinCandidateCache.find(cursor, encodedCursor == null, deviceId);
+            PinCandidateCache.Page cached = pinCandidateCache.find(cursor, firstPage, deviceId);
             if (cached != null) {
-                return dbQueries.findPinPage(cached);
+                return dbQueries.findPinPage(cached, encoder);
             }
         }
 
-        return dbQueries.findMap(cursor, devicePublicId, true);
+        return dbQueries.findMap(cursor, devicePublicId, true, encoder);
     }
 
     private boolean cacheable(RegionLevel level, EmotionSearchFilter filter) {

@@ -1,6 +1,10 @@
 package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.common.exception.ErrorResponse;
+import com.pheeeew.common.presentation.dto.CursorResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionsV4WithoutBoundsRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV4MapRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV4MapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionRegionMapResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV4DetailResponse;
 import com.pheeeew.emotion.presentation.dto.EmotionV4RegionMapRequest;
@@ -69,6 +73,60 @@ public interface EmotionV4ControllerApi {
     })
     ResponseEntity<List<EmotionRegionMapResponse>> findRegionMap(
             @Valid @ParameterObject EmotionV4RegionMapRequest request,
+            @Parameter(hidden = true) UUID devicePublicId,
+            @Parameter(hidden = true) MultiValueMap<String, String> parameters
+    );
+
+    @Operation(summary = "그룹 없는 감정 목록 조회", description = """
+            좌표 없이 감정을 최신 작성 시각·ID 내림차순으로 최대 50개 조회합니다.
+            그룹이 연결된 감정도 포함하지만 groupId·groupStamp는 응답하지 않습니다.
+            내용 없는 감정과 삭제·차단된 감정은 제외하며 인증된 기기를 기준으로 MY와 공감 선택 상태를 계산합니다.
+
+            scope는 ALL·MY이며 첫 페이지에서 생략하면 ALL입니다. contentType은 ALL·MEMO·AUDIO입니다.
+            KST 기준 시작일·종료일은 함께 전달하며 둘 다 생략하면 전체 기간입니다.
+            groupId는 빈 값도 400으로 거부하며 scope=GROUP도 400입니다.
+
+            다음 페이지에는 v4 목록이 발급한 nextCursor를 전달합니다. 기존 API·v4 핀 커서는 400입니다.
+            필터는 생략하거나 이전과 동일하게 전달합니다. 다른 조건은 400입니다.
+            커서의 조회 기준 시각 이후 새 기록은 제외하지만 삭제·차단은 각 요청 시점에 반영합니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "감정 목록과 다음 페이지 정보"),
+            @ApiResponse(responseCode = "400", description = "잘못된 필터·금지된 그룹 입력 또는 잘못된 커서",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패 또는 유효하지 않은 기기",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "녹음 재생 URL 발급 불가",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<CursorResponse<EmotionV4DetailResponse>> findListWithoutBoundsV4(
+            @Valid @ParameterObject EmotionsV4WithoutBoundsRequest request,
+            @Parameter(hidden = true) UUID devicePublicId,
+            @Parameter(hidden = true) MultiValueMap<String, String> parameters
+    );
+
+    @Operation(summary = "그룹 없는 감정 지도 핀 조회", description = """
+            화면 안의 내용 있는 감정을 최신 작성 시각·ID 내림차순으로 최대 200개 반환합니다.
+            그룹 감정도 포함하지만 groupId·groupStamp는 반환하지 않습니다. 삭제·차단된 감정은 제외합니다.
+            첫 페이지에는 bbox 네 값을 모두 전달하며 날짜변경선을 넘는 경도 범위를 허용합니다.
+
+            scope는 ALL·MY이고 첫 페이지에서 생략하면 ALL입니다. contentType은 ALL·MEMO·AUDIO입니다.
+            KST 시작일·종료일은 함께 전달하고 둘 다 생략하면 전체 기간입니다.
+            groupId는 빈 값도 400으로 거부하며 scope=GROUP도 400입니다.
+
+            다음 페이지에는 v4 핀이 발급한 nextCursor만 전달하고 bbox는 생략합니다.
+            기존 API·v4 목록 커서는 400입니다. 필터는 생략하거나 커서와 같게 전달합니다.
+            커서의 기준 시각 이후 등록은 제외하지만 삭제·차단은 조회 시점에 다시 반영합니다.
+            """, security = @SecurityRequirement(name = "bearerAuth"))
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "GeoJSON 핀 목록과 다음 페이지 정보"),
+            @ApiResponse(responseCode = "400", description = "잘못된 좌표·필터·커서 또는 금지된 그룹 입력",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증 실패 또는 유효하지 않은 기기",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    ResponseEntity<CursorResponse<EmotionV4MapResponse>> findContentMapWithinBoundsV4(
+            @Valid @ParameterObject EmotionV4MapRequest request,
             @Parameter(hidden = true) UUID devicePublicId,
             @Parameter(hidden = true) MultiValueMap<String, String> parameters
     );

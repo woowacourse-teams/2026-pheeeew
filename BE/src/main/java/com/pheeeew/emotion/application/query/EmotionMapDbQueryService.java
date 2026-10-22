@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -122,6 +123,12 @@ public class EmotionMapDbQueryService {
     }
 
     public EmotionMapPageView findMap(EmotionCursor cursor, UUID devicePublicId, boolean contentOnly) {
+        return findMap(cursor, devicePublicId, contentOnly, EmotionCursorCodec::encode);
+    }
+
+    public EmotionMapPageView findMap(
+            EmotionCursor cursor, UUID devicePublicId, boolean contentOnly, Function<EmotionCursor, String> encoder
+    ) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
@@ -147,13 +154,17 @@ public class EmotionMapDbQueryService {
             return EmotionMapPageView.of(items, false, null);
         }
 
-        String nextCursor = EmotionCursorCodec.encode(cursor.next(
+        String nextCursor = encoder.apply(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId()));
 
         return EmotionMapPageView.of(items, true, nextCursor);
     }
 
     public EmotionMapPageView findPinPage(PinCandidateCache.Page cached) {
+        return findPinPage(cached, EmotionCursorCodec::encode);
+    }
+
+    public EmotionMapPageView findPinPage(PinCandidateCache.Page cached, Function<EmotionCursor, String> encoder) {
         boolean hasNext = cached.pins().size() > MAP_PAGE_SIZE;
         List<EmotionMapPin> page = hasNext ? cached.pins().subList(0, MAP_PAGE_SIZE) : cached.pins();
 
@@ -175,7 +186,7 @@ public class EmotionMapDbQueryService {
 
         EmotionMapPin last = page.getLast();
         return EmotionMapPageView.of(items, true,
-                EmotionCursorCodec.encode(cached.cursor().next(last.createdAt(), last.id())));
+                encoder.apply(cached.cursor().next(last.createdAt(), last.id())));
     }
 
     private void validateGroups(List<UUID> groupIds) {

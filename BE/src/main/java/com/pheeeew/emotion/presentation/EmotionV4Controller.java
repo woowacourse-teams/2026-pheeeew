@@ -2,6 +2,10 @@ package com.pheeeew.emotion.presentation;
 
 import com.pheeeew.auth.presentation.annotation.CurrentDevice;
 import com.pheeeew.common.exception.CommonErrorCode;
+import com.pheeeew.common.presentation.dto.CursorResponse;
+import com.pheeeew.emotion.presentation.dto.EmotionsV4WithoutBoundsRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV4MapRequest;
+import com.pheeeew.emotion.presentation.dto.EmotionV4MapResponse;
 import com.pheeeew.common.exception.PheeeewException;
 import com.pheeeew.emotion.application.query.EmotionMapQueryService;
 import com.pheeeew.emotion.application.query.EmotionQueryService;
@@ -57,6 +61,36 @@ public class EmotionV4Controller implements EmotionV4ControllerApi {
                 request.toBounds(), request.level(), devicePublicId, request.toFilter());
         return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
                 .body(items.stream().map(EmotionRegionMapResponse::from).toList());
+    }
+
+    @Override
+    @GetMapping
+    public ResponseEntity<CursorResponse<EmotionV4DetailResponse>> findListWithoutBoundsV4(
+            @ModelAttribute EmotionsV4WithoutBoundsRequest request,
+            @CurrentDevice UUID devicePublicId,
+            @RequestParam MultiValueMap<String, String> parameters
+    ) {
+        rejectGroupParameters(parameters);
+        var page = emotionQueryService.findListWithoutBoundsV4(devicePublicId, request.startDate(), request.endDate(),
+                request.contentType(), request.scope(), request.cursor());
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
+                .body(CursorResponse.of(page.items().stream().map(EmotionV4DetailResponse::from).toList(),
+                        page.hasNext(), page.nextCursor()));
+    }
+
+    @Override
+    @GetMapping("/map")
+    public ResponseEntity<CursorResponse<EmotionV4MapResponse>> findContentMapWithinBoundsV4(
+            @ModelAttribute EmotionV4MapRequest request,
+            @CurrentDevice UUID devicePublicId,
+            @RequestParam MultiValueMap<String, String> parameters
+    ) {
+        rejectGroupParameters(parameters);
+        var page = emotionMapQueryService.findContentMapWithinBoundsV4(request.toBounds(), devicePublicId,
+                request.startDate(), request.endDate(), request.contentType(), request.scope(), request.cursor());
+        return ResponseEntity.ok().cacheControl(CacheControl.noCache().cachePrivate())
+                .body(CursorResponse.of(page.items().stream().map(EmotionV4MapResponse::from).toList(),
+                        page.hasNext(), page.nextCursor()));
     }
 
     private void rejectGroupParameters(MultiValueMap<String, String> parameters) {

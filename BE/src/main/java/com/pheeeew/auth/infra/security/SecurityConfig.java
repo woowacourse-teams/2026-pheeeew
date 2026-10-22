@@ -36,7 +36,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v3/devices").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v2/devices/tokens").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v2/devices/challenge").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/emotions", "/api/v3/emotions").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/emotions", "/api/v3/emotions", "/api/v4/emotions").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v2/emotions/map",
                                 "/api/v2/emotions/map/regions", "/api/v4/emotions/map/regions").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/emotions", "/api/v2/emotions", "/api/v3/emotions").authenticated()

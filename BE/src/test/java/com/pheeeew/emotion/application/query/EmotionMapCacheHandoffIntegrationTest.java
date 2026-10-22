@@ -8,6 +8,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.pheeeew.device.domain.Device;
 import com.pheeeew.device.domain.repository.DeviceRepository;
 import com.pheeeew.emotion.application.command.EmotionCommandService;
+import com.pheeeew.emotion.application.EmotionCursorCodec;
+import com.pheeeew.emotion.application.dto.EmotionMapItemView;
+import com.pheeeew.report.domain.EmotionBlock;
+import com.pheeeew.report.domain.repository.EmotionBlockRepository;
+import java.util.ArrayList;
+import java.util.stream.Stream;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import com.pheeeew.emotion.application.command.EmotionContentResolver;
 import com.pheeeew.emotion.application.dto.EmotionMapPageView;
 import com.pheeeew.emotion.application.dto.EmotionRegionMapItemView;
@@ -38,6 +46,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 @PostgisDataJpaTest
@@ -68,6 +78,11 @@ class EmotionMapCacheHandoffIntegrationTest {
     private MapCacheTestTime.MutableClock clock;
     @Autowired
     private MapCacheTestTime.ManualScheduledExecutor tasks;
+
+    @Autowired
+    private PlatformTransactionManager transactions;
+    @Autowired
+    private EmotionBlockRepository emotionBlocks;
 
     private Device requester;
     private Long originalId;
@@ -163,6 +178,49 @@ class EmotionMapCacheHandoffIntegrationTest {
         }
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void v4_핀은_캐시와_SQL을_오가도_커서와_차단을_유지한다(boolean cacheFirst) {
+        // given
+        List<Long> expected = new ArrayList<>();
+        for (int index = 0; index < 201; index++) {
+            expected.add(emotions.save(기본_한숨_빌더().deviceId(requester.getId()).memo("페이지 기록")
+                    .state(EmotionState.ANGRY).build()).getId());
+        }
+        if (cacheFirst) {
+            maintenance.requestRebuild();
+            tasks.runDueTasks();
+        }
+        double before = hits("pins");
+
+        // when: 첫 페이지와 다음 페이지의 조회 원천을 바꾼다.
+        var first = cacheFirst
+                ? queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null, null, null, null)
+                : new TransactionTemplate(transactions).execute(status ->
+                        queries.findContentMapWithinBoundsV4(BOUNDS, requester.getPublicId(), null, null, null, null, null));
+        assertThat(hits("pins") - before).isEqualTo(cacheFirst ? 1 : 0);
+        emotionBlocks.save(EmotionBlock.builder().blockerDeviceId(requester.getId()).emotionId(originalId).build());
+        if (cacheFirst) {
+            tasks.shutdown();
+        } else {
+            maintenance.requestRebuild();
+            tasks.runDueTasks();
+        }
+        before = hits("pins");
+        double fallbackBefore = pinFallbacks();
+        var next = queries.findContentMapWithinBoundsV4(null, requester.getPublicId(), null, null, null, null, first.nextCursor());
+
+        // then: 오래된 originalId는 새 차단으로 제외하고 나머지 201개는 누락·중복 없이 이어진다.
+        assertThat(hits("pins") - before).isEqualTo(cacheFirst ? 0 : 1);
+        assertThat(pinFallbacks() - fallbackBefore).isEqualTo(cacheFirst ? 1 : 0);
+        assertThat(first.items()).hasSize(200);
+        assertThat(EmotionCursorCodec.decodeV4WithinBounds(first.nextCursor()).groupIds()).isEmpty();
+        assertThat(Stream.concat(first.items().stream(), next.items().stream()).map(EmotionMapItemView::id).toList())
+                .containsExactlyElementsOf(expected.reversed());
+        assertThat(next.hasNext()).isFalse();
+        assertThat(next.nextCursor()).isNull();
+    }
+
     private void awaitBaselineSelectBlockedBy(int lockerPid) throws InterruptedException {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
         while (System.nanoTime() < deadline) {
@@ -178,6 +236,11 @@ class EmotionMapCacheHandoffIntegrationTest {
             Thread.sleep(10);
         }
         throw new AssertionError("5초 안에 기준선 SELECT의 실제 PostgreSQL 테이블 잠금 대기를 확인하지 못했습니다.");
+    }
+
+    private double pinFallbacks() {
+        var counter = meters.find("pheeeew.map.cache.requests").tags("cache", "pins", "result", "fallback").counter();
+        return counter == null ? 0 : counter.count();
     }
 
     private double hits(String cache) {

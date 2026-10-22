@@ -26,6 +26,8 @@ public final class EmotionCursorCodec {
     private static final String FILTERED_WITHOUT_BOUNDS_VERSION = "5";
     private static final String MULTI_GROUP_WITHIN_BOUNDS_VERSION = "6";
     private static final String MULTI_GROUP_WITHOUT_BOUNDS_VERSION = "7";
+    private static final String V4_WITHIN_BOUNDS_VERSION = "8";
+    private static final String V4_WITHOUT_BOUNDS_VERSION = "9";
     private static final String FIELD_DELIMITER = "|";
     private static final int WITHIN_BOUNDS_FIELD_COUNT = 8;
     private static final int WITHOUT_BOUNDS_FIELD_COUNT = 5;
@@ -122,14 +124,53 @@ public final class EmotionCursorCodec {
         }
     }
 
+    public static String encodeV4(EmotionCursor cursor) {
+        if (!cursor.groupIds().isEmpty() || cursor.filter().scope() == EmotionSearchScope.GROUP) {
+            throw invalidCursor();
+        }
+        return encodeFiltered(cursor, cursor.bounds() == null ? V4_WITHOUT_BOUNDS_VERSION : V4_WITHIN_BOUNDS_VERSION);
+    }
+
+    public static EmotionCursor decodeV4WithinBounds(String encoded) {
+        return decodeV4(encoded, true);
+    }
+
+    public static EmotionCursor decodeV4WithoutBounds(String encoded) {
+        return decodeV4(encoded, false);
+    }
+
+    private static EmotionCursor decodeV4(String encoded, boolean withinBounds) {
+        try {
+            String[] fields = decodeFields(encoded);
+            String version = withinBounds ? V4_WITHIN_BOUNDS_VERSION : V4_WITHOUT_BOUNDS_VERSION;
+            int fieldCount = withinBounds ? FILTERED_WITHIN_BOUNDS_FIELD_COUNT : FILTERED_WITHOUT_BOUNDS_FIELD_COUNT;
+            if (fields.length != fieldCount || !version.equals(fields[0]) || !fields[4].isEmpty()
+                    || EmotionSearchScope.GROUP.name().equals(fields[8])) {
+                throw invalidCursor();
+            }
+            EmotionSearchBounds bounds = withinBounds
+                    ? EmotionSearchBounds.of(Double.parseDouble(fields[9]), Double.parseDouble(fields[10]),
+                            Double.parseDouble(fields[11]), Double.parseDouble(fields[12]))
+                    : null;
+            return decodeFiltered(fields, bounds, false);
+        } catch (IllegalArgumentException | DateTimeException exception) {
+            throw invalidCursor();
+        }
+    }
+
     private static String encodeFiltered(EmotionCursor cursor) {
-        EmotionSearchFilter filter = cursor.filter();
         EmotionSearchBounds bounds = cursor.bounds();
         String version = bounds == null ? FILTERED_WITHOUT_BOUNDS_VERSION : FILTERED_WITHIN_BOUNDS_VERSION;
         if (cursor.groupIds().size() > 1) {
             version = bounds == null ? MULTI_GROUP_WITHOUT_BOUNDS_VERSION : MULTI_GROUP_WITHIN_BOUNDS_VERSION;
         }
 
+        return encodeFiltered(cursor, version);
+    }
+
+    private static String encodeFiltered(EmotionCursor cursor, String version) {
+        EmotionSearchFilter filter = cursor.filter();
+        EmotionSearchBounds bounds = cursor.bounds();
         String payload = String.join(FIELD_DELIMITER,
                 version,
                 cursor.snapshotAt().toString(), cursor.lastItemCreatedAt().toString(), Long.toString(cursor.lastId()),
