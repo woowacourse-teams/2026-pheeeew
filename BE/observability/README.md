@@ -14,7 +14,6 @@
 | 모듈 | 요청·예외·예약 작업 오류의 로그 형식 | `RequestLogPolicy`, `RequestLogWriter`, `ExceptionLogFormatter`, `ScheduledTaskErrorHandler` |
 | 모듈 | 도메인 타입에 독립적인 지표 등록·누적 | `EmotionMetrics`, `RegionQueryMetrics`, `DeviceChallengeMetrics`, `EmotionReportMetrics`, `EmotionPressMetrics`, `GroupPressMetrics`, `MapCacheMetrics` |
 | 모듈 | 지도 캐시의 쓰기 잠금 대기·보정 시간과 결과 기록 | `MapCacheLockMetrics`, `MapCacheMaintenanceMetrics` |
-| 모듈 | 플랫폼별 앱 버전 조회 성공 카운터 | `AppVersionMetrics` |
 | 모듈 | 기기 인증의 결과 카운터와 고정된 지표 사유 목록 | `AppAttestMetrics`, `AppAttestRejection`, `PlayIntegrityMetrics`, `PlayIntegrityRejection` |
 | 앱 | 허용할 요청 값과 출력할 단계 목록 | `PheeeewRequestLogPolicy`, `PheeeewRequestTimingStage` |
 | 앱 | 업무 계측 지점과 필터·스케줄러 등록 | `RequestServiceTimingAspect`, 업무별 metrics aspect, `RequestLoggingConfiguration`, `SchedulingConfig` |
@@ -29,8 +28,6 @@
 앱에 남으며, 적용 수가 0이면 빈 요청만 기록하고 제한 초과량은 양수일 때만 기록합니다.
 `AppAttestRejection`·`PlayIntegrityRejection`은 인증 정책이 아닌 지표의 고정된 `reason` 목록입니다. 인증 검증과 거절 판단,
 오류 코드·예외 전파는 앱의 검증기에 남고, 모듈은 앱이 선택한 사유로 카운터만 기록합니다.
-앱 버전 조회는 앱의 `AppVersionMetricsFilter`가 경로·HTTP 메서드·응답 상태와 `AppPlatform` 해석을 담당합니다.
-모듈의 `AppVersionMetrics`는 고정된 Android·iOS 기록 메서드만 제공하고 HTTP 요청이나 앱 도메인 타입을 받지 않습니다.
 
 ### 앱에 유지하는 관측 코드
 
@@ -41,7 +38,6 @@
 | --- | --- |
 | `EmotionMetricsAspect`, `EmotionPressQueryMetricsAspect`, `RegionQueryMetricsAspect` | Repository·Service 포인트컷, 작업 구분, 반환값 해석, 성공·실패 판단과 모듈 호출 |
 | `EmotionRegionQueryTimingAspect`, `RequestServiceTimingAspect`, `PheeeewRequestTimingStage` | 요청별 업무 단계와 측정 범위 결정 |
-| `AppVersionMetricsFilter` | 앱 버전 조회의 HTTP 성공 조건과 플랫폼 해석 |
 | 업무 서비스·인증 검증기 | 제한·신고·인증 판단과 해당 결과의 기록 시점 |
 
 `EmotionMetricsAspect`와 `EmotionPressQueryMetricsAspect`의 `Timer.Sample`은 모듈이 시작한 측정의 핸들입니다.
@@ -63,7 +59,7 @@
   프록시 안쪽에 위치합니다. 연결·예외는 그대로 전달하고 원본 풀의 종료는 Spring에 맡깁니다.
 - 앱의 `SchedulingConfig`는 기존 `ThreadPoolTaskSchedulerCustomizer`에서 모듈의 오류 처리기를 설치합니다.
   작업 오류와 로그 생성 오류를 처리한 뒤 반복 작업의 다음 실행을 막지 않습니다.
-- 업무 지표와 `AppVersionMetrics`, `AppAttestMetrics`, `PlayIntegrityMetrics`는 `@Component`와 `com.pheeeew` 하위 패키지로 앱 스캔에 등록됩니다.
+- 업무 지표와 `AppAttestMetrics`, `PlayIntegrityMetrics`는 `@Component`와 `com.pheeeew` 하위 패키지로 앱 스캔에 등록됩니다.
   모듈은 공개 생성자와 `Timer.Sample` 반환 타입에 필요한 `micrometer-core`를 `api`로 제공합니다.
   버전은 앱과 같은 Spring Boot BOM을 따르며 Prometheus exporter 설정은 앱에 둡니다.
 
@@ -93,9 +89,6 @@ DevTools에서 앱과 라이브러리의 클래스 로더가 갈릴 수 있으�
   `pheeeew.sigh.list.results`의 `page`·`has_next`, `pheeeew.region.query`의 `operation`·`outcome`과
   그룹 프레스의 `format=counts/state`·`limit=per_state/total`도 유지합니다.
   지역·개인 프레스 조회의 50ms~300초 진단용 버킷 경계를 바꾸지 않습니다. 새 라벨이나 시계열은 추가하지 않습니다.
-- 앱 버전 조회는 `pheeeew.app.version.checks`와 `platform=android/ios`를 0으로 사전 등록합니다.
-  앱 필터는 컨텍스트 경로를 고려한 `/api/v2/app/version`의 GET 요청이 예외 없이 완료되고 2xx일 때만 기록합니다.
-  플랫폼 대소문자 해석과 잘못된 값의 처리도 앱에 유지합니다.
 - App Attest는 `pheeeew.device.appattest.accepted`를 라벨 없이 0으로 등록합니다.
   `pheeeew.device.appattest.rejected`는 해당 거절을 처음 기록할 때 생성하며, `reason` 값은 기존 15개
   enum 이름을 대문자 그대로 사용합니다. 사유별 사전 등록이나 새 라벨을 추가하지 않습니다.
@@ -134,7 +127,6 @@ docker build --platform linux/arm64 -f docker/Dockerfile -t pheeeew-observabilit
 | 모듈의 `EmotionPressMetricsTest`, `GroupPressMetricsTest` | 빈 요청, 적용·상태 수, 두 제한 초과량, 그룹 요청 형식·교착 오류의 누적 계약 |
 | 모듈의 `AppAttestMetricsTest`, `PlayIntegrityMetricsTest`, 앱의 등록·인증 라우팅 통합 테스트 | 초기값, 기록 시 등록·사유별 누적, UNKNOWN 제한과 기존 인증 흐름 연결 |
 | 업무 서비스·metrics 테스트 | 업무별 계측 단계와 기존 기능의 연결 |
-| 모듈의 `AppVersionMetricsTest`, 앱의 필터·컨트롤러 테스트 | 플랫폼별 초기값·누적, HTTP 성공 조건·예외·플랫폼 해석과 미집계 조건 |
 
 실제 기동을 다시 검증할 때는 운영 DB·키 대신 일회용 DB와 생성한 테스트 키를 사용합니다.
 `bootRun`에는 `SPRINGDOTENV_ENABLED=false`와 명시적인 테스트 환경을 전달하고, 로그 파일명과 회전 경로를
@@ -148,7 +140,7 @@ Prometheus의 HTTP/Hikari 지표를 함께 확인합니다. SQL 실패·잠금 �
 ## BE 활동 통계 정리
 
 [#736](https://github.com/woowacourse-teams/2026-pheeeew/issues/736)에서 서버 활동 수집·집계와 전용 DTO·변환기·메트릭을 제거했습니다.
-앱 버전 호출 계측, HTTP·JVM·Hikari·지도 캐시 지표와 공통 요청·예약 작업 오류 로그는 유지합니다.
+앱 버전 호출 전용 계측도 #881에서 제거합니다. 버전 정책 API와 HTTP·JVM·Hikari·지도 캐시 지표, 공통 요청·예약 작업 오류 로그는 유지합니다.
 활동 엔티티·Repository·projection과 전용 fixture·매핑 테스트도 제거했습니다. 활동 테이블·과거 데이터·기존 Flyway는 보존하며 DROP migration은 추가하지 않습니다. 코드 제거는 운영 PostHog 수신이나 통계 전환 완료의 증거가 아닙니다.
 
 아래 검증 기록은 당시 커밋에 대한 이력입니다. 삭제된 클래스·설정·활동 지표의 검증 결과는 현재 기능 설명이 아닙니다.
@@ -170,7 +162,7 @@ Prometheus의 HTTP/Hikari 지표를 함께 확인합니다. SQL 실패·잠금 �
 - 2초 동안 테이블 잠금을 유지한 요청은 HTTP 200과 느린 요청 JSON 1개를 남겼습니다.
   이미지의 HTTP 경과 시간은 2,015ms, `bootRun`은 1,991ms였고 각 DB 획득 단계의 `count`는 1이었습니다.
   지연은 연결 획득 후 SQL 잠금에서 발생하도록 만든 것이며 풀 대기 재현 결과가 아닙니다.
-- 두 경로에서 Hikari active/max/acquire/usage, HTTP 요청, 앱 버전 지표를 Prometheus 응답으로 확인했습니다.
+- 두 경로에서 Hikari active/max/acquire/usage, HTTP 요청, 앱 버전 지표를 Prometheus 응답으로 확인했습니다. 앱 버전 전용 지표는 이후 #881에서 제거하는 대상으로, 이 문단은 당시 실행 기록입니다.
   종료 후 소유한 앱 프로세스·컨테이너·네트워크·테스트 키를 정리하고 앱 포트가 닫혔음을 확인했습니다.
 - `bootRun`의 `restartedMain` 기동과 실제 HTTP 로그 출력을 확인했습니다. 파일 수정에 따른 DevTools 자동
   재시작까지 실행한 것은 아닙니다. 비동기 로그 정책과 예약 작업의 실패 후 재실행은 자동 테스트로 검증했습니다.
@@ -206,7 +198,7 @@ DB·HTTP는 루프백의 임시 포트를 사용하고 로그도 임시 디렉�
 | --- | --- |
 | 두 프로필의 `/actuator/health`, `/actuator/prometheus` | 모두 HTTP 200 |
 | Android·iOS 앱 버전 조회와 잘못된 플랫폼 조회 | 각각 200·200·400, 두 성공 요청의 추적 ID가 서로 다름 |
-| `pheeeew_app_version_checks_total` | 각 플랫폼이 1씩 증가, 잘못된 플랫폼 요청은 증가시키지 않음 |
+| `pheeeew_app_version_checks_total` (당시 검증, #881 제거 대상) | 각 플랫폼이 1씩 증가, 잘못된 플랫폼 요청은 증가시키지 않음 |
 | 기기 challenge 발급 | HTTP 200, `pheeeew_device_challenge_issued_total` 1 증가 |
 | 두 프로필의 업무 지표 | 사전 등록하는 주요 metric family 24개 노출, 활동 기록 실패의 두 reason은 각각 0 |
 | `prod` 활동 지표 | Android·iOS DAU·MAU가 모두 실제 0, 집계·수집 시작 시각은 유한한 Unix timestamp, 집계 실패 0 |
