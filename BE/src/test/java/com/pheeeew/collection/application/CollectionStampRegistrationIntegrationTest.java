@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static com.pheeeew.emotion.fixture.AudioUploadFixture.기본_업로드_빌더;
 import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_SAVE_FAILED;
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_STATE_CHANGE_NOT_ALLOWED;
 import static org.mockito.Mockito.when;
 
 import com.pheeeew.collection.domain.repository.CollectionProgressRepository;
@@ -134,6 +135,20 @@ class CollectionStampRegistrationIntegrationTest {
 
         // then
         assertThat(stamps(device, EmotionState.FRUSTRATED)).isOne();
+    }
+
+    @Test
+    void 감정_종류_변경을_거절해도_스탬프_횟수는_처음_감정에_남는다() {
+        // given
+        Emotion original = save(UUID.randomUUID(), EmotionState.FRUSTRATED, device);
+
+        // when / then
+        assertThatThrownBy(() -> commands.update(original.getId(), device.getPublicId(),
+                EmotionState.ANGRY, "수정 메모", null, false, null))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_STATE_CHANGE_NOT_ALLOWED));
+        assertThat(stamps(device, EmotionState.FRUSTRATED)).isOne();
+        assertThat(stamps(device, EmotionState.ANGRY)).isZero();
     }
 
     @Test

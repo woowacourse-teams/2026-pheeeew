@@ -142,15 +142,18 @@ class EmotionPinCacheIntegrationTest {
         double hits = cacheHits();
 
         // when
-        commands.update(emotion.getId(), requester.getPublicId(), EmotionState.EXHAUSTED, "수정", null, false, null);
+        commands.update(emotion.getId(), requester.getPublicId(), EmotionState.ANGRY, null, null, false, null);
         EmotionMapPageView updated = page(null);
+        commands.update(emotion.getId(), requester.getPublicId(), EmotionState.ANGRY, "복원한 내용", null, false, null);
+        EmotionMapPageView restored = page(null);
         commands.delete(emotion.getId(), requester.getPublicId());
         EmotionMapPageView deleted = page(null);
 
         // then
-        assertThat(updated.items()).singleElement().satisfies(item -> assertThat(item.state()).isEqualTo(EmotionState.EXHAUSTED));
+        assertThat(updated.items()).isEmpty();
+        assertThat(restored.items()).singleElement().satisfies(item -> assertThat(item.state()).isEqualTo(EmotionState.ANGRY));
         assertThat(deleted.items()).isEmpty();
-        assertThat(cacheHits() - hits).isEqualTo(2);
+        assertThat(cacheHits() - hits).isEqualTo(3);
     }
 
     @Test

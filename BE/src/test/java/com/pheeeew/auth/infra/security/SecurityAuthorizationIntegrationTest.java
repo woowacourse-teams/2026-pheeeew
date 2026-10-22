@@ -1132,7 +1132,7 @@ class SecurityAuthorizationIntegrationTest {
         String otherToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
         Long id = 한숨을_등록한다(ownerToken);
         String uri = "/api/v1/emotions/" + id;
-        String body = "{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"수정한 메모\"}";
+        String body = "{\"state\":\"FRUSTRATED\",\"contentType\":\"MEMO\",\"memo\":\"수정한 메모\"}";
 
         // when / then
         client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken)
@@ -1143,7 +1143,7 @@ class SecurityAuthorizationIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNoContent();
         client.get().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
                 .exchange().expectStatus().isOk().expectBody()
-                .jsonPath("$.properties.state").isEqualTo("ANGRY")
+                .jsonPath("$.properties.state").isEqualTo("FRUSTRATED")
                 .jsonPath("$.properties.memo").isEqualTo("수정한 메모");
         for (int retry = 0; retry < 2; retry++) {
             client.delete().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
@@ -1156,6 +1156,32 @@ class SecurityAuthorizationIntegrationTest {
         client.get().uri("/api/v1/emotions" + 지도_영역_질의).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
                 .exchange().expectStatus().isOk().expectBody().jsonPath("$.items").isEmpty();
         assertThat(emotionRepository.findById(id).orElseThrow().getDeletedAt()).isNotNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"v1", "v3", "v4"})
+    void 감정_종류_변경은_본인에게만_400을_반환하고_타인과_삭제된_감정은_404를_유지한다(String version) {
+        // given
+        String ownerToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        String otherToken = 기기를_등록하고_토큰을_받는다(UUID.randomUUID());
+        Long id = 한숨을_등록한다(ownerToken);
+        String uri = "/api/" + version + "/emotions/" + id;
+        String body = "{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\",\"audioUploadId\":\"missing-upload\"}";
+
+        // when / then: 존재하지 않는 녹음보다 소유권·삭제 여부와 감정 종류를 먼저 검사한다.
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNotFound()
+                .expectBody().jsonPath("$.code").isEqualTo("EMOTION-002");
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isBadRequest()
+                .expectBody().jsonPath("$.code").isEqualTo("EMOTION-015")
+                .jsonPath("$.message").isEqualTo("등록한 감정의 종류는 변경할 수 없습니다.");
+        assertThat(emotionRepository.findById(id).orElseThrow().getState()).isEqualTo(EmotionState.FRUSTRATED);
+        client.delete().uri("/api/v1/emotions/" + id).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .exchange().expectStatus().isNoContent();
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken)
+                .contentType(MediaType.APPLICATION_JSON).body(body).exchange().expectStatus().isNotFound()
+                .expectBody().jsonPath("$.code").isEqualTo("EMOTION-002");
     }
 
     @Test

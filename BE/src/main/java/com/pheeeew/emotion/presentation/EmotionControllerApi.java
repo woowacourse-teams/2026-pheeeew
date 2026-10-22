@@ -421,7 +421,8 @@ public interface EmotionControllerApi {
     @Operation(summary = "본인 감정 수정 (구버전 호환)", deprecated = true, description = """
             기존 클라이언트의 내용 없음 허용 계약을 유지합니다. 새 클라이언트는 PUT /api/v3/emotions/{emotionId}를 사용합니다.
             작성 기기의 감정만 기한 없이 수정합니다. state와 contentType은 필수입니다.
-            상태·메모·녹음·그룹 스탬프를 수정하며 위치·각도·작성 시각·등록 당시의 익명 선택은 바뀌지 않습니다.
+            메모·녹음·그룹 스탬프를 수정하며 감정 종류·위치·각도·작성 시각·등록 당시의 익명 선택은 바뀌지 않습니다.
+            state는 등록된 감정과 같은 값만 허용합니다. 다른 값은 400(EMOTION-015)으로 거절합니다.
             기기 닉네임은 PUT /api/v3/devices/me/nickname으로 별도 수정합니다. 수정한 이름은 기존 기명 감정에도 반영됩니다.
             contentType=NONE이면 내용을 제거합니다. MEMO이면 memo로 바꾸며 null·공백은 내용 없음입니다.
             AUDIO이면 audioUploadId로 새 녹음을 연결합니다. audioUploadId가 null이면 기존 녹음을 유지합니다.
@@ -430,7 +431,7 @@ public interface EmotionControllerApi {
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "수정 완료"),
-            @ApiResponse(responseCode = "400", description = "잘못된 요청 또는 유지할 기존 녹음이 없음"),
+            @ApiResponse(responseCode = "400", description = "잘못된 요청, 감정 종류 변경(EMOTION-015) 또는 유지할 기존 녹음이 없음"),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
             @ApiResponse(responseCode = "404", description = "감정이 없거나 본인 글이 아니거나 삭제됨, 또는 사용할 수 없는 그룹·업로드"),
             @ApiResponse(responseCode = "409", description = "녹음 미완료 또는 다른 감정에서 사용한 업로드"),
@@ -446,6 +447,7 @@ public interface EmotionControllerApi {
             ### 수정 조건
 
             - 작성 기기의 감정만 기한 없이 수정합니다. state와 contentType은 필수이며 contentType은 MEMO 또는 AUDIO입니다.
+            - state는 등록된 감정과 같은 값만 허용합니다. 다른 값은 녹음 확인·연결 전에 400(EMOTION-015)으로 거절합니다.
             - NONE, 누락·null인 contentType, 유형과 필드가 맞지 않는 조합은 400입니다.
             - MEMO는 앞뒤 공백 제거 후 비어 있지 않은 memo가 필수이며 최대 200 Unicode codepoint입니다. audioUploadId는 생략하거나 null로 둡니다.
             - AUDIO는 memo를 생략하거나 null로 둡니다. 새 녹음으로 교체하려면 업로드 완료된 audioUploadId를 전달합니다.
@@ -467,7 +469,7 @@ public interface EmotionControllerApi {
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "수정 완료"),
-            @ApiResponse(responseCode = "400", description = "잘못된 ID·필수값·내용 조합·메모 길이 또는 유지할 기존 녹음이 없음(EMOTION-010)"),
+            @ApiResponse(responseCode = "400", description = "잘못된 ID·필수값·내용 조합·메모 길이, 감정 종류 변경(EMOTION-015) 또는 유지할 기존 녹음이 없음(EMOTION-010)"),
             @ApiResponse(responseCode = "401", description = "인증할 수 없음"),
             @ApiResponse(responseCode = "404", description = "감정이 없거나 본인 글이 아니거나 삭제됨, 또는 사용할 수 없는 그룹·없거나 다른 기기의 업로드"),
             @ApiResponse(responseCode = "409", description = "녹음 미완료·만료 또는 다른 감정에서 사용한 업로드"),

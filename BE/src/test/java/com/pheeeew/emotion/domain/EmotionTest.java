@@ -1,14 +1,18 @@
 package com.pheeeew.emotion.domain;
 
+import static com.pheeeew.emotion.exception.EmotionErrorCode.EMOTION_STATE_CHANGE_NOT_ALLOWED;
 import static com.pheeeew.emotion.fixture.EmotionFixture.기본_한숨_빌더;
 import static com.pheeeew.emotion.fixture.EmotionFixture.서울시청_좌표;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.pheeeew.emotion.exception.EmotionException;
 import java.time.Instant;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.EnumSource;
 
 class EmotionTest {
 
@@ -185,4 +189,45 @@ class EmotionTest {
         // when / then
         assertThat(catchThrowable(builder::build)).isInstanceOf(NullPointerException.class);
     }
+
+    @ParameterizedTest
+    @EnumSource(value = EmotionState.class, names = "FRUSTRATED", mode = EnumSource.Mode.EXCLUDE)
+    void 등록한_감정_종류를_다르게_수정할_수_없고_기존_내용을_보존한다(EmotionState requested) {
+        // given
+        Emotion emotion = 기본_한숨_빌더().state(EmotionState.FRUSTRATED).memo("기존 메모").build();
+        EmotionContent replacement = EmotionContent.builder().memo("수정 메모").build();
+
+        // when / then
+        assertThatThrownBy(() -> emotion.update(requested, replacement, null))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_STATE_CHANGE_NOT_ALLOWED));
+        assertThat(emotion.getState()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(emotion.getMemo()).isEqualTo("기존 메모");
+    }
+
+    @Test
+    void 같은_감정_종류로는_내용을_수정할_수_있다() {
+        // given
+        Emotion emotion = 기본_한숨_빌더().state(EmotionState.FRUSTRATED).memo("기존 메모").build();
+
+        // when
+        emotion.update(EmotionState.FRUSTRATED, EmotionContent.builder().memo("수정 메모").build(), null);
+
+        // then
+        assertThat(emotion.getState()).isEqualTo(EmotionState.FRUSTRATED);
+        assertThat(emotion.getMemo()).isEqualTo("수정 메모");
+    }
+
+    @Test
+    void 종류가_없는_기존_감정에도_다른_종류를_설정할_수_없다() {
+        // given
+        Emotion emotion = 기본_한숨_빌더().state(null).memo("기존 메모").build();
+
+        // when / then
+        assertThatThrownBy(() -> emotion.update(EmotionState.ANGRY, emotion.getContent(), null))
+                .isInstanceOfSatisfying(EmotionException.class,
+                        error -> assertThat(error.getErrorCode()).isEqualTo(EMOTION_STATE_CHANGE_NOT_ALLOWED));
+        assertThat(emotion.getState()).isNull();
+    }
+
 }

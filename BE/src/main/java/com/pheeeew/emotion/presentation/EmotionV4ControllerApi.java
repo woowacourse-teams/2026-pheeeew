@@ -168,7 +168,8 @@ public interface EmotionV4ControllerApi {
     );
 
     @Operation(summary = "그룹 연결을 유지하는 감정 수정", description = """
-            인증된 기기가 작성한 감정의 상태·메모·녹음을 수정합니다. 기존 그룹 연결은 그대로 유지합니다.
+            인증된 기기가 작성한 감정의 메모·녹음을 수정합니다. 감정 종류와 기존 그룹 연결은 그대로 유지합니다.
+            state는 등록된 감정과 같은 값만 허용합니다. 다른 값은 녹음 확인·연결 전에 400(EMOTION-015)으로 거절합니다.
             groupId는 null을 포함해 입력 자체를 400으로 거부합니다. 기존 그룹의 삭제·탈퇴 여부를 다시 검증하지 않습니다.
             위치·회전·작성 시각·등록 당시 익명 설정은 변경하지 않습니다.
 
@@ -178,7 +179,7 @@ public interface EmotionV4ControllerApi {
             """, security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "수정 완료"),
-            @ApiResponse(responseCode = "400", description = "잘못된 내용·금지된 그룹 입력 또는 유지할 녹음 없음",
+            @ApiResponse(responseCode = "400", description = "잘못된 내용·금지된 그룹 입력, 감정 종류 변경(EMOTION-015) 또는 유지할 녹음 없음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증 실패 또는 유효하지 않은 기기",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class))),

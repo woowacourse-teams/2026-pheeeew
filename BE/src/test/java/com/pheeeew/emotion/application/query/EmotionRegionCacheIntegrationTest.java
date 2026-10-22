@@ -141,20 +141,17 @@ class EmotionRegionCacheIntegrationTest {
     }
 
     @Test
-    void 수정이_성공하면_이전_상태를_빼고_새_상태의_대표_감정으로_교체한다() {
+    void 내용을_제거하면_기존_감정을_지도_집계에서_제외한다() {
         // given
         var bounds = EmotionSearchBounds.of(126, 37, 128, 39);
         queries.findRegionMap(bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null));
 
         // when
-        commands.update(emotionId, requester.getPublicId(), EmotionState.DISCOURAGED, "바뀐 기록", null, false, null);
+        commands.update(emotionId, requester.getPublicId(), EmotionState.ANGRY, null, null, false, null);
         var result = queries.findRegionMap(bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null));
 
         // then
-        assertThat(result).singleElement().satisfies(item -> {
-            assertThat(item.summary().totalCount()).isEqualTo(1);
-            assertThat(item.summary().representativeState()).isEqualTo(EmotionState.DISCOURAGED);
-        });
+        assertThat(result).isEmpty();
     }
 
     @Test
@@ -185,9 +182,9 @@ class EmotionRegionCacheIntegrationTest {
 
         // when
         new TransactionTemplate(transactions).executeWithoutResult(status -> {
-            commands.update(emotionId, requester.getPublicId(), EmotionState.DISCOURAGED, "롤백될 기록", null, false, null);
+            commands.update(emotionId, requester.getPublicId(), EmotionState.ANGRY, null, null, false, null);
             var own = queries.findRegionMap(bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null));
-            assertThat(own.getFirst().summary().representativeState()).isEqualTo(EmotionState.DISCOURAGED);
+            assertThat(own).isEmpty();
             var other = CompletableFuture.supplyAsync(() -> queries.findRegionMap(
                     bounds, RegionLevel.SIDO, requester.getPublicId(), EmotionSearchFilter.from(null)))
                     .orTimeout(5, TimeUnit.SECONDS).join();
@@ -214,7 +211,7 @@ class EmotionRegionCacheIntegrationTest {
         CountDownLatch deleted = new CountDownLatch(1);
         CompletableFuture<Void> pendingUpdate = CompletableFuture.runAsync(() ->
                 new TransactionTemplate(transactions).executeWithoutResult(status -> {
-                    commands.update(emotionId, requester.getPublicId(), EmotionState.DISCOURAGED, "뒤늦은 수정", null, false, null);
+                    commands.update(emotionId, requester.getPublicId(), EmotionState.ANGRY, "뒤늦은 수정", null, false, null);
                     updated.countDown();
                     await(deleted);
                 }));

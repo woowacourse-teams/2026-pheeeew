@@ -243,10 +243,10 @@ class EmotionRegionBatchCacheIntegrationTest {
         register();
 
         // when
-        commands.update(emotionId, requester.getPublicId(), EmotionState.EXHAUSTED, "수정 기록", null, false, null);
+        commands.update(emotionId, requester.getPublicId(), EmotionState.ANGRY, null, null, false, null);
 
         // then
-        assertThat(regions().getFirst().summary().totalCount()).isEqualTo(2);
+        assertThat(regions().getFirst().summary().totalCount()).isEqualTo(1);
         assertThat(regions().getFirst().summary().representativeState()).isEqualTo(EmotionState.DISCOURAGED);
     }
 

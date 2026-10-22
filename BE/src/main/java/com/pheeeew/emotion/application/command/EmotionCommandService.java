@@ -126,6 +126,7 @@ public class EmotionCommandService {
             if (observed.getDeletedAt() != null) {
                 throw new EmotionException(EMOTION_NOT_VISIBLE);
             }
+            observed.validateStateUnchanged(state);
             prepared = contentResolver.prepare(memo, audioUploadId, observed.getDeviceId(), observed.getRequestId());
         }
         PreparedContent checked = prepared;
@@ -198,6 +199,8 @@ public class EmotionCommandService {
         if (emotion.getDeletedAt() != null) {
             throw new EmotionException(EMOTION_NOT_VISIBLE);
         }
+
+        emotion.validateStateUnchanged(state);
 
         EmotionMapContribution before = EmotionMapContribution.from(emotion);
         GroupStamp stamp = preserveGroup ? emotion.getGroupStamp()

@@ -695,7 +695,8 @@ class EmotionControllerTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"EMOTION_NOT_VISIBLE", "EMOTION_AUDIO_REQUIRED", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE"})
+    @ValueSource(strings = {"EMOTION_NOT_VISIBLE", "EMOTION_AUDIO_REQUIRED", "EMOTION_AUDIO_UPLOAD_UNAVAILABLE",
+            "EMOTION_STATE_CHANGE_NOT_ALLOWED"})
     void 수정_서비스의_실패_코드를_반환한다(String name) {
         EmotionErrorCode error = EmotionErrorCode.valueOf(name);
         doThrow(new EmotionException(error)).when(emotionCommandService)
@@ -704,6 +705,28 @@ class EmotionControllerTest {
                 .contentType(MediaType.APPLICATION_JSON).body("{\"state\":\"ANGRY\",\"contentType\":\"AUDIO\"}")
                 .exchange().expectStatus().isEqualTo(error.getStatus().value())
                 .expectBody().jsonPath("$.code").isEqualTo(error.getCode());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"/api/v1/emotions/42", "/api/v3/emotions/42", "/api/v4/emotions/42"})
+    void 감정_종류_변경_거절은_400과_명확한_오류_코드를_반환한다(String uri) {
+        // given
+        var error = EmotionErrorCode.EMOTION_STATE_CHANGE_NOT_ALLOWED;
+        if (uri.startsWith("/api/v4/")) {
+            doThrow(new EmotionException(error)).when(emotionCommandService)
+                    .updateWithoutGroupChange(42L, DEVICE_PUBLIC_ID, EmotionState.ANGRY, "수정 메모", null, false);
+        } else {
+            doThrow(new EmotionException(error)).when(emotionCommandService)
+                    .update(42L, DEVICE_PUBLIC_ID, EmotionState.ANGRY, "수정 메모", null, false, null);
+        }
+
+        // when / then
+        client.put().uri(uri).header(HttpHeaders.AUTHORIZATION, "Bearer access-token")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body("{\"state\":\"ANGRY\",\"contentType\":\"MEMO\",\"memo\":\"수정 메모\"}")
+                .exchange().expectStatus().isBadRequest().expectBody()
+                .jsonPath("$.code").isEqualTo("EMOTION-015")
+                .jsonPath("$.message").isEqualTo(error.getMessage());
     }
 
     @ParameterizedTest
