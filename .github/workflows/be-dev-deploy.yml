@@ -219,10 +219,22 @@ jobs:
           ssh -F ~/.ssh/config target 'set -eu; umask 077; cd /opt/pheeeew; [ -f .env ] && cp .env .env.prev && chmod 600 .env.prev || true; chmod 600 .env.new; mv .env.new .env'
           rm -f env.tmp
 
-      - name: 공유 네트워크 준비
+      - name: 공유 네트워크와 nginx 전환 파일 준비
         run: |
           set -eu
-          ssh -F ~/.ssh/config target 'set -eu; docker network inspect pheeeew-dev >/dev/null 2>&1 || docker network create pheeeew-dev'
+          ssh -F ~/.ssh/config target 'bash -s' <<'REMOTE'
+          set -eu
+          docker network inspect pheeeew-dev >/dev/null 2>&1 || docker network create pheeeew-dev
+
+          # 전환 파일은 어느 색이 활성인지를 들고 있어 배포가 덮어쓰지 않는다. 없을 때만 만든다.
+          mkdir -p /opt/pheeeew/nginx/upstream
+          if [ ! -f /opt/pheeeew/nginx/upstream/active.conf ]; then
+            printf 'set $upstream_app app;\n' > /opt/pheeeew/nginx/upstream/active.conf
+            echo "전환 파일을 새로 만들었습니다: app"
+          else
+            echo "현재 전환 대상: $(sed -n 's/.*set \$upstream_app \([a-z-]*\);.*/\1/p' /opt/pheeeew/nginx/upstream/active.conf)"
+          fi
+          REMOTE
 
       - name: nginx 배포
         run: |

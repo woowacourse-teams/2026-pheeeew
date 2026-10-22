@@ -166,11 +166,14 @@ http {
             for network, subnet in zip(networks, ('10.0.10.0/24', '10.0.11.0/24', '10.0.12.0/24')):
                 run('docker', 'network', 'create', '--internal', '--subnet', subnet, network)
             run('docker', 'run', '-d', '--name', app, '--network', networks[0],
-                '--network-alias', 'app', '--ip', '10.0.10.4',
+                '--network-alias', 'app',
+                '--network-alias', 'app-blue', '--network-alias', 'app-green',
+                '--ip', '10.0.10.4',
                 '-v', f'{fixtures}:/fixtures:ro',
                 'python:3.13-alpine', 'python', '/fixtures/app.py')
             run('docker', 'create', '--name', nginx, '--network', networks[0], '--ip', '10.0.10.2',
                 '-v', f'{config}:/etc/nginx/conf.d/default.conf:ro',
+                '-v', f'{config.parent / "upstream"}:/etc/nginx/upstream:ro',
                 '-v', f'{fixtures / "nginx.conf"}:/etc/nginx/nginx.conf:ro',
                 '-v', f'{fixtures}:/etc/ssl/cloudflare:ro',
                 '-v', f'{fixtures}:/etc/letsencrypt/live/api-dev.pheeeew.com:ro',
