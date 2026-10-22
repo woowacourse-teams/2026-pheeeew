@@ -105,6 +105,16 @@ public class EmotionCommandService {
 
     public void update(Long emotionId, UUID devicePublicId, EmotionState state, String memo, String audioUploadId,
             boolean keepAudio, UUID groupPublicId) {
+        update(emotionId, devicePublicId, state, memo, audioUploadId, keepAudio, groupPublicId, false);
+    }
+
+    public void updateWithoutGroupChange(Long emotionId, UUID devicePublicId, EmotionState state, String memo,
+            String audioUploadId, boolean keepAudio) {
+        update(emotionId, devicePublicId, state, memo, audioUploadId, keepAudio, null, true);
+    }
+
+    private void update(Long emotionId, UUID devicePublicId, EmotionState state, String memo, String audioUploadId,
+            boolean keepAudio, UUID groupPublicId, boolean preserveGroup) {
         PreparedContent prepared = null;
         if (!keepAudio && audioUploadId != null) {
             Emotion observed = findOwnedEmotion(emotionId, devicePublicId);
@@ -116,7 +126,7 @@ public class EmotionCommandService {
         PreparedContent checked = prepared;
 
         mapCache.serialized(() -> new TransactionTemplate(transactionManager).execute(status -> {
-            updateInTransaction(emotionId, devicePublicId, state, memo, audioUploadId, keepAudio, groupPublicId, checked);
+            updateInTransaction(emotionId, devicePublicId, state, memo, audioUploadId, keepAudio, groupPublicId, checked, preserveGroup);
 
             return null;
         }));
@@ -174,14 +184,15 @@ public class EmotionCommandService {
     }
 
     private void updateInTransaction(Long emotionId, UUID devicePublicId, EmotionState state, String memo, String audioUploadId,
-            boolean keepAudio, UUID groupPublicId, PreparedContent prepared) {
+            boolean keepAudio, UUID groupPublicId, PreparedContent prepared, boolean preserveGroup) {
         Emotion emotion = findOwnedEmotion(emotionId, devicePublicId);
         if (emotion.getDeletedAt() != null) {
             throw new EmotionException(EMOTION_NOT_VISIBLE);
         }
 
         EmotionMapContribution before = EmotionMapContribution.from(emotion);
-        GroupStamp stamp = resolveGroupStamp(groupPublicId, emotion.getDeviceId(), emotion.getGroupStamp());
+        GroupStamp stamp = preserveGroup ? emotion.getGroupStamp()
+                : resolveGroupStamp(groupPublicId, emotion.getDeviceId(), emotion.getGroupStamp());
 
         EmotionContent content;
         if (keepAudio) {

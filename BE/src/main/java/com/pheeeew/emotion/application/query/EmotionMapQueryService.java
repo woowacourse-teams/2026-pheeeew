@@ -1,5 +1,7 @@
 package com.pheeeew.emotion.application.query;
 
+import com.pheeeew.common.exception.CommonErrorCode;
+import com.pheeeew.common.exception.PheeeewException;
 import com.pheeeew.emotion.application.EmotionCursorCodec;
 import com.pheeeew.emotion.application.mapcache.RegionSummaryCache;
 import com.pheeeew.emotion.application.mapcache.PinCandidateCache;
@@ -20,19 +22,48 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import java.util.function.Function;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
-@RequiredArgsConstructor
 @Service
 public class EmotionMapQueryService {
+
+    private static final int DEFAULT_PAGE_SIZE = 200;
+    private static final int EXPERIMENT_MAX_PAGE_SIZE = 1000;
 
     private final Clock clock;
     private final EmotionMapDbQueryService dbQueries;
     private final RegionSummaryCache regionSummaryCache;
     private final PinCandidateCache pinCandidateCache;
+    private final int maximumPageSize;
+
+    public EmotionMapQueryService(
+            Clock clock,
+            EmotionMapDbQueryService dbQueries,
+            RegionSummaryCache regionSummaryCache,
+            PinCandidateCache pinCandidateCache,
+            @Value("${pheeeew.emotion-map.max-page-size:200}") int maximumPageSize
+    ) {
+        if (maximumPageSize < DEFAULT_PAGE_SIZE || maximumPageSize > EXPERIMENT_MAX_PAGE_SIZE) {
+            throw new IllegalArgumentException("지도 핀 조회 상한은 200 이상 1000 이하여야 합니다.");
+        }
+        this.clock = clock;
+        this.dbQueries = dbQueries;
+        this.regionSummaryCache = regionSummaryCache;
+        this.pinCandidateCache = pinCandidateCache;
+        this.maximumPageSize = maximumPageSize;
+    }
+
+    int resolveMapPageSize(Integer requestedSize) {
+        int pageSize = requestedSize == null ? DEFAULT_PAGE_SIZE : requestedSize;
+        if (pageSize < 1 || pageSize > maximumPageSize) {
+            throw new PheeeewException(CommonErrorCode.INVALID_REQUEST, null);
+        }
+        return pageSize;
+    }
 
     public List<EmotionRegionMapItemView> findRegionMap(
             EmotionSearchBounds bounds, RegionLevel level, UUID devicePublicId, EmotionSearchFilter filter
@@ -91,16 +122,54 @@ public class EmotionMapQueryService {
         cursor.validateSnapshotAt(Instant.now(clock));
         cursor.validateRequestedFilter(startDate, endDate, contentType, scope, groupIds);
 
+        return findContentMap(cursor, devicePublicId, encodedCursor == null, DEFAULT_PAGE_SIZE, EmotionCursorCodec::encode);
+    }
+
+    public EmotionMapPageView findContentMapWithinBoundsV4(
+            EmotionSearchBounds bounds,
+            UUID devicePublicId,
+            LocalDate startDate,
+            LocalDate endDate,
+            EmotionContentFilter contentType,
+            EmotionSearchScope scope,
+            String encodedCursor
+    ) {
+        return findContentMapWithinBoundsV4(bounds, devicePublicId, startDate, endDate, contentType, scope, encodedCursor, null);
+    }
+
+    public EmotionMapPageView findContentMapWithinBoundsV4(
+            EmotionSearchBounds bounds,
+            UUID devicePublicId,
+            LocalDate startDate,
+            LocalDate endDate,
+            EmotionContentFilter contentType,
+            EmotionSearchScope scope,
+            String encodedCursor,
+            Integer requestedSize
+    ) {
+        int pageSize = resolveMapPageSize(requestedSize);
+        EmotionCursor cursor = encodedCursor == null
+                ? EmotionCursor.initialWithinBounds(bounds, currentSnapshotAt(),
+                        EmotionSearchFilter.of(startDate, endDate, contentType, scope, null))
+                : EmotionCursorCodec.decodeV4WithinBounds(encodedCursor);
+        cursor.validateSnapshotAt(Instant.now(clock));
+        cursor.validateRequestedFilter(startDate, endDate, contentType, scope, null);
+        return findContentMap(cursor, devicePublicId, encodedCursor == null, pageSize, EmotionCursorCodec::encodeV4);
+    }
+
+    private EmotionMapPageView findContentMap(
+            EmotionCursor cursor, UUID devicePublicId, boolean firstPage, int pageSize, Function<EmotionCursor, String> encoder
+    ) {
         if (!TransactionSynchronizationManager.isActualTransactionActive() && cacheable(RegionLevel.SIDO, cursor.filter())) {
             Long deviceId = dbQueries.findValidatedDeviceId(devicePublicId, cursor.groupIds());
 
-            PinCandidateCache.Page cached = pinCandidateCache.find(cursor, encodedCursor == null, deviceId);
+            PinCandidateCache.Page cached = pinCandidateCache.find(cursor, firstPage, deviceId, pageSize);
             if (cached != null) {
-                return dbQueries.findPinPage(cached);
+                return dbQueries.findPinPage(cached, pageSize, encoder);
             }
         }
 
-        return dbQueries.findMap(cursor, devicePublicId, true);
+        return dbQueries.findMap(cursor, devicePublicId, true, pageSize, encoder);
     }
 
     private boolean cacheable(RegionLevel level, EmotionSearchFilter filter) {

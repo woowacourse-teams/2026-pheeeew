@@ -31,6 +31,7 @@ import com.pheeeew.groups.domain.repository.GroupStampRepository;
 import com.pheeeew.groups.domain.repository.GroupRepository;
 import com.pheeeew.groups.exception.GroupException;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.time.Instant;
 import java.time.Clock;
@@ -112,6 +113,23 @@ public class EmotionQueryService {
         return findList(cursor, devicePublicId);
     }
 
+    public EmotionPageView findListWithoutBoundsV4(
+            UUID devicePublicId,
+            LocalDate startDate,
+            LocalDate endDate,
+            EmotionContentFilter contentType,
+            EmotionSearchScope scope,
+            String encodedCursor
+    ) {
+        EmotionCursor cursor = encodedCursor == null
+                ? EmotionCursor.initialWithoutBounds(currentSnapshotAt(),
+                        EmotionSearchFilter.of(startDate, endDate, contentType, scope, null))
+                : EmotionCursorCodec.decodeV4WithoutBounds(encodedCursor);
+        cursor.validateSnapshotAt(Instant.now(clock));
+        cursor.validateRequestedFilter(startDate, endDate, contentType, scope, null);
+        return findList(cursor, devicePublicId, EmotionCursorCodec::encodeV4);
+    }
+
     private Instant currentSnapshotAt() {
         return Instant.now(clock).truncatedTo(ChronoUnit.MICROS);
     }
@@ -161,6 +179,10 @@ public class EmotionQueryService {
     }
 
     private EmotionPageView findList(EmotionCursor cursor, UUID devicePublicId) {
+        return findList(cursor, devicePublicId, EmotionCursorCodec::encode);
+    }
+
+    private EmotionPageView findList(EmotionCursor cursor, UUID devicePublicId, Function<EmotionCursor, String> encoder) {
         Long deviceId = deviceRepository.findByPublicId(devicePublicId)
                 .map(Device::getId).orElseThrow(() -> new DeviceException(DEVICE_NOT_FOUND));
 
@@ -179,7 +201,7 @@ public class EmotionQueryService {
             return EmotionPageView.of(items, false, null);
         }
 
-        String nextCursor = EmotionCursorCodec.encode(cursor.next(
+        String nextCursor = encoder.apply(cursor.next(
                 page.getLast().getCreatedAt(), page.getLast().getId()));
 
         return EmotionPageView.of(items, true, nextCursor);
